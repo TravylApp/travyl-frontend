@@ -79,6 +79,15 @@ export interface Flight {
   created_at: string;
 }
 
+export interface SavedItem {
+  id: string;
+  user_id: string;
+  trip_id: string;
+  item_type: 'activity' | 'flight' | 'hotel';
+  item_id: string;
+  created_at: string;
+}
+
 export interface Hotel {
   id: string;
   trip_id: string;
