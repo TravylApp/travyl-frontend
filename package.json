@@ -14,5 +14,11 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@nextui-org/react": "^2.6.11",
+    "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
+    "motion": "^12.34.3"
   }
 }
