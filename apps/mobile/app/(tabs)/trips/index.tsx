@@ -16,6 +16,7 @@ export default function TripsScreen() {
     );
   }
 
+  /* AUTH GATE — commented out for dev
   if (!user) {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-black px-8">
@@ -43,6 +44,7 @@ export default function TripsScreen() {
       </View>
     );
   }
+  */
 
   if (isLoading) {
     return (
@@ -57,7 +59,14 @@ export default function TripsScreen() {
       <View className="flex-1 items-center justify-center bg-white dark:bg-black">
         <Text className="text-4xl mb-4">🗺️</Text>
         <Text className="text-xl font-bold text-gray-900 dark:text-white mb-2">My Trips</Text>
-        <Text className="text-sm text-gray-500 dark:text-gray-400">No trips yet. Start planning!</Text>
+        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-6">No trips yet. Start planning!</Text>
+        {/* DEV: tap to preview itinerary tabs with a dummy trip ID */}
+        <Pressable
+          onPress={() => router.push('/trip/dev-test')}
+          className="h-12 px-6 rounded-xl bg-[#003594] items-center justify-center active:opacity-80"
+        >
+          <Text className="text-base font-semibold text-white">Preview Itinerary Tabs</Text>
+        </Pressable>
       </View>
     );
   }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <!-- Top wing panel -->
+  <path d="M60 10 L20 36 L6 34 Z"/>
+  <!-- Right body panel -->
+  <path d="M48 48 L30 40 L26 38 L60 10 Z"/>
+  <!-- Inner fold panel -->
+  <path d="M52 16 L26 38 L24 50 L20 36 Z"/>
+  <!-- Tail fold (flush with inner fold) -->
+  <path d="M24 50 L26 38 L30 40 L32 42 L28 46 Z"/>
+</svg>
