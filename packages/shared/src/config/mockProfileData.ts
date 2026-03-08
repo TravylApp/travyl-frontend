@@ -1,0 +1,138 @@
+import type { FavoriteItem } from '../types';
+
+export const LOCATION_COORDS: Record<string, { lat: number; lng: number; color: string }> = {
+  santorini: { lat: 36.3932, lng: 25.4615, color: "#3b82f6" },
+  banff: { lat: 51.1784, lng: -115.5708, color: "#10b981" },
+  coachella: { lat: 33.6803, lng: -116.1739, color: "#ef4444" },
+  bali: { lat: -8.3405, lng: 115.092, color: "#3b82f6" },
+  maldives: { lat: 3.2028, lng: 73.2207, color: "#3b82f6" },
+  "new-zealand": { lat: -44.0, lng: 170.0, color: "#06b6d4" },
+  glastonbury: { lat: 51.1485, lng: -2.7149, color: "#ef4444" },
+  tomorrowland: { lat: 51.0833, lng: 4.3833, color: "#ef4444" },
+  yellowstone: { lat: 44.428, lng: -110.5885, color: "#10b981" },
+  "art-basel": { lat: 47.5596, lng: 7.5886, color: "#f59e0b" },
+  ibiza: { lat: 38.9067, lng: 1.4206, color: "#3b82f6" },
+  paris: { lat: 48.8566, lng: 2.3522, color: "#06b6d4" },
+  "cannes-film": { lat: 43.5528, lng: 7.0174, color: "#f59e0b" },
+  "edc-vegas": { lat: 36.1699, lng: -115.1398, color: "#ef4444" },
+  "machu-picchu": { lat: -13.1631, lng: -72.545, color: "#10b981" },
+  dolomites: { lat: 46.4102, lng: 11.844, color: "#06b6d4" },
+};
+
+export const PROFILE_FAVORITES: FavoriteItem[] = [
+  {
+    id: "santorini", name: "Santorini", country: "Greece", category: "Beach",
+    type: "place", rating: 4.9,
+    description: "Immerse yourself in the beauty and culture of this incredible place",
+    tags: ["Beaches", "Sunsets", "Romance"], board: "Summer 2026",
+    image: "https://images.unsplash.com/photo-1672622851784-0dbd3df4c088?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxTYW50b3JpbmklMjBHcmVlY2UlMjBzdW5zZXQlMjB3aGl0ZSUyMGJ1aWxkaW5nc3xlbnwxfHx8fDE3NzI2NTgzOTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "banff", name: "Banff National Park", country: "Canada", category: "Mountain",
+    type: "place", rating: 4.9,
+    description: "Stunning alpine landscapes and turquoise glacial lakes",
+    tags: ["Hiking", "Nature", "Photography"], board: "Wild & Free",
+    image: "https://images.unsplash.com/photo-1561953203-c8796cf81a8c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxCYW5mZiUyME5hdGlvbmFsJTIwUGFyayUyMHR1cnF1b2lzZSUyMGxha2UlMjBtb3VudGFpbnN8ZW58MXx8fHwxNzcyNzA0MjA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "coachella", name: "Coachella", country: "USA", category: "Music",
+    type: "event", rating: 4.7, date: "Apr 12-21, 2026",
+    description: "The ultimate desert music and arts experience",
+    tags: ["Music", "Festival", "Art"], board: "Festival Season",
+    image: "https://images.unsplash.com/photo-1536300007881-7e482242baa5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxDb2FjaGVsbGElMjBkZXNlcnQlMjBtdXNpYyUyMGZlc3RpdmFsJTIwY3Jvd2R8ZW58MXx8fHwxNzcyNzA1NzY5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "bali", name: "Bali", country: "Indonesia", category: "Beach",
+    type: "place", rating: 4.7,
+    description: "A breathtaking destination worth exploring at your own pace",
+    tags: ["Surfing", "Temples", "Rice Terraces"], board: "Island Escapes",
+    image: "https://images.unsplash.com/photo-1680188700615-ed31c1d23054?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxCYWxpJTIwdGVtcGxlJTIwdHJvcGljYWwlMjBJbmRvbmVzaWF8ZW58MXx8fHwxNzcyNzA1NzYyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "maldives", name: "Maldives", country: "Maldives", category: "Beach",
+    type: "place", rating: 4.9,
+    description: "Crystal clear waters and pristine white sand beaches",
+    tags: ["Diving", "Luxury", "Beaches"], board: "Island Escapes",
+    image: "https://images.unsplash.com/photo-1637225469170-ad6d958fd1d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxNYWxkaXZlcyUyMGJlYWNoJTIwY3J5c3RhbCUyMGNsZWFyJTIwd2F0ZXJ8ZW58MXx8fHwxNzcyNzA0MjE0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "new-zealand", name: "New Zealand", country: "New Zealand", category: "Adventure",
+    type: "place", rating: 4.9,
+    description: "Epic landscapes from fjords to glaciers",
+    tags: ["Adventure", "Hiking", "Nature"], board: "Dream Destinations",
+    image: "https://images.unsplash.com/photo-1668010882703-fb9fc62c250a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxOZXclMjBaZWFsYW5kJTIwbW91bnRhaW5zJTIwZmpvcmRzJTIwbGFuZHNjYXBlfGVufDF8fHx8MTc3MjcwNTc2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "glastonbury", name: "Glastonbury", country: "UK", category: "Music",
+    type: "event", rating: 4.6, date: "Jun 24-28, 2026",
+    description: "Five days of world-class music and performing arts",
+    tags: ["Music", "Camping", "Culture"], board: "Festival Season",
+    image: "https://images.unsplash.com/photo-1633005623496-899fdf60b749?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxHbGFzdG9uYnVyeSUyMGZlc3RpdmFsJTIwY2FtcGluZyUyMHRlbnRzfGVufDF8fHx8MTc3MjcwNTc2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "tomorrowland", name: "Tomorrowland", country: "Belgium", category: "Music",
+    type: "event", rating: 4.8, date: "Jul 17-26, 2026",
+    description: "The world's most magical electronic music festival",
+    tags: ["EDM", "Festival", "Nightlife"], board: "Festival Season",
+    image: "https://images.unsplash.com/photo-1762503647788-470d6ca6188c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxUb21vcnJvd2xhbmQlMjBlbGVjdHJvbmljJTIwbXVzaWMlMjBmZXN0aXZhbHxlbnwxfHx8fDE3NzI3MDU3NjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "yellowstone", name: "Yellowstone", country: "USA", category: "Nature",
+    type: "place", rating: 4.8,
+    description: "Geysers, hot springs, and untamed wilderness",
+    tags: ["Wildlife", "Geysers", "Camping"], board: "Wild & Free",
+    image: "https://images.unsplash.com/photo-1573048718823-abcbcce68748?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxZZWxsb3dzdG9uZSUyMGdleXNlciUyMG5hdGlvbmFsJTIwcGFya3xlbnwxfHx8fDE3NzI3MDUwNDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "art-basel", name: "Art Basel", country: "Switzerland", category: "Art",
+    type: "event", rating: 4.7, date: "Jun 15-21, 2026",
+    description: "The premier international art show",
+    tags: ["Art", "Culture", "Gallery"], board: "Europe Road Trip",
+    image: "https://images.unsplash.com/photo-1766247084575-cbbb6d8fb38d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxBcnQlMjBCYXNlbCUyMG1vZGVybiUyMGFydCUyMGdhbGxlcnl8ZW58MXx8fHwxNzcyNzA1NzY1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "ibiza", name: "Ibiza", country: "Spain", category: "City",
+    type: "place", rating: 4.8,
+    description: "Where the night never ends",
+    tags: ["Nightlife", "Beaches", "Music"], board: "Summer 2026",
+    image: "https://images.unsplash.com/photo-1579780330452-c989de42bef2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxJYml6YSUyMG5pZ2h0bGlmZSUyMHBhcnR5JTIwYmVhY2h8ZW58MXx8fHwxNzcyNzA1NzY0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "paris", name: "Paris", country: "France", category: "City",
+    type: "place", rating: 4.8,
+    description: "A city that captures hearts with every cobblestone street",
+    tags: ["Food Scene", "Culture", "Shopping"], board: "Europe Road Trip",
+    image: "https://images.unsplash.com/photo-1638560597507-6b46ddd1deea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxFaWZmZWwlMjBUb3dlciUyMFBhcmlzJTIwc3Vuc2V0JTIwZ29sZGVufGVufDF8fHx8MTc3MjcwNDIxMnww&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "cannes-film", name: "Cannes Film Fest", country: "France", category: "Festival",
+    type: "event", rating: 4.7, date: "May 12-23, 2026",
+    description: "The most prestigious film festival in the world",
+    tags: ["Cinema", "Culture", "Luxury"], board: "Europe Road Trip",
+    image: "https://images.unsplash.com/photo-1736766920028-ee18c15c02ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxDYW5uZXMlMjBGaWxtJTIwRmVzdGl2YWwlMjByZWQlMjBjYXJwZXR8ZW58MXx8fHwxNzcyNzA1MDQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "edc-vegas", name: "EDC Las Vegas", country: "USA", category: "Music",
+    type: "event", rating: 4.7, date: "Mar 15-17, 2026",
+    description: "Under the electric sky in the Nevada desert",
+    tags: ["EDM", "Nightlife", "Festival"], board: "Festival Season",
+    image: "https://images.unsplash.com/photo-1698812004183-2c13601de23e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxMYXMlMjBWZWdhcyUyMEVEQyUyMG5lb24lMjBsaWdodHN8ZW58MXx8fHwxNzcyNzA1NzY2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "machu-picchu", name: "Machu Picchu", country: "Peru", category: "Historical",
+    type: "place", rating: 4.9,
+    description: "An ancient wonder perched high in the clouds",
+    tags: ["Historical", "Hiking", "Culture"], board: "Dream Destinations",
+    image: "https://images.unsplash.com/photo-1586367443498-8d0aa9de31bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxNYWNodSUyMFBpY2NodSUyMFBlcnUlMjBhbmNpZW50JTIwcnVpbnN8ZW58MXx8fHwxNzcyNzA0MjA5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+  {
+    id: "dolomites", name: "Dolomites", country: "Italy", category: "Mountain",
+    type: "place", rating: 4.9,
+    description: "Dramatic mountain scenery and charming alpine villages",
+    tags: ["Skiing", "Hiking", "Photography"], board: "Europe Road Trip",
+    image: "https://images.unsplash.com/photo-1726855500757-658894d298eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxEb2xvbWl0ZXMlMjBJdGFseSUyMGFscGluZSUyMG1vdW50YWluc3xlbnwxfHx8fDE3NzI3MDU3NjZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+  },
+];
+
+export const BOARD_FILTER_TAGS = ["All", "Summer 2026", "Europe Road Trip", "Festival Season", "Dream Destinations", "Island Escapes", "Wild & Free"];
+export const CATEGORY_TAGS = ["Beaches", "Sunsets", "Romance", "Hiking", "Nature", "Photography", "Music", "Festival", "Art"];
