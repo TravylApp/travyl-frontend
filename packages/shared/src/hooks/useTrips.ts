@@ -7,6 +7,6 @@ export function useTrips() {
   return useQuery({
     queryKey: ['trips'],
     queryFn: fetchTrips,
-    enabled: !!user,
+    enabled: /* !!user */ true,
   });
 }
