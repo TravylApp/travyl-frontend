@@ -1,0 +1,72 @@
+"use client";
+
+import { motion } from "motion/react";
+import { useInspirationCards, getCyclicGradient, EASE_OUT_EXPO } from "@travyl/shared";
+import type { InspirationCard } from "@travyl/shared";
+
+const PLACEHOLDER_CARDS: InspirationCard[] = [
+  { id: 'pi-1', title: '', destination: '', image_url: null },
+  { id: 'pi-2', title: '', destination: '', image_url: null },
+  { id: 'pi-3', title: '', destination: '', image_url: null },
+  { id: 'pi-4', title: '', destination: '', image_url: null },
+  { id: 'pi-5', title: '', destination: '', image_url: null },
+  { id: 'pi-6', title: '', destination: '', image_url: null },
+  { id: 'pi-7', title: '', destination: '', image_url: null },
+  { id: 'pi-8', title: '', destination: '', image_url: null },
+];
+
+export function GetInspired() {
+  const { data: dbCards } = useInspirationCards();
+  const cards = dbCards?.length ? dbCards : PLACEHOLDER_CARDS;
+
+  return (
+    <section className="py-16 px-6 bg-muted/40">
+      <div className="max-w-6xl mx-auto">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-3">
+          Get <em>Inspired</em>
+        </h2>
+        <p className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
+          Explore popular destinations and start travyling.
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {cards.map((card, i) => {
+            const grad = getCyclicGradient(i);
+            return (
+              <motion.div
+                key={card.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.06, ease: EASE_OUT_EXPO }}
+                whileHover={{ y: -4, transition: { duration: 0.25, ease: EASE_OUT_EXPO } }}
+                className="rounded-2xl overflow-hidden relative h-48 md:h-56 cursor-pointer group hover:shadow-lg transition-shadow"
+                style={{
+                  background: card.image_url
+                    ? undefined
+                    : `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
+                }}
+              >
+                {card.image_url && (
+                  <img
+                    src={card.image_url}
+                    alt={card.title}
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                <div className="relative h-full flex flex-col justify-end p-4">
+                  <p className="text-white/70 text-xs mb-1">{card.destination}</p>
+                  <h3 className="text-white font-semibold text-sm leading-snug">
+                    {card.title}
+                  </h3>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
