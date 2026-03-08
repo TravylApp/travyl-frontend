@@ -1,4 +1,4 @@
-import TripTabs from "@/components/trip-tabs";
+import TripLayoutInner from "./trip-layout-inner";
 
 export default async function TripLayout({
   children,
@@ -9,10 +9,5 @@ export default async function TripLayout({
 }) {
   const { id } = await params;
 
-  return (
-    <div className="mx-auto max-w-7xl">
-      <TripTabs tripId={id} />
-      <div className="px-6 py-8">{children}</div>
-    </div>
-  );
+  return <TripLayoutInner tripId={id}>{children}</TripLayoutInner>;
 }
