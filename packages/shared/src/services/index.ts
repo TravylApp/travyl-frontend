@@ -11,4 +11,10 @@ export {
   fetchItineraryDays,
   fetchFlights,
   fetchHotels,
+  fetchActivities,
+  forkTrip,
+  fetchPublicTrips,
+  fetchUserPublicTrips,
+  fetchTripByShareToken,
+  updateTripVisibility,
 } from './api';

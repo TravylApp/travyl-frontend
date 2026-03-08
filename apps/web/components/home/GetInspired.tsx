@@ -5,14 +5,14 @@ import { useInspirationCards, getCyclicGradient, EASE_OUT_EXPO } from "@travyl/s
 import type { InspirationCard } from "@travyl/shared";
 
 const PLACEHOLDER_CARDS: InspirationCard[] = [
-  { id: 'pi-1', title: '', destination: '', image_url: null },
-  { id: 'pi-2', title: '', destination: '', image_url: null },
-  { id: 'pi-3', title: '', destination: '', image_url: null },
-  { id: 'pi-4', title: '', destination: '', image_url: null },
-  { id: 'pi-5', title: '', destination: '', image_url: null },
-  { id: 'pi-6', title: '', destination: '', image_url: null },
-  { id: 'pi-7', title: '', destination: '', image_url: null },
-  { id: 'pi-8', title: '', destination: '', image_url: null },
+  { id: 'pi-1', title: 'Amalfi Coast', destination: 'Italy', image_url: 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&fit=crop' },
+  { id: 'pi-2', title: 'Swiss Alps', destination: 'Switzerland', image_url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop' },
+  { id: 'pi-3', title: 'Banff National Park', destination: 'Canada', image_url: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=600&fit=crop' },
+  { id: 'pi-4', title: 'Great Barrier Reef', destination: 'Australia', image_url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&fit=crop' },
+  { id: 'pi-5', title: 'Taj Mahal', destination: 'India', image_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=600&fit=crop' },
+  { id: 'pi-6', title: 'Safari Serengeti', destination: 'Tanzania', image_url: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=600&fit=crop' },
+  { id: 'pi-7', title: 'Petra', destination: 'Jordan', image_url: 'https://images.unsplash.com/photo-1579606032821-4e6161c81571?w=600&fit=crop' },
+  { id: 'pi-8', title: 'Sydney Opera House', destination: 'Australia', image_url: 'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=600&fit=crop' },
 ];
 
 export function GetInspired() {
@@ -20,14 +20,16 @@ export function GetInspired() {
   const cards = dbCards?.length ? dbCards : PLACEHOLDER_CARDS;
 
   return (
-    <section className="py-16 px-6 bg-muted/40">
+    <section className="py-16 px-6">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-3">
-          Get <em>Inspired</em>
-        </h2>
-        <p className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
-          Explore popular destinations and start travyling.
-        </p>
+        <div className="mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+            Get <em>Inspired</em>
+          </h2>
+          <p className="text-muted-foreground max-w-md">
+            Explore popular destinations and start travyling.
+          </p>
+        </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {cards.map((card, i) => {
@@ -57,7 +59,6 @@ export function GetInspired() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 <div className="relative h-full flex flex-col justify-end p-4">
-                  <p className="text-white/70 text-xs mb-1">{card.destination}</p>
                   <h3 className="text-white font-semibold text-sm leading-snug">
                     {card.title}
                   </h3>

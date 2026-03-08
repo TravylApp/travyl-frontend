@@ -158,6 +158,9 @@ describe('buildTripCardViewModel', () => {
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
   };

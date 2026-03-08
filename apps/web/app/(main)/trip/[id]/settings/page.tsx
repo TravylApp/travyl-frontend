@@ -4,9 +4,10 @@ import { use, useState, useEffect, useCallback } from 'react';
 import {
   User, FileText, Phone, CreditCard, Settings, Bell, Shield,
   Save, Trash2, Download, Share2, AlertTriangle, ChevronRight,
-  Check, X, Plus,
+  Check, X, Plus, Globe, GitFork, Copy,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useItineraryScreen, useAuthStore, isTripOwner, updateTripVisibility } from '@travyl/shared';
 
 // ─── Sub-tab definitions ──────────────────────────────────────
 
@@ -23,6 +24,7 @@ const SUB_TABS: SubTab[] = [
   { id: 'payment',          label: 'Payment',           icon: CreditCard },
   { id: 'preferences',      label: 'Preferences',       icon: Settings },
   { id: 'notifications',    label: 'Notifications',     icon: Bell },
+  { id: 'sharing',          label: 'Sharing',           icon: Share2 },
   { id: 'privacy',          label: 'Privacy',           icon: Shield },
 ];
 
@@ -495,6 +497,110 @@ function PrivacySection({
   );
 }
 
+// ─── Trip Sharing Section ────────────────────────────────────────
+
+function TripSharingSection({
+  tripId,
+  isPublic,
+  isShared,
+  shareToken,
+  forkCount,
+  onTogglePublic,
+  onToggleShared,
+}: {
+  tripId: string;
+  isPublic: boolean;
+  isShared: boolean;
+  shareToken: string | null;
+  forkCount: number;
+  onTogglePublic: () => void;
+  onToggleShared: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = shareToken
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/trip/${tripId}/share/${shareToken}`
+    : '';
+
+  const copyShareLink = () => {
+    if (shareUrl) {
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div>
+      <SectionHeading>Trip Sharing</SectionHeading>
+      <div className="space-y-4">
+        {/* Make Public Toggle */}
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
+              <Globe size={16} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Make Public</p>
+              <p className="text-xs text-gray-500 mt-0.5">Allow anyone to discover and fork this trip</p>
+            </div>
+          </div>
+          <Toggle enabled={isPublic} onToggle={onTogglePublic} />
+        </div>
+
+        {/* Share Link Toggle */}
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50">
+              <Share2 size={16} className="text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Share Link</p>
+              <p className="text-xs text-gray-500 mt-0.5">Generate a link to share with specific people</p>
+            </div>
+          </div>
+          <Toggle enabled={isShared} onToggle={onToggleShared} />
+        </div>
+
+        {/* Share URL Display */}
+        {isShared && shareToken && (
+          <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
+            <div className="flex items-center gap-2 mb-2">
+              <Copy size={14} className="text-gray-500" />
+              <p className="text-sm font-medium text-gray-700">Share URL</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-lg bg-white border border-gray-200 px-3 py-2 text-xs text-gray-600 font-mono truncate">
+                {shareUrl}
+              </div>
+              <button
+                onClick={copyShareLink}
+                className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg text-white transition"
+                style={{ backgroundColor: copied ? '#10b981' : BRAND }}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fork Count */}
+        {forkCount > 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-50">
+              <GitFork size={16} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{forkCount} Fork{forkCount === 1 ? '' : 's'}</p>
+              <p className="text-xs text-gray-500 mt-0.5">This trip has been forked by other users</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Initial mock data ────────────────────────────────────────
 
 const INITIAL_PROFILE = {
@@ -545,9 +651,43 @@ const INITIAL_NOTIFICATIONS = {
 
 export default function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { trip, isLoading: tripLoading, refetch } = useItineraryScreen(id);
+  const user = useAuthStore((s) => s.user);
+  const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
 
   const [activeTab, setActiveTab] = useState('profile');
   const [dirty, setDirty] = useState(false);
+
+  // Trip sharing state
+  const [isPublic, setIsPublic] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+
+  // Sync trip sharing state with loaded trip
+  useEffect(() => {
+    if (trip) {
+      setIsPublic(trip.is_public ?? false);
+      setIsShared(trip.is_shared ?? false);
+    }
+  }, [trip]);
+
+  // Handle toggling public status
+  const handleTogglePublic = async () => {
+    if (!trip || !isOwner) return;
+    try {
+      await updateTripVisibility(trip.id, !isPublic);
+      setIsPublic(!isPublic);
+      refetch();
+    } catch (error) {
+      console.error('Failed to update trip visibility:', error);
+      alert('Failed to update trip visibility');
+    }
+  };
+
+  // Handle toggling shared status (mock for now - would need backend support)
+  const handleToggleShared = () => {
+    setIsShared(!isShared);
+    // In a real implementation, this would call an API to generate/update the share token
+  };
 
   // ── State for each section ───
   const [profile, setProfile] = useState(INITIAL_PROFILE);
@@ -645,6 +785,27 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
         return <PreferencesSection data={preferences} onChange={updatePreferences} />;
       case 'notifications':
         return <NotificationsSection data={notifications} onToggle={toggleNotification} />;
+      case 'sharing':
+        // Only show sharing section to trip owner
+        if (!isOwner) {
+          return (
+            <div className="text-center py-8">
+              <Shield size={32} className="text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Only the trip owner can manage sharing settings.</p>
+            </div>
+          );
+        }
+        return (
+          <TripSharingSection
+            tripId={id}
+            isPublic={isPublic}
+            isShared={isShared}
+            shareToken={trip?.share_link_token ?? null}
+            forkCount={trip?.fork_count ?? 0}
+            onTogglePublic={handleTogglePublic}
+            onToggleShared={handleToggleShared}
+          />
+        );
       case 'privacy':
         return (
           <PrivacySection

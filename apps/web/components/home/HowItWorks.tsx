@@ -6,7 +6,7 @@ import { HOW_IT_WORKS_STEPS, EASE_OUT_EXPO } from "@travyl/shared";
 import { PhoneFrame } from "./PhoneFrame";
 import { WebSearchScreen, WebItineraryScreen, WebBookedScreen } from "./screens";
 
-const STEP_COLORS = ["#059669", "#2563EB", "#9333EA"];
+const STEP_COLORS = ["#1e3a5f", "#1e3a5f", "#1e3a5f"];
 
 interface HowItWorksProps {
   onCtaPress?: () => void;

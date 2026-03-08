@@ -15,7 +15,7 @@ export function WebItineraryScreen() {
   return (
     <div className="flex-1 flex flex-col bg-gradient-to-br from-[#fdf8f0] via-white to-[#fef9f2] overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#003594] to-[#1A5CC8] px-4 pt-8 pb-3 shrink-0">
+      <div className="bg-[#1e3a5f] px-4 pt-8 pb-3 shrink-0">
         <div className="flex items-center gap-1.5 mb-1">
           <MapPin size={11} className="text-white/80" />
           <span className="text-[10px] text-white/80">Rome, Italy</span>
@@ -34,7 +34,7 @@ export function WebItineraryScreen() {
             transition={{ delay: 0.3 + i * 0.08, duration: 0.25 }}
             className={`px-2 py-1 rounded-md text-[9px] font-medium ${
               i === 0
-                ? "bg-[#003594] text-white"
+                ? "bg-[#1e3a5f] text-white"
                 : "bg-gray-100 text-gray-500"
             }`}
           >

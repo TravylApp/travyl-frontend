@@ -7,9 +7,10 @@ import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X } from 'lucide-r
 import { usePathname } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import type { SpinePosition } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, MOCK_DESTINATION_COORDS } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, MOCK_DESTINATION_COORDS, useAuthStore, isTripOwner } from '@travyl/shared';
 import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
+import { ForkButton } from '@/components/trip/ForkButton';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 const CalendarView = dynamic(
@@ -25,6 +26,8 @@ function TripHero({
   tripId: string;
 }) {
   const { trip, isLoading, refetch } = useItineraryScreen(tripId);
+  const user = useAuthStore((s) => s.user);
+  const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
 
   const handleShare = async () => {
     if (!trip) return;
@@ -40,7 +43,8 @@ function TripHero({
     }
   };
 
-  const buttons = [
+  // Buttons only shown for owners
+  const ownerButtons = [
     { icon: RefreshCw, label: 'Regenerate', onClick: () => refetch() },
     { icon: Share2, label: 'Share', onClick: handleShare },
   ];
@@ -73,7 +77,10 @@ function TripHero({
       </div>
       {/* Action buttons — bottom right */}
       <div className="absolute bottom-3 right-4 sm:right-6 flex gap-1.5">
-        {buttons.map(({ icon: Icon, label, onClick }, i) => (
+        {/* Fork button - shown for non-owners */}
+        {trip && !isOwner && <ForkButton trip={trip} variant="compact" />}
+        {/* Owner buttons */}
+        {isOwner && ownerButtons.map(({ icon: Icon, label, onClick }, i) => (
           <button
             key={i}
             onClick={onClick}

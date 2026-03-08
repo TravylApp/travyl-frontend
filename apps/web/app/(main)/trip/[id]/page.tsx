@@ -7,6 +7,7 @@ import {
   UtensilsCrossed, Camera, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { useItineraryScreen, getActivityTypeColor, MOCK_TRIP } from '@travyl/shared';
+import { ForkAttribution } from '@/components/trip/ForkAttribution';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`rounded-md bg-gray-200 ${className}`} />;
@@ -98,6 +99,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="pb-8 space-y-4">
+      {/* Fork Attribution - if this trip was forked */}
+      {trip && trip.forked_from_trip_id && (
+        <ForkAttribution trip={trip} />
+      )}
+
       {/* Hero card — compact trip info, single row of meta + stats */}
       <div className="rounded-xl overflow-hidden px-4 py-3.5" style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}>
         <div className="flex items-center gap-1.5 mb-1">

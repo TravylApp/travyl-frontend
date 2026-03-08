@@ -16,10 +16,10 @@ export function WebSearchScreen() {
     <div className="flex-1 flex flex-col p-4 bg-gradient-to-br from-[#eef4fb] via-white to-[#f0f7ff] overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#003594] to-[#1A5CC8] flex items-center justify-center">
+        <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center">
           <PaperPlane size={14} className="text-white -rotate-[8deg]" />
         </div>
-        <span className="text-[11px] font-bold text-[#003594]">TRAVYL</span>
+        <span className="text-[11px] font-bold text-[#1e3a5f]">TRAVYL</span>
       </div>
 
       {/* Greeting */}
@@ -48,7 +48,7 @@ export function WebSearchScreen() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 2.5, duration: 0.3 }}
         >
-          <button className="w-full bg-[#D97706] text-white py-1.5 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1">
+          <button className="w-full bg-[#1e3a5f] text-white py-1.5 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1">
             <Sparkles size={10} />
             Plan My Trip
           </button>
@@ -65,7 +65,7 @@ export function WebSearchScreen() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8 + i * 0.15, duration: 0.3 }}
-              className="flex items-center gap-1 bg-[#003594]/[0.08] text-[#003594] px-2 py-1 rounded-full"
+              className="flex items-center gap-1 bg-[#1e3a5f]/[0.08] text-[#1e3a5f] px-2 py-1 rounded-full"
             >
               {Icon && <Icon size={9} />}
               <span className="text-[9px] font-medium">{chip.label}</span>

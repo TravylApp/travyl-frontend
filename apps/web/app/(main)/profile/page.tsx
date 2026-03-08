@@ -29,7 +29,6 @@ const CorkBoardMap = dynamic(() => import('@/components/CorkBoardMap').then((m) 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
-  const signOut = useAuthStore((s) => s.signOut);
   const { data: profile } = useProfile();
 
   // Allow unauthenticated preview with mock data
@@ -47,17 +46,15 @@ export default function ProfilePage() {
     );
   }
 
-  return <ProfileContent displayName={displayName} initials={initials} onSignOut={isAuthenticated ? signOut : () => {}} />;
+  return <ProfileContent displayName={displayName} initials={initials} />;
 }
 
 function ProfileContent({
   displayName,
   initials,
-  onSignOut,
 }: {
   displayName: string;
   initials: string;
-  onSignOut: () => void;
 }) {
   const [profileTab, setProfileTab] = useState<'boards' | 'favorites'>('boards');
   const [favoritesView, setFavoritesView] = useState<'boards' | 'globe'>('boards');
@@ -373,16 +370,6 @@ function ProfileContent({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* Sign Out */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
-        <button
-          onClick={onSignOut}
-          className="flex h-11 w-full max-w-xs items-center justify-center rounded-xl bg-red-50 text-red-600 transition-colors hover:bg-red-100 text-sm"
-        >
-          Sign Out
-        </button>
       </div>
 
       {/* Postcard Detail Modal */}

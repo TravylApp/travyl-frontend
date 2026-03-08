@@ -26,6 +26,9 @@ export interface Trip {
   is_shared: boolean;
   share_link_token: string | null;
   share_link_role: 'viewer' | 'editor';
+  forked_from_trip_id: string | null;
+  fork_count: number;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }

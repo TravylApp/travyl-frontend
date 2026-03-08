@@ -4,22 +4,21 @@ import { motion } from "motion/react";
 import {
   useMosaicTiles,
   TILE_CATEGORY_GRADIENTS,
-  TILE_CATEGORY_COLORS,
   EASE_OUT_EXPO,
 } from "@travyl/shared";
 import type { TileCategory, MosaicTile } from "@travyl/shared";
 
 const PLACEHOLDER_TILES: MosaicTile[] = [
-  { id: 'p-1', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [3, 2] },
-  { id: 'p-2', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [3, 2] },
-  { id: 'p-3', name: '', category: 'attraction', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-4', name: '', category: 'experience', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-5', name: '', category: 'dining', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-6', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [2, 2] },
-  { id: 'p-7', name: '', category: 'attraction', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-8', name: '', category: 'experience', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-9', name: '', category: 'dining', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-10', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [2, 1] },
+  { id: 'p-1', name: 'Santorini, Greece', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&fit=crop', gridSpan: [3, 2] },
+  { id: 'p-2', name: 'Bali, Indonesia', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8?w=800&fit=crop', gridSpan: [3, 2] },
+  { id: 'p-3', name: 'Eiffel Tower, Paris', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-4', name: 'Cappadocia, Turkey', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1641128324972-af3212f0f6bd?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-5', name: 'Fine Dining, Italy', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1428515613728-6b4607e44363?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-6', name: 'Maldives', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&fit=crop', gridSpan: [2, 2] },
+  { id: 'p-7', name: 'Machu Picchu, Peru', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1587595431973-160d0d163abd?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-8', name: 'Northern Lights, Iceland', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-9', name: 'Tokyo, Japan', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-10', name: 'Kyoto, Japan', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&fit=crop', gridSpan: [2, 1] },
 ];
 
 export function TravelMosaic() {
@@ -29,7 +28,7 @@ export function TravelMosaic() {
   return (
     <section className="py-16 px-6">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-10">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-10">
           Moments That <em>Move You</em>
         </h2>
 
@@ -40,7 +39,6 @@ export function TravelMosaic() {
         >
           {tiles.map((tile, i) => {
             const grad = TILE_CATEGORY_GRADIENTS[tile.category as TileCategory];
-            const color = TILE_CATEGORY_COLORS[tile.category as TileCategory];
             return (
               <motion.div
                 key={tile.id}
@@ -53,9 +51,7 @@ export function TravelMosaic() {
                 style={{
                   gridColumn: `span ${tile.gridSpan[0]}`,
                   gridRow: `span ${tile.gridSpan[1]}`,
-                  background: tile.image_url
-                    ? undefined
-                    : `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
+                  background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
                 }}
               >
                 {tile.image_url && (
@@ -63,18 +59,14 @@ export function TravelMosaic() {
                     src={tile.image_url}
                     alt={tile.name}
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 <div className="relative h-full flex flex-col justify-end p-4 group-hover:-translate-y-0.5 transition-transform duration-300">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: color.hex }}
-                    />
-                    <span className="text-white/70 text-xs">{color.label}</span>
-                  </div>
                   <h3 className="text-white font-bold text-base leading-tight">
                     {tile.name}
                   </h3>
@@ -88,7 +80,6 @@ export function TravelMosaic() {
         <div className="grid md:hidden grid-cols-2 gap-3">
           {tiles.slice(0, 8).map((tile, i) => {
             const grad = TILE_CATEGORY_GRADIENTS[tile.category as TileCategory];
-            const color = TILE_CATEGORY_COLORS[tile.category as TileCategory];
             return (
               <motion.div
                 key={tile.id}
@@ -100,9 +91,7 @@ export function TravelMosaic() {
                   i === 0 ? "col-span-2 h-48" : "h-36"
                 }`}
                 style={{
-                  background: tile.image_url
-                    ? undefined
-                    : `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
+                  background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
                 }}
               >
                 {tile.image_url && (
@@ -110,16 +99,12 @@ export function TravelMosaic() {
                     src={tile.image_url}
                     alt={tile.name}
                     className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 )}
                 <div className="h-full flex flex-col justify-end p-4">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: color.hex }}
-                    />
-                    <span className="text-white/70 text-xs">{color.label}</span>
-                  </div>
                   <h3 className="text-white font-bold text-sm">{tile.name}</h3>
                 </div>
               </motion.div>
