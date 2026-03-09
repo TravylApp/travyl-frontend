@@ -1,0 +1,28 @@
+{
+  "name": "travyl",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "nohoist": [
+      "**/eslint-config-next",
+      "**/eslint-config-next/**",
+      "**/next",
+      "**/next/**",
+      "**/tailwindcss",
+      "**/tailwindcss/**"
+    ]
+  },
+  "scripts": {
+    "mobile": "yarn workspace @travyl/mobile start",
+    "web": "yarn workspace @travyl/web dev",
+    "lint": "yarn workspaces run lint",
+    "typecheck": "yarn workspaces run typecheck"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
