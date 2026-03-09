@@ -24,5 +24,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "framer-motion": "^12.35.1",
+    "yarn": "^1.22.22"
   }
 }

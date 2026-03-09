@@ -1,4 +1,6 @@
 export { HowItWorks } from "./HowItWorks";
+export { AppDownload } from "./AppDownload";
+export { QuickSteps } from "./QuickSteps";
 export { GetInspired } from "./GetInspired";
 export { TravelMosaic } from "./TravelMosaic";
 export { ExplorePreview } from "./ExplorePreview";

@@ -121,7 +121,7 @@ function ToggleRow({
         value={value}
         onValueChange={onToggle}
         trackColor={{ false: '#e5e7eb', true: accentColor + '60' }}
-        thumbColor={value ? accentColor : '#f4f3f4'}
+        thumbColor={value ? accentColor : '#f4f3f4' }
         ios_backgroundColor="#e5e7eb"
       />
     </View>

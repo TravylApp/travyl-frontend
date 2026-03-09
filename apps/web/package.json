@@ -9,19 +9,22 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.434",
+    "@remotion/player": "^4.0.434",
     "@travyl/shared": "*",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.575.0",
     "motion": "^12.0.0",
     "next": "16.1.6",
+    "prop-types": "^15.8.1",
     "react": "19.2.3",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0",
     "react-responsive-masonry": "^2.7.1",
-    "prop-types": "^15.8.1"
+    "remotion": "^4.0.434"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

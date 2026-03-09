@@ -12,6 +12,16 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   }).format(amount);
 }
 
+// ─── Permissions ───────────────────────────────────────────────
+
+export {
+  canEditTrip,
+  canForkTrip,
+  isTripOwner,
+  canMakePublic,
+  canViewTrip,
+} from './permissions';
+
 // ─── Fresh-pick utility ─────────────────────────────────────────
 
 /**
