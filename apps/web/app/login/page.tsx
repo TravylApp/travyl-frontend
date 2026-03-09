@@ -4,7 +4,8 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, ArrowLeft, Send, Mail, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase, LOGIN_DESTINATIONS, PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from '@travyl/shared';
+import { useAuthStore, LOGIN_DESTINATIONS, PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from '@travyl/shared';
+import { Footer, OceanWave } from '@/components/home';
 
 export default function LoginPage() {
   return (
@@ -17,6 +18,8 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const signIn = useAuthStore((s) => s.signIn);
+  const signUp = useAuthStore((s) => s.signUp);
 
   const [isSignUp, setIsSignUp] = useState(searchParams.get('mode') === 'signup');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,15 +38,9 @@ function LoginPageInner() {
     setError('');
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: name ? { data: { display_name: name } } : undefined,
-        });
-        if (error) throw error;
+        await signUp(email, password, name || undefined);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        await signIn(email, password);
       }
       router.replace('/');
     } catch (err: any) {
@@ -405,6 +402,8 @@ function LoginPageInner() {
         </div>
       </div>
       </div>
+      <OceanWave />
+      <Footer />
     </div>
   );
 }

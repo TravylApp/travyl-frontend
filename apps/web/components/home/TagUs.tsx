@@ -1,155 +1,73 @@
 "use client";
 
 import { motion } from "motion/react";
-import { SOCIAL_HASHTAGS, EASE_OUT_EXPO } from "@travyl/shared";
+import {
+  useMosaicTiles,
+  TILE_CATEGORY_GRADIENTS,
+  TileCategoryColors,
+  EASE_OUT_EXPO
+} from "@travyl/shared";
+import type { TileCategory, MosaicTile } from "@travyl/shared";
 
-const socialLinks = [
-  {
-    name: "Instagram",
-    href: "https://instagram.com/travyl",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-      </svg>
-    ),
-  },
-  {
-    name: "TikTok",
-    href: "https://tiktok.com/@travyl",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-      </svg>
-    ),
-  },
-  {
-    name: "X",
-    href: "https://x.com/travyl",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-      </svg>
-    ),
-  },
-  {
-    name: "YouTube",
-    href: "https://youtube.com/@travyl",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-      </svg>
-    ),
-  },
-  {
-    name: "Pinterest",
-    href: "https://pinterest.com/travyl",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-        <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/>
-      </svg>
-    ),
-  },
-  {
-    name: "LinkedIn",
-    href: "https://linkedin.com/company/travyl",
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-      </svg>
-    ),
-  },
+const PLACEHOLDER_TILES: MosaicTile[] = [
+  { id: 'p-1', name: 'Santorini, Greece', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&fit=crop', gridSpan: [3, 2] },
+  { id: 'p-2', name: 'Bali, Indonesia', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8?w=800&fit=crop', gridSpan: [3, 1] },
+  { id: 'p-3', name: 'Eiffel Tower, Paris', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-4', name: 'Cappadocia, Turkey', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1641128324972-af3212f0f6bd?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-5', name: 'Fine Dining, Italy', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1428515613728-6b4607e44363?w=600&fit=crop', gridSpan: [2, 1] },
+  { id: 'p-6', name: 'Maldives', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&fit=crop', gridSpan: [2, 2] },
+  { id: 'p-7', name: 'Machu Picchu, Peru', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1587595431973-160d0d163abd?w=600&fit=crop', gridSpan: [2, 1]},
+  { id: 'p-8', name: 'Northern Lights, Iceland', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop', gridSpan: [2, 1] }
+  { id: 'p-9', name: 'Tokyo, Japan', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&fit=crop', gridSpan: [2, 1] }
+  { id: 'p-10', name: 'Kyoto, Japan', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&fit=crop', gridSpan: [2, 1] },
 ];
 
-export function TagUs() {
-  return (
-    <section className="py-16 px-6">
-      <div className="max-w-6xl mx-auto">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
-          className="text-2xl md:text-3xl font-bold text-foreground mb-2"
-        >
-          Tag us on your <em>Next Trip</em>
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.1, ease: EASE_OUT_EXPO }}
-          className="text-muted-foreground mb-8"
-        >
-          Share your adventures with <span className="text-[#1e3a5f] font-semibold">@travyl</span>
-        </motion.p>
+const PLACEholderTiles: MosaicTile[] = PlaceholderTiles;
 
-        {/* Photo grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&fit=crop',
-            'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&fit=crop',
-            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&fit=crop',
-            'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=600&fit=crop',
-          ].map((imgUrl, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.08, ease: EASE_OUT_EXPO }}
-              whileHover={{ scale: 1.03 }}
-              className="aspect-square rounded-2xl relative overflow-hidden cursor-pointer group"
-            >
-              <img
-                src={imgUrl}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-              <div className="absolute bottom-3 left-3">
-                <span className="text-white/70 text-xs font-medium drop-shadow-md">
-                  @travyl
-                </span>
-              </div>
-            </motion.div>
-          ))}
+  const { data: dbTiles, isLoading } => useMosaicTiles();
+  const tiles = dbTiles?.length ? dbTiles?.placeholders
+    ? <div className="flex-1 overflow-hidden md:flex" items-center gap-6 mb-1"
+              <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center"          <PaperPlane size={14} className="text-white- rotate-[8deg]" />
         </div>
-
-        {/* Social icons */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.3, ease: EASE_OUT_EXPO }}
-          className="flex items-center justify-center gap-3 mb-4"
-        >
-          {socialLinks.map((social) => (
-            <motion.a
-              key={social.name}
-              href={social.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              whileHover={{ scale: 1.1, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-[#1e3a5f] text-gray-600 hover:text-white flex items-center justify-center transition-colors"
-              title={social.name}
-            >
-              {social.icon}
-            </motion.a>
-          ))}
-        </motion.div>
-
-        {/* Hashtags */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.4, ease: EASE_OUT_EXPO }}
-          className="text-sm text-muted-foreground text-center"
-        >
-          {SOCIAL_HASHTAGS.join(" ")}
-        </motion.p>
       </div>
-    </section>
-  );
+
+      {/* Quick chips */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {[
+          'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1503614282401047-d79a71a590e8?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&fit=crop',
+        ]
+      </motion.div>
+    );
+  }
 }
+
+export function TravelMosaic() {
+  const { data: dbTiles, isLoading } = useMosaicTiles()
+  const tiles = dbTiles?.length ? dbTiles?.placeholders) ? <div className="flex-1 overflow-hidden md:flex" items-center gap-6 mb-1"
+              <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center"          <PaperPlane size={14} className="text-white -rotate-[8deg]" />
+        </div>
+      </div>
+
+      {/* Desktop: 6-col grid */}
+      <div
+        className="hidden md:grid grid-cols-6 auto-rows-[120px] gap-3"
+        styles={{ gridAutoFlow: "dense" }}
+      >
+        {tiles.map((tile, i) => {
+          const grad = TILECategoryGradients[tile.category as TileCategory];
+          const color = TILECategoryColors[tile.category as TileCategory]
+          ? (
+          const grad = TILECategoryColors[tile.category]
+            : else {
+              const grad = TileCategoryGradients[tile.category]
+              ? undefined
+            }
+        </div>
+      </div>
+    );
+  }
+}
+

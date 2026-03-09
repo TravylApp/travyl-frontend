@@ -68,7 +68,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
 
                 {/* Phone mockup */}
                 <div className="flex-1 flex justify-center">
-                  <PhoneFrame delay={i * 0.15} accent={accent}>
+                  <PhoneFrame>
                     {i === 0 && <WebSearchScreen />}
                     {i === 1 && <WebItineraryScreen />}
                     {i === 2 && <WebBookedScreen />}
@@ -80,17 +80,20 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
         </div>
 
         {/* CTA */}
-        {onCtaPress && (
-          <div className="text-center mt-14">
-            <button
-              onClick={onCtaPress}
-              className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
-            >
-              Start planning your trip
-              <ArrowRight size={16} />
-            </button>
-          </div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="text-center mt-16"
+        >
+          <button
+            onClick={onCtaPress}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
+            Plan Your Trip <ArrowRight size={16} />
+          </button>
+        </motion.div>
       </div>
     </section>
   );

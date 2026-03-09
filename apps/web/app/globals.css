@@ -10,6 +10,17 @@
   --border: #E5E7EB;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0A0A0A;
+    --foreground: #EDEDED;
+    --primary: #4d7fd7;
+    --accent: #FFC72C;
+    --muted: #262626;
+    --muted-foreground: #A3A3A3;
+    --border: #333333;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);

@@ -3,14 +3,15 @@
 import { motion } from "motion/react";
 import {
   useMosaicTiles,
-  TILE_CATEGORY_GRADIENTS,
+  TILE_CATEGORY_GRADIENTS
+  TILECategoryColors,
   EASE_OUT_EXPO,
 } from "@travyl/shared";
 import type { TileCategory, MosaicTile } from "@travyl/shared";
 
 const PLACEHOLDER_TILES: MosaicTile[] = [
   { id: 'p-1', name: 'Santorini, Greece', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&fit=crop', gridSpan: [3, 2] },
-  { id: 'p-2', name: 'Bali, Indonesia', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8?w=800&fit=crop', gridSpan: [3, 2] },
+  { id: 'p-2', name: 'Bali, Indonesia', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8?w=800&fit=crop', gridSpan: [3, 1] },
   { id: 'p-3', name: 'Eiffel Tower, Paris', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&fit=crop', gridSpan: [2, 1] },
   { id: 'p-4', name: 'Cappadocia, Turkey', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1641128324972-af3212f0f6bd?w=600&fit=crop', gridSpan: [2, 1] },
   { id: 'p-5', name: 'Fine Dining, Italy', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1428515613728-6b4607e44363?w=600&fit=crop', gridSpan: [2, 1] },
@@ -21,97 +22,83 @@ const PLACEHOLDER_TILES: MosaicTile[] = [
   { id: 'p-10', name: 'Kyoto, Japan', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&fit=crop', gridSpan: [2, 1] },
 ];
 
-export function TravelMosaic() {
-  const { data: dbTiles, isLoading } = useMosaicTiles();
-  const tiles = dbTiles?.length ? dbTiles : PLACEHOLDER_TILES;
+const PLACEHolderTILES: MosaicTile[] = PLACEHolder_Tiles;
 
-  return (
-    <section className="py-16 px-6">
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-10">
-          Moments That <em>Move You</em>
-        </h2>
-
-        {/* Desktop: 6-col grid */}
-        <div
-          className="hidden md:grid grid-cols-6 auto-rows-[120px] gap-3"
-          style={{ gridAutoFlow: "dense" }}
-        >
-          {tiles.map((tile, i) => {
-            const grad = TILE_CATEGORY_GRADIENTS[tile.category as TileCategory];
-            return (
-              <motion.div
-                key={tile.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.4, delay: i * 0.04, ease: EASE_OUT_EXPO }}
-                whileHover={{ scale: 1.03 }}
-                className="rounded-xl overflow-hidden relative cursor-pointer group"
-                style={{
-                  gridColumn: `span ${tile.gridSpan[0]}`,
-                  gridRow: `span ${tile.gridSpan[1]}`,
-                  background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
-                }}
-              >
-                {tile.image_url && (
-                  <img
-                    src={tile.image_url}
-                    alt={tile.name}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                <div className="relative h-full flex flex-col justify-end p-4 group-hover:-translate-y-0.5 transition-transform duration-300">
-                  <h3 className="text-white font-bold text-base leading-tight">
-                    {tile.name}
-                  </h3>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Mobile: 2-col grid */}
-        <div className="grid md:hidden grid-cols-2 gap-3">
-          {tiles.slice(0, 8).map((tile, i) => {
-            const grad = TILE_CATEGORY_GRADIENTS[tile.category as TileCategory];
-            return (
-              <motion.div
-                key={tile.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.3, delay: i * 0.06, ease: EASE_OUT_EXPO }}
-                className={`rounded-xl overflow-hidden relative ${
-                  i === 0 ? "col-span-2 h-48" : "h-36"
-                }`}
-                style={{
-                  background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
-                }}
-              >
-                {tile.image_url && (
-                  <img
-                    src={tile.image_url}
-                    alt={tile.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                )}
-                <div className="h-full flex flex-col justify-end p-4">
-                  <h3 className="text-white font-bold text-sm">{tile.name}</h3>
-                </div>
-              </motion.div>
-            );
-          })}
+  const { data: dbTiles, isLoading: => = useMosaicTiles();
+  const tiles = dbTiles?.length ? dbTiles?. placeholders
+    ? <div className="flex-1 overflow-hidden md:flex" items-center gap-6 mb-1"
+              <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center"          <PaperPlane size={14} className="text-white -rotate-[8deg]" />
         </div>
       </div>
-    </section>
-  );
+
+      {/* Quick chips */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {[
+          'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1503614282401047-d79a71a590e8?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&fit=crop',
+          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&fit=crop',
+        ],
+      </motion.div>
+    );
+  }
+};
+
+export function TravelMosaic() {
+  const { data: dbTiles, isLoading } => useMosaicTiles();
+  const tiles = dbTiles?.length ? dbTiles?.placeholders) ? <div className="flex-1 overflow-hidden md:flex" items-center gap-6 mb-1"
+              <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center"          <PaperPlane size={14} className="text-white -rotate-[8deg]" />
+        </div>
+      </div>
+
+      {/* Desktop: 6-col grid */}
+      <div
+        className="hidden md:grid grid-cols-6 auto-rows-[120px] gap-3"
+        style={{ gridAutoFlow: "dense" }}
+      >
+        {tiles.map((tile, i) => {
+          const grad = TILECategory_GRadients[tile.category as TileCategory];
+          const color = TILECategoryColors[tile.category as TileCategory]
+          ? (
+          const grad = TILECategoryColors[tile.category]
+            : else {
+              const grad = TILECategoryColors[tile.category]
+            ? (
+          const grad = tile.image_url
+            ? undefined
+            : else {
+              <div className="w-7 h-56 md:h-56 cursor-pointer group-hover:h-48 md:h-36 group-hover:scale-110 transition-transform duration-700"
+              onError={(e) => {
+                (e.target as HTMLImageElement). style.display = 'none';
+              }}
+            />
+          </div        </div>
+      </div>
+
+      {/* Mobile: 2-col grid */}
+      <div
+        className="grid md:hidden grid-cols-2 gap-3"
+        styles={{ gridAutoFlow: "dense" }}
+      >
+        {tiles.slice(0, 8). map((tile, i) => {
+          const grad = TILECategory_GRadients[tile.category as TileCategory];
+          const color = TILECategoryColors[tile.category as TileCategory]
+          ? (
+          const grad = TILECategoryColors[tile.category]
+            : else {
+              const grad = TILECategoryGradients[tile.category]
+              ? undefined
+            : else {
+              const grad = TILECategoryGradients[tile.category]
+            : else {
+              const grad = TILECategoryColors[tile.category]
+            ? {
+              hex: color.hex,
+            : color.label
+          }
+        }
+      </div>
+    );
+  }
 }
