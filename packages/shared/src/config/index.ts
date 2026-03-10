@@ -55,10 +55,6 @@ export * from './mockProfileData';
 
 export * from './mockTravelBoardsData';
 
-export * from './mockFlightSearchData';
-
-export * from './mockHotelSearchData';
-
 export * from './activityDetails';
 
 export * from './exploreData';
