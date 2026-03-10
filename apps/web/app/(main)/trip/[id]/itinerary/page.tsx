@@ -35,11 +35,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   outdoor: 'var(--trip-base)',
 };
 
-// ─── Skeleton ───────────────────────────────────────────────────
-
-function SkeletonBlock({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`bg-gray-200 rounded animate-pulse ${className ?? ''}`} style={style} />;
-}
+import { Skeleton } from '@/components/ui';
 
 function SkeletonItinerary() {
   return (
@@ -47,24 +43,24 @@ function SkeletonItinerary() {
       {/* Day selector skeleton */}
       <div className="flex items-center gap-2 mb-3 overflow-hidden">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <SkeletonBlock key={i} className="shrink-0 rounded-lg" style={{ width: 56, height: 52 }} />
+          <Skeleton key={i} className="shrink-0 rounded-lg" style={{ width: 56, height: 52 }} />
         ))}
       </div>
       {/* Flight section skeleton */}
       <div className="mb-3.5">
-        <SkeletonBlock className="rounded-lg" style={{ height: 52 }} />
+        <Skeleton className="rounded-lg" style={{ height: 52 }} />
       </div>
       {/* Hotel section skeleton */}
       <div className="mb-3.5">
-        <SkeletonBlock className="rounded-lg" style={{ height: 52 }} />
+        <Skeleton className="rounded-lg" style={{ height: 52 }} />
       </div>
       {/* Time group sections */}
       {[1, 2, 3].map((i) => (
         <div key={i} className="mb-3.5">
-          <SkeletonBlock className="rounded-lg mb-2" style={{ height: 36 }} />
+          <Skeleton className="rounded-lg mb-2" style={{ height: 36 }} />
           <div className="space-y-2 pl-1">
             {[1, 2].map((j) => (
-              <SkeletonBlock key={j} className="rounded-lg" style={{ height: 72 }} />
+              <Skeleton key={j} className="rounded-lg" style={{ height: 72 }} />
             ))}
           </div>
         </div>

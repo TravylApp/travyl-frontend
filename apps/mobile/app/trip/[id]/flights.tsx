@@ -4,17 +4,11 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
+import { adjustBrightness } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 /* ================================================================
    MOCK DATA — Paris trip: JFK <-> CDG
    ================================================================ */
-
-function adjustBrightness(hex: string, amount: number): string {
-  const r = Math.min(255, Math.max(0, parseInt(hex.slice(1, 3), 16) + amount));
-  const g = Math.min(255, Math.max(0, parseInt(hex.slice(3, 5), 16) + amount));
-  const b = Math.min(255, Math.max(0, parseInt(hex.slice(5, 7), 16) + amount));
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
 
 const POPULAR_AIRPORTS = [
   { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },

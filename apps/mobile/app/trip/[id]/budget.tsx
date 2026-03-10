@@ -6,6 +6,7 @@ import { useItineraryScreen, MOCK_BUDGET_ITEMS } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 /* ================================================================
    Icon + colour mapping (matches web CATEGORY_COLORS / CATEGORY_ICONS)
@@ -57,11 +58,6 @@ function categoryHealthColors(pct: number): { bg: string; border: string } {
 /* ================================================================
    Skeleton (loading state)
    ================================================================ */
-
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
 
 function BudgetSkeleton() {
   const colors = useThemeColors();

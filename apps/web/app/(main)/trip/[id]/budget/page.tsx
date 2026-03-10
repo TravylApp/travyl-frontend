@@ -8,6 +8,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useItineraryScreen } from '@travyl/shared';
 import type { LucideIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -147,10 +148,6 @@ const DEFAULT_COLORS: typeof CATEGORY_COLORS[string] = { bg: 'bg-gray-100', text
 /* ------------------------------------------------------------------ */
 /*  Skeleton                                                           */
 /* ------------------------------------------------------------------ */
-
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`rounded-md bg-gray-200 animate-pulse ${className}`} />;
-}
 
 function BudgetSkeleton() {
   return (
