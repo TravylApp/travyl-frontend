@@ -3,7 +3,8 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useTrips, MOCK_TRIPS } from '@travyl/shared';
+import { motion } from 'motion/react';
+import { useTrips, MOCK_TRIPS, EASE_OUT_EXPO } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { Plus } from 'lucide-react';
 import { Footer, OceanWave } from '@/components/home';
@@ -58,8 +59,8 @@ function filterTripsBySearch(trips: MockTripCard[], search: string): MockTripCar
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl overflow-hidden bg-white border border-gray-200 animate-pulse">
-      <div className="h-36 bg-gray-200" />
+    <div className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm animate-pulse">
+      <div className="h-36 bg-gradient-to-br from-gray-100 to-gray-200" />
       <div className="px-4 py-3 space-y-2">
         <div className="h-4 w-3/4 bg-gray-200 rounded" />
         <div className="h-3 w-1/2 bg-gray-200 rounded" />
@@ -97,107 +98,169 @@ function TripsContent() {
 
   if (isLoading && !isError) {
     return (
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-[#1e3a5f]">My Trips</h1>
+              <p className="text-gray-500 mt-1">Loading your adventures...</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         </div>
       </div>
     );
   }
 
+  const tripCount = displayTrips.length;
+  const activeCount = filterTripsByStatus(allTrips, 'active').length;
+  const upcomingCount = filterTripsByStatus(allTrips, 'upcoming').length;
+
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex-1 w-full">
-        {/* Header Row: Title | View Toggle | Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+    <div className="flex flex-col min-h-screen">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-white to-gray-50 -z-10" />
 
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* View Toggle */}
-            <ViewToggle view={viewMode} onChange={setViewMode} />
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 flex-1 w-full">
+        {/* Header Section with Animation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
+          className="mb-8"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-[#1e3a5f]">My Trips</h1>
+              <p className="text-gray-500 mt-1">
+                {tripCount > 0
+                  ? `${activeCount > 0 ? `${activeCount} active` : ''}${activeCount > 0 && upcomingCount > 0 ? ', ' : ''}${upcomingCount > 0 ? `${upcomingCount} upcoming` : ''}`
+                  : 'Your adventures await'}
+              </p>
+            </div>
 
-            {/* Plan a Trip Button */}
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
-              style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
-            >
-              <Plus size={16} />
-              Plan a Trip
-            </button>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* View Toggle */}
+              <ViewToggle view={viewMode} onChange={setViewMode} />
+
+              {/* Plan a Trip Button */}
+              <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md hover:shadow-lg hover:shadow-amber-500/20 transition-all bg-[#F59E0B] hover:bg-[#F59E0B]/90">
+                <Plus size={18} strokeWidth={2.5} />
+                Plan a Trip
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1.5 mb-6">
-          {STATUS_TABS.map(({ key, label }) => {
-            const isActive = statusParam === key;
-            // Build href preserving both status and search in URL for shareability
-            const href = key === 'all'
-              ? searchQuery ? `/trips?search=${encodeURIComponent(searchQuery)}` : '/trips'
-              : `/trips?status=${key}${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`;
-            return (
-              <Link
-                key={key}
-                href={href}
-                className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-[#1e3a5f] text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </div>
+          {/* Status Tabs with Glass Effect */}
+          <div className="flex items-center gap-2 p-1.5 bg-gray-100/80 backdrop-blur-sm rounded-full w-fit">
+            {STATUS_TABS.map(({ key, label }) => {
+              const isActive = statusParam === key;
+              const count = key === 'all' ? allTrips.length : filterTripsByStatus(allTrips, key as StatusFilter).length;
+              // Build href preserving both status and search in URL for shareability
+              const href = key === 'all'
+                ? searchQuery ? `/trips?search=${encodeURIComponent(searchQuery)}` : '/trips'
+                : `/trips?status=${key}${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`;
+              return (
+                <Link
+                  key={key}
+                  href={href}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-white text-[#1e3a5f] shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                  }`}
+                >
+                  {label}
+                  <span className={`ml-1.5 text-xs ${isActive ? 'text-[#F59E0B]' : 'text-gray-400'}`}>
+                    ({count})
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </motion.div>
 
         {/* Search indicator (when filtering) */}
         {searchQuery && (
-          <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 mb-6 text-sm text-gray-600"
+          >
             <span>Showing results for:</span>
-            <span className="px-2 py-0.5 bg-gray-100 rounded-md font-medium text-gray-800">
+            <span className="px-3 py-1 bg-amber-50 text-[#F59E0B] rounded-full font-medium">
               &quot;{searchQuery}&quot;
             </span>
             <Link
               href={statusParam === 'all' ? '/trips' : `/trips?status=${statusParam}`}
-              className="text-[#1e3a5f] hover:underline ml-1"
+              className="text-[#1e3a5f] hover:underline ml-1 font-medium"
             >
               Clear
             </Link>
-          </div>
+          </motion.div>
         )}
 
         {/* Grid or List View */}
         {displayTrips.length > 0 ? (
           viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {displayTrips.map((trip, index) => (
+                <motion.div
+                  key={trip.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05, ease: EASE_OUT_EXPO }}
+                >
+                  <TripCard trip={trip} />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {displayTrips.map((trip) => (
-                <TripListItem key={trip.id} trip={trip} />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="flex flex-col gap-3"
+            >
+              {displayTrips.map((trip, index) => (
+                <motion.div
+                  key={trip.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05, ease: EASE_OUT_EXPO }}
+                >
+                  <TripListItem trip={trip} />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <EmptyTripsIllustration />
-            <h2 className="text-xl font-semibold text-gray-800 mb-2 mt-4">No trips yet</h2>
-            <p className="text-gray-500 mb-6 max-w-sm">Start planning your next adventure and it will appear here.</p>
-            <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
-              style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
-            >
-              <Plus size={16} />
-              Plan a Trip
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-amber-100/50 rounded-full blur-3xl scale-150" />
+              <EmptyTripsIllustration />
+            </div>
+            <h2 className="text-2xl font-bold text-[#1e3a5f] mb-2 mt-6">No trips yet</h2>
+            <p className="text-gray-500 mb-8 max-w-sm">Start planning your next adventure and it will appear here.</p>
+            <button className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-semibold shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 transition-all bg-[#F59E0B] hover:bg-[#F59E0B]/90">
+              <Plus size={18} strokeWidth={2.5} />
+              Plan Your First Trip
             </button>
-          </div>
+          </motion.div>
         )}
       </div>
       <OceanWave />
@@ -209,14 +272,19 @@ function TripsContent() {
 export default function MyTripsPage() {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-[#1e3a5f]">My Trips</h1>
+              <p className="text-gray-500 mt-1">Loading your adventures...</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         </div>
       </div>
     }>

@@ -8,11 +8,11 @@ import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
-  planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
-  booked: { label: 'Booked', bg: 'bg-emerald-500/90', text: 'text-white' },
-  active: { label: 'Active', bg: 'bg-amber-500/90', text: 'text-white' },
-  completed: { label: 'Completed', bg: 'bg-gray-500/90', text: 'text-white' },
-  abandoned: { label: 'Cancelled', bg: 'bg-red-500/90', text: 'text-white' },
+  planning: { label: 'Planning', bg: 'bg-blue-100', text: 'text-blue-700' },
+  booked: { label: 'Booked', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  active: { label: 'Active', bg: 'bg-amber-100', text: 'text-amber-700' },
+  completed: { label: 'Completed', bg: 'bg-gray-100', text: 'text-gray-600' },
+  abandoned: { label: 'Cancelled', bg: 'bg-red-100', text: 'text-red-600' },
 };
 
 function formatDateRange(start: string, end: string): string {
@@ -57,7 +57,7 @@ export function TripCard({ trip }: TripCardProps) {
     >
       <Link
         href={`/trip/${trip.id}`}
-        className="block rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
+        className="block rounded-2xl overflow-hidden bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-200 hover:scale-[1.02] transition-all duration-300"
       >
         {/* Image Header - Smaller height */}
         <div className="relative h-36 overflow-hidden">
@@ -71,7 +71,7 @@ export function TripCard({ trip }: TripCardProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
           {/* Status Badge - Top Right */}
-          <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-semibold ${badge.bg} ${badge.text} backdrop-blur-sm`}>
+          <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-semibold ${badge.bg} ${badge.text}`}>
             {badge.label}
           </div>
 
@@ -84,16 +84,16 @@ export function TripCard({ trip }: TripCardProps) {
         </div>
 
         {/* Card Body - White background with trip name prominent */}
-        <div className="px-4 py-3">
+        <div className="px-4 py-3.5">
           {/* Trip Title - PRIMARY (large, bold) */}
-          <h2 className="text-lg font-bold text-gray-900 leading-tight mb-1 line-clamp-1">
+          <h2 className="text-lg font-bold text-[#1e3a5f] leading-tight mb-1 line-clamp-1">
             {trip.title}
           </h2>
 
           {/* Destination - SECONDARY (small, muted with MapPin) */}
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <MapPin size={13} className="text-gray-400" />
-            <span className="text-sm text-gray-500">{trip.destination}</span>
+          <div className="flex items-center gap-1.5 mb-3">
+            <MapPin size={13} className="text-[#F59E0B]" />
+            <span className="text-sm text-gray-600">{trip.destination}</span>
           </div>
 
           {/* Metadata Row */}
@@ -108,9 +108,10 @@ export function TripCard({ trip }: TripCardProps) {
             </div>
           </div>
           {trip.budget && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-2">
-              <PieChart size={13} className="text-gray-400" />
-              <span>{formatCurrency(trip.budget, trip.currency)} budget</span>
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+              <PieChart size={13} className="text-[#F59E0B]" />
+              <span className="font-medium text-gray-700">{formatCurrency(trip.budget, trip.currency)}</span>
+              <span>budget</span>
             </div>
           )}
         </div>

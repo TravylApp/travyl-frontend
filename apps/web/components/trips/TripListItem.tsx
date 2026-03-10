@@ -6,11 +6,11 @@ import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight } from 'lucide-
 import type { MockTripCard } from '@travyl/shared';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
-  planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
-  booked: { label: 'Booked', bg: 'bg-emerald-500/90', text: 'text-white' },
-  active: { label: 'Active', bg: 'bg-amber-500/90', text: 'text-white' },
-  completed: { label: 'Completed', bg: 'bg-gray-500/90', text: 'text-white' },
-  abandoned: { label: 'Cancelled', bg: 'bg-red-500/90', text: 'text-white' },
+  planning: { label: 'Planning', bg: 'bg-blue-100', text: 'text-blue-700' },
+  booked: { label: 'Booked', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  active: { label: 'Active', bg: 'bg-amber-100', text: 'text-amber-700' },
+  completed: { label: 'Completed', bg: 'bg-gray-100', text: 'text-gray-600' },
+  abandoned: { label: 'Cancelled', bg: 'bg-red-100', text: 'text-red-600' },
 };
 
 function formatDateRange(start: string, end: string): string {
@@ -36,15 +36,15 @@ export function TripListItem({ trip }: TripListItemProps) {
   return (
     <Link
       href={`/trip/${trip.id}`}
-      className="flex items-center gap-4 rounded-xl bg-white border border-gray-200 px-4 py-3 cursor-pointer group transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
+      className="flex items-center gap-4 rounded-xl bg-white/90 backdrop-blur-sm border border-gray-100 px-4 py-3.5 cursor-pointer group transition-all hover:bg-white hover:border-gray-200 hover:shadow-lg hover:shadow-gray-100"
     >
       {/* Thumbnail */}
-      <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative">
+      <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative ring-1 ring-gray-100">
         <Image
           src={trip.image}
           alt={trip.destination}
           fill
-          className="object-cover"
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
           sizes="80px"
         />
       </div>
@@ -53,16 +53,16 @@ export function TripListItem({ trip }: TripListItemProps) {
       <div className="flex-1 min-w-0">
         {/* Title + Status Badge */}
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-base font-semibold text-gray-900 truncate">{trip.title}</h3>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${badge.bg} ${badge.text} shrink-0`}>
+          <h3 className="text-base font-bold text-[#1e3a5f] truncate">{trip.title}</h3>
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${badge.bg} ${badge.text} shrink-0`}>
             {badge.label}
           </span>
         </div>
 
         {/* Destination */}
         <div className="flex items-center gap-1.5 mb-2">
-          <MapPin size={12} className="text-gray-400" />
-          <span className="text-sm text-gray-500">{trip.destination}</span>
+          <MapPin size={12} className="text-[#F59E0B]" />
+          <span className="text-sm text-gray-600">{trip.destination}</span>
         </div>
 
         {/* Metadata Row */}
@@ -76,13 +76,13 @@ export function TripListItem({ trip }: TripListItemProps) {
             {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
           </span>
           {trip.budget && (
-            <span className="flex items-center gap-1">
-              <PieChart size={12} className="text-gray-400" />
+            <span className="flex items-center gap-1 font-medium text-gray-700">
+              <PieChart size={12} className="text-[#F59E0B]" />
               {formatCurrency(trip.budget, trip.currency)}
             </span>
           )}
           {trip.is_shared && (
-            <span className="flex items-center gap-1 text-[#1e3a5f]" title="Shared trip">
+            <span className="flex items-center gap-1 text-[#1e3a5f] font-medium" title="Shared trip">
               <Users2 size={12} />
               Shared
             </span>
@@ -92,7 +92,7 @@ export function TripListItem({ trip }: TripListItemProps) {
 
       {/* Chevron */}
       <div className="shrink-0">
-        <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
+        <ChevronRight size={18} className="text-gray-300 group-hover:text-[#F59E0B] transition-colors" />
       </div>
     </Link>
   );

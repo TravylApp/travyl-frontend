@@ -37,3 +37,8 @@ npm-debug.log*
 
 # Supabase
 supabase/.temp/
+
+# Screenshots and temporary files
+*.png
+!apps/**/assets/**/*.png
+.playwright-mcp/
