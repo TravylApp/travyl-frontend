@@ -5,18 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen, Amber, Red, Sky, Violet,
-  MOCK_DESTINATION_COORDS, MOCK_WEATHER_FORECAST,
+  MOCK_WEATHER_FORECAST,
   MOCK_WEATHER, MOCK_NEWS,
 } from '@travyl/shared';
 import type { NewsItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { MapPreview } from '@/components/itinerary';
 import { PageTransition, useTabAccent } from './_layout';
-
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 // ─── Collapsible Section ─────────────────────────────────
 function CollapsibleSection({ title, icon, color, children, defaultOpen = false }: {
@@ -123,9 +118,9 @@ export default function OverviewScreen() {
   const forecast = MOCK_WEATHER_FORECAST;
 
   const stats = [
-    { icon: 'plane' as const, label: 'Flights', count: flights.length, color: '#2563eb', bg: '#dbeafe' },
-    { icon: 'building' as const, label: 'Hotels', count: hotels.length, color: '#ea580c', bg: '#ffedd5' },
-    { icon: 'list' as const, label: 'Activities', count: allActivities.length, color: '#0d9488', bg: '#ccfbf1' },
+    { icon: 'plane' as const, label: 'Flights', count: flights.length },
+    { icon: 'building-o' as const, label: 'Hotels', count: hotels.length },
+    { icon: 'calendar' as const, label: 'Itinerary', count: allActivities.length },
   ];
 
   return (
@@ -170,7 +165,7 @@ export default function OverviewScreen() {
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {stats.map((stat) => (
                 <View key={stat.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <FontAwesome name={stat.icon} size={10} color="rgba(255,255,255,0.8)" />
+                  <FontAwesome name={stat.icon} size={11} color="rgba(255,255,255,0.9)" />
                   {isLoading ? (
                     <SkeletonBlock width={10} height={10} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
                   ) : (
@@ -182,12 +177,6 @@ export default function OverviewScreen() {
           </View>
         </LinearGradient>
 
-        {/* Map */}
-        {trip && (
-          <View style={{ marginBottom: 16 }}>
-            <MapPreview lat={MOCK_DESTINATION_COORDS.lat} lng={MOCK_DESTINATION_COORDS.lng} label={trip.destination} height={160} />
-          </View>
-        )}
 
         {/* ─── Current Weather Card ────────────────────────── */}
         <View style={{
@@ -195,8 +184,8 @@ export default function OverviewScreen() {
           borderWidth: 1, borderColor: '#bae6fd',
           backgroundColor: '#f0f9ff',
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
               <View style={{
                 width: 44, height: 44, borderRadius: 12,
                 backgroundColor: 'rgba(255,255,255,0.8)',
@@ -208,12 +197,12 @@ export default function OverviewScreen() {
                   color={MOCK_WEATHER.conditions.toLowerCase().includes('cloud') ? '#6b7280' : '#f59e0b'}
                 />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                   <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{MOCK_WEATHER.high}°</Text>
                   <Text style={{ fontSize: 13, color: colors.textTertiary }}>/ {MOCK_WEATHER.low}°{MOCK_WEATHER.unit === 'celsius' ? 'C' : 'F'}</Text>
                 </View>
-                <Text style={{ fontSize: 11, color: colors.textSecondary }}>{MOCK_WEATHER.conditions} in {MOCK_WEATHER.destination}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={2}>{MOCK_WEATHER.conditions} in {MOCK_WEATHER.destination}</Text>
               </View>
             </View>
           </View>
