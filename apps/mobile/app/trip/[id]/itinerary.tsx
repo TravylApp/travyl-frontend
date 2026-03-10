@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useContext } from 'react';
-import { View, ScrollView, Text, Pressable, TextInput, Image } from 'react-native';
+import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
+import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -9,31 +9,17 @@ import {
   MOCK_FLIGHT_DETAILS,
   MOCK_HOTEL_DETAIL,
   MOCK_DISCOVER_ACTIVITIES,
+  MOCK_DESTINATION_COORDS,
+  adjustBrightness,
 } from '@travyl/shared';
-
-function adjustBrightness(hex: string, amount: number): string {
-  const r = Math.min(255, Math.max(0, parseInt(hex.slice(1, 3), 16) + amount));
-  const g = Math.min(255, Math.max(0, parseInt(hex.slice(3, 5), 16) + amount));
-  const b = Math.min(255, Math.max(0, parseInt(hex.slice(5, 7), 16) + amount));
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-import type { MockFlightDetail, MockHotelDetail, DiscoverItem } from '@travyl/shared';
+import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel } from '@travyl/shared';
+import { getActivityTypeColor } from '@travyl/shared';
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
+import { MapPreview } from '@/components/itinerary/MapPreview';
+import type { MapMarker, MapPreviewHandle } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, TabCtx, useTabAccent } from './_layout';
-
-// ─── Calendar Category Colors ───────────────────────────────
-const CATEGORY_COLORS: Record<string, string> = {
-  sightseeing: '#3b82f6',
-  tour: '#8b5cf6',
-  dining: '#f59e0b',
-  cultural: '#6366f1',
-  shopping: '#ec4899',
-  nightlife: '#a855f7',
-  outdoor: '#10b981',
-  museum: '#6366f1',
-  event: '#ef4444',
-};
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 
 function parseHour(timeStr: string | null): number | null {
@@ -45,6 +31,530 @@ function parseHour(timeStr: string | null): number | null {
   if (period === 'PM' && hour !== 12) hour += 12;
   if (period === 'AM' && hour === 12) hour = 0;
   return hour;
+}
+
+// ─── DayMap — activity markers + explore mode at bottom of itinerary ─
+
+// Generate mock coordinates spread around Paris center for each activity
+function mockActivityCoords(index: number, total: number): { lat: number; lng: number } {
+  const spread = 0.018; // ~1.8km radius
+  const angle = (index / Math.max(total, 1)) * 2 * Math.PI;
+  const r = spread * (0.4 + (index % 3) * 0.3);
+  return {
+    lat: MOCK_DESTINATION_COORDS.lat + r * Math.sin(angle),
+    lng: MOCK_DESTINATION_COORDS.lng + r * Math.cos(angle),
+  };
+}
+
+function buildMarkers(activities: ActivityViewModel[], accent: string): MapMarker[] {
+  return activities.map((a, i) => {
+    const coords = mockActivityCoords(i, activities.length);
+    return {
+      lat: coords.lat,
+      lng: coords.lng,
+      label: a.name,
+      color: accent,
+      number: i + 1,
+    };
+  });
+}
+
+function CollapsibleSection({ title, icon, accent, count, defaultOpen = false, children }: {
+  title: string;
+  icon: string;
+  accent: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const colors = useThemeColors();
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <View style={{ borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+      <Pressable
+        onPress={() => setOpen(!open)}
+        style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          paddingHorizontal: 12, paddingVertical: 8,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <FontAwesome name={icon as any} size={11} color={accent} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{title}</Text>
+          {count != null && (
+            <View style={{
+              backgroundColor: accent + '20', borderRadius: 8,
+              paddingHorizontal: 6, paddingVertical: 1,
+            }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: accent }}>{count}</Text>
+            </View>
+          )}
+        </View>
+        <FontAwesome name={open ? 'chevron-up' : 'chevron-down'} size={10} color={colors.textTertiary} />
+      </Pressable>
+      {open && children}
+    </View>
+  );
+}
+
+// ─── Draggable Map Sheet ─────────────────────────────────
+// Snap points: PEEK (just handle + header), DEFAULT (map visible), EXPANDED (near full screen)
+const SCREEN_H = Dimensions.get('window').height;
+const SHEET_PEEK = 44;        // drag handle + header row
+const SHEET_DEFAULT = 320;    // map + header
+const SHEET_EXPANDED = Math.round(SCREEN_H * 0.75);
+const SNAP_POINTS = [0, SHEET_PEEK, SHEET_DEFAULT, SHEET_EXPANDED];
+
+function snapTo(value: number): number {
+  let best = SNAP_POINTS[0];
+  let bestDist = Math.abs(value - best);
+  for (const p of SNAP_POINTS) {
+    const d = Math.abs(value - p);
+    if (d < bestDist) { best = p; bestDist = d; }
+  }
+  return best;
+}
+
+// Route color palette
+const ROUTE_COLORS = [
+  { color: '#6366f1', label: 'Indigo' },
+  { color: '#3b82f6', label: 'Blue' },
+  { color: '#10b981', label: 'Green' },
+  { color: '#f59e0b', label: 'Amber' },
+  { color: '#ef4444', label: 'Red' },
+  { color: '#ec4899', label: 'Pink' },
+  { color: '#8b5cf6', label: 'Purple' },
+  { color: '#14b8a6', label: 'Teal' },
+  { color: '#f97316', label: 'Orange' },
+  { color: '#64748b', label: 'Slate' },
+];
+
+function DayMap({ todayActivities, allActivities, onClose }: {
+  todayActivities: ActivityViewModel[];
+  allActivities: ActivityViewModel[];
+  onClose: () => void;
+}) {
+  const colors = useThemeColors();
+  const ACCENT = useTabAccent('itinerary');
+  const [exploreSearch, setExploreSearch] = useState('');
+
+  // Customization state
+  const [routeColor, setRouteColor] = useState(ACCENT);
+  const [stopOrder, setStopOrder] = useState<number[]>([]);
+  const [showExploreOnMap, setShowExploreOnMap] = useState(true);
+  const [selectedStop, setSelectedStop] = useState<number | null>(null);
+  const mapRef = useRef<MapPreviewHandle>(null);
+
+  // Sheet height animation
+  const sheetHeight = useRef(new Animated.Value(SHEET_DEFAULT)).current;
+  const currentHeight = useRef(SHEET_DEFAULT);
+  const startHeight = useRef(SHEET_DEFAULT);
+
+  // Track height for expand button
+  const [measuredHeight, setMeasuredHeight] = useState(SHEET_DEFAULT);
+
+  // Initialize stop order when activities change
+  useEffect(() => {
+    setStopOrder(todayActivities.map((_, i) => i));
+  }, [todayActivities.length]);
+
+  useEffect(() => {
+    const id = sheetHeight.addListener(({ value }) => {
+      currentHeight.current = value;
+    });
+    return () => sheetHeight.removeListener(id);
+  }, [sheetHeight]);
+
+  const animateTo = useCallback((target: number) => {
+    if (target <= 0) {
+      Animated.spring(sheetHeight, {
+        toValue: 0, tension: 100, friction: 15, useNativeDriver: false,
+      }).start(() => onClose());
+    } else {
+      Animated.spring(sheetHeight, {
+        toValue: target, tension: 100, friction: 15, useNativeDriver: false,
+      }).start(() => setMeasuredHeight(target));
+    }
+  }, [sheetHeight, onClose]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 4,
+      onPanResponderGrant: () => {
+        startHeight.current = currentHeight.current;
+      },
+      onPanResponderMove: (_, { dy }) => {
+        const next = Math.max(0, Math.min(SHEET_EXPANDED, startHeight.current - dy));
+        sheetHeight.setValue(next);
+      },
+      onPanResponderRelease: (_, { vy }) => {
+        const cur = currentHeight.current;
+        if (vy < -0.5) {
+          const upper = SNAP_POINTS.find((p) => p > cur + 20) ?? SHEET_EXPANDED;
+          animateTo(upper);
+        } else if (vy > 0.5) {
+          const lower = [...SNAP_POINTS].reverse().find((p) => p < cur - 20) ?? 0;
+          animateTo(lower);
+        } else {
+          animateTo(snapTo(cur));
+        }
+      },
+    })
+  ).current;
+
+  const focusStop = useCallback((index: number) => {
+    setSelectedStop((prev) => {
+      if (prev === index) {
+        // Deselect — reset view
+        mapRef.current?.resetView();
+        return null;
+      }
+      mapRef.current?.focusMarker(index);
+      return index;
+    });
+  }, []);
+
+  // Reorder helpers
+  const moveStop = useCallback((fromIdx: number, direction: 'up' | 'down') => {
+    setStopOrder((prev) => {
+      const arr = [...prev];
+      const toIdx = direction === 'up' ? fromIdx - 1 : fromIdx + 1;
+      if (toIdx < 0 || toIdx >= arr.length) return prev;
+      [arr[fromIdx], arr[toIdx]] = [arr[toIdx], arr[fromIdx]];
+      return arr;
+    });
+  }, []);
+
+  // Build ordered activities
+  const orderedActivities = useMemo(() =>
+    stopOrder.length === todayActivities.length
+      ? stopOrder.map((i) => todayActivities[i])
+      : todayActivities,
+    [stopOrder, todayActivities],
+  );
+
+  const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT), [orderedActivities, ACCENT]);
+
+  const exploreItems = useMemo(() => {
+    let items = MOCK_DISCOVER_ACTIVITIES;
+    if (exploreSearch) {
+      const q = exploreSearch.toLowerCase();
+      items = items.filter((i) =>
+        i.name.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        (i.category?.toLowerCase().includes(q) ?? false),
+      );
+    }
+    return items;
+  }, [exploreSearch]);
+
+  const exploreMarkers: MapMarker[] = useMemo(() =>
+    showExploreOnMap
+      ? exploreItems
+          .filter((i) => i.lat && i.lng)
+          .map((i) => ({
+            lat: i.lat!,
+            lng: i.lng!,
+            label: i.name,
+            color: '#94a3b8',
+            muted: true,
+          }))
+      : [],
+    [exploreItems, showExploreOnMap],
+  );
+
+  const allMarkers = useMemo(() => [...markers, ...exploreMarkers], [markers, exploreMarkers]);
+
+  if (todayActivities.length === 0 && allActivities.length === 0) return null;
+
+  return (
+    <Animated.View style={{
+      height: sheetHeight,
+      backgroundColor: colors.cardBackground,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+      borderTopLeftRadius: 14,
+      borderTopRightRadius: 14,
+      overflow: 'hidden',
+    }}>
+      {/* Drag handle */}
+      <View {...panResponder.panHandlers}>
+        <View style={{ alignItems: 'center', paddingTop: 6, paddingBottom: 2 }}>
+          <View style={{
+            width: 36, height: 4, borderRadius: 2,
+            backgroundColor: colors.textTertiary + '40',
+          }} />
+        </View>
+
+        {/* Header bar */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          paddingHorizontal: 12, paddingVertical: 4,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <FontAwesome name="map" size={10} color={ACCENT} />
+            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
+              {markers.length} {markers.length === 1 ? 'stop' : 'stops'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={() => animateTo(measuredHeight >= SHEET_EXPANDED ? SHEET_DEFAULT : SHEET_EXPANDED)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{
+                width: 24, height: 24, borderRadius: 12,
+                backgroundColor: colors.borderLight,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <FontAwesome
+                name={measuredHeight >= SHEET_EXPANDED ? 'compress' : 'expand'}
+                size={10}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={onClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{
+                width: 24, height: 24, borderRadius: 12,
+                backgroundColor: colors.borderLight,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <FontAwesome name="times" size={10} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      {/* Map fills the space above collapsible sections */}
+      <View style={{ flex: 1, minHeight: 120 }}>
+        <MapPreview
+          ref={mapRef}
+          lat={MOCK_DESTINATION_COORDS.lat}
+          lng={MOCK_DESTINATION_COORDS.lng}
+          markers={allMarkers}
+          flex
+          borderless
+          routeColor={routeColor}
+        />
+      </View>
+
+      {/* Collapsible sections scroll underneath */}
+      <ScrollView style={{ maxHeight: 300 }} bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+
+        {/* Collapsible: Stops */}
+        <CollapsibleSection title="Stops" icon="map-marker" accent={ACCENT} count={orderedActivities.length} defaultOpen>
+          <View style={{ paddingVertical: 4 }}>
+            {orderedActivities.map((activity, i) => {
+              const isSelected = selectedStop === i;
+              return (
+                <Pressable
+                  key={activity.id ?? `stop-${i}`}
+                  onPress={() => focusStop(i)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    paddingHorizontal: 10, paddingVertical: 5,
+                    backgroundColor: isSelected ? ACCENT + '12' : 'transparent',
+                    borderLeftWidth: isSelected ? 3 : 0,
+                    borderLeftColor: ACCENT,
+                  }}
+                >
+                  {/* Reorder buttons */}
+                  <View style={{ gap: 1 }}>
+                    <Pressable
+                      onPress={() => moveStop(i, 'up')}
+                      disabled={i === 0}
+                      hitSlop={4}
+                      style={{ opacity: i === 0 ? 0.2 : 0.6 }}
+                    >
+                      <FontAwesome name="chevron-up" size={8} color={colors.textSecondary} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => moveStop(i, 'down')}
+                      disabled={i === orderedActivities.length - 1}
+                      hitSlop={4}
+                      style={{ opacity: i === orderedActivities.length - 1 ? 0.2 : 0.6 }}
+                    >
+                      <FontAwesome name="chevron-down" size={8} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+                  {/* Numbered dot — uses tab accent color */}
+                  <View style={{
+                    width: isSelected ? 26 : 22, height: isSelected ? 26 : 22,
+                    borderRadius: isSelected ? 13 : 11,
+                    backgroundColor: ACCENT,
+                    alignItems: 'center', justifyContent: 'center',
+                    borderWidth: isSelected ? 2 : 0,
+                    borderColor: '#fff',
+                    shadowColor: isSelected ? ACCENT : 'transparent',
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: isSelected ? 0.4 : 0,
+                    shadowRadius: isSelected ? 6 : 0,
+                    elevation: isSelected ? 4 : 0,
+                  }}>
+                    <Text style={{ fontSize: isSelected ? 11 : 10, fontWeight: '700', color: '#fff' }}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={{
+                      fontSize: 12, fontWeight: isSelected ? '600' : '500',
+                      color: isSelected ? ACCENT : colors.text,
+                    }}>
+                      {activity.name}
+                    </Text>
+                    {activity.startTime && (
+                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>{activity.startTime}</Text>
+                    )}
+                  </View>
+                  <View style={{
+                    backgroundColor: ACCENT + '18', borderRadius: 6,
+                    paddingHorizontal: 6, paddingVertical: 2,
+                  }}>
+                    <Text style={{ fontSize: 9, fontWeight: '500', color: ACCENT }}>{activity.category}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </CollapsibleSection>
+
+        {/* Collapsible: Explore */}
+        <CollapsibleSection title="Explore Nearby" icon="compass" accent="#6366f1" count={exploreItems.length}>
+          <View>
+            {/* Search bar */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              marginHorizontal: 10, marginVertical: 8,
+              backgroundColor: colors.surface, borderRadius: 8,
+              paddingHorizontal: 10, height: 34,
+              borderWidth: 1, borderColor: colors.borderLight,
+            }}>
+              <FontAwesome name="search" size={11} color={colors.textTertiary} />
+              <TextInput
+                value={exploreSearch}
+                onChangeText={setExploreSearch}
+                placeholder="Search places, tours, food..."
+                placeholderTextColor={colors.textTertiary}
+                style={{ flex: 1, fontSize: 12, color: colors.text, paddingVertical: 0 }}
+              />
+              {exploreSearch.length > 0 && (
+                <Pressable onPress={() => setExploreSearch('')}>
+                  <FontAwesome name="times-circle" size={13} color={colors.textTertiary} />
+                </Pressable>
+              )}
+            </View>
+
+            {/* Explore items */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 10, gap: 8 }}
+            >
+              {exploreItems.slice(0, 10).map((item) => (
+                <View
+                  key={item.id}
+                  style={{
+                    width: 150, backgroundColor: colors.surface, borderRadius: 10,
+                    borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden',
+                  }}
+                >
+                  <Image
+                    source={{ uri: item.images[0] }}
+                    style={{ width: 150, height: 80 }}
+                    resizeMode="cover"
+                  />
+                  <View style={{ padding: 8 }}>
+                    <Text numberOfLines={2} style={{ fontSize: 11, fontWeight: '600', color: colors.text, lineHeight: 14 }}>
+                      {item.name}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                      {item.rating && (
+                        <>
+                          <FontAwesome name="star" size={9} color="#f59e0b" />
+                          <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '500' }}>{item.rating}</Text>
+                        </>
+                      )}
+                      {item.category && (
+                        <Text style={{ fontSize: 9, color: colors.textTertiary }}> · {item.category}</Text>
+                      )}
+                    </View>
+                    {item.price && (
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#6366f1', marginTop: 3 }}>
+                        {item.dealPrice ?? item.price}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </CollapsibleSection>
+
+        {/* Collapsible: Customize */}
+        <CollapsibleSection title="Customize" icon="sliders" accent={ACCENT}>
+          <View style={{ paddingHorizontal: 12, paddingVertical: 10, gap: 14 }}>
+
+            {/* Route Color */}
+            <View>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, marginBottom: 6 }}>Route Color</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {ROUTE_COLORS.map((rc) => (
+                  <Pressable
+                    key={rc.color}
+                    onPress={() => setRouteColor(rc.color)}
+                    style={{
+                      width: 28, height: 28, borderRadius: 14,
+                      backgroundColor: rc.color,
+                      alignItems: 'center', justifyContent: 'center',
+                      borderWidth: routeColor === rc.color ? 2.5 : 1.5,
+                      borderColor: routeColor === rc.color ? colors.text : colors.borderLight,
+                    }}
+                  >
+                    {routeColor === rc.color && (
+                      <FontAwesome name="check" size={11} color="#fff" />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Show Explore on Map toggle */}
+            <Pressable
+              onPress={() => setShowExploreOnMap(!showExploreOnMap)}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                paddingVertical: 4,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <FontAwesome name="compass" size={11} color="#6366f1" />
+                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text }}>Show nearby on map</Text>
+              </View>
+              <View style={{
+                width: 36, height: 20, borderRadius: 10,
+                backgroundColor: showExploreOnMap ? ACCENT : colors.borderLight,
+                justifyContent: 'center',
+                paddingHorizontal: 2,
+              }}>
+                <View style={{
+                  width: 16, height: 16, borderRadius: 8,
+                  backgroundColor: '#fff',
+                  alignSelf: showExploreOnMap ? 'flex-end' : 'flex-start',
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.15, shadowRadius: 1, elevation: 2,
+                }} />
+              </View>
+            </Pressable>
+
+          </View>
+        </CollapsibleSection>
+      </ScrollView>
+    </Animated.View>
+  );
 }
 
 // ─── MobileCalendarView ─────────────────────────────────────
@@ -78,7 +588,7 @@ function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedD
             {/* Activities in this hour */}
             <View style={{ flex: 1, paddingVertical: 2, paddingHorizontal: 4, gap: 2 }}>
               {activities.map((activity: any) => {
-                const bgColor = CATEGORY_COLORS[activity.category] ?? '#3b82f6';
+                const bgColor = getActivityTypeColor(activity.category).primary;
                 return (
                   <View
                     key={activity.id}
@@ -111,11 +621,6 @@ function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedD
 }
 
 // ─── Skeleton Components ────────────────────────────────────
-
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
 
 function SkeletonActivityCard() {
   const colors = useThemeColors();
@@ -978,13 +1483,25 @@ export default function ItineraryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { days, selectedDayIndex, setSelectedDayIndex, selectedDay, isLoading, isEmpty } =
     useItineraryScreen(id);
-  const { calendarOpen, setCalendarOpen, theme, itineraryColorOverrides } = useContext(TabCtx);
+  const { calendarOpen, setCalendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides } = useContext(TabCtx);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addCategory, setAddCategory] = useState('All');
   const [addSearch, setAddSearch] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
+
+  // Auto-collapse itinerary sections when map opens to make room
+  const prevMapOpen = useRef(mapOpen);
+  useEffect(() => {
+    if (mapOpen && !prevMapOpen.current && selectedDay) {
+      const next: Record<string, boolean> = {};
+      for (const g of selectedDay.timeGroups) next[g.timeOfDay] = true;
+      setCollapsedSections(next);
+      setAllCollapsedOverride(true);
+    }
+    prevMapOpen.current = mapOpen;
+  }, [mapOpen, selectedDay]);
 
   const arrivalFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'arrival');
   const returnFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'return');
@@ -1039,20 +1556,19 @@ export default function ItineraryScreen() {
   }, []);
 
   const handleAddItem = useCallback((item: DiscoverItem, timeOfDay: string) => {
-    console.log('Added activity:', item.name, 'to', timeOfDay);
     setAddingTo(null);
     setAddSearch('');
     setAddCategory('All');
   }, []);
 
-  if (isLoading || isEmpty) {
+  if ((isLoading || isEmpty) && !calendarOpen && !mapOpen) {
     return <PageTransition><ItinerarySkeleton /></PageTransition>;
   }
 
   return (
     <PageTransition>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Day Selector + Controls (combined row like web) */}
+      {/* Day Selector + Controls */}
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -1089,93 +1605,113 @@ export default function ItineraryScreen() {
       {calendarOpen ? (
         <MobileCalendarView days={days} selectedDayIndex={selectedDayIndex} />
       ) : (
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 32 }}>
-        {selectedDay && (
-          <View>
-            {/* Arrival flight on first day */}
-            {isFirstDay && arrivalFlight && (
-              <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
-            )}
+      <View style={{ flex: 1, flexDirection: 'column' }}>
+        {/* Itinerary content */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: 14,
+            paddingTop: 14,
+            paddingBottom: 32,
+          }}
+        >
+          {selectedDay && (
+            <View>
+              {/* Arrival flight on first day */}
+              {isFirstDay && arrivalFlight && (
+                <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
+              )}
 
-            {/* Hotel check-in on first day */}
-            {isFirstDay && (
-              <HotelSection
-                hotel={MOCK_HOTEL_DETAIL}
-                label={`Check-in \u00b7 ${selectedDay.dateLabel}`}
-                collapsed={allCollapsedOverride ?? undefined}
-              />
-            )}
-
-            {/* Time groups */}
-            {selectedDay.timeGroups.map((group) => (
-              <View key={group.timeOfDay}>
-                <TimeGroupSection
-                  group={group}
-                  collapsed={collapsedSections[group.timeOfDay]}
-                  onToggleCollapse={toggleSectionCollapse}
-                  onAddActivity={handleAddActivity}
-                  colorOverride={itineraryColorOverrides[group.timeOfDay] ?? theme.itineraryColors[group.timeOfDay as keyof typeof theme.itineraryColors]}
-                />
-                {addingTo === group.timeOfDay && (
-                  <BrowseActivityPanel
-                    timeOfDay={group.timeOfDay}
-                    items={filteredDiscoverItems}
-                    search={addSearch}
-                    onSearchChange={setAddSearch}
-                    category={addCategory}
-                    onCategoryChange={setAddCategory}
-                    favorites={favorites}
-                    onToggleFavorite={toggleFavorite}
-                    onAdd={(item) => handleAddItem(item, group.timeOfDay)}
-                    onClose={() => { setAddingTo(null); setAddSearch(''); setAddCategory('All'); }}
-                  />
-                )}
-              </View>
-            ))}
-
-            {/* Hotel nightly on middle days */}
-            {!isFirstDay && !isLastDay && (
-              <HotelSection
-                hotel={MOCK_HOTEL_DETAIL}
-                label={`Night ${selectedDay.dayNumber} \u00b7 ${selectedDay.dateLabel}`}
-                collapsed={allCollapsedOverride ?? undefined}
-              />
-            )}
-
-            {/* Checkout + return flight on last day */}
-            {isLastDay && (
-              <>
-                <CheckoutSection
-                  hotelName={MOCK_HOTEL_DETAIL.name}
-                  hotelAddress={MOCK_HOTEL_DETAIL.address}
-                  checkOutTime={MOCK_HOTEL_DETAIL.checkOutTime}
+              {/* Hotel check-in on first day */}
+              {isFirstDay && (
+                <HotelSection
+                  hotel={MOCK_HOTEL_DETAIL}
+                  label={`Check-in \u00b7 ${selectedDay.dateLabel}`}
                   collapsed={allCollapsedOverride ?? undefined}
                 />
-                {returnFlight && (
-                  <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />
-                )}
-              </>
-            )}
+              )}
 
-            {/* Day notes */}
-            {selectedDay.notes && (
-              <View style={{
-                backgroundColor: colors.surface,
-                borderRadius: 10,
-                padding: 12,
-                marginTop: 4,
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: colors.borderLight,
-              }}>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', lineHeight: 18 }}>
-                  {selectedDay.notes}
-                </Text>
-              </View>
-            )}
-          </View>
+              {/* Time groups */}
+              {selectedDay.timeGroups.map((group) => (
+                <View key={group.timeOfDay}>
+                  <TimeGroupSection
+                    group={group}
+                    collapsed={collapsedSections[group.timeOfDay]}
+                    onToggleCollapse={toggleSectionCollapse}
+                    onAddActivity={handleAddActivity}
+                    colorOverride={itineraryColorOverrides[group.timeOfDay] ?? theme.itineraryColors[group.timeOfDay as keyof typeof theme.itineraryColors]}
+                  />
+                  {addingTo === group.timeOfDay && (
+                    <BrowseActivityPanel
+                      timeOfDay={group.timeOfDay}
+                      items={filteredDiscoverItems}
+                      search={addSearch}
+                      onSearchChange={setAddSearch}
+                      category={addCategory}
+                      onCategoryChange={setAddCategory}
+                      favorites={favorites}
+                      onToggleFavorite={toggleFavorite}
+                      onAdd={(item) => handleAddItem(item, group.timeOfDay)}
+                      onClose={() => { setAddingTo(null); setAddSearch(''); setAddCategory('All'); }}
+                    />
+                  )}
+                </View>
+              ))}
+
+              {/* Hotel nightly on middle days */}
+              {!isFirstDay && !isLastDay && (
+                <HotelSection
+                  hotel={MOCK_HOTEL_DETAIL}
+                  label={`Night ${selectedDay.dayNumber} \u00b7 ${selectedDay.dateLabel}`}
+                  collapsed={allCollapsedOverride ?? undefined}
+                />
+              )}
+
+              {/* Checkout + return flight on last day */}
+              {isLastDay && (
+                <>
+                  <CheckoutSection
+                    hotelName={MOCK_HOTEL_DETAIL.name}
+                    hotelAddress={MOCK_HOTEL_DETAIL.address}
+                    checkOutTime={MOCK_HOTEL_DETAIL.checkOutTime}
+                    collapsed={allCollapsedOverride ?? undefined}
+                  />
+                  {returnFlight && (
+                    <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />
+                  )}
+                </>
+              )}
+
+              {/* Day notes */}
+              {selectedDay.notes && (
+                <View style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginTop: 4,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: colors.borderLight,
+                }}>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', lineHeight: 18 }}>
+                    {selectedDay.notes}
+                  </Text>
+                </View>
+              )}
+
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Map panel — below itinerary */}
+        {mapOpen && selectedDay && (
+          <DayMap
+            todayActivities={selectedDay.timeGroups.flatMap((g) => g.activities ?? [])}
+            allActivities={days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities ?? []))}
+            onClose={() => setMapOpen(false)}
+          />
         )}
-      </ScrollView>
+      </View>
       )}
     </View>
     </PageTransition>
