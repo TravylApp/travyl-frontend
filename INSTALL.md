@@ -5,7 +5,6 @@ Follow these steps to set up the Travyl project for local development.
 ## Prerequisites
 
 - **Node.js**: Version 22 (LTS) is required.
-- **Yarn**: Version 1.22.x or later.
 - **Python 3.x**: Required for generating presentation materials.
 - **Expo Go** (Optional): For testing the mobile app on a physical device.
 
@@ -20,18 +19,18 @@ Follow these steps to set up the Travyl project for local development.
 2.  **Install dependencies:**
     Run the following command in the root directory:
     ```bash
-    yarn install
+    npm install
     ```
 
 ## Development
 
-The project is structured as a monorepo using Yarn Workspaces.
+The project is structured as a monorepo using npm Workspaces.
 
 ### Web Application (Next.js)
 
 To start the web application in development mode:
 ```bash
-yarn web
+npm run web
 ```
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
@@ -39,7 +38,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 To start the mobile application development server:
 ```bash
-yarn mobile
+npm run mobile
 ```
 This will open the Expo Dev Tools. You can run the app on:
 -   **iOS Simulator**: Press `i`
@@ -78,7 +77,7 @@ python3 presentation_homepage.py
 ### Web
 ```bash
 cd apps/web
-yarn build
+npm run build
 ```
 
 ### Mobile

@@ -308,6 +308,11 @@ export const MOCK_TRIP: Trip = {
   is_shared: false,
   share_link_token: null,
   share_link_role: 'viewer',
+  theme: 'navy',
+  custom_theme_color: null,
+  forked_from_trip_id: null,
+  fork_count: 0,
+  is_public: false,
   created_at: '2026-03-01T00:00:00Z',
   updated_at: '2026-03-01T00:00:00Z',
 };
@@ -1191,4 +1196,49 @@ export const MOCK_WEATHER_FORECAST: WeatherForecast[] = [
   { day: 'Fri', high: 15, low: 7, icon: '☀️', condition: 'Sunny' },
   { day: 'Sat', high: 10, low: 3, icon: '🌧️', condition: 'Showers' },
   { day: 'Sun', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
+];
+
+// ─── News & Events ───────────────────────────────────────────
+
+export const MOCK_NEWS: import('../types').NewsItem[] = [
+  {
+    id: 'news-1',
+    title: 'Nuit Blanche Arts Festival This Weekend',
+    snippet: 'Paris transforms into an open-air gallery with free installations, performances, and exhibits across the city from dusk till dawn.',
+    category: 'event',
+    source: 'Paris Tourism',
+    date: '2026-03-14',
+  },
+  {
+    id: 'news-2',
+    title: 'Metro Line 14 Extension Now Open',
+    snippet: 'The new southern extension adds 7 stations connecting Orly Airport directly to central Paris — no more bus transfers.',
+    category: 'news',
+    source: 'RATP',
+    date: '2026-03-10',
+  },
+  {
+    id: 'news-3',
+    title: 'Strikes Expected on Regional Trains March 15-16',
+    snippet: 'SNCF workers have announced a 48-hour walkout. Eurostar and metro services are expected to run normally.',
+    category: 'advisory',
+    source: 'France 24',
+    date: '2026-03-12',
+  },
+  {
+    id: 'news-4',
+    title: 'Skip the Line: Book Louvre Tickets 2 Weeks Ahead',
+    snippet: 'Spring crowds are picking up. Pre-booking online saves up to 45 minutes of waiting at the pyramid entrance.',
+    category: 'tip',
+    source: 'Travyl',
+    date: '2026-03-09',
+  },
+  {
+    id: 'news-5',
+    title: 'Cherry Blossoms Arriving Early at Jardin des Plantes',
+    snippet: 'Warmer-than-usual temperatures mean peak bloom is expected around March 18 — a week ahead of schedule.',
+    category: 'event',
+    source: 'Le Parisien',
+    date: '2026-03-11',
+  },
 ];

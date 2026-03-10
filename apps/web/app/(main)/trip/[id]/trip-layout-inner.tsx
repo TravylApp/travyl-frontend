@@ -11,6 +11,7 @@ import { useItineraryScreen, formatDateRange, MOCK_DESTINATION_COORDS, useAuthSt
 import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
+import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 const CalendarView = dynamic(
@@ -180,9 +181,11 @@ export default function TripLayoutInner({
   children: React.ReactNode;
 }) {
   return (
-    <ItineraryProvider>
-      <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
-    </ItineraryProvider>
+    <TripThemeProvider tripId={tripId}>
+      <ItineraryProvider>
+        <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
+      </ItineraryProvider>
+    </TripThemeProvider>
   );
 }
 

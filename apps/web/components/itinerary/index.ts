@@ -20,10 +20,6 @@ export { FlightSection } from './FlightSection';
 export { HotelSection } from './HotelSection';
 export { HotelListView } from './HotelListView';
 export { CheckoutSection } from './CheckoutSection';
-export { SplitScreenView } from './SplitScreenView';
-export { PassengerOptions } from './PassengerOptions';
-export { DetailedActivityCard } from './DetailedActivityCard';
-export { CardStyleSettings } from './CardStyleSettings';
 export { ItineraryProvider, useItineraryContext } from './ItineraryContext';
 // CalendarView is lazy-loaded directly — do NOT re-export here (react-dnd crashes on eager load)
 // ItineraryPinCard is imported directly from its file path

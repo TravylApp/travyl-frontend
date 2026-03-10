@@ -20,10 +20,10 @@ export function DaySelector({ days, selectedIndex, onSelect }: DaySelectorProps)
               onClick={() => onSelect(index)}
               className="flex-shrink-0 min-w-[78px] text-center transition-all rounded-[10px]"
               style={selected ? {
-                background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)',
+                background: 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))',
                 color: '#fff',
                 padding: '10px 14px',
-                boxShadow: '0 3px 8px rgba(30, 58, 95, 0.25)',
+                boxShadow: '0 3px 8px rgb(var(--trip-base-rgb) / 0.25)',
               } : {
                 background: '#fff',
                 color: '#374151',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Image } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Image, Modal } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
@@ -9,14 +9,12 @@ import {
   RESTAURANT_CATEGORY_ICONS,
   CUISINE_SUBFILTERS,
   RESTAURANT_SORT_OPTIONS,
-  TAB_COLORS,
-  COLORS,
   hexToRgba,
 } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
+import { PageTransition, useTabAccent } from './_layout';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
-const ACCENT = TAB_COLORS.restaurants;
-const NAVY = COLORS.navy;
 
 /* -- Menu highlights mock data (keyed by restaurant id) -------- */
 const MENU_HIGHLIGHTS: Record<string, string[]> = {
@@ -58,6 +56,11 @@ const RESERVATION_INFO: Record<string, string> = {
   rd6: 'No reservations \u00b7 First come, first served',
 };
 
+const RESTAURANT_DISTANCES: Record<string, string> = {
+  rb1: '0.3 km', rb2: '0.8 km', rb3: '1.2 km',
+  rd1: '0.5 km', rd2: '1.5 km', rd3: '0.7 km', rd4: '2.1 km', rd5: '0.4 km',
+};
+
 // -- Rating stars -------------------------------------------------
 function RatingStars({ rating, size = 11 }: { rating: number; size?: number }) {
   const full = Math.floor(rating);
@@ -78,8 +81,10 @@ function RatingStars({ rating, size = 11 }: { rating: number; size?: number }) {
 
 // -- Price level dots ---------------------------------------------
 function PriceLevel({ price }: { price: string }) {
+  const ACCENT = useTabAccent('restaurants');
+  const colors = useThemeColors();
   const euroCount = (price.match(/\u20ac/g) || []).length;
-  if (euroCount === 0) return <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{price}</Text>;
+  if (euroCount === 0) return <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{price}</Text>;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {Array.from({ length: 4 }).map((_, i) => (
@@ -88,7 +93,7 @@ function PriceLevel({ price }: { price: string }) {
           style={{
             fontSize: 13,
             fontWeight: '700',
-            color: i < euroCount ? NAVY : '#d1d5db',
+            color: i < euroCount ? ACCENT : colors.border,
           }}
         >
           {'\u20ac'}
@@ -103,11 +108,15 @@ function RestaurantCard({
   item,
   isFavorited,
   onFavorite,
+  onViewDetails,
 }: {
   item: DiscoverItem;
   isFavorited: boolean;
   onFavorite: (id: string) => void;
+  onViewDetails: (item: DiscoverItem) => void;
 }) {
+  const ACCENT = useTabAccent('restaurants');
+  const colors = useThemeColors();
   const [imgError, setImgError] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const hasImage = item.images.length > 0 && !imgError;
@@ -120,15 +129,15 @@ function RestaurantCard({
     <Pressable onPress={() => setExpanded(!expanded)}>
       <View
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: colors.cardBackground,
           borderRadius: 16,
           overflow: 'hidden',
           borderWidth: item.isBooked ? 2 : 1,
-          borderColor: item.isBooked ? NAVY : '#e5e7eb',
+          borderColor: item.isBooked ? ACCENT : colors.border,
         }}
       >
         {/* Image */}
-        <View style={{ height: 180, backgroundColor: '#f3f4f6' }}>
+        <View style={{ height: 180, backgroundColor: colors.borderLight }}>
           {hasImage ? (
             <Image
               source={{ uri: item.images[0] }}
@@ -175,7 +184,7 @@ function RestaurantCard({
             <FontAwesome
               name={isFavorited ? 'heart' : 'heart-o'}
               size={14}
-              color={isFavorited ? '#ef4444' : '#9ca3af'}
+              color={isFavorited ? '#ef4444' : colors.border}
             />
           </Pressable>
 
@@ -195,7 +204,7 @@ function RestaurantCard({
             }}
           >
             <FontAwesome name="star" size={11} color="#fbbf24" />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{item.rating}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{item.rating}</Text>
           </View>
 
           {/* Booked badge */}
@@ -228,7 +237,7 @@ function RestaurantCard({
                 position: 'absolute',
                 top: 10,
                 left: 10,
-                backgroundColor: NAVY,
+                backgroundColor: ACCENT,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 8,
@@ -266,15 +275,23 @@ function RestaurantCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
               <FontAwesome name="map-marker" size={11} color="#9ca3af" />
-              <Text style={{ fontSize: 12, color: '#6b7280' }} numberOfLines={1}>{item.location}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={1}>{item.location}</Text>
             </View>
             {item.distance && (
-              <Text style={{ fontSize: 10, color: '#9ca3af', marginLeft: 8 }}>{item.distance}</Text>
+              <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 8 }}>{item.distance}</Text>
             )}
           </View>
 
+          {/* Distance info */}
+          {RESTAURANT_DISTANCES[item.id] && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+              <FontAwesome name="map-marker" size={10} color={ACCENT} />
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>{RESTAURANT_DISTANCES[item.id]} away</Text>
+            </View>
+          )}
+
           {/* Name */}
-          <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 2 }} numberOfLines={1}>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 2 }} numberOfLines={1}>
             {item.name}
           </Text>
 
@@ -282,7 +299,7 @@ function RestaurantCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <RatingStars rating={item.rating} size={11} />
             {item.reviewCount ? (
-              <Text style={{ fontSize: 11, color: '#9ca3af' }}>
+              <Text style={{ fontSize: 11, color: colors.textTertiary }}>
                 {item.reviewCount.toLocaleString()} reviews
               </Text>
             ) : null}
@@ -292,23 +309,23 @@ function RestaurantCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
             {item.price && <PriceLevel price={item.price} />}
             {item.price && item.cuisine && (
-              <Text style={{ fontSize: 12, color: '#d1d5db' }}>{'\u00b7'}</Text>
+              <Text style={{ fontSize: 12, color: colors.border }}>{'\u00b7'}</Text>
             )}
             {item.cuisine && (
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>{item.cuisine}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{item.cuisine}</Text>
             )}
             {item.bookedTime && (
               <>
-                <Text style={{ fontSize: 12, color: '#d1d5db' }}>{'\u00b7'}</Text>
+                <Text style={{ fontSize: 12, color: colors.border }}>{'\u00b7'}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                   <FontAwesome name="clock-o" size={10} color="#9ca3af" />
-                  <Text style={{ fontSize: 12, color: '#9ca3af' }}>{item.bookedTime}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>{item.bookedTime}</Text>
                 </View>
               </>
             )}
             {item.isOpen !== undefined && (
               <>
-                <Text style={{ fontSize: 12, color: '#d1d5db' }}>{'\u00b7'}</Text>
+                <Text style={{ fontSize: 12, color: colors.border }}>{'\u00b7'}</Text>
                 <Text
                   style={{
                     fontSize: 11,
@@ -323,7 +340,7 @@ function RestaurantCard({
           </View>
 
           {/* Description */}
-          <Text style={{ fontSize: 13, color: '#6b7280', lineHeight: 20, marginBottom: 8 }} numberOfLines={expanded ? undefined : 2}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20, marginBottom: 8 }} numberOfLines={expanded ? undefined : 2}>
             {item.description}
           </Text>
 
@@ -333,15 +350,15 @@ function RestaurantCard({
               <View
                 key={i}
                 style={{
-                  backgroundColor: hexToRgba(NAVY, 0.04),
+                  backgroundColor: hexToRgba(ACCENT, 0.04),
                   borderWidth: 1,
-                  borderColor: hexToRgba(NAVY, 0.12),
+                  borderColor: hexToRgba(ACCENT, 0.12),
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 20,
                 }}
               >
-                <Text style={{ fontSize: 11, color: NAVY }}>{tag}</Text>
+                <Text style={{ fontSize: 11, color: ACCENT }}>{tag}</Text>
               </View>
             ))}
             {item.category && (
@@ -367,8 +384,8 @@ function RestaurantCard({
               {menuHighlights.length > 0 && (
                 <View style={{ marginBottom: 10 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <FontAwesome name="cutlery" size={11} color={NAVY} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#1e293b' }}>Menu Highlights</Text>
+                    <FontAwesome name="cutlery" size={11} color={ACCENT} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>Menu Highlights</Text>
                   </View>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {menuHighlights.map((dish, i) => (
@@ -401,18 +418,18 @@ function RestaurantCard({
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 8,
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: colors.surface,
                     borderRadius: 10,
                     padding: 12,
                     borderWidth: 1,
-                    borderColor: '#e2e8f0',
+                    borderColor: colors.border,
                     marginBottom: 10,
                   }}
                 >
-                  <FontAwesome name="clock-o" size={13} color={NAVY} />
+                  <FontAwesome name="clock-o" size={13} color={ACCENT} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#1e293b', marginBottom: 2 }}>Hours</Text>
-                    <Text style={{ fontSize: 12, color: '#6b7280' }}>{hours}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, marginBottom: 2 }}>Hours</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{hours}</Text>
                   </View>
                 </View>
               )}
@@ -435,13 +452,13 @@ function RestaurantCard({
                   <FontAwesome
                     name={item.isBooked ? 'check-circle' : 'info-circle'}
                     size={13}
-                    color={item.isBooked ? '#16a34a' : '#2563eb'}
+                    color={item.isBooked ? '#16a34a' : ACCENT}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: item.isBooked ? '#16a34a' : '#2563eb', marginBottom: 2 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: item.isBooked ? '#16a34a' : ACCENT, marginBottom: 2 }}>
                       Reservations
                     </Text>
-                    <Text style={{ fontSize: 12, color: '#6b7280' }}>{reservation}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{reservation}</Text>
                   </View>
                 </View>
               )}
@@ -466,7 +483,7 @@ function RestaurantCard({
                     <Text style={{ fontSize: 11, fontWeight: '600', color: '#dc2626', marginBottom: 2 }}>Special Deal</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={{ fontSize: 14, fontWeight: '800', color: '#dc2626' }}>{item.dealPrice}</Text>
-                      <Text style={{ fontSize: 12, color: '#9ca3af', textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
+                      <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
                     </View>
                   </View>
                 </View>
@@ -479,8 +496,29 @@ function RestaurantCard({
             onPress={() => setExpanded(!expanded)}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 2, marginBottom: 6 }}
           >
-            <Text style={{ fontSize: 11, color: '#9ca3af' }}>{expanded ? 'Show less' : 'Show details'}</Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary }}>{expanded ? 'Show less' : 'Show details'}</Text>
             <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={9} color="#9ca3af" />
+          </Pressable>
+
+          {/* View Details button */}
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onViewDetails(item);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 8,
+              marginBottom: 8,
+              borderRadius: 8,
+              backgroundColor: hexToRgba(ACCENT, 0.06),
+            }}
+          >
+            <FontAwesome name="info-circle" size={12} color={ACCENT} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>View Details</Text>
           </Pressable>
 
           {/* Action row */}
@@ -491,7 +529,7 @@ function RestaurantCard({
               gap: 8,
               paddingTop: 10,
               borderTopWidth: 1,
-              borderTopColor: '#f3f4f6',
+              borderTopColor: colors.borderLight,
             }}
           >
             {item.isBooked ? (
@@ -504,11 +542,11 @@ function RestaurantCard({
                   paddingVertical: 6,
                   borderRadius: 8,
                   borderWidth: 1,
-                  borderColor: '#e5e7eb',
+                  borderColor: colors.border,
                 }}
               >
                 <FontAwesome name="times" size={10} color="#9ca3af" />
-                <Text style={{ fontSize: 11, fontWeight: '500', color: '#9ca3af' }}>Remove</Text>
+                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textTertiary }}>Remove</Text>
               </Pressable>
             ) : (
               <Pressable
@@ -520,11 +558,11 @@ function RestaurantCard({
                   paddingVertical: 6,
                   borderRadius: 8,
                   borderWidth: 1,
-                  borderColor: hexToRgba(NAVY, 0.2),
+                  borderColor: hexToRgba(ACCENT, 0.2),
                 }}
               >
                 <FontAwesome name="plus" size={10} color="#4b5563" />
-                <Text style={{ fontSize: 11, fontWeight: '500', color: '#4b5563' }}>Add to Itinerary</Text>
+                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>Add to Itinerary</Text>
               </Pressable>
             )}
 
@@ -555,15 +593,224 @@ function RestaurantCard({
   );
 }
 
+// -- Restaurant detail bottom sheet --------------------------------
+function RestaurantDetailSheet({ item, onClose }: { item: DiscoverItem; onClose: () => void }) {
+  const ACCENT = useTabAccent('restaurants');
+  const colors = useThemeColors();
+  const [imgError, setImgError] = useState(false);
+  const hasImage = item.images.length > 0 && !imgError;
+  const menuHighlights = MENU_HIGHLIGHTS[item.id] || [];
+  const hours = RESTAURANT_HOURS[item.id];
+  const reservation = RESERVATION_INFO[item.id];
+  const distance = RESTAURANT_DISTANCES[item.id];
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <Pressable onPress={(e) => e.stopPropagation?.()} style={{ maxHeight: '85%', backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+          {/* Drag handle */}
+          <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+            {/* Image */}
+            {hasImage ? (
+              <Image
+                source={{ uri: item.images[0] }}
+                style={{ width: '100%', height: 200 }}
+                resizeMode="cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <View style={{ width: '100%', height: 200, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome name="image" size={32} color="#d1d5db" />
+              </View>
+            )}
+
+            <View style={{ padding: 16 }}>
+              {/* Name */}
+              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 6 }}>{item.name}</Text>
+
+              {/* Rating stars + reviews */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <RatingStars rating={item.rating} size={14} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{item.rating}</Text>
+                {item.reviewCount ? (
+                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()} reviews)</Text>
+                ) : null}
+              </View>
+
+              {/* Price level + cuisine badge */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                {item.price && <PriceLevel price={item.price} />}
+                {item.cuisine && (
+                  <View style={{ backgroundColor: hexToRgba(ACCENT, 0.1), paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: ACCENT }}>{item.cuisine}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Distance row */}
+              {distance && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                  <FontAwesome name="map-marker" size={13} color={ACCENT} />
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>{distance} away</Text>
+                </View>
+              )}
+
+              {/* Description */}
+              <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{item.description}</Text>
+
+              {/* Menu Highlights */}
+              {menuHighlights.length > 0 && (
+                <View style={{ marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <FontAwesome name="cutlery" size={12} color={ACCENT} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Menu Highlights</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {menuHighlights.map((dish, i) => (
+                      <View
+                        key={i}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                          backgroundColor: '#fef3c7',
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: '#fde68a',
+                        }}
+                      >
+                        <FontAwesome name="star-o" size={9} color="#d97706" />
+                        <Text style={{ fontSize: 11, color: '#92400e', fontWeight: '500' }}>{dish}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Hours */}
+              {hours && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: colors.surface,
+                    borderRadius: 10,
+                    padding: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    marginBottom: 12,
+                  }}
+                >
+                  <FontAwesome name="clock-o" size={13} color={ACCENT} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, marginBottom: 2 }}>Hours</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{hours}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Reservation Info */}
+              {reservation && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: item.isBooked ? '#f0fdf4' : '#eff6ff',
+                    borderRadius: 10,
+                    padding: 12,
+                    borderWidth: 1,
+                    borderColor: item.isBooked ? '#bbf7d0' : '#bfdbfe',
+                    marginBottom: 12,
+                  }}
+                >
+                  <FontAwesome
+                    name={item.isBooked ? 'check-circle' : 'info-circle'}
+                    size={13}
+                    color={item.isBooked ? '#16a34a' : ACCENT}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: item.isBooked ? '#16a34a' : ACCENT, marginBottom: 2 }}>
+                      Reservations
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{reservation}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Action buttons */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, marginBottom: 8 }}>
+                <Pressable
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    backgroundColor: ACCENT,
+                  }}
+                >
+                  <FontAwesome name="plus" size={12} color="#fff" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Add to Itinerary</Text>
+                </Pressable>
+                <Pressable
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    borderWidth: 1.5,
+                    borderColor: '#10b981',
+                    backgroundColor: colors.cardBackground,
+                  }}
+                >
+                  <FontAwesome name="external-link" size={12} color="#10b981" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#10b981' }}>Book Now</Text>
+                </Pressable>
+              </View>
+
+              {/* Close button */}
+              <Pressable
+                onPress={onClose}
+                style={{
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  marginTop: 4,
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>Close</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // -- Skeleton card ------------------------------------------------
 function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: '#e5e7eb' }, style]} />;
+  const colors = useThemeColors();
+  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
 }
 
 function SkeletonDiscoverCard() {
+  const colors = useThemeColors();
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb' }}>
-      <View style={{ height: 180, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ height: 180, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
         <FontAwesome name="image" size={28} color="#d1d5db" />
       </View>
       <View style={{ padding: 14 }}>
@@ -577,10 +824,12 @@ function SkeletonDiscoverCard() {
 
 // -- Empty state --------------------------------------------------
 function EmptyFilterState({ onClear }: { onClear: () => void }) {
+  const ACCENT = useTabAccent('restaurants');
+  const colors = useThemeColors();
   return (
     <View style={{ alignItems: 'center', paddingVertical: 48 }}>
       <FontAwesome name="search" size={32} color="#d1d5db" style={{ marginBottom: 12 }} />
-      <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>No results match your filters</Text>
+      <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>No results match your filters</Text>
       <Pressable onPress={onClear}>
         <Text style={{ fontSize: 12, color: ACCENT }}>Clear all filters</Text>
       </Pressable>
@@ -590,6 +839,8 @@ function EmptyFilterState({ onClear }: { onClear: () => void }) {
 
 // -- Main screen --------------------------------------------------
 export default function RestaurantsScreen() {
+  const ACCENT = useTabAccent('restaurants');
+  const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isLoading } = useItineraryScreen(id);
 
@@ -608,11 +859,13 @@ export default function RestaurantsScreen() {
   } = useRestaurantFilters();
 
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   // -- Loading skeleton --
   if (isLoading) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 12 }}>
+      <PageTransition>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 12 }}>
         <SkeletonBlock width="100%" height={42} radius={12} />
         <SkeletonBlock width="100%" height={38} radius={12} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -623,19 +876,21 @@ export default function RestaurantsScreen() {
         <SkeletonDiscoverCard />
         <SkeletonDiscoverCard />
       </ScrollView>
+      </PageTransition>
     );
   }
 
   return (
+    <PageTransition>
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 32 }}
       keyboardShouldPersistTaps="handled"
     >
       {/* -- Segmented Control: Booked / Discover -- */}
       <View style={{
         flexDirection: 'row',
-        backgroundColor: '#f3f4f6',
+        backgroundColor: colors.borderLight,
         borderRadius: 12,
         padding: 3,
         marginHorizontal: 16,
@@ -647,11 +902,11 @@ export default function RestaurantsScreen() {
           style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
             gap: 6, paddingVertical: 9, borderRadius: 10,
-            backgroundColor: viewMode === 'booked' ? NAVY : 'transparent',
+            backgroundColor: viewMode === 'booked' ? ACCENT : 'transparent',
           }}
         >
-          <FontAwesome name="calendar-check-o" size={12} color={viewMode === 'booked' ? '#fff' : '#6b7280'} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: viewMode === 'booked' ? '#fff' : '#6b7280' }}>
+          <FontAwesome name="calendar-check-o" size={12} color={viewMode === 'booked' ? '#fff' : colors.textSecondary} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: viewMode === 'booked' ? '#fff' : colors.textSecondary }}>
             Booked ({bookedCount})
           </Text>
         </Pressable>
@@ -660,11 +915,11 @@ export default function RestaurantsScreen() {
           style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
             gap: 6, paddingVertical: 9, borderRadius: 10,
-            backgroundColor: viewMode === 'discover' ? NAVY : 'transparent',
+            backgroundColor: viewMode === 'discover' ? ACCENT : 'transparent',
           }}
         >
-          <FontAwesome name="compass" size={12} color={viewMode === 'discover' ? '#fff' : '#6b7280'} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: viewMode === 'discover' ? '#fff' : '#6b7280' }}>
+          <FontAwesome name="compass" size={12} color={viewMode === 'discover' ? '#fff' : colors.textSecondary} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: viewMode === 'discover' ? '#fff' : colors.textSecondary }}>
             Discover ({discoverCount})
           </Text>
         </Pressable>
@@ -677,9 +932,9 @@ export default function RestaurantsScreen() {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#f3f4f6',
+              backgroundColor: colors.inputBackground,
               borderWidth: 1,
-              borderColor: '#e5e7eb',
+              borderColor: colors.border,
               borderRadius: 12,
               paddingHorizontal: 12,
               height: 38,
@@ -691,20 +946,20 @@ export default function RestaurantsScreen() {
               onChangeText={setSearchQuery}
               placeholder="Search restaurants..."
               placeholderTextColor="#9ca3af"
-              style={{ flex: 1, fontSize: 13, color: '#111827', paddingVertical: 0 }}
+              style={{ flex: 1, fontSize: 13, color: colors.text, paddingVertical: 0 }}
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
                 <FontAwesome name="times-circle" size={14} color="#9ca3af" />
               </Pressable>
             )}
-            <View style={{ width: 1, height: 18, backgroundColor: '#d1d5db', marginHorizontal: 8 }} />
+            <View style={{ width: 1, height: 18, backgroundColor: colors.border, marginHorizontal: 8 }} />
             <Pressable
               onPress={() => setShowSortDropdown(!showSortDropdown)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
             >
-              <FontAwesome name="sort-amount-desc" size={11} color={NAVY} />
-              <Text style={{ fontSize: 11, color: NAVY, fontWeight: '500' }}>
+              <FontAwesome name="sort-amount-desc" size={11} color={ACCENT} />
+              <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>
                 {RESTAURANT_SORT_OPTIONS.find((s) => s.key === sortBy)?.label}
               </Text>
               <FontAwesome name={showSortDropdown ? 'chevron-up' : 'chevron-down'} size={8} color="#9ca3af" />
@@ -718,14 +973,14 @@ export default function RestaurantsScreen() {
                 position: 'absolute',
                 top: 42,
                 right: 0,
-                backgroundColor: '#fff',
+                backgroundColor: colors.cardBackground,
                 borderRadius: 10,
                 borderWidth: 1,
-                borderColor: '#e5e7eb',
+                borderColor: colors.border,
                 paddingVertical: 4,
                 minWidth: 140,
                 zIndex: 100,
-                shadowColor: '#000',
+                shadowColor: colors.shadow,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.1,
                 shadowRadius: 8,
@@ -744,14 +999,14 @@ export default function RestaurantsScreen() {
                       gap: 8,
                       paddingHorizontal: 14,
                       paddingVertical: 10,
-                      backgroundColor: isActive ? hexToRgba(NAVY, 0.06) : 'transparent',
+                      backgroundColor: isActive ? hexToRgba(ACCENT, 0.06) : 'transparent',
                     }}
                   >
-                    <FontAwesome name={opt.icon as any} size={11} color={isActive ? NAVY : '#9ca3af'} />
-                    <Text style={{ fontSize: 12, fontWeight: isActive ? '600' : '400', color: isActive ? NAVY : '#6b7280' }}>
+                    <FontAwesome name={opt.icon as any} size={11} color={isActive ? ACCENT : colors.textTertiary} />
+                    <Text style={{ fontSize: 12, fontWeight: isActive ? '600' : '400', color: isActive ? ACCENT : colors.textSecondary }}>
                       {opt.label}
                     </Text>
-                    {isActive && <FontAwesome name="check" size={10} color={NAVY} style={{ marginLeft: 'auto' }} />}
+                    {isActive && <FontAwesome name="check" size={10} color={ACCENT} style={{ marginLeft: 'auto' }} />}
                   </Pressable>
                 );
               })}
@@ -783,20 +1038,20 @@ export default function RestaurantsScreen() {
                 paddingVertical: 7,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: isActive ? NAVY : '#e5e7eb',
-                backgroundColor: isActive ? NAVY : '#fff',
+                borderColor: isActive ? ACCENT : colors.border,
+                backgroundColor: isActive ? ACCENT : colors.cardBackground,
               }}
             >
               <FontAwesome
                 name={RESTAURANT_CATEGORY_ICONS[f] as any}
                 size={11}
-                color={isActive ? '#fff' : '#6b7280'}
+                color={isActive ? '#fff' : colors.textSecondary}
               />
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: isActive ? '600' : '400',
-                  color: isActive ? '#fff' : '#4b5563',
+                  color: isActive ? '#fff' : colors.textSecondary,
                 }}
               >
                 {f}
@@ -826,15 +1081,15 @@ export default function RestaurantsScreen() {
                   paddingVertical: 5,
                   borderRadius: 16,
                   borderWidth: 1,
-                  backgroundColor: isActive ? hexToRgba(NAVY, 0.1) : '#fff',
-                  borderColor: isActive ? hexToRgba(NAVY, 0.3) : '#e5e7eb',
+                  backgroundColor: isActive ? hexToRgba(ACCENT, 0.1) : colors.cardBackground,
+                  borderColor: isActive ? hexToRgba(ACCENT, 0.3) : colors.border,
                 }}
               >
                 <Text
                   style={{
                     fontSize: 11,
                     fontWeight: isActive ? '600' : '400',
-                    color: isActive ? NAVY : '#6b7280',
+                    color: isActive ? ACCENT : colors.textSecondary,
                   }}
                 >
                   {sub}
@@ -847,7 +1102,7 @@ export default function RestaurantsScreen() {
 
       {/* -- Results count -- */}
       <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
-        <Text style={{ fontSize: 11, color: '#9ca3af' }}>
+        <Text style={{ fontSize: 11, color: colors.textTertiary }}>
           {filteredItems.length} {filteredItems.length === 1 ? 'place' : 'places'} found
         </Text>
       </View>
@@ -862,6 +1117,7 @@ export default function RestaurantsScreen() {
                 item={item}
                 isFavorited={favorites.includes(item.id)}
                 onFavorite={toggleFavorite}
+                onViewDetails={setSelectedItem}
               />
             ))}
           </View>
@@ -869,6 +1125,9 @@ export default function RestaurantsScreen() {
           <EmptyFilterState onClear={clearFilters} />
         )}
       </View>
+
+      {selectedItem && <RestaurantDetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} />}
     </ScrollView>
+    </PageTransition>
   );
 }

@@ -4,9 +4,13 @@ import { use, useState, useEffect, useCallback } from 'react';
 import {
   User, FileText, Phone, CreditCard, Settings, Bell, Shield,
   Save, Trash2, Download, Share2, AlertTriangle, ChevronRight,
-  Check, X, Plus, Globe, GitFork, Copy,
+  Check, X, Plus, Palette, LayoutGrid, Globe, GitFork, Copy,
+  Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
+  Luggage, PieChart, Heart, Car, Settings2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { ThemePicker } from '@/components/trip/ThemePicker';
+import { useTripTheme } from '@/components/trip/TripThemeContext';
 import { useItineraryScreen, useAuthStore, isTripOwner, updateTripVisibility } from '@travyl/shared';
 
 // ─── Sub-tab definitions ──────────────────────────────────────
@@ -18,6 +22,8 @@ interface SubTab {
 }
 
 const SUB_TABS: SubTab[] = [
+  { id: 'appearance',       label: 'Theme & Colors',    icon: Palette },
+  { id: 'tabs',             label: 'Tabs',              icon: LayoutGrid },
   { id: 'profile',          label: 'Profile',           icon: User },
   { id: 'travel-documents', label: 'Travel Documents',  icon: FileText },
   { id: 'emergency',        label: 'Emergency Contact', icon: Phone },
@@ -28,7 +34,22 @@ const SUB_TABS: SubTab[] = [
   { id: 'privacy',          label: 'Privacy',           icon: Shield },
 ];
 
-const BRAND = '#1e3a5f';
+// Tab definitions for the Tabs settings section
+const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon; alwaysOn?: boolean }[] = [
+  { segment: 'index',       label: 'Overview',    icon: Home,              alwaysOn: true },
+  { segment: 'itinerary',   label: 'Itinerary',   icon: Calendar },
+  { segment: 'hotels',      label: 'Hotels',      icon: Building2 },
+  { segment: 'flights',     label: 'Flights',     icon: Plane },
+  { segment: 'restaurants', label: 'Restaurants',  icon: UtensilsCrossed },
+  { segment: 'activities',  label: 'Explore',     icon: Compass },
+  { segment: 'packing',     label: 'Packing',     icon: Luggage },
+  { segment: 'budget',      label: 'Budget',      icon: PieChart },
+  { segment: 'cars',        label: 'Car Rental',  icon: Car },
+  { segment: 'favorites',   label: 'Favorites',   icon: Heart },
+  { segment: 'settings',    label: 'Settings',    icon: Settings2,         alwaysOn: true },
+];
+
+const FALLBACK_BRAND = '#1e3a5f';
 
 // ─── Reusable small components ────────────────────────────────
 
@@ -58,7 +79,7 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent transition"
-      style={{ '--tw-ring-color': BRAND } as React.CSSProperties}
+      style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
     />
   );
 }
@@ -77,7 +98,7 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:border-transparent transition"
-      style={{ '--tw-ring-color': BRAND } as React.CSSProperties}
+      style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -91,16 +112,18 @@ function Select({
 function Toggle({
   enabled,
   onToggle,
+  color,
 }: {
   enabled: boolean;
   onToggle: () => void;
+  color?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-      style={{ backgroundColor: enabled ? BRAND : '#d1d5db' }}
+      style={{ backgroundColor: enabled ? (color ?? FALLBACK_BRAND) : '#d1d5db' }}
     >
       <span
         className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out"
@@ -230,16 +253,16 @@ function PaymentSection({
           <div
             key={card.id}
             className="flex items-center justify-between rounded-xl border bg-white p-4"
-            style={{ borderColor: card.isDefault ? BRAND : '#e5e7eb' }}
+            style={{ borderColor: card.isDefault ? FALLBACK_BRAND : '#e5e7eb' }}
           >
             <div className="flex items-center gap-3">
-              <CreditCard size={20} style={{ color: card.isDefault ? BRAND : '#9ca3af' }} />
+              <CreditCard size={20} style={{ color: card.isDefault ? FALLBACK_BRAND : '#9ca3af' }} />
               <div>
                 <p className="text-sm font-semibold text-gray-900">
                   {card.brand} ending in {card.last4}
                 </p>
                 {card.isDefault && (
-                  <span className="text-xs font-medium" style={{ color: BRAND }}>
+                  <span className="text-xs font-medium" style={{ color: FALLBACK_BRAND }}>
                     Default
                   </span>
                 )}
@@ -267,7 +290,7 @@ function PaymentSection({
       <button
         onClick={onAdd}
         className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-        style={{ backgroundColor: BRAND }}
+        style={{ backgroundColor: FALLBACK_BRAND }}
       >
         <Plus size={14} />
         Add New Card
@@ -453,7 +476,7 @@ function PrivacySection({
             <button
               onClick={copyLink}
               className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg text-white transition"
-              style={{ backgroundColor: copied ? '#10b981' : BRAND }}
+              style={{ backgroundColor: copied ? '#10b981' : FALLBACK_BRAND }}
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
@@ -576,7 +599,7 @@ function TripSharingSection({
               <button
                 onClick={copyShareLink}
                 className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg text-white transition"
-                style={{ backgroundColor: copied ? '#10b981' : BRAND }}
+                style={{ backgroundColor: copied ? '#10b981' : FALLBACK_BRAND }}
               >
                 {copied ? 'Copied!' : 'Copy'}
               </button>
@@ -655,8 +678,17 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   const user = useAuthStore((s) => s.user);
   const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('appearance');
   const [dirty, setDirty] = useState(false);
+
+  // ── Appearance — driven by shared TripThemeContext ───
+  const {
+    theme, themeId, customColor,
+    setTripTheme,
+    tabColorOverrides, setTabColor, resetTabColors,
+    itineraryColorOverrides, setItineraryColor, resetItineraryColors,
+    hiddenTabs, setTabHidden,
+  } = useTripTheme();
 
   // Trip sharing state
   const [isPublic, setIsPublic] = useState(false);
@@ -766,6 +798,57 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   // ── Content router ──
   const renderContent = () => {
     switch (activeTab) {
+      case 'appearance':
+        return (
+          <div>
+            <SectionHeading>Theme & Colors</SectionHeading>
+            <ThemePicker
+              currentTheme={themeId}
+              customColor={customColor}
+              onSelectTheme={(tid, color) => { setTripTheme(tid, color); markDirty(); }}
+              tabColors={theme.tabColors}
+              tabColorOverrides={tabColorOverrides}
+              onTabColorChange={(name, color) => { setTabColor(name, color); markDirty(); }}
+              onResetTabColors={() => { resetTabColors(); markDirty(); }}
+              itineraryColors={theme.itineraryColors}
+              itineraryColorOverrides={itineraryColorOverrides}
+              onItineraryColorChange={(section, color) => { setItineraryColor(section, color); markDirty(); }}
+              onResetItineraryColors={() => { resetItineraryColors(); markDirty(); }}
+            />
+          </div>
+        );
+      case 'tabs':
+        return (
+          <div>
+            <SectionHeading>Manage Tabs</SectionHeading>
+            <p className="text-sm text-gray-500 mb-4">Choose which tabs appear in your trip navigation.</p>
+            <div className="space-y-1">
+              {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
+                const isEnabled = !hiddenTabs[segment];
+                const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
+                return (
+                  <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 transition">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: isEnabled ? tabColor : '#d1d5db' }}>
+                        <Icon size={14} style={{ color: theme.textOnBase }} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{label}</p>
+                        {alwaysOn && <p className="text-[11px] text-gray-400">Always visible</p>}
+                      </div>
+                    </div>
+                    {alwaysOn ? (
+                      <div className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">Required</div>
+                    ) : (
+                      <Toggle enabled={isEnabled} onToggle={() => setTabHidden(segment, isEnabled)} color={theme.base} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
       case 'profile':
         return <ProfileSection data={profile} onChange={updateProfile} />;
       case 'travel-documents':
@@ -833,16 +916,17 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
                   onClick={() => setActiveTab(tabId)}
                   className={`flex items-center gap-2.5 w-full whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150 ${
                     isActive
-                      ? 'text-white shadow-sm'
+                      ? 'shadow-sm'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
-                  style={isActive ? { backgroundColor: BRAND } : undefined}
+                  style={isActive ? { backgroundColor: theme.base, color: theme.textOnBase } : undefined}
                 >
-                  <Icon size={16} className={isActive ? 'text-white' : 'text-gray-400'} />
+                  <Icon size={16} style={isActive ? { color: theme.textOnBase } : undefined} className={isActive ? '' : 'text-gray-400'} />
                   <span className="flex-1 text-left">{label}</span>
                   <ChevronRight
                     size={14}
-                    className={`hidden md:block ${isActive ? 'text-white/70' : 'text-gray-300'}`}
+                    style={isActive ? { color: theme.textOnBase, opacity: 0.7 } : undefined}
+                    className={`hidden md:block ${isActive ? '' : 'text-gray-300'}`}
                   />
                 </button>
               </li>
@@ -875,7 +959,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
           <button
             onClick={handleSave}
             className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg text-white transition hover:opacity-90"
-            style={{ backgroundColor: BRAND }}
+            style={{ backgroundColor: theme.base, color: theme.textOnBase }}
           >
             <Save size={14} />
             Save Changes

@@ -18,3 +18,4 @@ export type { RestaurantCategory, RestaurantSortOption } from './useRestaurantFi
 export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_SORT_OPTIONS, ACTIVITY_CATEGORY_ICONS, mapActivityCategory } from './useActivityFilters';
 export type { ActivityFilterCategory, ActivitySortOption } from './useActivityFilters';
 export { useForkTrip } from './useForkTrip';
+export { useTripActions } from './useTripActions';

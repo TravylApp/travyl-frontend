@@ -23,12 +23,14 @@ import {
   ACTIVITY_CATEGORIES,
   ACTIVITY_SUBFILTERS,
   ACTIVITY_SORT_OPTIONS,
-  TAB_COLORS,
 } from '@travyl/shared';
 import { SplitScreenModal } from '@/components/itinerary';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 
-const ACCENT = TAB_COLORS.activities;
+const ACCENT = 'var(--trip-base)';
+const ACCENT_BG_08 = 'rgb(var(--trip-base-rgb) / 0.08)';
+const ACCENT_BG_19 = 'rgb(var(--trip-base-rgb) / 0.19)';
+const ACCENT_RING = 'rgb(var(--trip-base-rgb) / 0.3)';
 
 const categoryIcons: Record<string, React.ReactNode> = {
   All: <Compass size={13} />,
@@ -131,7 +133,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
         >
           <CalendarCheck size={14} />
           Booked
-          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: viewMode === 'booked' ? `${ACCENT}15` : '#f3f4f6', color: viewMode === 'booked' ? ACCENT : '#6b7280' }}>
+          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: viewMode === 'booked' ? ACCENT_BG_08 : '#f3f4f6', color: viewMode === 'booked' ? ACCENT : '#6b7280' }}>
             {bookedItems.length}
           </span>
         </button>
@@ -146,7 +148,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
         >
           <Search size={14} />
           Discover
-          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: viewMode === 'discover' ? `${ACCENT}15` : '#f3f4f6', color: viewMode === 'discover' ? ACCENT : '#6b7280' }}>
+          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: viewMode === 'discover' ? ACCENT_BG_08 : '#f3f4f6', color: viewMode === 'discover' ? ACCENT : '#6b7280' }}>
             {discoverItems.length}
           </span>
         </button>
@@ -162,7 +164,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
-            style={{ '--tw-ring-color': `${ACCENT}4d` } as React.CSSProperties}
+            style={{ '--tw-ring-color': ACCENT_RING } as React.CSSProperties}
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <div className="relative">
@@ -263,9 +265,9 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
                   isActive ? 'border-transparent shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
                 style={{
-                  backgroundColor: isActive ? `${ACCENT}15` : undefined,
+                  backgroundColor: isActive ? ACCENT_BG_08 : undefined,
                   color: isActive ? ACCENT : undefined,
-                  borderColor: isActive ? `${ACCENT}30` : undefined,
+                  borderColor: isActive ? ACCENT_BG_19 : undefined,
                   fontWeight: isActive ? 500 : 400,
                 }}
               >
@@ -298,12 +300,12 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
                       key={item.id}
                       item={item}
                       index={i}
-                      accentColor={item.category === 'Events' ? '#8b5cf6' : ACCENT}
+                      accentColor={item.category === 'Events' ? 'var(--trip-base)' : ACCENT}
                       isFavorited={favorites.includes(item.id)}
                       onFavorite={toggleFavorite}
                       onClick={() => setSelectedIndex(displayItems.indexOf(item))}
-                      onAddToItinerary={(id) => console.log('Add to itinerary:', id)}
-                      onRemoveFromItinerary={(id) => console.log('Remove from itinerary:', id)}
+                      onAddToItinerary={() => {}}
+                      onRemoveFromItinerary={() => {}}
                     />
                   ))}
                 </Masonry>

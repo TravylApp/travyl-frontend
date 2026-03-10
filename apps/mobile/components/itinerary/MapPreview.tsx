@@ -7,6 +7,7 @@ interface MapPreviewProps {
   label?: string;
   zoom?: number;
   height?: number;
+  flex?: boolean;
 }
 
 export function MapPreview({
@@ -15,6 +16,7 @@ export function MapPreview({
   label = '',
   zoom = 12,
   height = 160,
+  flex = false,
 }: MapPreviewProps) {
   const html = `
 <!DOCTYPE html>
@@ -41,10 +43,10 @@ export function MapPreview({
 
   return (
     <View style={{
-      height,
-      borderRadius: 12,
+      ...(flex ? { flex: 1 } : { height }),
+      borderRadius: flex ? 0 : 12,
       overflow: 'hidden',
-      borderWidth: 1,
+      borderWidth: flex ? 0 : 1,
       borderColor: '#e5e7eb',
     }}>
       <WebView

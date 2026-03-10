@@ -3,9 +3,8 @@ import { View, Text, ScrollView, Pressable, Image, Linking } from 'react-native'
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Navy } from '@travyl/shared';
-
-const ACCENT = Navy.DEFAULT;
+import { PageTransition, useTabAccent } from './_layout';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -239,7 +238,7 @@ const OTHER_CARS: CarData[] = [
 
 function ratingColor(r: number): string {
   if (r >= 9) return '#10b981';
-  if (r >= 8) return Navy.DEFAULT;
+  if (r >= 8) return '#1e3a5f';
   return '#f97316';
 }
 
@@ -255,13 +254,16 @@ function generateConfirmation(): string {
 /* ------------------------------------------------------------------ */
 
 function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: '#e5e7eb' }, style]} />;
+  const colors = useThemeColors();
+  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
 }
 
 function SkeletonCarCard() {
+  const ACCENT = useTabAccent('cars');
+  const colors = useThemeColors();
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb' }}>
-      <View style={{ height: 130, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ height: 130, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
         <FontAwesome name="car" size={32} color="#d1d5db" />
       </View>
       <View style={{ padding: 14 }}>
@@ -309,6 +311,8 @@ function SectionToggle({
   onToggle: () => void;
   badge?: string;
 }) {
+  const ACCENT = useTabAccent('cars');
+  const colors = useThemeColors();
   return (
     <Pressable
       onPress={onToggle}
@@ -318,16 +322,16 @@ function SectionToggle({
         justifyContent: 'space-between',
         paddingVertical: 12,
         paddingHorizontal: 14,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.surface,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         marginBottom: isOpen ? 10 : 0,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name={icon as any} size={14} color={ACCENT} />
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b' }}>{title}</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{title}</Text>
         {badge && (
           <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
             <Text style={{ fontSize: 10, color: ACCENT, fontWeight: '600' }}>{badge}</Text>
@@ -352,12 +356,13 @@ function RatingBadge({ rating }: { rating: number }) {
 /* ------------------------------------------------------------------ */
 
 function ImageCarousel({ images, height = 220 }: { images: string[]; height?: number }) {
+  const colors = useThemeColors();
   const [idx, setIdx] = useState(0);
   const prev = () => setIdx((i) => (i === 0 ? images.length - 1 : i - 1));
   const next = () => setIdx((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
-    <View style={{ width: '100%', height, backgroundColor: '#e5e7eb', position: 'relative' }}>
+    <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
       <Image source={{ uri: images[idx] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       {images.length > 1 && (
         <>
@@ -402,31 +407,32 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
 /* ------------------------------------------------------------------ */
 
 function CarSpecsRow({ car }: { car: CarData }) {
+  const colors = useThemeColors();
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <FontAwesome name="users" size={11} color="#9ca3af" />
-        <Text style={{ fontSize: 11, color: '#6b7280' }}>{car.seats} seats</Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{car.seats} seats</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <FontAwesome name="cog" size={11} color="#9ca3af" />
-        <Text style={{ fontSize: 11, color: '#6b7280' }}>{car.transmission}</Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{car.transmission}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <FontAwesome name="snowflake-o" size={11} color="#9ca3af" />
-        <Text style={{ fontSize: 11, color: '#6b7280' }}>{car.ac ? 'A/C' : 'No A/C'}</Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{car.ac ? 'A/C' : 'No A/C'}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <FontAwesome name="suitcase" size={11} color="#9ca3af" />
-        <Text style={{ fontSize: 11, color: '#6b7280' }}>{car.bags.large}L {car.bags.small}S</Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{car.bags.large}L {car.bags.small}S</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <FontAwesome name="tint" size={11} color="#9ca3af" />
-        <Text style={{ fontSize: 11, color: '#6b7280' }}>{car.fuelType}</Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{car.fuelType}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         <FontAwesome name="columns" size={11} color="#9ca3af" />
-        <Text style={{ fontSize: 11, color: '#6b7280' }}>{car.doors} doors</Text>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{car.doors} doors</Text>
       </View>
     </View>
   );
@@ -437,6 +443,7 @@ function CarSpecsRow({ car }: { car: CarData }) {
 /* ------------------------------------------------------------------ */
 
 function PickupDropoffSection({ booking }: { booking: RentalBooking }) {
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -461,24 +468,24 @@ function PickupDropoffSection({ booking }: { booking: RentalBooking }) {
             <View style={{ gap: 4, paddingLeft: 30 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <FontAwesome name="building" size={10} color="#6b7280" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1e293b' }}>{booking.pickupLocation}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{booking.pickupLocation}</Text>
               </View>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>{booking.pickupAddress}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>{booking.pickupAddress}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                 <FontAwesome name="calendar" size={10} color="#6b7280" />
-                <Text style={{ fontSize: 12, color: '#374151' }}>{booking.pickupDate}</Text>
-                <Text style={{ fontSize: 12, color: '#d1d5db' }}>{'\u00b7'}</Text>
+                <Text style={{ fontSize: 12, color: colors.text }}>{booking.pickupDate}</Text>
+                <Text style={{ fontSize: 12, color: colors.border }}>{'\u00b7'}</Text>
                 <FontAwesome name="clock-o" size={10} color="#6b7280" />
-                <Text style={{ fontSize: 12, color: '#374151' }}>{booking.pickupTime}</Text>
+                <Text style={{ fontSize: 12, color: colors.text }}>{booking.pickupTime}</Text>
               </View>
             </View>
           </View>
 
           {/* Connector line */}
           <View style={{ alignItems: 'center' }}>
-            <View style={{ width: 2, height: 16, backgroundColor: '#d1d5db' }} />
+            <View style={{ width: 2, height: 16, backgroundColor: colors.border }} />
             <FontAwesome name="long-arrow-down" size={14} color="#9ca3af" />
-            <View style={{ width: 2, height: 16, backgroundColor: '#d1d5db' }} />
+            <View style={{ width: 2, height: 16, backgroundColor: colors.border }} />
           </View>
 
           {/* Dropoff */}
@@ -492,15 +499,15 @@ function PickupDropoffSection({ booking }: { booking: RentalBooking }) {
             <View style={{ gap: 4, paddingLeft: 30 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <FontAwesome name="building" size={10} color="#6b7280" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1e293b' }}>{booking.dropoffLocation}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{booking.dropoffLocation}</Text>
               </View>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>{booking.dropoffAddress}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>{booking.dropoffAddress}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                 <FontAwesome name="calendar" size={10} color="#6b7280" />
-                <Text style={{ fontSize: 12, color: '#374151' }}>{booking.dropoffDate}</Text>
-                <Text style={{ fontSize: 12, color: '#d1d5db' }}>{'\u00b7'}</Text>
+                <Text style={{ fontSize: 12, color: colors.text }}>{booking.dropoffDate}</Text>
+                <Text style={{ fontSize: 12, color: colors.border }}>{'\u00b7'}</Text>
                 <FontAwesome name="clock-o" size={10} color="#6b7280" />
-                <Text style={{ fontSize: 12, color: '#374151' }}>{booking.dropoffTime}</Text>
+                <Text style={{ fontSize: 12, color: colors.text }}>{booking.dropoffTime}</Text>
               </View>
             </View>
           </View>
@@ -515,6 +522,8 @@ function PickupDropoffSection({ booking }: { booking: RentalBooking }) {
 /* ------------------------------------------------------------------ */
 
 function FeaturesSection({ car }: { car: CarData }) {
+  const ACCENT = useTabAccent('cars');
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -535,36 +544,36 @@ function FeaturesSection({ car }: { car: CarData }) {
                 key={feat.name}
                 style={{
                   flexDirection: 'row', alignItems: 'center', gap: 6,
-                  backgroundColor: '#f1f5f9', borderRadius: 8,
+                  backgroundColor: colors.surface, borderRadius: 8,
                   paddingHorizontal: 10, paddingVertical: 7,
-                  borderWidth: 1, borderColor: '#e2e8f0',
+                  borderWidth: 1, borderColor: colors.border,
                 }}
               >
                 <FontAwesome name={feat.icon as any} size={11} color={ACCENT} />
-                <Text style={{ fontSize: 11, color: '#475569', fontWeight: '500' }}>{feat.name}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500' }}>{feat.name}</Text>
               </View>
             ))}
           </View>
 
           {/* Policies */}
           <View style={{ backgroundColor: ACCENT + '08', borderRadius: 10, padding: 14, gap: 8 }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Rental Policies
             </Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Mileage</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Mileage</Text>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{car.mileage}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Fuel Policy</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Fuel Policy</Text>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{car.fuelPolicy}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Security Deposit</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Security Deposit</Text>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{car.deposit}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Insurance</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Insurance</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome
                   name={car.insuranceIncluded ? 'check-circle' : 'times-circle'}
@@ -588,6 +597,8 @@ function FeaturesSection({ car }: { car: CarData }) {
 /* ------------------------------------------------------------------ */
 
 function PriceBreakdown({ booking }: { booking: RentalBooking }) {
+  const ACCENT = useTabAccent('cars');
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
   const { car, days, extras } = booking;
   const subtotal = car.pricePerDay * days;
@@ -609,52 +620,52 @@ function PriceBreakdown({ booking }: { booking: RentalBooking }) {
         <View style={{ backgroundColor: ACCENT + '08', borderRadius: 10, padding: 14 }}>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Vehicle</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Vehicle</Text>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{car.name}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Daily Rate</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Daily Rate</Text>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{car.pricePerDay}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>{days} days subtotal</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{days} days subtotal</Text>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{subtotal.toFixed(2)}</Text>
             </View>
 
             {extras.length > 0 && (
               <>
                 <View style={{ height: 1, backgroundColor: ACCENT + '15', marginVertical: 4 }} />
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Extras
                 </Text>
                 {extras.map((extra) => (
                   <View key={extra.name} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 12, color: '#6b7280' }}>{extra.name}</Text>
-                    <Text style={{ fontSize: 12, color: '#374151' }}>{'\u20ac'}{(extra.price * days).toFixed(2)}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{extra.name}</Text>
+                    <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{(extra.price * days).toFixed(2)}</Text>
                   </View>
                 ))}
               </>
             )}
 
             <View style={{ height: 1, backgroundColor: ACCENT + '15', marginVertical: 4 }} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Taxes & Fees
             </Text>
 
             {insuranceFee > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 12, color: '#6b7280' }}>Insurance</Text>
-                <Text style={{ fontSize: 12, color: '#374151' }}>{'\u20ac'}{insuranceFee.toFixed(2)}</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>Insurance</Text>
+                <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{insuranceFee.toFixed(2)}</Text>
               </View>
             )}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>VAT (20%)</Text>
-              <Text style={{ fontSize: 12, color: '#374151' }}>{'\u20ac'}{vat.toFixed(2)}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>VAT (20%)</Text>
+              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{vat.toFixed(2)}</Text>
             </View>
 
             <View style={{ height: 1, backgroundColor: ACCENT + '25', marginVertical: 4 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#1e293b' }}>Total</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Total</Text>
               <Text style={{ fontSize: 16, fontWeight: '800', color: ACCENT }}>{'\u20ac'}{total.toFixed(2)}</Text>
             </View>
           </View>
@@ -669,9 +680,11 @@ function PriceBreakdown({ booking }: { booking: RentalBooking }) {
 /* ------------------------------------------------------------------ */
 
 function ProviderContact({ provider, booking }: { provider: string; booking: RentalBooking }) {
+  const colors = useThemeColors();
+  const ACCENT = useTabAccent('cars');
   return (
     <View style={{ marginTop: 14 }}>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b', marginBottom: 10 }}>Provider & Support</Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 10 }}>Provider & Support</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <Pressable
           onPress={() => Linking.openURL('tel:+33-1-44-38-55-55')}
@@ -688,12 +701,12 @@ function ProviderContact({ provider, booking }: { provider: string; booking: Ren
           onPress={() => Linking.openURL(`mailto:support@${provider.toLowerCase()}.com`)}
           style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: '#eff6ff', borderRadius: 10, paddingVertical: 12,
-            borderWidth: 1, borderColor: '#bfdbfe',
+            backgroundColor: ACCENT + '10', borderRadius: 10, paddingVertical: 12,
+            borderWidth: 1, borderColor: ACCENT + '25',
           }}
         >
-          <FontAwesome name="envelope" size={13} color="#2563eb" />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#2563eb' }}>Email</Text>
+          <FontAwesome name="envelope" size={13} color={ACCENT} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>Email</Text>
         </Pressable>
         <Pressable
           onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(booking.pickupAddress + ' ' + booking.pickupLocation)}`)}
@@ -716,18 +729,20 @@ function ProviderContact({ provider, booking }: { provider: string; booking: Ren
 /* ------------------------------------------------------------------ */
 
 function OtherCarCard({ car }: { car: CarData }) {
+  const ACCENT = useTabAccent('cars');
+  const colors = useThemeColors();
   return (
     <View
       style={{
-        flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12,
-        borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', marginBottom: 10,
+        flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
+        borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
       }}
     >
       <Image source={{ uri: car.image }} style={{ width: 100, height: 110 }} resizeMode="cover" />
       <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b', flex: 1 }} numberOfLines={1}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
               {car.name}
             </Text>
             <Text style={{ fontSize: 14, fontWeight: '800', color: ACCENT, marginLeft: 8 }}>
@@ -738,28 +753,28 @@ function OtherCarCard({ car }: { car: CarData }) {
             <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
               <Text style={{ fontSize: 9, fontWeight: '600', color: ACCENT }}>{car.category}</Text>
             </View>
-            <Text style={{ fontSize: 10, color: '#9ca3af' }}>{car.provider}</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary }}>{car.provider}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
             <FontAwesome name="users" size={9} color="#9ca3af" />
-            <Text style={{ fontSize: 10, color: '#6b7280' }}>{car.seats}</Text>
+            <Text style={{ fontSize: 10, color: colors.textSecondary }}>{car.seats}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
             <FontAwesome name="cog" size={9} color="#9ca3af" />
-            <Text style={{ fontSize: 10, color: '#6b7280' }}>{car.transmission}</Text>
+            <Text style={{ fontSize: 10, color: colors.textSecondary }}>{car.transmission}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
             <FontAwesome name="snowflake-o" size={9} color="#9ca3af" />
-            <Text style={{ fontSize: 10, color: '#6b7280' }}>{car.ac ? 'AC' : '-'}</Text>
+            <Text style={{ fontSize: 10, color: colors.textSecondary }}>{car.ac ? 'AC' : '-'}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
           <RatingBadge rating={car.rating} />
-          <Text style={{ fontSize: 10, color: '#9ca3af' }}>{car.reviews} reviews</Text>
+          <Text style={{ fontSize: 10, color: colors.textTertiary }}>{car.reviews} reviews</Text>
           <View style={{ flex: 1 }} />
-          <Text style={{ fontSize: 9, color: '#9ca3af' }}>/day</Text>
+          <Text style={{ fontSize: 9, color: colors.textTertiary }}>/day</Text>
         </View>
       </View>
     </View>
@@ -771,6 +786,8 @@ function OtherCarCard({ car }: { car: CarData }) {
 /* ------------------------------------------------------------------ */
 
 export default function CarRentalScreen() {
+  const ACCENT = useTabAccent('cars');
+  const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [booked, setBooked] = useState(true);
   const [confirmationNumber, setConfirmationNumber] = useState(BOOKED_RENTAL.confirmation);
@@ -790,13 +807,14 @@ export default function CarRentalScreen() {
   };
 
   return (
+    <PageTransition>
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Booked Car Detail ── */}
-      <View style={{ backgroundColor: '#fff', overflow: 'hidden' }}>
+      <View style={{ backgroundColor: colors.background, overflow: 'hidden' }}>
 
         {/* Image Carousel */}
         <ImageCarousel images={car.images} height={240} />
@@ -807,12 +825,12 @@ export default function CarRentalScreen() {
           {/* Name & Category */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#1e293b' }}>{car.name}</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{car.name}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
                   <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>{car.category}</Text>
                 </View>
-                <Text style={{ fontSize: 11, color: '#9ca3af' }}>{car.provider}</Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>{car.provider}</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -824,7 +842,7 @@ export default function CarRentalScreen() {
           </View>
 
           {/* Reviews count */}
-          <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
             {car.reviews.toLocaleString()} verified reviews
           </Text>
 
@@ -835,11 +853,11 @@ export default function CarRentalScreen() {
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
             <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
               <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT, marginBottom: 2 }}>Daily Rate</Text>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#1e293b' }}>{'\u20ac'}{car.pricePerDay}/day</Text>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>{'\u20ac'}{car.pricePerDay}/day</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
               <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT, marginBottom: 2 }}>Duration</Text>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: '#1e293b' }}>{booking.days} days</Text>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>{booking.days} days</Text>
             </View>
           </View>
 
@@ -881,15 +899,15 @@ export default function CarRentalScreen() {
               <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center' }}>
                 <FontAwesome name="check-circle" size={28} color="#16a34a" />
                 <Text style={{ fontSize: 15, fontWeight: '700', color: '#16a34a', marginTop: 8 }}>Car Rental Booked!</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
-                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
                   {car.name} {'\u00b7'} {'\u20ac'}{car.pricePerDay}/day {'\u00b7'} {booking.days} days
                 </Text>
               </View>
             ) : (
               <Pressable onPress={handleBook}>
                 <LinearGradient
-                  colors={[Navy.DEFAULT, Navy.light]}
+                  colors={[ACCENT, ACCENT]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
@@ -908,7 +926,7 @@ export default function CarRentalScreen() {
 
       {/* ── Other Available Cars ── */}
       <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginBottom: 12 }}>Other Available Cars</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Other Available Cars</Text>
 
         {/* Category filter pills */}
         <ScrollView
@@ -933,20 +951,20 @@ export default function CarRentalScreen() {
                   paddingVertical: 8,
                   borderRadius: 12,
                   borderWidth: 1,
-                  backgroundColor: isActive ? ACCENT : '#fff',
-                  borderColor: isActive ? ACCENT : '#e5e7eb',
+                  backgroundColor: isActive ? ACCENT : colors.cardBackground,
+                  borderColor: isActive ? ACCENT : colors.border,
                 }}
               >
                 <FontAwesome
                   name={CATEGORY_ICONS[cat] as any}
                   size={12}
-                  color={isActive ? '#fff' : '#6b7280'}
+                  color={isActive ? '#fff' : colors.textSecondary}
                 />
                 <Text
                   style={{
                     fontSize: 12,
                     fontWeight: isActive ? '600' : '400',
-                    color: isActive ? '#fff' : '#6b7280',
+                    color: isActive ? '#fff' : colors.textSecondary,
                   }}
                 >
                   {cat}
@@ -954,7 +972,7 @@ export default function CarRentalScreen() {
                 <Text
                   style={{
                     fontSize: 10,
-                    color: isActive ? 'rgba(255,255,255,0.7)' : '#9ca3af',
+                    color: isActive ? 'rgba(255,255,255,0.7)' : colors.textTertiary,
                   }}
                 >
                   {count}
@@ -965,7 +983,7 @@ export default function CarRentalScreen() {
         </ScrollView>
 
         {/* Results count */}
-        <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 10 }}>
+        <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 10 }}>
           {filteredCars.length} {filteredCars.length === 1 ? 'car' : 'cars'} available
         </Text>
 
@@ -975,7 +993,7 @@ export default function CarRentalScreen() {
         ) : (
           <View style={{ alignItems: 'center', paddingVertical: 32 }}>
             <FontAwesome name="search" size={28} color="#d1d5db" style={{ marginBottom: 10 }} />
-            <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>No cars match this filter</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 6 }}>No cars match this filter</Text>
             <Pressable onPress={() => setCategoryFilter('All')}>
               <Text style={{ fontSize: 12, color: ACCENT, fontWeight: '600' }}>Show all cars</Text>
             </Pressable>
@@ -989,13 +1007,14 @@ export default function CarRentalScreen() {
           style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
             paddingVertical: 14, borderRadius: 12,
-            borderWidth: 1.5, borderColor: '#d1d5db', borderStyle: 'dashed',
+            borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
           }}
         >
           <FontAwesome name="plus-circle" size={16} color="#9ca3af" />
-          <Text style={{ fontSize: 13, fontWeight: '500', color: '#9ca3af' }}>Add Car Rental</Text>
+          <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>Add Car Rental</Text>
         </Pressable>
       </View>
     </ScrollView>
+    </PageTransition>
   );
 }

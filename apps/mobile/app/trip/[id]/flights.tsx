@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, ScrollView, Text, Pressable, Linking } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Navy, ITINERARY_COLORS } from '@travyl/shared';
-
+import { PageTransition, useTabAccent } from './_layout';
+import { useThemeColors } from '@/hooks/useThemeColors';
 /* ================================================================
    MOCK DATA — Paris trip: JFK <-> CDG
    ================================================================ */
 
-const BLUE = '#2563eb';
+function adjustBrightness(hex: string, amount: number): string {
+  const r = Math.min(255, Math.max(0, parseInt(hex.slice(1, 3), 16) + amount));
+  const g = Math.min(255, Math.max(0, parseInt(hex.slice(3, 5), 16) + amount));
+  const b = Math.min(255, Math.max(0, parseInt(hex.slice(5, 7), 16) + amount));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
 
 const POPULAR_AIRPORTS = [
   { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
@@ -151,6 +156,8 @@ function toggleInArray(arr: string[], val: string, setter: (v: string[]) => void
    ================================================================ */
 
 function FlightSearchSection() {
+  const ACCENT = useTabAccent('flights');
+  const colors = useThemeColors();
   const [collapsed, setCollapsed] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [from, setFrom] = useState('JFK');
@@ -211,19 +218,19 @@ function FlightSearchSection() {
   ];
 
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', marginBottom: 16 }}>
+    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 16 }}>
       {/* Header */}
       <Pressable
         onPress={() => setCollapsed(!collapsed)}
         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="plane" size={12} color="#fff" />
           </View>
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#1f2937' }}>Search Flights</Text>
-            <Text style={{ fontSize: 10, color: '#9ca3af' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Search Flights</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary }}>
               {from} → {to} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}
             </Text>
           </View>
@@ -240,34 +247,34 @@ function FlightSearchSection() {
                 paddingVertical: 4,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: showFilters ? BLUE : '#e5e7eb',
-                backgroundColor: showFilters ? BLUE : '#fff',
+                borderColor: showFilters ? ACCENT : colors.border,
+                backgroundColor: showFilters ? ACCENT : colors.cardBackground,
               }}
             >
-              <FontAwesome name="sliders" size={9} color={showFilters ? '#fff' : '#6b7280'} />
-              <Text style={{ fontSize: 10, color: showFilters ? '#fff' : '#6b7280' }}>Filters</Text>
+              <FontAwesome name="sliders" size={9} color={showFilters ? '#fff' : colors.textSecondary} />
+              <Text style={{ fontSize: 10, color: showFilters ? '#fff' : colors.textSecondary }}>Filters</Text>
               {activeFilterCount > 0 && !showFilters && (
-                <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', marginLeft: 2 }}>
+                <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', marginLeft: 2 }}>
                   <Text style={{ fontSize: 8, color: '#fff', fontWeight: '700' }}>{activeFilterCount}</Text>
                 </View>
               )}
             </Pressable>
           )}
-          <FontAwesome name={collapsed ? 'chevron-down' : 'chevron-up'} size={12} color="#9ca3af" />
+          <FontAwesome name={collapsed ? 'chevron-down' : 'chevron-up'} size={12} color={colors.textTertiary} />
         </View>
       </Pressable>
 
       {/* Expandable body */}
       {!collapsed && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 12 }}>
           {/* Search strip */}
-          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' }}>
             {/* From */}
-            <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-              <Text style={{ fontSize: 8, letterSpacing: 1.5, color: '#9ca3af', textTransform: 'uppercase' }}>From</Text>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 8, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>From</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: BLUE }}>{from}</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af' }}>{POPULAR_AIRPORTS.find((a) => a.code === from)?.city}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>{from}</Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary }}>{POPULAR_AIRPORTS.find((a) => a.code === from)?.city}</Text>
               </View>
             </View>
 
@@ -275,51 +282,51 @@ function FlightSearchSection() {
             <View style={{ position: 'absolute', right: 16, top: 30, zIndex: 10 }}>
               <Pressable
                 onPress={swap}
-                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
+                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', shadowColor: colors.shadow, shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
               >
-                <FontAwesome name="exchange" size={10} color="#9ca3af" />
+                <FontAwesome name="exchange" size={10} color={colors.textTertiary} />
               </Pressable>
             </View>
 
             {/* To */}
-            <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-              <Text style={{ fontSize: 8, letterSpacing: 1.5, color: '#9ca3af', textTransform: 'uppercase' }}>To</Text>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 8, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>To</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: BLUE }}>{to}</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af' }}>{POPULAR_AIRPORTS.find((a) => a.code === to)?.city}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>{to}</Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary }}>{POPULAR_AIRPORTS.find((a) => a.code === to)?.city}</Text>
               </View>
             </View>
 
             {/* Travelers + Class row */}
-            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-              <View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 10, borderRightWidth: 1, borderRightColor: '#e5e7eb' }}>
-                <Text style={{ fontSize: 8, letterSpacing: 1.5, color: '#9ca3af', textTransform: 'uppercase' }}>Travelers</Text>
+            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 10, borderRightWidth: 1, borderRightColor: colors.border }}>
+                <Text style={{ fontSize: 8, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>Travelers</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: BLUE }}>{travelers}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>{travelers}</Text>
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     <Pressable
                       onPress={() => setTravelers(Math.max(1, travelers - 1))}
-                      style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <Text style={{ fontSize: 10, color: '#6b7280' }}>-</Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>-</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => setTravelers(travelers + 1)}
-                      style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <Text style={{ fontSize: 10, color: '#6b7280' }}>+</Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>+</Text>
                     </Pressable>
                   </View>
                 </View>
               </View>
               <Pressable onPress={nextCabin} style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 10 }}>
-                <Text style={{ fontSize: 8, letterSpacing: 1.5, color: '#9ca3af', textTransform: 'uppercase' }}>Class</Text>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: BLUE }}>{cabinLabel[cabinClass]}</Text>
+                <Text style={{ fontSize: 8, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>Class</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>{cabinLabel[cabinClass]}</Text>
               </Pressable>
             </View>
 
             {/* Search button */}
-            <Pressable style={{ backgroundColor: BLUE, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Pressable style={{ backgroundColor: ACCENT, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <FontAwesome name="search" size={12} color="#fff" />
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Search</Text>
             </Pressable>
@@ -327,9 +334,9 @@ function FlightSearchSection() {
 
           {/* Advanced filters */}
           {showFilters && (
-            <View style={{ marginTop: 10, backgroundColor: 'rgba(249,250,251,0.6)', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 12 }}>
+            <View style={{ marginTop: 10, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
               {/* Stops */}
-              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 }}>Stops</Text>
+              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 8 }}>Stops</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 {[
                   { label: 'Nonstop', val: true },
@@ -343,25 +350,25 @@ function FlightSearchSection() {
                       paddingVertical: 8,
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: nonstopOnly === opt.val ? BLUE : '#e5e7eb',
-                      backgroundColor: nonstopOnly === opt.val ? BLUE : '#fff',
+                      borderColor: nonstopOnly === opt.val ? ACCENT : colors.border,
+                      backgroundColor: nonstopOnly === opt.val ? ACCENT : colors.cardBackground,
                       alignItems: 'center',
                     }}
                   >
-                    <Text style={{ fontSize: 11, color: nonstopOnly === opt.val ? '#fff' : '#4b5563' }}>{opt.label}</Text>
+                    <Text style={{ fontSize: 11, color: nonstopOnly === opt.val ? '#fff' : colors.textSecondary }}>{opt.label}</Text>
                   </Pressable>
                 ))}
               </View>
 
               {/* Max price */}
-              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 }}>Max Price</Text>
+              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 8 }}>Max Price</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                <Text style={{ fontSize: 12, color: '#9ca3af' }}>$</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#1f2937' }}>{maxPrice}</Text>
+                <Text style={{ fontSize: 12, color: colors.textTertiary }}>$</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{maxPrice}</Text>
               </View>
 
               {/* Departure time */}
-              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 }}>Departure time</Text>
+              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 8 }}>Departure time</Text>
               <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16 }}>
                 {timeSlots.map((t) => {
                   const active = depTimes.includes(t.value);
@@ -374,20 +381,20 @@ function FlightSearchSection() {
                         paddingVertical: 8,
                         borderRadius: 8,
                         borderWidth: 1,
-                        borderColor: active ? BLUE : '#e5e7eb',
-                        backgroundColor: active ? 'rgba(37,99,235,0.05)' : '#fff',
+                        borderColor: active ? ACCENT : colors.border,
+                        backgroundColor: active ? 'rgba(37,99,235,0.05)' : colors.cardBackground,
                         alignItems: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 10, fontWeight: '500', color: active ? BLUE : '#6b7280' }}>{t.label}</Text>
-                      <Text style={{ fontSize: 8, color: active ? BLUE : '#9ca3af', opacity: 0.6 }}>{t.sub}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '500', color: active ? ACCENT : colors.textSecondary }}>{t.label}</Text>
+                      <Text style={{ fontSize: 8, color: active ? ACCENT : colors.textTertiary, opacity: 0.6 }}>{t.sub}</Text>
                     </Pressable>
                   );
                 })}
               </View>
 
               {/* Arrival time */}
-              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 }}>Arrival time</Text>
+              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 8 }}>Arrival time</Text>
               <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16 }}>
                 {timeSlots.map((t) => {
                   const active = arrTimes.includes(t.value);
@@ -400,20 +407,20 @@ function FlightSearchSection() {
                         paddingVertical: 8,
                         borderRadius: 8,
                         borderWidth: 1,
-                        borderColor: active ? BLUE : '#e5e7eb',
-                        backgroundColor: active ? 'rgba(37,99,235,0.05)' : '#fff',
+                        borderColor: active ? ACCENT : colors.border,
+                        backgroundColor: active ? 'rgba(37,99,235,0.05)' : colors.cardBackground,
                         alignItems: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 10, fontWeight: '500', color: active ? BLUE : '#6b7280' }}>{t.label}</Text>
-                      <Text style={{ fontSize: 8, color: active ? BLUE : '#9ca3af', opacity: 0.6 }}>{t.sub}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '500', color: active ? ACCENT : colors.textSecondary }}>{t.label}</Text>
+                      <Text style={{ fontSize: 8, color: active ? ACCENT : colors.textTertiary, opacity: 0.6 }}>{t.sub}</Text>
                     </Pressable>
                   );
                 })}
               </View>
 
               {/* Airline chips */}
-              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 }}>Airlines</Text>
+              <Text style={{ fontSize: 9, letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 8 }}>Airlines</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                 {airlineChips.map((a) => {
                   const active = airlines.includes(a.name);
@@ -429,12 +436,12 @@ function FlightSearchSection() {
                         paddingVertical: 6,
                         borderRadius: 8,
                         borderWidth: 1,
-                        borderColor: active ? BLUE : '#e5e7eb',
-                        backgroundColor: active ? BLUE : '#fff',
+                        borderColor: active ? ACCENT : colors.border,
+                        backgroundColor: active ? ACCENT : colors.cardBackground,
                       }}
                     >
                       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: active ? '#fff' : a.color }} />
-                      <Text style={{ fontSize: 11, color: active ? '#fff' : '#4b5563' }}>{a.name}</Text>
+                      <Text style={{ fontSize: 11, color: active ? '#fff' : colors.textSecondary }}>{a.name}</Text>
                     </Pressable>
                   );
                 })}
@@ -450,7 +457,7 @@ function FlightSearchSection() {
                   setAirlines([]);
                 }}
               >
-                <Text style={{ fontSize: 11, color: '#9ca3af', textDecorationLine: 'underline' }}>Reset all filters</Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary, textDecorationLine: 'underline' }}>Reset all filters</Text>
               </Pressable>
             </View>
           )}
@@ -465,12 +472,14 @@ function FlightSearchSection() {
    ================================================================ */
 
 function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
+  const ACCENT = useTabAccent('flights');
+  const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const isOutbound = flight.type === 'outbound';
-  const gradientColors: [string, string] = isOutbound ? [BLUE, '#3b82f6'] : [Navy.DEFAULT, Navy.light];
+  const gradientColors: [string, string] = isOutbound ? [ACCENT, adjustBrightness(ACCENT, 20)] : [ACCENT, ACCENT];
 
   return (
-    <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', overflow: 'hidden', marginBottom: 16 }}>
+    <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardBackground, overflow: 'hidden', marginBottom: 16 }}>
       {/* Gradient Header */}
       <Pressable onPress={() => setExpanded(!expanded)}>
         <LinearGradient
@@ -498,20 +507,20 @@ function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           {/* Departure */}
           <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>{flight.departure.time}</Text>
-            <Text style={{ fontSize: 11, fontWeight: '500', color: '#6b7280' }}>{flight.departure.code}</Text>
-            <Text style={{ fontSize: 9, color: '#9ca3af' }}>{flight.departure.terminal} · Gate {flight.departure.gate}</Text>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{flight.departure.time}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>{flight.departure.code}</Text>
+            <Text style={{ fontSize: 9, color: colors.textTertiary }}>{flight.departure.terminal} · Gate {flight.departure.gate}</Text>
           </View>
 
           {/* Duration line with plane */}
           <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 12 }}>
-            <Text style={{ fontSize: 10, color: '#9ca3af', marginBottom: 4 }}>{flight.duration}</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>{flight.duration}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-              <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: '#d1d5db' }} />
-              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', marginHorizontal: 6 }}>
+              <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: colors.border }} />
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', marginHorizontal: 6 }}>
                 <FontAwesome name="plane" size={11} color="#fff" />
               </View>
-              <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: '#d1d5db' }} />
+              <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: colors.border }} />
             </View>
             <Text style={{ fontSize: 10, fontWeight: '600', color: '#059669', marginTop: 4 }}>{flight.stops}</Text>
           </View>
@@ -519,20 +528,20 @@ function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
           {/* Arrival */}
           <View style={{ alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>{flight.arrival.time}</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{flight.arrival.time}</Text>
               {flight.arrival.nextDay && (
                 <Text style={{ fontSize: 9, fontWeight: '600', color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
               )}
             </View>
-            <Text style={{ fontSize: 11, fontWeight: '500', color: '#6b7280' }}>{flight.arrival.code}</Text>
-            <Text style={{ fontSize: 9, color: '#9ca3af' }}>{flight.arrival.terminal} · Gate {flight.arrival.gate}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>{flight.arrival.code}</Text>
+            <Text style={{ fontSize: 9, color: colors.textTertiary }}>{flight.arrival.terminal} · Gate {flight.arrival.gate}</Text>
           </View>
         </View>
 
         {/* Airline + price bar */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <LinearGradient
-            colors={[BLUE, '#1d4ed8']}
+            colors={[ACCENT, adjustBrightness(ACCENT, -30)]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
@@ -540,19 +549,19 @@ function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
             <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>{flight.airlineLogo}</Text>
           </LinearGradient>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 12, fontWeight: '500', color: '#1f2937' }}>{flight.airline}</Text>
-            <Text style={{ fontSize: 10, color: '#9ca3af' }}>{flight.cabinClass}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text }}>{flight.airline}</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.cabinClass}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: BLUE }}>${flight.price.total}</Text>
-            <Text style={{ fontSize: 9, color: '#9ca3af' }}>per person</Text>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: ACCENT }}>${flight.price.total}</Text>
+            <Text style={{ fontSize: 9, color: colors.textTertiary }}>per person</Text>
           </View>
         </View>
       </View>
 
       {/* Expandable details */}
       {expanded && (
-        <View style={{ borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: '#fafafa', paddingHorizontal: 16, paddingBottom: 16, paddingTop: 12 }}>
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.borderLight, backgroundColor: colors.surface, paddingHorizontal: 16, paddingBottom: 16, paddingTop: 12 }}>
           {/* 2-column detail grid */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {[
@@ -565,35 +574,35 @@ function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
             ].map((item) => (
               <View
                 key={item.label}
-                style={{ width: '47%', backgroundColor: '#fff', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f3f4f6' }}
+                style={{ width: '47%', backgroundColor: colors.cardBackground, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.borderLight }}
               >
-                <Text style={{ fontSize: 8, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>{item.label}</Text>
-                <Text style={{ fontSize: 11, fontWeight: '500', color: '#374151' }}>{item.value}</Text>
+                <Text style={{ fontSize: 8, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>{item.label}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text }}>{item.value}</Text>
               </View>
             ))}
           </View>
 
           {/* Price breakdown */}
-          <View style={{ marginTop: 8, backgroundColor: '#fff', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f3f4f6' }}>
-            <Text style={{ fontSize: 8, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Price Breakdown</Text>
+          <View style={{ marginTop: 8, backgroundColor: colors.cardBackground, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.borderLight }}>
+            <Text style={{ fontSize: 8, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Price Breakdown</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>Base fare</Text>
-              <Text style={{ fontSize: 11, color: '#374151' }}>${flight.price.base}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Base fare</Text>
+              <Text style={{ fontSize: 11, color: colors.text }}>${flight.price.base}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>Taxes & fees</Text>
-              <Text style={{ fontSize: 11, color: '#374151' }}>${flight.price.taxes}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Taxes & fees</Text>
+              <Text style={{ fontSize: 11, color: colors.text }}>${flight.price.taxes}</Text>
             </View>
-            <View style={{ borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 4, marginTop: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#1f2937' }}>Total</Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: BLUE }}>${flight.price.total}</Text>
+            <View style={{ borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 4, marginTop: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.text }}>Total</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>${flight.price.total}</Text>
             </View>
           </View>
 
           {/* Confirmation */}
           <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 11, color: '#6b7280' }}>Confirmation:</Text>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: BLUE, fontFamily: 'monospace' }}>{flight.confirmation}</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary }}>Confirmation:</Text>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: ACCENT, fontFamily: 'monospace' }}>{flight.confirmation}</Text>
           </View>
         </View>
       )}
@@ -606,12 +615,24 @@ function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
    ================================================================ */
 
 function ComparisonAlternatives() {
+  const ACCENT = useTabAccent('flights');
+  const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const [sort, setSort] = useState<'price' | 'duration' | 'value'>('value');
   const [altAirports, setAltAirports] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [maxLayover, setMaxLayover] = useState<number | null>(null);
 
-  const sorted = [...COMPARISON_FLIGHTS].sort((a, b) => {
+  const filtered = COMPARISON_FLIGHTS.filter((f) => {
+    if (maxLayover === null) return true;
+    if (f.stops === 0 || !f.layover) return true;
+    const match = f.layover.match(/(\d+)h\s*(\d+)?m?/);
+    if (!match) return true;
+    const layoverHours = Number(match[1]) + (match[2] ? Number(match[2]) / 60 : 0);
+    return layoverHours <= maxLayover;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
     if (sort === 'price') return a.price - b.price;
     if (sort === 'duration') {
       const toMin = (d: string) => {
@@ -624,7 +645,7 @@ function ComparisonAlternatives() {
   });
 
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', marginBottom: 16 }}>
+    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 16 }}>
       {/* Header */}
       <Pressable
         onPress={() => setOpen(!open)}
@@ -632,14 +653,14 @@ function ComparisonAlternatives() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <FontAwesome name="line-chart" size={14} color="#059669" />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>Compare Alternatives</Text>
-          <Text style={{ fontSize: 9, color: '#9ca3af' }}>{COMPARISON_FLIGHTS.length} options</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Compare Alternatives</Text>
+          <Text style={{ fontSize: 9, color: colors.textTertiary }}>{filtered.length} options</Text>
         </View>
-        <FontAwesome name={open ? 'chevron-up' : 'chevron-down'} size={12} color="#9ca3af" />
+        <FontAwesome name={open ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
       </Pressable>
 
       {open && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 12 }}>
           {/* Sort + alt airports */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -651,10 +672,10 @@ function ComparisonAlternatives() {
                     paddingHorizontal: 10,
                     paddingVertical: 6,
                     borderRadius: 8,
-                    backgroundColor: sort === s ? BLUE : '#f3f4f6',
+                    backgroundColor: sort === s ? ACCENT : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, color: sort === s ? '#fff' : '#4b5563' }}>
+                  <Text style={{ fontSize: 11, color: sort === s ? '#fff' : colors.textSecondary }}>
                     {s === 'price' ? 'Price' : s === 'duration' ? 'Fastest' : 'Best Value'}
                   </Text>
                 </Pressable>
@@ -666,11 +687,32 @@ function ComparisonAlternatives() {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: 8,
-                backgroundColor: altAirports ? '#dbeafe' : '#f3f4f6',
+                backgroundColor: altAirports ? '#dbeafe' : colors.borderLight,
               }}
             >
-              <Text style={{ fontSize: 11, color: altAirports ? '#1d4ed8' : '#4b5563' }}>Alt Airports</Text>
+              <Text style={{ fontSize: 11, color: altAirports ? '#1d4ed8' : colors.textSecondary }}>Alt Airports</Text>
             </Pressable>
+          </View>
+
+          {/* Max Layover filter */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+            <Text style={{ fontSize: 13, color: colors.text }}>Max Layover</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {[null, 2, 4, 6, 8].map(hours => (
+                <Pressable
+                  key={String(hours)}
+                  onPress={() => setMaxLayover(hours)}
+                  style={{
+                    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+                    backgroundColor: maxLayover === hours ? ACCENT : colors.borderLight,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, color: maxLayover === hours ? '#fff' : colors.textSecondary }}>
+                    {hours === null ? 'Any' : `${hours}h`}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           {/* Alt airports chips */}
@@ -683,9 +725,9 @@ function ComparisonAlternatives() {
               ].map((ap) => (
                 <Pressable
                   key={ap.code}
-                  style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}
+                  style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#111827' }}>{ap.code}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{ap.code}</Text>
                   <Text style={{ fontSize: 11, fontWeight: '600', color: '#059669' }}>-${ap.savings}</Text>
                 </Pressable>
               ))}
@@ -694,11 +736,11 @@ function ComparisonAlternatives() {
 
           {/* Price range info */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
-            <FontAwesome name="info-circle" size={10} color="#9ca3af" />
-            <Text style={{ fontSize: 9, color: '#6b7280' }}>
+            <FontAwesome name="info-circle" size={10} color={colors.textTertiary} />
+            <Text style={{ fontSize: 9, color: colors.textSecondary }}>
               Prices from{' '}
-              <Text style={{ fontWeight: '700', color: '#374151' }}>${Math.min(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> to{' '}
-              <Text style={{ fontWeight: '700', color: '#374151' }}>${Math.max(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> per person incl. taxes
+              <Text style={{ fontWeight: '700', color: colors.text }}>${Math.min(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> to{' '}
+              <Text style={{ fontWeight: '700', color: colors.text }}>${Math.max(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> per person incl. taxes
             </Text>
           </View>
 
@@ -713,13 +755,13 @@ function ComparisonAlternatives() {
                   overflow: 'hidden',
                   marginBottom: 8,
                   borderWidth: 1,
-                  borderColor: isExpanded ? 'rgba(37,99,235,0.2)' : '#e5e7eb',
+                  borderColor: isExpanded ? 'rgba(37,99,235,0.2)' : colors.border,
                 }}
               >
                 {/* Badge */}
                 {flight.badge && (
                   <LinearGradient
-                    colors={[BLUE, '#3b82f6']}
+                    colors={[ACCENT, adjustBrightness(ACCENT, 20)]}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                     style={{ paddingHorizontal: 12, paddingVertical: 3 }}
@@ -733,12 +775,12 @@ function ComparisonAlternatives() {
                 {/* Summary row */}
                 <Pressable
                   onPress={() => setExpandedId(isExpanded ? null : flight.id)}
-                  style={{ backgroundColor: '#fff', padding: 12 }}
+                  style={{ backgroundColor: colors.cardBackground, padding: 12 }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     {/* Airline logo */}
                     <LinearGradient
-                      colors={[Navy.DEFAULT, Navy.light]}
+                      colors={[ACCENT, ACCENT]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={{ width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
@@ -749,18 +791,18 @@ function ComparisonAlternatives() {
                     {/* Times */}
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                       <View>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>{flight.departure.time}</Text>
-                        <Text style={{ fontSize: 10, color: '#9ca3af' }}>{flight.departure.airport}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{flight.departure.time}</Text>
+                        <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.departure.airport}</Text>
                       </View>
-                      <Text style={{ fontSize: 12, color: '#d1d5db', paddingHorizontal: 2 }}>→</Text>
+                      <Text style={{ fontSize: 12, color: colors.border, paddingHorizontal: 2 }}>→</Text>
                       <View>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>{flight.arrival.time}</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{flight.arrival.time}</Text>
                           {flight.arrival.nextDay && (
                             <Text style={{ fontSize: 8, fontWeight: '600', color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
                           )}
                         </View>
-                        <Text style={{ fontSize: 10, color: '#9ca3af' }}>{flight.arrival.airport}</Text>
+                        <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.arrival.airport}</Text>
                       </View>
                     </View>
 
@@ -768,7 +810,7 @@ function ComparisonAlternatives() {
 
                     {/* Duration / stops */}
                     <View style={{ alignItems: 'flex-end', marginRight: 4 }}>
-                      <Text style={{ fontSize: 12, color: '#374151' }}>{flight.duration}</Text>
+                      <Text style={{ fontSize: 12, color: colors.text }}>{flight.duration}</Text>
                       {flight.stops === 0 ? (
                         <Text style={{ fontSize: 10, fontWeight: '600', color: '#059669' }}>Direct</Text>
                       ) : (
@@ -777,12 +819,12 @@ function ComparisonAlternatives() {
                     </View>
 
                     {/* Divider */}
-                    <View style={{ width: 1, height: 32, backgroundColor: '#e5e7eb' }} />
+                    <View style={{ width: 1, height: 32, backgroundColor: colors.border }} />
 
                     {/* Price */}
                     <View style={{ alignItems: 'flex-end', minWidth: 56 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: BLUE }}>${flight.price}</Text>
-                      <Text style={{ fontSize: 10, color: '#9ca3af' }}>{flight.fareClass}</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: ACCENT }}>${flight.price}</Text>
+                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.fareClass}</Text>
                     </View>
 
                     <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} color="#d1d5db" />
@@ -790,13 +832,13 @@ function ComparisonAlternatives() {
 
                   {/* Amenity row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginLeft: 50 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f9fafb', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                      <FontAwesome name="wifi" size={10} color={flight.amenities.wifi ? '#4b5563' : '#d1d5db'} />
-                      <FontAwesome name="bolt" size={10} color={flight.amenities.power ? '#4b5563' : '#d1d5db'} />
-                      <FontAwesome name="cutlery" size={10} color={flight.amenities.meals ? '#4b5563' : '#d1d5db'} />
-                      <FontAwesome name="television" size={10} color={flight.amenities.entertainment ? '#4b5563' : '#d1d5db'} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <FontAwesome name="wifi" size={10} color={flight.amenities.wifi ? colors.textSecondary : colors.border} />
+                      <FontAwesome name="bolt" size={10} color={flight.amenities.power ? colors.textSecondary : colors.border} />
+                      <FontAwesome name="cutlery" size={10} color={flight.amenities.meals ? colors.textSecondary : colors.border} />
+                      <FontAwesome name="television" size={10} color={flight.amenities.entertainment ? colors.textSecondary : colors.border} />
                     </View>
-                    <Text style={{ fontSize: 10, color: '#9ca3af' }}>{flight.airline}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.airline}</Text>
                     {flight.businessAvailable && (
                       <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
                         <Text style={{ fontSize: 9, color: '#b45309' }}>Business avail.</Text>
@@ -807,22 +849,22 @@ function ComparisonAlternatives() {
 
                 {/* Expanded details */}
                 {isExpanded && (
-                  <View style={{ borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: '#fafafa', paddingHorizontal: 12, paddingBottom: 12, paddingTop: 8 }}>
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.borderLight, backgroundColor: colors.surface, paddingHorizontal: 12, paddingBottom: 12, paddingTop: 8 }}>
                     {/* Flight info */}
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#4b5563' }}>{flight.airline}</Text>
-                      <Text style={{ fontSize: 10, color: '#9ca3af' }}>·</Text>
-                      <Text style={{ fontSize: 10, color: '#9ca3af' }}>{flight.flightNumber}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textSecondary }}>{flight.airline}</Text>
+                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>·</Text>
+                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.flightNumber}</Text>
                       {flight.layover && (
                         <>
-                          <Text style={{ fontSize: 10, color: '#9ca3af' }}>·</Text>
+                          <Text style={{ fontSize: 10, color: colors.textTertiary }}>·</Text>
                           <Text style={{ fontSize: 10, color: '#d97706' }}>Stop: {flight.layover}</Text>
                         </>
                       )}
                     </View>
 
                     {/* Stats bar */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f3f4f6', marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.cardBackground, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.borderLight, marginBottom: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <View
                           style={{
@@ -832,19 +874,19 @@ function ComparisonAlternatives() {
                             backgroundColor: flight.onTime >= 85 ? '#22c55e' : flight.onTime >= 78 ? '#fbbf24' : '#f87171',
                           }}
                         />
-                        <Text style={{ fontSize: 10, color: '#4b5563' }}>{flight.onTime}% on-time</Text>
+                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>{flight.onTime}% on-time</Text>
                       </View>
-                      <View style={{ width: 1, height: 12, backgroundColor: '#e5e7eb' }} />
+                      <View style={{ width: 1, height: 12, backgroundColor: colors.border }} />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? '#16a34a' : '#9ca3af'} />
-                        <Text style={{ fontSize: 10, color: '#4b5563' }}>{flight.co2}kg CO2</Text>
+                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? '#16a34a' : colors.textTertiary} />
+                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>{flight.co2}kg CO2</Text>
                       </View>
                     </View>
 
                     {/* Select button */}
                     <Pressable>
                       <LinearGradient
-                        colors={[BLUE, '#3b82f6']}
+                        colors={[ACCENT, adjustBrightness(ACCENT, 20)]}
                         start={{ x: 0, y: 0.5 }}
                         end={{ x: 1, y: 0.5 }}
                         style={{ paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
@@ -868,11 +910,13 @@ function ComparisonAlternatives() {
    ================================================================ */
 
 function BookingDetailsSection() {
+  const ACCENT = useTabAccent('flights');
+  const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const d = BOOKING_DETAILS;
 
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
+    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
       {/* Header */}
       <Pressable
         onPress={() => setOpen(!open)}
@@ -886,29 +930,29 @@ function BookingDetailsSection() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <FontAwesome name="file-text-o" size={14} color={BLUE} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>Booking Details</Text>
+          <FontAwesome name="file-text-o" size={14} color={ACCENT} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Booking Details</Text>
         </View>
-        <FontAwesome name={open ? 'chevron-up' : 'chevron-down'} size={12} color="#9ca3af" />
+        <FontAwesome name={open ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
       </Pressable>
 
       {open && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 12 }}>
           {/* Booking reference */}
-          <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1f2937', marginBottom: 8 }}>Booking Reference</Text>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Booking Reference</Text>
             {[
               { label: 'Confirmation Number', value: d.confirmationNumber, bold: true },
               { label: 'PNR Code', value: d.pnr, mono: true },
               { label: 'Fare Class', value: `${d.fareClass} - ${d.fareType}` },
             ].map((row) => (
               <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={{ fontSize: 11, color: '#6b7280' }}>{row.label}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary }}>{row.label}</Text>
                 <Text
                   style={{
                     fontSize: 11,
                     fontWeight: row.bold ? '800' : '600',
-                    color: row.bold ? BLUE : '#1f2937',
+                    color: row.bold ? ACCENT : colors.text,
                     fontFamily: row.mono ? 'monospace' : undefined,
                   }}
                 >
@@ -919,18 +963,18 @@ function BookingDetailsSection() {
           </View>
 
           {/* Baggage */}
-          <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1f2937', marginBottom: 8 }}>Baggage Allowance</Text>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Baggage Allowance</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>Carry-on</Text>
-              <Text style={{ fontSize: 11, color: '#1f2937' }}>{d.baggageAllowance.carryOn}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Carry-on</Text>
+              <Text style={{ fontSize: 11, color: colors.text }}>{d.baggageAllowance.carryOn}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>Checked</Text>
-              <Text style={{ fontSize: 11, color: '#1f2937' }}>{d.baggageAllowance.checked}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Checked</Text>
+              <Text style={{ fontSize: 11, color: colors.text }}>{d.baggageAllowance.checked}</Text>
             </View>
-            <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 11, color: '#6b7280' }}>Baggage Fees</Text>
+            <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 11, color: colors.textSecondary }}>Baggage Fees</Text>
               <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>
                 {d.baggageAllowance.fees === 0 ? 'Included' : `$${d.baggageAllowance.fees}/person`}
               </Text>
@@ -938,12 +982,12 @@ function BookingDetailsSection() {
           </View>
 
           {/* Ticket numbers */}
-          <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1f2937', marginBottom: 8 }}>Ticket Numbers</Text>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Ticket Numbers</Text>
             {d.ticketNumbers.map((t, i) => (
               <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ fontSize: 11, color: '#6b7280' }}>Passenger {i + 1}</Text>
-                <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#1f2937' }}>{t}</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary }}>Passenger {i + 1}</Text>
+                <Text style={{ fontSize: 11, fontFamily: 'monospace', color: colors.text }}>{t}</Text>
               </View>
             ))}
           </View>
@@ -954,15 +998,15 @@ function BookingDetailsSection() {
             { title: 'Change Policy', text: d.changePolicy },
             { title: 'Refund Policy', text: d.refundPolicy },
           ].map((p) => (
-            <View key={p.title} style={{ backgroundColor: '#f9fafb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#1f2937', marginBottom: 4 }}>{p.title}</Text>
-              <Text style={{ fontSize: 11, color: '#4b5563', lineHeight: 18 }}>{p.text}</Text>
+            <View key={p.title} style={{ backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text, marginBottom: 4 }}>{p.title}</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, lineHeight: 18 }}>{p.text}</Text>
             </View>
           ))}
 
           {/* Check-in CTA */}
           <LinearGradient
-            colors={[BLUE, '#1d4ed8']}
+            colors={[ACCENT, adjustBrightness(ACCENT, -30)]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12 }}
@@ -976,7 +1020,7 @@ function BookingDetailsSection() {
               onPress={() => Linking.openURL(d.checkInUrl)}
               style={{ alignSelf: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '700', color: BLUE }}>Check-in Online →</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: ACCENT }}>Check-in Online →</Text>
             </Pressable>
           </LinearGradient>
         </View>
@@ -986,14 +1030,51 @@ function BookingDetailsSection() {
 }
 
 /* ================================================================
+   LOADING SKELETON
+   ================================================================ */
+
+function FlightSkeleton() {
+  const colors = useThemeColors();
+  return (
+    <View style={{ padding: 14, gap: 14, backgroundColor: colors.background }}>
+      {[1, 2].map(i => (
+        <View key={i} style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ height: 44, backgroundColor: colors.skeleton }} />
+          <View style={{ padding: 14, gap: 10 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ width: '30%', height: 18, borderRadius: 6, backgroundColor: colors.borderLight }} />
+              <View style={{ width: '20%', height: 18, borderRadius: 6, backgroundColor: colors.borderLight }} />
+              <View style={{ width: '30%', height: 18, borderRadius: 6, backgroundColor: colors.borderLight }} />
+            </View>
+            <View style={{ width: '60%', height: 14, borderRadius: 6, backgroundColor: colors.borderLight }} />
+            <View style={{ width: '40%', height: 14, borderRadius: 6, backgroundColor: colors.borderLight }} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/* ================================================================
    MAIN PAGE
    ================================================================ */
 
 export default function FlightsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const ACCENT = useTabAccent('flights');
+  const colors = useThemeColors();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <PageTransition>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       {/* 1. Flight Search Section */}
       <FlightSearchSection />
 
@@ -1015,13 +1096,13 @@ export default function FlightsScreen() {
           paddingVertical: 14,
           borderRadius: 12,
           borderWidth: 2,
-          borderColor: '#e5e7eb',
+          borderColor: colors.border,
           borderStyle: 'dashed',
           marginBottom: 16,
         }}
       >
-        <FontAwesome name="plus" size={14} color="#9ca3af" />
-        <Text style={{ fontSize: 13, fontWeight: '500', color: '#9ca3af' }}>Add Flight</Text>
+        <FontAwesome name="plus" size={14} color={colors.textTertiary} />
+        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>Add Flight</Text>
       </Pressable>
 
       {/* 4. Comparison Alternatives */}
@@ -1030,5 +1111,6 @@ export default function FlightsScreen() {
       {/* 5. Booking Details */}
       <BookingDetailsSection />
     </ScrollView>
+    </PageTransition>
   );
 }

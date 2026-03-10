@@ -2,18 +2,21 @@
 
 import { use, useState } from 'react';
 import {
-  MapPin, Plane, Building2, ListTodo, Calendar, Users, CalendarPlus, Clock,
-  Train, Bus, Footprints, Car, CreditCard, Phone, Shield, Stethoscope,
-  UtensilsCrossed, Camera, ChevronDown, ChevronUp,
+  MapPin, Plane, Building2, ListTodo, Calendar, Users, Clock,
+  Train, Bus, Footprints, Car, Phone, Shield, ChevronDown, ChevronUp,
+  Cloud, Droplets, Sun, AlertTriangle, Newspaper, Sparkles, Lightbulb, ExternalLink,
 } from 'lucide-react';
-import { useItineraryScreen, getActivityTypeColor, MOCK_TRIP } from '@travyl/shared';
-import { ForkAttribution } from '@/components/trip/ForkAttribution';
+import {
+  useItineraryScreen, MOCK_TRIP,
+  MOCK_WEATHER, MOCK_WEATHER_FORECAST, MOCK_NEWS,
+} from '@travyl/shared';
+import type { NewsItem } from '@travyl/shared';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`rounded-md bg-gray-200 ${className}`} />;
 }
 
-// ─── Collapsible Section (from Trip Info) ─────────────────────
+// ─── Collapsible Section ─────────────────────────────────────
 
 function CollapsibleSection({
   title, icon, iconBg, children, defaultOpen = false,
@@ -57,13 +60,22 @@ function InfoCard({ icon, title, subtitle, detail, iconColor = '#3b82f6' }: {
   );
 }
 
+// ─── News Category Helpers ───────────────────────────────────
+
+const NEWS_CATEGORY_CONFIG: Record<NewsItem['category'], { icon: typeof Newspaper; color: string; bg: string; label: string }> = {
+  event:    { icon: Sparkles,      color: '#7c3aed', bg: '#f5f3ff', label: 'Event' },
+  advisory: { icon: AlertTriangle, color: '#d97706', bg: '#fffbeb', label: 'Advisory' },
+  news:     { icon: Newspaper,     color: '#2563eb', bg: '#eff6ff', label: 'News' },
+  tip:      { icon: Lightbulb,     color: '#059669', bg: '#ecfdf5', label: 'Tip' },
+};
+
 // ─── Data ─────────────────────────────────────────────────────
 
 const TRANSPORT_OPTIONS = [
   { icon: <Train size={16} />, iconColor: '#2563eb', name: 'Metro', description: '3 lines, stations every 500m', detail: 'The Paris Métro is the fastest way around. Lines 1, 4, and 7 serve major tourist areas. Buy a carnet of 10 tickets for savings.' },
   { icon: <Bus size={16} />, iconColor: '#16a34a', name: 'Bus & Tram', description: 'Great for scenic routes', detail: 'Buses are slower but offer great views. The 69 bus passes many landmarks. Noctilien night buses run 12:30–5:30 AM.' },
   { icon: <Footprints size={16} />, iconColor: '#d97706', name: 'Walking', description: 'Most attractions within 30 min', detail: 'Walking is the best way to discover Paris. The Seine banks, Le Marais, and Montmartre are especially pleasant on foot.' },
-  { icon: <Car size={16} />, iconColor: '#7c3aed', name: 'Taxis', description: '€15-40 for most trips', detail: 'Official taxis are beige/cream. Uber and Bolt operate in Paris. CDG airport: €50-70 flat rate.' },
+  { icon: <Car size={16} />, iconColor: 'var(--trip-base)', name: 'Taxis', description: '€15-40 for most trips', detail: 'Official taxis are beige/cream. Uber and Bolt operate in Paris. CDG airport: €50-70 flat rate.' },
 ];
 
 const EMERGENCY_INFO = [
@@ -85,7 +97,6 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const infoTrip = MOCK_TRIP;
 
   const allActivities = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities));
-  const upcoming = allActivities.slice(0, 5);
 
   const stats = [
     { icon: Plane, label: 'Flights', count: flights.length, color: '#2563eb', bg: '#dbeafe' },
@@ -97,15 +108,14 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const endDate = new Date(infoTrip.end_date + 'T00:00:00');
   const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
+  const weather = MOCK_WEATHER;
+  const forecast = MOCK_WEATHER_FORECAST;
+  const news = MOCK_NEWS;
+
   return (
     <div className="pb-8 space-y-4">
-      {/* Fork Attribution - if this trip was forked */}
-      {trip && trip.forked_from_trip_id && (
-        <ForkAttribution trip={trip} />
-      )}
-
-      {/* Hero card — compact trip info, single row of meta + stats */}
-      <div className="rounded-xl overflow-hidden px-4 py-3.5" style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}>
+      {/* Hero card — compact trip info */}
+      <div className="rounded-xl overflow-hidden px-4 py-3.5" style={{ background: 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))' }}>
         <div className="flex items-center gap-1.5 mb-1">
           <MapPin size={14} className="text-white/70 shrink-0" />
           {trip ? (
@@ -148,47 +158,100 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
-      {/* Two-column: Upcoming + Quick Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left: Upcoming Activities */}
-        <div>
-          <h3 className="text-[14px] font-semibold text-gray-900 mb-2">Upcoming</h3>
-          {isLoading ? (
-            [1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center rounded-xl border border-gray-100 bg-white p-3 mb-2">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 mr-3 shrink-0" />
-                <div className="flex-1">
-                  <Skeleton className="h-3 w-[65%]" />
-                  <Skeleton className="h-2.5 w-[45%] mt-1" />
+      {/* Weather card */}
+      <div className="rounded-xl border border-gray-200 bg-gradient-to-r from-sky-50 to-blue-50 p-4">
+        <div className="flex items-start justify-between gap-4">
+          {/* Current conditions */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-white/80 flex items-center justify-center shadow-sm">
+              {weather.conditions.toLowerCase().includes('cloud') ? (
+                <Cloud size={22} className="text-gray-500" />
+              ) : weather.conditions.toLowerCase().includes('rain') ? (
+                <Droplets size={22} className="text-blue-500" />
+              ) : (
+                <Sun size={22} className="text-amber-500" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold text-gray-900">{weather.high}°</span>
+                <span className="text-sm text-gray-400">/ {weather.low}°{weather.unit === 'celsius' ? 'C' : 'F'}</span>
+              </div>
+              <p className="text-[11px] text-gray-500">{weather.conditions} in {weather.destination}</p>
+            </div>
+          </div>
+
+          {/* 5-day forecast strip */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            {forecast.slice(0, 5).map((day) => (
+              <div key={day.day} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg bg-white/60">
+                <span className="text-[10px] font-medium text-gray-500">{day.day}</span>
+                <span className="text-base leading-none">{day.icon}</span>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-[11px] font-semibold text-gray-800">{day.high}°</span>
+                  <span className="text-[9px] text-gray-400">{day.low}°</span>
                 </div>
               </div>
-            ))
-          ) : upcoming.length > 0 ? (
-            upcoming.map((activity) => {
-              const typeColor = getActivityTypeColor(activity.category);
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile forecast — horizontal scroll */}
+        <div className="flex sm:hidden items-center gap-1.5 mt-3 overflow-x-auto pb-1 -mx-1 px-1">
+          {forecast.slice(0, 5).map((day) => (
+            <div key={day.day} className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg bg-white/60 shrink-0">
+              <span className="text-[10px] font-medium text-gray-500">{day.day}</span>
+              <span className="text-base leading-none">{day.icon}</span>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[11px] font-semibold text-gray-800">{day.high}°</span>
+                <span className="text-[9px] text-gray-400">{day.low}°</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Two-column: Things to Check Out + Quick Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left: Things to Check Out */}
+        <div>
+          <h3 className="text-[14px] font-semibold text-gray-900 mb-2">Things to Check Out</h3>
+
+          {/* News / Events */}
+          <div className="space-y-1.5 mb-3">
+            {news.map((item) => {
+              const config = NEWS_CATEGORY_CONFIG[item.category];
+              const Icon = config.icon;
               return (
-                <div key={activity.id} className="flex items-center rounded-xl border border-gray-100 bg-white p-2.5 mb-1.5 hover:shadow-sm transition-shadow">
-                  <div className="w-9 h-9 rounded-lg mr-2.5 shrink-0 flex items-center justify-center" style={{ backgroundColor: typeColor.bg }}>
-                    <MapPin size={13} style={{ color: typeColor.primary }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-gray-900 truncate">{activity.name}</p>
-                    {activity.locationName && (
-                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{activity.locationName}</p>
+                <div key={item.id} className="rounded-xl border border-gray-100 bg-white p-2.5 hover:shadow-sm transition-shadow">
+                  <div className="flex items-start gap-2.5">
+                    <div
+                      className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center"
+                      style={{ backgroundColor: config.bg }}
+                    >
+                      <Icon size={14} style={{ color: config.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span
+                          className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                          style={{ backgroundColor: config.bg, color: config.color }}
+                        >
+                          {config.label}
+                        </span>
+                        <span className="text-[9px] text-gray-400">{item.source}</span>
+                      </div>
+                      <p className="text-[12px] font-medium text-gray-900 leading-snug">{item.title}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{item.snippet}</p>
+                    </div>
+                    {item.url && (
+                      <ExternalLink size={11} className="text-gray-300 shrink-0 mt-1" />
                     )}
                   </div>
-                  {activity.timeDisplay && (
-                    <span className="text-[10px] text-gray-400 shrink-0 ml-2">{activity.timeDisplay}</span>
-                  )}
                 </div>
               );
-            })
-          ) : (
-            <div className="flex flex-col items-center py-6 bg-white rounded-xl border border-gray-100">
-              <CalendarPlus size={20} className="text-gray-300 mb-1.5" />
-              <p className="text-[12px] text-gray-400 text-center">No activities yet</p>
-            </div>
-          )}
+            })}
+          </div>
         </div>
 
         {/* Right: Quick Travel Info */}

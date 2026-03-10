@@ -405,7 +405,7 @@ function SelectedHotelDetail({
           <button
             onClick={onBook}
             className="w-full py-3 rounded-xl text-sm font-bold text-white transition-colors hover:opacity-90"
-            style={{ backgroundColor: '#1e3a5f' }}
+            style={{ backgroundColor: 'var(--trip-base)' }}
           >
             Book Hotel &middot; {formatEur(selectedRoom.price)}/night
           </button>

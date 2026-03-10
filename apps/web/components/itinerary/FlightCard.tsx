@@ -18,7 +18,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
         className="px-4 py-3 flex items-center justify-between"
         style={{
           background: isReturn
-            ? 'linear-gradient(135deg, #1e3a5f, #2d4a6f)'
+            ? 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))'
             : 'linear-gradient(135deg, #0ea5e9, #0284c7)',
         }}
       >
@@ -48,7 +48,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
         <div className="flex items-center justify-between">
           {/* Departure */}
           <div className="text-center flex-1">
-            <p className="text-xl text-[#1e3a5f] font-semibold">{flight.originIata}</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--trip-base)' }}>{flight.originIata}</p>
             <p className="text-xs text-gray-500 mt-0.5">Departure</p>
             {flight.departureDisplay && (
               <p className="text-sm font-medium text-gray-800 mt-0.5">{flight.departureDisplay}</p>
@@ -69,7 +69,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
 
           {/* Arrival */}
           <div className="text-center flex-1">
-            <p className="text-xl text-[#1e3a5f] font-semibold">{flight.destIata}</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--trip-base)' }}>{flight.destIata}</p>
             <p className="text-xs text-gray-500 mt-0.5">Arrival</p>
             {flight.arrivalDisplay && (
               <p className="text-sm font-medium text-gray-800 mt-0.5">{flight.arrivalDisplay}</p>
@@ -83,7 +83,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
             On Time
           </span>
           {flight.cabinClass && (
-            <span className="bg-[#1e3a5f]/10 text-[#1e3a5f] text-[10px] font-medium px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)', color: 'var(--trip-base)' }}>
               {flight.cabinClass}
             </span>
           )}

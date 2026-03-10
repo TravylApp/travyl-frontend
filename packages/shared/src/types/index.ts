@@ -29,8 +29,28 @@ export interface Trip {
   forked_from_trip_id: string | null;
   fork_count: number;
   is_public: boolean;
+  theme: string;
+  custom_theme_color: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ─── Route / Map Types ─────────────────────────────────────
+
+export interface RouteLocation {
+  name: string;
+  city?: string;
+  iata?: string;
+  lat: number;
+  lng: number;
+  country?: string;
+  continent?: string;
+}
+
+export interface TripRoute {
+  origin: RouteLocation;
+  destinations: RouteLocation[];
+  stops?: RouteLocation[];
 }
 
 export interface SavedItem {
@@ -308,6 +328,18 @@ export interface WeatherForecast {
   low: number;
   icon: string;
   condition: string;
+}
+
+// ─── News / Events ────────────────────────────────────────────
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  snippet: string;
+  category: 'event' | 'advisory' | 'news' | 'tip';
+  source: string;
+  date: string;
+  url?: string;
 }
 
 // ─── Globe / Map Location ────────────────────────────────────

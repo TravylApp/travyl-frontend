@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Geist_Mono } from "next/font/google";
+import { Outfit, Geist_Mono, Sora } from "next/font/google";
 import Providers from "@/components/providers";
 import "./globals.css";
 
@@ -13,9 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const sora = Sora({
+  variable: "--font-brand",
+  subsets: ["latin"],
+  weight: ["700", "800"],
+});
+
 export const metadata: Metadata = {
-  title: "Travyl",
+  title: {
+    default: "Travyl",
+    template: "%s | Travyl",
+  },
   description: "AI-powered travel assistant",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -26,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${outfit.variable} ${geistMono.variable} antialiased`}
+        className={`${outfit.variable} ${geistMono.variable} ${sora.variable} antialiased`}
       >
         <Providers>
           {children}
