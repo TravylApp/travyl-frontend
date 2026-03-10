@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal,
+  View, Text, Pressable, Share,
   Platform, PanResponder, Animated, Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,11 +10,11 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, MOCK_DESTINATION_COORDS } from '@travyl/shared';
-import { MapPreview } from '@/components/itinerary/MapPreview';
+import { useItineraryScreen, formatDateRange, resolveTheme } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 const { Navigator } = createMaterialTopTabNavigator();
 const TopTabs = withLayoutContext(Navigator);
@@ -52,6 +52,7 @@ const TabCtx = createContext<{
   setSpinePosition: (p: SpinePosition) => void;
   scrubbing: boolean;
   setScrubbing: (s: boolean) => void;
+  navDirection: 1 | -1;
   theme: TripTheme;
   setTripTheme: (themeId: string, customColor?: string) => void;
   tabColorOverrides: Record<string, string>;
@@ -69,6 +70,7 @@ const TabCtx = createContext<{
   setSpinePosition: () => {},
   scrubbing: false,
   setScrubbing: () => {},
+  navDirection: 1,
   theme: resolveTheme(),
   setTripTheme: () => {},
   tabColorOverrides: {},
@@ -99,34 +101,79 @@ export function useThemeBase() {
 }
 
 // ─── Page Transition Wrapper ─────────────────────────────
-// Wrap each tab screen's content in this for a polished entrance animation.
+// Horizontal slide for top/bottom spine, vertical wheel rotation for left/right.
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const isFocused = useIsFocused();
+  const { spinePosition, navDirection } = useContext(TabCtx);
   const anim = useRef(new Animated.Value(0)).current;
+  // Capture direction at mount so it doesn't flip mid-animation
+  const dirRef = useRef(navDirection);
+  const spineRef = useRef(spinePosition);
+  if (isFocused) {
+    dirRef.current = navDirection;
+    spineRef.current = spinePosition;
+  }
 
   useEffect(() => {
     if (isFocused) {
       anim.setValue(0);
-      Animated.spring(anim, {
+      Animated.timing(anim, {
         toValue: 1,
-        tension: 60,
-        friction: 9,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     }
   }, [isFocused]);
 
+  const isVerticalSpine = spineRef.current === 'left' || spineRef.current === 'right';
+  const dir = dirRef.current;
+
   const opacity = anim.interpolate({
     inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.6, 1],
+    outputRange: [0, 0.7, 1],
   });
-  const scale = anim.interpolate({
+
+  if (isVerticalSpine) {
+    // Circular Z-axis: page rotates towards you (dir=1) or away from you (dir=-1)
+    // like a rolodex spinning in depth
+    const rotateX = anim.interpolate({
+      inputRange: [0, 1],
+      // dir=1 (going down): starts tilted back, swings toward you
+      // dir=-1 (going up): starts tilted forward, swings away then settles
+      outputRange: [dir > 0 ? '-55deg' : '55deg', '0deg'],
+    });
+    const scale = anim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0.75, 0.92, 1],
+    });
+    const translateY = anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [dir > 0 ? 80 : -80, 0],
+    });
+
+    return (
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity,
+          transform: [
+            { perspective: 600 },
+            { translateY },
+            { rotateX },
+            { scale },
+          ],
+        }}
+      >
+        {children}
+      </Animated.View>
+    );
+  }
+
+  // Horizontal slide for top/bottom
+  const translateX = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.92, 1],
-  });
-  const rotateY = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-12deg', '0deg'],
+    outputRange: [dir > 0 ? 60 : -60, 0],
   });
 
   return (
@@ -134,11 +181,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       style={{
         flex: 1,
         opacity,
-        transform: [
-          { perspective: 800 },
-          { rotateY },
-          { scale },
-        ],
+        transform: [{ translateX }],
       }}
     >
       {children}
@@ -324,10 +367,6 @@ function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
 }
 
 // ─── Helpers ─────────────────────────────────────────────
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
 
 function getVisibleRoutes(state: MaterialTopTabBarProps['state']) {
   const allNames = ALL_TABS.map((t) => t.name);
@@ -340,9 +379,6 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state']) {
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
   const { theme, calendarOpen, setCalendarOpen, mapOpen, setMapOpen } = useContext(TabCtx);
   const router = useRouter();
-  const handleMap = () => {
-    setMapOpen(!mapOpen);
-  };
 
   const handleShare = async () => {
     if (!trip) return;
@@ -355,9 +391,21 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
   };
 
   const handleCalendar = () => {
-    if (!trip?.id) return;
-    setCalendarOpen(!calendarOpen);
-    router.push(`/trip/${trip.id}/itinerary`);
+    const next = !calendarOpen;
+    setCalendarOpen(next);
+    if (next) {
+      setMapOpen(false);
+      tabNavRef.current?.navigate('itinerary');
+    }
+  };
+
+  const handleMap = () => {
+    const next = !mapOpen;
+    setMapOpen(next);
+    if (next) {
+      setCalendarOpen(false);
+      tabNavRef.current?.navigate('itinerary');
+    }
   };
 
   const btns = [
@@ -718,9 +766,24 @@ function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   );
 }
 
+// ─── Tab navigation ref (allows TripHero to switch tabs) ─
+const tabNavRef = { current: null as MaterialTopTabBarProps['navigation'] | null };
+
 // ─── Custom Tab Bar (delegates to horizontal or vertical) ─
+// Also tracks navigation direction for PageTransition animations.
+const navDirectionRef = { current: 1 as 1 | -1 };
+const prevTabIndexRef = { current: 0 };
+
 function CustomTabBar(props: MaterialTopTabBarProps) {
   const { spinePosition } = useContext(TabCtx);
+  tabNavRef.current = props.navigation;
+
+  // Track direction based on tab index changes
+  const idx = props.state.index;
+  if (idx !== prevTabIndexRef.current) {
+    navDirectionRef.current = idx > prevTabIndexRef.current ? 1 : -1;
+    prevTabIndexRef.current = idx;
+  }
 
   if (spinePosition === 'top') {
     return <HorizontalTabBar {...props} />;
@@ -812,40 +875,10 @@ export default function TripLayout() {
 
   return (
     <TabCtx.Provider
-      value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen }}
+      value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen }}
     >
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <TripHero trip={trip} refetch={refetch} />
-
-        {/* In-app map modal */}
-        <Modal visible={mapOpen} animationType="slide" presentationStyle="pageSheet">
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 16, paddingBottom: 12,
-              backgroundColor: theme.base,
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <FontAwesome name="map" size={14} color="#fff" />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
-                  {trip?.destination || 'Map'}
-                </Text>
-              </View>
-              <Pressable onPress={() => setMapOpen(false)} hitSlop={12}>
-                <FontAwesome name="times" size={18} color="#fff" />
-              </Pressable>
-            </View>
-            <MapPreview
-              lat={MOCK_DESTINATION_COORDS.lat}
-              lng={MOCK_DESTINATION_COORDS.lng}
-              label={trip?.destination || 'Destination'}
-              zoom={13}
-              flex
-            />
-          </View>
-        </Modal>
-
-        {/* Separator line */}
         <View style={{ height: 1, backgroundColor: colors.border }} />
 
         <View style={{ flex: 1, position: 'relative' }}>
