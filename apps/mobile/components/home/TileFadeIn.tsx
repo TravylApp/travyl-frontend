@@ -37,7 +37,7 @@ export function TileFadeIn({
   };
 
   const animStyle = useAnimatedStyle(() => {
-    if (!scrollY) return { opacity: 1 };
+    if (!scrollY) return { opacity: 1, transform: [] };
 
     const trigger = absoluteY.value - screenH + 80 + index * 40;
     const progress = interpolate(

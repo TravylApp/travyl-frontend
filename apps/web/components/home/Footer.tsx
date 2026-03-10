@@ -4,17 +4,17 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { PaperPlane } from "./PaperPlane";
 import { FOOTER_COLUMNS, SOCIAL_LINKS } from "@travyl/shared";
+import { Apple, Smartphone } from "lucide-react";
 
 const LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'en', name: 'English (US)', flag: '🇺🇸' },
+  { code: 'en-gb', name: 'English (UK)', flag: '🇬🇧' },
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
   { code: 'pt', name: 'Português', flag: '🇧🇷' },
   { code: 'zh', name: '中文', flag: '🇨🇳' },
   { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ko', name: '한국어', flag: '🇰🇷' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
 ];
 
 function SocialIcon({ platform, size = 16, color = 'currentColor' }: { platform: string; size?: number; color?: string }) {
@@ -57,13 +57,13 @@ function LanguageSelector() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all hover:scale-105"
-        style={{ backgroundColor: '#d4bc94' }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#c4a882')}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isOpen ? '#c4a882' : '#d4bc94')}
-        title={selectedLang.name}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors text-sm"
       >
-        {selectedLang.flag}
+        <span>{selectedLang.flag}</span>
+        <span className="text-gray-300">{selectedLang.name}</span>
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
 
       {isOpen && (
@@ -71,8 +71,7 @@ function LanguageSelector() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
-          className="absolute top-full mt-2 right-0 min-w-[160px] rounded-lg shadow-lg overflow-hidden z-50"
-          style={{ backgroundColor: '#f5ebe0' }}
+          className="absolute bottom-full mb-2 left-0 min-w-[180px] rounded-lg shadow-lg overflow-hidden z-50 bg-gray-800 border border-gray-700"
         >
           {LANGUAGES.map((lang) => (
             <button
@@ -81,11 +80,10 @@ function LanguageSelector() {
                 setSelectedLang(lang);
                 setIsOpen(false);
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors hover:bg-[#e8d5c0]"
-              style={{ color: '#3d2f23' }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left hover:bg-gray-700 transition-colors"
             >
-              <span className="text-base">{lang.flag}</span>
-              <span>{lang.name}</span>
+              <span>{lang.flag}</span>
+              <span className="text-gray-300">{lang.name}</span>
               {selectedLang.code === lang.code && (
                 <svg
                   width="14"
@@ -96,8 +94,7 @@ function LanguageSelector() {
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="ml-auto"
-                  style={{ color: '#5c4a3a' }}
+                  className="ml-auto text-[#F59E0B]"
                 >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
@@ -112,100 +109,140 @@ function LanguageSelector() {
 
 export function Footer() {
   return (
-    <motion.footer
-      className="py-10 px-6"
-      style={{ backgroundColor: '#e8d5c0' }}
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6 }}
-    >
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-gray-900 text-white">
+      {/* Main Footer Content */}
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand column */}
           <motion.div
-            className="md:col-span-1"
+            className="col-span-2 md:col-span-1"
             {...fadeUp}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl font-black tracking-[1.5px]" style={{ color: '#2a1f17' }}>
-                TRAVYL
+            <div className="flex items-center gap-2 mb-4">
+              <PaperPlane size={18} className="-rotate-12 text-[#F59E0B]" />
+              <span className="text-lg font-bold tracking-wide" style={{ fontFamily: "'Satoshi', sans-serif" }}>
+                Travyl
               </span>
-              <PaperPlane size={16} className="-rotate-12" style={{ color: '#2a1f17' }} />
             </div>
-            <p className="text-sm leading-relaxed mb-3" style={{ color: '#3d2f23' }}>
-              Discover and plan your perfect trip from one place. Explore destinations, find the best hotels and flights, and create unforgettable itineraries.
+            <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+              Discover and plan your perfect trip from one place.
             </p>
-            <LanguageSelector />
           </motion.div>
 
-          {/* Link columns */}
-          {FOOTER_COLUMNS.map((col, i) => (
-            <motion.div
-              key={col.heading}
-              {...fadeUp}
-              transition={{ duration: 0.5, delay: 0.15 + i * 0.08 }}
-            >
-              <h4 className="font-semibold text-sm mb-3" style={{ color: '#2a1f17' }}>
-                {col.heading}
-              </h4>
-              <ul className="space-y-2">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm hover:opacity-80 transition-opacity"
-                      style={{ color: '#3d2f23' }}
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
-
-          {/* Social column */}
+          {/* Explore Links */}
           <motion.div
             {...fadeUp}
-            transition={{ duration: 0.5, delay: 0.35 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
           >
-            <h4 className="font-semibold text-sm mb-3" style={{ color: '#2a1f17' }}>
-              Follow Us
+            <h4 className="font-semibold text-sm mb-4 text-[#F59E0B]">
+              <a href="/explore" className="hover:text-[#F59E0B]/80 transition-colors">Explore</a>
             </h4>
-            <div className="flex items-center gap-3">
+            <ul className="space-y-2.5">
+              <li><a href="/explore/countries" className="text-sm text-gray-400 hover:text-white transition-colors">Countries</a></li>
+              <li><a href="/explore/cities" className="text-sm text-gray-400 hover:text-white transition-colors">Cities</a></li>
+              <li><a href="/explore/categories" className="text-sm text-gray-400 hover:text-white transition-colors">Categories</a></li>
+              <li><a href="/explore?sort=popular" className="text-sm text-gray-400 hover:text-white transition-colors">Popular Trips</a></li>
+            </ul>
+          </motion.div>
+
+          {/* Company Links */}
+          <motion.div
+            {...fadeUp}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <h4 className="font-semibold text-sm mb-4 text-[#F59E0B]">
+              <a href="/about" className="hover:text-[#F59E0B]/80 transition-colors">Company</a>
+            </h4>
+            <ul className="space-y-2.5">
+              <li><a href="/about" className="text-sm text-gray-400 hover:text-white transition-colors">About</a></li>
+              <li><a href="/careers" className="text-sm text-gray-400 hover:text-white transition-colors">Careers</a></li>
+              <li><a href="/press" className="text-sm text-gray-400 hover:text-white transition-colors">Press</a></li>
+              <li><a href="/contact" className="text-sm text-gray-400 hover:text-white transition-colors">Contact</a></li>
+            </ul>
+          </motion.div>
+
+          {/* Community Links */}
+          <motion.div
+            {...fadeUp}
+            transition={{ duration: 0.5, delay: 0.25 }}
+          >
+            <h4 className="font-semibold text-sm mb-4 text-[#F59E0B]">
+              <a href="/community" className="hover:text-[#F59E0B]/80 transition-colors">Community</a>
+            </h4>
+            <ul className="space-y-2.5">
+              <li><a href="/support" className="text-sm text-gray-400 hover:text-white transition-colors">Support</a></li>
+              <li><a href="/gift" className="text-sm text-gray-400 hover:text-white transition-colors">Gift Cards</a></li>
+              <li><a href="/blog" className="text-sm text-gray-400 hover:text-white transition-colors">Blog</a></li>
+              <li><a href="/ambassadors" className="text-sm text-gray-400 hover:text-white transition-colors">Ambassadors</a></li>
+            </ul>
+          </motion.div>
+
+          {/* App & Social */}
+          <motion.div
+            {...fadeUp}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <h4 className="font-semibold text-sm mb-4">Get the App</h4>
+            <div className="space-y-2 mb-6">
+              <a
+                href="#"
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 transition-colors px-3 py-2.5 rounded-xl border border-gray-700"
+              >
+                <Apple size={18} />
+                <div className="text-left">
+                  <div className="text-[10px] text-gray-400 leading-none">Download on the</div>
+                  <div className="text-xs font-semibold leading-tight">App Store</div>
+                </div>
+              </a>
+              <a
+                href="#"
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 transition-colors px-3 py-2.5 rounded-xl border border-gray-700"
+              >
+                <Smartphone size={18} />
+                <div className="text-left">
+                  <div className="text-[10px] text-gray-400 leading-none">Get it on</div>
+                  <div className="text-xs font-semibold leading-tight">Google Play</div>
+                </div>
+              </a>
+            </div>
+
+            <h4 className="font-semibold text-sm mb-3">Connect with us</h4>
+            <div className="flex items-center gap-2">
               {SOCIAL_LINKS.map((link) => (
                 <a
                   key={link.platform}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-                  style={{ backgroundColor: '#d4bc94' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#c4a882')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#d4bc94')}
+                  className="w-8 h-8 rounded-full bg-gray-800 hover:bg-[#F59E0B] border border-gray-700 hover:border-[#F59E0B] flex items-center justify-center transition-all"
                   title={link.platform}
                 >
-                  <SocialIcon platform={link.platform} size={16} color="#5c4a3a" />
+                  <SocialIcon platform={link.platform} size={14} color="white" />
                 </a>
               ))}
             </div>
           </motion.div>
         </div>
-
-        {/* Copyright */}
-        <motion.div
-          className="mt-8 pt-6 text-center"
-          style={{ borderTop: '1px solid #c4a882' }}
-          {...fadeUp}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <p className="text-xs" style={{ color: '#5c4a3a' }}>
-            &copy; {new Date().getFullYear()} Travyl. All rights reserved.
-          </p>
-        </motion.div>
       </div>
-    </motion.footer>
+
+      {/* Bottom Bar */}
+      <div className="border-t border-gray-800">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span>&copy; {new Date().getFullYear()} Travyl. All rights reserved.</span>
+              <span className="hidden md:inline">•</span>
+              <div className="flex items-center gap-4">
+                <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="/terms" className="hover:text-white transition-colors">Terms</a>
+                <a href="/cookies" className="hover:text-white transition-colors">Cookies</a>
+              </div>
+            </div>
+            <LanguageSelector />
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }

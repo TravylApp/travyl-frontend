@@ -142,7 +142,7 @@ export function TakeoffTransition({
     'worklet';
     const p = progress.value;
     if (p < 0 || p > 1.01) {
-      return { opacity: 0, transform: [{ translateX: -200 }, { translateY: -200 }, { rotate: '0rad' }, { scale: 0 }] };
+      return { opacity: 0, transform: [{ translateX: -200 }, { translateY: -200 }, { rotate: '0rad' }, { scale: 0 }] } as any;
     }
 
     const W = screenW;
@@ -317,16 +317,16 @@ function TrailDot({
   const style = useAnimatedStyle(() => {
     'worklet';
     const p = progress.value;
-    if (p < GAP_END || p > 1) return { opacity: 0 };
+    if (p < GAP_END || p > 1) return { opacity: 0, transform: [] };
 
     const pp = (p - GAP_END) / (1 - GAP_END);
     const trailDelay = ((index + 1) * 80) / PASS2_DUR;
     const tp = pp - trailDelay;
-    if (tp <= 0) return { opacity: 0 };
+    if (tp <= 0) return { opacity: 0, transform: [] };
 
     // Fade out trail dots earlier so they vanish before progress ends
     const fadeStart = 0.7;
-    if (tp >= 0.85 || pp >= 0.85) return { opacity: 0 };
+    if (tp >= 0.85 || pp >= 0.85) return { opacity: 0, transform: [] };
 
     const totalTravel = screenW + 80;
     const centerY = screenH * 0.45;

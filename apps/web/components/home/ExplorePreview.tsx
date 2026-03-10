@@ -35,7 +35,7 @@ const FALLBACK_ROWS = [
       { id: 'fa4', name: 'Taj Mahal', image_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=600&fit=crop' },
       { id: 'fa5', name: 'Statue of Liberty', image_url: 'https://images.unsplash.com/photo-1503174971373-b1f69850bded?w=600&fit=crop' },
       { id: 'fa6', name: 'Christ the Redeemer', image_url: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=600&fit=crop' },
-      { id: 'fa7', name: 'Petra, Jordan', image_url: 'https://images.unsplash.com/photo-1579606032821-4e6161c81571?w=600&fit=crop' },
+      { id: 'fa7', name: 'Petra, Jordan', image_url: 'https://images.unsplash.com/photo-1712323028707-6e59c3d2271a?w=600&fit=crop' },
       { id: 'fa8', name: 'Sydney Opera House', image_url: 'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=600&fit=crop' },
     ],
   },

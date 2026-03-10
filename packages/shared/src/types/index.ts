@@ -479,3 +479,21 @@ export interface TravelBoard {
   iconColor: string;
   images: string[];
 }
+
+// ─── Trip Route Types ────────────────────────────────────────
+
+export interface RouteLocation {
+  name: string;
+  city?: string;
+  iata?: string;
+  lat: number;
+  lng: number;
+  continent?: string;
+  country?: string;
+}
+
+export interface TripRoute {
+  origin: RouteLocation;
+  stops: RouteLocation[];
+  destinations: RouteLocation[];
+}

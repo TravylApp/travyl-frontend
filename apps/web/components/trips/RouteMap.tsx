@@ -312,10 +312,10 @@ export function RouteMap({ route, width = 280, height = 180 }: RouteMapProps) {
       {/* Location markers */}
       {projectedPoints.map((point, i) => (
         <LocationMarker
-          key={`${point.location.city}-${i}`}
+          key={`${point.location.city || point.location.name}-${i}`}
           x={point.x}
           y={point.y}
-          label={point.location.iata || point.location.city}
+          label={point.location.iata || point.location.city || point.location.name}
           isOrigin={point.type === 'origin'}
           isDestination={point.type === 'destination'}
           isStop={point.type === 'stop'}

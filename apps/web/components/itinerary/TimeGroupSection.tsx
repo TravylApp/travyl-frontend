@@ -15,6 +15,7 @@ interface TimeGroupSectionProps {
   cardStyle?: CardStyle;
   collapsed?: boolean;
   onToggleCollapse?: (timeOfDay: string) => void;
+  compact?: boolean;
 }
 
 const ICON_MAP = {
@@ -24,7 +25,7 @@ const ICON_MAP = {
   sparkles: Sparkles,
 } as const;
 
-export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardStyle = 'legacy', collapsed, onToggleCollapse }: TimeGroupSectionProps) {
+export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardStyle = 'legacy', collapsed, onToggleCollapse, compact }: TimeGroupSectionProps) {
   const [internalExpanded, setInternalExpanded] = useState(true);
   const isControlled = collapsed !== undefined;
   const expanded = isControlled ? !collapsed : internalExpanded;
@@ -50,24 +51,39 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
   const Icon = ICON_MAP[config.icon as keyof typeof ICON_MAP] ?? Sun;
   const count = group.activities.length;
 
+  // Solid colors instead of gradients
+  const SOLID_COLORS: Record<string, string> = {
+    morning: '#f59e0b',
+    afternoon: '#ef4444',
+    evening: '#6366f1',
+    latenight: '#7c3aed',
+  };
+  const bgColor = SOLID_COLORS[group.timeOfDay] || '#6b7280';
+
   return (
-    <section className="mb-3.5">
+    <section className={compact ? 'mb-1.5' : 'mb-3.5'}>
       <button
         onClick={toggle}
-        className="w-full rounded-xl px-3.5 py-3 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow"
-        style={{ background: sectionColors.gradient }}
+        className={`w-full rounded-xl flex items-center justify-between transition-all ${
+          compact ? 'px-2 py-1.5' : 'px-3.5 py-3'
+        }`}
+        style={{ backgroundColor: bgColor }}
       >
-        <div className="flex items-center gap-2.5">
-          <Icon size={18} className="text-white" />
+        <div className="flex items-center gap-2">
+          <Icon size={compact ? 12 : 18} className="text-white" />
           <div className="text-left">
-            <span className="block text-sm font-semibold text-white">{config.label}</span>
-            <span className="block text-[11px] text-white/85">
-              {count} {count === 1 ? 'activity' : 'activities'}
+            <span className={`block font-semibold text-white ${compact ? 'text-[10px]' : 'text-sm'}`}>
+              {config.label}
             </span>
+            {!compact && (
+              <span className="block text-[11px] text-white/85">
+                {count} {count === 1 ? 'activity' : 'activities'}
+              </span>
+            )}
           </div>
         </div>
         <ChevronDown
-          size={16}
+          size={compact ? 12 : 16}
           className="text-white transition-transform duration-300"
           style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
@@ -94,13 +110,15 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
           ))}
 
           {/* Add Activity button */}
-          <button
-            onClick={() => onAddActivity?.(group.timeOfDay)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#1e3a5f]/20 text-[#1e3a5f] hover:border-[#1e3a5f]/40 hover:bg-[#1e3a5f]/5 transition-colors"
-          >
-            <Plus size={14} />
-            <span className="text-[12px] font-medium">Add {config.label} Activity</span>
-          </button>
+          {!compact && (
+            <button
+              onClick={() => onAddActivity?.(group.timeOfDay)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#1e3a5f]/20 text-[#1e3a5f] hover:border-[#1e3a5f]/40 hover:bg-[#1e3a5f]/5 transition-colors"
+            >
+              <Plus size={14} />
+              <span className="text-[12px] font-medium">Add {config.label} Activity</span>
+            </button>
+          )}
         </div>
       </div>
     </section>

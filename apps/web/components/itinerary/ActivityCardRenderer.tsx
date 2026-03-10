@@ -11,12 +11,12 @@ import { ItineraryPinCard } from './ItineraryPinCard';
 export type CardStyle = 'legacy' | 'compact' | 'minimal' | 'list' | 'pin';
 
 const ACTIVITY_IMAGES: Record<string, string[]> = {
-  'mock-a1': ['https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=800', 'https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=800'],
+  'mock-a1': ['https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800', 'https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=800'],
   'mock-a2': ['https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800', 'https://images.unsplash.com/photo-1491245338813-c6832976196e?w=800'],
   'mock-a3': ['https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=800', 'https://images.unsplash.com/photo-1551634979-2b11f8c946fe?w=800'],
   'mock-a4': ['https://images.unsplash.com/photo-1591289009723-aef0a1a8a211?w=800', 'https://images.unsplash.com/photo-1597910037310-7dd7ff4b4b0a?w=800'],
   'mock-a5': ['https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800', 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'],
-  'mock-a6': ['https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800'],
+  'mock-a6': ['https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', 'https://images.unsplash.com/photo-1536663060084-a0d9eeeaf44b?w=800'],
   'mock-a7': ['https://images.unsplash.com/photo-1555992457-b8fefdd09699?w=800'],
   'mock-a8': ['https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=800'],
   'mock-a9': ['https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800'],

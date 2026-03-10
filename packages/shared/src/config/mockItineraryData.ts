@@ -308,6 +308,9 @@ export const MOCK_TRIP: Trip = {
   is_shared: false,
   share_link_token: null,
   share_link_role: 'viewer',
+  forked_from_trip_id: null,
+  fork_count: 0,
+  is_public: false,
   created_at: '2026-03-01T00:00:00Z',
   updated_at: '2026-03-01T00:00:00Z',
 };
@@ -476,7 +479,7 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     location: 'Champ de Mars, Paris',
     description: 'Skip the queues and head straight to the summit for breathtaking panoramic views of Paris. Expert guide shares fascinating history.',
     images: [
-      'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=800',
+      'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800',
       'https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=800',
       'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=800',
     ],
@@ -506,7 +509,7 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     difficulty: 'Easy',
     accessibility: 'Elevator access available',
     phoneSteps: [
-      { title: 'Show your e-ticket', description: 'Present the QR code on your phone at the South Pillar entrance', screenshot: 'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=400' },
+      { title: 'Show your e-ticket', description: 'Present the QR code on your phone at the South Pillar entrance', screenshot: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=400' },
       { title: 'Meet your guide', description: 'Look for the guide holding a yellow umbrella near the ticket booth', screenshot: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=400' },
       { title: 'Enjoy the summit', description: 'Take the elevator to the top and enjoy panoramic views with champagne', screenshot: 'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=400' },
     ],
@@ -616,7 +619,7 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     name: 'Paris Catacombs Skip-the-Line',
     location: 'Avenue du Colonel Henri',
     description: 'Descend into the underground ossuaries beneath Paris. See the remains of 6 million people in this hauntingly beautiful labyrinth.',
-    images: ['https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800'],
+    images: ['https://images.unsplash.com/photo-1536663060084-a0d9eeeaf44b?w=800'],
     rating: 4.6,
     reviewCount: 4521,
     tags: ['Underground', 'History', 'Skip-the-Line'],
@@ -1132,7 +1135,7 @@ const CAL_COLORS: Record<string, string> = {
 
 export const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [
   // Day 0
-  { id: 'cal-1', title: 'Visit the Eiffel Tower', type: 'sightseeing', day: 0, startHour: 9, duration: 2, startTime: '9:00 AM', endTime: '11:00 AM', location: 'Champ de Mars', image: 'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=400', rating: 4.9, price: '$25', color: CAL_COLORS.sightseeing, onCalendar: true },
+  { id: 'cal-1', title: 'Visit the Eiffel Tower', type: 'sightseeing', day: 0, startHour: 9, duration: 2, startTime: '9:00 AM', endTime: '11:00 AM', location: 'Champ de Mars', image: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=400', rating: 4.9, price: '$25', color: CAL_COLORS.sightseeing, onCalendar: true },
   { id: 'cal-2', title: 'Seine River Cruise', type: 'tour', day: 0, startHour: 10.5, duration: 1.5, startTime: '10:30 AM', endTime: '12:00 PM', location: 'Port de la Bourdonnais', image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400', rating: 4.7, price: '$18', color: CAL_COLORS.tour, onCalendar: true },
   { id: 'cal-3', title: 'Lunch at Le Comptoir', type: 'dining', day: 0, startHour: 12.5, duration: 1.5, startTime: '12:30 PM', endTime: '2:00 PM', location: 'Saint-Germain-des-Prés', rating: 4.6, price: '$45', color: CAL_COLORS.dining, onCalendar: true },
   { id: 'cal-4', title: 'Louvre Museum', type: 'cultural', day: 0, startHour: 14.5, duration: 2.5, startTime: '2:30 PM', endTime: '5:00 PM', location: 'Rue de Rivoli', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400', rating: 4.8, price: '$17', color: CAL_COLORS.cultural, onCalendar: true },
@@ -1144,7 +1147,7 @@ export const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [
   { id: 'cal-11', title: 'Le Marais Food Tour', type: 'tour', day: 2, startHour: 13, duration: 3, startTime: '1:00 PM', endTime: '4:00 PM', location: 'Le Marais', rating: 4.8, price: '$89', color: CAL_COLORS.tour, onCalendar: true },
   { id: 'cal-12', title: 'Seine Jazz Cruise', type: 'event', day: 2, startHour: 19, duration: 2, startTime: '7:00 PM', endTime: '9:00 PM', location: 'Port de la Bourdonnais', rating: 4.7, price: '$55', color: CAL_COLORS.event, onCalendar: true },
   // Off-calendar (for explore sidebar)
-  { id: 'cal-13', title: 'Catacombs Tour', type: 'sightseeing', day: -1, startHour: 10, duration: 1.5, startTime: '10:00 AM', endTime: '11:30 AM', location: 'Avenue du Colonel Henri', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400', rating: 4.6, price: '$29', color: CAL_COLORS.sightseeing, onCalendar: false },
+  { id: 'cal-13', title: 'Catacombs Tour', type: 'sightseeing', day: -1, startHour: 10, duration: 1.5, startTime: '10:00 AM', endTime: '11:30 AM', location: 'Avenue du Colonel Henri', image: 'https://images.unsplash.com/photo-1536663060084-a0d9eeeaf44b?w=400', rating: 4.6, price: '$29', color: CAL_COLORS.sightseeing, onCalendar: false },
   { id: 'cal-14', title: 'Luxembourg Gardens Walk', type: 'outdoor', day: -1, startHour: 14, duration: 1.5, startTime: '2:00 PM', endTime: '3:30 PM', location: 'Jardin du Luxembourg', image: 'https://images.unsplash.com/photo-1555992457-b8fefdd09699?w=400', rating: 4.5, price: 'Free', color: CAL_COLORS.outdoor, onCalendar: false },
   { id: 'cal-15', title: 'Moulin Rouge Show', type: 'event', day: -1, startHour: 21, duration: 2.5, startTime: '9:00 PM', endTime: '11:30 PM', location: 'Boulevard de Clichy', image: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400', rating: 4.6, price: '$185', color: CAL_COLORS.event, onCalendar: false },
   { id: 'cal-16', title: 'Wine Tasting at Galeries Lafayette', type: 'event', day: -1, startHour: 17, duration: 1.5, startTime: '5:00 PM', endTime: '6:30 PM', location: 'Boulevard Haussmann', image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400', rating: 4.8, price: '$45', color: CAL_COLORS.event, onCalendar: false },

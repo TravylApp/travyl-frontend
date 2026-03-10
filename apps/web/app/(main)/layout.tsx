@@ -1,4 +1,4 @@
-import Navbar from "@/components/navbar";
+import { FloatingNavbar } from "@/components/FloatingNavbar";
 
 export default function MainLayout({
   children,
@@ -7,8 +7,8 @@ export default function MainLayout({
 }) {
   return (
     <>
-      <Navbar />
-      <main className="pt-11">{children}</main>
+      <FloatingNavbar />
+      <main>{children}</main>
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "motion/react";
 import { useInspirationCards, getCyclicGradient, EASE_OUT_EXPO } from "@travyl/shared";
 import type { InspirationCard } from "@travyl/shared";
@@ -11,7 +12,7 @@ const PLACEHOLDER_CARDS: InspirationCard[] = [
   { id: 'pi-4', title: 'Great Barrier Reef', destination: 'Australia', image_url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&fit=crop' },
   { id: 'pi-5', title: 'Taj Mahal', destination: 'India', image_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=600&fit=crop' },
   { id: 'pi-6', title: 'Safari Serengeti', destination: 'Tanzania', image_url: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=600&fit=crop' },
-  { id: 'pi-7', title: 'Petra', destination: 'Jordan', image_url: 'https://images.unsplash.com/photo-1579606032821-4e6161c81571?w=600&fit=crop' },
+  { id: 'pi-7', title: 'Petra', destination: 'Jordan', image_url: 'https://images.unsplash.com/photo-1712323028707-6e59c3d2271a?w=600&fit=crop' },
   { id: 'pi-8', title: 'Sydney Opera House', destination: 'Australia', image_url: 'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=600&fit=crop' },
 ];
 
@@ -50,10 +51,12 @@ export function GetInspired() {
                 }}
               >
                 {card.image_url && (
-                  <img
+                  <Image
                     src={card.image_url}
                     alt={card.title}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />

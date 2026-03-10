@@ -14,7 +14,7 @@ export function Footer() {
       <View style={{ marginBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 8 }}>
           <Text style={{ fontSize: 22, fontWeight: '900', color: BROWN_DARK, letterSpacing: 4 }}>
-            TRAVYL
+            Travyl
           </Text>
           <PaperPlane size={28} color={BROWN_DARK} style={{ transform: [{ rotate: '0deg' }] }} />
         </View>

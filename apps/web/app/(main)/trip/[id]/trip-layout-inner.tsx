@@ -237,19 +237,7 @@ function TripLayoutContent({
         {/* Hero banner */}
         <TripHero tripId={tripId} />
 
-        {/* Gap between hero and suitcase card */}
-        <div className="h-4" />
-
-        {/* Suitcase card */}
-        <div
-          className="rounded-2xl border border-gray-200/80 bg-white mx-2 sm:mx-4 relative z-10 overflow-hidden"
-          style={{
-            boxShadow:
-              '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1),' +
-              '8px 0 20px -4px rgba(59, 130, 246, 0.3),' +
-              '-8px 0 20px -4px rgba(59, 130, 246, 0.3)',
-          }}
-        >
+        {/* Main content area - full width editor experience */}
         <div className={`flex ${isTopMode ? 'flex-col' : 'flex-col md:flex-row'}`}>
           {/* Spine */}
           <TripTabs
@@ -273,7 +261,12 @@ function TripLayoutContent({
 
             {/* Content body */}
             <div className="flex">
-              <div className="flex-1 min-w-0 px-5 pt-4 pb-5 relative bg-white overflow-hidden" style={{ perspective: 1200 }}>
+              <div
+                className={`flex-1 min-w-0 relative bg-white overflow-hidden ${
+                  currentSegment === 'itinerary' ? '' : 'px-5 pt-4 pb-5'
+                }`}
+                style={currentSegment === 'itinerary' ? undefined : { perspective: 1200 }}
+              >
                 <AnimatePresence mode="wait" initial={false}>
                   {calendarOpen ? (
                     <motion.div
@@ -363,20 +356,24 @@ function TripLayoutContent({
             </div>
           </div>
         </div>
-      </div>
-
       </div>{/* end max-w-7xl */}
 
-      {/* Explore section — full-width, outside suitcase card, matching v3 */}
-      <div className="w-full bg-gray-50">
-        <div className="max-w-7xl mx-auto px-3 py-3">
-          <ExplorePreview />
+      {/* Explore section — full-width (hidden on itinerary) */}
+      {currentSegment !== 'itinerary' && (
+        <div className="w-full bg-gray-50">
+          <div className="max-w-7xl mx-auto px-3 py-3">
+            <ExplorePreview />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Ocean Wave + Footer — full-width */}
-      <OceanWave />
-      <Footer />
+      {/* Ocean Wave + Footer — full-width (hidden on itinerary) */}
+      {currentSegment !== 'itinerary' && (
+        <>
+          <OceanWave />
+          <Footer />
+        </>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion, useInView } from "motion/react";
 import { useRef, useEffect, useState } from "react";
 import { EASE_OUT_EXPO } from "@travyl/shared";
@@ -49,10 +50,12 @@ export function AppDownload() {
   return (
     <section className="relative w-full py-20 md:py-28 overflow-hidden">
       {/* Background Image */}
-      <img
+      <Image
         src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&fit=crop"
         alt=""
-        className="absolute inset-0 w-full h-full object-cover z-0"
+        fill
+        sizes="100vw"
+        className="object-cover z-0"
       />
       {/* Dark Overlay */}
       <div className="absolute inset-0 z-0 bg-black/40" />
@@ -165,8 +168,14 @@ export function AppDownload() {
                         </div>
 
                         {/* Image */}
-                        <div className="mb-3 rounded-xl overflow-hidden">
-                          <img src={scrollItems[1].url} alt="" className="w-full h-24 object-cover" />
+                        <div className="mb-3 rounded-xl overflow-hidden relative h-24">
+                          <Image
+                            src={scrollItems[1].url || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=200&fit=crop"}
+                            alt=""
+                            fill
+                            sizes="224px"
+                            className="object-cover"
+                          />
                         </div>
 
                         {/* Itinerary Cards */}

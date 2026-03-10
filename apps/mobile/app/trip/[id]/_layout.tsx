@@ -66,7 +66,7 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], showOptional: 
   const allowedNames = showOptional ? ALL_TABS.map((t) => t.name) : CORE_NAMES;
   return state.routes
     .map((route, index) => ({ route, index }))
-    .filter(({ route }) => allowedNames.includes(route.name));
+    .filter(({ route }) => allowedNames.includes(route.name as typeof CORE_NAMES[number]));
 }
 
 // ─── Trip Hero ───────────────────────────────────────────
@@ -403,6 +403,7 @@ export default function TripLayout() {
 
         <ContentArea spinePosition={spinePosition}>
           <TopTabs
+            id="trip-tabs"
             tabBar={(props) => <CustomTabBar {...props} />}
             screenOptions={{ lazy: true }}
           >

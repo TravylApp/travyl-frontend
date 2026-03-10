@@ -1,29 +1,36 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   useHomeScreen,
   useHeroConfig,
   EASE_OUT_EXPO,
 } from "@travyl/shared";
-import { Search, ArrowRight, MapPin, Calendar, Users } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import {
-  HowItWorks,
-  QuickSteps,
-  GetInspired,
-  TravelMosaic,
-  ExplorePreview,
-  TagUs,
+  StatsSection,
+  BrowseByCategory,
+  TopDestinations,
+  SocialProof,
+  AppFeatureSection,
   OceanWave,
-  TakeoffTransition,
   Footer,
-  AppDownload,
+  HowItWorksWing,
 } from "@/components/home";
 import { GlassPill } from "@/components/ui";
+
+// Hero carousel images
+const heroImages = [
+  "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&fit=crop",
+  "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1920&fit=crop",
+  "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&fit=crop",
+  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&fit=crop",
+];
 
 export default function Home() {
   const router = useRouter();
@@ -41,6 +48,15 @@ export default function Home() {
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const onSearch = () => {
     if (handleSearch()) {
@@ -49,16 +65,69 @@ export default function Home() {
     }
   };
 
+  const goToSlide = (index: number) => {
+    setCurrentSlide((index + heroImages.length) % heroImages.length);
+  };
+
+  const goToPrevious = () => goToSlide(currentSlide - 1);
+  const goToNext = () => goToSlide(currentSlide + 1);
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section className="relative flex items-center justify-center px-6 py-24 md:py-32 overflow-hidden">
-        <img
-          src={heroConfig?.background_image_url ?? "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&fit=crop"}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        />
+      {/* ─── Hero Section with Carousel ─────────────────────────── */}
+      <section className="relative flex items-center justify-center px-6 py-20 overflow-hidden h-screen group">
+        {/* Carousel Background */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentSlide}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0 z-0"
+          >
+            <Image
+              src={heroImages[currentSlide]}
+              alt=""
+              fill
+              priority={currentSlide === 0}
+              sizes="100vw"
+              className="object-cover"
+            />
+          </motion.div>
+        </AnimatePresence>
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+
+        {/* Aurora Effect */}
+        <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
+          <div
+            className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] opacity-30"
+            style={{
+              background: `
+                radial-gradient(ellipse 80% 50% at 50% 50%, rgba(16, 185, 129, 0.3), transparent),
+                radial-gradient(ellipse 60% 40% at 70% 60%, rgba(59, 130, 246, 0.2), transparent),
+                radial-gradient(ellipse 50% 30% at 30% 40%, rgba(245, 158, 11, 0.15), transparent)
+              `,
+              animation: 'aurora 15s ease-in-out infinite alternate',
+            }}
+          />
+        </div>
+
+        {/* Carousel Arrow Navigation */}
+        <button
+          onClick={goToPrevious}
+          className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white/20 hover:scale-110"
+          aria-label="Previous slide"
+        >
+          <ChevronLeft size={24} className="text-white" />
+        </button>
+        <button
+          onClick={goToNext}
+          className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white/20 hover:scale-110"
+          aria-label="Next slide"
+        >
+          <ChevronRight size={24} className="text-white" />
+        </button>
 
         <div className="relative z-10 max-w-3xl mx-auto text-center w-full">
           <motion.h1
@@ -67,7 +136,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight"
           >
-            {heroConfig?.title ?? "Explore the world from one place."}
+            {heroConfig?.title ?? "Find your adventure"}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 30 }}
@@ -75,7 +144,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.4, ease: EASE_OUT_EXPO }}
             className="text-base sm:text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto"
           >
-            {heroConfig?.subtitle ?? "Type your dream trip and let us plan it for you"}
+            {heroConfig?.subtitle ?? "Search by city, country, or trip type to plan your perfect getaway"}
           </motion.p>
 
           {/* Search Bar */}
@@ -101,7 +170,7 @@ export default function Home() {
                 <button
                   ref={sendButtonRef}
                   onClick={onSearch}
-                  className="bg-primary hover:opacity-90 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity flex items-center gap-2 shrink-0"
+                  className="bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:shadow-lg hover:shadow-[#F59E0B]/25 flex items-center gap-2 shrink-0"
                 >
                   <PaperPlane size={16} className="-rotate-12" />
                   <span className="hidden sm:inline">Plan Trip</span>
@@ -133,148 +202,69 @@ export default function Home() {
               );
             })()}
           </motion.div>
+
+          {/* Carousel Navigation */}
+          <div className="flex items-center justify-center gap-2 mt-8">
+            {heroImages.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSlide(idx)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  currentSlide === idx ? "bg-white w-6" : "bg-white/50 hover:bg-white/75"
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ─── Recent Trips (logged-in users) ───────────────────── */}
-      {showRecentTrips && (
-        <section className="py-12 px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
-                Your Recent Trips
-              </h2>
-              <Link
-                href="/trips"
-                className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
-              >
-                View all <ArrowRight size={14} />
-              </Link>
-            </div>
+      {/* ─── Stats Section ───────────────────────────────────────── */}
+      <StatsSection />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentTrips.map((trip) => (
-                <Link
-                  key={trip.id}
-                  href={`/trip/${trip.id}`}
-                  className="group block rounded-xl border border-border p-5 hover:shadow-md hover:border-primary/30 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {trip.title}
-                      </h3>
-                      <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                        <MapPin size={14} />
-                        <span>{trip.destination}</span>
-                      </div>
-                    </div>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{
-                        backgroundColor: trip.status.bgColor,
-                        color: trip.status.textColor,
-                      }}
-                    >
-                      {trip.status.label}
-                    </span>
-                  </div>
+      {/* ─── How It Works (Wing-style) ──────────────────────────── */}
+      <HowItWorksWing />
 
-                  <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      <span>{trip.dateRange.short}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users size={12} />
-                      <span>{trip.travelersLabel}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* ─── Browse by Category ──────────────────────────────────── */}
+      <BrowseByCategory />
 
-      {/* ─── Loading Skeleton ──────────────────────────────────── */}
-      {showLoadingSkeleton && (
-        <section className="py-12 px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="h-7 w-48 bg-gray-200 rounded animate-pulse mb-6" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-border p-5 space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                    </div>
-                    <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="h-3 w-28 bg-gray-100 rounded animate-pulse" />
-                    <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* ─── App Feature Section ─────────────────────────────────── */}
+      <AppFeatureSection />
 
-      {/* ─── Empty State ─────────────────────────────────────── */}
-      {showEmptyState && (
-        <section className="py-16 px-6">
-          <div className="max-w-md mx-auto text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <PaperPlane className="text-primary -rotate-12" size={28} />
-            </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              No trips yet
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Start planning your first adventure — type a destination in the
-              search bar above or tap the button below.
-            </p>
-            <button
-              onClick={() => router.push("/trips")}
-              className="bg-primary text-white px-6 py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
-            >
-              <PaperPlane size={16} className="-rotate-12" />
-              Plan your first trip
-            </button>
-          </div>
-        </section>
-      )}
+      {/* ─── Social Proof Section ────────────────────────────────── */}
+      <SocialProof />
 
-      {/* ─── Static Content Sections ──────────────────────────── */}
-      <QuickSteps />
-      <HowItWorks onCtaPress={() => router.push("/trips")} />
-      <TravelMosaic />
-      <AppDownload />
-      <GetInspired />
-      <ExplorePreview />
-      <TagUs />
+      {/* ─── Top Destinations ────────────────────────────────────── */}
+      <TopDestinations />
 
-      {/* ─── Ocean Wave ─────────────────────────────────────── */}
+      {/* ─── Ocean Wave ─────────────────────────────────────────── */}
       <OceanWave />
 
-      {/* ─── Footer ─────────────────────────────────────────── */}
+      {/* ─── Footer ─────────────────────────────────────────────── */}
       <Footer />
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
-      <TakeoffTransition
-        visible={showTakeoff}
-        buttonRect={buttonRect}
-        onComplete={() => {
-          setShowTakeoff(false);
-          router.push("/trips");
-        }}
-      />
+      {showTakeoff && buttonRect && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => {
+            setShowTakeoff(false);
+            router.push("/trips");
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            className="text-white text-2xl font-bold"
+          >
+            <PaperPlane size={64} className="-rotate-12 animate-bounce" />
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

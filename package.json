@@ -17,16 +17,18 @@
     ]
   },
   "scripts": {
-    "mobile": "yarn workspace @travyl/mobile start",
-    "web": "yarn workspace @travyl/web dev",
-    "lint": "yarn workspaces run lint",
-    "typecheck": "yarn workspaces run typecheck"
+    "mobile": "npm run start -w @travyl/mobile",
+    "web": "npm run dev -w @travyl/web",
+    "lint": "npm run lint -ws",
+    "typecheck": "npm run typecheck -ws"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.434",
+    "@remotion/player": "^4.0.434",
     "framer-motion": "^12.35.1",
-    "yarn": "^1.22.22"
+    "remotion": "^4.0.434"
   }
 }

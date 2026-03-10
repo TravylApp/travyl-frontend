@@ -16,51 +16,15 @@ export const GlassPill = forwardRef<HTMLButtonElement, GlassPillProps>(
           px-3.5 py-1.5 rounded-full
           text-xs font-medium text-white/95
           overflow-visible
-          transition-all duration-200
-          hover:scale-[1.02] active:scale-[0.98]
+          transition-all duration-150 ease-out
           group
           ${className}
         `}
         {...props}
       >
-        {/* SVG Filters (defined once per button) */}
-        <svg className="absolute w-0 h-0" aria-hidden>
-          <defs>
-            <filter id="glass-blur" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
-            </filter>
-            <filter id="glass-texture" x="-50%" y="-50%" width="200%" height="200%">
-              <feTurbulence
-                type="fractalNoise"
-                baseFrequency="0.9"
-                numOctaves="4"
-                result="noise"
-              />
-              <feColorMatrix
-                in="noise"
-                type="saturate"
-                values="0"
-                result="desaturated"
-              />
-              <feComponentTransfer result="highlights">
-                <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0.02" />
-              </feComponentTransfer>
-              <feBlend in="SourceGraphic" in2="highlights" mode="screen" />
-            </filter>
-          </defs>
-        </svg>
-
-        {/* Background blur layer - captures and blurs what's behind */}
-        <span
-          className="absolute inset-0 rounded-full overflow-hidden"
-          style={{ filter: "url(#glass-blur)" }}
-        >
-          <span className="absolute inset-[-20px]" />
-        </span>
-
         {/* Glass base layer with gradient */}
         <span
-          className="absolute inset-0 rounded-full"
+          className="absolute inset-0 rounded-full transition-all duration-150 group-hover:brightness-110 group-active:brightness-90"
           style={{
             background: `
               linear-gradient(
@@ -77,12 +41,12 @@ export const GlassPill = forwardRef<HTMLButtonElement, GlassPillProps>(
 
         {/* Inner gradient overlay for depth */}
         <span
-          className="absolute inset-0 rounded-full"
+          className="absolute inset-0 rounded-full transition-opacity duration-150 group-hover:opacity-100 opacity-70"
           style={{
             background: `
               radial-gradient(
                 ellipse 100% 60% at 50% 0%,
-                rgba(255, 255, 255, 0.3) 0%,
+                rgba(255, 255, 255, 0.35) 0%,
                 transparent 60%
               )
             `,
@@ -91,14 +55,14 @@ export const GlassPill = forwardRef<HTMLButtonElement, GlassPillProps>(
 
         {/* Specular highlight - top edge light reflection */}
         <span
-          className="absolute inset-x-[2px] top-[1px] h-[1px] rounded-full"
+          className="absolute inset-x-[2px] top-[1px] h-[1px] rounded-full transition-opacity duration-150 group-hover:opacity-100 opacity-60"
           style={{
             background: `linear-gradient(
               90deg,
               transparent 0%,
-              rgba(255, 255, 255, 0.6) 20%,
-              rgba(255, 255, 255, 0.8) 50%,
-              rgba(255, 255, 255, 0.6) 80%,
+              rgba(255, 255, 255, 0.7) 20%,
+              rgba(255, 255, 255, 0.9) 50%,
+              rgba(255, 255, 255, 0.7) 80%,
               transparent 100%
             )`,
           }}
@@ -106,7 +70,7 @@ export const GlassPill = forwardRef<HTMLButtonElement, GlassPillProps>(
 
         {/* Bottom edge shadow for depth */}
         <span
-          className="absolute inset-x-[2px] bottom-[1px] h-[1px] rounded-full opacity-30"
+          className="absolute inset-x-[2px] bottom-[1px] h-[1px] rounded-full opacity-30 transition-opacity duration-150 group-active:opacity-50"
           style={{
             background: `linear-gradient(
               90deg,
@@ -121,34 +85,34 @@ export const GlassPill = forwardRef<HTMLButtonElement, GlassPillProps>(
 
         {/* Glass border with gradient */}
         <span
-          className="absolute inset-0 rounded-full pointer-events-none"
+          className="absolute inset-0 rounded-full pointer-events-none transition-all duration-150 group-hover:border-white/30"
           style={{
-            border: "1px solid transparent",
-            background: `
-              linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.1)) padding-box,
-              linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,255,255,0.1)) border-box
-            `,
-            mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-            WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-            maskComposite: "exclude",
-            WebkitMaskComposite: "xor",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
           }}
         />
 
-        {/* Subtle outer glow */}
+        {/* Outer glow - appears on hover */}
         <span
-          className="absolute -inset-[1px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          className="absolute -inset-[2px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           style={{
             background: `radial-gradient(
-              ellipse 80% 50% at 50% 50%,
-              rgba(255, 255, 255, 0.15) 0%,
+              ellipse 90% 60% at 50% 40%,
+              rgba(255, 255, 255, 0.12) 0%,
               transparent 70%
             )`,
           }}
         />
 
+        {/* Inner shadow on active - "pressed" effect */}
+        <span
+          className="absolute inset-0 rounded-full opacity-0 group-active:opacity-100 transition-opacity duration-75"
+          style={{
+            boxShadow: `inset 0 1px 2px rgba(0, 0, 0, 0.15)`,
+          }}
+        />
+
         {/* Content */}
-        <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
+        <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)] transition-transform duration-75 group-active:translate-y-[0.5px]">
           {children}
         </span>
       </button>

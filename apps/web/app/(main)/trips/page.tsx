@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips, MOCK_TRIPS } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
-import { Plus, Plane } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Footer, OceanWave } from '@/components/home';
-import { ViewToggle, TripCard, TripListItem } from '@/components/trips';
+import { ViewToggle, TripCard, TripListItem, EmptyTripsIllustration } from '@/components/trips';
 
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
@@ -51,8 +51,8 @@ function filterTripsBySearch(trips: MockTripCard[], search: string): MockTripCar
   const query = search.toLowerCase().trim();
   return trips.filter(
     (trip) =>
-      trip.title.toLowerCase().includes(query) ||
-      trip.destination.toLowerCase().includes(query)
+      trip.title?.toLowerCase().includes(query) ||
+      trip.destination?.toLowerCase().includes(query)
   );
 }
 
@@ -69,7 +69,7 @@ function SkeletonCard() {
   );
 }
 
-export default function MyTripsPage() {
+function TripsContent() {
   const searchParams = useSearchParams();
   const statusParam = (searchParams.get('status') as StatusFilter) || 'all';
   const searchQuery = searchParams.get('search') || '';
@@ -83,7 +83,7 @@ export default function MyTripsPage() {
   const { data: trips, isLoading, isError } = useTrips();
 
   // Use real trips when available, otherwise fallback to mock data
-  const allTrips: MockTripCard[] = (trips?.length && !isError)
+  const allTrips: MockTripCard[] = (trips && trips.length > 0 && !isError)
     ? trips.map((t) => ({
         ...t,
         image: MOCK_TRIPS.find((m) => m.id === t.id)?.image
@@ -187,12 +187,10 @@ export default function MyTripsPage() {
             </div>
           )
         ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Plane size={32} className="text-gray-400" />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">No trips yet</h2>
-            <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <EmptyTripsIllustration />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2 mt-4">No trips yet</h2>
+            <p className="text-gray-500 mb-6 max-w-sm">Start planning your next adventure and it will appear here.</p>
             <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
               style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
             >
@@ -205,5 +203,24 @@ export default function MyTripsPage() {
       <OceanWave />
       <Footer />
     </div>
+  );
+}
+
+export default function MyTripsPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    }>
+      <TripsContent />
+    </Suspense>
   );
 }
