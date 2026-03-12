@@ -284,12 +284,29 @@ export interface PlaceItem {
   id: string;
   name: string;
   image: string;
+  images?: string[];
   type: 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event';
   rating: number;
   tagline: string;
   category: string;
   description?: string;
   tags?: string[];
+  latitude?: number;
+  longitude?: number;
+
+  // Rich detail fields
+  priceLevel?: 1 | 2 | 3 | 4;
+  hours?: string;
+  phone?: string;
+  website?: string;
+  reviewCount?: number;
+  address?: string;
+  bestTimeToVisit?: string;
+  duration?: string;
+  admissionFee?: string;
+  tips?: string[];
+  accessibility?: string[];
+  nearbyPlaces?: string[];
 }
 
 // ─── Calendar / Weather ────────────────────────────────────
