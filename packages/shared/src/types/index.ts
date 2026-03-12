@@ -476,3 +476,40 @@ export interface TravelBoard {
   iconColor: string;
   images: string[];
 }
+
+// ─── Trip Route & Location ───────────────────────────────────
+
+export interface RouteLocation {
+  name: string;
+  city?: string;
+  lat: number;
+  lng: number;
+  country?: string;
+  continent?: string;
+  iata?: string;
+}
+
+export interface TripRoute {
+  origin: RouteLocation;
+  stops: RouteLocation[];
+  destinations: RouteLocation[];
+}
+
+export interface TripTraveler {
+  id: string;
+  name: string;
+  role: 'owner' | 'editor' | 'viewer';
+  avatar_url?: string;
+}
+
+// ─── Mock Trip Card (for trips page) ──────────────────────────
+
+export interface MockTripCard extends Trip {
+  image: string;
+  route?: TripRoute;
+  travelersList?: TripTraveler[];
+}
+
+// ─── Animation Constants ─────────────────────────────────────
+
+export const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
