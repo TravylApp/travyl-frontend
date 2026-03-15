@@ -114,6 +114,9 @@ export default function Home() {
   // Hero slideshow — use API image if available, otherwise cycle defaults
   const FALLBACK_SLIDES = [
     "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop",
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&fit=crop",
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&fit=crop",
+    "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1600&fit=crop",
   ];
   const heroSlides = heroConfig?.background_image_url
     ? [heroConfig.background_image_url]
