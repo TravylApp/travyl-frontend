@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Heart, Clock, MapPin, Star, ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react';
-import { getActivityTypeColor } from '@travyl/shared';
+import { getActivityTypeColor, Navy } from '@travyl/shared';
 import type { ActivityViewModel } from '@travyl/shared';
 
 interface CompactActivityCardProps {
@@ -52,20 +52,15 @@ export function CompactActivityCard({
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <MapPin size={28} style={{ color: typeColor.primary + '30' }} />
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
+          >
+            <MapPin size={28} className="text-white/30" />
           </div>
         )}
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-        {/* Type badge */}
-        <span
-          className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-lg text-white"
-          style={{ backgroundColor: typeColor.primary + 'cc' }}
-        >
-          {activity.category}
-        </span>
 
         {/* Favorite button */}
         <button
@@ -159,13 +154,6 @@ export function CompactActivityCard({
           <p className="text-[10px] text-gray-600 mt-1 line-clamp-2 leading-relaxed">{activity.notes}</p>
         )}
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          <span className="px-2 py-0.5 rounded-md text-[9px] bg-gray-100 border border-gray-200 text-gray-500">{activity.category}</span>
-          {activity.costDisplay && (
-            <span className="px-2 py-0.5 rounded-md text-[9px] bg-gray-100 border border-gray-200 text-gray-500">{activity.costDisplay}</span>
-          )}
-        </div>
 
         {/* Booked info bar */}
         {activity.startTime && (
