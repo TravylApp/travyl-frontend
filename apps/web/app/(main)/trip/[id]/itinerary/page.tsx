@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useMemo, useCallback } from 'react';
+import { use, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useItineraryScreen, MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DESTINATION_COORDS, MOCK_DISCOVER_ACTIVITIES } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
@@ -10,7 +10,15 @@ import {
 } from '@/components/itinerary';
 import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
-import { ChevronDown, X, Search, Plus, Compass } from 'lucide-react';
+import {
+  ChevronDown, X, Search, Plus, Compass, LayoutList, Star,
+  Sun, Sunset, Moon, Sparkles, Plane, Building2, MapPin, Clock, Camera,
+  UtensilsCrossed, Compass as CompassIcon, TreePine, Theater, ShoppingBag,
+  Music, Dumbbell, Bus, Eye,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { TIME_OF_DAY_CONFIG, getActivityTypeColor } from '@travyl/shared';
+import type { ItineraryDayViewModel } from '@travyl/shared';
 
 // ─── Mock activity coordinates (keyed by activity id) ────────────
 const MOCK_ACTIVITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -69,6 +77,386 @@ function SkeletonItinerary() {
   );
 }
 
+// ─── Glance View ────────────────────────────────────────────────
+
+const TOD_ICONS = { sun: Sun, sunset: Sunset, moon: Moon, sparkles: Sparkles } as const;
+
+const CATEGORY_ICONS: Record<string, typeof Camera> = {
+  sightseeing: Eye,
+  landmark: Camera,
+  tour: CompassIcon,
+  dining: UtensilsCrossed,
+  food: UtensilsCrossed,
+  outdoor: TreePine,
+  cultural: Theater,
+  shopping: ShoppingBag,
+  nightlife: Music,
+  wellness: Dumbbell,
+  transport: Bus,
+};
+
+function GlanceDayCard({
+  day,
+  isFirst,
+  isLast,
+  arrivalFlight,
+  returnFlight,
+  hotel,
+  onAddActivity,
+  addingTo,
+  discoverItems,
+  addSearch,
+  onSearchChange,
+  addCategory,
+  onCategoryChange,
+  favorites,
+  onFavorite,
+  onBrowse,
+  onAddItem,
+  onCloseAdd,
+}: {
+  day: ItineraryDayViewModel;
+  isFirst: boolean;
+  isLast: boolean;
+  arrivalFlight?: typeof MOCK_FLIGHT_DETAILS[number];
+  returnFlight?: typeof MOCK_FLIGHT_DETAILS[number];
+  hotel: typeof MOCK_HOTEL_DETAIL;
+  onAddActivity?: (timeOfDay: string) => void;
+  addingTo?: string | null;
+  discoverItems?: DiscoverItem[];
+  addSearch?: string;
+  onSearchChange?: (q: string) => void;
+  addCategory?: string;
+  onCategoryChange?: (cat: string) => void;
+  favorites?: string[];
+  onFavorite?: (id: string) => void;
+  onBrowse?: (index: number) => void;
+  onAddItem?: (item: DiscoverItem, timeOfDay: string) => void;
+  onCloseAdd?: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 overflow-hidden">
+      {/* Day header */}
+      <div
+        className="px-4 py-2.5 flex items-center justify-between"
+        style={{ backgroundColor: 'var(--trip-base)' }}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white text-[11px] font-bold">
+            {day.dayNumber}
+          </span>
+          <div>
+            <span className="text-[13px] font-semibold text-white">{day.dayLabel}</span>
+            <span className="text-[11px] text-white/70 ml-2">{day.dateLabel}</span>
+          </div>
+        </div>
+        <span className="text-[11px] text-white/60">
+          {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
+        </span>
+      </div>
+
+      {/* Day content — compact timeline */}
+      <div className="px-4 py-3 space-y-1">
+        {/* Arrival flight */}
+        {isFirst && arrivalFlight && (
+          <div className="flex items-center gap-3 py-1.5 border-b border-gray-100">
+            <Plane size={13} className="text-green-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[12px] font-medium text-gray-900">Arrive — {arrivalFlight.flightNumber}</span>
+              <span className="text-[11px] text-gray-400 ml-2">{arrivalFlight.arrivalTime}</span>
+            </div>
+            <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Booked</span>
+          </div>
+        )}
+
+        {/* Hotel check-in */}
+        {isFirst && (
+          <div className="flex items-center gap-3 py-1.5 border-b border-gray-100">
+            <Building2 size={13} className="text-blue-600 shrink-0" />
+            <span className="text-[12px] font-medium text-gray-900">{hotel.name}</span>
+            <span className="text-[11px] text-gray-400">Check-in</span>
+          </div>
+        )}
+
+        {/* Time groups */}
+        {day.timeGroups.map((group) => {
+          const config = TIME_OF_DAY_CONFIG[group.timeOfDay as keyof typeof TIME_OF_DAY_CONFIG];
+          const Icon = TOD_ICONS[config.icon as keyof typeof TOD_ICONS] ?? Sun;
+
+                return (
+                  <div key={group.timeOfDay}>
+                    {/* Time-of-day label */}
+                    <div className="flex items-center gap-2 pt-2 pb-1">
+                      <Icon size={12} style={{ color: 'var(--trip-base)' }} />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--trip-base)' }}>
+                        {config.label}
+                      </span>
+                      <div className="flex-1 h-px bg-gray-100" />
+                    </div>
+
+                    {/* Activities */}
+                    {group.activities.map((activity) => {
+                      const catColor = getActivityTypeColor(activity.category);
+                      const CatIcon = CATEGORY_ICONS[activity.category] ?? Eye;
+
+                      return (
+                        <div
+                          key={activity.id}
+                          className="flex items-center gap-2.5 py-1.5 pl-1 group hover:bg-gray-50 rounded-lg transition-colors"
+                        >
+                          {/* Category icon */}
+                          <div
+                            className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: catColor.bg, border: `1px solid ${catColor.border}` }}
+                          >
+                            <CatIcon size={11} style={{ color: catColor.primary }} />
+                          </div>
+
+                          {/* Name + location */}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[12px] font-medium text-gray-900">{activity.name}</span>
+                            {activity.locationName && (
+                              <span className="text-[11px] text-gray-400 ml-1.5">
+                                <MapPin size={9} className="inline -mt-0.5 mr-0.5" />
+                                {activity.locationName}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Category pill */}
+                          <span
+                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 capitalize"
+                            style={{ backgroundColor: catColor.bg, color: catColor.primary }}
+                          >
+                            {activity.category}
+                          </span>
+
+                          {/* Time + cost */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {activity.startTime && (
+                              <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                                <Clock size={9} />
+                                {activity.startTime}
+                              </span>
+                            )}
+                            {activity.costDisplay && (
+                              <span className="text-[10px] font-medium text-gray-500">{activity.costDisplay}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Add activity button */}
+                    {onAddActivity && (
+                      <button
+                        onClick={() => onAddActivity(group.timeOfDay)}
+                        className="flex items-center gap-1.5 py-1.5 pl-1 text-[11px] font-medium opacity-50 hover:opacity-100 transition-opacity"
+                        style={{ color: 'var(--trip-base)' }}
+                      >
+                        <Plus size={12} />
+                        Add Activity
+                      </button>
+                    )}
+
+                    {/* Inline explore panel */}
+                    <div
+                      className="overflow-hidden transition-all duration-300 ease-out"
+                      style={{
+                        maxHeight: addingTo === group.timeOfDay ? '320px' : '0px',
+                        opacity: addingTo === group.timeOfDay ? 1 : 0,
+                      }}
+                    >
+                      <div className="pt-2 pb-1">
+                        {/* Search + close */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="relative flex-1">
+                            <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search activities..."
+                              value={addSearch ?? ''}
+                              onChange={(e) => onSearchChange?.(e.target.value)}
+                              className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-1"
+                              style={{ '--tw-ring-color': 'var(--trip-base)' } as React.CSSProperties}
+                            />
+                          </div>
+                          <button
+                            onClick={onCloseAdd}
+                            className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors shrink-0"
+                          >
+                            <X size={10} className="text-gray-500" />
+                          </button>
+                        </div>
+
+                        {/* Category pills */}
+                        <div className="flex gap-1 mb-2 overflow-x-auto scrollbar-hide">
+                          {['All', 'Tours', 'Museums', 'Restaurants', 'Sightseeing', 'Nightlife'].map((cat) => (
+                            <button
+                              key={cat}
+                              onClick={() => onCategoryChange?.(cat)}
+                              className={`px-2 py-0.5 text-[10px] rounded-full whitespace-nowrap transition-all ${
+                                addCategory === cat
+                                  ? 'text-white font-semibold'
+                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              }`}
+                              style={addCategory === cat ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Horizontal scroll of discover cards */}
+                        {discoverItems && discoverItems.length > 0 ? (
+                          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+                            {discoverItems.slice(0, 8).map((item, i) => (
+                              <div
+                                key={item.id}
+                                className="shrink-0 w-[140px] rounded-lg border border-gray-200 overflow-hidden bg-white hover:shadow-md transition-shadow cursor-pointer group"
+                              >
+                                {/* Image */}
+                                <div
+                                  className="h-[80px] bg-gray-100 relative overflow-hidden"
+                                  onClick={() => onBrowse?.(i)}
+                                >
+                                  {item.images?.[0] ? (
+                                    <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Camera size={16} className="text-gray-300" />
+                                    </div>
+                                  )}
+                                  {item.rating && (
+                                    <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                      <Star size={8} className="fill-amber-400 text-amber-400" /> {item.rating}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Info */}
+                                <div className="px-2 py-1.5">
+                                  <p className="text-[11px] font-medium text-gray-900 truncate">{item.name}</p>
+                                  {item.price && (
+                                    <p className="text-[10px] text-gray-400">{item.price}</p>
+                                  )}
+                                  <button
+                                    onClick={() => onAddItem?.(item, group.timeOfDay)}
+                                    className="mt-1 w-full flex items-center justify-center gap-1 py-1 rounded-md text-[10px] font-semibold text-white transition-opacity hover:opacity-90"
+                                    style={{ backgroundColor: 'var(--trip-base)' }}
+                                  >
+                                    <Plus size={10} />
+                                    Add
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 text-center py-3">No activities found</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+        {/* Return flight */}
+        {isLast && returnFlight && (
+          <div className="flex items-center gap-3 py-1.5 border-t border-gray-100 mt-1">
+            <Plane size={13} className="text-blue-600 shrink-0 rotate-180" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[12px] font-medium text-gray-900">Depart — {returnFlight.flightNumber}</span>
+              <span className="text-[11px] text-gray-400 ml-2">{returnFlight.departureTime}</span>
+            </div>
+            <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Booked</span>
+          </div>
+        )}
+
+        {/* Day notes */}
+        {day.notes && (
+          <p className="text-[11px] text-gray-400 italic pt-1.5 border-t border-gray-100 mt-1">{day.notes}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GlanceView({
+  days,
+  selectedDayIndex,
+  arrivalFlight,
+  returnFlight,
+  hotel,
+  onAddActivity,
+  addingTo,
+  discoverItems,
+  addSearch,
+  onSearchChange,
+  addCategory,
+  onCategoryChange,
+  favorites,
+  onFavorite,
+  onBrowse,
+  onAddItem,
+  onCloseAdd,
+}: {
+  days: ItineraryDayViewModel[];
+  selectedDayIndex: number;
+  arrivalFlight?: typeof MOCK_FLIGHT_DETAILS[number];
+  returnFlight?: typeof MOCK_FLIGHT_DETAILS[number];
+  hotel: typeof MOCK_HOTEL_DETAIL;
+  onAddActivity?: (timeOfDay: string) => void;
+  addingTo?: string | null;
+  discoverItems?: DiscoverItem[];
+  addSearch?: string;
+  onSearchChange?: (q: string) => void;
+  addCategory?: string;
+  onCategoryChange?: (cat: string) => void;
+  favorites?: string[];
+  onFavorite?: (id: string) => void;
+  onBrowse?: (index: number) => void;
+  onAddItem?: (item: DiscoverItem, timeOfDay: string) => void;
+  onCloseAdd?: () => void;
+}) {
+  const day = days[selectedDayIndex];
+  if (!day) return null;
+  const isFirst = selectedDayIndex === 0;
+  const isLast = selectedDayIndex === days.length - 1;
+
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.div
+        key={day.id}
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -30 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <GlanceDayCard
+          day={day}
+          isFirst={isFirst}
+          isLast={isLast}
+          arrivalFlight={arrivalFlight}
+          returnFlight={returnFlight}
+          hotel={hotel}
+          onAddActivity={onAddActivity}
+          addingTo={addingTo}
+          discoverItems={discoverItems}
+          addSearch={addSearch}
+          onSearchChange={onSearchChange}
+          addCategory={addCategory}
+          onCategoryChange={onCategoryChange}
+          favorites={favorites}
+          onFavorite={onFavorite}
+          onBrowse={onBrowse}
+          onAddItem={onAddItem}
+          onCloseAdd={onCloseAdd}
+        />
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────
 
 export default function Itinerary({ params }: { params: Promise<{ id: string }> }) {
@@ -79,9 +467,12 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     collapsedSections, setCollapsedSections,
     allCollapsedOverride, setAllCollapsedOverride,
     selectedDayIndex, setSelectedDayIndex,
+    setMapMarkers, setSelectedMarkerId, setRequestMapOpen,
   } = useItineraryContext();
   const selectedDay = days[selectedDayIndex] ?? null;
+  const contentRef = useRef<HTMLDivElement>(null);
 
+  const [glanceMode, setGlanceMode] = useState(true);
   const [selectedActivityIndex, setSelectedActivityIndex] = useState<number | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addCategory, setAddCategory] = useState('All');
@@ -187,6 +578,48 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     );
   }, [selectedDay]);
 
+  // Push markers to layout map
+  useEffect(() => {
+    if (mapLocations.length > 0) {
+      setMapMarkers(mapLocations);
+      setRequestMapOpen(true);
+    }
+    return () => {
+      setMapMarkers([]);
+      setSelectedMarkerId(undefined);
+      setRequestMapOpen(false);
+    };
+  }, [mapLocations, setMapMarkers, setSelectedMarkerId, setRequestMapOpen]);
+
+  // IntersectionObserver — highlight map marker as user scrolls past activities
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container || mapLocations.length === 0) return;
+
+    const activityIds = new Set(mapLocations.map((m) => m.id));
+    const visibleIds = new Set<string>();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.activityId;
+          if (!id || !activityIds.has(id)) continue;
+          if (entry.isIntersecting) visibleIds.add(id);
+          else visibleIds.delete(id);
+        }
+        // Pick the first visible activity (topmost in scroll order)
+        const ordered = mapLocations.filter((m) => visibleIds.has(m.id));
+        setSelectedMarkerId(ordered[0]?.id);
+      },
+      { root: null, rootMargin: '-20% 0px -60% 0px', threshold: 0 },
+    );
+
+    const cards = container.querySelectorAll('[data-activity-id]');
+    cards.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [mapLocations, setSelectedMarkerId]);
+
   const handleActivityClick = useCallback(
     (activityId: string) => {
       const idx = allActivities.findIndex((a) => a.id === activityId);
@@ -226,25 +659,67 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           <DaySelector days={days} selectedIndex={selectedDayIndex} onSelect={setSelectedDayIndex} />
         </div>
         <div className="flex items-center gap-1.5 ml-2 shrink-0">
-          {/* Collapse All */}
+          {/* Glance toggle */}
           <button
-            onClick={toggleCollapseAll}
+            onClick={() => setGlanceMode((v) => !v)}
             className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
             style={{
-              backgroundColor: allCollapsed ? 'var(--trip-base)' : 'rgb(var(--trip-base-rgb) / 0.15)',
-              color: allCollapsed ? 'white' : 'var(--trip-base)',
-              boxShadow: allCollapsed ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
+              backgroundColor: glanceMode ? 'var(--trip-base)' : 'rgb(var(--trip-base-rgb) / 0.15)',
+              color: glanceMode ? 'white' : 'var(--trip-base)',
+              boxShadow: glanceMode ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
             }}
-            title={allCollapsed ? 'Expand all' : 'Collapse all'}
+            title={glanceMode ? 'Detailed view' : 'At a glance'}
           >
-            <ChevronDown size={14} className={`transition-transform ${allCollapsed ? '' : 'rotate-180'}`} />
+            <LayoutList size={14} />
           </button>
+          {/* Collapse All */}
+          {!glanceMode && (
+            <button
+              onClick={toggleCollapseAll}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+              style={{
+                backgroundColor: allCollapsed ? 'var(--trip-base)' : 'rgb(var(--trip-base-rgb) / 0.15)',
+                color: allCollapsed ? 'white' : 'var(--trip-base)',
+                boxShadow: allCollapsed ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
+              }}
+              title={allCollapsed ? 'Expand all' : 'Collapse all'}
+            >
+              <ChevronDown size={14} className={`transition-transform ${allCollapsed ? '' : 'rotate-180'}`} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Day Content */}
-      {selectedDay && (
-        <div>
+      {/* Glance View — swipe through days */}
+      {glanceMode && (
+        <GlanceView
+          days={days}
+          selectedDayIndex={selectedDayIndex}
+          arrivalFlight={arrivalFlight}
+          returnFlight={returnFlight}
+          hotel={MOCK_HOTEL_DETAIL}
+          onAddActivity={(timeOfDay) => {
+            setAddingTo(addingTo === timeOfDay ? null : timeOfDay);
+            setAddCategory('All');
+            setAddSearch('');
+          }}
+          addingTo={addingTo}
+          discoverItems={filteredDiscoverItems}
+          addSearch={addSearch}
+          onSearchChange={setAddSearch}
+          addCategory={addCategory}
+          onCategoryChange={setAddCategory}
+          favorites={favorites}
+          onFavorite={toggleFavorite}
+          onBrowse={(i) => setBrowseIndex(i)}
+          onAddItem={(item, tod) => handleAddItem(item, tod)}
+          onCloseAdd={() => { setAddingTo(null); setAddSearch(''); setAddCategory('All'); }}
+        />
+      )}
+
+      {/* Day Content (detailed view) */}
+      {!glanceMode && selectedDay && (
+        <div ref={contentRef}>
           {isFirstDay && arrivalFlight && (
             <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
           )}
