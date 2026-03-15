@@ -1,7 +1,19 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { RouteLocation, TripRoute } from '@travyl/shared';
+
+interface RouteLocation {
+  city: string;
+  iata?: string;
+  lat: number;
+  lng: number;
+}
+
+interface TripRoute {
+  origin: RouteLocation;
+  destinations: RouteLocation[];
+  stops?: RouteLocation[];
+}
 
 interface RouteMapProps {
   route: TripRoute;

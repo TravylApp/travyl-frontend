@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Navbar from "@/components/navbar";
 
 export default function MainLayout({
@@ -7,7 +8,9 @@ export default function MainLayout({
 }) {
   return (
     <>
-      <Navbar />
+      <Suspense>
+        <Navbar />
+      </Suspense>
       <main className="pt-11">{children}</main>
     </>
   );
