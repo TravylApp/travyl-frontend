@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { Heart, MapPin, Star } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Navy } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
 // ─── Deterministic hash for consistent randomization ────────
@@ -14,50 +16,17 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
-type FrameStyle = 'polaroid' | 'rounded' | 'sharp' | 'asymmetric' | 'normal';
-
-const FRAME_STYLES: FrameStyle[] = ['polaroid', 'rounded', 'sharp', 'asymmetric', 'normal'];
-
-function getFrameStyle(id: string): FrameStyle {
-  return FRAME_STYLES[hashCode(id) % FRAME_STYLES.length];
+function getAspectRatio(id: string): number {
+  return 0.95 + (hashCode(id + 'ar') % 20) / 100; // 0.95–1.14 (tighter range for balanced masonry)
 }
 
-function getImageHeight(id: string): number {
-  return 160 + (hashCode(id + 'h') % 241); // 160–400px
-}
-
-function getRotation(id: string): number {
-  const seed = hashCode(id + 'rot');
-  if (seed % 3 !== 0) return 0; // ~30% get rotation
-  return ((seed % 5) - 2) * 0.8; // ±1.6 deg
+function getRotation(_id: string): number {
+  return 0; // disabled — rotation causes visual overlap in tight masonry grids
 }
 
 function hasTape(id: string): boolean {
-  return hashCode(id + 'tape') % 3 === 0; // ~33%
+  return hashCode(id + 'tape') % 4 === 0; // ~25%
 }
-
-const frameClasses: Record<FrameStyle, { container: string; image: string }> = {
-  polaroid: {
-    container: 'rounded-sm bg-white p-1.5 pb-3 shadow-md',
-    image: 'rounded-sm',
-  },
-  rounded: {
-    container: 'rounded-2xl overflow-hidden shadow-sm',
-    image: 'rounded-2xl',
-  },
-  sharp: {
-    container: 'rounded-none overflow-hidden shadow-sm',
-    image: 'rounded-none',
-  },
-  asymmetric: {
-    container: 'rounded-tl-3xl rounded-br-3xl rounded-tr-md rounded-bl-md overflow-hidden shadow-sm',
-    image: 'rounded-tl-3xl rounded-br-3xl rounded-tr-md rounded-bl-md',
-  },
-  normal: {
-    container: 'rounded-xl overflow-hidden shadow-sm',
-    image: 'rounded-xl',
-  },
-};
 
 export interface PinCardProps {
   item: PlaceItem;
@@ -68,22 +37,25 @@ export interface PinCardProps {
 }
 
 export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCardProps) {
-  const frame = getFrameStyle(item.id);
-  const imgHeight = getImageHeight(item.id);
+  const [imgError, setImgError] = useState(false);
+  const aspectRatio = getAspectRatio(item.id);
   const rotation = getRotation(item.id);
   const showTape = hasTape(item.id);
-  const fc = frameClasses[frame];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.6) }}
+      initial={{ opacity: 0, y: 28, scale: 0.93 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        duration: 0.5,
+        delay: Math.min(index * 0.06, 0.8),
+        ease: [0.22, 1, 0.36, 1],
+      }}
       style={{ rotate: rotation ? `${rotation}deg` : undefined }}
-      className="break-inside-avoid mb-2"
+      className="break-inside-avoid"
     >
       <div
-        className={`group relative bg-white border border-gray-100 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 ${fc.container}`}
+        className="group relative bg-white border border-gray-100 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 shadow-sm"
         onClick={() => onClick?.(item.id)}
       >
         {/* Decorative tape */}
@@ -98,14 +70,24 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
         )}
 
         {/* Image */}
-        <div className={`relative overflow-hidden ${fc.image}`} style={{ height: imgHeight }}>
-          <Image
-            src={item.image}
-            alt={item.name}
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-500"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          />
+        <div className="relative overflow-hidden rounded-t-xl" style={{ aspectRatio }}>
+          {imgError ? (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
+            >
+              <MapPin size={28} className="text-white/30" />
+            </div>
+          ) : (
+            <Image
+              src={item.image}
+              alt={item.name}
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-500"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              onError={() => setImgError(true)}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
           {/* Favorite button */}
@@ -118,17 +100,6 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
               className={isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-500'}
             />
           </button>
-
-          {/* Category badge */}
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm text-[10px] font-medium text-gray-700 z-10">
-            {item.category}
-          </div>
-
-          {/* Rating badge */}
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm z-10">
-            <Star size={10} className="text-amber-400 fill-amber-400" />
-            <span className="text-[10px] font-medium text-white">{item.rating}</span>
-          </div>
         </div>
 
         {/* Content */}
@@ -137,7 +108,13 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
             <MapPin size={9} className="shrink-0" />
             <span className="truncate">{item.tagline}</span>
           </div>
-          <h3 className="text-[13px] font-semibold text-gray-900 leading-tight mb-0.5 line-clamp-1">{item.name}</h3>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <h3 className="text-[13px] font-semibold text-gray-900 leading-tight line-clamp-1 flex-1 min-w-0">{item.name}</h3>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <Star size={10} className="text-amber-400 fill-amber-400" />
+              <span className="text-[10px] font-medium text-gray-600">{item.rating}</span>
+            </div>
+          </div>
           {item.description && (
             <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{item.description}</p>
           )}
