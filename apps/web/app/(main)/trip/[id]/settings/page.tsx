@@ -710,7 +710,6 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       setIsPublic(!isPublic);
       refetch();
     } catch (error) {
-      console.error('Failed to update trip visibility:', error);
       alert('Failed to update trip visibility');
     }
   };

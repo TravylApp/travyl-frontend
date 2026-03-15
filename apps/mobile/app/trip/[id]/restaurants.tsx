@@ -14,6 +14,8 @@ import {
 import type { DiscoverItem } from '@travyl/shared';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
+import { RatingStars } from '@/components/ui/RatingStars';
 
 
 /* -- Menu highlights mock data (keyed by restaurant id) -------- */
@@ -61,23 +63,6 @@ const RESTAURANT_DISTANCES: Record<string, string> = {
   rd1: '0.5 km', rd2: '1.5 km', rd3: '0.7 km', rd4: '2.1 km', rd5: '0.4 km',
 };
 
-// -- Rating stars -------------------------------------------------
-function RatingStars({ rating, size = 11 }: { rating: number; size?: number }) {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.3;
-  const empty = 5 - full - (half ? 1 : 0);
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-      {Array.from({ length: full }).map((_, i) => (
-        <FontAwesome key={`f${i}`} name="star" size={size} color="#fbbf24" />
-      ))}
-      {half && <FontAwesome name="star-half-full" size={size} color="#fbbf24" />}
-      {Array.from({ length: empty }).map((_, i) => (
-        <FontAwesome key={`e${i}`} name="star-o" size={size} color="#e5e7eb" />
-      ))}
-    </View>
-  );
-}
 
 // -- Price level dots ---------------------------------------------
 function PriceLevel({ price }: { price: string }) {
@@ -801,10 +786,6 @@ function RestaurantDetailSheet({ item, onClose }: { item: DiscoverItem; onClose:
 }
 
 // -- Skeleton card ------------------------------------------------
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
 
 function SkeletonDiscoverCard() {
   const colors = useThemeColors();

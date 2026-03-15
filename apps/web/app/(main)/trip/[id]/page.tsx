@@ -11,10 +11,7 @@ import {
   MOCK_WEATHER, MOCK_WEATHER_FORECAST, MOCK_NEWS,
 } from '@travyl/shared';
 import type { NewsItem } from '@travyl/shared';
-
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`rounded-md bg-gray-200 ${className}`} />;
-}
+import { Skeleton } from '@/components/ui';
 
 // ─── Collapsible Section ─────────────────────────────────────
 

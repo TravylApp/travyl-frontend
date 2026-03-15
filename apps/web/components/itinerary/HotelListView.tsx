@@ -14,8 +14,108 @@ import {
   Mail,
   Map as MapIcon,
 } from 'lucide-react';
-import { HOTEL_SEARCH_RESULTS } from '@travyl/shared';
 import type { HotelSearchResult, RoomType } from '@travyl/shared';
+
+/* ------------------------------------------------------------------ */
+/*  Mock data                                                         */
+/* ------------------------------------------------------------------ */
+
+const HOTEL_SEARCH_RESULTS: HotelSearchResult[] = [
+  {
+    id: 1,
+    name: 'Hôtel Plaza Athénée',
+    stars: 5,
+    rating: 9.4,
+    reviews: 2841,
+    price: 580,
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
+    images: [
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+      'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
+    ],
+    address: '25 Avenue Montaigne, 75008 Paris',
+    neighborhood: 'Champs-Élysées',
+    distance: '1.2 km from Eiffel Tower',
+    amenities: ['Free Wi-Fi', 'Spa', 'Restaurant', 'Bar', 'Fitness Center', 'Room Service'],
+    roomTypes: [
+      { type: 'Superior Room', beds: '1 King', size: '35 m²', guests: 2, price: 580, image: '' },
+      { type: 'Deluxe Suite', beds: '1 King + Sofa', size: '55 m²', guests: 3, price: 920, image: '' },
+    ],
+    guestRatings: {
+      overall: 9.4,
+      categories: [
+        { label: 'Cleanliness', score: 9.7 },
+        { label: 'Location', score: 9.8 },
+        { label: 'Service', score: 9.5 },
+        { label: 'Value', score: 8.6 },
+      ],
+    },
+    taxesAndFees: { cityTax: 5, serviceFee: 15, vat: 10 },
+    freeCancellation: true,
+    lat: 48.8661,
+    lng: 2.3040,
+    phone: '+33 1 53 67 66 65',
+    email: 'reservations@plaza-athenee-paris.com',
+  },
+  {
+    id: 2,
+    name: 'Le Marais Boutique Hotel',
+    stars: 4,
+    rating: 8.8,
+    reviews: 1523,
+    price: 245,
+    image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400',
+    images: [
+      'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800',
+    ],
+    address: '12 Rue des Archives, 75004 Paris',
+    neighborhood: 'Le Marais',
+    distance: '2.8 km from Eiffel Tower',
+    amenities: ['Free Wi-Fi', 'Breakfast', 'Air Conditioning', 'Bar'],
+    roomTypes: [
+      { type: 'Classic Double', beds: '1 Queen', size: '22 m²', guests: 2, price: 245, image: '' },
+      { type: 'Superior Twin', beds: '2 Twins', size: '26 m²', guests: 2, price: 275, image: '' },
+    ],
+    guestRatings: {
+      overall: 8.8,
+      categories: [
+        { label: 'Cleanliness', score: 9.1 },
+        { label: 'Location', score: 9.5 },
+        { label: 'Service', score: 8.7 },
+        { label: 'Value', score: 8.9 },
+      ],
+    },
+    taxesAndFees: { cityTax: 3, serviceFee: 0, vat: 10 },
+    freeCancellation: true,
+    lat: 48.8588,
+    lng: 2.3550,
+  },
+  {
+    id: 3,
+    name: 'Saint-Germain Apart Hotel',
+    stars: 3,
+    rating: 8.2,
+    reviews: 967,
+    price: 175,
+    image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=400',
+    images: [
+      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
+    ],
+    address: '45 Rue de Seine, 75006 Paris',
+    neighborhood: 'Saint-Germain-des-Prés',
+    distance: '1.9 km from Eiffel Tower',
+    amenities: ['Free Wi-Fi', 'Kitchenette', 'Laundry', 'Air Conditioning'],
+    roomTypes: [
+      { type: 'Studio', beds: '1 Double', size: '28 m²', guests: 2, price: 175, image: '' },
+      { type: 'One-Bedroom Apartment', beds: '1 Queen + Sofa', size: '42 m²', guests: 4, price: 260, image: '' },
+    ],
+    taxesAndFees: { cityTax: 2, serviceFee: 0, vat: 10 },
+    freeCancellation: false,
+    lat: 48.8546,
+    lng: 2.3370,
+  },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */

@@ -13,6 +13,8 @@ import {
 import type { DiscoverItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
+import { RatingStars } from '@/components/ui/RatingStars';
 
 // ---- Placeholder colors for cards without images ----
 const PLACEHOLDER_COLORS = ['#e0f2fe', '#fef3c7', '#ede9fe', '#ecfdf5', '#fce7f3', '#fff7ed', '#f0fdfa'];
@@ -22,23 +24,6 @@ function placeholderColor(id: string): string {
   return PLACEHOLDER_COLORS[Math.abs(hash) % PLACEHOLDER_COLORS.length];
 }
 
-// ---- Rating Stars ----
-function RatingStars({ rating, size = 12 }: { rating: number; size?: number }) {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.3;
-  const empty = 5 - full - (half ? 1 : 0);
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-      {Array.from({ length: full }).map((_, i) => (
-        <FontAwesome key={`f${i}`} name="star" size={size} color="#fbbf24" />
-      ))}
-      {half && <FontAwesome name="star-half-o" size={size} color="#fbbf24" />}
-      {Array.from({ length: empty }).map((_, i) => (
-        <FontAwesome key={`e${i}`} name="star-o" size={size} color="#e5e7eb" />
-      ))}
-    </View>
-  );
-}
 
 // ---- Min Rating Filter ----
 function MinRatingFilter({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
@@ -699,10 +684,6 @@ function ActivityDetailSheet({
 }
 
 // ---- Skeleton ----
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
 
 function SkeletonCard() {
   const colors = useThemeColors();

@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Search, MapPin, Calendar, Users, Sparkles } from "lucide-react";
-import { PaperPlane } from "./PaperPlane";
+import { PaperPlane } from "@/components/icons/PaperPlane";
 import { STEP1_QUICK_CHIPS, STEP1_RECENT_SEARCHES } from "@travyl/shared";
 
 const CHIP_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {

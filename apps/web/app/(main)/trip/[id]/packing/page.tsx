@@ -6,13 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared';
 import type { PackingItem, PackingList } from '@travyl/shared';
 
-/* ------------------------------------------------------------------ */
-/*  Skeleton                                                          */
-/* ------------------------------------------------------------------ */
-
-function SkeletonBlock({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`bg-gray-200 rounded animate-pulse ${className ?? ''}`} style={style} />;
-}
+import { Skeleton } from '@/components/ui';
 
 function SkeletonPacking() {
   return (
@@ -20,20 +14,20 @@ function SkeletonPacking() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="rounded-lg p-3 border border-gray-200 bg-white">
-            <SkeletonBlock style={{ width: 120, height: 14 }} />
-            <SkeletonBlock className="mt-2" style={{ height: 6 }} />
+            <Skeleton style={{ width: 120, height: 14 }} />
+            <Skeleton className="mt-2" style={{ height: 6 }} />
           </div>
         ))}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[1, 2, 3].map((i) => (
           <div key={i} className="rounded-xl p-3.5 border border-gray-200 bg-white">
-            <SkeletonBlock style={{ width: 80, height: 14 }} />
+            <Skeleton style={{ width: 80, height: 14 }} />
             <div className="space-y-2 mt-3">
               {[1, 2, 3, 4].map((j) => (
                 <div key={j} className="flex items-center gap-2.5">
-                  <SkeletonBlock style={{ width: 16, height: 16 }} />
-                  <SkeletonBlock style={{ width: 80 + j * 15, height: 12 }} />
+                  <Skeleton style={{ width: 16, height: 16 }} />
+                  <Skeleton style={{ width: 80 + j * 15, height: 12 }} />
                 </div>
               ))}
             </div>

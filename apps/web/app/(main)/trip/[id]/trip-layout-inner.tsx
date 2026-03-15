@@ -129,7 +129,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCal
         <div className="flex-1">
           <h2
             className="text-[17px] tracking-tight"
-            style={{ color: '#1e3a5f', fontWeight: 700 }}
+            style={{ color: 'var(--trip-base)', fontWeight: 700 }}
           >
             {tab.label}
           </h2>
@@ -140,9 +140,10 @@ function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCal
             onClick={onToggleCalendar}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
               calendarOpen
-                ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md scale-[1.02]'
+                ? 'text-white shadow-md scale-[1.02]'
                 : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600'
             }`}
+            style={calendarOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
             title={calendarOpen ? 'List view' : 'Calendar view'}
           >
             <Calendar size={13} />
@@ -152,9 +153,10 @@ function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCal
             onClick={onToggleMap}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
               mapOpen
-                ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md scale-[1.02]'
+                ? 'text-white shadow-md scale-[1.02]'
                 : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600'
             }`}
+            style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
             title={mapOpen ? 'Hide map' : 'Show map'}
           >
             <Map size={13} />
@@ -313,7 +315,7 @@ function TripLayoutContent({
                   className="hidden md:flex w-[340px] lg:w-[440px] xl:w-[520px] shrink-0 border-l border-gray-200 bg-white flex-col overflow-hidden rounded-r-2xl">
                   <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
                     <div className="flex items-center gap-2">
-                      <Map size={13} className="text-[#1e3a5f]" />
+                      <Map size={13} className="text-[var(--trip-base)]" />
                       <span className="text-xs font-semibold text-gray-800">
                         {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Paris, France')}
                       </span>
@@ -353,7 +355,7 @@ function TripLayoutContent({
                     {/* Location label bar */}
                     {!hasMarkers && (
                       <div className="absolute bottom-0 inset-x-0 flex items-center gap-2 px-3 py-2 bg-white/95 backdrop-blur-md border-t border-gray-100">
-                        <MapPin size={12} className="text-[#1e3a5f] shrink-0" />
+                        <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
                         <span className="text-[11px] font-medium text-gray-700 truncate">
                           {trip?.destination || 'Paris, France'}
                         </span>

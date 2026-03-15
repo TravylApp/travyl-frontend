@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -252,11 +253,6 @@ function generateConfirmation(): string {
 /* ------------------------------------------------------------------ */
 /*  Skeleton                                                           */
 /* ------------------------------------------------------------------ */
-
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
-}
 
 function SkeletonCarCard() {
   const ACCENT = useTabAccent('cars');
