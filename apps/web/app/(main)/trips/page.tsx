@@ -83,12 +83,12 @@ export default function MyTripsPage() {
         </div>
       </div>
     }>
-      <MyTripsContent />
+      <TripsContent />
     </Suspense>
   );
 }
 
-function MyTripsContent() {
+function TripsContent() {
   const searchParams = useSearchParams();
   const statusParam = (searchParams.get('status') as StatusFilter) || 'all';
   const searchQuery = searchParams.get('search') || '';
@@ -96,9 +96,6 @@ function MyTripsContent() {
   // Local state for view mode
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Auth commented out for testing
-  // const user = useAuthStore((s) => s.user);
-  // const loading = useAuthStore((s) => s.loading);
   const { data: trips, isLoading, isError } = useTrips();
 
   // Use real trips when available, otherwise fallback to mock data

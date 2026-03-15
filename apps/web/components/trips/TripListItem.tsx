@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight } from 'lucide-react';
+import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
@@ -12,15 +13,6 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
   completed: { label: 'Completed', bg: 'bg-gray-500/90', text: 'text-white' },
   abandoned: { label: 'Cancelled', bg: 'bg-red-500/90', text: 'text-white' },
 };
-
-function formatDateRange(start: string, end: string): string {
-  const s = new Date(start + 'T00:00:00');
-  const e = new Date(end + 'T00:00:00');
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  const sStr = s.toLocaleDateString('en-US', opts);
-  const eStr = e.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
-  return `${sStr} – ${eStr}`;
-}
 
 function formatCurrency(amount: number, currency: string): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);

@@ -24,21 +24,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(home)"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          title: 'Discover',
+          tabBarIcon: ({ color }) => <TabBarIcon name="compass" color={color} />,
         }}
       />
       <Tabs.Screen
         name="favorites"
         options={{
-          title: 'Favorites',
-          tabBarIcon: ({ color }) => <TabBarIcon name="heart" color={color} />,
+          title: 'Places',
+          tabBarIcon: ({ color }) => <TabBarIcon name="map-marker" color={color} />,
         }}
       />
       <Tabs.Screen
         name="trips"
         options={{
-          title: 'My Trips',
+          title: 'Trips',
           tabBarIcon: ({ color }) => <TabBarIcon name="suitcase" color={color} />,
         }}
       />

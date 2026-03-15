@@ -11,11 +11,10 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Blue } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const SAND_COLOR = '#e8d5c0';
-const SAND_LIGHT = '#d4c4a8';
 const HEIGHT = 140;
 
 /**
@@ -24,6 +23,10 @@ const HEIGHT = 140;
  */
 export function OceanWave() {
   const { width } = useWindowDimensions();
+  const colors = useThemeColors();
+
+  const sandColor = colors.sandBackground;
+  const sandLight = colors.sandBorder;
 
   // Each wave layer gets its own animation driver (0 → 1 → 0 loop)
   const w1 = useSharedValue(0);
@@ -142,10 +145,10 @@ export function OceanWave() {
         />
 
         {/* Sand wash */}
-        <AnimatedPath animatedProps={sandWashProps} fill={SAND_LIGHT} opacity={0.4} />
+        <AnimatedPath animatedProps={sandWashProps} fill={sandLight} opacity={0.4} />
 
         {/* Final sand */}
-        <AnimatedPath animatedProps={sandProps} fill={SAND_COLOR} />
+        <AnimatedPath animatedProps={sandProps} fill={sandColor} />
       </Svg>
     </View>
   );

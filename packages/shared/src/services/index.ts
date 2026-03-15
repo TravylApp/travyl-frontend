@@ -17,4 +17,10 @@ export {
   fetchUserPublicTrips,
   fetchTripByShareToken,
   updateTripVisibility,
+  addToItinerary,
+  removeFromItinerary,
+  toggleFavorite,
+  updateBudgetExpense,
+  addBudgetExpense,
+  updateTripSettings,
 } from './api';

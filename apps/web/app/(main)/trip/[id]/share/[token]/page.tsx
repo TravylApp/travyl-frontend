@@ -4,19 +4,10 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Calendar, Users, GitFork, Loader2, Lock, AlertCircle } from 'lucide-react';
-import { fetchTripByShareToken, useForkTrip, useAuthStore, canForkTrip } from '@travyl/shared';
+import { fetchTripByShareToken, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
 const BRAND = '#1e3a5f';
-
-function formatDateRange(start: string, end: string): string {
-  const s = new Date(start + 'T00:00:00');
-  const e = new Date(end + 'T00:00:00');
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  const sStr = s.toLocaleDateString('en-US', opts);
-  const eStr = e.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
-  return `${sStr} – ${eStr}`;
-}
 
 interface SharedTripViewProps {
   trip: Trip;
