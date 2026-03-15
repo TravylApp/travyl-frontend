@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, Navy } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
+import { PageTransition, TabCtx } from './_layout';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { ThemePicker } from '../../../components/trip/ThemePicker';
 
 const SETTINGS_COLOR = '#6b7280';
 
@@ -76,8 +79,9 @@ function SettingsSection({
   color: string;
   children: React.ReactNode;
 }) {
+  const colors = useThemeColors();
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb' }}>
+    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
       <View style={{ backgroundColor: color, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name={icon} size={14} color="#fff" />
         <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{title}</Text>
@@ -100,6 +104,7 @@ function ToggleRow({
   accentColor: string;
   isLast: boolean;
 }) {
+  const colors = useThemeColors();
   return (
     <View
       style={{
@@ -107,21 +112,21 @@ function ToggleRow({
         alignItems: 'center',
         paddingVertical: 10,
         borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: '#f3f4f6',
+        borderBottomColor: colors.borderLight,
       }}
     >
       <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: accentColor + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
         <FontAwesome name={setting.icon} size={12} color={accentColor} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>{setting.label}</Text>
-        <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{setting.description}</Text>
+        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>{setting.label}</Text>
+        <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{setting.description}</Text>
       </View>
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: '#e5e7eb', true: accentColor + '60' }}
-        thumbColor={value ? accentColor : '#f4f3f4' }
+        trackColor={{ false: colors.border, true: accentColor + '60' }}
+        thumbColor={value ? accentColor : '#f4f3f4'}
         ios_backgroundColor="#e5e7eb"
       />
     </View>
@@ -141,11 +146,12 @@ function SettingsInput({
   icon: React.ComponentProps<typeof FontAwesome>['name'];
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
 }) {
+  const colors = useThemeColors();
   return (
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <FontAwesome name={icon} size={11} color="#6b7280" />
-        <Text style={{ fontSize: 12, fontWeight: '500', color: '#6b7280' }}>{label}</Text>
+        <FontAwesome name={icon} size={11} color={colors.textSecondary} />
+        <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary }}>{label}</Text>
       </View>
       <TextInput
         value={value}
@@ -153,13 +159,13 @@ function SettingsInput({
         keyboardType={keyboardType ?? 'default'}
         style={{
           borderWidth: 1,
-          borderColor: '#e5e7eb',
+          borderColor: colors.border,
           borderRadius: 8,
           paddingHorizontal: 10,
           paddingVertical: 8,
           fontSize: 13,
-          color: '#374151',
-          backgroundColor: '#f9fafb',
+          color: colors.text,
+          backgroundColor: colors.surface,
         }}
       />
     </View>
@@ -172,6 +178,8 @@ export default function SettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { trip, isLoading } = useItineraryScreen(id);
+  const { theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors } = useContext(TabCtx);
+  const colors = useThemeColors();
 
   // Existing state
   const [notifications, setNotifications] = useState<Record<string, boolean>>(
@@ -270,11 +278,13 @@ export default function SettingsScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <PageTransition>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         {[1, 2, 3].map((i) => (
-          <View key={i} style={{ backgroundColor: '#f3f4f6', borderRadius: 12, height: 100, marginBottom: 12 }} />
+          <View key={i} style={{ backgroundColor: colors.borderLight, borderRadius: 12, height: 100, marginBottom: 12 }} />
         ))}
       </ScrollView>
+      </PageTransition>
     );
   }
 
@@ -288,7 +298,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <PageTransition>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: dirty ? 80 : 32 }}>
         {/* Trip Settings header */}
         <View style={{ backgroundColor: SETTINGS_COLOR + '10', borderRadius: 12, padding: 14, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -296,15 +307,35 @@ export default function SettingsScreen() {
             <FontAwesome name="cog" size={20} color={SETTINGS_COLOR} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: Navy.DEFAULT }}>Trip Settings</Text>
-            <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: theme.base }}>Trip Settings</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
               {trip?.destination ?? 'Trip'} preferences
             </Text>
           </View>
         </View>
 
+        {/* Trip Theme */}
+        <SettingsSection title="Trip Theme" icon="paint-brush" color={theme.base}>
+          <ThemePicker
+            currentTheme={theme.id}
+            customColor={theme.id === 'custom' ? theme.base : null}
+            onSelect={(themeId, customColor) => {
+              setTripTheme(themeId, customColor);
+              setDirty(true);
+            }}
+            tabColors={theme.tabColors}
+            tabColorOverrides={tabColorOverrides}
+            onTabColorChange={(tabName, color) => { setTabColor(tabName, color); setDirty(true); }}
+            onResetTabColors={() => { resetTabColors(); setDirty(true); }}
+            itineraryColors={theme.itineraryColors}
+            itineraryColorOverrides={itineraryColorOverrides}
+            onItineraryColorChange={(section, color) => { setItineraryColor(section, color); setDirty(true); }}
+            onResetItineraryColors={() => { resetItineraryColors(); setDirty(true); }}
+          />
+        </SettingsSection>
+
         {/* Profile */}
-        <SettingsSection title="Profile" icon="user" color={Navy.DEFAULT}>
+        <SettingsSection title="Profile" icon="user" color={theme.base}>
           <SettingsInput label="First Name" value={profile.firstName} icon="user" onChangeText={(t) => { setProfile((p) => ({ ...p, firstName: t })); setDirty(true); }} />
           <SettingsInput label="Last Name" value={profile.lastName} icon="user" onChangeText={(t) => { setProfile((p) => ({ ...p, lastName: t })); setDirty(true); }} />
           <SettingsInput label="Email" value={profile.email} icon="envelope" keyboardType="email-address" onChangeText={(t) => { setProfile((p) => ({ ...p, email: t })); setDirty(true); }} />
@@ -336,16 +367,16 @@ export default function SettingsScreen() {
                 alignItems: 'center',
                 paddingVertical: 10,
                 borderBottomWidth: 1,
-                borderBottomColor: '#f3f4f6',
+                borderBottomColor: colors.borderLight,
               }}
             >
-              <FontAwesome name={brandIcon(card.brand)} size={20} color={card.isDefault ? Navy.DEFAULT : '#9ca3af'} style={{ marginRight: 10 }} />
+              <FontAwesome name={brandIcon(card.brand)} size={20} color={card.isDefault ? theme.base : colors.textTertiary} style={{ marginRight: 10 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
                   {card.brand} ending in {card.last4}
                 </Text>
                 {card.isDefault && (
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: Navy.DEFAULT, marginTop: 1 }}>Default</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: theme.base, marginTop: 1 }}>Default</Text>
                 )}
               </View>
               <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -357,10 +388,10 @@ export default function SettingsScreen() {
                       paddingVertical: 4,
                       borderRadius: 6,
                       borderWidth: 1,
-                      borderColor: '#d1d5db',
+                      borderColor: colors.border,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '500', color: '#6b7280' }}>Set Default</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>Set Default</Text>
                   </Pressable>
                 )}
                 <Pressable
@@ -369,10 +400,10 @@ export default function SettingsScreen() {
                     paddingHorizontal: 8,
                     paddingVertical: 4,
                     borderRadius: 6,
-                    backgroundColor: '#fef2f2',
+                    backgroundColor: colors.errorBg,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: '#ef4444' }}>Remove</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.error }}>Remove</Text>
                 </Pressable>
               </View>
             </View>
@@ -381,7 +412,7 @@ export default function SettingsScreen() {
             onPress={handleAddCard}
             style={{
               marginTop: 12,
-              backgroundColor: Navy.DEFAULT,
+              backgroundColor: theme.base,
               paddingVertical: 10,
               borderRadius: 10,
               alignItems: 'center',
@@ -396,15 +427,15 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* Preferences */}
-        <SettingsSection title="Preferences" icon="sliders" color={Navy.DEFAULT}>
+        <SettingsSection title="Preferences" icon="sliders" color={theme.base}>
           {/* Currency */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: Navy.DEFAULT + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-              <FontAwesome name="dollar" size={12} color={Navy.DEFAULT} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: theme.base + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <FontAwesome name="dollar" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>Currency</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>Display currency for budget</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Currency</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Display currency for budget</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['USD', 'EUR', 'GBP'] as const).map((c) => (
@@ -415,23 +446,23 @@ export default function SettingsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderRadius: 8,
-                    backgroundColor: currency === c ? Navy.DEFAULT : '#f3f4f6',
+                    backgroundColor: currency === c ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: currency === c ? '#fff' : '#6b7280' }}>{c}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: currency === c ? '#fff' : colors.textSecondary }}>{c}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
 
           {/* Date Format */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: Navy.DEFAULT + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-              <FontAwesome name="calendar-o" size={12} color={Navy.DEFAULT} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: theme.base + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <FontAwesome name="calendar-o" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>Date Format</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>How dates are displayed</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Date Format</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>How dates are displayed</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['MM/DD', 'DD/MM'] as const).map((f) => (
@@ -442,23 +473,23 @@ export default function SettingsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderRadius: 8,
-                    backgroundColor: dateFormat === f ? Navy.DEFAULT : '#f3f4f6',
+                    backgroundColor: dateFormat === f ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: dateFormat === f ? '#fff' : '#6b7280' }}>{f}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: dateFormat === f ? '#fff' : colors.textSecondary }}>{f}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
 
           {/* Language */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: Navy.DEFAULT + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-              <FontAwesome name="language" size={12} color={Navy.DEFAULT} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: theme.base + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <FontAwesome name="language" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>Language</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>App display language</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Language</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>App display language</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {([
@@ -474,23 +505,23 @@ export default function SettingsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderRadius: 8,
-                    backgroundColor: language === l.key ? Navy.DEFAULT : '#f3f4f6',
+                    backgroundColor: language === l.key ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: language === l.key ? '#fff' : '#6b7280' }}>{l.label}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: language === l.key ? '#fff' : colors.textSecondary }}>{l.label}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
 
           {/* Time Format */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: Navy.DEFAULT + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-              <FontAwesome name="clock-o" size={12} color={Navy.DEFAULT} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: theme.base + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <FontAwesome name="clock-o" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>Time Format</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>Clock display format</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Time Format</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Clock display format</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['12h', '24h'] as const).map((t) => (
@@ -501,23 +532,23 @@ export default function SettingsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderRadius: 8,
-                    backgroundColor: timeFormat === t ? Navy.DEFAULT : '#f3f4f6',
+                    backgroundColor: timeFormat === t ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: timeFormat === t ? '#fff' : '#6b7280' }}>{t}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: timeFormat === t ? '#fff' : colors.textSecondary }}>{t}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
 
           {/* Distance Unit */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: Navy.DEFAULT + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-              <FontAwesome name="road" size={12} color={Navy.DEFAULT} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: theme.base + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <FontAwesome name="road" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>Distance Unit</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>Measurement system</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Distance Unit</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Measurement system</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['mi', 'km'] as const).map((d) => (
@@ -528,10 +559,10 @@ export default function SettingsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderRadius: 8,
-                    backgroundColor: distanceUnit === d ? Navy.DEFAULT : '#f3f4f6',
+                    backgroundColor: distanceUnit === d ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: distanceUnit === d ? '#fff' : '#6b7280' }}>{d}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: distanceUnit === d ? '#fff' : colors.textSecondary }}>{d}</Text>
                 </Pressable>
               ))}
             </View>
@@ -539,12 +570,12 @@ export default function SettingsScreen() {
 
           {/* Temperature Unit */}
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>
-            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: Navy.DEFAULT + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-              <FontAwesome name="thermometer" size={12} color={Navy.DEFAULT} />
+            <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: theme.base + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <FontAwesome name="thermometer" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151' }}>Temperature Unit</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>Temperature display</Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Temperature Unit</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Temperature display</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['F', 'C'] as const).map((u) => (
@@ -555,10 +586,10 @@ export default function SettingsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderRadius: 8,
-                    backgroundColor: temperatureUnit === u ? Navy.DEFAULT : '#f3f4f6',
+                    backgroundColor: temperatureUnit === u ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: temperatureUnit === u ? '#fff' : '#6b7280' }}>{u === 'F' ? '\u00B0F' : '\u00B0C'}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: temperatureUnit === u ? '#fff' : colors.textSecondary }}>{u === 'F' ? '\u00B0F' : '\u00B0C'}</Text>
                 </Pressable>
               ))}
             </View>
@@ -599,8 +630,8 @@ export default function SettingsScreen() {
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#3b82f615', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
               <FontAwesome name="user-plus" size={18} color="#3b82f6" />
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Invite Travelers</Text>
-            <Text style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 4 }}>Invite Travelers</Text>
+            <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginBottom: 12 }}>
               Share this trip with friends and family to plan together.
             </Text>
             <Pressable style={{ backgroundColor: '#3b82f6', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -611,7 +642,7 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* Danger zone */}
-        <View style={{ backgroundColor: '#fef2f2', borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', padding: 14, marginBottom: 12 }}>
+        <View style={{ backgroundColor: colors.errorBg, borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', padding: 14, marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <FontAwesome name="exclamation-triangle" size={14} color="#ef4444" />
             <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>Danger Zone</Text>
@@ -647,9 +678,9 @@ export default function SettingsScreen() {
             justifyContent: 'space-between',
             paddingHorizontal: 16,
             paddingVertical: 12,
-            backgroundColor: '#fff',
+            backgroundColor: colors.background,
             borderTopWidth: 1,
-            borderTopColor: '#e5e7eb',
+            borderTopColor: colors.border,
             gap: 12,
           }}
         >
@@ -660,15 +691,15 @@ export default function SettingsScreen() {
               paddingVertical: 12,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: '#d1d5db',
+              borderColor: colors.border,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
               gap: 6,
             }}
           >
-            <FontAwesome name="times" size={14} color="#6b7280" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#6b7280' }}>Discard</Text>
+            <FontAwesome name="times" size={14} color={colors.textSecondary} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Discard</Text>
           </Pressable>
           <Pressable
             onPress={handleSave}
@@ -676,7 +707,7 @@ export default function SettingsScreen() {
               flex: 1,
               paddingVertical: 12,
               borderRadius: 10,
-              backgroundColor: Navy.DEFAULT,
+              backgroundColor: theme.base,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
@@ -689,5 +720,6 @@ export default function SettingsScreen() {
         </View>
       )}
     </View>
+    </PageTransition>
   );
 }
