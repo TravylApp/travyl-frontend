@@ -8,6 +8,13 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Satoshi-Regular'],
+        'sans-light': ['Satoshi-Light'],
+        'sans-medium': ['Satoshi-Medium'],
+        'sans-bold': ['Satoshi-Bold'],
+        'sans-black': ['Satoshi-Black'],
+      },
       colors: {
         primary: "#1e3a5f",
         accent: "#FFC72C",

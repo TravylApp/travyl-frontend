@@ -9,8 +9,27 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
+import { Text, TextInput } from 'react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuthStore } from '@travyl/shared';
+
+// Set Satoshi as the default font for all Text and TextInput components
+const originalTextRender = (Text as any).render;
+if (originalTextRender) {
+  (Text as any).render = function (props: any, ref: any) {
+    const style = Array.isArray(props.style) ? props.style : [props.style];
+    const hasFont = style.some((s: any) => s?.fontFamily);
+    return originalTextRender.call(this, {
+      ...props,
+      style: hasFont ? props.style : [{ fontFamily: 'Satoshi-Regular' }, ...style],
+    }, ref);
+  };
+}
+const defaultTextInputProps = (TextInput as any).defaultProps || {};
+(TextInput as any).defaultProps = {
+  ...defaultTextInputProps,
+  style: [{ fontFamily: 'Satoshi-Regular' }, defaultTextInputProps.style],
+};
 
 export {
   ErrorBoundary,
@@ -28,6 +47,11 @@ export default function RootLayout() {
 
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    'Satoshi-Light': require('../assets/fonts/Satoshi-Light.ttf'),
+    'Satoshi-Regular': require('../assets/fonts/Satoshi-Regular.ttf'),
+    'Satoshi-Medium': require('../assets/fonts/Satoshi-Medium.ttf'),
+    'Satoshi-Bold': require('../assets/fonts/Satoshi-Bold.ttf'),
+    'Satoshi-Black': require('../assets/fonts/Satoshi-Black.ttf'),
     ...FontAwesome.font,
   });
 
