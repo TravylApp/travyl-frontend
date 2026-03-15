@@ -581,6 +581,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     isOpen: false,
     bookingUrl: '#',
     bookingLabel: 'Reserve',
+    lat: 48.8600,
+    lng: 2.3266,
   },
   {
     id: 'da5',
@@ -597,6 +599,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     isOpen: true,
     bookingUrl: '#',
     bookingLabel: 'Book Now',
+    lat: 48.8049,
+    lng: 2.1204,
   },
   {
     id: 'da6',
@@ -615,6 +619,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     bookingLabel: 'Get Deal',
     dealPrice: '€39',
     originalPrice: '€55',
+    lat: 48.8610,
+    lng: 2.2894,
   },
   {
     id: 'da7',
@@ -631,6 +637,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     isOpen: true,
     bookingUrl: '#',
     bookingLabel: 'Book Now',
+    lat: 48.8339,
+    lng: 2.3324,
   },
   {
     id: 'da8',
@@ -645,6 +653,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     category: 'Nature',
     distance: '1.7 km',
     isOpen: true,
+    lat: 48.8462,
+    lng: 2.3372,
   },
   {
     id: 'da9',
@@ -661,6 +671,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     isOpen: true,
     bookingUrl: '#',
     bookingLabel: 'Book Now',
+    lat: 48.8841,
+    lng: 2.3322,
   },
   {
     id: 'da10',
@@ -679,6 +691,8 @@ export const MOCK_DISCOVER_ACTIVITIES: DiscoverItem[] = [
     bookingLabel: 'Get Deal',
     dealPrice: '€35',
     originalPrice: '€45',
+    lat: 48.8738,
+    lng: 2.3320,
   },
 ];
 

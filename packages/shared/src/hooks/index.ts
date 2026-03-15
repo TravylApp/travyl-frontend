@@ -19,3 +19,4 @@ export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_
 export type { ActivityFilterCategory, ActivitySortOption } from './useActivityFilters';
 export { useForkTrip } from './useForkTrip';
 export { useTripActions } from './useTripActions';
+export { useSimilarPlaces, getSimilarPlaces } from './useSimilarPlaces';
