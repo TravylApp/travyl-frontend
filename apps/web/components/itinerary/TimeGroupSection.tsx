@@ -92,13 +92,14 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
       >
         <div className={`mt-2.5 ${cardStyle === 'pin' ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}`}>
           {group.activities.map((activity, i) => (
-            <ActivityCardRenderer
-              key={activity.id}
-              activity={activity}
-              cardStyle={cardStyle}
-              index={i}
-              onClick={() => onActivityClick?.(activity.id)}
-            />
+            <div key={activity.id} data-activity-id={activity.id}>
+              <ActivityCardRenderer
+                activity={activity}
+                cardStyle={cardStyle}
+                index={i}
+                onClick={() => onActivityClick?.(activity.id)}
+              />
+            </div>
           ))}
 
           {/* Add Activity button */}

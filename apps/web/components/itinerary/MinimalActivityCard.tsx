@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Clock, Star, Image as ImageIcon } from 'lucide-react';
-import { getActivityTypeColor } from '@travyl/shared';
+import { Heart, Clock, Star, MapPin } from 'lucide-react';
+import { getActivityTypeColor, Navy } from '@travyl/shared';
 import type { ActivityViewModel } from '@travyl/shared';
 
 interface MinimalActivityCardProps {
@@ -41,22 +41,17 @@ export function MinimalActivityCard({
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ImageIcon size={20} style={{ color: typeColor.primary + '40' }} />
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
+          >
+            <MapPin size={20} className="text-white/30" />
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: typeColor.bg, color: typeColor.primary }}
-          >
-            {activity.category}
-          </span>
-        </div>
         <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">{activity.name}</h3>
         <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
           {activity.timeDisplay && (
