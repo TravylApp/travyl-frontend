@@ -35,7 +35,7 @@ function LocationNode({
   isLast: boolean;
   showConnector: boolean;
 }) {
-  const colors = getContinentColor(location.continent);
+  const colors = getContinentColor(location.continent ?? 'default');
 
   return (
     <div className="flex items-start gap-2">
@@ -58,7 +58,7 @@ function LocationNode({
             <MapPin size={12} className={colors.text} />
           )}
           <span className={`font-semibold text-sm ${colors.text}`}>
-            {location.city}
+            {location.city || location.name}
             {location.iata && (
               <span className="ml-1 text-xs opacity-70">({location.iata})</span>
             )}
@@ -114,8 +114,8 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
   // Get unique continents for the overview
   const continents = useMemo(() => {
     if (!routePoints) return [];
-    const unique = new Set(routePoints.map((p) => p.location.continent).filter(Boolean));
-    return Array.from(unique) as string[];
+    const unique = new Set(routePoints.map((p) => p.location.continent).filter((c): c is string => !!c));
+    return Array.from(unique);
   }, [routePoints]);
 
   // Get unique countries for the overview
@@ -177,7 +177,7 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
       {/* Route Points - Compact list */}
       <div className="space-y-0">
         {routePoints?.map((point, index) => (
-          <div key={`${point.location.city}-${index}`}>
+          <div key={`${point.location.city || point.location.name}-${index}`}>
             <LocationNode
               location={point.location}
               isOrigin={point.type === 'origin'}
