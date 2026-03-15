@@ -11,7 +11,7 @@ export default function MainLayout({
       <Suspense>
         <Navbar />
       </Suspense>
-      <main className="pt-11">{children}</main>
+      <main className="pt-16">{children}</main>
     </>
   );
 }
