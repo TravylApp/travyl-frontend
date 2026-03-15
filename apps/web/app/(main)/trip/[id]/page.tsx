@@ -2,16 +2,15 @@
 
 import { use, useState } from 'react';
 import {
-  MapPin, Plane, Building2, ListTodo, Calendar, Users, Clock,
   Train, Bus, Footprints, Car, Phone, Shield, ChevronDown, ChevronUp,
   Cloud, Droplets, Sun, AlertTriangle, Newspaper, Sparkles, Lightbulb, ExternalLink,
+  Coins, Languages, Plug, Droplet, Map, Clock,
 } from 'lucide-react';
 import {
-  useItineraryScreen, MOCK_TRIP,
+  useItineraryScreen,
   MOCK_WEATHER, MOCK_WEATHER_FORECAST, MOCK_NEWS,
 } from '@travyl/shared';
 import type { NewsItem } from '@travyl/shared';
-import { Skeleton } from '@/components/ui';
 
 // ─── Collapsible Section ─────────────────────────────────────
 
@@ -86,24 +85,27 @@ const SAFETY_TIPS = [
   'Watch for pickpockets at Eiffel Tower, metro, and tourist hotspots.',
 ];
 
+const DESTINATION_TIPS = [
+  { icon: <Coins size={14} />, label: 'Currency', value: 'Euro (EUR)' },
+  { icon: <Languages size={14} />, label: 'Language', value: 'French (English in tourist areas)' },
+  { icon: <Clock size={14} />, label: 'Time Zone', value: 'CET (UTC+1)' },
+  { icon: <Coins size={14} />, label: 'Tipping', value: 'Service included; round up' },
+  { icon: <Plug size={14} />, label: 'Power', value: 'Type C/E plugs, 230V' },
+  { icon: <Droplet size={14} />, label: 'Water', value: 'Tap water is safe' },
+];
+
+const QUICK_LINKS = [
+  { label: 'Google Maps', icon: <Map size={14} />, url: 'https://maps.google.com/?q=Paris,France' },
+  { label: 'Currency', icon: <Coins size={14} />, url: 'https://xe.com' },
+  { label: 'Translate', icon: <Languages size={14} />, url: 'https://translate.google.com/?sl=en&tl=fr' },
+  { label: 'Local Time', icon: <Clock size={14} />, url: 'https://time.is/Paris' },
+];
+
 // ─── Page ─────────────────────────────────────────────────────
 
 export default function TripOverview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { trip, days, flights, hotels, isLoading } = useItineraryScreen(id);
-  const infoTrip = MOCK_TRIP;
-
-  const allActivities = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities));
-
-  const stats = [
-    { icon: Plane, label: 'Flights', count: flights.length, color: '#2563eb', bg: '#dbeafe' },
-    { icon: Building2, label: 'Hotels', count: hotels.length, color: '#ea580c', bg: '#ffedd5' },
-    { icon: ListTodo, label: 'Activities', count: allActivities.length, color: '#0d9488', bg: '#ccfbf1' },
-  ];
-
-  const startDate = new Date(infoTrip.start_date + 'T00:00:00');
-  const endDate = new Date(infoTrip.end_date + 'T00:00:00');
-  const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  useItineraryScreen(id);
 
   const weather = MOCK_WEATHER;
   const forecast = MOCK_WEATHER_FORECAST;
@@ -111,50 +113,6 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="pb-8 space-y-4">
-      {/* Hero card — compact trip info */}
-      <div className="rounded-xl overflow-hidden px-4 py-3.5" style={{ background: 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))' }}>
-        <div className="flex items-center gap-1.5 mb-1">
-          <MapPin size={14} className="text-white/70 shrink-0" />
-          {trip ? (
-            <span className="text-[15px] font-bold text-white truncate">{trip.destination}</span>
-          ) : (
-            <Skeleton className="h-4 w-32 bg-white/20" />
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <div className="flex items-center gap-1">
-            <Calendar size={11} className="text-white/50" />
-            {trip ? (
-              <span className="text-[11px] text-white/70">{trip.start_date} – {trip.end_date}</span>
-            ) : (
-              <Skeleton className="h-2.5 w-28 bg-white/15" />
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Users size={11} className="text-white/50" />
-            {trip ? (
-              <span className="text-[11px] text-white/70">{trip.travelers} travelers</span>
-            ) : (
-              <Skeleton className="h-2.5 w-16 bg-white/15" />
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock size={11} className="text-white/50" />
-            <span className="text-[11px] text-white/70">{durationDays} days</span>
-          </div>
-          {stats.map((stat) => (
-            <div key={stat.label} className="flex items-center gap-1">
-              <stat.icon size={11} className="text-white/50" />
-              {isLoading ? (
-                <Skeleton className="h-2.5 w-8 bg-white/15" />
-              ) : (
-                <span className="text-[11px] text-white/70">{stat.count} {stat.label}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Weather card */}
       <div className="rounded-xl border border-gray-200 bg-gradient-to-r from-sky-50 to-blue-50 p-4">
         <div className="flex items-start justify-between gap-4">
@@ -208,14 +166,75 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
-      {/* Two-column: Things to Check Out + Quick Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left: Things to Check Out */}
-        <div>
-          <h3 className="text-[14px] font-semibold text-gray-900 mb-2">Things to Check Out</h3>
+      {/* Collapsible sections */}
+      <div className="space-y-3">
+        {/* Emergency Contacts */}
+        <CollapsibleSection
+          title="Emergency Contacts"
+          icon={<Phone size={16} className="text-red-500" />}
+          iconBg="#fef2f2"
+        >
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              {EMERGENCY_INFO.map((e) => (
+                <a key={e.number} href={`tel:${e.number}`} className="p-2.5 bg-red-50 rounded-xl hover:bg-red-100 transition-colors text-center">
+                  <p className="text-lg font-bold text-red-600">{e.number}</p>
+                  <p className="text-[10px] text-gray-600">{e.label}</p>
+                </a>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {SAFETY_TIPS.map((tip, i) => (
+                <div key={i} className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg border border-amber-100">
+                  <Shield size={11} className="text-amber-600 shrink-0 mt-0.5" />
+                  <span className="text-[11px] text-gray-700">{tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CollapsibleSection>
 
-          {/* News / Events */}
-          <div className="space-y-1.5 mb-3">
+        {/* Getting Around */}
+        <CollapsibleSection
+          title="Getting Around"
+          icon={<Train size={16} className="text-blue-600" />}
+          iconBg="#eff6ff"
+        >
+          <div className="space-y-2">
+            {TRANSPORT_OPTIONS.map((t) => (
+              <InfoCard key={t.name} icon={t.icon} iconColor={t.iconColor} title={t.name} subtitle={t.description} detail={t.detail} />
+            ))}
+          </div>
+        </CollapsibleSection>
+
+        {/* Destination Tips */}
+        <CollapsibleSection
+          title="Destination Tips"
+          icon={<Lightbulb size={16} className="text-violet-500" />}
+          iconBg="#f5f3ff"
+        >
+          <div className="space-y-1">
+            {DESTINATION_TIPS.map((tip) => (
+              <div key={tip.label} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0 text-violet-500">
+                  {tip.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-gray-400">{tip.label}</p>
+                  <p className="text-[12px] font-medium text-gray-900">{tip.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+
+        {/* Things to Check Out */}
+        <CollapsibleSection
+          title="Things to Check Out"
+          icon={<Newspaper size={16} className="text-blue-600" />}
+          iconBg="#eff6ff"
+        >
+          <div className="space-y-1.5">
             {news.map((item) => {
               const config = NEWS_CATEGORY_CONFIG[item.category];
               const Icon = config.icon;
@@ -249,48 +268,30 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        {/* Right: Quick Travel Info */}
-        <div className="space-y-3">
-          <CollapsibleSection
-            title="Getting Around"
-            icon={<Train size={16} className="text-blue-600" />}
-            iconBg="#eff6ff"
-            defaultOpen
-          >
-            <div className="space-y-2">
-              {TRANSPORT_OPTIONS.map((t) => (
-                <InfoCard key={t.name} icon={t.icon} iconColor={t.iconColor} title={t.name} subtitle={t.description} detail={t.detail} />
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title="Emergency"
-            icon={<Phone size={16} className="text-red-500" />}
-            iconBg="#fef2f2"
-          >
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                {EMERGENCY_INFO.map((e) => (
-                  <a key={e.number} href={`tel:${e.number}`} className="p-2.5 bg-red-50 rounded-xl hover:bg-red-100 transition-colors text-center">
-                    <p className="text-lg font-bold text-red-600">{e.number}</p>
-                    <p className="text-[10px] text-gray-600">{e.label}</p>
-                  </a>
-                ))}
-              </div>
-              <div className="space-y-1.5">
-                {SAFETY_TIPS.map((tip, i) => (
-                  <div key={i} className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg border border-amber-100">
-                    <Shield size={11} className="text-amber-600 shrink-0 mt-0.5" />
-                    <span className="text-[11px] text-gray-700">{tip}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CollapsibleSection>
-        </div>
+        {/* Quick Links */}
+        <CollapsibleSection
+          title="Quick Links"
+          icon={<ExternalLink size={16} style={{ color: 'var(--trip-base)' }} />}
+          iconBg="color-mix(in srgb, var(--trip-base) 10%, transparent)"
+        >
+          <div className="flex flex-wrap gap-2">
+            {QUICK_LINKS.map((link) => (
+              <a
+                key={link.label}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:opacity-80 transition-opacity"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--trip-base) 10%, transparent)', color: 'var(--trip-base)' }}
+              >
+                {link.icon}
+                <span className="text-[12px] font-medium">{link.label}</span>
+              </a>
+            ))}
+          </div>
+        </CollapsibleSection>
       </div>
     </div>
   );
