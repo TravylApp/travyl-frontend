@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion } from 'motion/react';
 import {
   X, ChevronLeft, ChevronRight, Search, SlidersHorizontal,
   Heart, Share2, Star, MapPin, Clock, Check, XCircle,
@@ -652,13 +653,24 @@ export function SplitScreenModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25 }}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       {/* Modal */}
       <div className="relative w-full h-full md:w-[90vw] md:max-w-7xl md:h-[90vh] md:rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col md:flex-row">
 
         {/* ── Left Panel: Content ── */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, x: -120, rotate: -2 }}
+          animate={{ opacity: 1, x: 0, rotate: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="flex-1 flex flex-col min-w-0 overflow-hidden"
+        >
 
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 shrink-0">
@@ -764,12 +776,17 @@ export function SplitScreenModal({
               {currentItem.isBooked ? 'View Booking' : 'Book Now'}
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Right Panel: Map (desktop only) ── */}
-        <div className="hidden md:block w-[380px] shrink-0 border-l border-gray-200 p-3">
+        <motion.div
+          initial={{ opacity: 0, x: 120, rotate: 2 }}
+          animate={{ opacity: 1, x: 0, rotate: 0 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="hidden md:block w-[380px] shrink-0 border-l border-gray-200 p-3"
+        >
           <MapPanel item={currentItem} />
-        </div>
+        </motion.div>
       </div>
     </div>
   );
