@@ -8,6 +8,5 @@ export function useItineraryDays(tripId: string | undefined) {
     queryKey: ['itinerary-days', tripId],
     queryFn: () => fetchItineraryDays(tripId!),
     enabled: /* !!user && */ !!tripId,
-    retry: false,
   });
 }

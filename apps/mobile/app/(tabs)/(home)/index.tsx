@@ -21,9 +21,9 @@ import {
   useHomeScreen,
   useHeroConfig,
   Blue,
-  Gray,
   hexToRgba,
 } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
 import {
   HowItWorks,
@@ -39,6 +39,7 @@ import { TakeoffTransition } from '@/components/home/TakeoffTransition';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
   const { height: screenHeight } = useWindowDimensions();
   const {
     tripQuery,
@@ -87,7 +88,7 @@ export default function HomeScreen() {
     <Animated.ScrollView
       onScroll={scrollHandler}
       scrollEventThrottle={16}
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 0 }}
       showsVerticalScrollIndicator={false}
       bounces
@@ -166,10 +167,10 @@ export default function HomeScreen() {
           entering={FadeInUp.duration(500).delay(200)}
           style={{
             width: '100%',
-            backgroundColor: '#fff',
+            backgroundColor: colors.cardBackground,
             borderRadius: 16,
             overflow: 'hidden',
-            shadowColor: '#000',
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.15,
             shadowRadius: 12,
@@ -185,15 +186,15 @@ export default function HomeScreen() {
               gap: 8,
             }}
           >
-            <FontAwesome name="search" size={16} color={Gray[400]} />
+            <FontAwesome name="search" size={16} color={colors.textTertiary} />
             <TextInput
               value={tripQuery}
               onChangeText={setTripQuery}
               onSubmitEditing={onSearch}
               placeholder={heroConfig?.search_placeholder ?? '7 days in Paris with my partner...'}
-              placeholderTextColor={Gray[400]}
+              placeholderTextColor={colors.textTertiary}
               returnKeyType="search"
-              style={{ flex: 1, fontSize: 14, color: Gray[900], paddingVertical: 8 }}
+              style={{ flex: 1, fontSize: 14, color: colors.text, paddingVertical: 8 }}
             />
             <Pressable
               ref={sendButtonRef}
@@ -270,7 +271,7 @@ export default function HomeScreen() {
                 marginBottom: 16,
               }}
             >
-              <Text style={{ fontSize: 20, fontWeight: '700', color: Gray[900] }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text }}>
                 Your Recent Trips
               </Text>
               <Pressable
@@ -291,19 +292,19 @@ export default function HomeScreen() {
                 style={{
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: Gray[200],
+                  borderColor: colors.border,
                   padding: 16,
                   marginBottom: 12,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={{ fontWeight: '600', fontSize: 16, color: Gray[900] }}>
+                    <Text style={{ fontWeight: '600', fontSize: 16, color: colors.text }}>
                       {trip.title}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                      <FontAwesome name="map-marker" size={13} color={Gray[500]} />
-                      <Text style={{ fontSize: 14, color: Gray[500] }}>{trip.destination}</Text>
+                      <FontAwesome name="map-marker" size={13} color={colors.textSecondary} />
+                      <Text style={{ fontSize: 14, color: colors.textSecondary }}>{trip.destination}</Text>
                     </View>
                   </View>
                   <View
@@ -322,12 +323,12 @@ export default function HomeScreen() {
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <FontAwesome name="calendar" size={11} color={Gray[400]} />
-                    <Text style={{ fontSize: 12, color: Gray[400] }}>{trip.dateRange.short}</Text>
+                    <FontAwesome name="calendar" size={11} color={colors.textTertiary} />
+                    <Text style={{ fontSize: 12, color: colors.textTertiary }}>{trip.dateRange.short}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <FontAwesome name="users" size={11} color={Gray[400]} />
-                    <Text style={{ fontSize: 12, color: Gray[400] }}>{trip.travelersLabel}</Text>
+                    <FontAwesome name="users" size={11} color={colors.textTertiary} />
+                    <Text style={{ fontSize: 12, color: colors.textTertiary }}>{trip.travelersLabel}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -346,21 +347,21 @@ export default function HomeScreen() {
               style={{
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: Gray[200],
+                borderColor: colors.border,
                 padding: 16,
                 marginBottom: 12,
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <View style={{ height: 20, width: 128, backgroundColor: Gray[200], borderRadius: 4, marginBottom: 8 }} />
-                  <View style={{ height: 16, width: 96, backgroundColor: Gray[100], borderRadius: 4 }} />
+                  <View style={{ height: 20, width: 128, backgroundColor: colors.skeleton, borderRadius: 4, marginBottom: 8 }} />
+                  <View style={{ height: 16, width: 96, backgroundColor: colors.borderLight, borderRadius: 4 }} />
                 </View>
-                <View style={{ height: 20, width: 64, backgroundColor: Gray[200], borderRadius: 12 }} />
+                <View style={{ height: 20, width: 64, backgroundColor: colors.skeleton, borderRadius: 12 }} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
-                <View style={{ height: 12, width: 112, backgroundColor: Gray[100], borderRadius: 4 }} />
-                <View style={{ height: 12, width: 80, backgroundColor: Gray[100], borderRadius: 4 }} />
+                <View style={{ height: 12, width: 112, backgroundColor: colors.borderLight, borderRadius: 4 }} />
+                <View style={{ height: 12, width: 80, backgroundColor: colors.borderLight, borderRadius: 4 }} />
               </View>
             </View>
           ))}
@@ -384,10 +385,10 @@ export default function HomeScreen() {
             >
               <PaperPlane size={32} color={Blue[600]} style={{ transform: [{ rotate: '-12deg' }] }} />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: Gray[900], marginBottom: 8, textAlign: 'center' }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' }}>
               No trips yet
             </Text>
-            <Text style={{ color: Gray[500], textAlign: 'center', marginBottom: 24, paddingHorizontal: 16 }}>
+            <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 24, paddingHorizontal: 16 }}>
               Start planning your first adventure — type a destination in the
               search bar above or tap the button below.
             </Text>

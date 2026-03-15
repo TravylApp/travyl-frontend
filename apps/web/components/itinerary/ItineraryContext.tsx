@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
 import { MOCK_CALENDAR_ACTIVITIES, MOCK_DAYS } from '@travyl/shared';
@@ -102,6 +102,13 @@ interface ItineraryContextValue {
   setSelectedMarkerId: React.Dispatch<React.SetStateAction<string | undefined>>;
   requestMapOpen: boolean;
   setRequestMapOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  // Collapse state — persists across tab switches
+  collapsedSections: Record<string, boolean>;
+  setCollapsedSections: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  allCollapsedOverride: boolean | null;
+  setAllCollapsedOverride: React.Dispatch<React.SetStateAction<boolean | null>>;
+  selectedDayIndex: number;
+  setSelectedDayIndex: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
@@ -111,6 +118,39 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);
+  // Restore UI state from sessionStorage on mount
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = sessionStorage.getItem('itinerary-ui');
+      return saved ? JSON.parse(saved).collapsedSections ?? {} : {};
+    } catch { return {}; }
+  });
+  const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved = sessionStorage.getItem('itinerary-ui');
+      return saved ? JSON.parse(saved).allCollapsedOverride ?? null : null;
+    } catch { return null; }
+  });
+  const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const saved = sessionStorage.getItem('itinerary-ui');
+      return saved ? JSON.parse(saved).selectedDayIndex ?? 0 : 0;
+    } catch { return 0; }
+  });
+
+  // Persist UI state to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('itinerary-ui', JSON.stringify({
+        collapsedSections,
+        allCollapsedOverride,
+        selectedDayIndex,
+      }));
+    } catch {}
+  }, [collapsedSections, allCollapsedOverride, selectedDayIndex]);
 
   const days = useMemo(
     () => calendarActivitiesToDayViewModels(activities, MOCK_DAYS),
@@ -140,9 +180,13 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
       activities, setActivities, days, addActivity, removeActivity, updateActivity,
       mapMarkers, setMapMarkers, selectedMarkerId, setSelectedMarkerId,
       requestMapOpen, setRequestMapOpen,
+      collapsedSections, setCollapsedSections,
+      allCollapsedOverride, setAllCollapsedOverride,
+      selectedDayIndex, setSelectedDayIndex,
     }),
     [activities, days, addActivity, removeActivity, updateActivity,
-     mapMarkers, selectedMarkerId, requestMapOpen],
+     mapMarkers, selectedMarkerId, requestMapOpen,
+     collapsedSections, allCollapsedOverride, selectedDayIndex],
   );
 
   return (

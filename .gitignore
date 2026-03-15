@@ -17,6 +17,7 @@ out/
 
 # Claude
 .claude/
+docs/plans/
 
 # OS
 .DS_Store

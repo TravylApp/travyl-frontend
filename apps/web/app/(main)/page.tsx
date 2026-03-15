@@ -13,7 +13,6 @@ import { Search, ArrowRight, MapPin, Calendar, Users } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import {
   HowItWorks,
-  QuickSteps,
   GetInspired,
   TravelMosaic,
   ExplorePreview,
@@ -21,9 +20,7 @@ import {
   OceanWave,
   TakeoffTransition,
   Footer,
-  AppDownload,
 } from "@/components/home";
-import { GlassPill } from "@/components/ui";
 
 export default function Home() {
   const router = useRouter();
@@ -53,12 +50,18 @@ export default function Home() {
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       {/* ─── Hero Section ─────────────────────────────────────── */}
       <section className="relative flex items-center justify-center px-6 py-24 md:py-32 overflow-hidden">
-        <img
-          src={heroConfig?.background_image_url ?? "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&fit=crop"}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        />
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+        {heroConfig?.background_image_url ? (
+          <>
+            <img
+              src={heroConfig.background_image_url}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover z-0"
+            />
+            <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+          </>
+        ) : (
+          <div className="absolute inset-0 z-0 bg-primary" />
+        )}
 
         <div className="relative z-10 max-w-3xl mx-auto text-center w-full">
           <motion.h1
@@ -122,12 +125,13 @@ export default function Home() {
               return (
                 <div className="flex flex-wrap justify-center gap-2 mt-4">
                   {suggestions.map((s) => (
-                    <GlassPill
+                    <button
                       key={s.id}
                       onClick={() => setTripQuery(s.label)}
+                      className="text-xs text-white/80 border border-white/30 rounded-full px-3 py-1.5 hover:bg-white/10 transition-colors"
                     >
                       {s.label}
-                    </GlassPill>
+                    </button>
                   ))}
                 </div>
               );
@@ -252,10 +256,8 @@ export default function Home() {
       )}
 
       {/* ─── Static Content Sections ──────────────────────────── */}
-      <QuickSteps />
       <HowItWorks onCtaPress={() => router.push("/trips")} />
       <TravelMosaic />
-      <AppDownload />
       <GetInspired />
       <ExplorePreview />
       <TagUs />

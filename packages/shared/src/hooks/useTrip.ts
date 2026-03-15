@@ -8,6 +8,5 @@ export function useTrip(tripId: string | undefined) {
     queryKey: ['trip', tripId],
     queryFn: () => fetchTripById(tripId!),
     enabled: /* !!user && */ !!tripId,
-    retry: false,
   });
 }

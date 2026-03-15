@@ -261,7 +261,6 @@ export async function forkTrip(tripId: string): Promise<Trip> {
 
   if (updateError) {
     console.warn('Failed to increment fork count:', updateError);
-    // Don't throw - fork was successful, just attribution update failed
   }
 
   return newTrip;
@@ -304,7 +303,7 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
     .eq('share_link_token', token)
     .single();
   if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
+    if (error.code === 'PGRST116') return null;
     throw error;
   }
   return data;
@@ -322,4 +321,64 @@ export async function updateTripVisibility(tripId: string, isPublic: boolean): P
     .single();
   if (error) throw error;
   return data;
+}
+
+// ─── Mutations ─────────────────────────────────────────────
+
+export async function addToItinerary(tripId: string, itemId: string, dayNumber: number, timeSlot?: string) {
+  const { error } = await supabase.from('itinerary_items').insert({
+    trip_id: tripId,
+    item_id: itemId,
+    day_number: dayNumber,
+    time_slot: timeSlot ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function removeFromItinerary(tripId: string, itemId: string) {
+  const { error } = await supabase
+    .from('itinerary_items')
+    .delete()
+    .eq('trip_id', tripId)
+    .eq('item_id', itemId);
+  if (error) throw error;
+}
+
+export async function toggleFavorite(tripId: string, itemId: string, isFavorited: boolean) {
+  if (isFavorited) {
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('trip_id', tripId)
+      .eq('item_id', itemId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('favorites')
+      .insert({ trip_id: tripId, item_id: itemId });
+    if (error) throw error;
+  }
+}
+
+export async function updateBudgetExpense(expenseId: string, updates: { amount?: number; note?: string }) {
+  const { error } = await supabase
+    .from('budget_expenses')
+    .update(updates)
+    .eq('id', expenseId);
+  if (error) throw error;
+}
+
+export async function addBudgetExpense(tripId: string, category: string, amount: number, note: string) {
+  const { error } = await supabase
+    .from('budget_expenses')
+    .insert({ trip_id: tripId, category, amount, note });
+  if (error) throw error;
+}
+
+export async function updateTripSettings(tripId: string, settings: Record<string, unknown>) {
+  const { error } = await supabase
+    .from('trips')
+    .update({ settings })
+    .eq('id', tripId);
+  if (error) throw error;
 }

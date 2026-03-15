@@ -1,4 +1,5 @@
 import { View, Text, Pressable, ScrollView, Switch } from 'react-native';
+import { Navy } from '@travyl/shared';
 
 // TODO: Read/write preferences from Zustand store + Supabase user metadata
 
@@ -45,7 +46,7 @@ function SettingsToggle({
       <Switch
         value={enabled}
         onValueChange={onToggle}
-        trackColor={{ false: '#D1D5DB', true: '#003594' }}
+        trackColor={{ false: '#D1D5DB', true: Navy.DEFAULT }}
         // TODO: Wire up toggle handler
       />
     </View>

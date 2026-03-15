@@ -26,27 +26,63 @@ const MOCK_ACTIVITY_COORDS: Record<string, { lat: number; lng: number }> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  sightseeing: '#3b82f6',
-  tour: '#8b5cf6',
-  dining: '#f59e0b',
-  cultural: '#6366f1',
-  shopping: '#ec4899',
-  nightlife: '#a855f7',
-  outdoor: '#10b981',
+  sightseeing: 'var(--trip-base)',
+  tour: 'var(--trip-base)',
+  dining: 'var(--trip-base)',
+  cultural: 'var(--trip-base)',
+  shopping: 'var(--trip-base)',
+  nightlife: 'var(--trip-base)',
+  outdoor: 'var(--trip-base)',
 };
+
+import { Skeleton } from '@/components/ui';
+
+function SkeletonItinerary() {
+  return (
+    <div>
+      {/* Day selector skeleton */}
+      <div className="flex items-center gap-2 mb-3 overflow-hidden">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton key={i} className="shrink-0 rounded-lg" style={{ width: 56, height: 52 }} />
+        ))}
+      </div>
+      {/* Flight section skeleton */}
+      <div className="mb-3.5">
+        <Skeleton className="rounded-lg" style={{ height: 52 }} />
+      </div>
+      {/* Hotel section skeleton */}
+      <div className="mb-3.5">
+        <Skeleton className="rounded-lg" style={{ height: 52 }} />
+      </div>
+      {/* Time group sections */}
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="mb-3.5">
+          <Skeleton className="rounded-lg mb-2" style={{ height: 36 }} />
+          <div className="space-y-2 pl-1">
+            {[1, 2].map((j) => (
+              <Skeleton key={j} className="rounded-lg" style={{ height: 72 }} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── Main Page ──────────────────────────────────────────────────
 
 export default function Itinerary({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { isLoading, isEmpty } = useItineraryScreen(id);
-  const { days, addActivity } = useItineraryContext();
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const {
+    days, addActivity,
+    collapsedSections, setCollapsedSections,
+    allCollapsedOverride, setAllCollapsedOverride,
+    selectedDayIndex, setSelectedDayIndex,
+  } = useItineraryContext();
   const selectedDay = days[selectedDayIndex] ?? null;
 
   const [selectedActivityIndex, setSelectedActivityIndex] = useState<number | null>(null);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-  const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addCategory, setAddCategory] = useState('All');
   const [addSearch, setAddSearch] = useState('');
@@ -95,7 +131,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       image: item.images?.[0],
       rating: item.rating,
       price: item.price,
-      color: '#1e3a5f',
+      color: 'var(--trip-base)',
       onCalendar: true,
     });
     setAddingTo(null);
@@ -179,7 +215,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     setAllCollapsedOverride(newState);
   }, [selectedDay, allCollapsed]);
 
-  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading itinerary...</div>;
+  if (isLoading) return <SkeletonItinerary />;
   if (isEmpty) return <ItineraryEmpty />;
 
   return (
@@ -193,11 +229,12 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           {/* Collapse All */}
           <button
             onClick={toggleCollapseAll}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-              allCollapsed
-                ? 'bg-[#1e3a5f] text-white shadow-md'
-                : 'bg-[#1e3a5f]/10 text-[#1e3a5f] hover:bg-[#1e3a5f]/20'
-            }`}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+            style={{
+              backgroundColor: allCollapsed ? 'var(--trip-base)' : 'rgb(var(--trip-base-rgb) / 0.15)',
+              color: allCollapsed ? 'white' : 'var(--trip-base)',
+              boxShadow: allCollapsed ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
+            }}
             title={allCollapsed ? 'Expand all' : 'Collapse all'}
           >
             <ChevronDown size={14} className={`transition-transform ${allCollapsed ? '' : 'rotate-180'}`} />
@@ -239,7 +276,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               >
                 <div className="mb-3 mx-0.5 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                   {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f]">
+                  <div className="flex items-center justify-between px-4 py-2.5" style={{ backgroundColor: 'var(--trip-base)' }}>
                     <div className="flex items-center gap-2">
                       <Compass size={13} className="text-white/80" />
                       <span className="text-[12px] font-semibold text-white">
@@ -260,7 +297,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                         placeholder="Search activities, tours, restaurants..."
                         value={addSearch}
                         onChange={(e) => setAddSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-2 text-[12px] bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
+                        className="w-full pl-8 pr-3 py-2 text-[12px] bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:border-trip-base/30"
                       />
                     </div>
                   </div>
@@ -273,9 +310,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                         onClick={() => setAddCategory(cat)}
                         className={`px-2.5 py-1.5 text-[11px] whitespace-nowrap border-b-2 transition-all ${
                           addCategory === cat
-                            ? 'font-semibold border-[#1e3a5f] text-[#1e3a5f]'
+                            ? 'font-semibold'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
                         }`}
+                        style={addCategory === cat ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
                       >
                         {cat}
                       </button>
@@ -291,7 +329,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                             key={item.id}
                             item={item}
                             index={i}
-                            accentColor="#1e3a5f"
+                            accentColor="var(--trip-base)"
                             isFavorited={favorites.includes(item.id)}
                             onFavorite={toggleFavorite}
                             onClick={() => setBrowseIndex(filteredDiscoverItems.indexOf(item))}
@@ -303,7 +341,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                       <div className="text-center py-8">
                         <Search size={24} className="mx-auto text-gray-300 mb-2" />
                         <p className="text-xs text-gray-500">No results match your search</p>
-                        <button onClick={() => { setAddSearch(''); setAddCategory('All'); }} className="text-[11px] text-[#1e3a5f] mt-1 hover:underline">Clear filters</button>
+                        <button onClick={() => { setAddSearch(''); setAddCategory('All'); }} className="text-[11px] mt-1 hover:underline" style={{ color: 'var(--trip-base)' }}>Clear filters</button>
                       </div>
                     )}
                   </div>
@@ -341,7 +379,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         <SplitScreenModal
           items={allActivities}
           initialIndex={selectedActivityIndex}
-          accentColor="#1e3a5f"
+          accentColor="var(--trip-base)"
           favorites={favorites}
           onClose={() => setSelectedActivityIndex(null)}
           onFavorite={toggleFavorite}
@@ -353,7 +391,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         <SplitScreenModal
           items={filteredDiscoverItems}
           initialIndex={browseIndex}
-          accentColor="#1e3a5f"
+          accentColor="var(--trip-base)"
           favorites={favorites}
           onClose={() => setBrowseIndex(null)}
           onFavorite={toggleFavorite}

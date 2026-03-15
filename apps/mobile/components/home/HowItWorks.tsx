@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { HOW_IT_WORKS_STEPS, Blue, Gray } from '@travyl/shared';
+import { HOW_IT_WORKS_STEPS, Blue } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { PhoneFrame, SearchScreen, ItineraryScreen, BookedScreen } from './PhoneFrame';
 
 const STEP_COLORS = ['#059669', '#2563EB', '#9333EA'];
@@ -11,6 +12,7 @@ interface HowItWorksProps {
 }
 
 export function HowItWorks({ onCtaPress }: HowItWorksProps) {
+  const colors = useThemeColors();
 
   return (
     <View style={{ paddingVertical: 40, paddingHorizontal: 24 }}>
@@ -18,7 +20,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
         style={{
           fontSize: 20,
           fontWeight: '700',
-          color: Gray[900],
+          color: colors.text,
           textAlign: 'center',
           marginBottom: 8,
         }}
@@ -28,7 +30,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
       <Text
         style={{
           fontSize: 14,
-          color: Gray[500],
+          color: colors.textSecondary,
           textAlign: 'center',
           marginBottom: 32,
         }}
@@ -64,7 +66,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
               style={{
                 fontSize: 18,
                 fontWeight: '700',
-                color: Gray[900],
+                color: colors.text,
                 textAlign: 'center',
                 marginBottom: 8,
               }}
@@ -76,7 +78,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
             <Text
               style={{
                 fontSize: 14,
-                color: Gray[500],
+                color: colors.textSecondary,
                 lineHeight: 20,
                 textAlign: 'center',
                 marginBottom: 20,
@@ -107,7 +109,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
                   style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
                 >
                   <FontAwesome name="check" size={12} color={accent} style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 14, color: Gray[700] }}>{feature}</Text>
+                  <Text style={{ fontSize: 14, color: colors.text }}>{feature}</Text>
                 </View>
               ))}
             </View>

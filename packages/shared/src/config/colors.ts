@@ -61,6 +61,50 @@ export const Amber = {
   600: '#D97706',
 } as const;
 
+export const Red = {
+  50:  '#FEF2F2',
+  100: '#FEE2E2',
+  500: '#EF4444',
+  600: '#DC2626',
+  700: '#B91C1C',
+} as const;
+
+export const Orange = {
+  500: '#F97316',
+  600: '#EA580C',
+} as const;
+
+export const Sky = {
+  500: '#0EA5E9',
+} as const;
+
+export const Violet = {
+  500: '#8B5CF6',
+} as const;
+
+export const Indigo = {
+  500: '#6366F1',
+} as const;
+
+export const Cyan = {
+  500: '#06B6D4',
+} as const;
+
+export const Teal = {
+  500: '#0D9488',
+  600: '#0F766E',
+} as const;
+
+export const Slate = {
+  500: '#475569',
+} as const;
+
+export const Navy = {
+  DEFAULT: '#1e3a5f',
+  light: '#2d4a6f',
+  dark: '#162d4a',
+} as const;
+
 // ─── Semantic Colors ──────────────────────────────────────────────
 
 export const Brand = {
@@ -85,9 +129,9 @@ export const TripStatusColors = {
 
 export const COLORS = {
   // Primary colors
-  navy: Blue[600],
-  navyLight: Blue[500],
-  navyDark: Blue[700],
+  navy: Navy.DEFAULT,
+  navyLight: Navy.light,
+  navyDark: Navy.dark,
   sand: '#e8dcc4',
   sandLight: '#f5f0e6',
   warmBrown: '#8b6f47',
@@ -105,93 +149,150 @@ export const COLORS = {
   info: '#3b82f6',
 } as const;
 
-export const ITINERARY_BREAKDOWN_COLORS = {
-  primary: '#0ea5e9',
-  light: '#e0f2fe',
-  medium: '#7dd3fc',
-  dark: '#0284c7',
-  containerBg: '#f0f9ff',
-  // Backwards compat aliases
-  daySelectorBg: '#f0f9ff',
-  daySelectorActive: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)',
-  timeHeaderGradient: 'linear-gradient(to right, #0ea5e9, #38bdf8)',
-  timeHeaderText: '#ffffff',
-  cardBorder: '#e5e7eb',
-} as const;
-
-// Tab colors — all dark blue (navy) for consistent branding
+// Tab colors — distinct per-tab for visual differentiation
 export const TAB_COLORS = {
-  itinerary:   '#1e3a5f',
-  hotels:      '#1e3a5f',
-  flights:     '#1e3a5f',
-  packing:     '#1e3a5f',
-  budget:      '#1e3a5f',
-  restaurants: '#1e3a5f',
-  activities:  '#1e3a5f',
-  info:        '#1e3a5f',
-  settings:    '#1e3a5f',
-  explore:     '#1e3a5f',
-  events:      '#1e3a5f',
+  index:       '#3b82f6',  // overview — blue
+  itinerary:   '#3b82f6',  // blue
+  hotels:      '#60a5fa',  // light blue
+  flights:     '#2563eb',  // dark blue
+  restaurants: '#f97316',  // orange
+  activities:  '#f59e0b',  // amber
+  packing:     '#6366f1',  // indigo
+  budget:      '#10b981',  // emerald
+  settings:    '#475569',  // slate
+  cars:        '#06b6d4',  // cyan
+  favorites:   '#ef4444',  // red
+  info:        Navy.DEFAULT,  // navy
+  explore:     '#3b82f6',  // blue
+  events:      '#8b5cf6',  // violet
 } as const;
 
 export const TIME_SECTION_COLORS = {
-  morning:      { bg: '#f0f4f8', border: '#d9e2ec', text: '#1e3a5f', icon: '#3a6b9f',
-                  gradient: 'linear-gradient(135deg, #1e3a5f, #2d5a8a)' },
-  afternoon:    { bg: '#edf2f7', border: '#cdd8e5', text: '#162d4a', icon: '#2d4a6f',
-                  gradient: 'linear-gradient(135deg, #2d4a6f, #3a6b9f)' },
-  evening:      { bg: '#e8edf3', border: '#c4cfdd', text: '#0f2440', icon: '#1e3a5f',
-                  gradient: 'linear-gradient(135deg, #162d4a, #1e3a5f)' },
-  latenight:    { bg: '#e4e9f0', border: '#b8c4d4', text: '#0a1929', icon: '#162d4a',
-                  gradient: 'linear-gradient(135deg, #0f2440, #162d4a)' },
-  hotel:        { bg: '#f0f4f8', border: '#d9e2ec', text: '#1e3a5f', icon: '#2d5a8a',
-                  gradient: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' },
-  travel:       { bg: '#edf2f7', border: '#cdd8e5', text: '#162d4a', icon: '#1e3a5f',
-                  gradient: 'linear-gradient(135deg, #1e3a5f, #2d5a8a)' },
-  checkout:     { bg: '#f0f4f8', border: '#d9e2ec', text: '#1e3a5f', icon: '#2d4a6f',
-                  gradient: 'linear-gradient(135deg, #2d4a6f, #3a6b9f)' },
-  returnFlight: { bg: '#edf2f7', border: '#cdd8e5', text: '#162d4a', icon: '#1e3a5f',
-                  gradient: 'linear-gradient(135deg, #162d4a, #1e3a5f)' },
+  morning:      { bg: '#f0f4f8', border: '#d9e2ec', text: Navy.DEFAULT, icon: '#3a6b9f',
+                  gradient: `linear-gradient(135deg, ${Navy.DEFAULT}, #2d5a8a)` },
+  afternoon:    { bg: '#edf2f7', border: '#cdd8e5', text: Navy.dark, icon: Navy.light,
+                  gradient: `linear-gradient(135deg, ${Navy.light}, #3a6b9f)` },
+  evening:      { bg: '#e8edf3', border: '#c4cfdd', text: '#0f2440', icon: Navy.DEFAULT,
+                  gradient: `linear-gradient(135deg, ${Navy.dark}, ${Navy.DEFAULT})` },
+  latenight:    { bg: '#e4e9f0', border: '#b8c4d4', text: '#0a1929', icon: Navy.dark,
+                  gradient: `linear-gradient(135deg, #0f2440, ${Navy.dark})` },
+  hotel:        { bg: '#f0f4f8', border: '#d9e2ec', text: Navy.DEFAULT, icon: '#2d5a8a',
+                  gradient: `linear-gradient(135deg, ${Navy.DEFAULT}, ${Navy.light})` },
+  travel:       { bg: '#edf2f7', border: '#cdd8e5', text: Navy.dark, icon: Navy.DEFAULT,
+                  gradient: `linear-gradient(135deg, ${Navy.DEFAULT}, #2d5a8a)` },
+  checkout:     { bg: '#f0f4f8', border: '#d9e2ec', text: Navy.DEFAULT, icon: Navy.light,
+                  gradient: `linear-gradient(135deg, ${Navy.light}, #3a6b9f)` },
+  returnFlight: { bg: '#edf2f7', border: '#cdd8e5', text: Navy.dark, icon: Navy.DEFAULT,
+                  gradient: `linear-gradient(135deg, ${Navy.dark}, ${Navy.DEFAULT})` },
 } as const;
 
-// Activity type colors (for activity cards)
-export const ACTIVITY_TYPE_COLORS = {
-  landmark: { primary: '#3b82f6', light: '#eff6ff', border: '#bfdbfe' },
-  food:     { primary: '#8b5cf6', light: '#f5f3ff', border: '#ddd6fe' },
-  tour:     { primary: '#06b6d4', light: '#ecfeff', border: '#a5f3fc' },
-  activity: { primary: '#6366f1', light: '#eef2ff', border: '#c7d2fe' },
-  hotel:    { primary: '#60a5fa', light: '#eff6ff', border: '#bfdbfe' },
-  default:  { primary: '#3b82f6', light: '#eff6ff', border: '#bfdbfe' },
-} as const;
+// Activity type colors are in itineraryData.ts (richer set with bg key)
 
 // ─── Utility functions ──────────────────────────────────────────
 
-export function getTimeSectionColors(section: string) {
-  return TIME_SECTION_COLORS[section as keyof typeof TIME_SECTION_COLORS] ?? TIME_SECTION_COLORS.morning;
-}
-
 export function getTabColor(tabId: string): string {
-  return TAB_COLORS[tabId as keyof typeof TAB_COLORS] || COLORS.navy;
+  return TAB_COLORS[tabId as keyof typeof TAB_COLORS] || Navy.DEFAULT;
 }
 
-export function getActivityTypeColors(type: string) {
-  return ACTIVITY_TYPE_COLORS[type as keyof typeof ACTIVITY_TYPE_COLORS] || ACTIVITY_TYPE_COLORS.default;
-}
+// getActivityTypeColors is in itineraryData.ts as getActivityTypeColor
 
-// Rich button style generator — matches Figma Make getTabButtonStyles
-export function getTabButtonStyles(tabColor: string, isActive?: boolean) {
-  // If called with (tabKey, isActive) for backwards compat
-  if (typeof isActive === 'boolean') {
-    const color = TAB_COLORS[tabColor as keyof typeof TAB_COLORS] ?? tabColor;
-    return isActive
-      ? { backgroundColor: color, color: '#fff' }
-      : { backgroundColor: 'transparent', color: '#6b7280' };
-  }
-  // New API: getTabButtonStyles(color) → style object
-  return {
-    primary: { backgroundColor: tabColor, color: '#ffffff', transition: 'opacity 0.2s' },
-    secondary: { backgroundColor: hexToRgba(tabColor, 0.1), color: tabColor, transition: 'all 0.2s' },
-    badge: { backgroundColor: hexToRgba(tabColor, 0.15), color: tabColor },
-    gradient: `linear-gradient(to right, ${hexToRgba(tabColor, 0.1)}, ${hexToRgba(tabColor, 0.05)})`,
-    gradientVertical: `linear-gradient(to bottom right, ${tabColor}, ${hexToRgba(tabColor, 0.8)})`,
-  };
-}
+// ─── Dark Mode Token System ─────────────────────────────────────
+
+export type ThemeTokens = {
+  background: string;
+  surface: string;
+  surfaceElevated: string;
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  border: string;
+  borderLight: string;
+  skeleton: string;
+  tint: string;
+  accent: string;
+  cardBackground: string;
+  inputBackground: string;
+  overlay: string;
+  shadow: string;
+  success: string;
+  successBg: string;
+  warning: string;
+  warningBg: string;
+  error: string;
+  errorBg: string;
+  info: string;
+  infoBg: string;
+  sandBackground: string;
+  sandText: string;
+  sandTextSecondary: string;
+  sandBorder: string;
+  tabBarBackground: string;
+  tabBarInactive: string;
+  tabBarActive: string;
+};
+
+export const LIGHT_TOKENS: ThemeTokens = {
+  background: '#ffffff',
+  surface: '#f9fafb',
+  surfaceElevated: '#ffffff',
+  text: '#111827',
+  textSecondary: '#6b7280',
+  textTertiary: '#9ca3af',
+  border: '#e5e7eb',
+  borderLight: '#f3f4f6',
+  skeleton: '#e5e7eb',
+  tint: Navy.DEFAULT,
+  accent: '#FFC72C',
+  cardBackground: '#ffffff',
+  inputBackground: '#ffffff',
+  overlay: 'rgba(0,0,0,0.5)',
+  shadow: '#000000',
+  success: '#22c55e',
+  successBg: '#dcfce7',
+  warning: '#f59e0b',
+  warningBg: '#fef3c7',
+  error: '#ef4444',
+  errorBg: '#fee2e2',
+  info: '#3b82f6',
+  infoBg: '#dbeafe',
+  sandBackground: '#e8d5c0',
+  sandText: '#2a1f17',
+  sandTextSecondary: '#3d2f23',
+  sandBorder: '#c4a882',
+  tabBarBackground: Navy.DEFAULT,
+  tabBarInactive: 'rgba(255,255,255,0.6)',
+  tabBarActive: '#ffffff',
+};
+
+export const DARK_TOKENS: ThemeTokens = {
+  background: '#121212',
+  surface: '#1e1e1e',
+  surfaceElevated: '#2a2a2a',
+  text: '#f3f4f6',
+  textSecondary: '#9ca3af',
+  textTertiary: '#6b7280',
+  border: '#333333',
+  borderLight: '#2a2a2a',
+  skeleton: '#333333',
+  tint: '#5b8cb8',
+  accent: '#FFC72C',
+  cardBackground: '#1e1e1e',
+  inputBackground: '#2a2a2a',
+  overlay: 'rgba(0,0,0,0.7)',
+  shadow: '#000000',
+  success: '#4ade80',
+  successBg: '#14532d',
+  warning: '#fbbf24',
+  warningBg: '#713f12',
+  error: '#f87171',
+  errorBg: '#7f1d1d',
+  info: '#60a5fa',
+  infoBg: '#1e3a5f',
+  sandBackground: '#1a1512',
+  sandText: '#e8d5c0',
+  sandTextSecondary: '#c4a882',
+  sandBorder: '#3d2f23',
+  tabBarBackground: '#1a1a2e',
+  tabBarInactive: 'rgba(255,255,255,0.5)',
+  tabBarActive: '#ffffff',
+};

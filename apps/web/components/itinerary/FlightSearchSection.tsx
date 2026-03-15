@@ -13,10 +13,22 @@ import {
   Minus,
   RotateCcw,
 } from 'lucide-react';
-import { POPULAR_AIRPORTS } from '@travyl/shared';
 import type { PopularAirport } from '@travyl/shared';
 
 /* ── Constants ──────────────────────────────────────────────── */
+
+const POPULAR_AIRPORTS: PopularAirport[] = [
+  { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
+  { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
+  { code: 'EWR', name: 'Newark Liberty Intl', city: 'Newark' },
+  { code: 'LGA', name: 'LaGuardia', city: 'New York' },
+  { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
+  { code: 'FCO', name: 'Leonardo da Vinci–Fiumicino', city: 'Rome' },
+  { code: 'LHR', name: 'Heathrow', city: 'London' },
+  { code: 'LAX', name: 'Los Angeles Intl', city: 'Los Angeles' },
+  { code: 'NRT', name: 'Narita Intl', city: 'Tokyo' },
+  { code: 'SFO', name: 'San Francisco Intl', city: 'San Francisco' },
+];
 
 const CABIN_CLASSES = ['Economy', 'Premium Economy', 'Business', 'First'];
 

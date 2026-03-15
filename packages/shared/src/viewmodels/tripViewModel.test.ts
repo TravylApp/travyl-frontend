@@ -158,6 +158,8 @@ describe('buildTripCardViewModel', () => {
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    theme: 'navy',
+    custom_theme_color: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
   };

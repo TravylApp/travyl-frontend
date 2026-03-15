@@ -118,7 +118,7 @@ export function Footer() {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.4 }}
     >
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -132,7 +132,7 @@ export function Footer() {
               <span className="text-xl font-black tracking-[1.5px]" style={{ color: '#2a1f17' }}>
                 TRAVYL
               </span>
-              <PaperPlane size={16} className="-rotate-12" style={{ color: '#2a1f17' }} />
+              <PaperPlane size={28} className="-rotate-12" style={{ color: '#2a1f17' }} />
             </div>
             <p className="text-sm leading-relaxed mb-3" style={{ color: '#3d2f23' }}>
               Discover and plan your perfect trip from one place. Explore destinations, find the best hotels and flights, and create unforgettable itineraries.

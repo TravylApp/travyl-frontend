@@ -1,27 +1,33 @@
-import { useState, createContext, useContext } from 'react';
+import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, ScrollView, Pressable, Modal, Share,
-  Platform, Linking,
+  View, Text, Pressable, Share,
+  Platform, PanResponder, Animated, Easing,
 } from 'react-native';
-import { withLayoutContext, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused } from '@react-navigation/native';
+import { withLayoutContext, useLocalSearchParams, useRouter } from 'expo-router';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange } from '@travyl/shared';
-import type { Trip } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, resolveTheme } from '@travyl/shared';
+import type { Trip, TripTheme } from '@travyl/shared';
+import { ThemePicker } from '../../../components/trip/ThemePicker';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 const { Navigator } = createMaterialTopTabNavigator();
 const TopTabs = withLayoutContext(Navigator);
 
 // ─── Config (matches web trip-tabs.tsx) ──────────────────
-const NAVY = '#1e3a5f';
 const SIDEBAR_W = 52;
+const DRAG_THRESHOLD = 10;
+const BOTTOM_BAR_OFFSET = 34; // lift above iOS home indicator
 
 const CORE_TABS = [
-  { name: 'index',       title: 'Overview',    icon: 'compass'     },
+  { name: 'index',       title: 'Overview',    icon: 'home'        },
   { name: 'itinerary',   title: 'Itinerary',   icon: 'calendar'    },
-  { name: 'hotels',      title: 'Hotels',      icon: 'building'    },
+  { name: 'hotels',      title: 'Hotels',      icon: 'building-o'  },
   { name: 'flights',     title: 'Flights',     icon: 'plane'       },
   { name: 'restaurants', title: 'Restaurants',  icon: 'cutlery'     },
   { name: 'activities',  title: 'Explore',     icon: 'compass'     },
@@ -30,57 +36,349 @@ const CORE_TABS = [
 const OPTIONAL_TABS = [
   { name: 'packing',     title: 'Packing',     icon: 'suitcase'    },
   { name: 'budget',      title: 'Budget',      icon: 'pie-chart'   },
-  { name: 'info',        title: 'Trip Info',   icon: 'info-circle' },
-  { name: 'settings',    title: 'Settings',    icon: 'cog'         },
   { name: 'cars',        title: 'Car Rental',  icon: 'car'         },
   { name: 'favorites',   title: 'Favorites',   icon: 'heart'       },
+  { name: 'settings',    title: 'Settings',    icon: 'cog'         },
 ] as const;
 
 const ALL_TABS = [...CORE_TABS, ...OPTIONAL_TABS];
-const CORE_NAMES = CORE_TABS.map((t) => t.name);
 
 // ─── Types ──────────────────────────────────────────────
-type SpinePosition = 'top' | 'left' | 'right';
+type SpinePosition = 'top' | 'bottom' | 'left' | 'right';
 
 // ─── Context ─────────────────────────────────────────────
 const TabCtx = createContext<{
-  showOptional: boolean;
-  setShowOptional: (v: boolean) => void;
-  openTabManager: () => void;
   spinePosition: SpinePosition;
-  cyclePosition: () => void;
+  setSpinePosition: (p: SpinePosition) => void;
+  scrubbing: boolean;
+  setScrubbing: (s: boolean) => void;
+  navDirection: 1 | -1;
+  theme: TripTheme;
+  setTripTheme: (themeId: string, customColor?: string) => void;
+  tabColorOverrides: Record<string, string>;
+  setTabColor: (tabName: string, color: string) => void;
+  resetTabColors: () => void;
+  itineraryColorOverrides: Record<string, string>;
+  setItineraryColor: (section: string, color: string) => void;
+  resetItineraryColors: () => void;
+  calendarOpen: boolean;
+  setCalendarOpen: (open: boolean) => void;
+  mapOpen: boolean;
+  setMapOpen: (open: boolean) => void;
 }>({
-  showOptional: false,
-  setShowOptional: () => {},
-  openTabManager: () => {},
   spinePosition: 'top',
-  cyclePosition: () => {},
+  setSpinePosition: () => {},
+  scrubbing: false,
+  setScrubbing: () => {},
+  navDirection: 1,
+  theme: resolveTheme(),
+  setTripTheme: () => {},
+  tabColorOverrides: {},
+  setTabColor: () => {},
+  resetTabColors: () => {},
+  itineraryColorOverrides: {},
+  setItineraryColor: () => {},
+  resetItineraryColors: () => {},
+  calendarOpen: false,
+  setCalendarOpen: () => {},
+  mapOpen: false,
+  setMapOpen: () => {},
 });
 
-// ─── Helpers ─────────────────────────────────────────────
-function SkeletonBlock({ width, height, radius = 6, style }: { width: number | string; height: number; radius?: number; style?: any }) {
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: '#e5e7eb' }, style]} />;
+export { TabCtx };
+
+/** Hook to get the resolved accent color for a given tab/screen name.
+ *  Priority: user override → theme tab color → theme base. */
+export function useTabAccent(tabName: string): string {
+  const { theme, tabColorOverrides } = useContext(TabCtx);
+  return tabColorOverrides[tabName] ?? theme.tabColors[tabName] ?? theme.base;
 }
 
-function getVisibleRoutes(state: MaterialTopTabBarProps['state'], showOptional: boolean) {
-  const allowedNames = showOptional ? ALL_TABS.map((t) => t.name) : CORE_NAMES;
+/** Hook to get the base theme color. */
+export function useThemeBase() {
+  const { theme } = useContext(TabCtx);
+  return theme;
+}
+
+// ─── Page Transition Wrapper ─────────────────────────────
+// Horizontal slide for top/bottom spine, vertical wheel rotation for left/right.
+export function PageTransition({ children }: { children: React.ReactNode }) {
+  const isFocused = useIsFocused();
+  const { spinePosition, navDirection } = useContext(TabCtx);
+  const anim = useRef(new Animated.Value(0)).current;
+  // Capture direction at mount so it doesn't flip mid-animation
+  const dirRef = useRef(navDirection);
+  const spineRef = useRef(spinePosition);
+  if (isFocused) {
+    dirRef.current = navDirection;
+    spineRef.current = spinePosition;
+  }
+
+  useEffect(() => {
+    if (isFocused) {
+      anim.setValue(0);
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isFocused]);
+
+  const isVerticalSpine = spineRef.current === 'left' || spineRef.current === 'right';
+  const dir = dirRef.current;
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.4, 1],
+    outputRange: [0, 0.7, 1],
+  });
+
+  if (isVerticalSpine) {
+    // Circular Z-axis: page rotates towards you (dir=1) or away from you (dir=-1)
+    // like a rolodex spinning in depth
+    const rotateX = anim.interpolate({
+      inputRange: [0, 1],
+      // dir=1 (going down): starts tilted back, swings toward you
+      // dir=-1 (going up): starts tilted forward, swings away then settles
+      outputRange: [dir > 0 ? '-55deg' : '55deg', '0deg'],
+    });
+    const scale = anim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0.75, 0.92, 1],
+    });
+    const translateY = anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [dir > 0 ? 80 : -80, 0],
+    });
+
+    return (
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity,
+          transform: [
+            { perspective: 600 },
+            { translateY },
+            { rotateX },
+            { scale },
+          ],
+        }}
+      >
+        {children}
+      </Animated.View>
+    );
+  }
+
+  // Horizontal slide for top/bottom
+  const translateX = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [dir > 0 ? 60 : -60, 0],
+  });
+
+  return (
+    <Animated.View
+      style={{
+        flex: 1,
+        opacity,
+        transform: [{ translateX }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+// ─── Drag Handle — drag or tap to reposition spine ──────
+function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
+  const colors = useThemeColors();
+  const { spinePosition, setSpinePosition, theme, setTripTheme } = useContext(TabCtx);
+  const didDrag = useRef(false);
+  const lastPos = useRef<SpinePosition | null>(null);
+  const previewOpacity = useRef(new Animated.Value(0)).current;
+  const previewPos = useRef<SpinePosition>('top');
+  const [preview, setPreview] = useState<SpinePosition | null>(null);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cycle = () => {
+    const order: SpinePosition[] = ['top', 'right', 'bottom', 'left'];
+    const idx = order.indexOf(spinePosition);
+    setSpinePosition(order[(idx + 1) % order.length]);
+  };
+
+  const showPreview = (pos: SpinePosition) => {
+    if (previewPos.current !== pos) {
+      previewPos.current = pos;
+      setPreview(pos);
+      Animated.timing(previewOpacity, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+    }
+  };
+
+  const hidePreview = () => {
+    Animated.timing(previewOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+      setPreview(null);
+    });
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        didDrag.current = false;
+        lastPos.current = null;
+        longPressTimer.current = setTimeout(() => {
+          if (!didDrag.current) {
+            setShowThemePicker(true);
+          }
+        }, 500);
+      },
+      onPanResponderMove: (_, { dx, dy }) => {
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        if (absDx < DRAG_THRESHOLD && absDy < DRAG_THRESHOLD) return;
+        didDrag.current = true;
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        let newPos: SpinePosition;
+        if (absDy > absDx) {
+          newPos = dy < 0 ? 'top' : 'bottom';
+        } else {
+          newPos = dx < 0 ? 'left' : 'right';
+        }
+        if (newPos !== lastPos.current) {
+          lastPos.current = newPos;
+          showPreview(newPos);
+          setSpinePosition(newPos);
+        }
+      },
+      onPanResponderRelease: () => {
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        hidePreview();
+        if (!didDrag.current) cycle();
+      },
+    })
+  ).current;
+
+  const isHoriz = direction === 'horizontal';
+
+  return (
+    <>
+      <View
+        {...panResponder.panHandlers}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        style={{
+          width: 18,
+          height: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(255,255,255,0.1)',
+          borderRadius: 4,
+        }}
+      >
+        <FontAwesome
+          name={isHoriz ? 'ellipsis-v' : 'ellipsis-h'}
+          size={10}
+          color="rgba(255,255,255,0.5)"
+        />
+      </View>
+
+      {/* Drop zone preview */}
+      {preview && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            zIndex: 100,
+            opacity: previewOpacity,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1.5,
+            borderColor: 'rgba(255,255,255,0.25)',
+            borderStyle: 'dashed',
+            borderRadius: 8,
+            ...(preview === 'top'
+              ? { top: -44, left: -8, right: -8, height: 40 }
+              : preview === 'bottom'
+                ? { bottom: -44, left: -8, right: -8, height: 40 }
+                : preview === 'left'
+                  ? { top: -8, left: -8, bottom: -8, width: SIDEBAR_W }
+                  : { top: -8, right: -8, bottom: -8, width: SIDEBAR_W }
+            ),
+          }}
+        />
+      )}
+
+      {/* Long-press theme picker */}
+      {showThemePicker && (
+        <>
+          {/* Backdrop */}
+          <Pressable
+            onPress={() => setShowThemePicker(false)}
+            style={{
+              position: 'absolute',
+              top: -500,
+              left: -500,
+              right: -500,
+              bottom: -500,
+              zIndex: 99,
+            }}
+          />
+          {/* Picker */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 24,
+              left: -10,
+              zIndex: 100,
+              backgroundColor: colors.cardBackground,
+              borderRadius: 12,
+              padding: 12,
+              shadowColor: colors.shadow,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+              width: 320,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+              Trip Theme
+            </Text>
+            <ThemePicker
+              currentTheme={theme.id}
+              customColor={theme.id === 'custom' ? theme.base : null}
+              onSelect={(themeId, customColor) => {
+                setTripTheme(themeId, customColor);
+                setShowThemePicker(false);
+              }}
+              compact
+            />
+          </View>
+        </>
+      )}
+    </>
+  );
+}
+
+// ─── Helpers ─────────────────────────────────────────────
+
+function getVisibleRoutes(state: MaterialTopTabBarProps['state']) {
+  const allNames = ALL_TABS.map((t) => t.name);
   return state.routes
     .map((route, index) => ({ route, index }))
-    .filter(({ route }) => allowedNames.includes(route.name));
+    .filter(({ route }) => allNames.includes(route.name as typeof allNames[number]));
 }
 
 // ─── Trip Hero ───────────────────────────────────────────
-function TripHero({ trip, refetch, onOpenTabManager }: { trip: Trip | null; refetch: () => void; onOpenTabManager: () => void }) {
-  const handleMap = () => {
-    if (!trip?.destination) return;
-    const query = encodeURIComponent(trip.destination);
-    const url = Platform.select({
-      ios: `maps:?q=${query}`,
-      android: `geo:0,0?q=${query}`,
-      default: `https://maps.google.com/?q=${query}`,
-    })!;
-    Linking.openURL(url);
-  };
+function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
+  const { theme, calendarOpen, setCalendarOpen, mapOpen, setMapOpen } = useContext(TabCtx);
+  const router = useRouter();
 
   const handleShare = async () => {
     if (!trip) return;
@@ -92,8 +390,26 @@ function TripHero({ trip, refetch, onOpenTabManager }: { trip: Trip | null; refe
     } catch (_) {}
   };
 
+  const handleCalendar = () => {
+    const next = !calendarOpen;
+    setCalendarOpen(next);
+    if (next) {
+      setMapOpen(false);
+      tabNavRef.current?.navigate('itinerary');
+    }
+  };
+
+  const handleMap = () => {
+    const next = !mapOpen;
+    setMapOpen(next);
+    if (next) {
+      setCalendarOpen(false);
+      tabNavRef.current?.navigate('itinerary');
+    }
+  };
+
   const btns = [
-    { icon: 'sliders', onPress: onOpenTabManager },
+    { icon: 'calendar', onPress: handleCalendar },
     { icon: 'map', onPress: handleMap },
     { icon: 'refresh', onPress: refetch },
     { icon: 'share', onPress: handleShare },
@@ -101,6 +417,17 @@ function TripHero({ trip, refetch, onOpenTabManager }: { trip: Trip | null; refe
 
   return (
     <View style={{ height: 180, backgroundColor: '#cbd5e1', position: 'relative' }}>
+      {/* Back button */}
+      <Pressable
+        onPress={() => router.back()}
+        style={{
+          position: 'absolute', top: 50, left: 14, zIndex: 10,
+          width: 34, height: 34, borderRadius: 17,
+          backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <FontAwesome name="chevron-left" size={14} color="#fff" />
+      </Pressable>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <FontAwesome name="picture-o" size={32} color="#94a3b8" />
       </View>
@@ -124,7 +451,7 @@ function TripHero({ trip, refetch, onOpenTabManager }: { trip: Trip | null; refe
           <SkeletonBlock width="45%" height={12} style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
         )}
       </LinearGradient>
-      <View style={{ position: 'absolute', bottom: 56, right: 10, flexDirection: 'row', gap: 6 }}>
+      <View style={{ position: 'absolute', bottom: 14, right: 10, flexDirection: 'row', gap: 6 }}>
         {btns.map((b) => (
           <Pressable
             key={b.icon}
@@ -138,273 +465,436 @@ function TripHero({ trip, refetch, onOpenTabManager }: { trip: Trip | null; refe
           </Pressable>
         ))}
       </View>
+      {/* Bottom edge line */}
+      <View style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 4,
+        backgroundColor: theme.base,
+      }} />
     </View>
   );
 }
 
-// ─── Tab Manager Modal ───────────────────────────────────
-function TabManagerModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  return (
-    <Modal visible={visible} transparent animationType="slide">
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={onClose}>
-        <Pressable style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingBottom: 34, paddingHorizontal: 20, maxHeight: '80%' }} onPress={() => {}}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#d1d5db', alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 4 }}>Tab Info</Text>
-          <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
-            Tap the + button on the tab bar to show or hide optional tabs (Packing, Budget, Trip Info, Settings, etc.).
-          </Text>
-          <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>Core Tabs (always available)</Text>
-            {CORE_TABS.map((tab) => (
-              <View key={tab.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
-                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: NAVY + '15', alignItems: 'center', justifyContent: 'center' }}>
-                  <FontAwesome name={tab.icon as any} size={13} color={NAVY} />
-                </View>
-                <Text style={{ fontSize: 14, color: '#374151' }}>{tab.title}</Text>
-              </View>
-            ))}
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginTop: 8 }}>Optional Tabs (tap + to show)</Text>
-            {OPTIONAL_TABS.map((tab) => (
-              <View key={tab.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
-                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
-                  <FontAwesome name={tab.icon as any} size={13} color="#9ca3af" />
-                </View>
-                <Text style={{ fontSize: 14, color: '#9ca3af' }}>{tab.title}</Text>
-              </View>
-            ))}
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
+// ─── Swipeable tab helper — scrub finger across tabs ─────
+// Tracks each tab's actual layout position so scrubbing maps 1:1 to the tab under the finger.
+function useTabScrub(
+  visibleRoutes: ReturnType<typeof getVisibleRoutes>,
+  state: MaterialTopTabBarProps['state'],
+  navigation: MaterialTopTabBarProps['navigation'],
+  axis: 'x' | 'y',
+) {
+  const { setScrubbing } = useContext(TabCtx);
+  const containerRef = useRef<View>(null);
+  const lastScrubIdx = useRef<number>(-1);
+  const scrubTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Stores { start, end } for each tab index, measured via onLayout
+  const tabRegions = useRef<{ start: number; end: number }[]>([]);
+  // Keep refs to avoid stale closures in PanResponder
+  const routesRef = useRef(visibleRoutes);
+  const stateRef = useRef(state);
+  routesRef.current = visibleRoutes;
+  stateRef.current = state;
+
+  const registerTabLayout = useCallback((tabIdx: number, e: any) => {
+    const { x, y, width, height } = e.nativeEvent.layout;
+    const start = axis === 'x' ? x : y;
+    const size = axis === 'x' ? width : height;
+    tabRegions.current[tabIdx] = { start, end: start + size };
+  }, [axis]);
+
+  const scrub = useCallback((locX: number, locY: number) => {
+    const routes = routesRef.current;
+    const regions = tabRegions.current;
+    if (routes.length === 0) return;
+    const pos = axis === 'x' ? locX : locY;
+    // Find which tab region the finger is over
+    let hitIdx = -1;
+    for (let i = 0; i < routes.length; i++) {
+      const r = regions[i];
+      if (r && pos >= r.start && pos < r.end) {
+        hitIdx = i;
+        break;
+      }
+    }
+    if (hitIdx < 0) return;
+    if (hitIdx === lastScrubIdx.current) return;
+    lastScrubIdx.current = hitIdx;
+    const { route, index } = routes[hitIdx];
+    if (stateRef.current.index !== index) {
+      navigation.navigate(route.name);
+    }
+  }, [axis, navigation]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(axis === 'x' ? dx : dy) > 2,
+      onPanResponderGrant: (e) => {
+        if (scrubTimer.current) clearTimeout(scrubTimer.current);
+        lastScrubIdx.current = -1;
+        setScrubbing(true);
+        scrub(e.nativeEvent.locationX, e.nativeEvent.locationY);
+      },
+      onPanResponderMove: (e) => {
+        scrub(e.nativeEvent.locationX, e.nativeEvent.locationY);
+      },
+      onPanResponderRelease: () => {
+        lastScrubIdx.current = -1;
+        scrubTimer.current = setTimeout(() => setScrubbing(false), 250);
+      },
+    })
+  ).current;
+
+  const onLayout = useCallback(() => {}, []);
+
+  return { containerRef, panResponder, onLayout, registerTabLayout };
 }
 
-// ─── Horizontal Tab Bar (top position) ───────────────────
-function HorizontalTabBar({ state, descriptors, navigation }: MaterialTopTabBarProps) {
-  const { showOptional, setShowOptional, cyclePosition } = useContext(TabCtx);
-  const visibleRoutes = getVisibleRoutes(state, showOptional);
+// ─── Horizontal Book Tab Bar (top position) ──────────────
+function HorizontalTabBar({ state, navigation }: MaterialTopTabBarProps) {
+  const { theme, tabColorOverrides } = useContext(TabCtx);
+  const visibleRoutes = getVisibleRoutes(state);
+  const { containerRef, panResponder, onLayout, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
 
   return (
-    <View style={{ backgroundColor: NAVY }}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        bounces
-        nestedScrollEnabled
-        contentContainerStyle={{ alignItems: 'center', gap: 2, paddingHorizontal: 8, paddingVertical: 8 }}
-      >
-        {visibleRoutes.map(({ route, index }) => {
-          const label = descriptors[route.key]?.options.title ?? route.name;
-          const isFocused = state.index === index;
-          const tab = ALL_TABS.find((t) => t.name === route.name);
+    <View
+      ref={containerRef}
+      onLayout={onLayout}
+      {...panResponder.panHandlers}
+      style={{ flexDirection: 'row', alignItems: 'flex-end' }}
+    >
+      {/* Drag handle — same size as a tab */}
+      <View style={{
+        height: TAB_NOTCH_W,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.base + '80',
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+        marginHorizontal: 1,
+        paddingHorizontal: 4,
+      }}>
+        <DragHandle direction="horizontal" />
+      </View>
 
-          return (
-            <Pressable
-              key={route.key}
-              onPress={() => {
-                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 8,
-                backgroundColor: isFocused ? NAVY : 'transparent',
-              }}
-            >
-              <FontAwesome
-                name={(tab?.icon ?? 'circle') as any}
-                size={15}
-                color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
-              />
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: isFocused ? '600' : '400',
-                  color: isFocused ? '#fff' : 'rgba(255,255,255,0.6)',
-                }}
-                numberOfLines={1}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
+      {visibleRoutes.map(({ route, index }, i) => {
+        const isFocused = state.index === index;
+        const tab = ALL_TABS.find((t) => t.name === route.name);
+        const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
 
-        {/* Spacer */}
-        <View style={{ flex: 1 }} />
-
-        {/* Toggle optional tabs */}
-        <Pressable
-          onPress={() => setShowOptional(!showOptional)}
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <FontAwesome name={showOptional ? 'times' : 'plus'} size={13} color="rgba(255,255,255,0.5)" />
-        </Pressable>
-
-        {/* Cycle position: top -> left -> right -> top */}
-        <Pressable
-          onPress={cyclePosition}
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <FontAwesome name="exchange" size={12} color="rgba(255,255,255,0.5)" />
-        </Pressable>
-      </ScrollView>
+        return (
+          <Pressable
+            key={route.key}
+            onPress={() => navigation.navigate(route.name)}
+            onLayout={(e) => registerTabLayout(i, e)}
+            style={{
+              flex: 1,
+              height: TAB_NOTCH_W,
+              backgroundColor: isFocused ? color : color + 'B3',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginHorizontal: 1,
+              borderTopLeftRadius: 8,
+              borderTopRightRadius: 8,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+            }}
+          >
+            <FontAwesome
+              name={(tab?.icon ?? 'circle') as any}
+              size={16}
+              color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
+            />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
-// ─── Vertical Sidebar (left / right position) ───────────
-function VerticalSidebar({ state, navigation }: MaterialTopTabBarProps) {
-  const { showOptional, setShowOptional, cyclePosition } = useContext(TabCtx);
-  const visibleRoutes = getVisibleRoutes(state, showOptional);
+// ─── Book-style Tab Sidebar (left / right) ───────────────
+const TAB_NOTCH_W = 38;
+const SIDE_TAB_W = 36;
+
+function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
+  const { spinePosition, theme, tabColorOverrides } = useContext(TabCtx);
+  const visibleRoutes = getVisibleRoutes(state);
+  const side = spinePosition as 'left' | 'right';
+  const isLeft = side === 'left';
+  const { containerRef, panResponder, onLayout, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'y');
 
   return (
-    <View style={{ width: SIDEBAR_W, backgroundColor: NAVY, paddingVertical: 6, alignItems: 'center' }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        bounces
-        nestedScrollEnabled
-        contentContainerStyle={{ alignItems: 'center', gap: 4, paddingVertical: 2 }}
-        style={{ flexGrow: 0 }}
-      >
-        {visibleRoutes.map(({ route, index }) => {
-          const isFocused = state.index === index;
-          const tab = ALL_TABS.find((t) => t.name === route.name);
+    <View
+      ref={containerRef}
+      onLayout={onLayout}
+      {...panResponder.panHandlers}
+      style={{
+        position: 'absolute',
+        top: 4,
+        bottom: 4,
+        [side]: 2,
+        zIndex: 10,
+        width: SIDE_TAB_W,
+        gap: 2,
+        paddingVertical: 4,
+      }}
+    >
+      {/* Drag handle */}
+      <View style={{
+        height: 28,
+        width: SIDE_TAB_W,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.base + '40',
+        borderTopLeftRadius: isLeft ? 6 : 0,
+        borderBottomLeftRadius: isLeft ? 6 : 0,
+        borderTopRightRadius: isLeft ? 0 : 6,
+        borderBottomRightRadius: isLeft ? 0 : 6,
+      }}>
+        <DragHandle direction="vertical" />
+      </View>
 
-          return (
-            <Pressable
-              key={route.key}
-              onPress={() => {
-                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
-              }}
-              style={{
-                width: 40,
-                height: 38,
-                borderRadius: 8,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: isFocused ? 'rgba(255,255,255,0.18)' : 'transparent',
-              }}
-            >
-              <FontAwesome
-                name={(tab?.icon ?? 'circle') as any}
-                size={16}
-                color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
-              />
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {visibleRoutes.map(({ route, index: _index }, i) => {
+        const isFocused = state.index === _index;
+        const tab = ALL_TABS.find((t) => t.name === route.name);
+        const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
 
-      {/* Spacer */}
-      <View style={{ flex: 1 }} />
-
-      {/* Toggle optional tabs */}
-      <Pressable
-        onPress={() => setShowOptional(!showOptional)}
-        style={{ width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}
-      >
-        <FontAwesome name={showOptional ? 'times' : 'plus'} size={13} color="rgba(255,255,255,0.5)" />
-      </Pressable>
-
-      {/* Cycle position: top -> left -> right -> top */}
-      <Pressable
-        onPress={cyclePosition}
-        style={{ width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}
-      >
-        <FontAwesome name="exchange" size={12} color="rgba(255,255,255,0.5)" />
-      </Pressable>
+        return (
+          <Pressable
+            key={route.key}
+            onPress={() => navigation.navigate(route.name)}
+            onLayout={(e) => registerTabLayout(i, e)}
+            style={{
+              flex: 1,
+              maxHeight: 60,
+              width: SIDE_TAB_W,
+              backgroundColor: isFocused ? color : color + '99',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderTopLeftRadius: isLeft ? 6 : 0,
+              borderBottomLeftRadius: isLeft ? 6 : 0,
+              borderTopRightRadius: isLeft ? 0 : 6,
+              borderBottomRightRadius: isLeft ? 0 : 6,
+            }}
+          >
+            <FontAwesome
+              name={(tab?.icon ?? 'circle') as any}
+              size={14}
+              color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
+            />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
+
+// ─── Bottom Book Tab Bar ──────────────────────────────────
+function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
+  const { theme, tabColorOverrides } = useContext(TabCtx);
+  const visibleRoutes = getVisibleRoutes(state);
+  const { containerRef, panResponder, onLayout, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
+
+  return (
+    <View
+      ref={containerRef}
+      onLayout={onLayout}
+      {...panResponder.panHandlers}
+      style={{
+        position: 'absolute',
+        bottom: BOTTOM_BAR_OFFSET,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+      }}
+    >
+      {/* Drag handle */}
+      <View style={{
+        height: TAB_NOTCH_W,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.base + '80',
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+        marginHorizontal: 1,
+        paddingHorizontal: 4,
+      }}>
+        <DragHandle direction="horizontal" />
+      </View>
+
+      {visibleRoutes.map(({ route, index }, i) => {
+        const isFocused = state.index === index;
+        const tab = ALL_TABS.find((t) => t.name === route.name);
+        const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
+
+        return (
+          <Pressable
+            key={route.key}
+            onPress={() => navigation.navigate(route.name)}
+            onLayout={(e) => registerTabLayout(i, e)}
+            style={{
+              flex: 1,
+              height: TAB_NOTCH_W,
+              backgroundColor: isFocused ? color : color + 'B3',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginHorizontal: 1,
+              borderTopLeftRadius: 8,
+              borderTopRightRadius: 8,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+            }}
+          >
+            <FontAwesome
+              name={(tab?.icon ?? 'circle') as any}
+              size={16}
+              color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Tab navigation ref (allows TripHero to switch tabs) ─
+const tabNavRef = { current: null as MaterialTopTabBarProps['navigation'] | null };
 
 // ─── Custom Tab Bar (delegates to horizontal or vertical) ─
-// For left/right the sidebar is absolutely positioned over the content
-// area; the main layout adds matching padding so content is not hidden.
+// Also tracks navigation direction for PageTransition animations.
+const navDirectionRef = { current: 1 as 1 | -1 };
+const prevTabIndexRef = { current: 0 };
+
 function CustomTabBar(props: MaterialTopTabBarProps) {
   const { spinePosition } = useContext(TabCtx);
+  tabNavRef.current = props.navigation;
+
+  // Track direction based on tab index changes
+  const idx = props.state.index;
+  if (idx !== prevTabIndexRef.current) {
+    navDirectionRef.current = idx > prevTabIndexRef.current ? 1 : -1;
+    prevTabIndexRef.current = idx;
+  }
 
   if (spinePosition === 'top') {
     return <HorizontalTabBar {...props} />;
   }
-
-  // Absolutely-positioned sidebar on the correct side
-  return (
-    <View
-      style={{
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        left: spinePosition === 'left' ? 0 : undefined,
-        right: spinePosition === 'right' ? 0 : undefined,
-        zIndex: 10,
-      }}
-    >
-      <VerticalSidebar {...props} />
-    </View>
-  );
-}
-
-// ─── Content Wrapper ─────────────────────────────────────
-// Wraps the TopTabs in a container that accounts for sidebar width.
-function ContentArea({ spinePosition, children }: { spinePosition: SpinePosition; children: React.ReactNode }) {
-  if (spinePosition === 'top') {
-    return <>{children}</>;
+  if (spinePosition === 'bottom') {
+    return <BottomTabBar {...props} />;
   }
 
-  return (
-    <View
-      style={{
-        flex: 1,
-        position: 'relative',
-        paddingLeft: spinePosition === 'left' ? SIDEBAR_W : 0,
-        paddingRight: spinePosition === 'right' ? SIDEBAR_W : 0,
-      }}
-    >
-      {children}
-    </View>
-  );
+  return <BookTabSidebar {...props} />;
 }
 
 // ─── Main Layout ─────────────────────────────────────────
 export default function TripLayout() {
+  const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trip, refetch } = useItineraryScreen(id);
-  const [tabManagerVisible, setTabManagerVisible] = useState(false);
-  const [showOptional, setShowOptional] = useState(false);
-  const [spinePosition, setSpinePosition] = useState<SpinePosition>('top');
+  const [spinePosition, setSpinePosition] = useState<SpinePosition>('left');
+  const [scrubbing, setScrubbing] = useState(false);
 
-  const cyclePosition = () => {
-    setSpinePosition((p) => (p === 'top' ? 'left' : p === 'left' ? 'right' : 'top'));
-  };
+  const [tripThemeId, setTripThemeId] = useState('navy');
+  const [tripCustomColor, setTripCustomColor] = useState<string | null>(null);
+  const theme = resolveTheme(tripThemeId, tripCustomColor ?? undefined);
+
+  const setTripTheme = useCallback((themeId: string, customColor?: string) => {
+    setTripThemeId(themeId);
+    setTripCustomColor(customColor ?? null);
+  }, []);
+
+  const [tabColorOverrides, setTabColorOverrides] = useState<Record<string, string>>({});
+  const [hydrated, setHydrated] = useState(false);
+  const hasPersistedState = useRef(false);
+
+  const setTabColor = useCallback((tabName: string, color: string) => {
+    setTabColorOverrides(prev => ({ ...prev, [tabName]: color }));
+  }, []);
+
+  const resetTabColors = useCallback(() => {
+    setTabColorOverrides({});
+  }, []);
+
+  const [itineraryColorOverrides, setItineraryColorOverrides] = useState<Record<string, string>>({});
+
+  const setItineraryColor = useCallback((section: string, color: string) => {
+    setItineraryColorOverrides(prev => ({ ...prev, [section]: color }));
+  }, []);
+
+  const resetItineraryColors = useCallback(() => {
+    setItineraryColorOverrides({});
+  }, []);
+
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+
+  // Load persisted theme state from AsyncStorage
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(`trip-theme-${id}`);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          hasPersistedState.current = true;
+          if (saved.themeId) setTripThemeId(saved.themeId);
+          if (saved.customColor !== undefined) setTripCustomColor(saved.customColor);
+          if (saved.tabColorOverrides) setTabColorOverrides(saved.tabColorOverrides);
+          if (saved.itineraryColorOverrides) setItineraryColorOverrides(saved.itineraryColorOverrides);
+        }
+      } catch {}
+      setHydrated(true);
+    })();
+  }, [id]);
+
+  // Persist theme state when it changes (after initial hydration)
+  useEffect(() => {
+    if (!hydrated) return;
+    AsyncStorage.setItem(`trip-theme-${id}`, JSON.stringify({
+      themeId: tripThemeId,
+      customColor: tripCustomColor,
+      tabColorOverrides,
+      itineraryColorOverrides,
+    })).catch(() => {});
+  }, [hydrated, id, tripThemeId, tripCustomColor, tabColorOverrides, itineraryColorOverrides]);
+
+  // Only use trip data as initial default when there's NO persisted state
+  useEffect(() => {
+    if (hasPersistedState.current) return;
+    if (trip?.theme) setTripThemeId(trip.theme);
+    if (trip?.custom_theme_color !== undefined) setTripCustomColor(trip.custom_theme_color);
+  }, [trip?.theme, trip?.custom_theme_color]);
 
   return (
     <TabCtx.Provider
-      value={{
-        showOptional, setShowOptional,
-        openTabManager: () => setTabManagerVisible(true),
-        spinePosition,
-        cyclePosition,
-      }}
+      value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen }}
     >
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
-        <TripHero trip={trip} refetch={refetch} onOpenTabManager={() => setTabManagerVisible(true)} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <TripHero trip={trip} refetch={refetch} />
+        <View style={{ height: 1, backgroundColor: colors.border }} />
 
-        <ContentArea spinePosition={spinePosition}>
+        <View style={{ flex: 1, position: 'relative' }}>
           <TopTabs
             tabBar={(props) => <CustomTabBar {...props} />}
-            screenOptions={{ lazy: true }}
+            screenOptions={{
+              lazy: true,
+              swipeEnabled: false,
+              animationEnabled: !scrubbing,
+              sceneStyle: {
+                paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
+                paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
+                paddingBottom: spinePosition === 'bottom' ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
+                backgroundColor: colors.cardBackground,
+              },
+            }}
           >
             <TopTabs.Screen name="index" options={{ title: 'Overview' }} />
             <TopTabs.Screen name="itinerary" options={{ title: 'Itinerary' }} />
@@ -414,15 +904,12 @@ export default function TripLayout() {
             <TopTabs.Screen name="activities" options={{ title: 'Explore' }} />
             <TopTabs.Screen name="packing" options={{ title: 'Packing' }} />
             <TopTabs.Screen name="budget" options={{ title: 'Budget' }} />
-            <TopTabs.Screen name="info" options={{ title: 'Trip Info' }} />
-            <TopTabs.Screen name="settings" options={{ title: 'Settings' }} />
             <TopTabs.Screen name="cars" options={{ title: 'Car Rental' }} />
             <TopTabs.Screen name="favorites" options={{ title: 'Favorites' }} />
+            <TopTabs.Screen name="settings" options={{ title: 'Settings' }} />
           </TopTabs>
-        </ContentArea>
+        </View>
       </View>
-
-      <TabManagerModal visible={tabManagerVisible} onClose={() => setTabManagerVisible(false)} />
     </TabCtx.Provider>
   );
 }

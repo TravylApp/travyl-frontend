@@ -20,8 +20,8 @@ import { useItineraryContext } from './ItineraryContext';
 
 // ─── Constants ──────────────────────────────────────────────
 
-const NAVY = '#1e3a5f';
-const NAVY_LIGHT = '#2a4f7a';
+const NAVY = 'var(--trip-base)';
+const NAVY_LIGHT = 'var(--trip-base-light)';
 
 const HOUR_HEIGHT = 44;
 const ItemTypes = { ACTIVITY: 'activity', DAY: 'day' };
@@ -234,7 +234,7 @@ const ParentBlockCard = memo(({
         opacity: isDragging ? 0.3 : isDimmed ? 0.3 : 1,
         transition: 'opacity 0.2s',
         zIndex: isDragging ? 1000 : isOver ? 999 : 3,
-        boxShadow: '0 2px 8px rgba(30, 58, 95, 0.12)',
+        boxShadow: '0 2px 8px rgb(var(--trip-base-rgb) / 0.12)',
       }}
     >
       {isOver && (
@@ -558,7 +558,7 @@ const DraggableDayHeader = memo(({
           {dayMeta?.dayLabel ?? `Day ${day + 1}`}
         </div>
         {dayMeta?.theme && (
-          <div className={`text-[9px] mt-0.5 font-medium ${isSelected ? 'text-[#1e3a5f]' : 'text-gray-400'}`}>{dayMeta.theme}</div>
+          <div className={`text-[9px] mt-0.5 font-medium ${isSelected ? '' : 'text-gray-400'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{dayMeta.theme}</div>
         )}
         <div className="flex items-center justify-center gap-0.5 mt-1">
           {activityCount > 0 ? Array.from({ length: Math.min(activityCount, 5) }).map((_, i) => (
@@ -767,9 +767,10 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
               onClick={() => setShowLeftPanel(!showLeftPanel)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer ${
                 showLeftPanel
-                  ? 'bg-[#1e3a5f] text-white shadow-sm'
+                  ? 'text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
+              style={showLeftPanel ? { backgroundColor: 'var(--trip-base)' } : undefined}
             >
               <Search size={13} />
               <span>Discover {destination}</span>
@@ -823,7 +824,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                         placeholder={`Search in ${destination}...`}
                         value={discoverSearch}
                         onChange={(e) => setDiscoverSearch(e.target.value)}
-                        className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30 placeholder:text-gray-400"
+                        className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:border-trip-base/30 placeholder:text-gray-400"
                       />
                       {discoverSearch && (
                         <button onClick={() => setDiscoverSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -843,9 +844,10 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                             onClick={() => setDiscoverCategory(cat.id)}
                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                               isActive
-                                ? 'bg-[#1e3a5f] text-white shadow-sm'
+                                ? 'text-white shadow-sm'
                                 : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                             }`}
+                            style={isActive ? { backgroundColor: 'var(--trip-base)' } : undefined}
                           >
                             <CatIcon size={12} />
                             {cat.label}

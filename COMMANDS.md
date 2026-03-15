@@ -13,7 +13,7 @@ cd apps/mobile && npx expo install
 cd apps/web && npm install <package>
 
 # Add a dev dependency to shared
-cd packages/shared && yarn add -D <package>
+cd packages/shared && npm install -D <package>
 ```
 
 ## Run
@@ -30,10 +30,10 @@ cd apps/mobile && npx expo start
 
 ```bash
 # Run all shared tests (single run)
-cd packages/shared && yarn test
+cd packages/shared && npm test
 
 # Watch mode (re-runs on file changes)
-cd packages/shared && yarn test:watch
+cd packages/shared && npm run test:watch
 ```
 
 ## Type Check

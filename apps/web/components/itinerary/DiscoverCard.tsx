@@ -45,7 +45,7 @@ function RatingStars({ rating, size = 11 }: { rating: number; size?: number }) {
 
 export function DiscoverCard({
   item,
-  accentColor = '#1e3a5f',
+  accentColor = 'var(--trip-base)',
   onFavorite,
   isFavorited = false,
   onAddToItinerary,

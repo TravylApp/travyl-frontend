@@ -7,11 +7,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useExploreRows } from '@travyl/shared';
 import type { ExploreItem } from '@travyl/shared';
 
+// Use CSS variable with Navy fallback so it works both inside and outside TripThemeProvider
+const THEME_BASE = 'var(--trip-base, #1e3a5f)';
+const THEME_LIGHT = 'var(--trip-base-light, #2d4a6f)';
+const THEME_DARK = 'var(--trip-base-dark, #0f1d30)';
+
 // ─── Fallback data when API returns empty ────────────────────
 const FALLBACK_ROWS = [
   {
     title: 'Popular Destinations',
-    gradient: { from: '#1e3a5f', to: '#2d5a8a' },
+    gradient: { from: THEME_DARK, to: THEME_BASE },
     isExpanded: false,
     items: [
       { id: 'fd1', name: 'Santorini, Greece', image_url: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=600&fit=crop' },
@@ -26,7 +31,7 @@ const FALLBACK_ROWS = [
   },
   {
     title: 'Famous Attractions',
-    gradient: { from: '#162d4a', to: '#1e3a5f' },
+    gradient: { from: THEME_DARK, to: THEME_BASE },
     isExpanded: false,
     items: [
       { id: 'fa1', name: 'Eiffel Tower', image_url: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=600&fit=crop' },
@@ -41,7 +46,7 @@ const FALLBACK_ROWS = [
   },
   {
     title: 'Top Restaurants',
-    gradient: { from: '#1e3a5f', to: '#3a6b9f' },
+    gradient: { from: THEME_DARK, to: THEME_BASE },
     isExpanded: false,
     items: [
       { id: 'fr1', name: 'Le Jules Verne, Paris', image_url: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&fit=crop' },
@@ -54,7 +59,7 @@ const FALLBACK_ROWS = [
   },
   {
     title: 'Hot Experiences',
-    gradient: { from: '#0f2440', to: '#1e3a5f' },
+    gradient: { from: THEME_DARK, to: THEME_BASE },
     isExpanded: false,
     items: [
       { id: 'fe1', name: 'Northern Lights Tour', image_url: 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?w=600&fit=crop' },
@@ -258,7 +263,7 @@ function ExploreSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
             <div className="pt-1 pb-2">
@@ -303,10 +308,10 @@ export function ExplorePreview() {
 
   if (isLoading) {
     return (
-      <section className="py-4 px-2">
+      <section className="py-6 px-6">
         <div className="max-w-6xl mx-auto space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-11 rounded-xl bg-[#1e3a5f]/15 animate-pulse" />
+            <div key={i} className="h-11 rounded-xl bg-gray-300 animate-pulse" />
           ))}
         </div>
       </section>
@@ -314,14 +319,14 @@ export function ExplorePreview() {
   }
 
   return (
-    <section className="py-4 px-2">
+    <section className="py-6 px-6">
       <div className="max-w-6xl mx-auto">
         {/* Collapse/Expand All toggle */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-[#1e3a5f]">Explore</h2>
+          <h2 className="text-lg font-bold text-gray-900">Explore</h2>
           <button
             onClick={isAllExpanded ? handleCollapseAll : handleExpandAll}
-            className="text-xs font-medium text-[#1e3a5f] hover:text-[#2d4a6f] transition-colors px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50"
+            className="text-xs font-medium text-gray-700 hover:text-gray-900 transition-colors px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50"
           >
             {isAllExpanded ? 'Collapse All' : 'Expand All'}
           </button>

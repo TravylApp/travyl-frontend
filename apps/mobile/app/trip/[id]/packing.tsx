@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Navy, MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared';
+import { MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared';
 import type { PackingList, PackingItem } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { PageTransition, useTabAccent } from './_layout';
 
 /* ------------------------------------------------------------------ */
 /*  Animated Progress Bar                                              */
@@ -70,6 +72,8 @@ export default function PackingScreen() {
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');
 
+  const ACCENT = useTabAccent('packing');
+  const colors = useThemeColors();
   const trip = MOCK_TRIP;
   const destination = trip.destination ?? MOCK_WEATHER.destination;
 
@@ -160,18 +164,24 @@ export default function PackingScreen() {
   /* ---------------------------------------------------------------- */
 
   return (
+    <PageTransition>
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#f8fafc' }}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
     >
-      {/* ========== Header cards (stacked on mobile) ========== */}
-      <View style={{ gap: 12, marginBottom: 18 }}>
+      {/* ========== Header cards (horizontal scroll) ========== */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 14, gap: 10, paddingVertical: 10 }}
+        style={{ marginHorizontal: -16, marginBottom: 18 }}
+      >
         {/* Packing Progress */}
         <LinearGradient
-          colors={[Navy.DEFAULT, Navy.dark]}
+          colors={[ACCENT, ACCENT]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 14, padding: 16 }}
+          style={{ borderRadius: 14, padding: 16, width: 200 }}
         >
           <View
             style={{
@@ -201,62 +211,63 @@ export default function PackingScreen() {
         </LinearGradient>
 
         {/* Weather Info */}
-        <View
-          style={{
-            borderRadius: 14,
-            padding: 16,
-            backgroundColor: '#eff6ff',
-            borderWidth: 1,
-            borderColor: '#bfdbfe',
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <FontAwesome name="sun-o" size={15} color="#2563eb" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>
-              {destination} Weather
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 20, marginBottom: 6 }}>
-            <Text style={{ fontSize: 13, color: '#374151' }}>
-              High: {MOCK_WEATHER.high}
-              {MOCK_WEATHER.unit}
-            </Text>
-            <Text style={{ fontSize: 13, color: '#374151' }}>
-              Low: {MOCK_WEATHER.low}
-              {MOCK_WEATHER.unit}
-            </Text>
-          </View>
-          <Text style={{ fontSize: 12, color: '#6b7280' }}>{MOCK_WEATHER.conditions}</Text>
-        </View>
+        {(() => {
+          const weatherIcon = MOCK_WEATHER.conditions.toLowerCase().includes('sun') ? 'sun-o'
+            : MOCK_WEATHER.conditions.toLowerCase().includes('rain') ? 'umbrella'
+            : MOCK_WEATHER.conditions.toLowerCase().includes('cloud') ? 'cloud' : 'sun-o';
+          return (
+            <View
+              style={{
+                borderRadius: 14,
+                padding: 16,
+                width: 160,
+                backgroundColor: ACCENT + '10',
+                borderWidth: 1,
+                borderColor: ACCENT + '20',
+              }}
+            >
+              <FontAwesome name={weatherIcon} size={20} color={ACCENT} style={{ marginBottom: 6 }} />
+              <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500', marginBottom: 4 }}>
+                Weather
+              </Text>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 2 }}>
+                {MOCK_WEATHER.high}{MOCK_WEATHER.unit}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
+                Low: {MOCK_WEATHER.low}{MOCK_WEATHER.unit}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.text, marginBottom: 4 }}>
+                {MOCK_WEATHER.conditions}
+              </Text>
+              <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                {destination}
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* Packing Tips */}
         <View
           style={{
             borderRadius: 14,
             padding: 16,
+            width: 200,
             backgroundColor: '#fffbeb',
             borderWidth: 1,
             borderColor: '#fde68a',
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827', marginBottom: 8 }}>
-            Packing Tips
-          </Text>
-          <View style={{ gap: 5 }}>
-            {[
-              'Roll clothes to save space',
-              'Pack a change in carry-on',
-              'Use packing cubes',
-              'Check luggage limits',
-            ].map((tip) => (
-              <View key={tip} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <FontAwesome name="lightbulb-o" size={12} color="#d97706" />
-                <Text style={{ fontSize: 12, color: '#374151' }}>{tip}</Text>
-              </View>
-            ))}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <FontAwesome name="lightbulb-o" size={14} color="#d97706" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
+              Packing Tips
+            </Text>
           </View>
+          {['Roll clothes to save space', 'Pack versatile layers', 'Keep essentials in carry-on'].map((tip, i) => (
+            <Text key={i} style={{ fontSize: 11, color: '#78350f', marginTop: 4 }}>- {tip}</Text>
+          ))}
         </View>
-      </View>
+      </ScrollView>
 
       {/* ========== Packing Categories ========== */}
       <View style={{ gap: 12 }}>
@@ -269,12 +280,12 @@ export default function PackingScreen() {
             <View
               key={category}
               style={{
-                backgroundColor: '#fff',
+                backgroundColor: colors.cardBackground,
                 borderRadius: 14,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: '#e5e7eb',
-                shadowColor: '#000',
+                borderColor: colors.border,
+                shadowColor: colors.shadow,
                 shadowOpacity: 0.04,
                 shadowRadius: 6,
                 shadowOffset: { width: 0, height: 2 },
@@ -293,31 +304,31 @@ export default function PackingScreen() {
                   onPress={() => toggleCategory(category)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: Navy.DEFAULT }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: ACCENT }}>
                     {category}
                   </Text>
                   <FontAwesome
                     name={isExpanded ? 'chevron-up' : 'chevron-down'}
                     size={10}
-                    color="#9ca3af"
+                    color={colors.textTertiary}
                   />
                 </Pressable>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View
                     style={{
-                      backgroundColor: '#e0f2fe',
+                      backgroundColor: ACCENT + '15',
                       paddingHorizontal: 9,
                       paddingVertical: 3,
                       borderRadius: 12,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: Navy.DEFAULT }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>
                       {catPacked}/{items.length}
                     </Text>
                   </View>
                   <Pressable onPress={() => deleteCategory(category)} hitSlop={10}>
-                    <FontAwesome name="trash-o" size={14} color="#9ca3af" />
+                    <FontAwesome name="trash-o" size={14} color={colors.textTertiary} />
                   </Pressable>
                 </View>
               </View>
@@ -327,8 +338,8 @@ export default function PackingScreen() {
                 <ProgressBar
                   percent={catPercent}
                   height={5}
-                  trackColor="#e5e7eb"
-                  fillColor={catPercent === 100 ? '#22c55e' : Navy.DEFAULT}
+                  trackColor={colors.border}
+                  fillColor={catPercent === 100 ? '#22c55e' : ACCENT}
                 />
               </View>
 
@@ -345,7 +356,7 @@ export default function PackingScreen() {
                         gap: 12,
                         paddingVertical: 10,
                         borderBottomWidth: index < items.length - 1 ? 1 : 0,
-                        borderBottomColor: '#f3f4f6',
+                        borderBottomColor: colors.borderLight,
                       }}
                     >
                       {/* Checkbox */}
@@ -355,8 +366,8 @@ export default function PackingScreen() {
                           height: 20,
                           borderRadius: 5,
                           borderWidth: 1.5,
-                          borderColor: item.packed ? Navy.DEFAULT : '#d1d5db',
-                          backgroundColor: item.packed ? Navy.DEFAULT : 'transparent',
+                          borderColor: item.packed ? ACCENT : colors.border,
+                          backgroundColor: item.packed ? ACCENT : 'transparent',
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
@@ -369,7 +380,7 @@ export default function PackingScreen() {
                         style={{
                           flex: 1,
                           fontSize: 14,
-                          color: item.packed ? '#9ca3af' : '#111827',
+                          color: item.packed ? colors.textTertiary : colors.text,
                           textDecorationLine: item.packed ? 'line-through' : 'none',
                         }}
                       >
@@ -382,7 +393,7 @@ export default function PackingScreen() {
                         hitSlop={10}
                         style={{ padding: 4 }}
                       >
-                        <FontAwesome name="close" size={12} color="#d1d5db" />
+                        <FontAwesome name="close" size={12} color={colors.border} />
                       </Pressable>
                     </Pressable>
                   ))}
@@ -396,23 +407,23 @@ export default function PackingScreen() {
                       }
                       onSubmitEditing={() => addItem(category)}
                       placeholder="New item..."
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.textTertiary}
                       style={{
                         flex: 1,
                         paddingHorizontal: 12,
                         paddingVertical: 10,
                         fontSize: 13,
                         borderWidth: 1,
-                        borderColor: '#e0f2fe',
+                        borderColor: ACCENT + '15',
                         borderRadius: 10,
-                        color: '#111827',
-                        backgroundColor: '#f8fafc',
+                        color: colors.text,
+                        backgroundColor: colors.surface,
                       }}
                     />
                     <Pressable
                       onPress={() => addItem(category)}
                       style={{
-                        backgroundColor: Navy.DEFAULT,
+                        backgroundColor: ACCENT,
                         paddingHorizontal: 16,
                         borderRadius: 10,
                         alignItems: 'center',
@@ -432,16 +443,16 @@ export default function PackingScreen() {
         {isCreatingList ? (
           <View
             style={{
-              backgroundColor: '#f0f9ff',
+              backgroundColor: ACCENT + '08',
               borderRadius: 14,
               padding: 16,
               borderWidth: 2,
-              borderColor: Navy.light,
+              borderColor: ACCENT,
               borderStyle: 'dashed',
             }}
           >
             <Text
-              style={{ fontSize: 15, fontWeight: '600', color: Navy.DEFAULT, marginBottom: 12 }}
+              style={{ fontSize: 15, fontWeight: '600', color: ACCENT, marginBottom: 12 }}
             >
               Create New List
             </Text>
@@ -450,17 +461,17 @@ export default function PackingScreen() {
               onChangeText={setNewListName}
               onSubmitEditing={createList}
               placeholder="List name (e.g., Beach Gear)"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               autoFocus
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 fontSize: 14,
                 borderWidth: 1,
-                borderColor: Navy.light,
+                borderColor: ACCENT,
                 borderRadius: 10,
-                color: '#111827',
-                backgroundColor: '#fff',
+                color: colors.text,
+                backgroundColor: colors.cardBackground,
                 marginBottom: 12,
               }}
             />
@@ -469,7 +480,7 @@ export default function PackingScreen() {
                 onPress={createList}
                 style={{
                   flex: 1,
-                  backgroundColor: Navy.DEFAULT,
+                  backgroundColor: ACCENT,
                   paddingVertical: 12,
                   borderRadius: 10,
                   alignItems: 'center',
@@ -485,13 +496,13 @@ export default function PackingScreen() {
                 style={{
                   paddingHorizontal: 18,
                   paddingVertical: 12,
-                  backgroundColor: '#e5e7eb',
+                  backgroundColor: colors.border,
                   borderRadius: 10,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>Cancel</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Cancel</Text>
               </Pressable>
             </View>
           </View>
@@ -502,9 +513,9 @@ export default function PackingScreen() {
               borderRadius: 14,
               padding: 28,
               borderWidth: 2,
-              borderColor: Navy.light,
+              borderColor: ACCENT,
               borderStyle: 'dashed',
-              backgroundColor: '#f0f9ff',
+              backgroundColor: ACCENT + '08',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 10,
@@ -515,20 +526,21 @@ export default function PackingScreen() {
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: '#e0f2fe',
+                backgroundColor: ACCENT + '15',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <FontAwesome name="plus" size={22} color={Navy.DEFAULT} />
+              <FontAwesome name="plus" size={22} color={ACCENT} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: Navy.DEFAULT }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>
               Create New List
             </Text>
-            <Text style={{ fontSize: 12, color: Navy.light }}>Add a custom packing list</Text>
+            <Text style={{ fontSize: 12, color: ACCENT }}>Add a custom packing list</Text>
           </Pressable>
         )}
       </View>
     </ScrollView>
+    </PageTransition>
   );
 }

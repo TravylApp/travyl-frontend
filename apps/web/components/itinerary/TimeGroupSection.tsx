@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sun, Sunset, Moon, Sparkles, ChevronDown, Plus } from 'lucide-react';
-import { TIME_OF_DAY_CONFIG, TIME_SECTION_COLORS } from '@travyl/shared';
+import { TIME_OF_DAY_CONFIG } from '@travyl/shared';
 import type { TimeGroup } from '@travyl/shared';
 import type { CardStyle } from './ActivityCardRenderer';
 import { ActivityCardRenderer } from './ActivityCardRenderer';
@@ -23,6 +23,14 @@ const ICON_MAP = {
   moon: Moon,
   sparkles: Sparkles,
 } as const;
+
+// All time-of-day sections use the same solid theme color
+const TIME_BG_STYLES: Record<string, string> = {
+  morning:   'var(--trip-base)',
+  afternoon: 'var(--trip-base)',
+  evening:   'var(--trip-base)',
+  latenight: 'var(--trip-base)',
+};
 
 export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardStyle = 'legacy', collapsed, onToggleCollapse }: TimeGroupSectionProps) {
   const [internalExpanded, setInternalExpanded] = useState(true);
@@ -46,16 +54,16 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
   }, [group.activities.length, expanded]);
 
   const config = TIME_OF_DAY_CONFIG[group.timeOfDay as keyof typeof TIME_OF_DAY_CONFIG];
-  const sectionColors = TIME_SECTION_COLORS[group.timeOfDay as keyof typeof TIME_SECTION_COLORS] ?? TIME_SECTION_COLORS.morning;
   const Icon = ICON_MAP[config.icon as keyof typeof ICON_MAP] ?? Sun;
   const count = group.activities.length;
+  const bgColor = TIME_BG_STYLES[group.timeOfDay] ?? TIME_BG_STYLES.morning;
 
   return (
     <section className="mb-3.5">
       <button
         onClick={toggle}
         className="w-full rounded-xl px-3.5 py-3 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow"
-        style={{ background: sectionColors.gradient }}
+        style={{ backgroundColor: bgColor }}
       >
         <div className="flex items-center gap-2.5">
           <Icon size={18} className="text-white" />
@@ -96,7 +104,8 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
           {/* Add Activity button */}
           <button
             onClick={() => onAddActivity?.(group.timeOfDay)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[#1e3a5f]/20 text-[#1e3a5f] hover:border-[#1e3a5f]/40 hover:bg-[#1e3a5f]/5 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-trip-base/40 hover:bg-trip-base/5 transition-colors"
+            style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)', color: 'var(--trip-base)' }}
           >
             <Plus size={14} />
             <span className="text-[12px] font-medium">Add {config.label} Activity</span>
