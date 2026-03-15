@@ -2,7 +2,16 @@
 
 import { useMemo } from 'react';
 import { Plane, MapPin, Building2 } from 'lucide-react';
-import type { MockTripCard, RouteLocation } from '@travyl/shared';
+import type { MockTripCard } from '@travyl/shared';
+
+interface RouteLocation {
+  city: string;
+  iata?: string;
+  lat: number;
+  lng: number;
+  continent?: string;
+  country?: string;
+}
 import { RouteMap } from './RouteMap';
 
 interface TripRouteHoverProps {
@@ -35,7 +44,7 @@ function LocationNode({
   isLast: boolean;
   showConnector: boolean;
 }) {
-  const colors = getContinentColor(location.continent);
+  const colors = getContinentColor(location.continent ?? 'default');
 
   return (
     <div className="flex items-start gap-2">
@@ -114,7 +123,7 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
   // Get unique continents for the overview
   const continents = useMemo(() => {
     if (!routePoints) return [];
-    const unique = new Set(routePoints.map((p) => p.location.continent));
+    const unique = new Set(routePoints.map((p) => p.location.continent).filter((c): c is string => !!c));
     return Array.from(unique);
   }, [routePoints]);
 

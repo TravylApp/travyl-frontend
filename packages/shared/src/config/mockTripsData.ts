@@ -2,6 +2,11 @@ import type { Trip } from '../types';
 
 export interface MockTripCard extends Trip {
   image: string;
+  route?: {
+    origin: { city: string; iata?: string; lat: number; lng: number };
+    destinations: Array<{ city: string; iata?: string; lat: number; lng: number }>;
+    stops?: Array<{ city: string; iata?: string; lat: number; lng: number }>;
+  };
 }
 
 export const MOCK_TRIPS: MockTripCard[] = [
@@ -21,6 +26,9 @@ export const MOCK_TRIPS: MockTripCard[] = [
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2026-03-01T00:00:00Z',
     updated_at: '2026-03-01T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800',
@@ -41,6 +49,9 @@ export const MOCK_TRIPS: MockTripCard[] = [
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2026-02-15T00:00:00Z',
     updated_at: '2026-02-20T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
@@ -61,6 +72,9 @@ export const MOCK_TRIPS: MockTripCard[] = [
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2026-03-02T00:00:00Z',
     updated_at: '2026-03-02T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800',
@@ -81,6 +95,9 @@ export const MOCK_TRIPS: MockTripCard[] = [
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2026-02-28T00:00:00Z',
     updated_at: '2026-02-28T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800',
@@ -101,6 +118,9 @@ export const MOCK_TRIPS: MockTripCard[] = [
     is_shared: true,
     share_link_token: null,
     share_link_role: 'editor',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2026-01-10T00:00:00Z',
     updated_at: '2026-03-05T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800',
@@ -121,6 +141,9 @@ export const MOCK_TRIPS: MockTripCard[] = [
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    forked_from_trip_id: null,
+    fork_count: 0,
+    is_public: false,
     created_at: '2025-11-01T00:00:00Z',
     updated_at: '2025-12-29T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800',

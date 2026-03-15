@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips, MOCK_TRIPS } from '@travyl/shared';
@@ -70,6 +70,25 @@ function SkeletonCard() {
 }
 
 export default function MyTripsPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    }>
+      <MyTripsContent />
+    </Suspense>
+  );
+}
+
+function MyTripsContent() {
   const searchParams = useSearchParams();
   const statusParam = (searchParams.get('status') as StatusFilter) || 'all';
   const searchQuery = searchParams.get('search') || '';
