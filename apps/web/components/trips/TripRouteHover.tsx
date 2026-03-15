@@ -2,16 +2,7 @@
 
 import { useMemo } from 'react';
 import { Plane, MapPin, Building2 } from 'lucide-react';
-import type { MockTripCard } from '@travyl/shared';
-
-interface RouteLocation {
-  city: string;
-  iata?: string;
-  lat: number;
-  lng: number;
-  continent?: string;
-  country?: string;
-}
+import type { MockTripCard, RouteLocation } from '@travyl/shared';
 import { RouteMap } from './RouteMap';
 
 interface TripRouteHoverProps {
@@ -29,8 +20,8 @@ const CONTINENT_COLORS: Record<string, { bg: string; text: string; border: strin
   default: { bg: 'bg-slate-800/50', text: 'text-slate-300', border: 'border-slate-600/50', dot: 'bg-slate-400' },
 };
 
-function getContinentColor(continent: string) {
-  return CONTINENT_COLORS[continent] || CONTINENT_COLORS.default;
+function getContinentColor(continent: string | undefined) {
+  return (continent && CONTINENT_COLORS[continent]) || CONTINENT_COLORS.default;
 }
 
 function LocationNode({
@@ -67,7 +58,7 @@ function LocationNode({
             <MapPin size={12} className={colors.text} />
           )}
           <span className={`font-semibold text-sm ${colors.text}`}>
-            {location.city}
+            {location.city || location.name}
             {location.iata && (
               <span className="ml-1 text-xs opacity-70">({location.iata})</span>
             )}
@@ -130,8 +121,8 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
   // Get unique countries for the overview
   const countries = useMemo(() => {
     if (!routePoints) return [];
-    const unique = new Set(routePoints.map((p) => p.location.country));
-    return Array.from(unique);
+    const unique = new Set(routePoints.map((p) => p.location.country).filter(Boolean));
+    return Array.from(unique) as string[];
   }, [routePoints]);
 
   if (!route) {
@@ -186,7 +177,7 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
       {/* Route Points - Compact list */}
       <div className="space-y-0">
         {routePoints?.map((point, index) => (
-          <div key={`${point.location.city}-${index}`}>
+          <div key={`${point.location.city || point.location.name}-${index}`}>
             <LocationNode
               location={point.location}
               isOrigin={point.type === 'origin'}

@@ -1,19 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-
-interface RouteLocation {
-  city: string;
-  iata?: string;
-  lat: number;
-  lng: number;
-}
-
-interface TripRoute {
-  origin: RouteLocation;
-  destinations: RouteLocation[];
-  stops?: RouteLocation[];
-}
+import type { RouteLocation, TripRoute } from '@travyl/shared';
 
 interface RouteMapProps {
   route: TripRoute;
@@ -327,7 +315,7 @@ export function RouteMap({ route, width = 280, height = 180 }: RouteMapProps) {
           key={`${point.location.city}-${i}`}
           x={point.x}
           y={point.y}
-          label={point.location.iata || point.location.city}
+          label={point.location.iata ?? point.location.city ?? point.location.name}
           isOrigin={point.type === 'origin'}
           isDestination={point.type === 'destination'}
           isStop={point.type === 'stop'}

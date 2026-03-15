@@ -8,6 +8,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useItineraryScreen } from '@travyl/shared';
 import type { LucideIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -129,25 +130,24 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Other: MoreHorizontal,
 };
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; bar: string; bgStyle?: React.CSSProperties; textStyle?: React.CSSProperties; barStyle?: React.CSSProperties }> = {
   Flights:         { bg: 'bg-blue-100',       text: 'text-blue-600',     bar: 'bg-blue-500' },
   Hotels:          { bg: 'bg-orange-100',      text: 'text-orange-600',   bar: 'bg-orange-500' },
-  'Food & Dining': { bg: 'bg-[#1e3a5f]/10',   text: 'text-[#1e3a5f]',    bar: 'bg-[#1e3a5f]' },
+  'Food & Dining': { bg: '',                   text: '',                  bar: '',
+                     bgStyle: { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' },
+                     textStyle: { color: 'var(--trip-base)' },
+                     barStyle: { backgroundColor: 'var(--trip-base)' } },
   Activities:      { bg: 'bg-teal-100',        text: 'text-teal-600',     bar: 'bg-teal-500' },
   Transportation:  { bg: 'bg-purple-100',      text: 'text-purple-600',   bar: 'bg-purple-500' },
   Shopping:        { bg: 'bg-green-100',        text: 'text-green-600',    bar: 'bg-green-500' },
   Other:           { bg: 'bg-gray-100',        text: 'text-gray-600',     bar: 'bg-gray-500' },
 };
 
-const DEFAULT_COLORS = { bg: 'bg-gray-100', text: 'text-gray-600', bar: 'bg-gray-500' };
+const DEFAULT_COLORS: typeof CATEGORY_COLORS[string] = { bg: 'bg-gray-100', text: 'text-gray-600', bar: 'bg-gray-500' };
 
 /* ------------------------------------------------------------------ */
 /*  Skeleton                                                           */
 /* ------------------------------------------------------------------ */
-
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`rounded-md bg-gray-200 animate-pulse ${className}`} />;
-}
 
 function BudgetSkeleton() {
   return (
@@ -161,7 +161,7 @@ function BudgetSkeleton() {
         ))}
       </div>
       <div className="bg-gray-200 rounded-full h-2.5 mb-6 overflow-hidden">
-        <div className="h-full rounded-full bg-emerald-500" style={{ width: '65%' }} />
+        <div className="h-full rounded-full" style={{ width: '65%', backgroundColor: 'var(--trip-base)' }} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {[1, 2, 3, 4].map((i) => (
@@ -197,11 +197,17 @@ function healthBg(pct: number) {
 }
 
 /** Per-category card background (green when healthy). */
-function categoryHealthBg(pct: number) {
-  if (pct >= 100) return 'bg-red-50 border-red-200';
-  if (pct >= 90)  return 'bg-amber-50 border-amber-200';
-  if (pct >= 75)  return 'bg-blue-50 border-blue-200';
-  return 'bg-emerald-50 border-emerald-200';
+function categoryHealthBg(pct: number): { className: string; style?: React.CSSProperties } {
+  if (pct >= 100) return { className: 'bg-red-50 border-red-200' };
+  if (pct >= 90)  return { className: 'bg-amber-50 border-amber-200' };
+  if (pct >= 75)  return { className: 'bg-blue-50 border-blue-200' };
+  return {
+    className: 'border',
+    style: {
+      backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)',
+      borderColor: 'rgb(var(--trip-base-rgb) / 0.2)',
+    },
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -434,9 +440,12 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                 ? 'bg-red-500'
                 : pctUsed > 80
                   ? 'bg-amber-500'
-                  : 'bg-emerald-500'
+                  : ''
             }`}
-            style={{ width: `${Math.min(pctUsed, 100)}%` }}
+            style={{
+              width: `${Math.min(pctUsed, 100)}%`,
+              ...(pctUsed <= 80 ? { backgroundColor: 'var(--trip-base)' } : {}),
+            }}
           />
         </div>
       </div>
@@ -450,7 +459,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
           const itemPct      = item.budgeted > 0 ? (item.actual / item.budgeted) * 100 : 0;
           const colors       = CATEGORY_COLORS[item.category] || DEFAULT_COLORS;
           const Icon         = CATEGORY_ICONS[item.category] || Wallet;
-          const bgClass      = categoryHealthBg(itemPct);
+          const healthResult = categoryHealthBg(itemPct);
 
           // Progress bar colour — override with amber/red at thresholds
           const progressBar =
@@ -459,13 +468,15 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
               : itemPct > 80
                 ? 'bg-amber-500'
                 : colors.bar;
+          const progressBarStyle = (itemPct <= 80 && colors.barStyle) ? colors.barStyle : undefined;
 
           return (
             <div
               key={item.id}
-              className={`${bgClass} rounded-lg hover:shadow-md transition-shadow ${
+              className={`${healthResult.className} rounded-lg hover:shadow-md transition-shadow ${
                 isExpanded ? 'p-4' : 'p-3'
               }`}
+              style={healthResult.style}
             >
               {/* --- Collapsed header --- */}
               <div
@@ -473,7 +484,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                 className="w-full flex items-center justify-between cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 ${colors.bg} ${colors.text} rounded-lg`}>
+                  <div className={`p-2 ${colors.bg} ${colors.text} rounded-lg`} style={{ ...colors.bgStyle, ...colors.textStyle }}>
                     <Icon size={18} />
                   </div>
                   <div>
@@ -561,7 +572,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                             <div className="w-full bg-white rounded-full h-2 overflow-hidden">
                               <div
                                 className={`h-full transition-all ${progressBar}`}
-                                style={{ width: `${Math.min(itemPct, 100)}%` }}
+                                style={{ width: `${Math.min(itemPct, 100)}%`, ...progressBarStyle }}
                               />
                             </div>
                           </div>
@@ -658,7 +669,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                                     type="text"
                                     value={newExpenseDesc}
                                     onChange={(e) => setNewExpenseDesc(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
                                     placeholder="e.g., Round trip to Paris"
                                     autoFocus
                                   />
@@ -671,14 +682,15 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                                     type="number"
                                     value={newExpenseAmount}
                                     onChange={(e) => setNewExpenseAmount(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
                                     placeholder="0.00"
                                   />
                                 </div>
                                 <div className="flex gap-2 pt-1">
                                   <button
                                     onClick={() => handleAddExpense(item.id)}
-                                    className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
+                                    className="flex-1 px-3 py-2 text-white rounded-lg hover:bg-trip-base-light text-sm font-medium transition-colors"
+                                    style={{ backgroundColor: 'var(--trip-base)' }}
                                   >
                                     Add Expense
                                   </button>
@@ -721,7 +733,8 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                           <div className="flex gap-2 pt-2">
                             <button
                               onClick={handleSaveEdit}
-                              className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors"
+                              className="flex-1 px-3 py-2 text-white rounded-lg hover:bg-trip-base-light text-sm font-medium transition-colors"
+                              style={{ backgroundColor: 'var(--trip-base)' }}
                             >
                               Save
                             </button>
@@ -746,7 +759,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
         {!showAddCategory ? (
           <button
             onClick={() => setShowAddCategory(true)}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex flex-col items-center justify-center gap-2 min-h-[200px]"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-trip-base hover:bg-trip-base/5 transition-colors flex flex-col items-center justify-center gap-2 min-h-[200px]"
           >
             <Plus size={24} className="text-gray-400" />
             <span className="text-sm font-medium text-gray-600">Add Category</span>
@@ -756,7 +769,11 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
-            className="bg-emerald-50 rounded-lg border-2 border-emerald-300 p-4"
+            className="rounded-lg border-2 p-4"
+            style={{
+              backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)',
+              borderColor: 'rgb(var(--trip-base-rgb) / 0.3)',
+            }}
           >
             <div className="space-y-3">
               <div>
@@ -799,7 +816,8 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={handleAddCategory}
-                  className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm font-medium"
+                  className="flex-1 px-3 py-2 text-white rounded hover:bg-trip-base-light text-sm font-medium"
+                  style={{ backgroundColor: 'var(--trip-base)' }}
                 >
                   Add
                 </button>

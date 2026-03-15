@@ -441,7 +441,7 @@ function BrowsingHotelGridCard({
             <StarRating count={hotel.stars} />
           </div>
           <div className="text-right shrink-0">
-            <p className="text-lg font-bold text-[#1e3a5f]">&euro;{hotel.price}</p>
+            <p className="text-lg font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}</p>
             <p className="text-[10px] text-gray-500">per night</p>
           </div>
         </div>
@@ -450,7 +450,10 @@ function BrowsingHotelGridCard({
           <span className="truncate">{hotel.neighborhood}</span>
         </div>
         <div className="flex items-center gap-1.5 mt-2">
-          <span className={`text-xs font-bold text-white px-1.5 py-0.5 rounded ${hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? 'bg-[#1e3a5f]' : 'bg-orange-500'}`}>
+          <span
+            className={`text-xs font-bold text-white px-1.5 py-0.5 rounded ${hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? '' : 'bg-orange-500'}`}
+            style={hotel.rating >= 8 && hotel.rating < 9 ? { backgroundColor: 'var(--trip-base)' } : undefined}
+          >
             {hotel.rating}
           </span>
           <span className="text-[11px] text-gray-600 font-medium">{hotel.guestRatings.label}</span>
@@ -496,7 +499,7 @@ function BrowsingHotelListCard({
               <StarRating count={hotel.stars} />
             </div>
             <div className="text-right shrink-0">
-              <p className="text-lg font-bold text-[#1e3a5f]">&euro;{hotel.price}</p>
+              <p className="text-lg font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}</p>
               <p className="text-[10px] text-gray-500">per night</p>
             </div>
           </div>
@@ -505,7 +508,10 @@ function BrowsingHotelListCard({
             <span>{hotel.address}</span>
           </div>
           <div className="flex items-center gap-1.5 mt-2">
-            <span className={`text-xs font-bold text-white px-1.5 py-0.5 rounded ${hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? 'bg-[#1e3a5f]' : 'bg-orange-500'}`}>
+            <span
+              className={`text-xs font-bold text-white px-1.5 py-0.5 rounded ${hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? '' : 'bg-orange-500'}`}
+              style={hotel.rating >= 8 && hotel.rating < 9 ? { backgroundColor: 'var(--trip-base)' } : undefined}
+            >
               {hotel.rating}
             </span>
             <span className="text-[11px] text-gray-600 font-medium">{hotel.guestRatings.label}</span>
@@ -592,7 +598,10 @@ function BrowsingHotelBookView({
                 <div className="p-5 flex flex-col">
                   <div className="flex items-center gap-2 mb-1">
                     <StarRating count={hotel.stars} />
-                    <span className={`text-xs font-bold text-white px-1.5 py-0.5 rounded ${hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? 'bg-[#1e3a5f]' : 'bg-orange-500'}`}>
+                    <span
+                      className={`text-xs font-bold text-white px-1.5 py-0.5 rounded ${hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? '' : 'bg-orange-500'}`}
+                      style={hotel.rating >= 8 && hotel.rating < 9 ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                    >
                       {hotel.rating}
                     </span>
                   </div>
@@ -605,9 +614,12 @@ function BrowsingHotelBookView({
                   <div className="mt-4 space-y-3 flex-1">
                     {/* Rating summary */}
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
-                        hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? 'bg-[#1e3a5f]' : 'bg-orange-500'
-                      }`}>
+                      <div
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
+                          hotel.rating >= 9 ? 'bg-emerald-500' : hotel.rating >= 8 ? '' : 'bg-orange-500'
+                        }`}
+                        style={hotel.rating >= 8 && hotel.rating < 9 ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                      >
                         {hotel.guestRatings.overall}
                       </div>
                       <div>
@@ -617,10 +629,10 @@ function BrowsingHotelBookView({
                     </div>
 
                     {/* Price */}
-                    <div className="bg-[#1e3a5f]/5 rounded-lg p-3 flex items-baseline justify-between">
+                    <div className="rounded-lg p-3 flex items-baseline justify-between" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)' }}>
                       <span className="text-sm text-gray-600">From</span>
                       <div className="text-right">
-                        <span className="text-2xl font-bold text-[#1e3a5f]">&euro;{hotel.price}</span>
+                        <span className="text-2xl font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}</span>
                         <span className="text-xs text-gray-500 ml-1">/ night</span>
                       </div>
                     </div>
@@ -635,7 +647,7 @@ function BrowsingHotelBookView({
                               <span className="font-medium text-gray-900">{room.type}</span>
                               <span className="text-gray-400 ml-1.5">{room.beds}</span>
                             </div>
-                            <span className="font-semibold text-[#1e3a5f]">&euro;{room.price}</span>
+                            <span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{room.price}</span>
                           </div>
                         ))}
                       </div>
@@ -726,7 +738,7 @@ function BrowsingHotelsSection({
         lat: h.lat,
         lng: h.lng,
         name: h.name,
-        color: h.rating >= 9 ? '#10b981' : h.rating >= 8 ? '#1e3a5f' : '#f97316',
+        color: h.rating >= 9 ? '#10b981' : h.rating >= 8 ? 'var(--trip-base)' : '#f97316',
         category: `${h.stars}★ · €${h.price}/night`,
       })),
     [hotels],
@@ -858,7 +870,7 @@ function BookedHotelCard({
   return (
     <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
       {/* Gradient banner header */}
-      <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}>
+      <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))' }}>
         <div className="flex items-center justify-between text-white">
           <div className="flex items-center gap-2.5">
             <Hotel size={16} />
@@ -879,7 +891,7 @@ function BookedHotelCard({
           <div className="space-y-3">
             {/* Status badges */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="bg-[#1e3a5f] text-white text-[10px] px-2.5 py-1 rounded-full font-medium">Confirmed</span>
+              <span className="text-white text-[10px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--trip-base)' }}>Confirmed</span>
               <span className="flex items-center gap-0.5 bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px]">
                 <Star size={9} className="fill-blue-600 text-blue-600" />
                 <span className="font-medium">{hotel.rating}/10</span>
@@ -907,33 +919,33 @@ function BookedHotelCard({
             </span>
 
             {/* Pricing breakdown (collapsible) */}
-            <div className="bg-[#1e3a5f]/5 rounded-lg overflow-hidden">
-              <button onClick={() => setPriceOpen(!priceOpen)} className="w-full flex items-center justify-between p-3 hover:bg-[#1e3a5f]/10 transition-colors">
+            <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)' }}>
+              <button onClick={() => setPriceOpen(!priceOpen)} className="w-full flex items-center justify-between p-3 hover:bg-trip-base/10 transition-colors">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Total Cost</span>
                   <span className="text-xs text-gray-400">({nights} nights)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#1e3a5f]">&euro;{totalCost.toFixed(2)}</span>
-                  <ChevronDown size={14} className={`text-[#1e3a5f] transition-transform ${priceOpen ? 'rotate-180' : ''}`} />
+                  <span className="font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{totalCost.toFixed(2)}</span>
+                  <ChevronDown size={14} className={`transition-transform ${priceOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--trip-base)' }} />
                 </div>
               </button>
               <AnimatePresence>
                 {priceOpen && (
                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                    <div className="px-3 pb-3 space-y-1.5 border-t border-[#1e3a5f]/10">
-                      <div className="pt-2 flex justify-between text-xs"><span className="text-gray-500">Room</span><span className="font-medium text-[#1e3a5f]">{hotel.roomTypes[selectedRoom].type}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-600">Rate</span><span className="font-semibold text-[#1e3a5f]">&euro;{hotel.price}/night</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-600">{nights} nights subtotal</span><span className="font-semibold text-[#1e3a5f]">&euro;{baseTotal.toFixed(2)}</span></div>
-                      <div className="pt-1.5 border-t border-[#1e3a5f]/10 space-y-1">
+                    <div className="px-3 pb-3 space-y-1.5 border-t" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
+                      <div className="pt-2 flex justify-between text-xs"><span className="text-gray-500">Room</span><span className="font-medium" style={{ color: 'var(--trip-base)' }}>{hotel.roomTypes[selectedRoom].type}</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-gray-600">Rate</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}/night</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-gray-600">{nights} nights subtotal</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{baseTotal.toFixed(2)}</span></div>
+                      <div className="pt-1.5 border-t space-y-1" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
                         <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Taxes & Fees</span>
                         <div className="flex justify-between text-xs"><span className="text-gray-600">City Tax</span><span>&euro;{cityTax.toFixed(2)}</span></div>
                         <div className="flex justify-between text-xs"><span className="text-gray-600">Service Fee</span><span>&euro;{serviceFee.toFixed(2)}</span></div>
                         <div className="flex justify-between text-xs"><span className="text-gray-600">VAT (10%)</span><span>&euro;{vat.toFixed(2)}</span></div>
                       </div>
-                      <div className="pt-1.5 border-t border-[#1e3a5f]/20 flex justify-between">
+                      <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                         <span className="text-sm font-semibold text-gray-900">Total</span>
-                        <span className="font-bold text-[#1e3a5f]">&euro;{totalCost.toFixed(2)}</span>
+                        <span className="font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{totalCost.toFixed(2)}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -945,9 +957,9 @@ function BookedHotelCard({
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               <button onClick={() => setRoomsOpen(!roomsOpen)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-2">
-                  <Hotel size={14} className="text-[#1e3a5f]" />
+                  <Hotel size={14} style={{ color: 'var(--trip-base)' }} />
                   <span className="text-xs font-semibold text-gray-900">Room Options</span>
-                  <span className="text-[10px] text-[#1e3a5f] bg-[#1e3a5f]/5 px-1.5 py-0.5 rounded-full border border-[#1e3a5f]/20">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ color: 'var(--trip-base)', backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)', borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                     {hotel.roomTypes[selectedRoom].type}
                   </span>
                 </div>
@@ -966,8 +978,9 @@ function BookedHotelCard({
                             <div
                               onClick={() => { setSelectedRoom(idx); setExpandedRoom(null); }}
                               className={`cursor-pointer rounded-lg border-2 transition-all overflow-hidden flex items-start gap-3 ${
-                                isSelected ? 'border-[#1e3a5f] bg-[#1e3a5f]/5' : 'border-gray-200 bg-white hover:border-gray-300'
+                                isSelected ? '' : 'border-gray-200 bg-white hover:border-gray-300'
                               }`}
+                              style={isSelected ? { borderColor: 'var(--trip-base)', backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)' } : undefined}
                             >
                               <div
                                 className="w-20 h-20 flex-shrink-0 relative group/thumb cursor-zoom-in"
@@ -982,8 +995,8 @@ function BookedHotelCard({
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
                                     <div className="flex items-center gap-2 mb-0.5">
-                                      <span className={`text-xs font-semibold ${isSelected ? 'text-[#1e3a5f]' : 'text-gray-900'}`}>{room.type}</span>
-                                      {isSelected && <span className="bg-[#1e3a5f] text-white text-[9px] px-1.5 py-0.5 rounded-full">Current</span>}
+                                      <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
+                                      {isSelected && <span className="text-white text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--trip-base)' }}>Current</span>}
                                       {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">+&euro;{priceDiff}/nt</span>}
                                     </div>
                                     <p className="text-[10px] text-gray-600">{room.beds}</p>
@@ -993,7 +1006,7 @@ function BookedHotelCard({
                                     </div>
                                   </div>
                                   <div className="text-right shrink-0">
-                                    <p className={`text-sm font-bold ${isSelected ? 'text-[#1e3a5f]' : 'text-gray-900'}`}>&euro;{room.price}</p>
+                                    <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>&euro;{room.price}</p>
                                     <p className="text-[9px] text-gray-500">per night</p>
                                   </div>
                                 </div>
@@ -1004,7 +1017,7 @@ function BookedHotelCard({
                             <AnimatePresence>
                               {expandedRoom === roomKey && (
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                  <div className="mt-1.5 bg-white rounded-lg border-2 border-[#1e3a5f]/20 overflow-hidden">
+                                  <div className="mt-1.5 bg-white rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
                                       <button onClick={() => setExpandedRoom(null)} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
@@ -1016,7 +1029,7 @@ function BookedHotelCard({
                                           <p className="text-[10px] text-gray-500 mt-0.5">{room.beds} &middot; {room.size} &middot; {room.guests} guests</p>
                                         </div>
                                         <div className="text-right">
-                                          <p className="text-sm font-bold text-[#1e3a5f]">&euro;{room.price}<span className="text-[10px] text-gray-400 font-normal">/nt</span></p>
+                                          <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{room.price}<span className="text-[10px] text-gray-400 font-normal">/nt</span></p>
                                           <p className="text-[10px] text-gray-500">&euro;{room.price * nights} total</p>
                                         </div>
                                       </div>
@@ -1077,7 +1090,7 @@ function BookedHotelCard({
             {/* Action buttons */}
             <div className="flex gap-2">
               <button onClick={onCancel} className="flex-1 text-xs font-semibold text-red-600 border border-red-200 rounded-lg px-3 py-2 hover:bg-red-50 transition-colors">Cancel Booking</button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#1e3a5f] border border-[#1e3a5f]/20 rounded-lg px-3 py-2 hover:bg-[#1e3a5f]/5 transition-colors">
+              <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold border rounded-lg px-3 py-2 hover:bg-trip-base/5 transition-colors" style={{ color: 'var(--trip-base)', borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                 <Share2 size={12} /> Share
               </button>
             </div>
@@ -1086,7 +1099,7 @@ function BookedHotelCard({
           {/* Right column - image + amenities + contact + ratings */}
           <div className="space-y-3">
             {/* Image carousel */}
-            <div className="rounded-lg overflow-hidden border-2 border-[#1e3a5f]/20 shadow-md">
+            <div className="rounded-lg overflow-hidden border-2 shadow-md" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
               <ImageCarousel images={hotel.images} alt={hotel.name} height="h-64 md:h-80" />
             </div>
 
@@ -1101,15 +1114,15 @@ function BookedHotelCard({
 
             {/* Contact actions */}
             <div className="grid grid-cols-3 gap-2">
-              <a href={`tel:${hotel.phone}`} className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-md p-2.5 border border-gray-200 hover:border-[#1e3a5f] hover:shadow-sm transition-all">
-                <Phone size={14} className="text-[#1e3a5f]" />
+              <a href={`tel:${hotel.phone}`} className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-md p-2.5 border border-gray-200 hover:border-trip-base hover:shadow-sm transition-all">
+                <Phone size={14} style={{ color: 'var(--trip-base)' }} />
                 <span className="text-xs text-gray-900 font-medium">Call</span>
               </a>
-              <a href={`mailto:${hotel.email}`} className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-md p-2.5 border border-gray-200 hover:border-[#1e3a5f] hover:shadow-sm transition-all">
-                <Mail size={14} className="text-[#1e3a5f]" />
+              <a href={`mailto:${hotel.email}`} className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-md p-2.5 border border-gray-200 hover:border-trip-base hover:shadow-sm transition-all">
+                <Mail size={14} style={{ color: 'var(--trip-base)' }} />
                 <span className="text-xs text-gray-900 font-medium">Email</span>
               </a>
-              <button className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-md p-2.5 border border-gray-200 hover:border-[#1e3a5f] hover:shadow-sm transition-all">
+              <button className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-md p-2.5 border border-gray-200 hover:border-trip-base hover:shadow-sm transition-all">
                 <Map size={14} className="text-[#8b6f47]" />
                 <span className="text-xs text-gray-900 font-medium">Map</span>
               </button>
@@ -1121,7 +1134,7 @@ function BookedHotelCard({
                 <MapPin size={14} className="text-[#8b6f47] mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-gray-900 leading-snug">{hotel.address}</p>
-                  <p className="text-[10px] text-[#1e3a5f] mt-0.5">{hotel.neighborhood}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--trip-base)' }}>{hotel.neighborhood}</p>
                 </div>
               </div>
             </div>
@@ -1129,9 +1142,12 @@ function BookedHotelCard({
             {/* Guest ratings */}
             <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
               <div className="flex items-center gap-2.5 p-2.5">
-                <div className={`w-9 h-9 rounded flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${
-                  hotel.guestRatings.overall >= 9 ? 'bg-emerald-500' : hotel.guestRatings.overall >= 8 ? 'bg-[#1e3a5f]' : 'bg-orange-500'
-                }`}>
+                <div
+                  className={`w-9 h-9 rounded flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${
+                    hotel.guestRatings.overall >= 9 ? 'bg-emerald-500' : hotel.guestRatings.overall >= 8 ? '' : 'bg-orange-500'
+                  }`}
+                  style={hotel.guestRatings.overall >= 8 && hotel.guestRatings.overall < 9 ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                >
                   {hotel.guestRatings.overall}
                 </div>
                 <div className="flex-1 min-w-0">

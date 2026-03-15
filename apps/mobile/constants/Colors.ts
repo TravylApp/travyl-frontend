@@ -1,21 +1,20 @@
-const primaryBlue = '#003594';
-const goldAccent = '#FFC72C';
+import { LIGHT_TOKENS, DARK_TOKENS, Navy } from '@travyl/shared';
 
 export default {
   light: {
-    text: '#000',
-    background: '#fff',
-    tint: primaryBlue,
-    tabIconDefault: '#ccc',
-    tabIconSelected: primaryBlue,
-    accent: goldAccent,
+    text: LIGHT_TOKENS.text,
+    background: LIGHT_TOKENS.background,
+    tint: LIGHT_TOKENS.tint,
+    tabIconDefault: LIGHT_TOKENS.textTertiary,
+    tabIconSelected: Navy.DEFAULT,
+    accent: LIGHT_TOKENS.accent,
   },
   dark: {
-    text: '#fff',
-    background: '#000',
-    tint: '#fff',
-    tabIconDefault: '#ccc',
-    tabIconSelected: '#fff',
-    accent: goldAccent,
+    text: DARK_TOKENS.text,
+    background: DARK_TOKENS.background,
+    tint: DARK_TOKENS.tint,
+    tabIconDefault: DARK_TOKENS.textTertiary,
+    tabIconSelected: DARK_TOKENS.tabBarActive,
+    accent: DARK_TOKENS.accent,
   },
 };

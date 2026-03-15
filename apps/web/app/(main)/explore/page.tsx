@@ -5,19 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Calendar, Users, GitFork, Search, Filter, Loader2 } from 'lucide-react';
-import { fetchPublicTrips, useForkTrip, useAuthStore, canForkTrip } from '@travyl/shared';
+import { fetchPublicTrips, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
 const BRAND = '#1e3a5f';
-
-function formatDateRange(start: string, end: string): string {
-  const s = new Date(start + 'T00:00:00');
-  const e = new Date(end + 'T00:00:00');
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  const sStr = s.toLocaleDateString('en-US', opts);
-  const eStr = e.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
-  return `${sStr} – ${eStr}`;
-}
 
 interface PublicTripCardProps {
   trip: Trip & { profiles?: { display_name: string | null; avatar_url: string | null } };

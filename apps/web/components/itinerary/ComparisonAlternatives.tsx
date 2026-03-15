@@ -18,8 +18,90 @@ import {
   Star,
   Info,
 } from 'lucide-react';
-import { FLIGHT_OPTIONS, ALTERNATIVE_AIRPORTS } from '@travyl/shared';
 import type { FlightOption } from '@travyl/shared';
+
+/* ── Mock data ─────────────────────────────────────────────── */
+
+const ALTERNATIVE_AIRPORTS = [
+  { code: 'EWR', name: 'Newark Liberty Intl', savings: 45 },
+  { code: 'LGA', name: 'LaGuardia', savings: 30 },
+  { code: 'ORY', name: 'Paris Orly', savings: 60 },
+];
+
+const FLIGHT_OPTIONS: FlightOption[] = [
+  {
+    id: 'fl-1',
+    airline: 'American Airlines',
+    airlineLogo: 'AA',
+    flightNumber: 'AA 100',
+    aircraft: 'Boeing 777-300ER',
+    departure: { time: '7:30 PM', airport: 'JFK', terminal: '8' },
+    arrival: { time: '9:15 AM', airport: 'CDG', terminal: '2A', nextDay: true },
+    duration: '7h 45m',
+    stops: 0,
+    fareClass: 'Economy',
+    price: { base: 412, taxes: 86, total: 498 },
+    baggage: { carryOn: true, checked: 1, checkedFee: 0 },
+    seatPitch: '31"',
+    seatWidth: '17.2"',
+    amenities: { wifi: true, power: true, meals: true, entertainment: true },
+    cancellation: { refundable: false, changeFee: 200, policy: 'Non-refundable. Change fee $200 + fare difference.' },
+    onTime: 82,
+    co2: 245,
+    co2Avg: 260,
+    milesEarned: 3640,
+    alliance: 'oneworld',
+    badge: 'Best Overall',
+  },
+  {
+    id: 'fl-2',
+    airline: 'Delta Air Lines',
+    airlineLogo: 'DL',
+    flightNumber: 'DL 264',
+    aircraft: 'Airbus A330-900neo',
+    departure: { time: '10:05 PM', airport: 'JFK', terminal: '4' },
+    arrival: { time: '11:35 AM', airport: 'CDG', terminal: '2E', nextDay: true },
+    duration: '7h 30m',
+    stops: 0,
+    fareClass: 'Economy',
+    price: { base: 389, taxes: 78, total: 467 },
+    baggage: { carryOn: true, checked: 1, checkedFee: 0 },
+    seatPitch: '32"',
+    seatWidth: '18"',
+    amenities: { wifi: true, power: true, meals: true, entertainment: true },
+    cancellation: { refundable: false, changeFee: 0, policy: 'No change fees. Fare difference may apply.' },
+    onTime: 86,
+    co2: 230,
+    co2Avg: 260,
+    milesEarned: 3640,
+    alliance: 'SkyTeam',
+    badge: 'Fastest',
+  },
+  {
+    id: 'fl-3',
+    airline: 'United Airlines',
+    airlineLogo: 'UA',
+    flightNumber: 'UA 57',
+    aircraft: 'Boeing 767-400ER',
+    departure: { time: '5:15 PM', airport: 'EWR', terminal: 'C' },
+    arrival: { time: '6:55 AM', airport: 'CDG', terminal: '1', nextDay: true },
+    duration: '7h 40m',
+    stops: 0,
+    fareClass: 'Economy',
+    price: { base: 358, taxes: 74, total: 432 },
+    baggage: { carryOn: true, checked: 0, checkedFee: 35 },
+    seatPitch: '30"',
+    seatWidth: '17.5"',
+    amenities: { wifi: true, power: true, meals: true, entertainment: false },
+    cancellation: { refundable: false, changeFee: 0, policy: 'No change fees. Fare difference may apply.' },
+    onTime: 79,
+    co2: 252,
+    co2Avg: 260,
+    milesEarned: 3640,
+    alliance: 'Star Alliance',
+    badge: 'Lowest Price',
+  },
+];
 
 /* ── Helpers ────────────────────────────────────────────────── */
 

@@ -5,20 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@travyl/shared';
-import { fetchUserPublicTrips, useForkTrip, useAuthStore, canForkTrip } from '@travyl/shared';
+import { fetchUserPublicTrips, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
 import type { Trip, Profile } from '@travyl/shared';
 import { MapPin, Calendar, Users, GitFork, Loader2, Map } from 'lucide-react';
 
 const BRAND = '#1e3a5f';
-
-function formatDateRange(start: string, end: string): string {
-  const s = new Date(start + 'T00:00:00');
-  const e = new Date(end + 'T00:00:00');
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  const sStr = s.toLocaleDateString('en-US', opts);
-  const eStr = e.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
-  return `${sStr} – ${eStr}`;
-}
 
 // Fetch user profile by username (display_name)
 async function fetchUserProfileByUsername(username: string): Promise<Profile | null> {
