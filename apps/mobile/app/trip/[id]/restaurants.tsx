@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Image, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
@@ -64,6 +64,9 @@ const RESTAURANT_DISTANCES: Record<string, string> = {
 };
 
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_IMG_W = SCREEN_WIDTH - 32 - 2; // 16px padding each side, minus border
+
 // -- Price level dots ---------------------------------------------
 function PriceLevel({ price }: { price: string }) {
   const ACCENT = useTabAccent('restaurants');
@@ -104,6 +107,7 @@ function RestaurantCard({
   const colors = useThemeColors();
   const [imgError, setImgError] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
   const hasImage = item.images.length > 0 && !imgError;
 
   const menuHighlights = MENU_HIGHLIGHTS[item.id] || [];
@@ -121,9 +125,31 @@ function RestaurantCard({
           borderColor: item.isBooked ? ACCENT : colors.border,
         }}
       >
-        {/* Image */}
+        {/* Image with Carousel */}
         <View style={{ height: 180, backgroundColor: colors.borderLight }}>
-          {hasImage ? (
+          {hasImage && item.images.length > 1 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_IMG_W);
+                setImgIdx(idx);
+              }}
+              scrollEventThrottle={16}
+              style={{ width: CARD_IMG_W, height: 180 }}
+            >
+              {item.images.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={{ width: CARD_IMG_W, height: 180 }}
+                  resizeMode="cover"
+                  onError={() => setImgError(true)}
+                />
+              ))}
+            </ScrollView>
+          ) : hasImage ? (
             <Image
               source={{ uri: item.images[0] }}
               style={{ width: '100%', height: '100%' }}
@@ -138,6 +164,7 @@ function RestaurantCard({
 
           {/* Gradient overlay */}
           <View
+            pointerEvents="none"
             style={{
               position: 'absolute',
               bottom: 0,
@@ -232,27 +259,19 @@ function RestaurantCard({
             </View>
           )}
 
-          {/* Photo count */}
-          {item.images.length > 1 && (
-            <View
-              style={{
-                position: 'absolute',
-                bottom: 10,
-                right: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 3,
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                paddingHorizontal: 6,
-                paddingVertical: 3,
-                borderRadius: 4,
-              }}
-            >
-              <FontAwesome name="camera" size={8} color="rgba(255,255,255,0.9)" />
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)' }}>{item.images.length}</Text>
-            </View>
-          )}
         </View>
+
+        {/* Dot indicators */}
+        {hasImage && item.images.length > 1 && (
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, paddingVertical: 8 }}>
+            {item.images.map((_, i) => (
+              <View key={i} style={{
+                width: imgIdx === i ? 16 : 6, height: 6, borderRadius: 3,
+                backgroundColor: imgIdx === i ? ACCENT : colors.border,
+              }} />
+            ))}
+          </View>
+        )}
 
         {/* Content */}
         <View style={{ padding: 14 }}>
