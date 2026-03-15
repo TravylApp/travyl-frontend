@@ -7,7 +7,7 @@ import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X } from 'lucide-r
 import { usePathname } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import type { SpinePosition } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, MOCK_DESTINATION_COORDS, useAuthStore, isTripOwner } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, MOCK_DESTINATION_COORDS, useAuthStore, isTripOwner, MOCK_TRIPS } from '@travyl/shared';
 import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
@@ -50,11 +50,17 @@ function TripHero({
     { icon: Share2, label: 'Share', onClick: handleShare },
   ];
 
+  const tripImage = trip ? MOCK_TRIPS.find(t => t.id === trip.id)?.image : undefined;
+
   return (
     <div className="relative h-[200px] sm:h-[240px] overflow-hidden">
-      <div className="flex h-full items-center justify-center bg-slate-300">
-        <ImageIcon size={32} className="text-slate-400" />
-      </div>
+      {tripImage ? (
+        <img src={tripImage} alt={trip?.destination ?? 'Trip'} className="w-full h-full object-cover" />
+      ) : (
+        <div className="flex h-full items-center justify-center bg-slate-300">
+          <ImageIcon size={32} className="text-slate-400" />
+        </div>
+      )}
       <div
         className="absolute inset-x-0 bottom-0 h-1/2"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)' }}
@@ -204,6 +210,7 @@ function TripLayoutContent({
   const { trip } = useItineraryScreen(tripId);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
   const isTopMode = spinePosition === "top";
+  const isVerticalSpine = spinePosition === "left" || spinePosition === "right";
 
   // Sync map open with context requests
   useEffect(() => {
@@ -236,6 +243,62 @@ function TripLayoutContent({
   // Determine if map should show markers or single destination pin
   const hasMarkers = mapMarkers.length > 0;
 
+  // Page transition — rolodex flip for side spine, horizontal slide for top
+  const dir = directionRef.current;
+  const pageVariants = isVerticalSpine
+    ? {
+        initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
+        animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
+        exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
+      }
+    : {
+        initial: { opacity: 0, x: dir > 0 ? 24 : -24 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: dir > 0 ? -12 : 12 },
+      };
+
+  if (calendarOpen) {
+    return (
+      <div className="bg-white min-h-screen flex flex-col">
+        {/* Compact header with calendar toggle */}
+        <div className="shrink-0 bg-white border-b border-gray-100 px-5 pt-3 pb-2.5 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+              style={{ backgroundColor: 'var(--trip-base)' }}
+            >
+              <Calendar size={15} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-[17px] tracking-tight" style={{ color: 'var(--trip-base)', fontWeight: 700 }}>
+                Itinerary
+              </h2>
+              <p className="text-[12px] text-gray-400">{trip?.destination || 'Your trip'} · Calendar View</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCalendarOpen(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-white shadow-md scale-[1.02]"
+                style={{ borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' }}
+              >
+                <Calendar size={13} />
+                <span className="text-[12px] font-medium">Calendar</span>
+              </button>
+            </div>
+          </div>
+          <div
+            className="mt-2.5 h-[2px] rounded-full opacity-80"
+            style={{ background: `linear-gradient(90deg, var(--trip-base), var(--trip-base)40, transparent)` }}
+          />
+        </div>
+        {/* Calendar fills remaining space */}
+        <div className="flex-1 min-h-0">
+          <CalendarView />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white">
       <div className="mx-auto max-w-7xl">
@@ -243,11 +306,11 @@ function TripLayoutContent({
         <TripHero tripId={tripId} />
 
         {/* Gap between hero and suitcase card */}
-        <div className="h-4" />
+        <div className="h-2" />
 
         {/* Suitcase card */}
         <div
-          className="rounded-2xl border border-gray-200/80 bg-white mx-2 sm:mx-4 relative z-10 overflow-hidden"
+          className="rounded-2xl border border-gray-200/80 bg-white mx-2 sm:mx-4 relative z-10"
           style={{
             boxShadow:
               '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1),' +
@@ -271,40 +334,39 @@ function TripLayoutContent({
             <ContentHeader
               tripId={tripId}
               mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen((v) => !v)}
+              onToggleMap={() => {
+                setMapOpen((v) => !v);
+                if (!mapOpen) setCalendarOpen(false);
+              }}
               calendarOpen={calendarOpen}
-              onToggleCalendar={() => setCalendarOpen((v) => !v)}
+              onToggleCalendar={() => {
+                setCalendarOpen((v) => !v);
+                if (!calendarOpen) setMapOpen(false);
+              }}
             />
 
             {/* Content body */}
             <div className="flex">
-              <div className="flex-1 min-w-0 px-5 pt-4 pb-5 relative bg-white overflow-hidden" style={{ perspective: 1200 }}>
-                <AnimatePresence mode="wait" initial={false}>
-                  {calendarOpen ? (
-                    <motion.div
-                      key="calendar"
-                      initial={{ opacity: 0, scale: 0.97, y: 12 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.97, y: 12 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <CalendarView />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key={`tab-${currentSegment}`}
-                      initial={{ opacity: 0, scale: 0.97, y: 12 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.97, y: 12 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      {children}
-                    </motion.div>
-                  )}
+              <div
+                className="flex-1 min-w-0 relative bg-white overflow-hidden px-5 pt-4 pb-5"
+                style={{ perspective: 1200 }}
+              >
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.div
+                    key={`tab-${currentSegment}`}
+                    layout
+                    initial={pageVariants.initial}
+                    animate={pageVariants.animate}
+                    exit={pageVariants.exit}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    style={isVerticalSpine ? { transformOrigin: 'center top' } : undefined}
+                  >
+                    {children}
+                  </motion.div>
                 </AnimatePresence>
               </div>
 
-              {/* Map side panel — slides in from right, ~50% width */}
+              {/* Map side panel — sticky, follows scroll */}
               <AnimatePresence>
               {mapOpen && (
                 <motion.div
@@ -312,55 +374,57 @@ function TripLayoutContent({
                   animate={{ width: '50%', opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="hidden md:flex w-[340px] lg:w-[440px] xl:w-[520px] shrink-0 border-l border-gray-200 bg-white flex-col overflow-hidden rounded-r-2xl">
-                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <Map size={13} className="text-[var(--trip-base)]" />
-                      <span className="text-xs font-semibold text-gray-800">
-                        {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Paris, France')}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleCloseMap}
-                      className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 transition-colors"
-                    >
-                      <X size={12} className="text-gray-400" />
-                    </button>
-                  </div>
-                  <div className="flex-1 min-h-[400px] relative">
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center h-full bg-gray-50">
-                        <span className="text-sm text-gray-400">Loading map...</span>
-                      </div>
-                    }>
-                      {hasMarkers ? (
-                        <LeafletMap
-                          locations={mapMarkers}
-                          selectedId={selectedMarkerId}
-                          zoom={13}
-                          height="100%"
-                          className="!rounded-none !border-0"
-                        />
-                      ) : (
-                        <LeafletMap
-                          lat={MOCK_DESTINATION_COORDS.lat}
-                          lng={MOCK_DESTINATION_COORDS.lng}
-                          label={trip?.destination || 'Paris, France'}
-                          zoom={13}
-                          height="100%"
-                          className="!rounded-none !border-0"
-                        />
-                      )}
-                    </Suspense>
-                    {/* Location label bar */}
-                    {!hasMarkers && (
-                      <div className="absolute bottom-0 inset-x-0 flex items-center gap-2 px-3 py-2 bg-white/95 backdrop-blur-md border-t border-gray-100">
-                        <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
-                        <span className="text-[11px] font-medium text-gray-700 truncate">
-                          {trip?.destination || 'Paris, France'}
+                  className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden rounded-r-2xl"
+                >
+                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white">
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Map size={13} className="text-[var(--trip-base)]" />
+                        <span className="text-xs font-semibold text-gray-800">
+                          {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Paris, France')}
                         </span>
                       </div>
-                    )}
+                      <button
+                        onClick={handleCloseMap}
+                        className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 transition-colors"
+                      >
+                        <X size={12} className="text-gray-400" />
+                      </button>
+                    </div>
+                    <div className="flex-1 relative">
+                      <Suspense fallback={
+                        <div className="flex items-center justify-center h-full bg-gray-50">
+                          <span className="text-sm text-gray-400">Loading map...</span>
+                        </div>
+                      }>
+                        {hasMarkers ? (
+                          <LeafletMap
+                            locations={mapMarkers}
+                            selectedId={selectedMarkerId}
+                            zoom={13}
+                            height="100%"
+                            className="!rounded-none !border-0"
+                          />
+                        ) : (
+                          <LeafletMap
+                            lat={MOCK_DESTINATION_COORDS.lat}
+                            lng={MOCK_DESTINATION_COORDS.lng}
+                            label={trip?.destination || 'Paris, France'}
+                            zoom={13}
+                            height="100%"
+                            className="!rounded-none !border-0"
+                          />
+                        )}
+                      </Suspense>
+                      {!hasMarkers && (
+                        <div className="absolute bottom-0 inset-x-0 flex items-center gap-2 px-3 py-2 bg-white/95 backdrop-blur-md border-t border-gray-100">
+                          <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
+                          <span className="text-[11px] font-medium text-gray-700 truncate">
+                            {trip?.destination || 'Paris, France'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )}
