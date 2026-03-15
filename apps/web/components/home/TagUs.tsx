@@ -4,20 +4,7 @@ import { motion } from "motion/react";
 import { Camera } from "lucide-react";
 import { SOCIAL_HASHTAGS, SOCIAL_LINKS, CATEGORY_GRADIENT_CYCLE, EASE_OUT_EXPO, useTagUsDestinations } from "@travyl/shared";
 
-function SocialIcon({ platform }: { platform: string }) {
-  const props = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, className: 'text-foreground' };
-  switch (platform) {
-    case 'twitter':
-    case 'x':
-      return <svg {...props}><path d="M4 4l11.733 16H20L8.267 4z" /><path d="M4 20l6.768-6.768M15.232 10.232L20 4" /></svg>;
-    case 'facebook':
-      return <svg {...props}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>;
-    case 'tiktok':
-      return <svg {...props}><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" /></svg>;
-    default: // instagram
-      return <svg {...props}><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="5" /><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" /></svg>;
-  }
-}
+import { SocialIcon } from "@/components/icons/SocialIcon";
 
 export function TagUs() {
   const destinations = useTagUsDestinations();
@@ -30,13 +17,17 @@ export function TagUs() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
-          className="text-2xl md:text-3xl font-bold text-foreground mb-8"
+          className="text-2xl md:text-3xl text-foreground mb-8"
         >
-          Tag us on your <span className="font-extrabold">Next Trip</span>
+          <span className="font-extrabold">Tag us</span>{" "}
+          <span className="font-normal italic">on your Next Trip</span>
         </motion.h2>
 
-        {/* Photo placeholders */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Photo placeholders — scroll on small, grid on md+ */}
+        <div
+          className="flex md:grid md:grid-cols-4 gap-4 mb-8 overflow-x-auto md:overflow-visible px-6 md:px-0 -mx-6 md:mx-0"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {CATEGORY_GRADIENT_CYCLE.map((grad, i) => (
             <motion.div
               key={i}
@@ -45,7 +36,7 @@ export function TagUs() {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08, ease: EASE_OUT_EXPO }}
               whileHover={{ scale: 1.03 }}
-              className="aspect-square rounded-2xl relative overflow-hidden cursor-pointer group"
+              className="aspect-square rounded-2xl relative overflow-hidden cursor-pointer group flex-shrink-0 w-48 md:w-auto"
               style={{
                 background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
               }}
@@ -83,7 +74,7 @@ export function TagUs() {
               className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center hover:bg-foreground/20 transition-colors"
               title={link.platform}
             >
-              <SocialIcon platform={link.platform} />
+              <SocialIcon platform={link.platform} size={20} className="text-foreground" />
             </a>
           ))}
         </motion.div>
