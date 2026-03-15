@@ -76,7 +76,16 @@ export function TripThemeProvider({
   const [customColor, setCustomColor] = useState<string | null>(initialCustomColor ?? null);
   const [tabColorOverrides, setTabColorOverrides] = useState<Record<string, string>>({});
   const [itineraryColorOverrides, setItineraryColorOverrides] = useState<Record<string, string>>({});
-  const [hiddenTabs, setHiddenTabs] = useState<Record<string, boolean>>({});
+  const [hiddenTabs, setHiddenTabs] = useState<Record<string, boolean>>({
+    hotels: true,
+    flights: true,
+    restaurants: true,
+    activities: true,
+    packing: true,
+    budget: true,
+    cars: true,
+    favorites: true,
+  });
   const [hydrated, setHydrated] = useState(false);
 
   // After mount, restore persisted state from localStorage
@@ -87,7 +96,10 @@ export function TripThemeProvider({
       setCustomColor(saved.customColor);
       setTabColorOverrides(saved.tabColorOverrides ?? {});
       setItineraryColorOverrides(saved.itineraryColorOverrides ?? {});
-      setHiddenTabs(saved.hiddenTabs ?? {});
+      // Only restore hiddenTabs if user has customized them (non-empty); otherwise keep defaults
+      if (saved.hiddenTabs && Object.keys(saved.hiddenTabs).length > 0) {
+        setHiddenTabs(saved.hiddenTabs);
+      }
     }
     setHydrated(true);
   }, [tripId]);

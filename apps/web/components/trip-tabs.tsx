@@ -295,7 +295,7 @@ export default function TripTabs({
 
     return (
       <div
-        className="hidden md:flex flex-col self-stretch shrink-0 relative z-20 py-1"
+        className="hidden md:flex flex-col self-stretch shrink-0 z-20 py-1"
         style={{
           width: 36,
           gap: 2,
@@ -335,10 +335,9 @@ export default function TripTabs({
               onMouseLeave={cancelLongPress}
               onTouchStart={startLongPress}
               onTouchEnd={cancelLongPress}
-              className="flex-1 flex items-center justify-center group relative transition-colors duration-200"
+              className="flex-1 flex items-center justify-center group relative transition-all duration-300 ease-out"
               style={{
                 ...borderRadius,
-                maxHeight: 60,
                 backgroundColor: active ? tabColor : tabColor + 'B3',
               }}
             >
