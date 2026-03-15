@@ -2,6 +2,7 @@ import type { Trip } from '../types';
 
 export interface MockTripCard extends Trip {
   image: string;
+  images?: string[];
   route?: import('../types').TripRoute;
 }
 
@@ -30,6 +31,11 @@ export const MOCK_TRIPS: MockTripCard[] = [
     created_at: '2026-03-01T00:00:00Z',
     updated_at: '2026-03-01T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800',
+    images: [
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800',
+      'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=800',
+      'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800',
+    ],
   },
   {
     id: 'mock-trip-2',
@@ -55,6 +61,11 @@ export const MOCK_TRIPS: MockTripCard[] = [
     created_at: '2026-02-15T00:00:00Z',
     updated_at: '2026-02-20T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
+    images: [
+      'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
+      'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800',
+      'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800',
+    ],
   },
   {
     id: 'mock-trip-3',
@@ -80,6 +91,11 @@ export const MOCK_TRIPS: MockTripCard[] = [
     created_at: '2026-03-02T00:00:00Z',
     updated_at: '2026-03-02T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800',
+    images: [
+      'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800',
+      'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800',
+      'https://images.unsplash.com/photo-1507501336603-6e31db2be093?w=800',
+    ],
   },
   {
     id: 'mock-trip-4',
@@ -105,6 +121,11 @@ export const MOCK_TRIPS: MockTripCard[] = [
     created_at: '2026-02-28T00:00:00Z',
     updated_at: '2026-02-28T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800',
+    images: [
+      'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800',
+      'https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=800',
+      'https://images.unsplash.com/photo-1604999333679-b86d54738315?w=800',
+    ],
   },
   {
     id: 'mock-trip-5',
@@ -130,6 +151,11 @@ export const MOCK_TRIPS: MockTripCard[] = [
     created_at: '2026-01-10T00:00:00Z',
     updated_at: '2026-03-05T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800',
+    images: [
+      'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800',
+      'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?w=800',
+      'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800',
+    ],
   },
   {
     id: 'mock-trip-6',
@@ -155,5 +181,10 @@ export const MOCK_TRIPS: MockTripCard[] = [
     created_at: '2025-11-01T00:00:00Z',
     updated_at: '2025-12-29T00:00:00Z',
     image: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800',
+    images: [
+      'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800',
+      'https://images.unsplash.com/photo-1520209759809-a9bcb6cb3241?w=800',
+      'https://images.unsplash.com/photo-1491555103944-7c647fd857e6?w=800',
+    ],
   },
 ];

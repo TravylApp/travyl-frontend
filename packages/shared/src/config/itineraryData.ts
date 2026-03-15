@@ -16,7 +16,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#eff6ff',
     border: '#dbeafe',
     text: '#1e40af',
-    iconColor: '#1e3a5f',
+    iconColor: '#2563eb',
   },
   afternoon: {
     icon: 'sunset',
@@ -24,7 +24,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#fef3c7',
     border: '#fde68a',
     text: '#92400e',
-    iconColor: '#1e3a5f',
+    iconColor: '#d97706',
   },
   evening: {
     icon: 'moon',
@@ -32,7 +32,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#ede9fe',
     border: '#ddd6fe',
     text: '#5b21b6',
-    iconColor: '#1e3a5f',
+    iconColor: '#7c3aed',
   },
   latenight: {
     icon: 'sparkles',

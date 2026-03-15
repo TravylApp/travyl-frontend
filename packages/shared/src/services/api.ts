@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExploreRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel } from '../types';
+import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel } from '../types';
 
 export async function fetchTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
@@ -49,7 +49,7 @@ export async function fetchInspirationCards(): Promise<InspirationCard[]> {
   return data ?? [];
 }
 
-export async function fetchExploreRows(): Promise<ExploreRow[]> {
+export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
   const { data, error } = await supabase
     .from('explore_rows')
     .select('*, items:explore_items(*)');

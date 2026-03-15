@@ -95,12 +95,7 @@ function makeItineraryColors(base: string): TripTheme['itineraryColors'] {
 // ─── Default clean palette ──────────────────────────────────
 // Sophisticated muted tones that work on light & dark mode
 // Default: all same base color — users customize from settings
-export const DEFAULT_ITINERARY_COLORS = {
-  morning:   '#1e3a5f',
-  afternoon: '#1e3a5f',
-  evening:   '#1e3a5f',
-  latenight: '#1e3a5f',
-} as const;
+export const DEFAULT_ITINERARY_COLORS = makeItineraryColors('#1e3a5f');
 
 function makeUniformTabColors(base: string): Record<string, string> {
   return {
@@ -132,7 +127,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#0e7490'),
-    itineraryColors: { morning: '#0e7490', afternoon: '#0e7490', evening: '#0e7490', latenight: '#0e7490' },
+    itineraryColors: makeItineraryColors('#0e7490'),
   },
   sunset: {
     id: 'sunset',
@@ -143,7 +138,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#c2410c'),
-    itineraryColors: { morning: '#c2410c', afternoon: '#c2410c', evening: '#c2410c', latenight: '#c2410c' },
+    itineraryColors: makeItineraryColors('#c2410c'),
   },
   rainforest: {
     id: 'rainforest',
@@ -154,7 +149,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#15803d'),
-    itineraryColors: { morning: '#15803d', afternoon: '#15803d', evening: '#15803d', latenight: '#15803d' },
+    itineraryColors: makeItineraryColors('#15803d'),
   },
   lavender: {
     id: 'lavender',
@@ -165,7 +160,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#7c3aed'),
-    itineraryColors: { morning: '#7c3aed', afternoon: '#7c3aed', evening: '#7c3aed', latenight: '#7c3aed' },
+    itineraryColors: makeItineraryColors('#7c3aed'),
   },
   terracotta: {
     id: 'terracotta',
@@ -176,7 +171,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#9a3412'),
-    itineraryColors: { morning: '#9a3412', afternoon: '#9a3412', evening: '#9a3412', latenight: '#9a3412' },
+    itineraryColors: makeItineraryColors('#9a3412'),
   },
   midnight: {
     id: 'midnight',
@@ -187,7 +182,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#312e81'),
-    itineraryColors: { morning: '#312e81', afternoon: '#312e81', evening: '#312e81', latenight: '#312e81' },
+    itineraryColors: makeItineraryColors('#312e81'),
   },
   charcoal: {
     id: 'charcoal',
@@ -198,7 +193,7 @@ export const TRIP_THEMES: Record<string, TripTheme> = {
     textOnBase: '#ffffff',
     textOnAccent: '#111827',
     tabColors: makeUniformTabColors('#1f2937'),
-    itineraryColors: { morning: '#1f2937', afternoon: '#1f2937', evening: '#1f2937', latenight: '#1f2937' },
+    itineraryColors: makeItineraryColors('#1f2937'),
   },
 };
 
@@ -214,7 +209,7 @@ export function generateThemeFromColor(hex: string): TripTheme {
     textOnBase: textForBg(hex),
     textOnAccent: textForBg(adjustBrightness(hex, 60)),
     tabColors: makeUniformTabColors(hex),
-    itineraryColors: { morning: hex, afternoon: hex, evening: hex, latenight: hex },
+    itineraryColors: makeItineraryColors(hex),
   };
 }
 
