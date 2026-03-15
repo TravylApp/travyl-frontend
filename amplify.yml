@@ -1,7 +1,6 @@
 version: 1
 applications:
   - appRoot: apps/web
-    framework: nextjs
     frontend:
       phases:
         preBuild:
@@ -12,8 +11,9 @@ applications:
           commands:
             - cd apps/web
             - npm run build
+            - bash scripts/amplify-postbuild.sh
       artifacts:
-        baseDirectory: .next
+        baseDirectory: .amplify-hosting
         files:
           - '**/*'
       cache:
