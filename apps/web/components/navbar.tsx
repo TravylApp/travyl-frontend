@@ -7,11 +7,10 @@ import { Compass, MapPin, Luggage, User, Settings, LogOut, Sun, Moon } from "luc
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { useAuthStore } from "@travyl/shared";
 
-const navLinks = [
+const baseNavLinks = [
   { href: "/", label: "Discover", icon: Compass },
-  { href: "/favorites", label: "Places", icon: MapPin },
+  { href: "/places", label: "Places", icon: MapPin },
   { href: "/trips", label: "Trips", icon: Luggage },
-  { href: "/profile", label: "Profile", icon: User },
 ];
 
 function getInitials(name: string | undefined): string {
@@ -27,6 +26,7 @@ export default function Navbar() {
   const signOut = useAuthStore((s) => s.signOut);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -34,10 +34,21 @@ export default function Navbar() {
   const email = user?.email;
   const initials = getInitials(displayName);
 
+  const navLinks = user
+    ? [...baseNavLinks, { href: "/profile", label: "Profile", icon: User }]
+    : baseNavLinks;
+
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
+
+  // Track scroll position for navbar shrink
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Initialize theme from localStorage
   useEffect(() => {
@@ -86,39 +97,55 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 right-0 left-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-md shadow-sm">
-      <div className="mx-auto flex h-11 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <nav
+      className={`fixed left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/20 backdrop-blur-xl shadow-lg shadow-black/[0.06] transition-all duration-500 ease-out ${
+        scrolled
+          ? "top-5 w-[calc(100%-3rem)] max-w-6xl bg-white/20"
+          : "top-3 w-[calc(100%-2rem)] max-w-5xl bg-white/30"
+      }`}
+    >
+      <div
+        className={`mx-auto flex items-center justify-between transition-all duration-500 ease-out ${
+          scrolled ? "h-14 px-3 sm:px-5 md:px-7" : "h-11 px-3 sm:px-4 md:px-5"
+        }`}
+      >
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-1.5 text-[#1e3a5f] text-xl tracking-[2px]"
+          className={`flex items-center gap-0.5 sm:gap-1 text-[#1e3a5f] tracking-[1px] sm:tracking-[2px] transition-all duration-500 shrink-0 ${
+            scrolled ? "text-lg sm:text-2xl" : "text-base sm:text-xl"
+          }`}
           style={{ fontFamily: 'var(--font-brand)', fontWeight: 800 }}
         >
-          TRAVYL
-          <PaperPlane size={22} className="-rotate-12" />
+          <span className="hidden sm:inline">TRAVYL</span>
+          <PaperPlane size={scrolled ? 28 : 24} className="transition-all duration-500" />
         </Link>
 
-        {/* Center nav (desktop) */}
-        <div className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+        {/* Center nav — always visible, compact on small screens */}
+        <div className="flex-1 flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 min-w-0 overflow-hidden">
           {navLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className={`px-4 py-1.5 rounded-full text-sm border flex items-center gap-1.5 transition-all ${
+              className={`rounded-full border flex items-center whitespace-nowrap transition-all duration-500 ${
+                scrolled
+                  ? "px-2.5 sm:px-3.5 md:px-5 py-1.5 sm:py-1.5 md:py-2 text-xs md:text-sm gap-0 sm:gap-1.5 md:gap-2"
+                  : "px-2 sm:px-3 md:px-4 py-1.5 sm:py-1.5 text-xs md:text-sm gap-0 sm:gap-1.5"
+              } ${
                 isActive(href)
                   ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold shadow-sm"
                   : "text-[#1e3a5f] border-[#1e3a5f]/25 hover:bg-[#1e3a5f]/5 hover:border-[#1e3a5f]/50"
               }`}
             >
-              <Icon size={14} />
-              {label}
+              <Icon size={scrolled ? 16 : 14} className="shrink-0" />
+              <span className="hidden sm:inline">{label}</span>
             </Link>
           ))}
         </div>
 
         {/* Right side: avatar dropdown (logged in) or Login button */}
         {user ? (
-          <div className="hidden md:flex items-center">
+          <div className="flex items-center shrink-0">
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -209,27 +236,12 @@ export default function Navbar() {
         ) : (
           <Link
             href="/login"
-            className="hidden md:flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm border border-[#1e3a5f]/25 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all"
+            className="flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm border border-[#1e3a5f]/25 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all shrink-0"
           >
             Log In
           </Link>
         )}
 
-        {/* Mobile: profile avatar */}
-        <Link
-          href="/profile"
-          className={`md:hidden flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium overflow-hidden transition-colors ${
-            pathname.startsWith("/profile")
-              ? "bg-[#1e3a5f] text-white"
-              : "bg-gray-100 text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          {user && avatarUrl ? (
-            <img src={avatarUrl} alt={displayName || "User"} className="h-full w-full object-cover" />
-          ) : (
-            user ? initials : "U"
-          )}
-        </Link>
       </div>
     </nav>
   );
