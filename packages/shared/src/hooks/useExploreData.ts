@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchExploreRows } from '../services/api';
 import { shuffle, pickFresh } from '../utils';
 import { getShownIds } from '../utils/sessionTracker';
-import type { ExploreRow } from '../types';
+import type { ExplorePlaceRow } from '../types';
 
 export function useExploreData() {
   const mountId = useRef(Symbol());
-  const pickedRef = useRef<ExploreRow[] | null>(null);
+  const pickedRef = useRef<ExplorePlaceRow[] | null>(null);
 
   const query = useQuery({
     queryKey: ['explore-rows'],

@@ -36,23 +36,30 @@ interface LeafletMapProps {
 }
 
 function createIcon(color: string, isSelected: boolean): L.DivIcon {
-  const size = isSelected ? 28 : 20;
+  const size = isSelected ? 32 : 22;
   const border = isSelected ? 3 : 2;
+  const pulse = isSelected
+    ? `<div style="position:absolute;inset:-6px;border-radius:50%;background:${color}20;animation:marker-pulse 2s ease-out infinite;"></div>`
+    : '';
   return L.divIcon({
     className: '',
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 4)],
-    html: `<div style="
-      width:${size}px;height:${size}px;border-radius:50%;
-      background-color:${color};border:${border}px solid white;
-      box-shadow:0 2px 6px rgba(0,0,0,0.3)${isSelected ? ', 0 0 0 3px ' + color + '60' : ''};
-      transition:transform 0.2s ease;${isSelected ? 'transform:scale(1.15);' : ''}
-    "></div>`,
+    html: `<div style="position:relative;width:${size}px;height:${size}px;">
+      ${pulse}
+      <div style="
+        position:relative;width:${size}px;height:${size}px;border-radius:50%;
+        background-color:${color};border:${border}px solid white;
+        box-shadow:0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
+        transition:transform 0.2s ease;${isSelected ? 'transform:scale(1.1);' : ''}
+      "></div>
+    </div>
+    <style>@keyframes marker-pulse{0%{transform:scale(1);opacity:0.6}100%{transform:scale(2.5);opacity:0}}</style>`,
   });
 }
 
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 export default function LeafletMap({

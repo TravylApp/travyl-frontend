@@ -1,6 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
 import { useState, useEffect } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { TIME_OF_DAY_CONFIG } from '@travyl/shared';
 import type { TimeGroup } from '@travyl/shared';
@@ -11,6 +10,9 @@ interface TimeGroupSectionProps {
   collapsed?: boolean;
   onToggleCollapse?: (timeOfDay: string) => void;
   onAddActivity?: (timeOfDay: string) => void;
+  onActivityPress?: (activityId: string) => void;
+  activityImages?: Record<string, string>;
+  colorOverride?: string;
 }
 
 const ICON_MAP: Record<string, string> = {
@@ -19,13 +21,13 @@ const ICON_MAP: Record<string, string> = {
   moon: 'moon-o',
 };
 
-export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActivity }: TimeGroupSectionProps) {
+export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActivity, onActivityPress, activityImages, colorOverride }: TimeGroupSectionProps) {
   const [expanded, setExpanded] = useState(true);
   const config = TIME_OF_DAY_CONFIG[group.timeOfDay];
+  const color = colorOverride ?? config.iconColor;
   const count = group.activities.length;
   const iconName = ICON_MAP[config.icon] ?? 'sun-o';
 
-  // Sync with parent collapsed state
   useEffect(() => {
     if (collapsed !== undefined) {
       setExpanded(!collapsed);
@@ -45,13 +47,10 @@ export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActi
   return (
     <View style={{ marginBottom: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {/* Main header - pressable to collapse */}
         <Pressable onPress={handleToggle} style={{ flex: 1 }}>
-          <LinearGradient
-            colors={[config.iconColor, config.iconColor + 'cc']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
+          <View
             style={{
+              backgroundColor: color,
               borderRadius: 12,
               paddingHorizontal: 14,
               paddingVertical: 12,
@@ -76,44 +75,42 @@ export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActi
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {/* Add Activity button */}
-              {onAddActivity && (
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    onAddActivity(group.timeOfDay);
-                  }}
-                  hitSlop={6}
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <FontAwesome name="plus" size={10} color="#fff" />
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>Add</Text>
-                </Pressable>
-              )}
-              <FontAwesome
-                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                size={12}
-                color="rgba(255,255,255,0.7)"
-              />
-            </View>
-          </LinearGradient>
+            <FontAwesome
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={12}
+              color="rgba(255,255,255,0.7)"
+            />
+          </View>
         </Pressable>
       </View>
 
       {isExpanded && (
         <View style={{ marginTop: 10, gap: 10 }}>
           {group.activities.map((activity) => (
-            <ActivityCard key={activity.id} activity={activity} />
+            <ActivityCard key={activity.id} activity={activity} onPress={onActivityPress ? () => onActivityPress(activity.id) : undefined} imageUrl={activityImages?.[activity.id]} />
           ))}
+
+          {onAddActivity && (
+            <Pressable
+              onPress={() => onAddActivity(group.timeOfDay)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 12,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderStyle: 'dashed',
+                borderColor: color + '35',
+              }}
+            >
+              <FontAwesome name="plus" size={13} color={color} />
+              <Text style={{ fontSize: 12, fontWeight: '500', color: color }}>
+                Add {config.label} Activity
+              </Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>

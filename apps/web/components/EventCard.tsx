@@ -47,7 +47,7 @@ export function EventCard({
         onClick={handleClick}
         className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all ${
           isSelected
-            ? 'bg-[#1e3a5f]/[0.08] border border-[#1e3a5f]/20'
+            ? 'bg-trip-base/[0.08] border border-trip-base/20'
             : 'hover:bg-gray-50 border border-transparent'
         }`}
         whileHover={{ x: 2 }}
@@ -85,7 +85,7 @@ export function EventCard({
       onClick={handleClick}
       className={`bg-white rounded-xl border overflow-hidden cursor-pointer transition-all ${
         isSelected
-          ? 'border-[#1e3a5f]/30 ring-2 ring-[#1e3a5f]/10 shadow-md'
+          ? 'border-trip-base/30 ring-2 ring-trip-base/10 shadow-md'
           : 'border-gray-200 hover:shadow-md hover:border-gray-300'
       }`}
       whileHover={{ y: -2 }}
@@ -111,7 +111,7 @@ export function EventCard({
           <Heart size={14} className={liked ? 'fill-red-500 text-red-500' : 'text-gray-500'} />
         </button>
         {event.date && (
-          <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-[#1e3a5f]/80 backdrop-blur-sm text-[10px] text-white flex items-center gap-1">
+          <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-trip-base/80 backdrop-blur-sm text-[10px] text-white flex items-center gap-1">
             <CalendarDays size={9} /> {event.date}
           </span>
         )}
@@ -127,14 +127,14 @@ export function EventCard({
         </div>
         <h4 className="text-[14px] text-gray-900 mb-1">{event.name}</h4>
         {event.date && (
-          <div className="flex items-center gap-1.5 text-[11px] text-[#1e3a5f] mb-2">
+          <div className="flex items-center gap-1.5 text-[11px] text-trip-base mb-2">
             <CalendarDays size={11} /> {event.date}
           </div>
         )}
         {event.board && (
           <div className="flex items-center justify-between mt-1">
             <span className="text-[11px] text-[#3b82f6] flex items-center gap-1">{event.board}</span>
-            <button onClick={handleViewDetail} className="text-[11px] text-gray-400 hover:text-[#1e3a5f] flex items-center gap-1 cursor-pointer transition-colors">
+            <button onClick={handleViewDetail} className="text-[11px] text-gray-400 hover:text-trip-base flex items-center gap-1 cursor-pointer transition-colors">
               <ExternalLink size={10} /> View
             </button>
           </div>

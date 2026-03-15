@@ -1,9 +1,4 @@
-// ─── Brand Colors (from Figma Itinerary Pagev2) ─────────────
-export const Navy = {
-  DEFAULT: '#1e3a5f',
-  light: '#2d4a6f',
-  dark: '#162d4a',
-} as const;
+// Navy and TAB_COLORS are now exported from colors.ts via config/index.ts
 
 export const ITINERARY_COLORS = {
   primary: '#0ea5e9',    // sky blue — section headers
@@ -13,9 +8,6 @@ export const ITINERARY_COLORS = {
   containerBg: '#f0f9ff',
 } as const;
 
-// TAB_COLORS is now in colors.ts (single source of truth matching Figma Make)
-export { TAB_COLORS } from './colors';
-
 // ─── Time-of-Day Section Colors ─────────────────────────────
 export const TIME_OF_DAY_CONFIG = {
   morning: {
@@ -24,7 +16,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#eff6ff',
     border: '#dbeafe',
     text: '#1e40af',
-    iconColor: '#3b82f6',
+    iconColor: '#2563eb',
   },
   afternoon: {
     icon: 'sunset',
@@ -32,7 +24,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#fef3c7',
     border: '#fde68a',
     text: '#92400e',
-    iconColor: '#f59e0b',
+    iconColor: '#d97706',
   },
   evening: {
     icon: 'moon',
@@ -40,7 +32,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#ede9fe',
     border: '#ddd6fe',
     text: '#5b21b6',
-    iconColor: '#8b5cf6',
+    iconColor: '#7c3aed',
   },
   latenight: {
     icon: 'sparkles',
@@ -48,7 +40,7 @@ export const TIME_OF_DAY_CONFIG = {
     bg: '#ecfeff',
     border: '#a5f3fc',
     text: '#155e75',
-    iconColor: '#06b6d4',
+    iconColor: '#1e3a5f',
   },
 } as const;
 

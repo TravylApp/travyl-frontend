@@ -1,73 +1,95 @@
 "use client";
 
 import { motion } from "motion/react";
-import {
-  useMosaicTiles,
-  TILE_CATEGORY_GRADIENTS,
-  TileCategoryColors,
-  EASE_OUT_EXPO
-} from "@travyl/shared";
-import type { TileCategory, MosaicTile } from "@travyl/shared";
+import { Camera } from "lucide-react";
+import { SOCIAL_HASHTAGS, SOCIAL_LINKS, CATEGORY_GRADIENT_CYCLE, EASE_OUT_EXPO, useTagUsDestinations } from "@travyl/shared";
 
-const PLACEHOLDER_TILES: MosaicTile[] = [
-  { id: 'p-1', name: 'Santorini, Greece', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&fit=crop', gridSpan: [3, 2] },
-  { id: 'p-2', name: 'Bali, Indonesia', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8?w=800&fit=crop', gridSpan: [3, 1] },
-  { id: 'p-3', name: 'Eiffel Tower, Paris', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&fit=crop', gridSpan: [2, 1] },
-  { id: 'p-4', name: 'Cappadocia, Turkey', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1641128324972-af3212f0f6bd?w=600&fit=crop', gridSpan: [2, 1] },
-  { id: 'p-5', name: 'Fine Dining, Italy', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1428515613728-6b4607e44363?w=600&fit=crop', gridSpan: [2, 1] },
-  { id: 'p-6', name: 'Maldives', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&fit=crop', gridSpan: [2, 2] },
-  { id: 'p-7', name: 'Machu Picchu, Peru', category: 'attraction', tagline: '', image_url: 'https://images.unsplash.com/photo-1587595431973-160d0d163abd?w=600&fit=crop', gridSpan: [2, 1]},
-  { id: 'p-8', name: 'Northern Lights, Iceland', category: 'experience', tagline: '', image_url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop', gridSpan: [2, 1] }
-  { id: 'p-9', name: 'Tokyo, Japan', category: 'dining', tagline: '', image_url: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&fit=crop', gridSpan: [2, 1] }
-  { id: 'p-10', name: 'Kyoto, Japan', category: 'destination', tagline: '', image_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&fit=crop', gridSpan: [2, 1] },
-];
+import { SocialIcon } from "@/components/icons/SocialIcon";
 
-const PLACEholderTiles: MosaicTile[] = PlaceholderTiles;
+export function TagUs() {
+  const destinations = useTagUsDestinations();
 
-  const { data: dbTiles, isLoading } => useMosaicTiles();
-  const tiles = dbTiles?.length ? dbTiles?.placeholders
-    ? <div className="flex-1 overflow-hidden md:flex" items-center gap-6 mb-1"
-              <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center"          <PaperPlane size={14} className="text-white- rotate-[8deg]" />
+  return (
+    <section className="py-16 px-6">
+      <div className="max-w-6xl mx-auto text-center">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
+          className="text-2xl md:text-3xl text-foreground mb-8"
+        >
+          <span className="font-extrabold">Tag us</span>{" "}
+          <span className="font-normal italic">on your Next Trip</span>
+        </motion.h2>
+
+        {/* Photo placeholders — scroll on small, grid on md+ */}
+        <div
+          className="flex md:grid md:grid-cols-4 gap-4 mb-8 overflow-x-auto md:overflow-visible px-6 md:px-0 -mx-6 md:mx-0"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {CATEGORY_GRADIENT_CYCLE.map((grad, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.08, ease: EASE_OUT_EXPO }}
+              whileHover={{ scale: 1.03 }}
+              className="aspect-square rounded-2xl relative overflow-hidden cursor-pointer group flex-shrink-0 w-48 md:w-auto"
+              style={{
+                background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
+              }}
+            >
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <Camera size={28} className="text-white/40 group-hover:text-white/60 transition-colors" />
+                <span className="text-white/50 text-xs font-medium group-hover:text-white/70 transition-colors">
+                  {destinations[i]}
+                </span>
+              </div>
+              <div className="absolute bottom-3 left-3">
+                <span className="text-white/30 text-xs font-medium">
+                  @travyl
+                </span>
+              </div>
+            </motion.div>
+          ))}
         </div>
-      </div>
 
-      {/* Quick chips */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {[
-          'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&fit=crop',
-          'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&fit=crop',
-          'https://images.unsplash.com/photo-1503614282401047-d79a71a590e8?w=600&fit=crop',
-          'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&fit=crop',
-        ]
-      </motion.div>
-    );
-  }
+        {/* Social icons */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.3, ease: EASE_OUT_EXPO }}
+          className="flex items-center justify-center gap-4 mb-4"
+        >
+          {SOCIAL_LINKS.map((link) => (
+            <a
+              key={link.platform}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center hover:bg-foreground/20 transition-colors"
+              title={link.platform}
+            >
+              <SocialIcon platform={link.platform} size={20} className="text-foreground" />
+            </a>
+          ))}
+        </motion.div>
+
+        {/* Hashtags */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.4, ease: EASE_OUT_EXPO }}
+          className="text-sm text-muted-foreground"
+        >
+          {SOCIAL_HASHTAGS.join(" ")}
+        </motion.p>
+      </div>
+    </section>
+  );
 }
-
-export function TravelMosaic() {
-  const { data: dbTiles, isLoading } = useMosaicTiles()
-  const tiles = dbTiles?.length ? dbTiles?.placeholders) ? <div className="flex-1 overflow-hidden md:flex" items-center gap-6 mb-1"
-              <div className="w-7 h-7 rounded-full bg-[#1e3a5f] flex items-center justify-center"          <PaperPlane size={14} className="text-white -rotate-[8deg]" />
-        </div>
-      </div>
-
-      {/* Desktop: 6-col grid */}
-      <div
-        className="hidden md:grid grid-cols-6 auto-rows-[120px] gap-3"
-        styles={{ gridAutoFlow: "dense" }}
-      >
-        {tiles.map((tile, i) => {
-          const grad = TILECategoryGradients[tile.category as TileCategory];
-          const color = TILECategoryColors[tile.category as TileCategory]
-          ? (
-          const grad = TILECategoryColors[tile.category]
-            : else {
-              const grad = TileCategoryGradients[tile.category]
-              ? undefined
-            }
-        </div>
-      </div>
-    );
-  }
-}
-

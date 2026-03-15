@@ -20,8 +20,8 @@ const CONTINENT_COLORS: Record<string, { bg: string; text: string; border: strin
   default: { bg: 'bg-slate-800/50', text: 'text-slate-300', border: 'border-slate-600/50', dot: 'bg-slate-400' },
 };
 
-function getContinentColor(continent: string) {
-  return CONTINENT_COLORS[continent] || CONTINENT_COLORS.default;
+function getContinentColor(continent: string | undefined) {
+  return (continent && CONTINENT_COLORS[continent]) || CONTINENT_COLORS.default;
 }
 
 function LocationNode({
@@ -114,15 +114,15 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
   // Get unique continents for the overview
   const continents = useMemo(() => {
     if (!routePoints) return [];
-    const unique = new Set(routePoints.map((p) => p.location.continent));
-    return Array.from(unique);
+    const unique = new Set(routePoints.map((p) => p.location.continent).filter(Boolean));
+    return Array.from(unique) as string[];
   }, [routePoints]);
 
   // Get unique countries for the overview
   const countries = useMemo(() => {
     if (!routePoints) return [];
-    const unique = new Set(routePoints.map((p) => p.location.country));
-    return Array.from(unique);
+    const unique = new Set(routePoints.map((p) => p.location.country).filter(Boolean));
+    return Array.from(unique) as string[];
   }, [routePoints]);
 
   if (!route) {

@@ -36,7 +36,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
       <button
         onClick={toggle}
         className="w-full rounded-lg p-3 shadow-sm cursor-pointer hover:shadow-md transition-all"
-        style={{ background: 'linear-gradient(to right, #1e3a5f, rgba(30, 58, 95, 0.8))' }}
+        style={{ backgroundColor: 'var(--trip-base)' }}
       >
         <div className="flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
             <div className="flex items-center justify-between">
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500 mb-0.5">Departure</p>
-                <p className="text-xl text-[#1e3a5f]">{flight.originIata}</p>
+                <p className="text-xl" style={{ color: 'var(--trip-base)' }}>{flight.originIata}</p>
                 <p className="text-sm font-medium text-gray-800 mt-1">{flight.departureTime}</p>
                 <p className="text-[11px] text-gray-400 mt-0.5">{flight.departureTerminal} &middot; Gate {flight.gate}</p>
                 <p className="text-[11px] text-gray-400">Boarding: {flight.boardingTime}</p>
@@ -87,7 +87,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
               <div className="flex-1 flex flex-col items-center px-2">
                 <div className="relative w-full">
                   <div className="border-t border-dashed border-gray-300 w-full" />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#1e3a5f] rounded-full p-1">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full p-1" style={{ backgroundColor: 'var(--trip-base)' }}>
                     <Plane size={12} className="text-white" />
                   </div>
                 </div>
@@ -96,7 +96,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
               </div>
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500 mb-0.5">Arrival</p>
-                <p className="text-xl text-[#1e3a5f]">{flight.destIata}</p>
+                <p className="text-xl" style={{ color: 'var(--trip-base)' }}>{flight.destIata}</p>
                 <p className="text-sm font-medium text-gray-800 mt-1">{flight.arrivalTime}</p>
                 <p className="text-[11px] text-gray-400 mt-0.5">{flight.arrivalTerminal}</p>
               </div>
@@ -109,7 +109,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
                 <span className="text-gray-500">Check-in by: {flight.boardingTime}</span>
                 <span
                   className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                  style={{ backgroundColor: '#1e3a5f15', color: '#1e3a5f' }}
+                  style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.08)', color: 'var(--trip-base)' }}
                 >
                   {flight.status}
                 </span>
@@ -154,7 +154,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
               </div>
               <div className="flex justify-between col-span-2">
                 <span className="text-gray-500">Confirmation</span>
-                <span className="text-[#1e3a5f] font-semibold font-mono">{flight.confirmation}</span>
+                <span className="font-semibold font-mono" style={{ color: 'var(--trip-base)' }}>{flight.confirmation}</span>
               </div>
             </div>
 
@@ -162,15 +162,16 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
             <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-gray-500">Per traveler</p>
-                <p className="text-lg text-[#1e3a5f]">${flight.pricePerTraveler}</p>
+                <p className="text-lg" style={{ color: 'var(--trip-base)' }}>${flight.pricePerTraveler}</p>
                 <p className="text-[11px] text-gray-400">Total: ${flight.totalPrice}</p>
               </div>
               <button
                 className={`px-5 py-2 rounded-lg font-medium text-xs transition-all flex items-center gap-2 ${
                   flight.isBooked
                     ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                    : 'bg-[#1e3a5f] text-white hover:bg-[#2d4a6f]'
+                    : 'text-white hover:bg-trip-base-light'
                 }`}
+                style={!flight.isBooked ? { backgroundColor: 'var(--trip-base)' } : undefined}
               >
                 {flight.isBooked ? (
                   <>

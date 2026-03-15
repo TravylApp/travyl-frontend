@@ -22,13 +22,11 @@ import {
   useRestaurantFilters,
   RESTAURANT_CATEGORIES,
   CUISINE_SUBFILTERS,
-  TAB_COLORS,
-  COLORS,
 } from '@travyl/shared';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 
-const ACCENT = TAB_COLORS.restaurants;
-const NAVY = COLORS.navy; // #1e3a5f -- used for active toggle / category states
+const ACCENT = 'var(--trip-base)';
+const ACCENT_RGB = 'var(--trip-base-rgb)';
 
 const categoryIcons: Record<string, React.ReactNode> = {
   All: <Compass size={14} />,
@@ -109,20 +107,26 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
           onClick={() => setViewMode('booked')}
           className={`flex items-center gap-1.5 px-3 py-2 text-[13px] border-b-2 transition-all ${
             viewMode === 'booked'
-              ? 'border-[#1e3a5f] text-[#1e3a5f]'
+              ? ''
               : 'border-transparent text-gray-400 hover:text-gray-600'
           }`}
-          style={{ fontWeight: viewMode === 'booked' ? 600 : 400 }}
+          style={{
+            fontWeight: viewMode === 'booked' ? 600 : 400,
+            ...(viewMode === 'booked' ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : {}),
+          }}
         >
           <CalendarCheck size={13} />
           Booked
           <span
             className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               viewMode === 'booked'
-                ? 'bg-[#1e3a5f]/10 text-[#1e3a5f]'
+                ? ''
                 : 'bg-gray-100 text-gray-400'
             }`}
-            style={{ fontWeight: 600 }}
+            style={{
+              fontWeight: 600,
+              ...(viewMode === 'booked' ? { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)', color: 'var(--trip-base)' } : {}),
+            }}
           >
             {bookedCount}
           </span>
@@ -131,20 +135,26 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
           onClick={() => setViewMode('discover')}
           className={`flex items-center gap-1.5 px-3 py-2 text-[13px] border-b-2 transition-all ${
             viewMode === 'discover'
-              ? 'border-[#1e3a5f] text-[#1e3a5f]'
+              ? ''
               : 'border-transparent text-gray-400 hover:text-gray-600'
           }`}
-          style={{ fontWeight: viewMode === 'discover' ? 600 : 400 }}
+          style={{
+            fontWeight: viewMode === 'discover' ? 600 : 400,
+            ...(viewMode === 'discover' ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : {}),
+          }}
         >
           <Compass size={13} />
           Discover
           <span
             className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               viewMode === 'discover'
-                ? 'bg-[#1e3a5f]/10 text-[#1e3a5f]'
+                ? ''
                 : 'bg-gray-100 text-gray-400'
             }`}
-            style={{ fontWeight: 600 }}
+            style={{
+              fontWeight: 600,
+              ...(viewMode === 'discover' ? { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)', color: 'var(--trip-base)' } : {}),
+            }}
           >
             {discoverCount}
           </span>
@@ -165,9 +175,10 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
                 onClick={() => handleCategoryChange(f)}
                 className={`group flex flex-col items-center gap-1 px-3 pb-2 pt-2 border-b-2 whitespace-nowrap transition-all cursor-pointer ${
                   isActive
-                    ? 'border-[#1e3a5f] text-[#1e3a5f]'
+                    ? ''
                     : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
                 }`}
+                style={isActive ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
               >
                 <span className="relative">{categoryIcons[f]}</span>
                 <span
@@ -193,7 +204,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-full bg-gray-100 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:bg-white transition-all"
+              className="w-full pl-9 pr-8 py-2 rounded-full bg-gray-100 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:bg-white transition-all"
             />
             {searchQuery && (
               <button
@@ -221,10 +232,13 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
                   onClick={() => setCuisineSubFilter(isAll ? '' : sub)}
                   className={`px-3.5 py-1 rounded-full text-xs transition-all cursor-pointer border whitespace-nowrap ${
                     isActive
-                      ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                      ? 'text-white'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                   }`}
-                  style={{ fontWeight: 500 }}
+                  style={{
+                    fontWeight: 500,
+                    ...(isActive ? { backgroundColor: 'var(--trip-base)', borderColor: 'var(--trip-base)' } : {}),
+                  }}
                 >
                   {sub}
                 </button>
@@ -249,7 +263,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
             className="relative z-10"
           >
             {filteredItems.length > 0 ? (
@@ -263,8 +277,8 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
                       accentColor={ACCENT}
                       isFavorited={favorites.includes(item.id)}
                       onFavorite={toggleFavorite}
-                      onAddToItinerary={!item.isBooked ? (itemId) => console.log('Add:', itemId) : undefined}
-                      onRemoveFromItinerary={item.isBooked ? (itemId) => console.log('Remove:', itemId) : undefined}
+                      onAddToItinerary={!item.isBooked ? () => {} : undefined}
+                      onRemoveFromItinerary={item.isBooked ? () => {} : undefined}
                     />
                   ))}
                 </Masonry>

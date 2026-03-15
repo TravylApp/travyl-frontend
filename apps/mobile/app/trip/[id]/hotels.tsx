@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, Dimensions } from 'react-native';
+import { useState, useMemo, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, Image, Linking } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Navy } from '@travyl/shared';
+import { PageTransition, useTabAccent } from './_layout';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -198,13 +198,34 @@ const OTHER_HOTELS: { id: string; name: string; stars: number; rating: number; l
   },
 ];
 
+const BROWSE_HOTELS = [
+  { id: 'h1', name: 'Hotel Le Marais', stars: 4, rating: 8.7, reviews: 1243, price: 189, neighborhood: 'Le Marais', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400', amenities: ['WiFi', 'Breakfast', 'AC'], brand: 'Accor', label: 'Great Value' },
+  { id: 'h2', name: 'Grand Hotel du Palais Royal', stars: 5, rating: 9.2, reviews: 876, price: 350, neighborhood: 'Louvre', image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400', amenities: ['WiFi', 'Breakfast', 'Pool', 'Spa', 'Gym'], brand: 'Marriott', label: 'Top Pick' },
+  { id: 'h3', name: 'Hotel des Arts Montmartre', stars: 3, rating: 8.1, reviews: 654, price: 120, neighborhood: 'Montmartre', image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400', amenities: ['WiFi', 'AC'], brand: 'Best Western', label: 'Budget Friendly' },
+  { id: 'h4', name: 'Pullman Paris Tour Eiffel', stars: 4, rating: 8.9, reviews: 2105, price: 275, neighborhood: 'Trocadero', image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=400', amenities: ['WiFi', 'Breakfast', 'Pool', 'Parking', 'Gym'], brand: 'Accor', label: 'Popular' },
+];
+
+const FILTER_AMENITIES = ['WiFi', 'Breakfast', 'Pool', 'Parking', 'Gym', 'Spa'];
+const HOTEL_BRANDS = ['Accor', 'Marriott', 'Hilton', 'IHG', 'Best Western'];
+const SORT_OPTIONS = [
+  { key: 'recommended', label: 'Recommended' },
+  { key: 'price-low', label: 'Price: Low to High' },
+  { key: 'price-high', label: 'Price: High to Low' },
+  { key: 'rating', label: 'Highest Rated' },
+  { key: 'stars', label: 'Most Stars' },
+];
+const AMENITY_ICONS: Record<string, string> = {
+  WiFi: 'wifi', Breakfast: 'coffee', Pool: 'tint',
+  Parking: 'car', Gym: 'heartbeat', Spa: 'diamond',
+};
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function ratingColor(r: number): string {
+function ratingColor(r: number, accent = '#60a5fa'): string {
   if (r >= 9) return '#10b981';
-  if (r >= 8) return Navy.DEFAULT;
+  if (r >= 8) return accent;
   return '#f97316';
 }
 
@@ -232,6 +253,8 @@ function SectionToggle({
   onToggle: () => void;
   badge?: string;
 }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
   return (
     <Pressable
       onPress={onToggle}
@@ -241,19 +264,19 @@ function SectionToggle({
         justifyContent: 'space-between',
         paddingVertical: 12,
         paddingHorizontal: 14,
-        backgroundColor: '#f8fafc',
+        backgroundColor: colors.surface,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: colors.border,
         marginBottom: isOpen ? 10 : 0,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <FontAwesome name={icon as any} size={14} color={Navy.DEFAULT} />
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b' }}>{title}</Text>
+        <FontAwesome name={icon as any} size={14} color={ACCENT} />
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{title}</Text>
         {badge && (
-          <View style={{ backgroundColor: Navy.DEFAULT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-            <Text style={{ fontSize: 10, color: Navy.DEFAULT, fontWeight: '600' }}>{badge}</Text>
+          <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+            <Text style={{ fontSize: 10, color: ACCENT, fontWeight: '600' }}>{badge}</Text>
           </View>
         )}
       </View>
@@ -273,8 +296,9 @@ function StarRow({ count }: { count: number }) {
 }
 
 function RatingBadge({ rating }: { rating: number }) {
+  const ACCENT = useTabAccent('hotels');
   return (
-    <View style={{ backgroundColor: ratingColor(rating), paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 }}>
+    <View style={{ backgroundColor: ratingColor(rating, ACCENT), paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 }}>
       <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{rating}</Text>
     </View>
   );
@@ -285,12 +309,13 @@ function RatingBadge({ rating }: { rating: number }) {
 /* ------------------------------------------------------------------ */
 
 function ImageCarousel({ images, height = 220 }: { images: string[]; height?: number }) {
+  const colors = useThemeColors();
   const [idx, setIdx] = useState(0);
   const prev = () => setIdx((i) => (i === 0 ? images.length - 1 : i - 1));
   const next = () => setIdx((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
-    <View style={{ width: '100%', height, backgroundColor: '#e5e7eb', position: 'relative' }}>
+    <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
       <Image source={{ uri: images[idx] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       {images.length > 1 && (
         <>
@@ -343,6 +368,8 @@ function RoomSelection({
   selectedRoom: number;
   onSelect: (i: number) => void;
 }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -366,8 +393,8 @@ function RoomSelection({
                   flexDirection: 'row',
                   borderRadius: 10,
                   borderWidth: 2,
-                  borderColor: isSelected ? Navy.DEFAULT : '#e5e7eb',
-                  backgroundColor: isSelected ? Navy.DEFAULT + '08' : '#fff',
+                  borderColor: isSelected ? ACCENT : colors.border,
+                  backgroundColor: isSelected ? ACCENT + '08' : colors.cardBackground,
                   overflow: 'hidden',
                 }}
               >
@@ -379,29 +406,29 @@ function RoomSelection({
                 <View style={{ flex: 1, padding: 10 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? Navy.DEFAULT : '#1e293b' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? ACCENT : colors.text }}>
                         {room.type}
                       </Text>
                       {isSelected && (
-                        <View style={{ backgroundColor: Navy.DEFAULT, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                        <View style={{ backgroundColor: ACCENT, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
                           <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Selected</Text>
                         </View>
                       )}
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: isSelected ? Navy.DEFAULT : '#1e293b' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: isSelected ? ACCENT : colors.text }}>
                         {'\u20ac'}{room.price}
                       </Text>
-                      <Text style={{ fontSize: 9, color: '#9ca3af' }}>per night</Text>
+                      <Text style={{ fontSize: 9, color: colors.textTertiary }}>per night</Text>
                     </View>
                   </View>
-                  <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{room.beds}</Text>
+                  <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>{room.beds}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                       <FontAwesome name="users" size={9} color="#9ca3af" />
-                      <Text style={{ fontSize: 10, color: '#6b7280' }}>{room.guests}</Text>
+                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>{room.guests}</Text>
                     </View>
-                    <Text style={{ fontSize: 10, color: '#6b7280' }}>{room.size}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textSecondary }}>{room.size}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -418,6 +445,8 @@ function RoomSelection({
 /* ------------------------------------------------------------------ */
 
 function PriceBreakdown({ room, pricePerNight }: { room: RoomType; pricePerNight: number }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
   const nights = 5;
   const subtotal = pricePerNight * nights;
@@ -436,43 +465,43 @@ function PriceBreakdown({ room, pricePerNight }: { room: RoomType; pricePerNight
         badge={`\u20ac${total.toFixed(0)} total`}
       />
       {isOpen && (
-        <View style={{ backgroundColor: Navy.DEFAULT + '08', borderRadius: 10, padding: 14 }}>
+        <View style={{ backgroundColor: ACCENT + '08', borderRadius: 10, padding: 14 }}>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Room</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: Navy.DEFAULT }}>{room.type}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Room</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{room.type}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Nightly Rate</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: Navy.DEFAULT }}>{'\u20ac'}{pricePerNight}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Nightly Rate</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{pricePerNight}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>{nights} nights subtotal</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: Navy.DEFAULT }}>{'\u20ac'}{subtotal.toFixed(2)}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{nights} nights subtotal</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{subtotal.toFixed(2)}</Text>
             </View>
 
-            <View style={{ height: 1, backgroundColor: Navy.DEFAULT + '15', marginVertical: 4 }} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <View style={{ height: 1, backgroundColor: ACCENT + '15', marginVertical: 4 }} />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Taxes & Fees
             </Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>City Tax</Text>
-              <Text style={{ fontSize: 12, color: '#374151' }}>{'\u20ac'}{cityTax.toFixed(2)}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>City Tax</Text>
+              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{cityTax.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Service Fee</Text>
-              <Text style={{ fontSize: 12, color: '#374151' }}>{'\u20ac'}{serviceFee.toFixed(2)}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Service Fee</Text>
+              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{serviceFee.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>VAT (10%)</Text>
-              <Text style={{ fontSize: 12, color: '#374151' }}>{'\u20ac'}{vat.toFixed(2)}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>VAT (10%)</Text>
+              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{vat.toFixed(2)}</Text>
             </View>
 
-            <View style={{ height: 1, backgroundColor: Navy.DEFAULT + '25', marginVertical: 4 }} />
+            <View style={{ height: 1, backgroundColor: ACCENT + '25', marginVertical: 4 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#1e293b' }}>Total</Text>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: Navy.DEFAULT }}>{'\u20ac'}{total.toFixed(2)}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Total</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: ACCENT }}>{'\u20ac'}{total.toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -486,9 +515,11 @@ function PriceBreakdown({ room, pricePerNight }: { room: RoomType; pricePerNight
 /* ------------------------------------------------------------------ */
 
 function ContactActions({ phone, email, address }: { phone: string; email: string; address: string }) {
+  const colors = useThemeColors();
+  const ACCENT = useTabAccent('hotels');
   return (
     <View style={{ marginTop: 14 }}>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b', marginBottom: 10 }}>Contact & Location</Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 10 }}>Contact & Location</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <Pressable
           onPress={() => Linking.openURL(`tel:${phone}`)}
@@ -505,12 +536,12 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
           onPress={() => Linking.openURL(`mailto:${email}`)}
           style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: '#eff6ff', borderRadius: 10, paddingVertical: 12,
-            borderWidth: 1, borderColor: '#bfdbfe',
+            backgroundColor: ACCENT + '10', borderRadius: 10, paddingVertical: 12,
+            borderWidth: 1, borderColor: ACCENT + '25',
           }}
         >
-          <FontAwesome name="envelope" size={13} color="#2563eb" />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#2563eb' }}>Email</Text>
+          <FontAwesome name="envelope" size={13} color={ACCENT} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>Email</Text>
         </Pressable>
         <Pressable
           onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`)}
@@ -533,6 +564,8 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
 /* ------------------------------------------------------------------ */
 
 function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; reviews: number }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
 
   const subscores: { label: string; value: number }[] = [
@@ -553,21 +586,21 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
         badge={`${ratings.overall} ${ratings.label}`}
       />
       {isOpen && (
-        <View style={{ backgroundColor: '#f8fafc', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#e2e8f0' }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
           {/* Overall score */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <View
               style={{
                 width: 48, height: 48, borderRadius: 12,
-                backgroundColor: ratingColor(ratings.overall),
+                backgroundColor: ratingColor(ratings.overall, ACCENT),
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>{ratings.overall}</Text>
             </View>
             <View>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b' }}>{ratings.label}</Text>
-              <Text style={{ fontSize: 11, color: '#9ca3af' }}>{reviews.toLocaleString()} reviews</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>{ratings.label}</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{reviews.toLocaleString()} reviews</Text>
             </View>
           </View>
 
@@ -576,14 +609,14 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
             {subscores.map((s) => (
               <View key={s.label}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 12, color: '#6b7280' }}>{s.label}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: Navy.DEFAULT }}>{s.value}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{s.label}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: ACCENT }}>{s.value}</Text>
                 </View>
-                <View style={{ height: 6, backgroundColor: '#e5e7eb', borderRadius: 3 }}>
+                <View style={{ height: 6, backgroundColor: colors.borderLight, borderRadius: 3 }}>
                   <View
                     style={{
                       height: 6, borderRadius: 3,
-                      backgroundColor: ratingColor(s.value),
+                      backgroundColor: ratingColor(s.value, ACCENT),
                       width: `${(s.value / 10) * 100}%`,
                     }}
                   />
@@ -602,6 +635,8 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
 /* ------------------------------------------------------------------ */
 
 function AmenitiesSection({ categories }: { categories: HotelData['amenityCategories'] }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -617,7 +652,7 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
         <View style={{ gap: 14 }}>
           {categories.map((cat) => (
             <View key={cat.category}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 {cat.category}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -626,13 +661,13 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
                     key={item.name}
                     style={{
                       flexDirection: 'row', alignItems: 'center', gap: 6,
-                      backgroundColor: '#f1f5f9', borderRadius: 8,
+                      backgroundColor: colors.surface, borderRadius: 8,
                       paddingHorizontal: 10, paddingVertical: 7,
-                      borderWidth: 1, borderColor: '#e2e8f0',
+                      borderWidth: 1, borderColor: colors.border,
                     }}
                   >
-                    <FontAwesome name={item.icon as any} size={11} color={Navy.DEFAULT} />
-                    <Text style={{ fontSize: 11, color: '#475569', fontWeight: '500' }}>{item.name}</Text>
+                    <FontAwesome name={item.icon as any} size={11} color={ACCENT} />
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500' }}>{item.name}</Text>
                   </View>
                 ))}
               </View>
@@ -649,35 +684,330 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
 /* ------------------------------------------------------------------ */
 
 function OtherHotelCard({ hotel }: { hotel: typeof OTHER_HOTELS[number] }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
   return (
     <View
       style={{
-        flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12,
-        borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', marginBottom: 10,
+        flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
+        borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
       }}
     >
       <Image source={{ uri: hotel.image }} style={{ width: 90, height: 100 }} resizeMode="cover" />
       <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b', flex: 1 }} numberOfLines={1}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
               {hotel.name}
             </Text>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: Navy.DEFAULT, marginLeft: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: ACCENT, marginLeft: 8 }}>
               {'\u20ac'}{hotel.price}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
             <StarRow count={hotel.stars} />
-            <Text style={{ fontSize: 10, color: '#9ca3af', marginLeft: 4 }}>{hotel.neighborhood}</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
           <RatingBadge rating={hotel.rating} />
-          <Text style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>{hotel.label}</Text>
-          <Text style={{ fontSize: 10, color: '#9ca3af' }}>{hotel.reviews.toLocaleString()} reviews</Text>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary }}>{hotel.label}</Text>
+          <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
         </View>
       </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hotel Filter Bar                                                   */
+/* ------------------------------------------------------------------ */
+
+function HotelFilterBar({
+  showFilters,
+  setShowFilters,
+  sortBy,
+  setSortBy,
+  starFilter,
+  setStarFilter,
+  amenityFilter,
+  setAmenityFilter,
+  brandFilter,
+  setBrandFilter,
+}: {
+  showFilters: boolean;
+  setShowFilters: (v: boolean) => void;
+  sortBy: string;
+  setSortBy: (v: string) => void;
+  starFilter: number[];
+  setStarFilter: (v: number[]) => void;
+  amenityFilter: string[];
+  setAmenityFilter: (v: string[]) => void;
+  brandFilter: string[];
+  setBrandFilter: (v: string[]) => void;
+}) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
+  const activeCount = starFilter.length + amenityFilter.length + brandFilter.length;
+
+  const toggleStar = (s: number) =>
+    setStarFilter(starFilter.includes(s) ? starFilter.filter((x) => x !== s) : [...starFilter, s]);
+  const toggleAmenity = (a: string) =>
+    setAmenityFilter(amenityFilter.includes(a) ? amenityFilter.filter((x) => x !== a) : [...amenityFilter, a]);
+  const toggleBrand = (b: string) =>
+    setBrandFilter(brandFilter.includes(b) ? brandFilter.filter((x) => x !== b) : [...brandFilter, b]);
+  const resetAll = () => { setStarFilter([]); setAmenityFilter([]); setBrandFilter([]); setSortBy('recommended'); };
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      {/* Toggle row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: showFilters ? 12 : 0 }}>
+        <Pressable
+          onPress={() => setShowFilters(!showFilters)}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            backgroundColor: activeCount > 0 ? ACCENT + '15' : colors.surface,
+            paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+            borderWidth: 1, borderColor: activeCount > 0 ? ACCENT + '30' : colors.border,
+          }}
+        >
+          <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : '#64748b'} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: activeCount > 0 ? ACCENT : colors.textSecondary }}>Filters</Text>
+          {activeCount > 0 && (
+            <View style={{ backgroundColor: ACCENT, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{activeCount}</Text>
+            </View>
+          )}
+        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <FontAwesome name="sort" size={12} color="#9ca3af" />
+          <Pressable onPress={() => {
+            const idx = SORT_OPTIONS.findIndex((o) => o.key === sortBy);
+            setSortBy(SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key);
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>
+              {SORT_OPTIONS.find((o) => o.key === sortBy)?.label}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          {/* Star rating */}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            Star Rating
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+            {[3, 4, 5].map((s) => {
+              const active = starFilter.includes(s);
+              return (
+                <Pressable
+                  key={s}
+                  onPress={() => toggleStar(s)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 4,
+                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                    backgroundColor: active ? ACCENT + '15' : colors.cardBackground,
+                    borderWidth: 1, borderColor: active ? ACCENT : colors.border,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: active ? ACCENT : colors.textSecondary }}>{s}</Text>
+                  <FontAwesome name="star" size={10} color={active ? '#fbbf24' : colors.border} />
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Amenities */}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            Amenities
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+            {FILTER_AMENITIES.map((a) => {
+              const active = amenityFilter.includes(a);
+              return (
+                <Pressable
+                  key={a}
+                  onPress={() => toggleAmenity(a)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 5,
+                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                    backgroundColor: active ? ACCENT + '15' : colors.cardBackground,
+                    borderWidth: 1, borderColor: active ? ACCENT : colors.border,
+                  }}
+                >
+                  <FontAwesome name={AMENITY_ICONS[a] as any} size={11} color={active ? ACCENT : colors.textTertiary} />
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: active ? ACCENT : colors.textSecondary }}>{a}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Brands */}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            Brand
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+            {HOTEL_BRANDS.map((b) => {
+              const active = brandFilter.includes(b);
+              return (
+                <Pressable
+                  key={b}
+                  onPress={() => toggleBrand(b)}
+                  style={{
+                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                    backgroundColor: active ? ACCENT + '15' : colors.cardBackground,
+                    borderWidth: 1, borderColor: active ? ACCENT : colors.border,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: active ? ACCENT : colors.textSecondary }}>{b}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Reset */}
+          {activeCount > 0 && (
+            <Pressable onPress={resetAll} style={{ alignSelf: 'flex-start' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#ef4444' }}>Reset Filters</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Browse Hotel Card                                                  */
+/* ------------------------------------------------------------------ */
+
+function BrowseHotelCard({ hotel }: { hotel: typeof BROWSE_HOTELS[number] }) {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
+  return (
+    <View
+      style={{
+        flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
+        borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
+      }}
+    >
+      <Image source={{ uri: hotel.image }} style={{ width: 110, height: 120 }} resizeMode="cover" />
+      <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
+              {hotel.name}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <StarRow count={hotel.stars} />
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+          <RatingBadge rating={hotel.rating} />
+          <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+          {hotel.label ? (
+            <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ fontSize: 9, fontWeight: '600', color: ACCENT }}>{hotel.label}</Text>
+            </View>
+          ) : <View />}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: ACCENT }}>{'\u20ac'}{hotel.price}</Text>
+            <Text style={{ fontSize: 9, color: colors.textTertiary }}>per night</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hotel Policies Section                                             */
+/* ------------------------------------------------------------------ */
+
+function HotelPoliciesSection() {
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const policies = [
+    { icon: 'sign-in', label: 'Check-in', value: 'From 2:00 PM' },
+    { icon: 'sign-out', label: 'Check-out', value: 'Until 11:00 AM' },
+    { icon: 'calendar-times-o', label: 'Cancellation', value: 'Free until 48h before' },
+    { icon: 'child', label: 'Children', value: 'All ages welcome' },
+    { icon: 'paw', label: 'Pets', value: 'Not allowed' },
+    { icon: 'ban', label: 'Smoking', value: 'Non-smoking property' },
+  ];
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <SectionToggle
+        title="Hotel Policies"
+        icon="info-circle"
+        isOpen={isOpen}
+        onToggle={() => setIsOpen(!isOpen)}
+        badge={`${policies.length} policies`}
+      />
+      {isOpen && (
+        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ gap: 12 }}>
+            {policies.map((p) => (
+              <View key={p.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' }}>
+                  <FontAwesome name={p.icon as any} size={13} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, fontWeight: '600' }}>{p.label}</Text>
+                  <Text style={{ fontSize: 12, color: colors.text, fontWeight: '600' }}>{p.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Loading Skeleton                                                   */
+/* ------------------------------------------------------------------ */
+
+function HotelSkeleton() {
+  const colors = useThemeColors();
+  return (
+    <View style={{ gap: 10 }}>
+      {[1, 2].map((i) => (
+        <View
+          key={i}
+          style={{
+            flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
+            borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
+          }}
+        >
+          <View style={{ width: 110, height: 120, backgroundColor: colors.skeleton }} />
+          <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
+            <View>
+              <View style={{ height: 14, width: '70%', backgroundColor: colors.skeleton, borderRadius: 4 }} />
+              <View style={{ height: 10, width: '40%', backgroundColor: colors.skeleton, borderRadius: 4, marginTop: 8 }} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <View style={{ height: 20, width: 32, backgroundColor: colors.skeleton, borderRadius: 4 }} />
+              <View style={{ height: 10, width: '30%', backgroundColor: colors.skeleton, borderRadius: 4 }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+              <View style={{ height: 12, width: 60, backgroundColor: colors.skeleton, borderRadius: 4 }} />
+              <View style={{ height: 16, width: 40, backgroundColor: colors.skeleton, borderRadius: 4 }} />
+            </View>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -687,10 +1017,45 @@ function OtherHotelCard({ hotel }: { hotel: typeof OTHER_HOTELS[number] }) {
 /* ------------------------------------------------------------------ */
 
 export default function HotelsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const ACCENT = useTabAccent('hotels');
+  const colors = useThemeColors();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
   const [selectedRoom, setSelectedRoom] = useState(0);
   const [booked, setBooked] = useState(false);
   const [confirmationNumber, setConfirmationNumber] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('recommended');
+  const [starFilter, setStarFilter] = useState<number[]>([]);
+  const [amenityFilter, setAmenityFilter] = useState<string[]>([]);
+  const [brandFilter, setBrandFilter] = useState<string[]>([]);
+  const [showBrowse, setShowBrowse] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const filteredHotels = useMemo(() => {
+    let result = [...BROWSE_HOTELS];
+    if (starFilter.length > 0) {
+      result = result.filter((h) => starFilter.includes(h.stars));
+    }
+    if (amenityFilter.length > 0) {
+      result = result.filter((h) => amenityFilter.every((a) => h.amenities.includes(a)));
+    }
+    if (brandFilter.length > 0) {
+      result = result.filter((h) => brandFilter.includes(h.brand));
+    }
+    switch (sortBy) {
+      case 'price-low': result.sort((a, b) => a.price - b.price); break;
+      case 'price-high': result.sort((a, b) => b.price - a.price); break;
+      case 'rating': result.sort((a, b) => b.rating - a.rating); break;
+      case 'stars': result.sort((a, b) => b.stars - a.stars); break;
+      default: break;
+    }
+    return result;
+  }, [starFilter, amenityFilter, brandFilter, sortBy]);
 
   const hotel = SELECTED_HOTEL;
   const currentRoom = hotel.roomTypes[selectedRoom];
@@ -702,13 +1067,51 @@ export default function HotelsScreen() {
   };
 
   return (
+    <PageTransition>
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
+      {/* ── Browse Hotels ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+        <SectionToggle
+          title="Browse Hotels"
+          icon="search"
+          isOpen={showBrowse}
+          onToggle={() => setShowBrowse(!showBrowse)}
+          badge={`${filteredHotels.length} hotels`}
+        />
+        {showBrowse && (
+          <View style={{ marginTop: 10 }}>
+            <HotelFilterBar
+              showFilters={showFilters}
+              setShowFilters={setShowFilters}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              starFilter={starFilter}
+              setStarFilter={setStarFilter}
+              amenityFilter={amenityFilter}
+              setAmenityFilter={setAmenityFilter}
+              brandFilter={brandFilter}
+              setBrandFilter={setBrandFilter}
+            />
+            {isLoading ? (
+              <HotelSkeleton />
+            ) : filteredHotels.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <FontAwesome name="search" size={24} color="#d1d5db" />
+                <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 8 }}>No hotels match your filters</Text>
+              </View>
+            ) : (
+              filteredHotels.map((h) => <BrowseHotelCard key={h.id} hotel={h} />)
+            )}
+          </View>
+        )}
+      </View>
+
       {/* ── Selected Hotel Detail ── */}
-      <View style={{ backgroundColor: '#fff', borderRadius: 0, overflow: 'hidden' }}>
+      <View style={{ backgroundColor: colors.background, borderRadius: 0, overflow: 'hidden' }}>
 
         {/* Image Carousel */}
         <ImageCarousel images={hotel.images} height={240} />
@@ -719,15 +1122,15 @@ export default function HotelsScreen() {
           {/* Name & Stars Row */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#1e293b' }}>{hotel.name}</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{hotel.name}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <StarRow count={hotel.stars} />
-                <Text style={{ fontSize: 11, color: '#9ca3af' }}>{hotel.stars}-star hotel</Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>{hotel.stars}-star hotel</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <RatingBadge rating={hotel.rating} />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: ratingColor(hotel.rating), marginTop: 3 }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: ratingColor(hotel.rating, ACCENT), marginTop: 3 }}>
                 {hotel.guestRatings.label}
               </Text>
             </View>
@@ -736,23 +1139,23 @@ export default function HotelsScreen() {
           {/* Address */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
             <FontAwesome name="map-marker" size={13} color="#9ca3af" />
-            <Text style={{ fontSize: 12, color: '#6b7280', flex: 1 }}>{hotel.address}</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>{hotel.address}</Text>
           </View>
 
           {/* Reviews count */}
-          <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
             {hotel.reviews.toLocaleString()} verified reviews
           </Text>
 
           {/* Check-in / Check-out Badges */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-            <View style={{ flex: 1, backgroundColor: Navy.DEFAULT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Navy.DEFAULT + '15' }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: Navy.DEFAULT, marginBottom: 2 }}>Check-in</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#1e293b' }}>Mar 22 {'\u00b7'} {hotel.checkIn}</Text>
+            <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT, marginBottom: 2 }}>Check-in</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>Mar 22 {'\u00b7'} {hotel.checkIn}</Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: Navy.DEFAULT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Navy.DEFAULT + '15' }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: Navy.DEFAULT, marginBottom: 2 }}>Check-out</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#1e293b' }}>Mar 27 {'\u00b7'} {hotel.checkOut}</Text>
+            <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT, marginBottom: 2 }}>Check-out</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>Mar 27 {'\u00b7'} {hotel.checkOut}</Text>
             </View>
           </View>
 
@@ -779,21 +1182,24 @@ export default function HotelsScreen() {
           {/* Amenities */}
           <AmenitiesSection categories={hotel.amenityCategories} />
 
+          {/* Hotel Policies */}
+          <HotelPoliciesSection />
+
           {/* Book Hotel Button */}
           <View style={{ marginTop: 20 }}>
             {booked ? (
               <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center' }}>
                 <FontAwesome name="check-circle" size={28} color="#16a34a" />
                 <Text style={{ fontSize: 15, fontWeight: '700', color: '#16a34a', marginTop: 8 }}>Hotel Booked!</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
-                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
+                <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
                   {currentRoom.type} {'\u00b7'} {'\u20ac'}{currentRoom.price}/night {'\u00b7'} 5 nights
                 </Text>
               </View>
             ) : (
               <Pressable onPress={handleBook}>
                 <LinearGradient
-                  colors={[Navy.DEFAULT, Navy.light]}
+                  colors={[ACCENT, ACCENT]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
@@ -812,7 +1218,7 @@ export default function HotelsScreen() {
 
       {/* ── Other Hotels ── */}
       <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginBottom: 12 }}>Other Hotels</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
         {OTHER_HOTELS.map((h) => (
           <OtherHotelCard key={h.id} hotel={h} />
         ))}
@@ -824,13 +1230,14 @@ export default function HotelsScreen() {
           style={{
             flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
             paddingVertical: 14, borderRadius: 12,
-            borderWidth: 1.5, borderColor: '#d1d5db', borderStyle: 'dashed',
+            borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
           }}
         >
           <FontAwesome name="plus-circle" size={16} color="#9ca3af" />
-          <Text style={{ fontSize: 13, fontWeight: '500', color: '#9ca3af' }}>Add Hotel</Text>
+          <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>Add Hotel</Text>
         </Pressable>
       </View>
     </ScrollView>
+    </PageTransition>
   );
 }

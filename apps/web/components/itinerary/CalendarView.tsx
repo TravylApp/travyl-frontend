@@ -20,8 +20,8 @@ import { useItineraryContext } from './ItineraryContext';
 
 // ─── Constants ──────────────────────────────────────────────
 
-const NAVY = '#1e3a5f';
-const NAVY_LIGHT = '#2a4f7a';
+const NAVY = 'var(--trip-base)';
+const NAVY_LIGHT = 'var(--trip-base-light)';
 
 const HOUR_HEIGHT = 44;
 const ItemTypes = { ACTIVITY: 'activity', DAY: 'day' };
@@ -180,10 +180,11 @@ const DiscoverCard = memo(({
 DiscoverCard.displayName = 'DiscoverCard';
 
 // ─── Parent Block Card ──────────────────────────────────────
+// Container-style: colored header strip + stacked sub-activity cards
 
 const ParentBlockCard = memo(({
   activity, children: childActivities, onCardClick, onSwapActivities, onRemove,
-  totalDays, expandedParents, onToggleExpand, collaborators, isDimmed,
+  totalDays, expandedParents, onToggleExpand, onAddSubActivity, collaborators, isDimmed,
 }: {
   activity: CalendarActivity;
   children: CalendarActivity[];
@@ -193,6 +194,7 @@ const ParentBlockCard = memo(({
   totalDays: number;
   expandedParents: Set<string>;
   onToggleExpand: (id: string) => void;
+  onAddSubActivity: (parentId: string) => void;
   collaborators: CollaboratorPresence[];
   isDimmed?: boolean;
 }) => {
@@ -217,9 +219,10 @@ const ParentBlockCard = memo(({
   const topPx = (activity.startHour - 7) * HOUR_HEIGHT;
   const heightPx = activity.duration * HOUR_HEIGHT;
   const cardHeight = Math.max(heightPx - 2, HOUR_HEIGHT * 2);
-  const isExpanded = expandedParents.has(activity.id);
+  const isExpanded = !expandedParents.has(activity.id);
   const blockCollaborators = collaborators.filter((c) => c.selectedBlockId === activity.id);
   const sortedChildren = [...childActivities].sort((a, b) => a.startHour - b.startHour);
+  const hasImage = !!activity.image;
 
   return (
     <div
@@ -228,17 +231,19 @@ const ParentBlockCard = memo(({
         isOver ? 'ring-2 ring-green-400 ring-offset-1 z-40 scale-[1.02]' : 'hover:shadow-xl hover:z-30'
       }`}
       style={{
-        left: `${left}%`, width: `calc(${dayWidth}% - 8px)`,
+        left: `${left}%`, width: `calc(${dayWidth}% - 6px)`,
         top: `${topPx}px`, height: `${cardHeight}px`,
-        margin: '1px 4px',
+        margin: '1px 3px',
         opacity: isDragging ? 0.3 : isDimmed ? 0.3 : 1,
         transition: 'opacity 0.2s',
         zIndex: isDragging ? 1000 : isOver ? 999 : 3,
-        boxShadow: '0 2px 8px rgba(30, 58, 95, 0.12)',
+        border: `1.5px solid ${config.color}30`,
+        background: `${config.color}04`,
+        boxShadow: `0 2px 8px ${config.color}10`,
       }}
     >
       {isOver && (
-        <div className="absolute inset-0 bg-green-400/20 backdrop-blur-[1px] flex items-center justify-center z-50 pointer-events-none rounded-xl">
+        <div className="absolute inset-0 bg-green-400/15 flex items-center justify-center z-50 pointer-events-none rounded-xl">
           <div className="bg-green-500 text-white px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 shadow">
             <Plus size={10} /> Add inside
           </div>
@@ -255,117 +260,126 @@ const ParentBlockCard = memo(({
         </div>
       )}
 
-      {/* Background */}
-      <div className="absolute inset-0">
-        {activity.image ? (
-          <img src={activity.image} alt={activity.title} className="w-full h-full object-cover" loading="lazy" />
+      {/* ── Header strip with image ── */}
+      <div className="absolute top-0 left-0 right-0 z-10 overflow-hidden rounded-t-xl" style={{ height: '24px' }}>
+        {hasImage ? (
+          <>
+            <img src={activity.image} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/15 to-transparent" />
+          </>
         ) : (
-          <div className="w-full h-full" style={{ background: config.bgGradient }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${config.color}30, ${config.color}15)` }} />
         )}
-        <div className="absolute inset-0" style={{
-          background: isExpanded
-            ? 'linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.6) 100%)'
-            : 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.55) 100%)',
-        }} />
-      </div>
-
-      {/* Header */}
-      <div className="relative z-10 flex items-center gap-1.5 px-2.5 pt-2 pb-1">
-        <div className="w-5 h-5 rounded-md flex items-center justify-center shadow-sm flex-shrink-0" style={{ background: config.color }}>
-          <Icon size={10} className="text-white" />
+        <div className="relative h-full flex items-center gap-1.5 px-2 z-10">
+          <Icon size={10} className={hasImage ? 'text-white/90' : ''} style={hasImage ? undefined : { color: config.color }} />
+          <span className={`text-[10px] font-bold truncate flex-1 ${hasImage ? 'text-white' : ''}`} style={hasImage ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : { color: config.color }}>
+            {activity.title}
+          </span>
+          <button onClick={(e) => { e.stopPropagation(); onAddSubActivity(activity.id); }} className={`p-0.5 rounded transition-colors shrink-0 ${hasImage ? 'hover:bg-white/20' : 'hover:bg-black/5'}`}>
+            <Plus size={11} className={hasImage ? 'text-white/80' : ''} style={hasImage ? undefined : { color: config.color }} />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onToggleExpand(activity.id); }} className={`p-0.5 rounded transition-colors shrink-0 ${hasImage ? 'hover:bg-white/20' : 'hover:bg-black/5'}`}>
+            {isExpanded
+              ? <ChevronDown size={10} className={hasImage ? 'text-white/80' : ''} style={hasImage ? undefined : { color: config.color }} />
+              : <ChevronRightIcon size={10} className={hasImage ? 'text-white/80' : ''} style={hasImage ? undefined : { color: config.color }} />}
+          </button>
         </div>
-        <p className="text-white text-[11px] font-bold truncate flex-1 drop-shadow-md">{activity.title}</p>
-        <span className="text-[9px] text-white/50 mr-1 hidden sm:inline">{activity.startTime} – {activity.endTime}</span>
-        {/* Hover delete */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(activity.id); }}
-          className="p-0.5 rounded hover:bg-red-500/80 bg-red-500/0 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
-          title="Remove"
-        >
-          <X size={11} className="text-white/80" />
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(activity.id); }} className="p-0.5 rounded hover:bg-white/20 transition-colors flex-shrink-0">
-          {isExpanded ? <ChevronDown size={12} className="text-white/80" /> : <ChevronRightIcon size={12} className="text-white/80" />}
-        </button>
       </div>
-
-      {/* Collapsed: chip summary */}
-      {!isExpanded && (
-        <div className="relative z-10 px-2.5 mt-0.5">
-          <div className="flex items-center gap-1 flex-wrap">
-            {sortedChildren.slice(0, 3).map((child) => {
-              const cfg = getConfig(child.type);
-              const CIcon = cfg.icon;
-              return (
-                <div key={child.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)' }}>
-                  <CIcon size={8} className="text-white/90" />
-                  <span className="text-[8px] text-white/90 font-medium truncate max-w-[60px]">{child.title}</span>
-                </div>
-              );
-            })}
-            {sortedChildren.length > 3 && <span className="text-[8px] text-white/50">+{sortedChildren.length - 3}</span>}
-          </div>
+      {/* Image bleed — subtle fade below header */}
+      {hasImage && (
+        <div className="absolute top-[24px] left-0 right-0 h-[18px] z-[0] overflow-hidden pointer-events-none">
+          <img src={activity.image} alt="" className="absolute -top-[24px] left-0 right-0 h-[42px] w-full object-cover opacity-40" style={{ objectPosition: 'center 35%' }} loading="lazy" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white" />
         </div>
       )}
 
-      {/* Expanded: time-aligned sub-cards over the image */}
-      {isExpanded && (
-        <div className="absolute inset-0 z-10 pt-[32px]" style={{ pointerEvents: 'none' }}>
+      {/* Hover remove — below header */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(activity.id); }}
+        className="absolute top-[26px] right-1 w-4 h-4 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-red-500"
+      >
+        <X size={8} className="text-white" />
+      </button>
+
+      {/* ── Sub-activities ── */}
+      {isExpanded ? (
+        /* Time-grid-aligned sub-cards */
+        <div className="absolute inset-0">
           {sortedChildren.map((child) => {
             const cfg = getConfig(child.type);
             const CIcon = cfg.icon;
-            const relativeStart = child.startHour - activity.startHour;
-            const topPct = (relativeStart / activity.duration) * 100;
-            const heightPct = (child.duration / activity.duration) * 100;
+            const relTop = (child.startHour - activity.startHour) * HOUR_HEIGHT;
+            const relH = Math.max(child.duration * HOUR_HEIGHT - 2, 28);
             return (
               <div
                 key={child.id}
-                className="absolute left-1 right-1 rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg group/sub"
+                className="absolute left-1 right-1 rounded-lg overflow-hidden cursor-pointer group/sub hover:scale-[1.01] transition-all"
                 onClick={(e) => { e.stopPropagation(); onCardClick(child); }}
                 style={{
-                  top: `${topPct}%`,
-                  height: `${Math.max(heightPct, 5)}%`,
-                  minHeight: '20px',
-                  pointerEvents: 'auto',
-                  backgroundColor: `${cfg.color}dd`,
-                  backdropFilter: 'blur(4px)',
+                  top: `${relTop}px`, height: `${relH}px`,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                 }}
               >
-                <div className="flex items-center gap-1 px-1.5 h-full">
-                  <CIcon size={9} className="text-white/90 flex-shrink-0" />
-                  <span className="text-[9px] font-semibold text-white truncate leading-tight">{child.title}</span>
-                  <span className="text-[7px] text-white/50 ml-auto flex-shrink-0 hidden sm:inline">{child.startTime}</span>
-                  {/* Sub-activity delete */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onRemove(child.id); }}
-                    className="p-0.5 rounded opacity-0 group-hover/sub:opacity-100 hover:bg-white/20 transition-all flex-shrink-0"
-                  >
-                    <X size={8} className="text-white/80" />
-                  </button>
+                {/* Sub-card background */}
+                {child.image ? (
+                  <>
+                    <img src={child.image} alt={child.title} className="absolute inset-0 w-full h-full object-cover group-hover/sub:scale-105 transition-transform duration-300" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                  </>
+                ) : (
+                  <div className="absolute inset-0" style={{ background: cfg.bgGradient }} />
+                )}
+                {/* Sub-card icon — top right */}
+                <div className="absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center shrink-0 z-[1]" style={{ background: cfg.color }}>
+                  <CIcon size={8} className="text-white" />
                 </div>
+                {/* Sub-card content — bottom */}
+                <div className="relative h-full flex items-end px-1.5 pb-1">
+                  <span className={`text-[9px] font-semibold truncate flex-1 ${child.image ? 'text-white drop-shadow-md' : 'text-gray-800'}`}>{child.title}</span>
+                  <span className={`text-[8px] shrink-0 ml-1 ${child.image ? 'text-white/50' : 'text-gray-400'}`}>{child.startTime}</span>
+                </div>
+                {/* Sub-card hover remove */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemove(child.id); }}
+                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover/sub:opacity-100 hover:bg-red-500 transition-all z-10"
+                >
+                  <X size={7} className="text-white" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Collapsed — compact list below header */
+        <div className="absolute inset-x-0 top-[26px] bottom-0 overflow-hidden px-1 py-0.5 space-y-[2px]">
+          {sortedChildren.map((child) => {
+            const cfg = getConfig(child.type);
+            const CIcon = cfg.icon;
+            return (
+              <div
+                key={child.id}
+                className="flex items-center gap-1.5 px-1.5 py-[3px] rounded-md cursor-pointer hover:bg-white/80 transition-colors group/item"
+                onClick={(e) => { e.stopPropagation(); onCardClick(child); }}
+                style={{ background: `${cfg.color}12` }}
+              >
+                <div className="w-3.5 h-3.5 rounded flex items-center justify-center shrink-0" style={{ background: cfg.color }}>
+                  <CIcon size={7} className="text-white" />
+                </div>
+                <span className="text-[9px] font-semibold text-gray-700 truncate flex-1">{child.title}</span>
+                <span className="text-[8px] text-gray-400 shrink-0">{child.startTime}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemove(child.id); }}
+                  className="w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/item:opacity-100 hover:bg-red-100 transition-all shrink-0"
+                >
+                  <X size={7} className="text-red-400" />
+                </button>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Bottom */}
-      {!isExpanded && cardHeight > 80 && (
-        <div className="absolute bottom-0 left-0 right-0 z-10 px-2.5 pb-1.5">
-          <div className="flex items-center gap-1.5">
-            {activity.rating && (
-              <div className="flex items-center gap-0.5">
-                <Star size={8} className="fill-yellow-400 text-yellow-400" />
-                <span className="text-[9px] text-white font-semibold">{activity.rating}</span>
-              </div>
-            )}
-            {activity.price && <span className="text-[9px] text-white/70 font-medium">{activity.price}</span>}
-            <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-medium ml-auto">{childActivities.length} activities</span>
-          </div>
-        </div>
-      )}
-
-      <div className="absolute inset-0 z-[5]" onClick={(e) => { e.stopPropagation(); if (!isDragging) onCardClick(activity); }} style={{ pointerEvents: isExpanded ? 'none' : 'auto' }} />
+      {!isExpanded && <div className="absolute inset-0 z-[5]" onClick={(e) => { e.stopPropagation(); if (!isDragging) onCardClick(activity); }} />}
     </div>
   );
 });
@@ -400,13 +414,11 @@ const CalendarCard = memo(({
   }), [activity.id, onSwapActivities]);
 
   const config = getConfig(activity.type);
-  const Icon = config.icon;
   const dayWidth = 100 / totalDays;
   const left = activity.day * dayWidth;
   const topPx = (activity.startHour - 7) * HOUR_HEIGHT;
   const heightPx = activity.duration * HOUR_HEIGHT;
   const cardHeight = Math.max(heightPx - 2, HOUR_HEIGHT * 0.85);
-  const isTiny = cardHeight < 50;
   const blockCollaborator = collaborators.find((c) => c.selectedBlockId === activity.id);
 
   return (
@@ -417,16 +429,15 @@ const CalendarCard = memo(({
         isOver ? 'ring-2 ring-amber-400 ring-offset-1 z-40 scale-[1.02]' : 'hover:shadow-lg hover:z-30 hover:scale-[1.01]'
       }`}
       style={{
-        left: `${left}%`, width: `calc(${dayWidth}% - 8px)`,
+        left: `${left}%`, width: `calc(${dayWidth}% - 6px)`,
         top: `${topPx}px`, height: `${cardHeight}px`,
-        margin: '1px 4px',
+        margin: '1px 3px',
         opacity: isDragging ? 0.3 : isDimmed ? 0.3 : 1,
         transition: 'opacity 0.2s',
         zIndex: isDragging ? 1000 : isOver ? 999 : 2,
         boxShadow: blockCollaborator
-          ? `0 0 0 2px ${blockCollaborator.color}, 0 1px 4px rgba(0,0,0,0.08)`
-          : '0 1px 4px rgba(0,0,0,0.08)',
-        borderLeft: `4px solid ${config.color}`,
+          ? `0 0 0 2px ${blockCollaborator.color}, 0 2px 8px rgba(0,0,0,0.12)`
+          : '0 2px 8px rgba(0,0,0,0.1)',
       }}
     >
       {blockCollaborator && (
@@ -443,46 +454,39 @@ const CalendarCard = memo(({
         </div>
       )}
 
-      {/* Hover actions */}
-      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(activity.id); }}
-          className="p-1 bg-red-500/90 hover:bg-red-600 backdrop-blur-sm rounded-md cursor-pointer transition-colors"
-          title="Remove"
-        >
-          <X size={10} className="text-white" />
-        </button>
-        <div className="p-0.5 bg-black/30 backdrop-blur-sm rounded">
-          <GripVertical size={10} className="text-white" />
+      {/* Hover remove */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(activity.id); }}
+        className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-red-500"
+      >
+        <X size={9} className="text-white" />
+      </button>
+
+      <div className="h-full w-full relative overflow-hidden">
+        {activity.image ? (
+          <img src={activity.image} alt={activity.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+        ) : (
+          <div className="absolute inset-0" style={{ background: config.bgGradient }} />
+        )}
+        {activity.image && <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/5 pointer-events-none" />}
+        <div className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 z-10">
+          {activity.image ? (
+            <>
+              <p className="text-white text-[11px] font-semibold truncate leading-tight drop-shadow-md">{activity.title}</p>
+              {cardHeight >= 60 && (
+                <p className="text-white/60 text-[9px] mt-0.5 truncate">{activity.startTime}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className={`text-[11px] font-semibold truncate leading-tight ${config.textColor}`}>{activity.title}</p>
+              {cardHeight >= 60 && (
+                <p className="text-gray-400 text-[9px] mt-0.5 truncate">{activity.startTime}</p>
+              )}
+            </>
+          )}
         </div>
       </div>
-
-      {isTiny ? (
-        <div className="h-full flex items-center gap-1.5 px-2 overflow-hidden" style={{ background: config.bgGradient }}>
-          <div className={`w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 ${config.dotColor}`}>
-            <Icon size={8} className="text-white" />
-          </div>
-          <span className={`text-[10px] font-semibold ${config.textColor} truncate`}>{activity.title}</span>
-        </div>
-      ) : (
-        <div className="h-full w-full relative overflow-hidden">
-          {activity.image ? (
-            <img src={activity.image} alt={activity.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-          ) : (
-            <div className="absolute inset-0" style={{ background: config.bgGradient }} />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent pointer-events-none" />
-          <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-md flex items-center justify-center shadow-md z-10" style={{ background: config.color }}>
-            <Icon size={10} className="text-white" />
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-3 z-10">
-            <p className="text-white text-[10px] font-semibold truncate leading-tight drop-shadow-md">{activity.title}</p>
-            {cardHeight >= 65 && (
-              <p className="text-white/65 text-[9px] mt-0.5 truncate">{activity.startTime} – {activity.endTime}</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 });
@@ -520,12 +524,11 @@ DropZone.displayName = 'DropZone';
 // ─── Day Header ─────────────────────────────────────────────
 
 const DraggableDayHeader = memo(({
-  day, dayMeta, onSwapDays, activityCount, isSelected, onSelectDay,
+  day, dayMeta, onSwapDays, isSelected, onSelectDay,
 }: {
   day: number;
   dayMeta: { dayLabel: string; dateLabel: string; theme: string } | undefined;
   onSwapDays: (d1: number, d2: number) => void;
-  activityCount: number;
   isSelected: boolean;
   onSelectDay: (day: number) => void;
 }) => {
@@ -557,14 +560,6 @@ const DraggableDayHeader = memo(({
         <div className={`text-sm font-bold mt-0.5 leading-none ${isSelected ? 'text-gray-900' : 'text-gray-500'}`}>
           {dayMeta?.dayLabel ?? `Day ${day + 1}`}
         </div>
-        {dayMeta?.theme && (
-          <div className={`text-[9px] mt-0.5 font-medium ${isSelected ? 'text-[#1e3a5f]' : 'text-gray-400'}`}>{dayMeta.theme}</div>
-        )}
-        <div className="flex items-center justify-center gap-0.5 mt-1">
-          {activityCount > 0 ? Array.from({ length: Math.min(activityCount, 5) }).map((_, i) => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? NAVY : '#d1d5db' }} />
-          )) : <span className="text-[8px] text-gray-300">--</span>}
-        </div>
       </div>
     </div>
   );
@@ -582,7 +577,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
   const { activities, setActivities } = useItineraryContext();
   const [selectedActivity, setSelectedActivity] = useState<CalendarActivity | null>(null);
   const [showLeftPanel, setShowLeftPanel] = useState(false);
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set(['cal-disney']));
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [collaborators] = useState<CollaboratorPresence[]>(MOCK_COLLABORATORS);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
@@ -605,11 +600,6 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
     return activities.filter((a) => a.onCalendar && !a.parentId);
   }, [activities]);
 
-  const activityCountPerDay = useMemo(() => {
-    const counts: Record<number, number> = {};
-    calendarActivities.forEach((a) => { counts[a.day] = (counts[a.day] || 0) + 1; });
-    return counts;
-  }, [calendarActivities]);
 
   const filteredDiscoverPlaces = useMemo(() => {
     return DISCOVER_PLACES.filter((p) => {
@@ -667,6 +657,49 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
     const dm = minute === 0 ? '00' : minute < 10 ? `0${minute}` : String(minute);
     return `${dh}:${dm} ${period}`;
   }, []);
+
+  const handleAddSubActivity = useCallback((parentId: string) => {
+    const parent = activities.find((a) => a.id === parentId);
+    if (!parent) return;
+
+    const children = getChildren(parentId, activities);
+    const usedHours = new Set<number>();
+    children.forEach((c) => {
+      for (let h = Math.floor(c.startHour); h < Math.ceil(c.startHour + c.duration); h++) usedHours.add(h);
+    });
+
+    // Find first available hour within parent's range
+    const parentEnd = parent.startHour + parent.duration;
+    let startHour = Math.ceil(parent.startHour);
+    for (let h = startHour; h < parentEnd - 1; h++) {
+      if (!usedHours.has(h)) { startHour = h; break; }
+    }
+
+    const end = startHour + 1;
+    const newActivity: CalendarActivity = {
+      id: `cal-sub-${Date.now()}`,
+      title: 'New Activity',
+      type: 'sightseeing',
+      day: parent.day,
+      startHour,
+      duration: 1,
+      startTime: formatTime(startHour, 0),
+      endTime: formatTime(Math.floor(end), (end % 1) * 60),
+      color: getConfig('sightseeing').color,
+      onCalendar: true,
+      parentId,
+    };
+
+    // Make sure parent is expanded (remove from collapsed set)
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      next.delete(parentId);
+      return next;
+    });
+
+    setActivities((prev) => [...prev, newActivity]);
+    setSelectedActivity(newActivity);
+  }, [activities, formatTime]);
 
   const handleDrop = useCallback((activityId: string, newDay: number, newStartHour: number, fromDiscover?: boolean, place?: DiscoverPlace) => {
     if (fromDiscover && place) {
@@ -758,26 +791,25 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-full h-[calc(100vh-220px)] min-h-[600px] flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white relative">
+      <div className="w-full h-full min-h-[600px] flex flex-col overflow-hidden bg-white relative">
 
-        {/* ── Minimal Toolbar ──────────────────────────────────── */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 flex-shrink-0 bg-white">
+        {/* ── Toolbar ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0 bg-white">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowLeftPanel(!showLeftPanel)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer ${
                 showLeftPanel
-                  ? 'bg-[#1e3a5f] text-white shadow-sm'
+                  ? 'text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
+              style={showLeftPanel ? { backgroundColor: 'var(--trip-base)' } : undefined}
             >
               <Search size={13} />
               <span>Discover {destination}</span>
             </button>
           </div>
-
           <div className="flex items-center gap-3">
-            {/* Collaborator avatars — subtle */}
             <div className="flex -space-x-1.5">
               {collaborators.filter((c) => c.isOnline).map((c) => (
                 <div
@@ -789,10 +821,6 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                   {c.avatarInitial}
                 </div>
               ))}
-            </div>
-            <div className="hidden md:flex items-center gap-1.5 text-[10px] text-gray-400">
-              <StickyNote size={10} />
-              <span>Double-click to add note</span>
             </div>
             <div className="text-[11px] text-gray-400 font-medium">
               {calendarActivities.length} planned
@@ -823,7 +851,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                         placeholder={`Search in ${destination}...`}
                         value={discoverSearch}
                         onChange={(e) => setDiscoverSearch(e.target.value)}
-                        className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30 placeholder:text-gray-400"
+                        className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:border-trip-base/30 placeholder:text-gray-400"
                       />
                       {discoverSearch && (
                         <button onClick={() => setDiscoverSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -843,9 +871,10 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                             onClick={() => setDiscoverCategory(cat.id)}
                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                               isActive
-                                ? 'bg-[#1e3a5f] text-white shadow-sm'
+                                ? 'text-white shadow-sm'
                                 : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                             }`}
+                            style={isActive ? { backgroundColor: 'var(--trip-base)' } : undefined}
                           >
                             <CatIcon size={12} />
                             {cat.label}
@@ -908,7 +937,6 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                       <DraggableDayHeader
                         key={i} day={i} dayMeta={dayMetas[i]}
                         onSwapDays={handleSwapDays}
-                        activityCount={activityCountPerDay[i] || 0}
                         isSelected={selectedDay === null || selectedDay === i}
                         onSelectDay={handleSelectDay}
                       />
@@ -962,6 +990,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                         totalDays={totalDays}
                         expandedParents={expandedParents}
                         onToggleExpand={handleToggleExpand}
+                        onAddSubActivity={handleAddSubActivity}
                         collaborators={collaborators}
                         isDimmed={selectedDay !== null && selectedDay !== activity.day}
                       />
@@ -1041,6 +1070,36 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                         </div>
                       );
                     })}
+
+                    {/* ── Collaborator cursors (Figma-style) ── */}
+                    {collaborators.filter((c) => c.isOnline && c.cursor && c.userId !== 'user-1').map((c) => {
+                      const cDayWidth = 100 / totalDays;
+                      const cursorLeft = c.cursor!.day * cDayWidth;
+                      const cursorTop = (c.cursor!.hour - 7) * HOUR_HEIGHT;
+                      const isDimmedCursor = selectedDay !== null && selectedDay !== c.cursor!.day;
+                      return (
+                        <div
+                          key={`cursor-${c.userId}`}
+                          className="absolute z-[8] pointer-events-none"
+                          style={{
+                            left: `calc(${cursorLeft}% + 10px)`,
+                            top: `${cursorTop}px`,
+                            opacity: isDimmedCursor ? 0.2 : 1,
+                            transition: 'left 0.7s cubic-bezier(.4,0,.2,1), top 0.7s cubic-bezier(.4,0,.2,1), opacity 0.3s',
+                          }}
+                        >
+                          <svg width="12" height="16" viewBox="0 0 12 16" className="drop-shadow-md" style={{ filter: `drop-shadow(0 1px 2px ${c.color}40)` }}>
+                            <path d="M0 0L12 9L6.5 9L4 16L0 0Z" fill={c.color} stroke="white" strokeWidth="1" />
+                          </svg>
+                          <div
+                            className="absolute top-3 left-2 px-1.5 py-[2px] rounded-md text-[8px] font-bold text-white whitespace-nowrap shadow-sm"
+                            style={{ background: c.color }}
+                          >
+                            {c.name}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1112,7 +1171,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                           const cfg = getConfig(child.type);
                           const CIcon = cfg.icon;
                           return (
-                            <div key={child.id} className="flex items-center gap-2 p-2 rounded-lg border-l-[3px]" style={{ borderColor: cfg.color, background: cfg.bgGradient }}>
+                            <div key={child.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: cfg.bgGradient }}>
                               <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${cfg.dotColor}`}>
                                 <CIcon size={9} className="text-white" />
                               </div>

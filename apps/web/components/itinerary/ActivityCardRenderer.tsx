@@ -59,7 +59,7 @@ export function ActivityCardRenderer({
   images = [],
   rating,
   index = 0,
-  accentColor = '#1e3a5f',
+  accentColor = 'var(--trip-base)',
   onClick,
   onFavorite,
   isFavorited = false,

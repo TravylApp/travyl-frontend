@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
-import {
-  useHomeScreen,
-  useHeroConfig,
-  EASE_OUT_EXPO,
-} from "@travyl/shared";
+import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
 import { Search, ArrowRight, MapPin, Calendar, Users } from "lucide-react";
+import { useHomeScreen, useHeroConfig, EASE_OUT_EXPO } from "@travyl/shared";
+import type { PlaceItem } from "@travyl/shared";
 import { PaperPlane } from "@/components/icons/PaperPlane";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { TypeWriter } from "@/components/TypeWriter";
+import { useCyclingPlaceholder } from "@/hooks/useCyclingPlaceholder";
 import {
   HowItWorks,
-  QuickSteps,
   GetInspired,
   TravelMosaic,
   ExplorePreview,
@@ -21,9 +20,9 @@ import {
   OceanWave,
   TakeoffTransition,
   Footer,
-  AppDownload,
+  ParallaxQuoteDivider,
 } from "@/components/home";
-import { GlassPill } from "@/components/ui";
+import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
 
 export default function Home() {
   const router = useRouter();
@@ -38,9 +37,95 @@ export default function Home() {
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
+  const heroRef = useRef<HTMLElement>(null);
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
+
+  const PLACEHOLDER_PHRASES = [
+    "7 days in Paris with my partner...",
+    "A week in Tokyo exploring street food...",
+    "Family beach vacation in Bali...",
+    "Weekend getaway to the Swiss Alps...",
+    "Solo backpacking through Southeast Asia...",
+  ];
+  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+
+  // Cycling subtitle phrases
+  const SUBTITLE_PHRASES = [
+    "Type your dream trip and let us plan it for you",
+    "Discover hidden gems around the world",
+    "Your next adventure starts with a single search",
+    "From idea to itinerary in seconds",
+    "Tell us where you want to go",
+  ];
+  const cyclingSubtitle = useCyclingPlaceholder(SUBTITLE_PHRASES, 40, 2500, 25);
+
+  // Cycling suggestion pills
+  const allSuggestions = heroConfig?.suggestions?.length
+    ? heroConfig.suggestions
+    : [
+        { id: 'ps-1', label: 'Beach getaway', short_label: null },
+        { id: 'ps-2', label: 'City explorer', short_label: null },
+        { id: 'ps-3', label: 'Mountain trek', short_label: null },
+        { id: 'ps-4', label: 'Cultural immersion', short_label: null },
+        { id: 'ps-5', label: 'Island hopping', short_label: null },
+        { id: 'ps-6', label: 'Food & wine', short_label: null },
+        { id: 'ps-7', label: 'Road trip', short_label: null },
+        { id: 'ps-8', label: 'Backpacking', short_label: null },
+      ];
+  const PILLS_VISIBLE = 4;
+  const [pillGroup, setPillGroup] = useState(0);
+  const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
+
+  useEffect(() => {
+    if (pillGroupCount <= 1) return;
+    const interval = setInterval(() => {
+      setPillGroup((prev) => (prev + 1) % pillGroupCount);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [pillGroupCount]);
+
+  const visiblePills = allSuggestions.slice(
+    pillGroup * PILLS_VISIBLE,
+    pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
+  );
+
+  // Parallax transforms
+  const { scrollYProgress: heroScroll } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroTextY = useTransform(heroScroll, [0, 1], [0, 150]);
+  const heroTextOpacity = useTransform(heroScroll, [0, 0.6], [1, 0]);
+  const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
+  const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
+
+  // Parallax divider
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress: dividerScroll } = useScroll({
+    target: dividerRef,
+    offset: ["start end", "end start"],
+  });
+  const dividerBgY = useTransform(dividerScroll, [0, 1], [-80, 80]);
+
+  // Hero slideshow — use API image if available, otherwise cycle defaults
+  const FALLBACK_SLIDES = [
+    "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop",
+  ];
+  const heroSlides = heroConfig?.background_image_url
+    ? [heroConfig.background_image_url]
+    : FALLBACK_SLIDES;
+
+  useEffect(() => {
+    if (heroSlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setHeroSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [heroSlides.length]);
 
   const onSearch = () => {
     if (handleSearch()) {
@@ -50,17 +135,26 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section className="relative flex items-center justify-center px-6 py-24 md:py-32 overflow-hidden">
-        <img
-          src={heroConfig?.background_image_url ?? "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&fit=crop"}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        />
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+      <section ref={heroRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+        {/* Slideshow background */}
+        <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0" style={{ scale: heroBgScale, y: heroBgY }}>
+          {heroSlides.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"
+              style={{ opacity: heroSlide % heroSlides.length === i ? 1 : 0 }}
+            />
+          ))}
+        </motion.div>
 
-        <div className="relative z-10 max-w-3xl mx-auto text-center w-full">
+        <motion.div
+          className="relative z-10 max-w-3xl mx-auto text-center w-full"
+          style={{ y: heroTextY, opacity: heroTextOpacity }}
+        >
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -73,9 +167,13 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4, ease: EASE_OUT_EXPO }}
-            className="text-base sm:text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto"
+            className="text-xs sm:text-sm md:text-base text-white mb-10 w-fit mx-auto font-medium px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/40 shadow-sm drop-shadow-sm"
           >
-            {heroConfig?.subtitle ?? "Type your dream trip and let us plan it for you"}
+            {heroConfig?.subtitle ? (
+              <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
+            ) : (
+              <>{cyclingSubtitle}<span className="animate-pulse">|</span></>
+            )}
           </motion.p>
 
           {/* Search Bar */}
@@ -94,45 +192,69 @@ export default function Home() {
                     value={tripQuery}
                     onChange={(e) => setTripQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && onSearch()}
-                    placeholder={heroConfig?.search_placeholder ?? "7 days in Paris with my partner..."}
+                    placeholder={tripQuery ? "" : (heroConfig?.search_placeholder ?? typingPlaceholder)}
                     className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
                   />
                 </div>
                 <button
                   ref={sendButtonRef}
                   onClick={onSearch}
-                  className="bg-primary hover:opacity-90 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity flex items-center gap-2 shrink-0"
+                  className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
                 >
-                  <PaperPlane size={16} className="-rotate-12" />
-                  <span className="hidden sm:inline">Plan Trip</span>
+                  <PaperPlane size={16} />
                 </button>
               </div>
             </div>
 
-            {/* Suggestion Pills */}
-            {(() => {
-              const suggestions = heroConfig?.suggestions?.length
-                ? heroConfig.suggestions
-                : [
-                    { id: 'ps-1', label: 'Beach getaway', short_label: null },
-                    { id: 'ps-2', label: 'City break', short_label: null },
-                    { id: 'ps-3', label: 'Mountain retreat', short_label: null },
-                    { id: 'ps-4', label: 'Cultural tour', short_label: null },
-                  ];
-              return (
-                <div className="flex flex-wrap justify-center gap-2 mt-4">
-                  {suggestions.map((s) => (
-                    <GlassPill
+            {/* Suggestion Pills — cycling groups */}
+            <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={pillGroup}
+                  className="flex justify-center gap-1.5 sm:gap-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {visiblePills.map((s) => (
+                    <motion.button
                       key={s.id}
                       onClick={() => setTripQuery(s.label)}
+                      className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"
                     >
                       {s.label}
-                    </GlassPill>
+                    </motion.button>
                   ))}
-                </div>
-              );
-            })()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ─── Trip Statistics ───────────────────────────────────── */}
+      <section className="py-8 sm:py-14 px-4 sm:px-6 border-y bg-[#e8d5c0] border-[#5c4a3a]">
+        <div className="max-w-5xl mx-auto grid grid-cols-3 gap-3 sm:gap-8 text-center">
+          {[
+            { value: 500, suffix: "K+", decimals: 0, label: "Destinations", desc: "Discover unexpected gems, even in your own backyard." },
+            { value: 95, suffix: "M+", decimals: 0, label: "Fellow Travelers", desc: "Share your adventures and learn from our global community." },
+            { value: 2.0, suffix: "B+", decimals: 1, label: "Trips Planned", desc: "Navigate your way and keep a record of all your travels." },
+          ].map((item, i) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: i * 0.15, ease: EASE_OUT_EXPO }}
+            >
+              <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
+                <AnimatedCounter value={item.value} suffix={item.suffix} decimals={item.decimals} />
+              </p>
+              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#5c4a3a]">{item.label}</p>
+              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#3d2f23]">{item.desc}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
@@ -252,19 +374,32 @@ export default function Home() {
       )}
 
       {/* ─── Static Content Sections ──────────────────────────── */}
-      <QuickSteps />
       <HowItWorks onCtaPress={() => router.push("/trips")} />
       <TravelMosaic />
-      <AppDownload />
+
+      {/* ─── Parallax Divider — cycling quotes + images ─────── */}
+      <ParallaxQuoteDivider ref={dividerRef} bgY={dividerBgY} />
+
       <GetInspired />
-      <ExplorePreview />
       <TagUs />
+      <ExplorePreview onItemClick={(item) => setSelectedPlace(item)} />
 
       {/* ─── Ocean Wave ─────────────────────────────────────── */}
       <OceanWave />
 
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />
+
+      {/* ─── Place Detail Overlay ────────────────────────────── */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            onClose={() => setSelectedPlace(null)}
+            onNavigate={(p) => setSelectedPlace(p)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition

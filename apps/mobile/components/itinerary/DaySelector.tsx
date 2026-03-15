@@ -1,21 +1,33 @@
-import { ScrollView, Pressable, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Navy, ITINERARY_COLORS } from '@travyl/shared';
+import { ScrollView, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import type { ItineraryDayViewModel } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface DaySelectorProps {
   days: ItineraryDayViewModel[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  accentColor?: string;
 }
 
-export function DaySelector({ days, selectedIndex, onSelect }: DaySelectorProps) {
+const GAP = 6;
+const PADDING_H = 8;
+// Reserve space for the collapse button sitting to the right
+const RIGHT_RESERVE = 40;
+
+export function DaySelector({ days, selectedIndex, onSelect, accentColor }: DaySelectorProps) {
+  const colors = useThemeColors();
+  const { width: screenWidth } = useWindowDimensions();
+  const accent = accentColor ?? colors.text;
+  // Size pills so 4 fit in the available space
+  const available = screenWidth - PADDING_H * 2 - RIGHT_RESERVE;
+  const pillWidth = (available - GAP * 3) / 4;
+
   return (
-    <View style={{ backgroundColor: ITINERARY_COLORS.containerBg, paddingVertical: 8, paddingHorizontal: 4 }}>
+    <View style={{ paddingVertical: 6, paddingHorizontal: 2 }}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 10, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: PADDING_H, gap: GAP }}
       >
         {days.map((day, index) => {
           const selected = index === selectedIndex;
@@ -24,51 +36,47 @@ export function DaySelector({ days, selectedIndex, onSelect }: DaySelectorProps)
               key={day.id}
               onPress={() => onSelect(index)}
               style={{
-                minWidth: 74,
-                borderRadius: 10,
+                width: pillWidth,
+                borderRadius: 8,
                 overflow: 'hidden',
               }}
             >
               {selected ? (
-                <LinearGradient
-                  colors={[Navy.DEFAULT, Navy.light]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                <View
                   style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
+                    paddingVertical: 6,
                     alignItems: 'center',
-                    borderRadius: 10,
-                    shadowColor: Navy.DEFAULT,
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 5,
-                    elevation: 4,
+                    borderRadius: 8,
+                    backgroundColor: accent,
+                    shadowColor: accent,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 3,
                   }}
                 >
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '500' }}>
+                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', fontWeight: '500' }}>
                     {day.dayLabel}
                   </Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff', marginTop: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', marginTop: 1 }}>
                     {day.dateLabel}
                   </Text>
-                </LinearGradient>
+                </View>
               ) : (
                 <View
                   style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
+                    paddingVertical: 6,
                     alignItems: 'center',
-                    backgroundColor: '#fff',
+                    backgroundColor: colors.cardBackground,
                     borderWidth: 1,
-                    borderColor: '#e5e7eb',
-                    borderRadius: 10,
+                    borderColor: colors.border,
+                    borderRadius: 8,
                   }}
                 >
-                  <Text style={{ fontSize: 10, color: '#9ca3af', fontWeight: '500' }}>
+                  <Text style={{ fontSize: 9, color: colors.textTertiary, fontWeight: '500' }}>
                     {day.dayLabel}
                   </Text>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginTop: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, marginTop: 1 }}>
                     {day.dateLabel}
                   </Text>
                 </View>

@@ -13,7 +13,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
       {/* Navy gradient header band */}
       <div
         className="px-3.5 py-2.5 flex items-center justify-between"
-        style={{ background: 'linear-gradient(to right, #1e3a5f, #2c4f7f)' }}
+        style={{ background: 'linear-gradient(to right, var(--trip-base), var(--trip-base-light))' }}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Building2 size={14} className="text-white flex-shrink-0" />
@@ -45,13 +45,13 @@ export function HotelCard({ hotel }: HotelCardProps) {
           {hotel.rating != null && (
             <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
               <Star size={10} className="text-amber-400 fill-amber-400" />
-              <span className="text-xs font-bold text-[#1e3a5f]">{hotel.rating}</span>
+              <span className="text-xs font-bold" style={{ color: 'var(--trip-base)' }}>{hotel.rating}</span>
             </div>
           )}
         </div>
       ) : (
         <div className="h-[120px] bg-blue-50 flex items-center justify-center">
-          <ImageIcon size={28} className="text-[#1e3a5f]/20" />
+          <ImageIcon size={28} style={{ color: 'rgb(var(--trip-base-rgb) / 0.2)' }} />
         </div>
       )}
 

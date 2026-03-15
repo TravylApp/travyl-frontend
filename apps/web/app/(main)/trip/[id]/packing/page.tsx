@@ -6,13 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared';
 import type { PackingItem, PackingList } from '@travyl/shared';
 
-/* ------------------------------------------------------------------ */
-/*  Skeleton                                                          */
-/* ------------------------------------------------------------------ */
-
-function SkeletonBlock({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`bg-gray-200 rounded animate-pulse ${className ?? ''}`} style={style} />;
-}
+import { Skeleton } from '@/components/ui';
 
 function SkeletonPacking() {
   return (
@@ -20,20 +14,20 @@ function SkeletonPacking() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="rounded-lg p-3 border border-gray-200 bg-white">
-            <SkeletonBlock style={{ width: 120, height: 14 }} />
-            <SkeletonBlock className="mt-2" style={{ height: 6 }} />
+            <Skeleton style={{ width: 120, height: 14 }} />
+            <Skeleton className="mt-2" style={{ height: 6 }} />
           </div>
         ))}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[1, 2, 3].map((i) => (
           <div key={i} className="rounded-xl p-3.5 border border-gray-200 bg-white">
-            <SkeletonBlock style={{ width: 80, height: 14 }} />
+            <Skeleton style={{ width: 80, height: 14 }} />
             <div className="space-y-2 mt-3">
               {[1, 2, 3, 4].map((j) => (
                 <div key={j} className="flex items-center gap-2.5">
-                  <SkeletonBlock style={{ width: 16, height: 16 }} />
-                  <SkeletonBlock style={{ width: 80 + j * 15, height: 12 }} />
+                  <Skeleton style={{ width: 16, height: 16 }} />
+                  <Skeleton style={{ width: 80 + j * 15, height: 12 }} />
                 </div>
               ))}
             </div>
@@ -131,7 +125,8 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Packing Progress */}
         <motion.div
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-3 shadow-sm text-white"
+          className="rounded-lg p-3 shadow-sm text-white"
+          style={{ backgroundColor: 'var(--trip-base)' }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
@@ -143,7 +138,7 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
           <div className="text-xl mb-1">
             {packedCount} / {totalItems}
           </div>
-          <div className="w-full bg-purple-800 rounded-full h-1.5 mb-1">
+          <div className="w-full rounded-full h-1.5 mb-1" style={{ backgroundColor: 'var(--trip-base-dark)' }}>
             <motion.div
               className="bg-white h-1.5 rounded-full"
               initial={{ width: 0 }}
@@ -209,7 +204,10 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
                 <div className="flex items-center justify-between mb-2">
                   <h5 className="text-sm font-semibold text-gray-900">{category}</h5>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)', color: 'var(--trip-base)' }}
+                    >
                       {catPacked}/{items.length}
                     </span>
                     <button
@@ -238,8 +236,8 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
                           onClick={() => toggleItem(category, index)}
                           className="w-3.5 h-3.5 rounded flex items-center justify-center border-[1.5px] transition-colors shrink-0"
                           style={{
-                            borderColor: item.packed ? '#7c3aed' : '#d1d5db',
-                            backgroundColor: item.packed ? '#7c3aed' : 'transparent',
+                            borderColor: item.packed ? 'var(--trip-base)' : '#d1d5db',
+                            backgroundColor: item.packed ? 'var(--trip-base)' : 'transparent',
                           }}
                         >
                           {item.packed && <Check size={8} className="text-white" />}
@@ -275,11 +273,16 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
                       if (e.key === 'Enter') addItem(category);
                     }}
                     placeholder="New item..."
-                    className="flex-1 px-2 py-1.5 text-xs border border-purple-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                    className="flex-1 px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1"
+                    style={{
+                      borderColor: 'rgb(var(--trip-base-rgb) / 0.2)',
+                      outlineColor: 'var(--trip-base)',
+                    }}
                   />
                   <button
                     onClick={() => addItem(category)}
-                    className="px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-xs font-medium"
+                    className="px-3 py-1.5 text-white rounded transition-colors text-xs font-medium"
+                    style={{ backgroundColor: 'var(--trip-base)' }}
                   >
                     Add
                   </button>
@@ -296,7 +299,8 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-purple-50 rounded-lg p-3 shadow-sm border-2 border-dashed border-purple-300"
+              className="rounded-lg p-3 shadow-sm border-2 border-dashed"
+              style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)', borderColor: 'rgb(var(--trip-base-rgb) / 0.3)' }}
             >
               <h5 className="text-sm font-semibold text-gray-900 mb-3">Create New List</h5>
               <input
@@ -307,13 +311,15 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
                   if (e.key === 'Enter') createList();
                 }}
                 placeholder="List name (e.g., Beach Gear)"
-                className="w-full px-3 py-2 text-sm border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 mb-2"
+                className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 mb-2"
+                style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)' }}
                 autoFocus
               />
               <div className="flex gap-2">
                 <button
                   onClick={createList}
-                  className="flex-1 px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-xs font-medium"
+                  className="flex-1 px-3 py-2 text-white rounded transition-colors text-xs font-medium"
+                  style={{ backgroundColor: 'var(--trip-base)' }}
                 >
                   Create List
                 </button>
@@ -338,13 +344,20 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsCreatingList(true)}
-              className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg p-6 shadow-sm border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-100 transition-all flex flex-col items-center justify-center gap-2 min-h-[200px]"
+              className="rounded-lg p-6 shadow-sm border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 min-h-[200px]"
+              style={{
+                backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)',
+                borderColor: 'rgb(var(--trip-base-rgb) / 0.3)',
+              }}
             >
-              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <Plus className="text-purple-600" size={24} />
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}
+              >
+                <Plus size={24} style={{ color: 'var(--trip-base)' }} />
               </div>
-              <span className="text-sm font-medium text-purple-700">Create New List</span>
-              <span className="text-xs text-purple-600">Add a custom packing list</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--trip-base)' }}>Create New List</span>
+              <span className="text-xs" style={{ color: 'var(--trip-base)' }}>Add a custom packing list</span>
             </motion.button>
           )}
         </AnimatePresence>

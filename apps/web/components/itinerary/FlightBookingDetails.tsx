@@ -1,6 +1,5 @@
 'use client';
 
-import { MOCK_FLIGHT_BOOKING_DETAILS } from '@travyl/shared';
 import type { FlightDetailsType } from '@travyl/shared';
 import {
   Ticket,
@@ -13,6 +12,24 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useState } from 'react';
+
+const MOCK_FLIGHT_BOOKING_DETAILS: FlightDetailsType = {
+  confirmationNumber: 'XHGT7K',
+  pnr: 'XHGT7K',
+  ticketNumbers: ['016-2345678901', '016-2345678902'],
+  fareClass: 'Economy (Y)',
+  fareType: 'Main Cabin',
+  baggageAllowance: {
+    carryOn: '1 personal item + 1 carry-on bag (max 10 kg)',
+    checked: '1 checked bag included (max 23 kg)',
+    fees: 0,
+  },
+  cancellationPolicy: 'Non-refundable. Cancellation fee of $199 applies. Residual value issued as flight credit valid for 1 year.',
+  changePolicy: 'Changes permitted with no change fee. Fare difference may apply.',
+  refundPolicy: 'Refund to original payment method within 24 hours of booking. After 24 hours, refund issued as flight credit minus cancellation fee.',
+  checkInUrl: 'https://www.aa.com/check-in',
+  checkInOpens: '24 hours before departure',
+};
 
 interface FlightBookingDetailsProps {
   isVisible: boolean;
