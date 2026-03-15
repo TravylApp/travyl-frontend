@@ -20,7 +20,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
-  --font-sans: var(--font-outfit);
+  --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 
   /* Trip theme colors — set dynamically by TripThemeProvider */
@@ -34,7 +34,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-outfit), Outfit, system-ui, sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }

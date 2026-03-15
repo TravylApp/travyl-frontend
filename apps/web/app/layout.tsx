@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { Outfit, Geist_Mono, Sora } from "next/font/google";
+import { Geist_Mono, Sora } from "next/font/google";
 import Providers from "@/components/providers";
 import "./globals.css";
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -37,8 +32,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+      </head>
       <body
-        className={`${outfit.variable} ${geistMono.variable} ${sora.variable} antialiased`}
+        className={`${geistMono.variable} ${sora.variable} antialiased`}
+        style={{ fontFamily: "'Satoshi', sans-serif" }}
       >
         <Providers>
           {children}
