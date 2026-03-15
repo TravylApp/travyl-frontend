@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
-import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -12,12 +12,14 @@ import {
   MOCK_DESTINATION_COORDS,
   adjustBrightness,
 } from '@travyl/shared';
-import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel } from '@travyl/shared';
-import { getActivityTypeColor } from '@travyl/shared';
+import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
+import { getActivityTypeColor, TIME_OF_DAY_CONFIG } from '@travyl/shared';
+import MapView, { Marker } from 'react-native-maps';
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
-import { MapPreview } from '@/components/itinerary/MapPreview';
-import type { MapMarker, MapPreviewHandle } from '@/components/itinerary/MapPreview';
+import type { MapMarker } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import PlaceDetailModal from '@/components/places/PlaceDetailModal';
+import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
 import { PageTransition, TabCtx, useTabAccent } from './_layout';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
@@ -31,6 +33,21 @@ function parseHour(timeStr: string | null): number | null {
   if (period === 'PM' && hour !== 12) hour += 12;
   if (period === 'AM' && hour === 12) hour = 0;
   return hour;
+}
+
+// ─── Match itinerary activity → DiscoverItem by keyword overlap ──────
+const STOP_WORDS = new Set(['the', 'at', 'a', 'an', 'of', 'in', 'to', 'and', 'le', 'la', 'de', 'du', 'des']);
+
+function findDiscoverMatch(activityName: string): typeof MOCK_DISCOVER_ACTIVITIES[number] | undefined {
+  const keywords = activityName.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+  let bestMatch: typeof MOCK_DISCOVER_ACTIVITIES[number] | undefined;
+  let bestScore = 0;
+  for (const d of MOCK_DISCOVER_ACTIVITIES) {
+    const dLower = d.name.toLowerCase();
+    const score = keywords.filter((kw) => dLower.includes(kw)).length;
+    if (score > bestScore) { bestScore = score; bestMatch = d; }
+  }
+  return bestScore >= 1 ? bestMatch : undefined;
 }
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
@@ -145,77 +162,63 @@ function DayMap({ todayActivities, allActivities, onClose }: {
   const [stopOrder, setStopOrder] = useState<number[]>([]);
   const [showExploreOnMap, setShowExploreOnMap] = useState(true);
   const [selectedStop, setSelectedStop] = useState<number | null>(null);
-  const mapRef = useRef<MapPreviewHandle>(null);
+  const mapRef = useRef<MapView>(null);
 
-  // Sheet height animation
-  const sheetHeight = useRef(new Animated.Value(SHEET_DEFAULT)).current;
-  const currentHeight = useRef(SHEET_DEFAULT);
-  const startHeight = useRef(SHEET_DEFAULT);
+  // Sheet drag state (like PlaceDetailModal)
+  const [sheetTop, setSheetTop] = useState(0);
+  const sheetTopRef = useRef(0);
+  const MAP_H_DEFAULT = Math.round(SCREEN_H * 0.35);
+  const MIN_SHEET_TOP = -MAP_H_DEFAULT + 80;
+  const MAX_SHEET_TOP = SCREEN_H * 0.35;
 
-  // Track height for expand button
-  const [measuredHeight, setMeasuredHeight] = useState(SHEET_DEFAULT);
+  const sheetPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gs) => {
+        const newTop = sheetTopRef.current + gs.dy;
+        const clamped = Math.max(MIN_SHEET_TOP, Math.min(MAX_SHEET_TOP, newTop));
+        setSheetTop(clamped);
+      },
+      onPanResponderRelease: (_, gs) => {
+        const newTop = sheetTopRef.current + gs.dy;
+        const clamped = Math.max(MIN_SHEET_TOP, Math.min(MAX_SHEET_TOP, newTop));
+        sheetTopRef.current = clamped;
+        setSheetTop(clamped);
+      },
+    }),
+  ).current;
+
+  // Entry/exit animations (like PlaceDetailModal)
+  const mapSlide = useRef(new Animated.Value(-250)).current;
+  const contentSlide = useRef(new Animated.Value(600)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setSheetTop(0);
+    sheetTopRef.current = 0;
+    mapSlide.setValue(-250);
+    contentSlide.setValue(600);
+    fadeAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(mapSlide, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
+      Animated.spring(contentSlide, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(mapSlide, { toValue: -250, duration: 200, useNativeDriver: true }),
+      Animated.timing(contentSlide, { toValue: 600, duration: 200, useNativeDriver: true }),
+    ]).start(() => onClose());
+  }, [onClose]);
 
   // Initialize stop order when activities change
   useEffect(() => {
     setStopOrder(todayActivities.map((_, i) => i));
   }, [todayActivities.length]);
-
-  useEffect(() => {
-    const id = sheetHeight.addListener(({ value }) => {
-      currentHeight.current = value;
-    });
-    return () => sheetHeight.removeListener(id);
-  }, [sheetHeight]);
-
-  const animateTo = useCallback((target: number) => {
-    if (target <= 0) {
-      Animated.spring(sheetHeight, {
-        toValue: 0, tension: 100, friction: 15, useNativeDriver: false,
-      }).start(() => onClose());
-    } else {
-      Animated.spring(sheetHeight, {
-        toValue: target, tension: 100, friction: 15, useNativeDriver: false,
-      }).start(() => setMeasuredHeight(target));
-    }
-  }, [sheetHeight, onClose]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 4,
-      onPanResponderGrant: () => {
-        startHeight.current = currentHeight.current;
-      },
-      onPanResponderMove: (_, { dy }) => {
-        const next = Math.max(0, Math.min(SHEET_EXPANDED, startHeight.current - dy));
-        sheetHeight.setValue(next);
-      },
-      onPanResponderRelease: (_, { vy }) => {
-        const cur = currentHeight.current;
-        if (vy < -0.5) {
-          const upper = SNAP_POINTS.find((p) => p > cur + 20) ?? SHEET_EXPANDED;
-          animateTo(upper);
-        } else if (vy > 0.5) {
-          const lower = [...SNAP_POINTS].reverse().find((p) => p < cur - 20) ?? 0;
-          animateTo(lower);
-        } else {
-          animateTo(snapTo(cur));
-        }
-      },
-    })
-  ).current;
-
-  const focusStop = useCallback((index: number) => {
-    setSelectedStop((prev) => {
-      if (prev === index) {
-        // Deselect — reset view
-        mapRef.current?.resetView();
-        return null;
-      }
-      mapRef.current?.focusMarker(index);
-      return index;
-    });
-  }, []);
 
   // Reorder helpers
   const moveStop = useCallback((fromIdx: number, direction: 'up' | 'down') => {
@@ -237,6 +240,30 @@ function DayMap({ todayActivities, allActivities, onClose }: {
   );
 
   const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT), [orderedActivities, ACCENT]);
+
+  const focusStop = useCallback((index: number) => {
+    setSelectedStop((prev) => {
+      if (prev === index) {
+        mapRef.current?.animateToRegion({
+          latitude: MOCK_DESTINATION_COORDS.lat,
+          longitude: MOCK_DESTINATION_COORDS.lng,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        }, 400);
+        return null;
+      }
+      const m = markers[index];
+      if (m) {
+        mapRef.current?.animateToRegion({
+          latitude: m.lat,
+          longitude: m.lng,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }, 400);
+      }
+      return index;
+    });
+  }, [markers]);
 
   const exploreItems = useMemo(() => {
     let items = MOCK_DISCOVER_ACTIVITIES;
@@ -270,82 +297,112 @@ function DayMap({ todayActivities, allActivities, onClose }: {
 
   if (todayActivities.length === 0 && allActivities.length === 0) return null;
 
+  const mapH = MAP_H_DEFAULT + sheetTop;
+
   return (
-    <Animated.View style={{
-      height: sheetHeight,
-      backgroundColor: colors.cardBackground,
-      borderTopWidth: 1,
-      borderTopColor: colors.borderLight,
-      borderTopLeftRadius: 14,
-      borderTopRightRadius: 14,
-      overflow: 'hidden',
-    }}>
-      {/* Drag handle */}
-      <View {...panResponder.panHandlers}>
-        <View style={{ alignItems: 'center', paddingTop: 6, paddingBottom: 2 }}>
-          <View style={{
-            width: 36, height: 4, borderRadius: 2,
-            backgroundColor: colors.textTertiary + '40',
-          }} />
-        </View>
+    <Modal visible animationType="none" transparent onRequestClose={handleClose}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        {/* Backdrop */}
+        <Pressable onPress={handleClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
 
-        {/* Header bar */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          paddingHorizontal: 12, paddingVertical: 4,
+        {/* ── Map — full-width, slides in from the top ── */}
+        <Animated.View style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          height: Math.max(mapH, 120),
+          transform: [{ translateY: mapSlide }],
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <FontAwesome name="map" size={10} color={ACCENT} />
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
-              {markers.length} {markers.length === 1 ? 'stop' : 'stops'}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Pressable
-              onPress={() => animateTo(measuredHeight >= SHEET_EXPANDED ? SHEET_DEFAULT : SHEET_EXPANDED)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{
-                width: 24, height: 24, borderRadius: 12,
-                backgroundColor: colors.borderLight,
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <FontAwesome
-                name={measuredHeight >= SHEET_EXPANDED ? 'compress' : 'expand'}
-                size={10}
-                color={colors.textSecondary}
+          <MapView
+            ref={mapRef}
+            style={{ flex: 1 }}
+            initialRegion={{
+              latitude: MOCK_DESTINATION_COORDS.lat,
+              longitude: MOCK_DESTINATION_COORDS.lng,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            scrollEnabled
+            zoomEnabled
+            rotateEnabled={false}
+            pitchEnabled={false}
+          >
+            {allMarkers.map((m, i) => (
+              <Marker
+                key={`${m.label}-${i}`}
+                coordinate={{ latitude: m.lat, longitude: m.lng }}
+                title={m.label}
+                pinColor={m.muted ? '#94a3b8' : m.color}
               />
-            </Pressable>
-            <Pressable
-              onPress={onClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{
-                width: 24, height: 24, borderRadius: 12,
-                backgroundColor: colors.borderLight,
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <FontAwesome name="times" size={10} color={colors.textSecondary} />
-            </Pressable>
+            ))}
+          </MapView>
+          {/* Close button */}
+          <Pressable
+            onPress={handleClose}
+            style={{
+              position: 'absolute', top: 52, right: 16,
+              width: 32, height: 32, borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 3,
+            }}
+          >
+            <FontAwesome name="times" size={14} color="#333" />
+          </Pressable>
+          {/* Recenter button */}
+          <Pressable
+            onPress={() => mapRef.current?.animateToRegion({
+              latitude: MOCK_DESTINATION_COORDS.lat,
+              longitude: MOCK_DESTINATION_COORDS.lng,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }, 400)}
+            style={{
+              position: 'absolute', top: 52, left: 16,
+              width: 32, height: 32, borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 3,
+            }}
+          >
+            <FontAwesome name="crosshairs" size={14} color="#333" />
+          </Pressable>
+          {/* Stop count pill */}
+          <View style={{
+            position: 'absolute', top: 52, left: 0, right: 0,
+            alignItems: 'center', pointerEvents: 'none',
+          }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14,
+              paddingHorizontal: 12, paddingVertical: 6,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
+            }}>
+              <FontAwesome name="map-marker" size={12} color={ACCENT} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>
+                {markers.length} {markers.length === 1 ? 'stop' : 'stops'}
+              </Text>
+            </View>
           </View>
-        </View>
-      </View>
+        </Animated.View>
 
-      {/* Map fills the space above collapsible sections */}
-      <View style={{ flex: 1, minHeight: 120 }}>
-        <MapPreview
-          ref={mapRef}
-          lat={MOCK_DESTINATION_COORDS.lat}
-          lng={MOCK_DESTINATION_COORDS.lng}
-          markers={allMarkers}
-          flex
-          borderless
-          routeColor={routeColor}
-        />
-      </View>
+        {/* ── Sheet — slides up from the bottom ── */}
+        <Animated.View style={{
+          position: 'absolute', left: 0, right: 0,
+          top: Math.max(mapH, 120) - 24,
+          height: SCREEN_H - Math.max(mapH, 120) + 24,
+          backgroundColor: colors.cardBackground,
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          transform: [{ translateY: contentSlide }],
+          overflow: 'hidden',
+        }}>
+          {/* Drag handle */}
+          <View
+            {...sheetPanResponder.panHandlers}
+            style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}
+          >
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
 
-      {/* Collapsible sections scroll underneath */}
-      <ScrollView style={{ maxHeight: 300 }} bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled>
 
         {/* Collapsible: Stops */}
         <CollapsibleSection title="Stops" icon="map-marker" accent={ACCENT} count={orderedActivities.length} defaultOpen>
@@ -552,8 +609,10 @@ function DayMap({ todayActivities, allActivities, onClose }: {
 
           </View>
         </CollapsibleSection>
-      </ScrollView>
-    </Animated.View>
+          </ScrollView>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
   );
 }
 
@@ -858,12 +917,12 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
               ].map((row, i) => (
                 <View key={i} style={{ flexDirection: 'row', marginBottom: 6 }}>
                   <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingRight: 12 }}>
-                    <Text style={{ fontSize: 11, color: colors.textSecondary }}>{row.left.label}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>{row.left.value}</Text>
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginRight: 6 }}>{row.left.label}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, flexShrink: 1, textAlign: 'right' }}>{row.left.value}</Text>
                   </View>
                   <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 12 }}>
-                    <Text style={{ fontSize: 11, color: colors.textSecondary }}>{row.right.label}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>{row.right.value}</Text>
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginRight: 6 }}>{row.right.label}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, flexShrink: 1, textAlign: 'right' }}>{row.right.value}</Text>
                   </View>
                 </View>
               ))}
@@ -1477,6 +1536,265 @@ function BrowseActivityPanel({
 
 // ─── Main Screen ────────────────────────────────────────────
 
+// ─── FontAwesome icon mapping for time-of-day ─────────────────
+const TOD_FA_ICONS: Record<string, string> = {
+  sun: 'sun-o',
+  sunset: 'sun-o',
+  moon: 'moon-o',
+  sparkles: 'star',
+};
+
+// ─── FontAwesome icon mapping for activity categories ──────────
+const CAT_FA_ICONS: Record<string, string> = {
+  sightseeing: 'eye',
+  landmark: 'camera',
+  tour: 'compass',
+  dining: 'cutlery',
+  food: 'cutlery',
+  outdoor: 'tree',
+  cultural: 'university',
+  shopping: 'shopping-bag',
+  nightlife: 'music',
+  wellness: 'heartbeat',
+  transport: 'bus',
+};
+
+// ─── Glance Day Card ───────────────────────────────────────────
+function GlanceDayCard({
+  day,
+  isFirst,
+  isLast,
+  arrivalFlight,
+  returnFlight,
+  hotel,
+  accent,
+}: {
+  day: ItineraryDayViewModel;
+  isFirst: boolean;
+  isLast: boolean;
+  arrivalFlight?: MockFlightDetail;
+  returnFlight?: MockFlightDetail;
+  hotel: MockHotelDetail;
+  accent: string;
+}) {
+  const colors = useThemeColors();
+
+  return (
+    <View style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden' }}>
+      {/* Day header */}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: accent,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{
+            width: 28, height: 28, borderRadius: 8,
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{day.dayNumber}</Text>
+          </View>
+          <View>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{day.dayLabel}</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{day.dateLabel}</Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>
+          {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
+        </Text>
+      </View>
+
+      {/* Day content — compact timeline */}
+      <View style={{ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.surface }}>
+        {/* Arrival flight */}
+        {isFirst && arrivalFlight && (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+          }}>
+            <FontAwesome name="plane" size={13} color="#16a34a" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
+                Arrive — {arrivalFlight.flightNumber}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{arrivalFlight.arrivalTime}</Text>
+            </View>
+            <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: '#16a34a' }}>Booked</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Hotel check-in */}
+        {isFirst && (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+          }}>
+            <FontAwesome name="building-o" size={13} color="#2563eb" />
+            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text, flex: 1 }}>{hotel.name}</Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary }}>Check-in</Text>
+          </View>
+        )}
+
+        {/* Time groups */}
+        {day.timeGroups.map((group) => {
+          const config = TIME_OF_DAY_CONFIG[group.timeOfDay as keyof typeof TIME_OF_DAY_CONFIG];
+          const faIcon = TOD_FA_ICONS[config.icon] ?? 'sun-o';
+
+          return (
+            <View key={group.timeOfDay}>
+              {/* Time-of-day label */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+                paddingTop: 10, paddingBottom: 4,
+              }}>
+                <FontAwesome name={faIcon as any} size={11} color={accent} />
+                <Text style={{
+                  fontSize: 11, fontWeight: '700', color: accent,
+                  textTransform: 'uppercase', letterSpacing: 1,
+                }}>
+                  {config.label}
+                </Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.borderLight }} />
+              </View>
+
+              {/* Activities */}
+              {group.activities.map((activity) => {
+                const catColor = getActivityTypeColor(activity.category);
+                const catIcon = CAT_FA_ICONS[activity.category] ?? 'eye';
+
+                return (
+                  <View
+                    key={activity.id}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 8,
+                      paddingVertical: 6, paddingLeft: 4,
+                    }}
+                  >
+                    {/* Category icon */}
+                    <View style={{
+                      width: 24, height: 24, borderRadius: 6,
+                      alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: catColor.bg, borderWidth: 1, borderColor: catColor.border,
+                    }}>
+                      <FontAwesome name={catIcon as any} size={10} color={catColor.primary} />
+                    </View>
+
+                    {/* Name + location */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
+                        {activity.name}
+                      </Text>
+                      {activity.locationName && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+                          <FontAwesome name="map-marker" size={9} color={colors.textTertiary} />
+                          <Text numberOfLines={1} style={{ fontSize: 11, color: colors.textTertiary }}>
+                            {activity.locationName}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Time + cost */}
+                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                      {activity.startTime && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <FontAwesome name="clock-o" size={9} color={colors.textTertiary} />
+                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>{activity.startTime}</Text>
+                        </View>
+                      )}
+                      {activity.costDisplay && (
+                        <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>{activity.costDisplay}</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })}
+
+        {/* Return flight */}
+        {isLast && returnFlight && (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.borderLight, marginTop: 4,
+          }}>
+            <FontAwesome name="plane" size={13} color="#2563eb" style={{ transform: [{ rotate: '180deg' }] }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
+                Depart — {returnFlight.flightNumber}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{returnFlight.departureTime}</Text>
+            </View>
+            <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: '#16a34a' }}>Booked</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Hotel checkout on last day */}
+        {isLast && (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.borderLight,
+          }}>
+            <FontAwesome name="building-o" size={13} color="#2563eb" />
+            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text, flex: 1 }}>{hotel.name}</Text>
+            <Text style={{ fontSize: 11, color: colors.textTertiary }}>Check-out</Text>
+          </View>
+        )}
+
+        {/* Day notes */}
+        {day.notes && (
+          <View style={{
+            borderTopWidth: 1, borderTopColor: colors.borderLight,
+            paddingTop: 8, marginTop: 4,
+          }}>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', lineHeight: 18 }}>
+              {day.notes}
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── View Toggle (At a Glance / Detailed) ─────────────────────
+function ViewToggle({ mode, onToggle, accent }: { mode: 'glance' | 'detailed'; onToggle: (m: 'glance' | 'detailed') => void; accent: string }) {
+  return (
+    <View style={{
+      flexDirection: 'row', marginHorizontal: 14, marginTop: 10, marginBottom: 6,
+      borderRadius: 10, backgroundColor: '#f3f4f6', padding: 3,
+    }}>
+      {(['glance', 'detailed'] as const).map((m) => (
+        <Pressable
+          key={m}
+          onPress={() => onToggle(m)}
+          style={{
+            flex: 1, paddingVertical: 7, borderRadius: 8,
+            alignItems: 'center',
+            backgroundColor: mode === m ? accent : 'transparent',
+          }}
+        >
+          <Text style={{
+            fontSize: 12, fontWeight: '600',
+            color: mode === m ? '#fff' : '#6b7280',
+          }}>
+            {m === 'glance' ? 'At a Glance' : 'Detailed'}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
@@ -1490,18 +1808,10 @@ export default function ItineraryScreen() {
   const [addCategory, setAddCategory] = useState('All');
   const [addSearch, setAddSearch] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'glance' | 'detailed'>('glance');
 
-  // Auto-collapse itinerary sections when map opens to make room
-  const prevMapOpen = useRef(mapOpen);
-  useEffect(() => {
-    if (mapOpen && !prevMapOpen.current && selectedDay) {
-      const next: Record<string, boolean> = {};
-      for (const g of selectedDay.timeGroups) next[g.timeOfDay] = true;
-      setCollapsedSections(next);
-      setAllCollapsedOverride(true);
-    }
-    prevMapOpen.current = mapOpen;
-  }, [mapOpen, selectedDay]);
+  // (Map is now a modal overlay — no need to collapse sections)
 
   const arrivalFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'arrival');
   const returnFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'return');
@@ -1560,6 +1870,63 @@ export default function ItineraryScreen() {
     setAddSearch('');
     setAddCategory('All');
   }, []);
+
+  // Build activity → image URL map by keyword-matching to DiscoverItem images
+  const activityImages = useMemo(() => {
+    if (!selectedDay) return {};
+    const map: Record<string, string> = {};
+    // Collect all discover images as fallback pool
+    const allImages = MOCK_DISCOVER_ACTIVITIES.flatMap((d) => d.images ?? []).filter(Boolean);
+    for (const group of selectedDay.timeGroups) {
+      for (const activity of group.activities) {
+        const match = findDiscoverMatch(activity.name);
+        if (match?.images?.[0]) {
+          map[activity.id] = match.images[0];
+        } else if (allImages.length > 0) {
+          // Fallback: assign a discover image based on activity index for variety
+          const idx = Object.keys(map).length % allImages.length;
+          map[activity.id] = allImages[idx];
+        }
+      }
+    }
+    return map;
+  }, [selectedDay]);
+
+  // Build PlaceItem for tapped activity — try matching DiscoverItem first, fall back to ActivityViewModel
+  const selectedPlace = useMemo(() => {
+    if (!selectedActivityId || !selectedDay) return null;
+    const allActivities = selectedDay.timeGroups.flatMap((g) => g.activities);
+    const activity = allActivities.find((a) => a.id === selectedActivityId);
+    if (!activity) return null;
+
+    // Try to find a matching DiscoverItem (keyword match)
+    const discoverMatch = findDiscoverMatch(activity.name);
+    if (discoverMatch) return discoverItemToPlaceItem(discoverMatch);
+
+    // Fallback: build a minimal PlaceItem from the ActivityViewModel
+    const idx = allActivities.indexOf(activity);
+    const coords = mockActivityCoords(idx, allActivities.length);
+    return {
+      id: activity.id,
+      name: activity.name,
+      image: '',
+      type: 'attraction' as const,
+      rating: 4.5,
+      tagline: activity.locationName ?? '',
+      category: activity.category ?? 'Activity',
+      description: activity.notes ?? undefined,
+      latitude: coords.lat,
+      longitude: coords.lng,
+      duration: activity.timeDisplay ?? undefined,
+      admissionFee: activity.costDisplay ?? undefined,
+      website: activity.bookingUrl ?? undefined,
+    };
+  }, [selectedActivityId, selectedDay]);
+
+  const allPlacesFromDiscover = useMemo(
+    () => MOCK_DISCOVER_ACTIVITIES.map(discoverItemToPlaceItem),
+    [],
+  );
 
   if ((isLoading || isEmpty) && !calendarOpen && !mapOpen) {
     return <PageTransition><ItinerarySkeleton /></PageTransition>;
@@ -1639,6 +2006,8 @@ export default function ItineraryScreen() {
                     collapsed={collapsedSections[group.timeOfDay]}
                     onToggleCollapse={toggleSectionCollapse}
                     onAddActivity={handleAddActivity}
+                    onActivityPress={setSelectedActivityId}
+                    activityImages={activityImages}
                     colorOverride={itineraryColorOverrides[group.timeOfDay] ?? theme.itineraryColors[group.timeOfDay as keyof typeof theme.itineraryColors]}
                   />
                   {addingTo === group.timeOfDay && (
@@ -1703,17 +2072,29 @@ export default function ItineraryScreen() {
           )}
         </ScrollView>
 
-        {/* Map panel — below itinerary */}
-        {mapOpen && selectedDay && (
-          <DayMap
-            todayActivities={selectedDay.timeGroups.flatMap((g) => g.activities ?? [])}
-            allActivities={days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities ?? []))}
-            onClose={() => setMapOpen(false)}
-          />
-        )}
       </View>
       )}
     </View>
+
+      {/* Map modal — full screen like Places page */}
+      {mapOpen && selectedDay && (
+        <DayMap
+          todayActivities={selectedDay.timeGroups.flatMap((g) => g.activities ?? [])}
+          allActivities={days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities ?? []))}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
+
+      {/* Activity detail modal — map + card like Places page */}
+      {selectedPlace && (
+        <PlaceDetailModal
+          place={selectedPlace}
+          allPlaces={allPlacesFromDiscover}
+          onClose={() => setSelectedActivityId(null)}
+          favorites={favorites}
+          onToggleFav={toggleFavorite}
+        />
+      )}
     </PageTransition>
   );
 }

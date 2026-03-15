@@ -117,67 +117,19 @@ export default function OverviewScreen() {
   const allActivities = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities));
   const forecast = MOCK_WEATHER_FORECAST;
 
-  const stats = [
-    { icon: 'plane' as const, label: 'Flights', count: flights.length },
-    { icon: 'building-o' as const, label: 'Hotels', count: hotels.length },
-    { icon: 'calendar' as const, label: 'Itinerary', count: allActivities.length },
+  const totalDays = days.length;
+  const allStats = [
+    { icon: 'calendar' as const, count: totalDays, label: totalDays === 1 ? 'Day' : 'Days' },
+    { icon: 'users' as const, count: trip?.travelers ?? 0, label: (trip?.travelers ?? 0) === 1 ? 'Traveler' : 'Travelers' },
+    { icon: 'plane' as const, count: flights.length, label: flights.length === 1 ? 'Flight' : 'Flights' },
+    { icon: 'building-o' as const, count: hotels.length, label: hotels.length === 1 ? 'Hotel' : 'Hotels' },
   ];
+  const visibleStats = allStats.filter((s) => s.count > 0);
 
   return (
     <PageTransition>
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: 32 }}>
       <View style={{ padding: 16 }}>
-        {/* Trip info card */}
-        <LinearGradient
-          colors={[ACCENT, ACCENT]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 12, padding: 20, marginBottom: 16 }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <FontAwesome name="map-marker" size={16} color="#fff" />
-            {trip ? (
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{trip.destination}</Text>
-            ) : (
-              <SkeletonBlock width="50%" height={18} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <FontAwesome name="calendar" size={14} color="rgba(255,255,255,0.8)" />
-            {trip ? (
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>{trip.start_date} – {trip.end_date}</Text>
-            ) : (
-              <SkeletonBlock width="60%" height={14} style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} />
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <FontAwesome name="users" size={14} color="rgba(255,255,255,0.8)" />
-              {trip ? (
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>
-                  {trip.travelers} {trip.travelers === 1 ? 'Traveler' : 'Travelers'}
-                </Text>
-              ) : (
-                <SkeletonBlock width={80} height={14} style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} />
-              )}
-            </View>
-
-            {/* Inline stat pills */}
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              {stats.map((stat) => (
-                <View key={stat.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <FontAwesome name={stat.icon} size={11} color="rgba(255,255,255,0.9)" />
-                  {isLoading ? (
-                    <SkeletonBlock width={10} height={10} style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
-                  ) : (
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{stat.count}</Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          </View>
-        </LinearGradient>
-
-
         {/* ─── Current Weather Card ────────────────────────── */}
         <View style={{
           borderRadius: 12, padding: 14, marginBottom: 14,
@@ -225,58 +177,7 @@ export default function OverviewScreen() {
           </ScrollView>
         </View>
 
-        {/* ─── Things to Check Out ─────────────────────────── */}
-        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 10 }}>Things to Check Out</Text>
-        {MOCK_NEWS.map((item) => {
-          const config = NEWS_CATEGORY_CONFIG[item.category];
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => item.url && Linking.openURL(item.url)}
-              style={{
-                flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-                backgroundColor: colors.cardBackground, borderRadius: 12, padding: 12, marginBottom: 8,
-                borderWidth: 1, borderColor: colors.borderLight,
-              }}
-            >
-              <View style={{
-                width: 36, height: 36, borderRadius: 8,
-                backgroundColor: config.bg,
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                <FontAwesome name={config.icon as any} size={14} color={config.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <View style={{ backgroundColor: config.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: config.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      {config.label}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 9, color: colors.textTertiary }}>{item.source}</Text>
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text }} numberOfLines={2}>{item.title}</Text>
-                <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{item.snippet}</Text>
-              </View>
-              {item.url && (
-                <FontAwesome name="external-link" size={10} color={colors.border} style={{ marginTop: 4 }} />
-              )}
-            </Pressable>
-          );
-        })}
-
-        {/* ─── Trip Info ───────────────────────────────────── */}
-        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 10, marginTop: 8 }}>Trip Info</Text>
-
-
-        {/* Getting Around */}
-        <CollapsibleSection title="Getting Around" icon="bus" color={Sky[500]}>
-          {TRANSPORT_OPTIONS.map((t) => (
-            <InfoRow key={t.name} icon={t.icon} iconColor={t.iconColor} label={t.name} value={t.description} />
-          ))}
-        </CollapsibleSection>
-
-        {/* Emergency */}
+        {/* ─── Emergency Contacts ─────────────────────────── */}
         <CollapsibleSection title="Emergency Contacts" icon="phone" color={Red[500]}>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             {EMERGENCY_INFO.map((e) => (
@@ -300,14 +201,61 @@ export default function OverviewScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* Destination Tips */}
+        {/* ─── Getting Around ────────────────────────────────── */}
+        <CollapsibleSection title="Getting Around" icon="bus" color={Sky[500]}>
+          {TRANSPORT_OPTIONS.map((t) => (
+            <InfoRow key={t.name} icon={t.icon} iconColor={t.iconColor} label={t.name} value={t.description} />
+          ))}
+        </CollapsibleSection>
+
+        {/* ─── Destination Tips ──────────────────────────────── */}
         <CollapsibleSection title="Destination Tips" icon="lightbulb-o" color={Violet[500]}>
           {DESTINATION_TIPS.map((tip) => (
             <InfoRow key={tip.label} icon={tip.icon} iconColor={Violet[500]} label={tip.label} value={tip.value} />
           ))}
         </CollapsibleSection>
 
-        {/* Quick Links */}
+        {/* ─── Things to Check Out ───────────────────────────── */}
+        <CollapsibleSection title="Things to Check Out" icon="newspaper-o" color="#2563eb">
+          {MOCK_NEWS.map((item) => {
+            const config = NEWS_CATEGORY_CONFIG[item.category];
+            return (
+              <Pressable
+                key={item.id}
+                onPress={() => item.url && Linking.openURL(item.url)}
+                style={{
+                  flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+                  backgroundColor: config.bg + '40', borderRadius: 10, padding: 10, marginBottom: 6,
+                }}
+              >
+                <View style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  backgroundColor: config.bg,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <FontAwesome name={config.icon as any} size={13} color={config.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <View style={{ backgroundColor: config.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: config.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {config.label}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 9, color: colors.textTertiary }}>{item.source}</Text>
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text }} numberOfLines={2}>{item.title}</Text>
+                  <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{item.snippet}</Text>
+                </View>
+                {item.url && (
+                  <FontAwesome name="external-link" size={10} color={colors.border} style={{ marginTop: 4 }} />
+                )}
+              </Pressable>
+            );
+          })}
+        </CollapsibleSection>
+
+        {/* ─── Quick Links ───────────────────────────────────── */}
         <CollapsibleSection title="Quick Links" icon="external-link" color={ACCENT}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {QUICK_LINKS.map((link) => (

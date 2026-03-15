@@ -325,24 +325,12 @@ export default function SettingsScreen() {
             }}
             tabColors={theme.tabColors}
             tabColorOverrides={tabColorOverrides}
-            onTabColorChange={(tabName, color) => {
-              setTabColor(tabName, color);
-              setDirty(true);
-            }}
-            onResetTabColors={() => {
-              resetTabColors();
-              setDirty(true);
-            }}
+            onTabColorChange={(tabName, color) => { setTabColor(tabName, color); setDirty(true); }}
+            onResetTabColors={() => { resetTabColors(); setDirty(true); }}
             itineraryColors={theme.itineraryColors}
             itineraryColorOverrides={itineraryColorOverrides}
-            onItineraryColorChange={(section, color) => {
-              setItineraryColor(section, color);
-              setDirty(true);
-            }}
-            onResetItineraryColors={() => {
-              resetItineraryColors();
-              setDirty(true);
-            }}
+            onItineraryColorChange={(section, color) => { setItineraryColor(section, color); setDirty(true); }}
+            onResetItineraryColors={() => { resetItineraryColors(); setDirty(true); }}
           />
         </SettingsSection>
 
