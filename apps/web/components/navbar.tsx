@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, MapPin, Luggage, User, Settings, LogOut, Sun, Moon } from "lucide-react";
+import { Compass, MapPin, Luggage, User, LogOut, Sun, Moon } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { useAuthStore } from "@travyl/shared";
 
@@ -112,12 +112,12 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className={`flex items-center gap-0.5 sm:gap-1 text-[#1e3a5f] tracking-[1px] sm:tracking-[2px] transition-all duration-500 shrink-0 ${
+          className={`flex items-center gap-0.5 sm:gap-1 text-[#1e3a5f] transition-all duration-500 shrink-0 ${
             scrolled ? "text-lg sm:text-2xl" : "text-base sm:text-xl"
           }`}
-          style={{ fontFamily: 'var(--font-brand)', fontWeight: 800 }}
+          style={{ fontFamily: "'Satoshi', system-ui, sans-serif", fontWeight: 800 }}
         >
-          <span className="hidden sm:inline">TRAVYL</span>
+          <span className="hidden sm:inline">Travyl</span>
           <PaperPlane size={scrolled ? 28 : 24} className="transition-all duration-500" />
         </Link>
 
@@ -179,14 +179,6 @@ export default function Navbar() {
                     >
                       <User size={15} className="text-gray-400" />
                       Your Profile
-                    </Link>
-                    <Link
-                      href="/profile/settings"
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <Settings size={15} className="text-gray-400" />
-                      Settings
                     </Link>
                   </div>
 
