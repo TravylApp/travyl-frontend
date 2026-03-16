@@ -10,7 +10,7 @@ import { useAuthStore } from "@travyl/shared";
 const baseNavLinks = [
   { href: "/", label: "Discover", icon: Compass },
   { href: "/places", label: "Places", icon: MapPin },
-  { href: "/trips", label: "Trips", icon: Luggage },
+  { href: "/trips/calendar", label: "Trips", icon: Luggage },
 ];
 
 function getInitials(name: string | undefined): string {
