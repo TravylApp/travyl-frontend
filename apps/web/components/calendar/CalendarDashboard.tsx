@@ -20,6 +20,8 @@ import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { DetailPanel } from './DetailPanel'
+import { CalendarSkeleton } from './CalendarSkeleton'
+import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
 
 // ─── Date helpers ────────────────────────────────────────────
@@ -138,6 +140,8 @@ export function CalendarDashboard() {
     activities,
     collaborators,
     connectionStatus,
+    isLoading,
+    error,
     moveActivity,
     removeActivity,
   } = useYjsSync()
@@ -182,6 +186,10 @@ export function CalendarDashboard() {
     const scrollTop = Math.max(0, (firstEvent - timeRange.startHour - 0.5) * HOUR_HEIGHT)
     scrollRef.current.scrollTop = scrollTop
   }, []) // intentionally run once on mount
+
+  // Early returns for loading / error states (must come after all hooks)
+  if (isLoading) return <CalendarSkeleton />
+  if (error) return <CalendarError message={error} />
 
   // Event handlers
   const handleSelectEvent = (id: string) => {

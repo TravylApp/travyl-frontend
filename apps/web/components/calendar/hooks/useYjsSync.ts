@@ -20,6 +20,8 @@ interface UseYjsSyncReturn {
   activities: CalendarActivity[]
   collaborators: UserAwareness[]
   connectionStatus: ConnectionStatus
+  isLoading: boolean
+  error: string | null
   updateActivity: (id: string, patch: Partial<CalendarActivity>) => void
   moveActivity: (id: string, newDay: number, newStartHour: number) => void
   removeActivity: (id: string) => void
@@ -62,10 +64,17 @@ export function useYjsSync(): UseYjsSyncReturn {
     setActivities((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
+  // Stub: always false/null since we're using local state
+  // TODO: derive from y-supabase provider loading/error state
+  const isLoading = false
+  const error: string | null = null
+
   return {
     activities,
     collaborators,
     connectionStatus,
+    isLoading,
+    error,
     updateActivity,
     moveActivity,
     removeActivity,
