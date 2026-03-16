@@ -95,9 +95,9 @@ export function TripsTopBar() {
         {/* Left zone: back arrow + wordmark */}
         <div className="flex items-center gap-3 flex-1">
           <Link
-            href="/"
+            href="/trips"
             className="text-gray-500 hover:text-gray-900 transition-colors"
-            aria-label="Back to home"
+            aria-label="Back to trips"
           >
             <ArrowLeft size={18} />
           </Link>
