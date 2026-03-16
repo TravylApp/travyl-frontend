@@ -285,6 +285,16 @@ export interface CalendarActivity {
   rating?: number;
   price?: string;
   notes?: string;
+  /** Formatted time string e.g. "9:00 AM" */
+  startTime?: string;
+  /** Formatted time string e.g. "10:00 AM" */
+  endTime?: string;
+  /** Whether this activity appears on the calendar grid */
+  onCalendar?: boolean;
+  /** Parent activity id for nested/grouped activities */
+  parentId?: string;
+  /** Optional hex color override */
+  color?: string;
 }
 
 export interface UserAwareness {
@@ -295,7 +305,12 @@ export interface UserAwareness {
   isOnline: boolean;
   selectedEventId: string | null;
   currentView: ViewMode;
+  /** Legacy itinerary view — selected block id */
+  selectedBlockId?: string;
 }
+
+/** Alias for UserAwareness — used by legacy itinerary components */
+export type CollaboratorPresence = UserAwareness;
 
 export interface WeatherForecast {
   day: string;
