@@ -5,3 +5,4 @@ export { TripRouteHover } from './TripRouteHover';
 export { RouteMap } from './RouteMap';
 export { TripSpan } from './TripSpan';
 export { CalendarGrid } from './CalendarGrid';
+export { TripsTopBar } from './TripsTopBar';
