@@ -78,7 +78,7 @@ const FLIGHT_BANNERS: FlightBanner[] = MOCK_FLIGHTS.map((flight, idx) => {
 
   // Parse day from departureDisplay: "Mon, Mar 10, 8:30 PM"
   // Extract "Mar 10" portion and resolve to day offset from tripStartDate
-  const displayParts = flight.departureDisplay.split(',')
+  const displayParts = (flight.departureDisplay ?? '').split(',')
   // displayParts: ["Mon", " Mar 10", " 8:30 PM"]  or  ["Mon", " Mar 16", " 11:00 AM"]
   let dayIndex = 0
   if (displayParts.length >= 2) {

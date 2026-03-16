@@ -6,7 +6,6 @@ import {
   KeyboardSensor,
   DragEndEvent,
 } from '@dnd-kit/core'
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { HOUR_HEIGHT } from '../constants'
 import type { CalendarActivity } from '../types'
 
@@ -26,9 +25,7 @@ export function useCalendarDnd({ onMoveActivity }: UseCalendarDndOptions) {
         distance: 5,
       },
     }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    useSensor(KeyboardSensor),
   )
 
   const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
