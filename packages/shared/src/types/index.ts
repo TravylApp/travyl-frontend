@@ -271,6 +271,8 @@ export interface PlaceItem {
 
 // ─── Calendar / Weather ────────────────────────────────────
 
+export type ViewMode = 'week' | 'day'
+
 export interface CalendarActivity {
   id: string;
   title: string;
@@ -278,25 +280,21 @@ export interface CalendarActivity {
   day: number;
   startHour: number;
   duration: number;
-  startTime: string;
-  endTime: string;
   location?: string;
   image?: string;
   rating?: number;
   price?: string;
-  color: string;
-  onCalendar: boolean;
-  parentId?: string;
+  notes?: string;
 }
 
-export interface CollaboratorPresence {
+export interface UserAwareness {
   userId: string;
   name: string;
   avatarInitial: string;
   color: string;
-  cursor: { day: number; hour: number } | null;
-  selectedBlockId: string | null;
   isOnline: boolean;
+  selectedEventId: string | null;
+  currentView: ViewMode;
 }
 
 export interface WeatherForecast {
