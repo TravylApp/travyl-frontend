@@ -9,6 +9,7 @@ interface WeekViewProps {
   viewers?: UserAwareness[]
   selectedEventId?: string | null
   timeRange: TimeRange
+  tripStartDate: Date
   onSelectEvent: (id: string) => void
   onClickDayHeader?: (dayIndex: number) => void
 }
@@ -19,11 +20,18 @@ export function WeekView({
   viewers = [],
   selectedEventId = null,
   timeRange,
+  tripStartDate,
   onSelectEvent,
   onClickDayHeader,
 }: WeekViewProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      onSelectEvent('')
+    }
+  }
+
   return (
-    <div role="grid" className="flex flex-1 overflow-auto">
+    <div role="grid" className="flex flex-1 overflow-auto" onKeyDown={handleKeyDown}>
       <TimeGutter timeRange={timeRange} />
       <div className="flex flex-1 min-w-0">
         {days.map(({ dayIndex, label }) => {
@@ -37,6 +45,7 @@ export function WeekView({
               viewers={viewers}
               selectedEventId={selectedEventId}
               timeRange={timeRange}
+              tripStartDate={tripStartDate}
               onSelectEvent={onSelectEvent}
               onClickDayHeader={
                 onClickDayHeader ? () => onClickDayHeader(dayIndex) : undefined

@@ -282,6 +282,7 @@ export function CalendarDashboard() {
                       viewers={collaborators}
                       selectedEventId={selectedEventId}
                       timeRange={timeRange}
+                      tripStartDate={tripStartDate}
                       onSelectEvent={handleSelectEvent}
                       onClickDayHeader={handleClickDayHeader}
                     />
@@ -302,6 +303,7 @@ export function CalendarDashboard() {
                       viewers={collaborators}
                       selectedEventId={selectedEventId}
                       timeRange={timeRange}
+                      tripStartDate={tripStartDate}
                       onSelectEvent={handleSelectEvent}
                     />
                   </motion.div>

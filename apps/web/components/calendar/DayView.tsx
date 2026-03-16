@@ -10,6 +10,7 @@ interface DayViewProps {
   viewers?: UserAwareness[]
   selectedEventId?: string | null
   timeRange: TimeRange
+  tripStartDate: Date
   onSelectEvent: (id: string) => void
 }
 
@@ -20,6 +21,7 @@ export function DayView({
   viewers = [],
   selectedEventId = null,
   timeRange,
+  tripStartDate,
   onSelectEvent,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
@@ -35,6 +37,7 @@ export function DayView({
           viewers={viewers}
           selectedEventId={selectedEventId}
           timeRange={timeRange}
+          tripStartDate={tripStartDate}
           onSelectEvent={onSelectEvent}
           onClickDayHeader={undefined}
         />

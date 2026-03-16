@@ -11,8 +11,46 @@ interface DayColumnProps {
   viewers?: UserAwareness[]
   selectedEventId?: string | null
   timeRange: TimeRange
+  tripStartDate: Date
   onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
+}
+
+function CurrentTimeIndicator({
+  dayIndex,
+  tripStartDate,
+  timeRange,
+}: {
+  dayIndex: number
+  tripStartDate: Date
+  timeRange: TimeRange
+}) {
+  const now = new Date()
+  // Compute the UTC date for this column
+  const columnDate = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
+  const isToday =
+    now.getUTCFullYear() === columnDate.getUTCFullYear() &&
+    now.getUTCMonth() === columnDate.getUTCMonth() &&
+    now.getUTCDate() === columnDate.getUTCDate()
+
+  if (!isToday) return null
+
+  const currentHour = now.getHours() + now.getMinutes() / 60
+  const top = (currentHour - timeRange.startHour) * HOUR_HEIGHT
+
+  if (top < 0 || top > (timeRange.endHour - timeRange.startHour) * HOUR_HEIGHT) return null
+
+  return (
+    <div
+      className="absolute left-0 right-0 pointer-events-none z-10"
+      style={{ top }}
+    >
+      <div className="relative flex items-center">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 -ml-1.5" />
+        <div className="flex-1 h-px bg-red-500" />
+      </div>
+    </div>
+  )
 }
 
 export function DayColumn({
@@ -22,6 +60,7 @@ export function DayColumn({
   viewers = [],
   selectedEventId = null,
   timeRange,
+  tripStartDate,
   onSelectEvent,
   onClickDayHeader,
 }: DayColumnProps) {
@@ -99,6 +138,13 @@ export function DayColumn({
             timeRangeStartHour={timeRange.startHour}
           />
         ))}
+
+        {/* Current time indicator */}
+        <CurrentTimeIndicator
+          dayIndex={dayIndex}
+          tripStartDate={tripStartDate}
+          timeRange={timeRange}
+        />
       </div>
     </div>
   )
