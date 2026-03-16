@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Settings, Camera, LayoutGrid, Globe2, Heart, MapPin, Search, CalendarDays } from 'lucide-react';
+import { Camera, LayoutGrid, Globe2, Heart, MapPin, Search, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 const ResponsiveMasonry = dynamic(
   () => import('react-responsive-masonry').then((m) => m.ResponsiveMasonry),
@@ -142,12 +141,6 @@ function ProfileContent({
       {/* Profile Header */}
       <div className="bg-[#1e3a5f]">
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-5 pb-0">
-          <div className="flex justify-end mb-2">
-            <Link href="/profile/settings" className="flex items-center gap-1.5 text-[12px] text-white/40 hover:text-white/60 transition-colors">
-              <Settings size={14} /> Settings
-            </Link>
-          </div>
-
           <div className="flex flex-col items-center">
             <div className="relative mb-3">
               <div className="w-[88px] h-[88px] rounded-full overflow-hidden border-3 border-white/20 bg-[#2a4d78] flex items-center justify-center">
