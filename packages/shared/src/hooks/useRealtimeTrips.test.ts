@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mocks must be declared before imports
 vi.mock('../stores/authStore', () => ({
@@ -11,28 +11,14 @@ vi.mock('../services/api', () => ({
   fetchTrips: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('yjs', () => ({
-  Doc: vi.fn().mockImplementation(() => ({
-    getMap: vi.fn().mockReturnValue({
-      set: vi.fn(),
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      forEach: vi.fn(),
+vi.mock('../services/supabase', () => ({
+  supabase: {
+    channel: vi.fn().mockReturnValue({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn().mockReturnThis(),
     }),
-    destroy: vi.fn(),
-    transact: vi.fn((fn: () => void) => fn()),
-  })),
-  Map: vi.fn().mockImplementation(() => ({
-    set: vi.fn(),
-    get: vi.fn(),
-  })),
-}));
-
-vi.mock('y-supabase', () => ({
-  // y-supabase uses a default export
-  default: vi.fn().mockImplementation(() => ({
-    destroy: vi.fn(),
-  })),
+    removeChannel: vi.fn(),
+  },
 }));
 
 import { renderHook, waitFor } from '@testing-library/react';

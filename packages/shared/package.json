@@ -13,8 +13,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.0.0",
-    "y-supabase": "^0.0.4-7-alpha",
-    "yjs": "^13.6.30",
     "zod": "^3.23.0",
     "zustand": "^5.0.0"
   },
