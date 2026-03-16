@@ -1,154 +1,210 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useMonthState } from '@/contexts/MonthStateContext';
-import { TripSpan } from './TripSpan';
-import { buildWeeks, buildWeekLayout, toDateStr, type WeekLayout } from '@/utils/calendarUtils';
+import { useRouter } from 'next/navigation';
+import { useWeekState } from '@/contexts/WeekStateContext';
+import { buildWeekLayout, toDateStr } from '@/utils/calendarUtils';
+import { resolveTheme } from '@travyl/shared';
 import type { CalendarTrip } from '@travyl/shared';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const STATUS_COLORS: Record<string, string> = {
+  planning: '#9CA3AF',
+  booked: '#F59E0B',
+  active: '#10B981',
+  completed: '#003594',
+  abandoned: '#EF4444',
+};
 
 interface CalendarGridProps {
   trips: CalendarTrip[];
 }
 
 export function CalendarGrid({ trips }: CalendarGridProps) {
-  const { monthState } = useMonthState();
-  const { year, month } = monthState;
+  const { weekStart } = useWeekState();
   const todayStr = useMemo(() => toDateStr(new Date()), []);
-  const weeks = useMemo(() => buildWeeks(year, month), [year, month]);
+
+  const week = useMemo<Date[]>(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [weekStart]);
+
+  const weekStartStr = toDateStr(week[0]);
+  const weekEndStr = toDateStr(week[6]);
+
+  const layout = useMemo(() => buildWeekLayout(trips, week), [trips, week]);
+
+  // Group trips by slot index for rendering
+  const slots = useMemo<CalendarTrip[][]>(() => {
+    const arr: CalendarTrip[][] = Array.from({ length: layout.totalSlots }, () => []);
+    layout.weekTrips.forEach((trip) => {
+      const slotIdx = layout.tripSlots.get(trip.id) ?? 0;
+      arr[slotIdx].push(trip);
+    });
+    return arr;
+  }, [layout]);
 
   return (
-    <div className="w-full border-l border-t border-gray-100">
+    <div className="flex flex-col bg-white" style={{ height: 'calc(100vh - 48px)' }}>
       {/* Day-of-week header */}
-      <div className="grid grid-cols-7 bg-white">
-        {DAY_NAMES.map((name) => (
-          <div
-            key={name}
-            className="py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-b border-gray-100"
-          >
-            {name}
-          </div>
-        ))}
+      <div className="grid grid-cols-7 border-b border-gray-200 shrink-0">
+        {week.map((day, i) => {
+          const isToday = toDateStr(day) === todayStr;
+          return (
+            <div
+              key={i}
+              className={[
+                'flex flex-col items-center py-3',
+                isToday ? 'bg-blue-50/50' : '',
+                i < 6 ? 'border-r border-gray-100' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                {DAY_NAMES[day.getDay()]}
+              </span>
+              <span
+                className={[
+                  'mt-1 w-9 h-9 flex items-center justify-center rounded-full text-[15px] font-semibold',
+                  isToday ? 'bg-[#003594] text-white' : 'text-gray-800',
+                ].join(' ')}
+              >
+                {day.getDate()}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Week rows */}
-      {weeks.map((week, weekIdx) => {
-        const layout = buildWeekLayout(trips, week);
-        const slotIndices = Array.from({ length: layout.totalSlots }, (_, i) => i);
-        return (
-          <div key={weekIdx} className="grid grid-cols-7">
-            {week.map((day, dayIdx) => (
-              <DayCell
-                key={toDateStr(day)}
-                day={day}
-                dayStr={toDateStr(day)}
-                month={month}
-                todayStr={todayStr}
-                isLastCol={dayIdx === 6}
-                isLastRow={weekIdx === weeks.length - 1}
-                layout={layout}
-                slotIndices={slotIndices}
+      {/* Trip area — scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="relative min-h-full">
+          {/* Vertical column guides */}
+          <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
+            {week.map((day, i) => (
+              <div
+                key={i}
+                className={[
+                  i < 6 ? 'border-r border-gray-100' : '',
+                  toDateStr(day) === todayStr ? 'bg-blue-50/20' : '',
+                ].filter(Boolean).join(' ')}
               />
             ))}
           </div>
-        );
-      })}
+
+          {/* Trips or empty state */}
+          <div className="relative px-1 pt-3 pb-8 flex flex-col gap-1.5">
+            {slots.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <svg
+                  className="w-12 h-12 text-gray-200 mb-4"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <rect x="6" y="10" width="36" height="32" rx="4" />
+                  <path d="M6 18h36M16 6v8M32 6v8" />
+                </svg>
+                <p className="text-sm font-medium text-gray-400">No trips this week</p>
+                <p className="text-xs text-gray-300 mt-1">Navigate to another week or create a trip</p>
+              </div>
+            ) : (
+              slots.map((slotTrips, slotIdx) => (
+                <TripRow
+                  key={slotIdx}
+                  trips={slotTrips}
+                  week={week}
+                  weekStartStr={weekStartStr}
+                  weekEndStr={weekEndStr}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-interface DayCellProps {
-  day: Date;
-  dayStr: string;
-  month: number;
-  todayStr: string;
-  isLastCol: boolean;
-  isLastRow: boolean;
-  layout: WeekLayout;
-  slotIndices: number[];
+interface TripRowProps {
+  trips: CalendarTrip[];
+  week: Date[];
+  weekStartStr: string;
+  weekEndStr: string;
 }
 
-function DayCell({
-  day,
-  dayStr,
-  month,
-  todayStr,
-  isLastCol,
-  isLastRow,
-  layout,
-  slotIndices,
-}: DayCellProps) {
-  const isCurrentMonth = day.getMonth() === month;
-  const isToday = dayStr === todayStr;
+function TripRow({ trips, week, weekStartStr, weekEndStr }: TripRowProps) {
+  return (
+    <div className="grid grid-cols-7 h-8">
+      {trips.map((trip) => (
+        <TripBar
+          key={trip.id}
+          trip={trip}
+          week={week}
+          weekStartStr={weekStartStr}
+          weekEndStr={weekEndStr}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface TripBarProps {
+  trip: CalendarTrip;
+  week: Date[];
+  weekStartStr: string;
+  weekEndStr: string;
+}
+
+function TripBar({ trip, week, weekStartStr, weekEndStr }: TripBarProps) {
+  const router = useRouter();
+  const bgColor = resolveTheme(trip.theme, trip.custom_theme_color).base;
+  const statusColor = STATUS_COLORS[trip.status] ?? '#9CA3AF';
+
+  const isContinued = trip.start_date < weekStartStr;
+  const continues = trip.end_date > weekEndStr;
+
+  const startIdx = isContinued
+    ? 0
+    : week.findIndex((d) => toDateStr(d) === trip.start_date);
+  const endIdx = continues
+    ? 6
+    : week.findIndex((d) => toDateStr(d) === trip.end_date);
+
+  // CSS grid is 1-indexed; end is exclusive
+  const colStart = startIdx + 1;
+  const colEnd = endIdx + 2;
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push('/trip/' + trip.id)}
+      onKeyDown={(e) => e.key === 'Enter' && router.push('/trip/' + trip.id)}
+      style={{ gridColumn: `${colStart} / ${colEnd}`, backgroundColor: bgColor }}
       className={[
-        'border-r border-b border-gray-100 min-h-[80px] pt-1 pb-1',
-        isLastCol ? 'border-r-0' : '',
-        isLastRow ? 'border-b-0' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+        'h-8 flex items-center px-2 cursor-pointer hover:opacity-90 transition-opacity overflow-hidden',
+        !isContinued ? 'rounded-l-[4px]' : '',
+        !continues ? 'rounded-r-[4px]' : '',
+      ].filter(Boolean).join(' ')}
     >
-      {/* Date number */}
-      <div className="flex items-start pl-1.5 mb-1">
-        {isToday ? (
-          <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#003594] text-white text-sm font-medium">
-            {day.getDate()}
-          </span>
-        ) : (
-          <span
-            className={`text-sm font-medium ${
-              isCurrentMonth ? 'text-gray-700' : 'text-gray-700/30'
-            }`}
-          >
-            {day.getDate()}
-          </span>
-        )}
-      </div>
-
-      {/* Trip spans — one row per slot; empty spacer when no trip in that slot */}
-      <div className="flex flex-col gap-[2px] px-0.5">
-        {slotIndices.map((slotIdx) => {
-          // Outside-month cells: show no trip spans (only empty spacers to preserve row height)
-          if (!isCurrentMonth) {
-            return <div key={slotIdx} className="h-[22px]" />;
-          }
-
-          const trip = layout.weekTrips.find(
-            (t) =>
-              layout.tripSlots.get(t.id) === slotIdx &&
-              t.start_date <= dayStr &&
-              t.end_date >= dayStr
-          );
-
-          if (!trip) {
-            return <div key={slotIdx} className="h-[22px]" />;
-          }
-
-          const isContinued = trip.start_date < layout.weekStartStr;
-          const continues = trip.end_date > layout.weekEndStr;
-
-          // First day of this trip's segment within this row
-          const firstDayInRow = isContinued ? layout.weekStartStr : trip.start_date;
-          // Last day of this trip's segment within this row
-          const lastDayInRow = continues ? layout.weekEndStr : trip.end_date;
-
-          return (
-            <TripSpan
-              key={trip.id}
-              trip={trip}
-              showLabel={dayStr === firstDayInRow}
-              roundedLeft={dayStr === firstDayInRow && !isContinued}
-              roundedRight={dayStr === lastDayInRow && !continues}
-              isContinued={dayStr === firstDayInRow && isContinued}
-              continues={dayStr === lastDayInRow && continues}
-            />
-          );
-        })}
-      </div>
+      {isContinued && (
+        <span className="text-[10px] text-white/60 mr-1 shrink-0">‹</span>
+      )}
+      <span className="text-xs font-medium text-white flex-1 truncate">
+        {trip.title}
+      </span>
+      <span
+        className="w-2 h-2 rounded-full shrink-0 ml-1.5"
+        style={{ backgroundColor: statusColor }}
+      />
+      {continues && (
+        <span className="text-[10px] text-white/60 ml-1 shrink-0">›</span>
+      )}
     </div>
   );
 }

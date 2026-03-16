@@ -1,4 +1,4 @@
-import { MonthStateProvider } from '@/contexts/MonthStateContext';
+import { WeekStateProvider } from '@/contexts/WeekStateContext';
 import { PaletteOpenProvider } from '@/contexts/PaletteOpenContext';
 import { RealtimeTripsProvider } from '@/contexts/RealtimeTripsContext';
 import { TripsTopBar } from '@/components/trips/TripsTopBar';
@@ -6,7 +6,7 @@ import { TripCommandPalette } from '@/components/trips/TripCommandPalette';
 
 export default function TripsAppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <MonthStateProvider>
+    <WeekStateProvider>
       <PaletteOpenProvider>
         <RealtimeTripsProvider>
           <TripsTopBar />
@@ -14,6 +14,6 @@ export default function TripsAppLayout({ children }: { children: React.ReactNode
           <main className="pt-12">{children}</main>
         </RealtimeTripsProvider>
       </PaletteOpenProvider>
-    </MonthStateProvider>
+    </WeekStateProvider>
   );
 }

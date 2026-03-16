@@ -4,14 +4,23 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useMonthState } from '@/contexts/MonthStateContext';
+import { useWeekState } from '@/contexts/WeekStateContext';
 import { usePaletteOpen } from '@/contexts/PaletteOpenContext';
 import { useAuthStore, supabase } from '@travyl/shared';
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatWeekRange(weekStart: Date): string {
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const sm = SHORT_MONTHS[weekStart.getMonth()];
+  const em = SHORT_MONTHS[weekEnd.getMonth()];
+  const year = weekEnd.getFullYear();
+  if (weekStart.getMonth() === weekEnd.getMonth()) {
+    return `${sm} ${weekStart.getDate()} – ${weekEnd.getDate()}, ${year}`;
+  }
+  return `${sm} ${weekStart.getDate()} – ${em} ${weekEnd.getDate()}, ${year}`;
+}
 
 interface PresenceUser {
   user_id: string;
@@ -28,7 +37,7 @@ function getInitials(name: string | null): string {
 }
 
 export function TripsTopBar() {
-  const { monthState, prevMonth, nextMonth, goToToday } = useMonthState();
+  const { weekStart, prevWeek, nextWeek, goToToday } = useWeekState();
   const { open: openPalette } = usePaletteOpen();
   const user = useAuthStore((s) => s.user);
   const [presentUsers, setPresentUsers] = useState<PresenceUser[]>([]);
@@ -100,25 +109,25 @@ export function TripsTopBar() {
           </span>
         </div>
 
-        {/* Center zone: month navigation controls */}
+        {/* Center zone: week navigation controls */}
         <div className="flex items-center gap-1.5">
           <button
-            onClick={prevMonth}
+            onClick={prevWeek}
             className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600"
-            aria-label="Previous month"
+            aria-label="Previous week"
           >
             <ChevronLeft size={16} />
           </button>
           <span
-            className="text-sm font-medium text-gray-900 min-w-[152px] text-center select-none"
+            className="text-sm font-medium text-gray-900 min-w-[192px] text-center select-none"
             style={{ fontFamily: 'Lustria, Georgia, serif' }}
           >
-            {MONTH_NAMES[monthState.month]} {monthState.year}
+            {formatWeekRange(weekStart)}
           </span>
           <button
-            onClick={nextMonth}
+            onClick={nextWeek}
             className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600"
-            aria-label="Next month"
+            aria-label="Next week"
           >
             <ChevronRight size={16} />
           </button>
