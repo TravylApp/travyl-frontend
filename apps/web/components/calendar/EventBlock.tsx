@@ -53,6 +53,8 @@ export function EventBlock({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       role="gridcell"
       tabIndex={0}
       aria-label={`${activity.title}, ${formatTimeRange(activity)}`}
@@ -66,8 +68,6 @@ export function EventBlock({
       ].join(' ')}
       onClick={() => onSelect(activity.id)}
       onKeyDown={handleKeyDown}
-      {...listeners}
-      {...attributes}
     >
       <span className="font-semibold truncate leading-tight">{activity.title}</span>
       <span className="opacity-80 truncate">{formatTimeRange(activity)}</span>
