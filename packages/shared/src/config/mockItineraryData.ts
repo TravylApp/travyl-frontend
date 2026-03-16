@@ -1,6 +1,6 @@
 import type { ItineraryDayViewModel, TimeGroup, ActivityViewModel, FlightViewModel, HotelViewModel } from '../viewmodels/itineraryViewModel';
 import type { BudgetSummary } from '../viewmodels/budgetViewModel';
-import type { Trip, BudgetItem, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, CollaboratorPresence } from '../types';
+import type { Trip, BudgetItem, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
 
 // ─── Mock Activities ────────────────────────────────────────
 
@@ -1118,67 +1118,27 @@ export const MOCK_HOTEL_DETAIL: MockHotelDetail = {
 
 // ─── Calendar View Activities ─────────────────────────────
 
-const CAL_COLORS: Record<string, string> = {
-  sightseeing: '#3b82f6',
-  tour: '#8b5cf6',
-  dining: '#f59e0b',
-  cultural: '#6366f1',
-  shopping: '#ec4899',
-  nightlife: '#a855f7',
-  outdoor: '#10b981',
-  museum: '#6366f1',
-  event: '#ef4444',
-};
-
 export const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [
-  // Day 0
-  { id: 'cal-1', title: 'Visit the Eiffel Tower', type: 'sightseeing', day: 0, startHour: 9, duration: 2, startTime: '9:00 AM', endTime: '11:00 AM', location: 'Champ de Mars', image: 'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=400', rating: 4.9, price: '$25', color: CAL_COLORS.sightseeing, onCalendar: true },
-  { id: 'cal-2', title: 'Seine River Cruise', type: 'tour', day: 0, startHour: 10.5, duration: 1.5, startTime: '10:30 AM', endTime: '12:00 PM', location: 'Port de la Bourdonnais', image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400', rating: 4.7, price: '$18', color: CAL_COLORS.tour, onCalendar: true },
-  { id: 'cal-3', title: 'Lunch at Le Comptoir', type: 'dining', day: 0, startHour: 12.5, duration: 1.5, startTime: '12:30 PM', endTime: '2:00 PM', location: 'Saint-Germain-des-Prés', rating: 4.6, price: '$45', color: CAL_COLORS.dining, onCalendar: true },
-  { id: 'cal-4', title: 'Louvre Museum', type: 'cultural', day: 0, startHour: 14.5, duration: 2.5, startTime: '2:30 PM', endTime: '5:00 PM', location: 'Rue de Rivoli', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400', rating: 4.8, price: '$17', color: CAL_COLORS.cultural, onCalendar: true },
-  { id: 'cal-5', title: 'Dinner at Le Jules Verne', type: 'dining', day: 0, startHour: 19.5, duration: 2, startTime: '7:30 PM', endTime: '9:30 PM', location: 'Eiffel Tower, 2nd Floor', rating: 4.9, price: '$120', color: CAL_COLORS.dining, onCalendar: true },
-  { id: 'cal-6', title: 'Montmartre Night Walk', type: 'nightlife', day: 0, startHour: 21.5, duration: 1.5, startTime: '9:30 PM', endTime: '11:00 PM', location: 'Sacré-Cœur', color: CAL_COLORS.nightlife, onCalendar: true },
-  // Day 1 — Disneyland day (parent + sub-activities are at the end of the array)
-  // Day 2
-  { id: 'cal-10', title: "Musée d'Orsay", type: 'museum', day: 2, startHour: 10, duration: 2.5, startTime: '10:00 AM', endTime: '12:30 PM', location: "Esplanade Valéry Giscard d'Estaing", image: 'https://images.unsplash.com/photo-1591289009723-aef0a1a8a211?w=400', rating: 4.8, price: '$16', color: CAL_COLORS.museum, onCalendar: true },
-  { id: 'cal-11', title: 'Le Marais Food Tour', type: 'tour', day: 2, startHour: 13, duration: 3, startTime: '1:00 PM', endTime: '4:00 PM', location: 'Le Marais', rating: 4.8, price: '$89', color: CAL_COLORS.tour, onCalendar: true },
-  { id: 'cal-12', title: 'Seine Jazz Cruise', type: 'event', day: 2, startHour: 19, duration: 2, startTime: '7:00 PM', endTime: '9:00 PM', location: 'Port de la Bourdonnais', rating: 4.7, price: '$55', color: CAL_COLORS.event, onCalendar: true },
-  // Off-calendar (for explore sidebar)
-  { id: 'cal-13', title: 'Catacombs Tour', type: 'sightseeing', day: -1, startHour: 10, duration: 1.5, startTime: '10:00 AM', endTime: '11:30 AM', location: 'Avenue du Colonel Henri', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400', rating: 4.6, price: '$29', color: CAL_COLORS.sightseeing, onCalendar: false },
-  { id: 'cal-14', title: 'Luxembourg Gardens Walk', type: 'outdoor', day: -1, startHour: 14, duration: 1.5, startTime: '2:00 PM', endTime: '3:30 PM', location: 'Jardin du Luxembourg', image: 'https://images.unsplash.com/photo-1555992457-b8fefdd09699?w=400', rating: 4.5, price: 'Free', color: CAL_COLORS.outdoor, onCalendar: false },
-  { id: 'cal-15', title: 'Moulin Rouge Show', type: 'event', day: -1, startHour: 21, duration: 2.5, startTime: '9:00 PM', endTime: '11:30 PM', location: 'Boulevard de Clichy', image: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400', rating: 4.6, price: '$185', color: CAL_COLORS.event, onCalendar: false },
-  { id: 'cal-16', title: 'Wine Tasting at Galeries Lafayette', type: 'event', day: -1, startHour: 17, duration: 1.5, startTime: '5:00 PM', endTime: '6:30 PM', location: 'Boulevard Haussmann', image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400', rating: 4.8, price: '$45', color: CAL_COLORS.event, onCalendar: false },
-  { id: 'cal-17', title: 'Montmartre Art Tour', type: 'tour', day: -1, startHour: 10, duration: 2, startTime: '10:00 AM', endTime: '12:00 PM', location: 'Sacré-Cœur, Montmartre', image: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=400', rating: 4.7, price: '$25', color: CAL_COLORS.tour, onCalendar: false },
-  { id: 'cal-18', title: 'Pastry Masterclass', type: 'dining', day: -1, startHour: 9, duration: 3, startTime: '9:00 AM', endTime: '12:00 PM', location: 'Le Cordon Bleu', image: 'https://images.unsplash.com/photo-1483695028939-5bb13f8648b0?w=400', rating: 4.8, price: '$99', color: CAL_COLORS.dining, onCalendar: false },
-  // ── Disneyland Paris (parent block, Day 1) ──
-  { id: 'cal-disney', title: 'Disneyland Paris', type: 'event', day: 1, startHour: 9, duration: 12, startTime: '9:00 AM', endTime: '9:00 PM', location: 'Disneyland Paris, Marne-la-Vallée', image: 'https://images.unsplash.com/photo-1587162146766-e06b1189b907?w=800', rating: 4.8, price: '$110', color: CAL_COLORS.event, onCalendar: true },
-  // ── Disneyland sub-activities ──
-  { id: 'cal-disney-1', title: 'Space Mountain', type: 'sightseeing', day: 1, startHour: 9.5, duration: 1, startTime: '9:30 AM', endTime: '10:30 AM', location: 'Discoveryland', rating: 4.9, color: CAL_COLORS.sightseeing, onCalendar: true, parentId: 'cal-disney' },
-  { id: 'cal-disney-2', title: 'Pirates of the Caribbean', type: 'sightseeing', day: 1, startHour: 11, duration: 0.75, startTime: '11:00 AM', endTime: '11:45 AM', location: 'Adventureland', rating: 4.7, color: CAL_COLORS.sightseeing, onCalendar: true, parentId: 'cal-disney' },
-  { id: 'cal-disney-3', title: 'Lunch at Café Hyperion', type: 'dining', day: 1, startHour: 12.5, duration: 1, startTime: '12:30 PM', endTime: '1:30 PM', location: 'Discoveryland', rating: 4.3, price: '$25', color: CAL_COLORS.dining, onCalendar: true, parentId: 'cal-disney' },
-  { id: 'cal-disney-4', title: 'Big Thunder Mountain', type: 'sightseeing', day: 1, startHour: 14, duration: 0.75, startTime: '2:00 PM', endTime: '2:45 PM', location: 'Frontierland', rating: 4.8, color: CAL_COLORS.sightseeing, onCalendar: true, parentId: 'cal-disney' },
-  { id: 'cal-disney-5', title: 'Disney Illuminations', type: 'event', day: 1, startHour: 20, duration: 0.75, startTime: '8:00 PM', endTime: '8:45 PM', location: 'Main Street U.S.A.', rating: 4.9, color: CAL_COLORS.event, onCalendar: true, parentId: 'cal-disney' },
-
-  // ── Day 4 — Hidden Gems ──
-  { id: 'cal-20', title: 'Père Lachaise Cemetery', type: 'sightseeing', day: 3, startHour: 9, duration: 2, startTime: '9:00 AM', endTime: '11:00 AM', location: 'Boulevard de Ménilmontant', image: 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=400', rating: 4.5, price: 'Free', color: CAL_COLORS.sightseeing, onCalendar: true },
-  { id: 'cal-21', title: 'Canal Saint-Martin Stroll', type: 'outdoor', day: 3, startHour: 11.5, duration: 1.5, startTime: '11:30 AM', endTime: '1:00 PM', location: 'Canal Saint-Martin', image: 'https://images.unsplash.com/photo-1549144511-f099e773c147?w=400', rating: 4.4, price: 'Free', color: CAL_COLORS.outdoor, onCalendar: true },
-  { id: 'cal-22', title: 'Lunch at Pink Mamma', type: 'dining', day: 3, startHour: 13, duration: 1.5, startTime: '1:00 PM', endTime: '2:30 PM', location: '20bis Rue de la Folie-Méricourt', rating: 4.6, price: '$35', color: CAL_COLORS.dining, onCalendar: true },
-  { id: 'cal-23', title: 'Sainte-Chapelle Visit', type: 'cultural', day: 3, startHour: 15, duration: 1.5, startTime: '3:00 PM', endTime: '4:30 PM', location: 'Île de la Cité', image: 'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=400', rating: 4.9, price: '$13', color: CAL_COLORS.cultural, onCalendar: true },
-  { id: 'cal-24', title: 'Rooftop Drinks at Le Perchoir', type: 'nightlife', day: 3, startHour: 18, duration: 2, startTime: '6:00 PM', endTime: '8:00 PM', location: 'Le Perchoir Ménilmontant', rating: 4.3, price: '$20', color: CAL_COLORS.nightlife, onCalendar: true },
-
-  // ── Day 5 — Departure ──
-  { id: 'cal-25', title: 'Breakfast at Café de Flore', type: 'dining', day: 4, startHour: 8, duration: 1.5, startTime: '8:00 AM', endTime: '9:30 AM', location: 'Boulevard Saint-Germain', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400', rating: 4.7, price: '$22', color: CAL_COLORS.dining, onCalendar: true },
-  { id: 'cal-26', title: 'Hotel Checkout', type: 'hotel', day: 4, startHour: 10, duration: 1, startTime: '10:00 AM', endTime: '11:00 AM', location: 'Hôtel Le Marais', color: CAL_COLORS.hotel, onCalendar: true },
-  { id: 'cal-27', title: 'Transfer to CDG Airport', type: 'transport', day: 4, startHour: 13, duration: 1.5, startTime: '1:00 PM', endTime: '2:30 PM', location: 'Charles de Gaulle Airport', color: CAL_COLORS.transport, onCalendar: true },
+  { id: 'cal-1', title: 'Eiffel Tower', type: 'sightseeing', day: 0, startHour: 9, duration: 2, location: 'Champ de Mars', rating: 4.7, price: '$26.10' },
+  { id: 'cal-2', title: 'Lunch: Le Marais', type: 'dining', day: 0, startHour: 12, duration: 1.5, location: 'Le Marais District' },
+  { id: 'cal-3', title: 'Louvre Museum', type: 'museum', day: 0, startHour: 15, duration: 3, location: 'Rue de Rivoli', rating: 4.8, price: '$17.00' },
+  { id: 'cal-4', title: 'Montmartre Walk', type: 'outdoor', day: 1, startHour: 9.5, duration: 2, location: 'Montmartre' },
+  { id: 'cal-5', title: 'Cooking Class', type: 'cultural', day: 1, startHour: 14, duration: 3, location: 'Le Foodist', price: '$85.00' },
+  { id: 'cal-6', title: 'Dinner: Le Comptoir', type: 'dining', day: 1, startHour: 19.5, duration: 2, location: 'Saint-Germain' },
+  { id: 'cal-7', title: 'Versailles Day Trip', type: 'tour', day: 2, startHour: 8, duration: 5, location: 'Palace of Versailles', price: '$20.00' },
+  { id: 'cal-8', title: 'Seine River Cruise', type: 'sightseeing', day: 2, startHour: 18, duration: 1.5, location: 'Pont Neuf', price: '$15.00' },
+  { id: 'cal-9', title: "Musée d'Orsay", type: 'museum', day: 3, startHour: 10, duration: 2.5, location: "1 Rue de la Légion d'Honneur", rating: 4.7, price: '$16.00' },
+  { id: 'cal-10', title: 'Luxembourg Gardens', type: 'outdoor', day: 3, startHour: 14, duration: 1.5, location: '6th Arrondissement' },
+  { id: 'cal-11', title: 'Shopping: Le Bon Marché', type: 'shopping', day: 4, startHour: 10, duration: 2, location: '24 Rue de Sèvres' },
+  { id: 'cal-12', title: 'Farewell Dinner', type: 'dining', day: 4, startHour: 19, duration: 2.5, location: 'Le Jules Verne', price: '$150.00' },
 ];
 
 // ─── Mock Collaborators ─────────────────────────────────
 
-export const MOCK_COLLABORATORS: CollaboratorPresence[] = [
-  { userId: 'user-1', name: 'You', avatarInitial: 'Y', color: '#3b82f6', cursor: null, selectedBlockId: null, isOnline: true },
-  { userId: 'user-2', name: 'Sarah', avatarInitial: 'S', color: '#a855f7', cursor: { day: 0, hour: 10 }, selectedBlockId: 'cal-2', isOnline: true },
-  { userId: 'user-3', name: 'Marcus', avatarInitial: 'M', color: '#10b981', cursor: { day: 2, hour: 14 }, selectedBlockId: null, isOnline: true },
-  { userId: 'user-4', name: 'Elena', avatarInitial: 'E', color: '#f59e0b', cursor: null, selectedBlockId: null, isOnline: false },
+export const MOCK_COLLABORATORS: UserAwareness[] = [
+  { userId: 'user-1', name: 'Justin', avatarInitial: 'J', color: '#4a7dff', isOnline: true, selectedEventId: 'cal-1', currentView: 'week' },
+  { userId: 'user-2', name: 'Sarah', avatarInitial: 'S', color: '#e67e22', isOnline: true, selectedEventId: 'cal-3', currentView: 'week' },
+  { userId: 'user-3', name: 'Alex', avatarInitial: 'A', color: '#2ecc71', isOnline: false, selectedEventId: null, currentView: 'week' },
 ];
 
 // ─── Weather Forecast ─────────────────────────────────────
