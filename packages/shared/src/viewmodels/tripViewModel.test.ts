@@ -14,7 +14,7 @@ describe('getTripStatusDisplay', () => {
   it('returns correct colors for planning', () => {
     const result = getTripStatusDisplay('planning');
     expect(result.label).toBe('Planning');
-    expect(result.bgColor).toBe('#DBEAFE');
+    expect(result.bgColor).toBe('#DBE6FF');
     expect(result.textColor).toBe('#1D4ED8');
   });
 
@@ -27,7 +27,7 @@ describe('getTripStatusDisplay', () => {
   it('returns correct colors for active', () => {
     const result = getTripStatusDisplay('active');
     expect(result.label).toBe('Active');
-    expect(result.bgColor).toBe('#DCFCE7');
+    expect(result.bgColor).toBe('#D1FAE5');
   });
 
   it('returns correct colors for completed', () => {
