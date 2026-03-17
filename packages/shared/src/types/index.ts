@@ -351,6 +351,26 @@ export interface CalendarActivity {
   sortOrder?: number;
 }
 
+// ─── Suggestion / For You Panel ─────────────────────────────
+
+export interface SuggestionCard {
+  id: string
+  name: string
+  category: ActivityCategory
+  imageUrl: string
+  duration: number        // hours
+  price: number | null
+  currency: string
+  rating: number | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+  source: 'ai' | 'search'
+  relevanceScore: number
+  reason?: string
+}
+
 export interface UserAwareness {
   userId: string;
   name: string;
