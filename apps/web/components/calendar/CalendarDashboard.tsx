@@ -294,13 +294,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripDays={TRIP_DAYS}
         />
 
-        {/* All-day row: flight + hotel banners */}
-        <AllDayRow
-          days={visibleDays}
-          flights={FLIGHT_BANNERS}
-          hotels={HOTEL_BANNERS}
-        />
-
         {/* Grid area */}
         {activeNav === 'calendar' ? (
         <>
@@ -311,8 +304,16 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           onDragEnd={handleDragEnd}
         >
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Scrollable grid */}
-          <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
+          {/* Calendar grid column (AllDayRow + scrollable time grid) */}
+          <div className="flex flex-col flex-1 min-w-0">
+            {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
+            <AllDayRow
+              days={visibleDays}
+              flights={FLIGHT_BANNERS}
+              hotels={HOTEL_BANNERS}
+            />
+            {/* Scrollable time grid */}
+            <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
               <AnimatePresence mode="wait" initial={false}>
                 {viewMode === 'week' ? (
                   <motion.div
@@ -358,6 +359,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                   </motion.div>
                 )}
               </AnimatePresence>
+            </div>
           </div>
 
           {/* Right panel: detail or suggestions */}
