@@ -10,7 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Blue, Gray, hexToRgba } from '@travyl/shared';
+import { useExploreRows, Gray, Navy } from '@travyl/shared';
+import { PlaceCard } from '@/components/PlaceCard';
 
 interface ExploreRowProps {
   row: ReturnType<typeof useExploreRows>['rows'][number];
@@ -64,9 +65,9 @@ export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
               paddingHorizontal: 16,
               paddingVertical: 14,
               borderRadius: 12,
-              backgroundColor: '#fff',
+              backgroundColor: Navy.DEFAULT,
               borderWidth: 1,
-              borderColor: Gray[200],
+              borderColor: Navy.DEFAULT,
             },
             buttonStyle,
           ]}
@@ -75,7 +76,7 @@ export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
             style={{
               fontWeight: '600',
               fontSize: 15,
-              color: Gray[800],
+              color: '#fff',
             }}
           >
             {row.title}
@@ -84,7 +85,7 @@ export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
             <FontAwesome
               name="chevron-down"
               size={13}
-              color={Gray[400]}
+              color="rgba(255,255,255,0.6)"
             />
           </Animated.View>
         </Animated.View>
@@ -111,32 +112,15 @@ export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
               nestedScrollEnabled
               contentContainerStyle={{ gap: 10 }}
             >
-              {row.items.map((item, i) => (
-                <View
+              {row.items.map((item) => (
+                <PlaceCard
                   key={item.id ?? item.name}
-                  style={{
-                    backgroundColor: Blue[600],
-                    opacity: 0.9 - i * 0.03,
-                    width: 150,
-                    height: 150,
-                    borderRadius: 14,
-                    borderWidth: 2,
-                    borderColor: hexToRgba(Blue[400], 0.3),
-                    justifyContent: 'flex-end',
-                    padding: 14,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: '#fff',
-                      fontWeight: '600',
-                      fontSize: 13,
-                      lineHeight: 18,
-                    }}
-                  >
-                    {item.name}
-                  </Text>
-                </View>
+                  place={item}
+                  size="compact"
+                  isFav={false}
+                  onToggleFav={() => {}}
+                  onPress={() => {}}
+                />
               ))}
             </ScrollView>
           </Animated.View>

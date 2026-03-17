@@ -1,22 +1,28 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/navbar";
+import { Geist_Mono, Sora } from "next/font/google";
 import Providers from "@/components/providers";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
+const sora = Sora({
+  variable: "--font-brand",
+  subsets: ["latin"],
+  weight: ["700", "800"],
+});
+
 export const metadata: Metadata = {
-  title: "Travyl",
+  title: {
+    default: "Travyl",
+    template: "%s | Travyl",
+  },
   description: "AI-powered travel assistant",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -26,12 +32,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistMono.variable} ${sora.variable} antialiased`}
+        style={{ fontFamily: "'Satoshi', sans-serif" }}
       >
         <Providers>
-          <Navbar />
-          <main className="pt-16">{children}</main>
+          {children}
         </Providers>
       </body>
     </html>

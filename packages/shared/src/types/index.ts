@@ -26,8 +26,31 @@ export interface Trip {
   is_shared: boolean;
   share_link_token: string | null;
   share_link_role: 'viewer' | 'editor';
+  forked_from_trip_id: string | null;
+  fork_count: number;
+  is_public: boolean;
+  theme: string;
+  custom_theme_color: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ─── Route / Map Types ─────────────────────────────────────
+
+export interface RouteLocation {
+  name: string;
+  city?: string;
+  iata?: string;
+  lat: number;
+  lng: number;
+  country?: string;
+  continent?: string;
+}
+
+export interface TripRoute {
+  origin: RouteLocation;
+  destinations: RouteLocation[];
+  stops?: RouteLocation[];
 }
 
 export interface SavedItem {
@@ -59,15 +82,9 @@ export interface InspirationCard {
   image_url: string | null;
 }
 
-export interface ExploreItem {
-  id: string;
-  name: string;
-  image_url: string | null;
-}
-
-export interface ExploreRow {
+export interface ExplorePlaceRow {
   title: string;
-  items: ExploreItem[];
+  items: PlaceItem[];
 }
 
 // ─── Hero Config ─────────────────────────────────────────────
@@ -261,12 +278,29 @@ export interface PlaceItem {
   id: string;
   name: string;
   image: string;
+  images?: string[];
   type: 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event';
   rating: number;
   tagline: string;
   category: string;
   description?: string;
   tags?: string[];
+  latitude?: number;
+  longitude?: number;
+
+  // Rich detail fields
+  priceLevel?: 1 | 2 | 3 | 4;
+  hours?: string;
+  phone?: string;
+  website?: string;
+  reviewCount?: number;
+  address?: string;
+  bestTimeToVisit?: string;
+  duration?: string;
+  admissionFee?: string;
+  tips?: string[];
+  accessibility?: string[];
+  nearbyPlaces?: string[];
 }
 
 // ─── Calendar / Weather ────────────────────────────────────
@@ -318,6 +352,18 @@ export interface WeatherForecast {
   low: number;
   icon: string;
   condition: string;
+}
+
+// ─── News / Events ────────────────────────────────────────────
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  snippet: string;
+  category: 'event' | 'advisory' | 'news' | 'tip';
+  source: string;
+  date: string;
+  url?: string;
 }
 
 // ─── Globe / Map Location ────────────────────────────────────

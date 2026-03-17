@@ -5,6 +5,5 @@ export { ExplorePreview } from "./ExplorePreview";
 export { TagUs } from "./TagUs";
 export { OceanWave } from "./OceanWave";
 export { Footer } from "./Footer";
-export { PhoneFrame } from "./PhoneFrame";
-export { WebSearchScreen, WebItineraryScreen, WebBookedScreen } from "./screens";
 export { TakeoffTransition } from "./TakeoffTransition";
+export { ParallaxQuoteDivider } from "./ParallaxQuoteDivider";

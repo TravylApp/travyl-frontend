@@ -8,6 +8,5 @@ export function useHotels(tripId: string | undefined) {
     queryKey: ['hotels', tripId],
     queryFn: () => fetchHotels(tripId!),
     enabled: /* !!user && */ !!tripId,
-    retry: false,
   });
 }

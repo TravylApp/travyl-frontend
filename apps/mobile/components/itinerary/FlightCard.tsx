@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Navy, ITINERARY_COLORS } from '@travyl/shared';
 import type { FlightViewModel } from '@travyl/shared';
@@ -37,9 +36,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
   const [expanded, setExpanded] = useState(false);
   const isReturn = variant === 'return';
 
-  const headerColors: [string, string] = isReturn
-    ? [Navy.DEFAULT, Navy.light]
-    : [ITINERARY_COLORS.primary, ITINERARY_COLORS.primaryDark];
+  const headerColor = isReturn ? Navy.DEFAULT : ITINERARY_COLORS.primary;
 
   const hasDetail = !!detail;
 
@@ -60,11 +57,9 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
       }}
     >
       {/* ── Header band ─────────────────────────────────── */}
-      <LinearGradient
-        colors={headerColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
         style={{
+          backgroundColor: headerColor,
           paddingHorizontal: 14,
           paddingVertical: 10,
           flexDirection: 'row',
@@ -102,7 +97,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
             </Text>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
       {/* ── Route section ───────────────────────────────── */}
       <View style={{ padding: 16 }}>
