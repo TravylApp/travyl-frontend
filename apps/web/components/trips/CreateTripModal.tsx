@@ -113,26 +113,32 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-trip-title"
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6"
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#1e3a5f] flex items-center justify-center">
               <Plane size={14} className="text-white -rotate-12" />
             </div>
-            <h2 className="text-lg font-bold text-[#1e3a5f]">Plan a Trip</h2>
+            <h2 id="create-trip-title" className="text-lg font-bold text-[#1e3a5f]">Plan a Trip</h2>
           </div>
           <button
+            aria-label="Close dialog"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            <X size={18} />
+            <X size={18} aria-hidden />
           </button>
         </div>
 
         {/* Error banner */}
         {error && (
-          <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600">
+          <div role="alert" className="mb-4 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -140,8 +146,9 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Trip name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Trip name</label>
+            <label htmlFor="trip-title" className="block text-sm font-medium text-gray-700 mb-1">Trip name</label>
             <input
+              id="trip-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -154,8 +161,9 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
 
           {/* Destination */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+            <label htmlFor="trip-destination" className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
             <input
+              id="trip-destination"
               type="text"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
@@ -169,8 +177,9 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+              <label htmlFor="trip-start-date" className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
               <input
+                id="trip-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -180,8 +189,9 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
               {fieldErrors.start_date && <p className="mt-1 text-xs text-red-500">{fieldErrors.start_date}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
+              <label htmlFor="trip-end-date" className="block text-sm font-medium text-gray-700 mb-1">End date</label>
               <input
+                id="trip-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
