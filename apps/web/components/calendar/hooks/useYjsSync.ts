@@ -22,6 +22,7 @@ interface UseYjsSyncReturn {
   connectionStatus: ConnectionStatus
   isLoading: boolean
   error: string | null
+  addActivity: (activity: CalendarActivity) => void
   updateActivity: (id: string, patch: Partial<CalendarActivity>) => void
   moveActivity: (id: string, newDay: number, newStartHour: number) => void
   removeActivity: (id: string) => void
@@ -60,6 +61,10 @@ export function useYjsSync(): UseYjsSyncReturn {
     [],
   )
 
+  const addActivity = useCallback((activity: CalendarActivity) => {
+    setActivities((prev) => [...prev, activity])
+  }, [])
+
   const removeActivity = useCallback((id: string) => {
     setActivities((prev) => prev.filter((a) => a.id !== id))
   }, [])
@@ -75,6 +80,7 @@ export function useYjsSync(): UseYjsSyncReturn {
     connectionStatus,
     isLoading,
     error,
+    addActivity,
     updateActivity,
     moveActivity,
     removeActivity,
