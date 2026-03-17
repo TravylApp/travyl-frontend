@@ -1,5 +1,6 @@
 'use client'
 import { AnimatePresence, motion } from 'motion/react'
+import { Clock, MapPin, Wallet, Star, Xmark } from 'iconoir-react'
 import type { CalendarActivity, UserAwareness } from './types'
 import { DETAIL_PANEL_WIDTH } from './constants'
 import { formatTimeRange } from './utils'
@@ -51,14 +52,7 @@ export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPane
               aria-label="Close detail panel"
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <path
-                  d="M2 2L12 12M12 2L2 12"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <Xmark width={16} height={16} strokeWidth={1.5} aria-hidden="true" />
             </button>
           </div>
 
@@ -66,17 +60,13 @@ export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPane
           <dl className="flex flex-col gap-3 px-4 py-2 text-sm">
             {/* Time */}
             <div className="flex items-center gap-2">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
+              <Clock
+                width={16}
+                height={16}
+                strokeWidth={1.5}
                 className="shrink-0 text-gray-500"
                 aria-hidden="true"
-              >
-                <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M7 4V7L9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              </svg>
+              />
               <dt className="sr-only">Time</dt>
               <dd className="text-gray-300">{formatTimeRange(activity)}</dd>
             </div>
@@ -84,21 +74,13 @@ export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPane
             {/* Location */}
             {activity.location && (
               <div className="flex items-start gap-2">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
+                <MapPin
+                  width={16}
+                  height={16}
+                  strokeWidth={1.5}
                   className="mt-0.5 shrink-0 text-gray-500"
                   aria-hidden="true"
-                >
-                  <path
-                    d="M7 1.5C5.067 1.5 3.5 3.067 3.5 5C3.5 7.5 7 12.5 7 12.5C7 12.5 10.5 7.5 10.5 5C10.5 3.067 8.933 1.5 7 1.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                  />
-                  <circle cx="7" cy="5" r="1.2" stroke="currentColor" strokeWidth="1.3" />
-                </svg>
+                />
                 <dt className="sr-only">Location</dt>
                 <dd className="text-gray-300 leading-snug">{activity.location}</dd>
               </div>
@@ -107,21 +89,13 @@ export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPane
             {/* Price */}
             {activity.price && (
               <div className="flex items-center gap-2">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
+                <Wallet
+                  width={16}
+                  height={16}
+                  strokeWidth={1.5}
                   className="shrink-0 text-gray-500"
                   aria-hidden="true"
-                >
-                  <path
-                    d="M7 1.5V2.5M7 11.5V12.5M4 7C4 5.619 5.343 4.5 7 4.5C8.657 4.5 10 5.619 10 7C10 8.381 8.657 9.5 7 9.5C5.343 9.5 4 8.381 4 7Z"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                />
                 <dt className="sr-only">Price</dt>
                 <dd className="text-gray-300">{activity.price}</dd>
               </div>
@@ -130,19 +104,14 @@ export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPane
             {/* Rating */}
             {activity.rating != null && (
               <div className="flex items-center gap-2">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
+                <Star
+                  width={16}
+                  height={16}
+                  strokeWidth={1.5}
+                  fill="currentColor"
                   className="shrink-0 text-yellow-400"
                   aria-hidden="true"
-                >
-                  <path
-                    d="M7 1.5L8.545 4.636L12 5.127L9.5 7.564L10.09 11L7 9.386L3.91 11L4.5 7.564L2 5.127L5.455 4.636L7 1.5Z"
-                    fill="currentColor"
-                  />
-                </svg>
+                />
                 <dt className="sr-only">Rating</dt>
                 <dd className="text-gray-300">{activity.rating} / 5</dd>
               </div>
