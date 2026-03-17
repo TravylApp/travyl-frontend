@@ -128,7 +128,7 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                   aria-hidden="true"
                 />
                 <dt className="sr-only">Location</dt>
-                <dd className="text-gray-300 leading-snug">{activity.location}</dd>
+                <dd className="text-gray-600 dark:text-gray-300 leading-snug">{activity.location}</dd>
               </div>
             )}
 
