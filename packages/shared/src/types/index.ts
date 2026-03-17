@@ -307,6 +307,18 @@ export interface PlaceItem {
 
 export type ViewMode = 'week' | 'day'
 
+export interface ActivityData {
+  category?: string
+  location_name?: string
+  image_url?: string
+  rating?: number
+  flight_number?: string
+  airline?: string
+  check_in?: string
+  check_out?: string
+  booking_ref?: string
+}
+
 export interface CalendarActivity {
   id: string;
   title: string;
@@ -329,6 +341,14 @@ export interface CalendarActivity {
   parentId?: string;
   /** Optional hex color override */
   color?: string;
+  /** For multi-day activities (hotels). Same as day if omitted. */
+  endDay?: number;
+  /** For map integration */
+  latitude?: number;
+  /** For map integration */
+  longitude?: number;
+  /** DB sort_order */
+  sortOrder?: number;
 }
 
 export interface UserAwareness {
