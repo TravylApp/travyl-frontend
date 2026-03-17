@@ -4,14 +4,15 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { DndContext } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
-  MOCK_TRIP,
   MOCK_FLIGHTS,
   MOCK_HOTELS,
 } from '@travyl/shared/config/mockItineraryData'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
+import { useTripActivities } from './hooks/useTripActivities'
 import { useYjsSync } from './hooks/useYjsSync'
+import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { TripSidebar } from './TripSidebar'
@@ -27,130 +28,25 @@ import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 
-// ─── Date helpers ────────────────────────────────────────────
-
-/** Parse a date string like "2026-03-10" into a UTC midnight Date. */
-function parseISODate(dateStr: string): Date {
-  return new Date(dateStr + 'T00:00:00Z')
-}
-
-/** Difference in whole days between two UTC dates (b - a). */
-function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
-}
-
-/** Format a Date as "Mon, Mar 10" style label. */
-function formatDayLabel(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-}
-
-/** Format a date range string like "Mar 10 – Mar 16, 2026". */
-function formatDateRange(startDate: Date, endDate: Date): string {
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', timeZone: 'UTC' }
-  const start = startDate.toLocaleDateString('en-US', opts)
-  const end = endDate.toLocaleDateString('en-US', { ...opts, year: 'numeric' })
-  return `${start} – ${end}`
-}
-
-// ─── Derive trip structure from MOCK_TRIP ────────────────────
-
-const tripStartDate = parseISODate(MOCK_TRIP.start_date)
-const tripEndDate = parseISODate(MOCK_TRIP.end_date)
-const tripTotalDays = daysBetween(tripStartDate, tripEndDate) // e.g. 6
-
-/** Array of { dayIndex, label } for WeekView. */
-const TRIP_DAYS = Array.from({ length: tripTotalDays }, (_, i) => {
-  const date = new Date(tripStartDate.getTime() + i * 24 * 60 * 60 * 1000)
-  return { dayIndex: i, label: formatDayLabel(date) }
-})
-
-// ─── Derive flight banners ────────────────────────────────────
-// MOCK_FLIGHTS is FlightViewModel[]. Fields: departureDisplay like "Mon, Mar 10, 8:30 PM",
-// route, originIata, destIata.
-
-const FLIGHT_BANNERS: FlightBanner[] = MOCK_FLIGHTS.map((flight, idx) => {
-  // Determine dayIndex by checking if the flight arrives at the destination (arrival)
-  // or departs from the destination (departure).
-  // Flight 1: JFK→CDG = arrival on Mar 10 = day 0
-  // Flight 2: CDG→JFK = departure on the last day
-  const isArrival = flight.destIata !== flight.originIata && idx === 0
-  const direction: 'arrival' | 'departure' = isArrival ? 'arrival' : 'departure'
-
-  // Parse day from departureDisplay: "Mon, Mar 10, 8:30 PM"
-  // Extract "Mar 10" portion and resolve to day offset from tripStartDate
-  const displayParts = (flight.departureDisplay ?? '').split(',')
-  // displayParts: ["Mon", " Mar 10", " 8:30 PM"]  or  ["Mon", " Mar 16", " 11:00 AM"]
-  let dayIndex = 0
-  if (displayParts.length >= 2) {
-    const datePart = displayParts[1].trim() // "Mar 10"
-    // Parse month and day
-    const [monthStr, dayStr] = datePart.split(' ')
-    const months: Record<string, number> = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
-    }
-    const month = months[monthStr]
-    const day = parseInt(dayStr, 10)
-    if (month !== undefined && !isNaN(day)) {
-      // Use trip start year
-      const year = tripStartDate.getUTCFullYear()
-      const flightDate = new Date(Date.UTC(year, month, day))
-      const offset = daysBetween(tripStartDate, flightDate)
-      // Clamp to valid range
-      dayIndex = Math.max(0, Math.min(tripTotalDays - 1, offset))
-    }
-  }
-
-  return {
-    id: flight.id,
-    label: `${flight.flightNumber} ${flight.route}`,
-    dayIndex,
-    direction,
-  }
-})
-
-// ─── Derive hotel banners ─────────────────────────────────────
-// MOCK_HOTELS is HotelViewModel[]. Fields: id, name, checkIn, checkOut (ISO dates).
-
-const HOTEL_BANNERS: HotelBanner[] = MOCK_HOTELS.map((hotel) => {
-  const checkInDate = parseISODate(hotel.checkIn)
-  const checkOutDate = parseISODate(hotel.checkOut)
-  const startDayIndex = Math.max(0, daysBetween(tripStartDate, checkInDate))
-  const endDayIndex = Math.max(
-    startDayIndex,
-    Math.min(tripTotalDays - 1, daysBetween(tripStartDate, checkOutDate) - 1),
-  )
-  return {
-    id: hotel.id,
-    label: hotel.name,
-    startDayIndex,
-    endDayIndex,
-  }
-})
-
 // ─── Component ───────────────────────────────────────────────
 
-export function CalendarDashboard() {
+interface CalendarDashboardProps {
+  tripId: string
+  userId: string
+  userName: string
+}
+
+export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
 
   // Hooks
-  const {
-    activities,
-    collaborators,
-    connectionStatus,
-    isLoading,
-    error,
-    moveActivity,
-    removeActivity,
-    addActivity,
-    updateActivity,
-  } = useYjsSync()
+  const { trip, tripStartDate, loading: tripLoading, error: tripError } = useTripActivities(tripId)
+  const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
+  const { addActivity, updateActivity, moveActivity, removeActivity } = useActivityMutations(tripId, tripStartDate, userId)
+  const { collaborators, setSelectedEvent: setPresenceSelectedEvent, setCurrentView } = useCollaboratorPresence({ tripId, userId, userName })
+  const isLoading = tripLoading || syncLoading
+  const error = tripError || syncError
 
   const {
     viewMode,
@@ -163,8 +59,6 @@ export function CalendarDashboard() {
     goToWeekView,
   } = useCalendarNavigation()
 
-  const { setCurrentView } = useCollaboratorPresence({ collaborators })
-
   const { sensors, handleDragStart, handleDragEnd } = useCalendarDnd({
     onMoveActivity: moveActivity,
   })
@@ -175,6 +69,79 @@ export function CalendarDashboard() {
   useEffect(() => {
     setCurrentView(viewMode)
   }, [viewMode, setCurrentView])
+
+  // ─── Derive trip structure from fetched trip ────────────────
+  const parsedStartDate = trip ? new Date(trip.starting_date + 'T00:00:00Z') : new Date()
+  const parsedEndDate = trip ? new Date(trip.ending_date + 'T00:00:00Z') : new Date()
+  const tripTotalDays = trip ? Math.round((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) : 0
+
+  const TRIP_DAYS = useMemo(() => Array.from({ length: tripTotalDays }, (_, i) => {
+    const date = new Date(parsedStartDate.getTime() + i * 24 * 60 * 60 * 1000)
+    return {
+      dayIndex: i,
+      label: date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }),
+    }
+  }), [tripTotalDays, parsedStartDate.getTime()])
+
+  // ─── Derive flight banners ────────────────────────────────────
+  const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
+    if (!trip) return []
+    const months: Record<string, number> = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+    }
+    return MOCK_FLIGHTS.map((flight, idx) => {
+      const isArrival = flight.destIata !== flight.originIata && idx === 0
+      const direction: 'arrival' | 'departure' = isArrival ? 'arrival' : 'departure'
+
+      const displayParts = (flight.departureDisplay ?? '').split(',')
+      let dayIndex = 0
+      if (displayParts.length >= 2) {
+        const datePart = displayParts[1].trim()
+        const [monthStr, dayStr] = datePart.split(' ')
+        const month = months[monthStr]
+        const day = parseInt(dayStr, 10)
+        if (month !== undefined && !isNaN(day)) {
+          const year = parsedStartDate.getUTCFullYear()
+          const flightDate = new Date(Date.UTC(year, month, day))
+          const offset = Math.round((flightDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24))
+          dayIndex = Math.max(0, Math.min(tripTotalDays - 1, offset))
+        }
+      }
+
+      return {
+        id: flight.id,
+        label: `${flight.flightNumber} ${flight.route}`,
+        dayIndex,
+        direction,
+      }
+    })
+  }, [trip, parsedStartDate.getTime(), tripTotalDays])
+
+  // ─── Derive hotel banners ─────────────────────────────────────
+  const HOTEL_BANNERS: HotelBanner[] = useMemo(() => {
+    if (!trip) return []
+    return MOCK_HOTELS.map((hotel) => {
+      const checkInDate = new Date(hotel.checkIn + 'T00:00:00Z')
+      const checkOutDate = new Date(hotel.checkOut + 'T00:00:00Z')
+      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)))
+      const endDayIndex = Math.max(
+        startDayIndex,
+        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) - 1),
+      )
+      return {
+        id: hotel.id,
+        label: hotel.name,
+        startDayIndex,
+        endDayIndex,
+      }
+    })
+  }, [trip, parsedStartDate.getTime(), tripTotalDays])
 
   // Computed
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
@@ -219,7 +186,7 @@ export function CalendarDashboard() {
     if (viewMode === 'day') {
       goToWeekView()
     }
-    // In week view, back could navigate to trip overview — no-op for now
+    // In week view, back could navigate to trip overview -- no-op for now
   }
 
   const handleAddEvent = () => {
@@ -243,7 +210,15 @@ export function CalendarDashboard() {
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
 
-  const dateRange = formatDateRange(tripStartDate, tripEndDate)
+  /** Format a date range string like "Mar 10 - Mar 16, 2026". */
+  const formatDateRange = (startDate: Date, endDate: Date): string => {
+    const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', timeZone: 'UTC' }
+    const start = startDate.toLocaleDateString('en-US', opts)
+    const end = endDate.toLocaleDateString('en-US', { ...opts, year: 'numeric' })
+    return `${start} – ${end}`
+  }
+
+  const dateRange = formatDateRange(parsedStartDate, parsedEndDate)
   const currentDayLabel =
     viewMode === 'day' ? TRIP_DAYS[selectedDayIndex]?.label ?? '' : ''
 
@@ -256,7 +231,7 @@ export function CalendarDashboard() {
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
-        tripStartDate={tripStartDate}
+        tripStartDate={parsedStartDate}
         tripDays={tripTotalDays}
         currentDay={selectedDayIndex}
         onSelectDay={(dayIndex) => {
@@ -270,7 +245,7 @@ export function CalendarDashboard() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
         <CalendarHeader
-          tripName={MOCK_TRIP.title}
+          tripName={trip?.trip_name ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
@@ -317,7 +292,7 @@ export function CalendarDashboard() {
                       viewers={collaborators}
                       selectedEventId={selectedEventId}
                       timeRange={timeRange}
-                      tripStartDate={tripStartDate}
+                      tripStartDate={parsedStartDate}
                       onSelectEvent={handleSelectEvent}
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
@@ -339,7 +314,7 @@ export function CalendarDashboard() {
                       viewers={collaborators}
                       selectedEventId={selectedEventId}
                       timeRange={timeRange}
-                      tripStartDate={tripStartDate}
+                      tripStartDate={parsedStartDate}
                       onSelectEvent={handleSelectEvent}
                       onCreateActivity={handleCreateActivity}
                     />
@@ -359,7 +334,7 @@ export function CalendarDashboard() {
           />
         </div>
 
-        {/* Empty state — only when no activities exist */}
+        {/* Empty state -- only when no activities exist */}
         {activities.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
             <svg
