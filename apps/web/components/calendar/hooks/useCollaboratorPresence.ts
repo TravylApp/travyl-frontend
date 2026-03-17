@@ -23,6 +23,8 @@ interface UseCollaboratorPresenceReturn {
   setSelectedEvent: (eventId: string | null) => void
   /** Broadcast the current view mode to all collaborators. */
   setCurrentView: (view: ViewMode) => void
+  /** Broadcast the currently focused day index to all collaborators. */
+  setSelectedDay: (dayIndex: number) => void
 }
 
 /** Default palette for collaborator cursors. */
@@ -49,6 +51,7 @@ export function useCollaboratorPresence(
   const localStateRef = useRef({
     selectedEventId: null as string | null,
     currentView: 'week' as ViewMode,
+    selectedDayIndex: 0,
   })
 
   const color = userColor ?? pickColor(userId)
@@ -67,6 +70,7 @@ export function useCollaboratorPresence(
         color: string
         selectedEventId: string | null
         currentView: ViewMode
+        selectedDayIndex?: number
       }>()
 
       const users: UserAwareness[] = []
@@ -85,6 +89,7 @@ export function useCollaboratorPresence(
           isOnline: true,
           selectedEventId: entry.selectedEventId ?? null,
           currentView: entry.currentView ?? 'week',
+          selectedDayIndex: entry.selectedDayIndex ?? 0,
         })
       }
       setCollaborators(users)
@@ -98,6 +103,7 @@ export function useCollaboratorPresence(
           color,
           selectedEventId: localStateRef.current.selectedEventId,
           currentView: localStateRef.current.currentView,
+          selectedDayIndex: localStateRef.current.selectedDayIndex,
         })
       }
     })
@@ -117,6 +123,7 @@ export function useCollaboratorPresence(
         color,
         selectedEventId: eventId,
         currentView: localStateRef.current.currentView,
+        selectedDayIndex: localStateRef.current.selectedDayIndex,
       })
     },
     [userId, userName, color],
@@ -131,10 +138,26 @@ export function useCollaboratorPresence(
         color,
         selectedEventId: localStateRef.current.selectedEventId,
         currentView: view,
+        selectedDayIndex: localStateRef.current.selectedDayIndex,
       })
     },
     [userId, userName, color],
   )
 
-  return { collaborators, setSelectedEvent, setCurrentView }
+  const setSelectedDay = useCallback(
+    (dayIndex: number) => {
+      localStateRef.current.selectedDayIndex = dayIndex
+      channelRef.current?.track({
+        userId,
+        userName,
+        color,
+        selectedEventId: localStateRef.current.selectedEventId,
+        currentView: localStateRef.current.currentView,
+        selectedDayIndex: dayIndex,
+      })
+    },
+    [userId, userName, color],
+  )
+
+  return { collaborators, setSelectedEvent, setCurrentView, setSelectedDay }
 }
