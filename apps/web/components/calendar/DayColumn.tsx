@@ -69,6 +69,10 @@ export function DayColumn({
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
+  const dayCollaborators = viewers.filter(
+    (c) => (c.selectedDayIndex ?? 0) === dayIndex,
+  )
+
   const handleMouseDown = (e: React.MouseEvent) => {
     mouseDownPos.current = { x: e.clientX, y: e.clientY }
   }
@@ -121,6 +125,29 @@ export function DayColumn({
         }
       >
         {label}
+        {dayCollaborators.length > 0 && (
+          <div className="flex items-center justify-center gap-0 mt-0.5">
+            {dayCollaborators.slice(0, 3).map((c, i) => (
+              <div
+                key={c.userId}
+                title={c.name}
+                style={{
+                  backgroundColor: c.color,
+                  marginLeft: i === 0 ? 0 : '-4px',
+                  zIndex: 3 - i,
+                }}
+                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-white dark:ring-[#0a1520]"
+              >
+                {c.avatarInitial}
+              </div>
+            ))}
+            {dayCollaborators.length > 3 && (
+              <span className="text-[9px] text-gray-400 ml-1">
+                +{dayCollaborators.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Droppable grid */}
