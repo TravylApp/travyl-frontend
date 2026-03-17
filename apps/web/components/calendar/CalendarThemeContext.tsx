@@ -7,6 +7,7 @@ interface CalendarThemeContextValue {
 export const CalendarThemeContext = createContext<CalendarThemeContextValue>({
   isDark: false,
 })
+CalendarThemeContext.displayName = 'CalendarThemeContext'
 
 export function useCalendarThemeContext(): CalendarThemeContextValue {
   return useContext(CalendarThemeContext)

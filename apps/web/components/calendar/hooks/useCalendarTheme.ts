@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 
 export type CalendarTheme = 'light' | 'dark'
 
-const STORAGE_KEY = 'travyl-calendar-theme'
+export const STORAGE_KEY = 'travyl-calendar-theme'
 
 export function useCalendarTheme() {
   // Default to 'light' on server; client corrects on mount via useEffect

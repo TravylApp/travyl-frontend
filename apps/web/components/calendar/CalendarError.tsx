@@ -1,4 +1,5 @@
 'use client'
+import { STORAGE_KEY } from './hooks/useCalendarTheme'
 
 interface CalendarErrorProps {
   message: string
@@ -6,9 +7,10 @@ interface CalendarErrorProps {
 }
 
 export function CalendarError({ message, onBack }: CalendarErrorProps) {
+  // Rendered outside CalendarDashboard — read localStorage directly for initial theme (intentionally non-reactive)
   const isDark =
     typeof window !== 'undefined' &&
-    localStorage.getItem('travyl-calendar-theme') === 'dark'
+    localStorage.getItem(STORAGE_KEY) === 'dark'
 
   return (
     <div
