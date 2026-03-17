@@ -26,6 +26,9 @@ export function EventBlock({
     data: { activity },
   })
 
+  const color = getActivityColor(activity.type)
+  const hasImage = !!(activity.image && activity.duration >= 1)
+
   const style: React.CSSProperties = {
     position: 'absolute',
     top: (activity.startHour - timeRangeStartHour) * HOUR_HEIGHT,
@@ -34,8 +37,9 @@ export function EventBlock({
     right: 4,
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
-    backgroundColor: getActivityColor(activity.type),
     zIndex: isDragging ? 50 : isSelected ? 10 : 1,
+    borderLeft: `3px solid ${color}88`,
+    ...(hasImage ? {} : { backgroundColor: color }),
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -60,22 +64,65 @@ export function EventBlock({
       aria-label={`${activity.title}, ${formatTimeRange(activity)}`}
       aria-selected={isSelected}
       className={[
-        'rounded-md px-2 py-1 cursor-grab active:cursor-grabbing overflow-hidden select-none',
-        'text-white text-xs flex flex-col gap-0.5',
-        'ring-2 ring-transparent transition-shadow',
+        'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
+        'text-white text-xs',
+        'ring-2 ring-transparent',
+        'transition-all duration-150',
+        'hover:-translate-y-px hover:shadow-lg',
         isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40',
         'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}
       onClick={() => onSelect(activity.id)}
       onKeyDown={handleKeyDown}
     >
-      <span className="font-semibold truncate leading-tight">{activity.title}</span>
-      <span className="opacity-80 truncate">{formatTimeRange(activity)}</span>
-      {activity.location && (
-        <span className="opacity-70 truncate text-[10px]">{activity.location}</span>
+      {hasImage ? (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center rounded-md"
+            style={{ backgroundImage: `url(${activity.image})` }}
+          />
+          <div
+            className="absolute inset-0 rounded-md"
+            style={{ background: `linear-gradient(135deg, ${color}4d, ${color}33)` }}
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-6"
+            style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
+          >
+            <div
+              className="font-semibold truncate text-white"
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+            >
+              {activity.title}
+            </div>
+            <div
+              className="text-[10px] text-white/85 truncate"
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+            >
+              {formatTimeRange(activity)}
+            </div>
+            {activity.location && (
+              <div
+                className="text-[9px] text-white/70 truncate"
+                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+              >
+                {activity.location}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="px-2 py-1 flex flex-col gap-0.5">
+          <span className="font-semibold truncate leading-tight text-white">{activity.title}</span>
+          <span className="opacity-80 truncate text-white">{formatTimeRange(activity)}</span>
+          {activity.location && (
+            <span className="opacity-70 truncate text-[10px] text-white">{activity.location}</span>
+          )}
+        </div>
       )}
+
       {activeViewers.length > 0 && (
-        <div className="flex gap-0.5 mt-auto pt-0.5">
+        <div className="absolute top-1 right-1 flex gap-0.5">
           {activeViewers.slice(0, 5).map((viewer) => (
             <span
               key={viewer.userId}
