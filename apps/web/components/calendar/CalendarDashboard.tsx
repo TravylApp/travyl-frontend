@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
-import { DndContext, DragOverlay } from '@dnd-kit/core'
+import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   MOCK_FLIGHTS,
@@ -297,6 +297,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         <>
         <DndContext
           sensors={sensors}
+          collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
