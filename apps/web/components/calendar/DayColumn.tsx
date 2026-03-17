@@ -1,4 +1,5 @@
 'use client'
+import { useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
@@ -14,6 +15,7 @@ interface DayColumnProps {
   tripStartDate: Date
   onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
+  onCreateActivity?: (dayIndex: number, startHour: number) => void
 }
 
 function CurrentTimeIndicator({
@@ -63,7 +65,28 @@ export function DayColumn({
   tripStartDate,
   onSelectEvent,
   onClickDayHeader,
+  onCreateActivity,
 }: DayColumnProps) {
+  const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseDownPos.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!mouseDownPos.current || !onCreateActivity) return
+    const dx = Math.abs(e.clientX - mouseDownPos.current.x)
+    const dy = Math.abs(e.clientY - mouseDownPos.current.y)
+    mouseDownPos.current = null
+    if (dx < 5 && dy < 5) {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const offsetY = e.clientY - rect.top
+      const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
+      const snappedHour = Math.round(rawHour * 2) / 2
+      onCreateActivity(dayIndex, snappedHour)
+    }
+  }
+
   const { isOver, setNodeRef } = useDroppable({
     id: `day-${dayIndex}`,
     data: { dayIndex },
@@ -108,6 +131,8 @@ export function DayColumn({
           isOver ? 'bg-blue-50 dark:bg-blue-900/20' : '',
         ].join(' ')}
         style={{ height: hourCount * HOUR_HEIGHT }}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
       >
         {/* Hour grid lines */}
         {hours.map((hour) => (
