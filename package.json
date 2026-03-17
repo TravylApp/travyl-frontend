@@ -7,10 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "mobile": "yarn workspace @travyl/mobile start",
-    "web": "yarn workspace @travyl/web dev",
-    "lint": "yarn workspaces run lint",
-    "typecheck": "yarn workspaces run typecheck"
+    "mobile": "npm -w @travyl/mobile run start",
+    "web": "npm -w @travyl/web run dev",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {
     "node": ">=18.0.0"

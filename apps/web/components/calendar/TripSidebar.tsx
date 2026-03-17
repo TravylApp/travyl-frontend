@@ -1,0 +1,133 @@
+'use client'
+import { useState, useRef } from 'react'
+import { motion } from 'motion/react'
+import { Map, Calendar, PageEdit, Wallet, Settings } from 'iconoir-react'
+import { MiniCalendar } from './MiniCalendar'
+import {
+  SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_EXPANDED_WIDTH,
+  SIDEBAR_COLLAPSE_DELAY,
+} from './constants'
+
+interface NavItem {
+  id: string
+  label: string
+  icon: React.ReactNode
+}
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    id: 'overview',
+    label: 'Overview',
+    icon: <Map width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+  },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: <Calendar width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+  },
+  {
+    id: 'info',
+    label: 'Info',
+    icon: <PageEdit width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+  },
+  {
+    id: 'budget',
+    label: 'Budget',
+    icon: <Wallet width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: <Settings width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+  },
+]
+
+interface TripSidebarProps {
+  activeNav?: string
+  onNavChange?: (id: string) => void
+  tripStartDate: Date
+  tripDays: number
+  currentDay: number
+  onSelectDay: (dayIndex: number) => void
+}
+
+export function TripSidebar({
+  activeNav = 'calendar',
+  onNavChange,
+  tripStartDate,
+  tripDays,
+  currentDay,
+  onSelectDay,
+}: TripSidebarProps) {
+  const [expanded, setExpanded] = useState(false)
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleMouseEnter() {
+    if (collapseTimer.current) {
+      clearTimeout(collapseTimer.current)
+      collapseTimer.current = null
+    }
+    setExpanded(true)
+  }
+
+  function handleMouseLeave() {
+    collapseTimer.current = setTimeout(() => {
+      setExpanded(false)
+    }, SIDEBAR_COLLAPSE_DELAY)
+  }
+
+  return (
+    <motion.nav
+      animate={{ width: expanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="relative flex flex-col shrink-0 overflow-hidden border-r border-white/10 bg-[#141824]"
+      aria-label="Trip navigation"
+    >
+      {/* Nav items */}
+      <ul className="flex flex-col gap-0.5 p-2 mt-2">
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.id === activeNav
+          return (
+            <li key={item.id}>
+              <button
+                onClick={() => onNavChange?.(item.id)}
+                aria-current={isActive ? 'page' : undefined}
+                className={[
+                  'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-600/20 text-blue-400'
+                    : 'text-gray-400 hover:bg-white/10 hover:text-white',
+                ].join(' ')}
+              >
+                <span className="shrink-0">{item.icon}</span>
+                {expanded && (
+                  <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                    {item.label}
+                  </span>
+                )}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Mini calendar (expanded only) */}
+      {expanded && (
+        <div className="border-t border-white/10">
+          <MiniCalendar
+            tripStartDate={tripStartDate}
+            tripDays={tripDays}
+            currentDay={currentDay}
+            onSelectDay={onSelectDay}
+          />
+        </div>
+      )}
+    </motion.nav>
+  )
+}

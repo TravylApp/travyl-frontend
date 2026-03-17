@@ -1,0 +1,23 @@
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd ../..
+            - npm install
+        build:
+          commands:
+            - cd apps/web
+            - npm run build
+            - bash scripts/amplify-postbuild.sh
+      artifacts:
+        baseDirectory: .amplify-hosting
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - '../../node_modules/**/*'
+          - node_modules/**/*
+          - .next/cache/**/*

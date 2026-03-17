@@ -11,8 +11,13 @@ out/
 
 # Environment
 .env
+.env.*
 .env.local
 .env.*.local
+
+# Claude
+.claude/
+docs/plans/
 
 # OS
 .DS_Store

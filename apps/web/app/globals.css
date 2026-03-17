@@ -1,26 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FFFFFF;
+  --foreground: #111827;
   --primary: #003594;
   --accent: #FFC72C;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --border: #e5e5e5;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --border: #E5E7EB;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --primary: #4d7fd7;
-    --accent: #FFC72C;
-    --muted: #262626;
-    --muted-foreground: #a3a3a3;
-    --border: #333333;
-  }
-}
+/* Dark mode disabled — not yet supported */
 
 @theme inline {
   --color-background: var(--background);
@@ -30,12 +20,51 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
+
+  /* Trip theme colors — set dynamically by TripThemeProvider */
+  --color-trip-base: var(--trip-base, #1e3a5f);
+  --color-trip-base-light: var(--trip-base-light, #2d4a6f);
+  --color-trip-base-dark: var(--trip-base-dark, #0f1d30);
+  --color-trip-accent: var(--trip-accent, #60a5fa);
+  --color-trip-text: var(--trip-text, #ffffff);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Travel-inspired paragraph typography */
+p {
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  line-height: 1.65;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
