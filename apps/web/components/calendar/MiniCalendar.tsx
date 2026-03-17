@@ -56,14 +56,14 @@ export function MiniCalendar({
   return (
     <div className="select-none px-2 py-3">
       {/* Month label */}
-      <p className="mb-2 text-center text-xs font-medium text-gray-400 uppercase tracking-wide">
+      <p className="mb-2 text-center text-xs font-medium text-gray-500 dark:text-[#4a7ab5] uppercase tracking-wide">
         {MONTH_NAMES[month]} {year}
       </p>
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 mb-1">
         {WEEKDAY_LABELS.map((d) => (
-          <span key={d} className="text-center text-[10px] text-gray-600 font-medium">
+          <span key={d} className="text-center text-[10px] text-gray-400 dark:text-[#4a7ab5] font-medium">
             {d}
           </span>
         ))}
@@ -90,10 +90,10 @@ export function MiniCalendar({
               className={[
                 'flex h-6 w-6 mx-auto items-center justify-center rounded-full text-[11px] transition-colors',
                 isCurrent
-                  ? 'bg-blue-600 text-white font-semibold'
+                  ? 'bg-[#003594] text-white font-semibold'
                   : isInTrip
-                  ? 'text-gray-200 hover:bg-white/10 cursor-pointer'
-                  : 'text-gray-700 cursor-default',
+                  ? 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#1e3a5f]/25 cursor-pointer'
+                  : 'text-gray-400 dark:text-[#1e3a5f]/50 cursor-default',
               ].join(' ')}
             >
               {dom}
