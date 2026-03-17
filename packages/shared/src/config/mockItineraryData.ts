@@ -1119,18 +1119,18 @@ export const MOCK_HOTEL_DETAIL: MockHotelDetail = {
 // ─── Calendar View Activities ─────────────────────────────
 
 export const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [
-  { id: 'cal-1', title: 'Eiffel Tower', type: 'sightseeing', day: 0, startHour: 9, duration: 2, location: 'Champ de Mars', rating: 4.7, price: '$26.10' },
+  { id: 'cal-1', title: 'Eiffel Tower', type: 'sightseeing', day: 0, startHour: 9, duration: 2, location: 'Champ de Mars', rating: 4.7, price: '$26.10', image: 'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=400&h=300&fit=crop' },
   { id: 'cal-2', title: 'Lunch: Le Marais', type: 'dining', day: 0, startHour: 12, duration: 1.5, location: 'Le Marais District' },
-  { id: 'cal-3', title: 'Louvre Museum', type: 'museum', day: 0, startHour: 15, duration: 3, location: 'Rue de Rivoli', rating: 4.8, price: '$17.00' },
-  { id: 'cal-4', title: 'Montmartre Walk', type: 'outdoor', day: 1, startHour: 9.5, duration: 2, location: 'Montmartre' },
-  { id: 'cal-5', title: 'Cooking Class', type: 'cultural', day: 1, startHour: 14, duration: 3, location: 'Le Foodist', price: '$85.00' },
+  { id: 'cal-3', title: 'Louvre Museum', type: 'museum', day: 0, startHour: 15, duration: 3, location: 'Rue de Rivoli', rating: 4.8, price: '$17.00', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400&h=300&fit=crop' },
+  { id: 'cal-4', title: 'Montmartre Walk', type: 'outdoor', day: 1, startHour: 9.5, duration: 2, location: 'Montmartre', image: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=400&h=300&fit=crop' },
+  { id: 'cal-5', title: 'Cooking Class', type: 'cultural', day: 1, startHour: 14, duration: 3, location: 'Le Foodist', price: '$85.00', image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400&h=300&fit=crop' },
   { id: 'cal-6', title: 'Dinner: Le Comptoir', type: 'dining', day: 1, startHour: 19.5, duration: 2, location: 'Saint-Germain' },
-  { id: 'cal-7', title: 'Versailles Day Trip', type: 'tour', day: 2, startHour: 8, duration: 5, location: 'Palace of Versailles', price: '$20.00' },
-  { id: 'cal-8', title: 'Seine River Cruise', type: 'sightseeing', day: 2, startHour: 18, duration: 1.5, location: 'Pont Neuf', price: '$15.00' },
-  { id: 'cal-9', title: "Musée d'Orsay", type: 'museum', day: 3, startHour: 10, duration: 2.5, location: "1 Rue de la Légion d'Honneur", rating: 4.7, price: '$16.00' },
+  { id: 'cal-7', title: 'Versailles Day Trip', type: 'tour', day: 2, startHour: 8, duration: 5, location: 'Palace of Versailles', price: '$20.00', image: 'https://images.unsplash.com/photo-1590099033615-be195f8d575c?w=400&h=300&fit=crop' },
+  { id: 'cal-8', title: 'Seine River Cruise', type: 'sightseeing', day: 2, startHour: 18, duration: 1.5, location: 'Pont Neuf', price: '$15.00', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400&h=300&fit=crop' },
+  { id: 'cal-9', title: "Musée d'Orsay", type: 'museum', day: 3, startHour: 10, duration: 2.5, location: "1 Rue de la Légion d'Honneur", rating: 4.7, price: '$16.00', image: 'https://images.unsplash.com/photo-1591289009723-aef0a1a8a211?w=400&h=300&fit=crop' },
   { id: 'cal-10', title: 'Luxembourg Gardens', type: 'outdoor', day: 3, startHour: 14, duration: 1.5, location: '6th Arrondissement' },
   { id: 'cal-11', title: 'Shopping: Le Bon Marché', type: 'shopping', day: 4, startHour: 10, duration: 2, location: '24 Rue de Sèvres' },
-  { id: 'cal-12', title: 'Farewell Dinner', type: 'dining', day: 4, startHour: 19, duration: 2.5, location: 'Le Jules Verne', price: '$150.00' },
+  { id: 'cal-12', title: 'Farewell Dinner', type: 'dining', day: 4, startHour: 19, duration: 2.5, location: 'Le Jules Verne', price: '$150.00', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop' },
 ];
 
 // ─── Mock Collaborators ─────────────────────────────────
