@@ -59,7 +59,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
     if (!destination.trim()) errors.destination = 'Destination is required'
     if (!startDate) errors.start_date = 'Start date is required'
     if (!endDate) errors.end_date = 'End date is required'
-    else if (startDate && endDate < startDate) errors.end_date = 'End date must be after start date'
+    else if (startDate && endDate <= startDate) errors.end_date = 'End date must be after start date'
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
