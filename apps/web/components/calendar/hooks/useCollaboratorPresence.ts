@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '@travyl/shared/services/supabase'
+import { supabase } from '@travyl/shared'
 import type { UserAwareness, ViewMode } from '../types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 

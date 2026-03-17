@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import * as Y from 'yjs'
-import { supabase } from '@travyl/shared/services/supabase'
-import {
-  toCalendarActivity,
-  type ActivityRow,
-} from '@travyl/shared/utils/activityMapper'
+import { supabase, toCalendarActivity, type ActivityRow } from '@travyl/shared'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
 
 interface Trip {

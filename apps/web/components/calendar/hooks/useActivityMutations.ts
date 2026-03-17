@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import * as Y from 'yjs'
-import { supabase } from '@travyl/shared/services/supabase'
-import { toActivityRow } from '@travyl/shared/utils/activityMapper'
+import { supabase, toActivityRow } from '@travyl/shared'
 import type { CalendarActivity } from '../types'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
 
