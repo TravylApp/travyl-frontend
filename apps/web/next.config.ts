@@ -2,10 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: {
-    reactCompiler: true,
-  },
-  transpilePackages: ["@travyl/shared"],
+transpilePackages: ["@travyl/shared"],
   images: {
     remotePatterns: [
       {

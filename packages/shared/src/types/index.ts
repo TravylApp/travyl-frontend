@@ -361,6 +361,7 @@ export interface UserAwareness {
   currentView: ViewMode;
   /** Legacy itinerary view — selected block id */
   selectedBlockId?: string;
+  cursor?: { day: number; hour: number };
 }
 
 /** Alias for UserAwareness — used by legacy itinerary components */
