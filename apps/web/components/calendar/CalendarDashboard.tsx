@@ -22,6 +22,8 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { DetailPanel } from './DetailPanel'
 import { ForYouPanel } from './ForYouPanel'
+import { SuggestionCard } from './SuggestionCard'
+import { MOCK_SUGGESTIONS } from '@travyl/shared/config/mockSuggestions'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -166,6 +168,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   })
 
   const rightPanel = selectedEventId ? 'detail' : 'for-you'
+
+  // Find the suggestion being dragged (for DragOverlay preview)
+  const activeSuggestion = useMemo(() => {
+    if (!activeId || !String(activeId).startsWith('suggestion-')) return null
+    const sugId = String(activeId).replace('suggestion-', '')
+    return MOCK_SUGGESTIONS.find((s) => s.id === sugId) ?? null
+  }, [activeId])
 
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
@@ -368,7 +377,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           )}
         </div>
         <DragOverlay dropAnimation={null}>
-          {activeId ? <div className="opacity-60 pointer-events-none rounded-lg shadow-2xl" /> : null}
+          {activeSuggestion ? (
+            <SuggestionCard suggestion={activeSuggestion} isOverlay />
+          ) : null}
         </DragOverlay>
         </DndContext>
 

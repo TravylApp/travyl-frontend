@@ -1,49 +1,60 @@
 'use client'
 
 import { useDraggable } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard as SuggestionCardType } from './types'
 
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
+  /** When true, renders as a drag overlay preview (no drag listeners, styled as ghost) */
+  isOverlay?: boolean
 }
 
-export function SuggestionCard({ suggestion }: SuggestionCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+export function formatPrice(price: number | null) {
+  if (price === null || price === 0) return 'Free'
+  return `€${price}`
+}
+
+export function formatDuration(hours: number) {
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours % 1 === 0) return `${hours}h`
+  return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
+}
+
+function cardHeight(id: string) {
+  return [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][id.charCodeAt(id.length - 1) % 10]
+}
+
+export function SuggestionCard({ suggestion, isOverlay = false }: SuggestionCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: `suggestion-${suggestion.id}`,
       data: { type: 'suggestion' as const, suggestion },
+      disabled: isOverlay,
     })
-
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-  }
 
   const tagColor = getActivityColor(suggestion.category)
 
-  const formatPrice = (price: number | null, currency: string) => {
-    if (price === null || price === 0) return 'Free'
-    return `€${price}`
-  }
-
-  const formatDuration = (hours: number) => {
-    if (hours < 1) return `${Math.round(hours * 60)}m`
-    if (hours % 1 === 0) return `${hours}h`
-    return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
-  }
+  // When used as overlay: no transform on original, just opacity change
+  // The DragOverlay in CalendarDashboard renders this component as the ghost
+  const style: React.CSSProperties = isOverlay
+    ? { width: 150, opacity: 0.85 }
+    : { opacity: isDragging ? 0.3 : 1 }
 
   return (
     <div
-      ref={setNodeRef}
+      ref={isOverlay ? undefined : setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...(isOverlay ? {} : { ...attributes, ...listeners })}
       className={[
-        'group break-inside-avoid mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
-        'relative transition-all duration-200',
-        isDragging ? '' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
+        'break-inside-avoid mb-2 rounded-[10px] overflow-hidden',
+        'relative',
+        isOverlay
+          ? 'shadow-2xl ring-2 ring-white/30 cursor-grabbing scale-95'
+          : [
+              'group cursor-grab active:cursor-grabbing',
+              isDragging ? '' : 'transition-[opacity,transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
+            ].join(' '),
       ].join(' ')}
     >
       {/* Image */}
@@ -51,13 +62,13 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
         src={suggestion.imageUrl}
         alt=""
         className="w-full block object-cover"
-        style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
+        style={{ height: isOverlay ? 100 : cardHeight(suggestion.id) }}
         draggable={false}
       />
 
       {/* Price badge — top left */}
       <div className="absolute top-[7px] left-[7px] bg-black/55 backdrop-blur-[8px] rounded-md px-[7px] py-[2px] text-[11px] font-semibold text-white">
-        {formatPrice(suggestion.price, suggestion.currency)}
+        {formatPrice(suggestion.price)}
       </div>
 
       {/* Rating badge — top right */}
@@ -93,19 +104,23 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
         </div>
       </div>
 
-      {/* Hover overlay + drag badge */}
-      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-[10px] rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-white text-[11px] font-medium flex items-center gap-[5px]">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="9" cy="6" r="1.5" />
-          <circle cx="15" cy="6" r="1.5" />
-          <circle cx="9" cy="12" r="1.5" />
-          <circle cx="15" cy="12" r="1.5" />
-          <circle cx="9" cy="18" r="1.5" />
-          <circle cx="15" cy="18" r="1.5" />
-        </svg>
-        Drag to schedule
-      </div>
+      {/* Hover overlay + drag badge (only on source card, not overlay) */}
+      {!isOverlay && (
+        <>
+          <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-[10px] rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-white text-[11px] font-medium flex items-center gap-[5px]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="9" cy="6" r="1.5" />
+              <circle cx="15" cy="6" r="1.5" />
+              <circle cx="9" cy="12" r="1.5" />
+              <circle cx="15" cy="12" r="1.5" />
+              <circle cx="9" cy="18" r="1.5" />
+              <circle cx="15" cy="18" r="1.5" />
+            </svg>
+            Drag to schedule
+          </div>
+        </>
+      )}
     </div>
   )
 }
