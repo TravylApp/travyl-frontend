@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
-import { DndContext } from '@dnd-kit/core'
+import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   MOCK_FLIGHTS,
@@ -21,6 +21,7 @@ import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { DetailPanel } from './DetailPanel'
+import { ForYouPanel } from './ForYouPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -58,10 +59,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     goToDayView,
     goToWeekView,
   } = useCalendarNavigation()
-
-  const { sensors, handleDragStart, handleDragEnd } = useCalendarDnd({
-    onMoveActivity: moveActivity,
-  })
 
   const { theme, toggleTheme } = useCalendarTheme()
 
@@ -151,6 +148,25 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Computed
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
 
+  const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
+  const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
+
+  const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
+    await addActivity(activity)
+    selectEvent(activity.id)
+    setDroppedSuggestionIds((prev) => [...prev, suggestionId])
+    setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
+  }, [addActivity, selectEvent])
+
+  const { sensors, activeId, handleDragStart, handleDragEnd } = useCalendarDnd({
+    onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
+  })
+
+  const rightPanel = selectedEventId ? 'detail' : 'for-you'
+
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
     [activities, selectedEventId],
@@ -194,6 +210,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
     if (selectedEventId === id) selectEvent(null)
+    const suggestionId = activityToSuggestion.get(id)
+    if (suggestionId) {
+      setDroppedSuggestionIds((prev) => prev.filter((sid) => sid !== suggestionId))
+      setActivityToSuggestion((prev) => { const next = new Map(prev); next.delete(id); return next })
+    }
   }
 
   const handleViewModeChange = (mode: typeof viewMode) => {
@@ -274,14 +295,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         {/* Grid area */}
         {activeNav === 'calendar' ? (
         <>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Scrollable grid */}
           <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
-            <DndContext
-              sensors={sensors}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
               <AnimatePresence mode="wait" initial={false}>
                 {viewMode === 'week' ? (
                   <motion.div
@@ -327,18 +348,28 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                   </motion.div>
                 )}
               </AnimatePresence>
-            </DndContext>
           </div>
 
-          {/* Detail panel (slides in from right) */}
-          <DetailPanel
-            activity={selectedActivity}
-            viewers={collaborators}
-            onClose={handleCloseDetail}
-            onRemove={handleRemoveActivity}
-            onUpdateActivity={updateActivity}
-          />
+          {/* Right panel: detail or suggestions */}
+          {rightPanel === 'detail' ? (
+            <DetailPanel
+              activity={selectedActivity}
+              viewers={collaborators}
+              onClose={handleCloseDetail}
+              onRemove={handleRemoveActivity}
+              onUpdateActivity={updateActivity}
+            />
+          ) : (
+            <ForYouPanel
+              destination={trip?.destination ?? ''}
+              scheduledActivityIds={droppedSuggestionIds}
+            />
+          )}
         </div>
+        <DragOverlay dropAnimation={null}>
+          {activeId ? <div className="opacity-60 pointer-events-none rounded-lg shadow-2xl" /> : null}
+        </DragOverlay>
+        </DndContext>
 
         {/* Empty state -- only when no activities exist */}
         {activities.length === 0 && (
