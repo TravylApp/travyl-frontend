@@ -126,7 +126,10 @@ export function DayColumn({
       >
         {label}
         {dayCollaborators.length > 0 && (
-          <div className="flex items-center justify-center gap-0 mt-0.5">
+          <div
+            className="flex items-center justify-center gap-0 mt-0.5"
+            aria-label={`Viewing: ${dayCollaborators.map((c) => c.name).join(', ')}`}
+          >
             {dayCollaborators.slice(0, 3).map((c, i) => (
               <div
                 key={c.userId}
