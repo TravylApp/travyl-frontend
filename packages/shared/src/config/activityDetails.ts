@@ -1,4 +1,4 @@
-// Activity detail data for Rome itinerary — rich details for DetailedActivityCard
+// Activity detail data for Rome itinerary
 // Images are Unsplash URLs (no figma:asset imports needed in Next.js)
 
 const phoneBookingApp = 'https://images.unsplash.com/photo-1730818029039-662126e61821?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';

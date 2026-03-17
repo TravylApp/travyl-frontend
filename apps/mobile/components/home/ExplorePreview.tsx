@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Gray, getCyclicGradient } from '@travyl/shared';
-import type { ExploreItem } from '@travyl/shared';
+import { useExploreRows, Gray, getCyclicGradient, MOCK_PLACES } from '@travyl/shared';
+import type { PlaceItem } from '@travyl/shared';
 import { ExploreRow } from './ExploreRow';
 
 /** Double-chevron icon to match web's ChevronsUpDown / ChevronsDownUp */
@@ -26,25 +26,29 @@ function DoubleChevron({ collapsed, size = 10, color = Gray[500] }: { collapsed:
   );
 }
 
-const PLACEHOLDER_ITEMS: ExploreItem[] = [
-  { id: 'pe-1', name: '', image_url: null },
-  { id: 'pe-2', name: '', image_url: null },
-  { id: 'pe-3', name: '', image_url: null },
-  { id: 'pe-4', name: '', image_url: null },
-];
-
-const PLACEHOLDER_BASE = [
-  { title: 'Popular Destinations', items: PLACEHOLDER_ITEMS, gradient: getCyclicGradient(0) },
-  { title: 'Famous Attractions', items: PLACEHOLDER_ITEMS.map((it, i) => ({ ...it, id: `pe-${i + 5}` })), gradient: getCyclicGradient(1) },
-  { title: 'Top Restaurants', items: PLACEHOLDER_ITEMS.map((it, i) => ({ ...it, id: `pe-${i + 9}` })), gradient: getCyclicGradient(2) },
-  { title: 'Hot Experiences', items: PLACEHOLDER_ITEMS.map((it, i) => ({ ...it, id: `pe-${i + 13}` })), gradient: getCyclicGradient(3) },
-];
-
-export function ExplorePreview() {
+export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = {}) {
   const { rows: hookRows, toggleRow: hookToggle, collapseAll: hookCollapseAll, expandAll: hookExpandAll, allExpanded: hookAllExpanded } = useExploreRows();
-  const usingPlaceholder = !hookRows.length;
 
-  // Local expand state for placeholder mode — all collapsed by default
+  // Build contextual rows when a place is selected
+  const contextRows = useMemo(() => {
+    if (!contextPlace) return null;
+    const nearbyIds = contextPlace.nearbyPlaces ?? [];
+    const nearbyItems = MOCK_PLACES.filter((p) => nearbyIds.includes(p.id));
+    const similarItems = MOCK_PLACES.filter(
+      (p) => p.id !== contextPlace.id && p.type === contextPlace.type,
+    ).slice(0, 6);
+
+    return [
+      ...(nearbyItems.length > 0
+        ? [{ title: 'Nearby Places', items: nearbyItems, gradient: getCyclicGradient(0) }]
+        : []),
+      ...(similarItems.length > 0
+        ? [{ title: `Similar ${contextPlace.type.charAt(0).toUpperCase() + contextPlace.type.slice(1)}s`, items: similarItems, gradient: getCyclicGradient(1) }]
+        : []),
+    ];
+  }, [contextPlace?.id]);
+
+  // Local expand state for context mode — all collapsed by default
   const [localExpanded, setLocalExpanded] = useState<Record<number, boolean>>({ 0: false, 1: false, 2: false, 3: false });
 
   const localToggle = useCallback((i: number) => {
@@ -57,13 +61,13 @@ export function ExplorePreview() {
     setLocalExpanded({ 0: true, 1: true, 2: true, 3: true });
   }, []);
 
-  const rows = usingPlaceholder
-    ? PLACEHOLDER_BASE.map((r, i) => ({ ...r, isExpanded: localExpanded[i] ?? false }))
+  const rows = contextRows
+    ? contextRows.map((r, i) => ({ ...r, isExpanded: localExpanded[i] ?? false }))
     : hookRows;
-  const toggleRow = usingPlaceholder ? localToggle : hookToggle;
-  const collapseAll = usingPlaceholder ? localCollapseAll : hookCollapseAll;
-  const expandAll = usingPlaceholder ? localExpandAll : hookExpandAll;
-  const allExpanded = usingPlaceholder
+  const toggleRow = contextRows ? localToggle : hookToggle;
+  const collapseAll = contextRows ? localCollapseAll : hookCollapseAll;
+  const expandAll = contextRows ? localExpandAll : hookExpandAll;
+  const allExpanded = contextRows
     ? Object.values(localExpanded).every(Boolean)
     : hookAllExpanded;
 
@@ -76,21 +80,23 @@ export function ExplorePreview() {
             fontSize: 20,
             fontWeight: '700',
             color: Gray[900],
-            textAlign: 'center',
+            textAlign: 'left',
             marginBottom: 8,
           }}
         >
-          Explore
+          {contextPlace ? 'More to Explore' : 'Explore'}
         </Text>
         <Text
           style={{
             fontSize: 14,
             color: Gray[500],
-            textAlign: 'center',
+            textAlign: 'left',
             marginBottom: 16,
           }}
         >
-          Discover destinations, attractions, restaurants, and experiences
+          {contextPlace
+            ? `Nearby and similar to ${contextPlace.name}`
+            : 'Discover destinations, attractions, restaurants, and experiences'}
         </Text>
 
         {/* Expand/Collapse All pill */}

@@ -14,7 +14,7 @@ describe('getTripStatusDisplay', () => {
   it('returns correct colors for planning', () => {
     const result = getTripStatusDisplay('planning');
     expect(result.label).toBe('Planning');
-    expect(result.bgColor).toBe('#DBEAFE');
+    expect(result.bgColor).toBe('#DBE6FF');
     expect(result.textColor).toBe('#1D4ED8');
   });
 
@@ -27,7 +27,7 @@ describe('getTripStatusDisplay', () => {
   it('returns correct colors for active', () => {
     const result = getTripStatusDisplay('active');
     expect(result.label).toBe('Active');
-    expect(result.bgColor).toBe('#DCFCE7');
+    expect(result.bgColor).toBe('#D1FAE5');
   });
 
   it('returns correct colors for completed', () => {
@@ -158,6 +158,8 @@ describe('buildTripCardViewModel', () => {
     is_shared: false,
     share_link_token: null,
     share_link_role: 'viewer',
+    theme: 'navy',
+    custom_theme_color: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
   };

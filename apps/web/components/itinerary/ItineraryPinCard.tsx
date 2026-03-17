@@ -70,7 +70,7 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.5) }}
+      transition={{ duration: 0.25, delay: Math.min(index * 0.02, 0.3) }}
       style={{ rotate: rotation ? `${rotation}deg` : undefined }}
       className="break-inside-avoid mb-2"
     >

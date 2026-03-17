@@ -8,6 +8,5 @@ export function useFlights(tripId: string | undefined) {
     queryKey: ['flights', tripId],
     queryFn: () => fetchFlights(tripId!),
     enabled: /* !!user && */ !!tripId,
-    retry: false,
   });
 }

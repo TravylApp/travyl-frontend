@@ -33,7 +33,7 @@ export function CheckoutSection({ hotelName, hotelAddress, checkOutTime, collaps
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full rounded-xl px-3.5 py-3 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow"
-        style={{ background: 'linear-gradient(135deg, #2d4a6f, #3a6b9f)' }}
+        style={{ backgroundColor: 'var(--trip-base)' }}
       >
         <div className="flex items-center gap-2.5">
           <Building2 size={18} className="text-white" />

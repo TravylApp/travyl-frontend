@@ -1,29 +1,101 @@
 'use client';
 
+import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { PaperPlane } from "./PaperPlane";
 import { FOOTER_COLUMNS, SOCIAL_LINKS } from "@travyl/shared";
 
-function SocialIcon({ platform, size = 16, color = 'currentColor' }: { platform: string; size?: number; color?: string }) {
-  const props = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  switch (platform) {
-    case 'twitter':
-    case 'x':
-      return <svg {...props}><path d="M4 4l11.733 16H20L8.267 4z" /><path d="M4 20l6.768-6.768M15.232 10.232L20 4" /></svg>;
-    case 'facebook':
-      return <svg {...props}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>;
-    case 'tiktok':
-      return <svg {...props}><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" /></svg>;
-    default: // instagram
-      return <svg {...props}><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="5" /><circle cx="17.5" cy="6.5" r="1.5" fill={color} stroke="none" /></svg>;
-  }
-}
+const LANGUAGES = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'pt', name: 'Português', flag: '🇧🇷' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ko', name: '한국어', flag: '🇰🇷' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+];
+
+import { SocialIcon } from "@/components/icons/SocialIcon";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true } as const,
 };
+
+function LanguageSelector() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all hover:scale-105"
+        style={{ backgroundColor: '#d4bc94' }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#c4a882')}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isOpen ? '#c4a882' : '#d4bc94')}
+        title={selectedLang.name}
+      >
+        {selectedLang.flag}
+      </button>
+
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          className="absolute top-full mt-2 right-0 min-w-[160px] rounded-lg shadow-lg overflow-hidden z-50"
+          style={{ backgroundColor: '#f5ebe0' }}
+        >
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => {
+                setSelectedLang(lang);
+                setIsOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors hover:bg-[#e8d5c0]"
+              style={{ color: '#3d2f23' }}
+            >
+              <span className="text-base">{lang.flag}</span>
+              <span>{lang.name}</span>
+              {selectedLang.code === lang.code && (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-auto"
+                  style={{ color: '#5c4a3a' }}
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </motion.div>
+      )}
+    </div>
+  );
+}
 
 export function Footer() {
   return (
@@ -33,7 +105,7 @@ export function Footer() {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.4 }}
     >
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -43,11 +115,11 @@ export function Footer() {
             {...fadeUp}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1 mb-2">
               <span className="text-xl font-black tracking-[1.5px]" style={{ color: '#2a1f17' }}>
                 TRAVYL
               </span>
-              <PaperPlane size={16} className="-rotate-12" style={{ color: '#2a1f17' }} />
+              <PaperPlane size={28} style={{ color: '#2a1f17' }} />
             </div>
             <p className="text-sm leading-relaxed" style={{ color: '#3d2f23' }}>
               Discover and plan your perfect trip from one place. Explore destinations, find the best hotels and flights, and create unforgettable itineraries.
@@ -104,6 +176,7 @@ export function Footer() {
                   <SocialIcon platform={link.platform} size={16} color="#5c4a3a" />
                 </a>
               ))}
+              <LanguageSelector />
             </div>
           </motion.div>
         </div>

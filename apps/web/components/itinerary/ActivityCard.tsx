@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Clock, Heart, Image as ImageIcon } from 'lucide-react';
-import { getActivityTypeColor } from '@travyl/shared';
+import { MapPin, Clock, Heart } from 'lucide-react';
+import { getActivityTypeColor, Navy } from '@travyl/shared';
 import type { ActivityViewModel } from '@travyl/shared';
 
 interface ActivityCardProps {
@@ -12,18 +12,22 @@ interface ActivityCardProps {
 
 export function ActivityCard({ activity, onClick }: ActivityCardProps) {
   const [isFavorited, setIsFavorited] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const typeColor = getActivityTypeColor(activity.category);
-  const hasImage = false; // Will be true once we have real activity images
+  const hasImage = !!(activity as any).image && !imgError;
 
   return (
     <div className="rounded-[14px] bg-white border border-gray-200 overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.02]" onClick={onClick}>
       {/* Image section */}
       <div className="relative h-[150px] overflow-hidden" style={{ backgroundColor: typeColor.bg }}>
         {hasImage ? (
-          <img src="" alt={activity.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img src={(activity as any).image} alt={activity.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onError={() => setImgError(true)} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ImageIcon size={28} style={{ color: typeColor.primary + '30' }} />
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
+          >
+            <MapPin size={28} className="text-white/30" />
           </div>
         )}
 
@@ -43,14 +47,6 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
             className={isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-500'}
           />
         </button>
-
-        {/* Type badge */}
-        <span
-          className="absolute top-2.5 left-2.5 bg-white/92 backdrop-blur-sm text-[10px] font-semibold px-2.5 py-1 rounded-xl"
-          style={{ color: typeColor.primary }}
-        >
-          {activity.category}
-        </span>
 
         {/* Title overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-3">

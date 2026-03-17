@@ -4,23 +4,23 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, MOCK_DISCOVER_ACTIVITIES, MOCK_DISCOVER_RESTAURANTS } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { PageTransition, useTabAccent } from './_layout';
 
 /* ─── Constants ─────────────────────────────────────────────── */
-
-const NAVY = '#1e3a5f';
 
 // Pre-populate some sample favorites for demo
 const INITIAL_ACTIVITY_FAVORITES = ['da1', 'da3', 'da6'];
 const INITIAL_RESTAURANT_FAVORITES = ['rb2', 'rd1', 'rd4'];
 const INITIAL_DESTINATION_FAVORITES = ['da2', 'da5', 'da8'];
 
-// Category config with accent colors and icons
+// Category config with icons
 const CATEGORIES = [
-  { key: 'All', icon: 'th-large', color: NAVY },
-  { key: 'Activities', icon: 'camera', color: '#0d9488' },
-  { key: 'Restaurants', icon: 'cutlery', color: '#f97316' },
-  { key: 'Destinations', icon: 'compass', color: '#f59e0b' },
-  { key: 'Hotels', icon: 'building', color: '#60a5fa' },
+  { key: 'All', icon: 'th-large' },
+  { key: 'Activities', icon: 'camera' },
+  { key: 'Restaurants', icon: 'cutlery' },
+  { key: 'Destinations', icon: 'compass' },
+  { key: 'Hotels', icon: 'building' },
 ] as const;
 
 type CategoryFilter = (typeof CATEGORIES)[number]['key'];
@@ -32,22 +32,28 @@ function SectionHeader({
   title,
   count,
   accentColor,
+  collapsed,
+  onToggle,
 }: {
   icon: string;
   title: string;
   count: number;
   accentColor: string;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
+  const colors = useThemeColors();
   return (
-    <View
+    <Pressable
+      onPress={onToggle}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginBottom: 16,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        marginBottom: collapsed ? 0 : 16,
+        paddingBottom: collapsed ? 0 : 12,
+        borderBottomWidth: collapsed ? 0 : 1,
+        borderBottomColor: colors.border,
       }}
     >
       <View
@@ -62,11 +68,16 @@ function SectionHeader({
       >
         <FontAwesome name={icon as any} size={20} color="#fff" />
       </View>
-      <View>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>{title}</Text>
-        <Text style={{ fontSize: 13, color: '#6b7280' }}>{count} saved</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{title}</Text>
+        <Text style={{ fontSize: 13, color: colors.textSecondary }}>{count} saved</Text>
       </View>
-    </View>
+      <FontAwesome
+        name={collapsed ? 'chevron-right' : 'chevron-down'}
+        size={14}
+        color={colors.textTertiary}
+      />
+    </Pressable>
   );
 }
 
@@ -83,19 +94,20 @@ function FavoriteCard({
   categoryLabel: string;
   onRemove: (id: string) => void;
 }) {
+  const colors = useThemeColors();
   const [imgError, setImgError] = useState(false);
   const hasImage = item.images.length > 0 && !imgError;
 
   return (
     <View
       style={{
-        backgroundColor: '#fff',
+        backgroundColor: colors.cardBackground,
         borderRadius: 14,
         overflow: 'hidden',
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#f3f4f6',
-        shadowColor: '#000',
+        borderColor: colors.borderLight,
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
@@ -116,7 +128,7 @@ function FavoriteCard({
           backgroundColor: 'rgba(255,255,255,0.95)',
           alignItems: 'center',
           justifyContent: 'center',
-          shadowColor: '#000',
+          shadowColor: colors.shadow,
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.15,
           shadowRadius: 3,
@@ -127,7 +139,7 @@ function FavoriteCard({
       </Pressable>
 
       {/* Image */}
-      <View style={{ height: 160, backgroundColor: '#f3f4f6' }}>
+      <View style={{ height: 160, backgroundColor: colors.borderLight }}>
         {hasImage ? (
           <Image
             source={{ uri: item.images[0] }}
@@ -137,7 +149,7 @@ function FavoriteCard({
           />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <FontAwesome name="image" size={28} color="#d1d5db" />
+            <FontAwesome name="image" size={28} color={colors.border} />
           </View>
         )}
 
@@ -170,7 +182,7 @@ function FavoriteCard({
             }}
           >
             <FontAwesome name="star" size={10} color="#fbbf24" />
-            <Text style={{ fontSize: 11, fontWeight: '600', color: '#111827' }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
               {item.rating.toFixed(1)}
             </Text>
           </View>
@@ -213,19 +225,19 @@ function FavoriteCard({
       <View style={{ padding: 14 }}>
         {/* Location */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-          <FontAwesome name="map-marker" size={10} color="#9ca3af" />
-          <Text style={{ fontSize: 11, color: '#6b7280' }} numberOfLines={1}>
+          <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
+          <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
             {item.location}
           </Text>
         </View>
 
         {/* Name */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 }} numberOfLines={1}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 }} numberOfLines={1}>
           {item.name}
         </Text>
 
         {/* Description */}
-        <Text style={{ fontSize: 12, color: '#6b7280', lineHeight: 18, marginBottom: 10 }} numberOfLines={2}>
+        <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 10 }} numberOfLines={2}>
           {item.description}
         </Text>
 
@@ -255,6 +267,8 @@ function FavoriteCard({
 /* ─── Empty State ───────────────────────────────────────────── */
 
 function EmptyState() {
+  const ACCENT = useTabAccent('favorites');
+  const colors = useThemeColors();
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 56, paddingHorizontal: 24 }}>
       <View
@@ -270,24 +284,24 @@ function EmptyState() {
       >
         <FontAwesome name="heart" size={24} color="#ef4444" />
       </View>
-      <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 6 }}>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
         No favorites yet
       </Text>
-      <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+      <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
         Save your favorite activities, restaurants, and places to quickly find them later.
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <FontAwesome name="camera" size={16} color="#0d9488" />
-          <Text style={{ fontSize: 14, color: '#6b7280' }}>Activities</Text>
+          <FontAwesome name="camera" size={16} color={ACCENT} />
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Activities</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <FontAwesome name="cutlery" size={16} color="#f97316" />
-          <Text style={{ fontSize: 14, color: '#6b7280' }}>Restaurants</Text>
+          <FontAwesome name="cutlery" size={16} color={ACCENT} />
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Restaurants</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <FontAwesome name="building" size={16} color="#60a5fa" />
-          <Text style={{ fontSize: 14, color: '#6b7280' }}>Hotels</Text>
+          <FontAwesome name="building" size={16} color={ACCENT} />
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Hotels</Text>
         </View>
       </View>
     </View>
@@ -297,36 +311,38 @@ function EmptyState() {
 /* ─── Skeleton ──────────────────────────────────────────────── */
 
 function SkeletonCard() {
+  const colors = useThemeColors();
   return (
     <View
       style={{
-        backgroundColor: '#fff',
+        backgroundColor: colors.cardBackground,
         borderRadius: 14,
         overflow: 'hidden',
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#e5e7eb',
+        borderColor: colors.border,
       }}
     >
-      <View style={{ height: 140, backgroundColor: '#f3f4f6' }} />
+      <View style={{ height: 140, backgroundColor: colors.borderLight }} />
       <View style={{ padding: 14 }}>
-        <View style={{ width: '70%', height: 14, borderRadius: 6, backgroundColor: '#e5e7eb', marginBottom: 8 }} />
-        <View style={{ width: '55%', height: 10, borderRadius: 6, backgroundColor: '#e5e7eb' }} />
+        <View style={{ width: '70%', height: 14, borderRadius: 6, backgroundColor: colors.skeleton, marginBottom: 8 }} />
+        <View style={{ width: '55%', height: 10, borderRadius: 6, backgroundColor: colors.skeleton }} />
       </View>
     </View>
   );
 }
 
 function FavoritesSkeleton() {
+  const colors = useThemeColors();
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#f9fafb' }}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
     >
       {/* Filter chip skeletons */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
         {[70, 90, 100, 85, 65].map((w, i) => (
-          <View key={i} style={{ width: w, height: 36, borderRadius: 18, backgroundColor: '#e5e7eb' }} />
+          <View key={i} style={{ width: w, height: 36, borderRadius: 18, backgroundColor: colors.skeleton }} />
         ))}
       </View>
       <SkeletonCard />
@@ -339,6 +355,7 @@ function FavoritesSkeleton() {
 /* ─── Main Screen ───────────────────────────────────────────── */
 
 export default function FavoritesScreen() {
+  const ACCENT = useTabAccent('favorites');
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isLoading } = useItineraryScreen(id);
 
@@ -346,6 +363,11 @@ export default function FavoritesScreen() {
   const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
   const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>(INITIAL_RESTAURANT_FAVORITES);
   const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
+  const colors = useThemeColors();
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => {
+    setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const favoritedActivities = MOCK_DISCOVER_ACTIVITIES.filter((a) => activityFavorites.includes(a.id));
   const favoritedRestaurants = MOCK_DISCOVER_RESTAURANTS.filter((r) => restaurantFavorites.includes(r.id));
@@ -392,13 +414,14 @@ export default function FavoritesScreen() {
     (showRestaurants ? favoritedRestaurants.length : 0) +
     (showDestinations ? favoritedDestinations.length : 0);
 
-  if (isLoading) return <FavoritesSkeleton />;
+  if (isLoading) return <PageTransition><FavoritesSkeleton /></PageTransition>;
 
-  if (totalFavorites === 0) return <EmptyState />;
+  if (totalFavorites === 0) return <PageTransition><EmptyState /></PageTransition>;
 
   return (
+    <PageTransition>
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#f9fafb' }}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
@@ -409,7 +432,7 @@ export default function FavoritesScreen() {
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: NAVY,
+            backgroundColor: ACCENT,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: 12,
@@ -417,10 +440,10 @@ export default function FavoritesScreen() {
         >
           <FontAwesome name="heart" size={24} color="#fff" />
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 4 }}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
           Your Favorites
         </Text>
-        <Text style={{ fontSize: 14, color: '#6b7280' }}>
+        <Text style={{ fontSize: 14, color: colors.textSecondary }}>
           {totalFavorites} saved items across all categories
         </Text>
       </View>
@@ -447,27 +470,27 @@ export default function FavoritesScreen() {
                 paddingVertical: 8,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: isActive ? cat.color : '#e5e7eb',
-                backgroundColor: isActive ? cat.color : '#fff',
+                borderColor: isActive ? ACCENT : colors.border,
+                backgroundColor: isActive ? ACCENT : colors.cardBackground,
               }}
             >
               <FontAwesome
                 name={cat.icon as any}
                 size={12}
-                color={isActive ? '#fff' : '#6b7280'}
+                color={isActive ? '#fff' : colors.textSecondary}
               />
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: isActive ? '600' : '400',
-                  color: isActive ? '#fff' : '#4b5563',
+                  color: isActive ? '#fff' : colors.textSecondary,
                 }}
               >
                 {cat.key}
               </Text>
               <View
                 style={{
-                  backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : '#f3f4f6',
+                  backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : colors.borderLight,
                   paddingHorizontal: 6,
                   paddingVertical: 1,
                   borderRadius: 10,
@@ -477,7 +500,7 @@ export default function FavoritesScreen() {
                   style={{
                     fontSize: 10,
                     fontWeight: '600',
-                    color: isActive ? '#fff' : '#9ca3af',
+                    color: isActive ? '#fff' : colors.textTertiary,
                   }}
                 >
                   {count}
@@ -496,18 +519,18 @@ export default function FavoritesScreen() {
               width: 48,
               height: 48,
               borderRadius: 24,
-              backgroundColor: '#f3f4f6',
+              backgroundColor: colors.borderLight,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 12,
             }}
           >
-            <FontAwesome name="heart-o" size={20} color="#9ca3af" />
+            <FontAwesome name="heart-o" size={20} color={colors.textTertiary} />
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 4 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
             No {activeFilter.toLowerCase()} favorited
           </Text>
-          <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', lineHeight: 20 }}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
             Browse the {activeFilter} tab to discover and save items.
           </Text>
         </View>
@@ -517,13 +540,13 @@ export default function FavoritesScreen() {
       {showActivities && (
         <View
           style={{
-            backgroundColor: '#fff',
+            backgroundColor: colors.cardBackground,
             borderRadius: 16,
             padding: 16,
             marginBottom: 20,
             borderWidth: 1,
-            borderColor: '#f3f4f6',
-            shadowColor: '#000',
+            borderColor: colors.borderLight,
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.04,
             shadowRadius: 4,
@@ -534,17 +557,23 @@ export default function FavoritesScreen() {
             icon="camera"
             title="Activities & Attractions"
             count={favoritedActivities.length}
-            accentColor="#0d9488"
+            accentColor={ACCENT}
+            collapsed={!!collapsedSections['activities']}
+            onToggle={() => toggleSection('activities')}
           />
-          {favoritedActivities.map((item) => (
-            <FavoriteCard
-              key={item.id}
-              item={item}
-              accentColor="#0d9488"
-              categoryLabel="Activity"
-              onRemove={removeActivityFavorite}
-            />
-          ))}
+          {!collapsedSections['activities'] && (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              {favoritedActivities.map((item) => (
+                <FavoriteCard
+                  key={item.id}
+                  item={item}
+                  accentColor={ACCENT}
+                  categoryLabel="Activity"
+                  onRemove={removeActivityFavorite}
+                />
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -552,13 +581,13 @@ export default function FavoritesScreen() {
       {showRestaurants && (
         <View
           style={{
-            backgroundColor: '#fff',
+            backgroundColor: colors.cardBackground,
             borderRadius: 16,
             padding: 16,
             marginBottom: 20,
             borderWidth: 1,
-            borderColor: '#f3f4f6',
-            shadowColor: '#000',
+            borderColor: colors.borderLight,
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.04,
             shadowRadius: 4,
@@ -569,17 +598,23 @@ export default function FavoritesScreen() {
             icon="cutlery"
             title="Restaurants & Dining"
             count={favoritedRestaurants.length}
-            accentColor="#f97316"
+            accentColor={ACCENT}
+            collapsed={!!collapsedSections['restaurants']}
+            onToggle={() => toggleSection('restaurants')}
           />
-          {favoritedRestaurants.map((item) => (
-            <FavoriteCard
-              key={item.id}
-              item={item}
-              accentColor="#f97316"
-              categoryLabel="Restaurant"
-              onRemove={removeRestaurantFavorite}
-            />
-          ))}
+          {!collapsedSections['restaurants'] && (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              {favoritedRestaurants.map((item) => (
+                <FavoriteCard
+                  key={item.id}
+                  item={item}
+                  accentColor={ACCENT}
+                  categoryLabel="Restaurant"
+                  onRemove={removeRestaurantFavorite}
+                />
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -587,13 +622,13 @@ export default function FavoritesScreen() {
       {showDestinations && (
         <View
           style={{
-            backgroundColor: '#fff',
+            backgroundColor: colors.cardBackground,
             borderRadius: 16,
             padding: 16,
             marginBottom: 20,
             borderWidth: 1,
-            borderColor: '#f3f4f6',
-            shadowColor: '#000',
+            borderColor: colors.borderLight,
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.04,
             shadowRadius: 4,
@@ -604,17 +639,23 @@ export default function FavoritesScreen() {
             icon="compass"
             title="Saved Destinations"
             count={favoritedDestinations.length}
-            accentColor="#f59e0b"
+            accentColor={ACCENT}
+            collapsed={!!collapsedSections['destinations']}
+            onToggle={() => toggleSection('destinations')}
           />
-          {favoritedDestinations.map((item) => (
-            <FavoriteCard
-              key={item.id}
-              item={item}
-              accentColor="#f59e0b"
-              categoryLabel="Destination"
-              onRemove={removeDestinationFavorite}
-            />
-          ))}
+          {!collapsedSections['destinations'] && (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              {favoritedDestinations.map((item) => (
+                <FavoriteCard
+                  key={item.id}
+                  item={item}
+                  accentColor={ACCENT}
+                  categoryLabel="Destination"
+                  onRemove={removeDestinationFavorite}
+                />
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -622,13 +663,13 @@ export default function FavoritesScreen() {
       {showHotels && (
         <View
           style={{
-            backgroundColor: '#fff',
+            backgroundColor: colors.cardBackground,
             borderRadius: 16,
             padding: 16,
             marginBottom: 20,
             borderWidth: 1,
-            borderColor: '#f3f4f6',
-            shadowColor: '#000',
+            borderColor: colors.borderLight,
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.04,
             shadowRadius: 4,
@@ -639,15 +680,22 @@ export default function FavoritesScreen() {
             icon="building"
             title="Hotels & Accommodations"
             count={0}
-            accentColor="#60a5fa"
+            accentColor={ACCENT}
+            collapsed={!!collapsedSections['hotels']}
+            onToggle={() => toggleSection('hotels')}
           />
-          <View style={{ alignItems: 'center', paddingVertical: 28 }}>
-            <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center' }}>
-              Hotel favorites will appear here when you heart items in the Hotels tab
-            </Text>
-          </View>
+          {!collapsedSections['hotels'] && (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              <View style={{ alignItems: 'center', paddingVertical: 28 }}>
+                <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
+                  Hotel favorites will appear here when you heart items in the Hotels tab
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
     </ScrollView>
+    </PageTransition>
   );
 }
