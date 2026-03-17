@@ -27,6 +27,9 @@ Replace all mock data in the calendar view with live Supabase data. Full CRUD on
 - DB migration: renamed `trips` columns (`trip_name→title`, `starting_date→start_date`, `ending_date→end_date`, `trip_status→status`), added `destination` column
 - Drag-and-drop fixes: correct `active.data.current.activity` access, removed nested `overflow-auto` from WeekView, `moveActivity` now shifts `endDay` by same delta as `day`
 
+- TRA-202 collaborator awareness UI: `selectedDayIndex` broadcast, avatar tooltip in `CalendarHeader`, avatar stack in `DayColumn` day header
+- Fixed `@travyl/shared` sub-path import violations in all 4 calendar hooks
+
 ### In Progress / Known issues
 - Mock flight/hotel data still hardcoded in `CalendarDashboard` (`MOCK_FLIGHTS`, `MOCK_HOTELS`)
 - `MockTripCard` type still used for real trip data in trips page (misleading name, deferred)
