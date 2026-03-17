@@ -2,10 +2,13 @@
 
 ## Monorepo
 
-npm workspaces. Three packages:
-- `@travyl/web` — Next.js 16 web app
-- `@travyl/mobile` — Expo 54 React Native app
-- `@travyl/shared` — shared library consumed by both
+npm workspaces + SST v3 (Ion). Four top-level concerns:
+
+- `apps/web` — Next.js 16 web app (`@travyl/web`)
+- `apps/mobile` — Expo 54 React Native app (`@travyl/mobile`)
+- `packages/shared` — shared library consumed by both (`@travyl/shared`)
+- `services/` — AWS Lambda functions for the recommendation engine
+- `infra/` — SST resource definitions (all AWS infrastructure as code)
 
 `@travyl/shared` has **no sub-path exports**. Always import from the root:
 ```ts
@@ -149,6 +152,96 @@ import { supabase } from '@travyl/shared/services/supabase'
 - `favorite_places` — saved places per user (activity_type, activity_data jsonb)
 - `search_session` — flight/hotel search session tracking
 - `user_travel_profile` — travel preferences (travel_style, pace, budget, cabin class)
+
+## SST (Serverless Stack)
+
+All AWS infrastructure is defined and deployed via **SST v3 (Ion)**, which uses Pulumi under the hood. SST lives in the monorepo root — `sst.config.ts` is the entry point, `infra/` contains resource definitions, `services/` contains Lambda function code.
+
+### Why SST
+
+- **Single `sst deploy`** provisions everything — Lambdas, OpenSearch, DynamoDB, API Gateway, S3, CloudFront, EventBridge
+- **`sst dev`** gives live Lambda debugging with hot reload — no redeploy cycle
+- **Type-safe resource bindings** — Lambda functions automatically get credentials and URLs for the resources they're bound to via `Resource.MyTable.name` etc.
+- **Pulumi underneath** — anything Pulumi/AWS can do, SST can do. Custom resources for services like Amazon Personalize
+- **Monorepo native** — designed for this exact setup (frontend + backend in one repo)
+
+### Project Layout
+
+```
+travyl-frontend/
+├── sst.config.ts               ← SST entry point, links infra + app
+├── infra/
+│   ├── api.ts                  ← API Gateway + Lambda route bindings
+│   ├── storage.ts              ← OpenSearch Serverless, DynamoDB, S3, CloudFront
+│   ├── events.ts               ← EventBridge bus + event rules
+│   └── secrets.ts              ← SST secrets (API keys, Supabase service role key)
+├── services/
+│   ├── suggest.ts              ← GET /suggest — personalized recommendations
+│   ├── search.ts               ← GET /search — semantic activity search
+│   ├── interact.ts             ← POST /interact — log user interactions
+│   ├── ingest.ts               ← Catalog ingestion job (Google Places, Viator)
+│   ├── embed.ts                ← Batch compute Bedrock Titan embeddings
+│   └── lib/
+│       ├── embedding.ts        ← Bedrock Titan embedding client
+│       ├── opensearch.ts       ← OpenSearch vector query builder
+│       ├── cache.ts            ← DynamoDB recommendation cache
+│       ├── personalize.ts      ← Amazon Personalize runtime client
+│       └── types.ts            ← Shared backend types
+├── apps/
+├── packages/
+```
+
+### AWS Resources
+
+| Resource | SST Component | Purpose |
+|----------|--------------|---------|
+| API Gateway v2 | `sst.aws.ApiGatewayV2` | REST endpoints consumed by frontend |
+| Lambda | `sst.aws.Function` | All backend compute |
+| OpenSearch Serverless | `aws.opensearch.ServerlessCollection` | Activity catalog + vector similarity search |
+| DynamoDB | `sst.aws.Dynamo` | Recommendation cache (user+destination → suggestions) |
+| EventBridge | `sst.aws.Bus` | Interaction event ingestion + async processing |
+| S3 | `sst.aws.Bucket` | Activity images + Personalize training data export |
+| CloudFront | `sst.aws.Router` | CDN for activity images |
+| Bedrock | IAM policy grant | Titan embeddings + Claude for ranking explanations |
+| Amazon Personalize | Custom Pulumi resource | Collaborative filtering + contextual re-ranking |
+
+### Responsibility Split: Supabase vs AWS
+
+| Concern | Owner | Why |
+|---------|-------|-----|
+| Auth | Supabase | Already wired, works with RLS |
+| Trip/activity CRUD | Supabase | Real-time sync via Yjs, RLS policies |
+| User profiles, travel preferences | Supabase | Simple relational data |
+| Real-time collaboration | Supabase Realtime + Yjs | Already built |
+| Activity catalog (millions of venues) | AWS OpenSearch | Vector search at scale |
+| Recommendation engine | AWS Personalize + Lambda | ML-powered, collaborative filtering |
+| Embeddings | AWS Bedrock | Managed, no GPU infra |
+| Interaction tracking | AWS EventBridge + DynamoDB | High-throughput event ingestion |
+| Image CDN | AWS S3 + CloudFront | Edge delivery, on-the-fly resize |
+
+### Recommendation Data Flow
+
+1. User opens trip → frontend calls `GET /suggest?destination=Paris&tripId=xxx&userId=xxx`
+2. Lambda checks DynamoDB cache (key: `{userId}:{destination}:{travelStyle}:{budgetTier}`)
+3. Cache hit → return immediately
+4. Cache miss → query OpenSearch (vector similarity by destination + user taste vector) → re-rank via Personalize → write to DynamoDB → return
+5. User interacts with suggestion cards → `POST /interact` → EventBridge → async update user taste vector
+6. Nightly batch: `ingest.ts` pulls from Google Places / Viator → `embed.ts` computes vectors → upserts to OpenSearch
+
+### Personalization Signals
+
+| Tier | Source | Signal |
+|------|--------|--------|
+| 1 | `trips` table | Destination, dates, budget, travelers, scheduled activities |
+| 2 | `user_travel_profile` table | travel_style, pace, budget_split, avg_budget_per_day |
+| 3 | `favorite_places` + `search_session` | Saved places, search patterns, booking conversions |
+| 4 | Schedule analysis | Time gaps, geographic clustering, category diversity |
+| 5 | Amazon Personalize | Collaborative filtering across all users |
+
+### Cache Strategy
+
+- DynamoDB TTL: 6h destination-level, 30min personalized
+- Invalidated on activity add/remove (schedule context changed)
 
 ## Key conventions
 
