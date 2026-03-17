@@ -6,8 +6,17 @@ interface CalendarErrorProps {
 }
 
 export function CalendarError({ message, onBack }: CalendarErrorProps) {
+  const isDark =
+    typeof window !== 'undefined' &&
+    localStorage.getItem('travyl-calendar-theme') === 'dark'
+
   return (
-    <div className="flex h-screen items-center justify-center bg-[#0f1117] text-white">
+    <div
+      className={
+        'flex h-screen items-center justify-center bg-gray-50 dark:bg-[#0a1520] text-gray-900 dark:text-[#f5efe8]' +
+        (isDark ? ' dark' : '')
+      }
+    >
       <div className="flex flex-col items-center gap-4 text-center max-w-sm px-4">
         <svg
           width="48"
@@ -25,11 +34,11 @@ export function CalendarError({ message, onBack }: CalendarErrorProps) {
             strokeLinecap="round"
           />
         </svg>
-        <p className="text-sm text-gray-300">{message}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
         {onBack && (
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 transition-colors text-sm font-medium"
+            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-sm font-medium text-gray-700 dark:text-white"
           >
             Go back
           </button>
