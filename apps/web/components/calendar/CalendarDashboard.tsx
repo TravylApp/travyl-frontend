@@ -254,6 +254,8 @@ export function CalendarDashboard() {
           onBack={handleBack}
           onAddEvent={handleAddEvent}
           connectionStatus={connectionStatus}
+          collaborators={collaborators}
+          onShare={() => {}}
         />
 
         {/* All-day row: flight + hotel banners */}
