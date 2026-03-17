@@ -33,7 +33,7 @@ export function WeekView({
   }
 
   return (
-    <div role="grid" className="flex flex-1 overflow-auto" onKeyDown={handleKeyDown}>
+    <div role="grid" className="flex flex-1 min-w-0" onKeyDown={handleKeyDown}>
       <TimeGutter timeRange={timeRange} />
       <div className="flex flex-1 min-w-0">
         {days.map(({ dayIndex, label }) => {

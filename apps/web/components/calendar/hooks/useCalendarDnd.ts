@@ -57,7 +57,7 @@ export function useCalendarDnd({ onMoveActivity }: UseCalendarDndOptions) {
       const snappedHourDelta = Math.round(rawHourDelta * 2) / 2 // snap to 0.5h
 
       // Get current startHour from active.data if available, otherwise 0
-      const currentActivity = active.data?.current as CalendarActivity | undefined
+      const currentActivity = (active.data?.current as { activity?: CalendarActivity } | undefined)?.activity
       const currentStartHour = currentActivity?.startHour ?? 0
 
       const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
