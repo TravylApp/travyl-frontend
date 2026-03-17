@@ -234,8 +234,6 @@ export function CalendarDashboard() {
       {/* Sidebar */}
       <TripSidebar
         activeNav="calendar"
-        collaborators={collaborators}
-        activities={activities}
         tripStartDate={tripStartDate}
         tripDays={tripTotalDays}
         currentDay={selectedDayIndex}

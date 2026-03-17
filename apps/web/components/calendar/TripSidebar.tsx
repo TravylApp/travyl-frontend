@@ -1,9 +1,8 @@
 'use client'
 import { useState, useRef } from 'react'
 import { motion } from 'motion/react'
+import { Map, Calendar, PageEdit, Wallet, Settings } from 'iconoir-react'
 import { MiniCalendar } from './MiniCalendar'
-import { CollaboratorAvatars } from './CollaboratorAvatars'
-import type { CalendarActivity, UserAwareness } from './types'
 import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_EXPANDED_WIDTH,
@@ -20,72 +19,33 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'overview',
     label: 'Overview',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-        <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-        <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-        <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      </svg>
-    ),
+    icon: <Map width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
   {
     id: 'calendar',
     label: 'Calendar',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M5 2V4M11 2V4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        <path d="M2 7H14" stroke="currentColor" strokeWidth="1.3" />
-      </svg>
-    ),
+    icon: <Calendar width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
   {
     id: 'info',
     label: 'Info',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M8 7V11M8 5.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
+    icon: <PageEdit width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
   {
     id: 'budget',
     label: 'Budget',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M8 2V3M8 13V14M4 8C4 5.791 5.791 4 8 4C10.209 4 12 5.791 12 8C12 10.209 10.209 12 8 12C5.791 12 4 10.209 4 8Z"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
+    icon: <Wallet width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
   {
     id: 'settings',
     label: 'Settings',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.3" />
-        <path
-          d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.05 3.05L4.1 4.1M11.9 11.9L12.95 12.95M3.05 12.95L4.1 11.9M11.9 4.1L12.95 3.05"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
+    icon: <Settings width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
 ]
 
 interface TripSidebarProps {
   activeNav?: string
   onNavChange?: (id: string) => void
-  collaborators: UserAwareness[]
-  activities: CalendarActivity[]
   tripStartDate: Date
   tripDays: number
   currentDay: number
@@ -95,8 +55,6 @@ interface TripSidebarProps {
 export function TripSidebar({
   activeNav = 'calendar',
   onNavChange,
-  collaborators,
-  activities,
   tripStartDate,
   tripDays,
   currentDay,
@@ -170,15 +128,6 @@ export function TripSidebar({
           />
         </div>
       )}
-
-      {/* Collaborator avatars */}
-      <div className="border-t border-white/10">
-        <CollaboratorAvatars
-          collaborators={collaborators}
-          activities={activities}
-          expanded={expanded}
-        />
-      </div>
     </motion.nav>
   )
 }
