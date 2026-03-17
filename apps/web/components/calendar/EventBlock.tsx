@@ -28,7 +28,7 @@ export function EventBlock({
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
-    data: { activity },
+    data: { type: 'activity' as const, activity },
   })
 
   const { isDark } = useCalendarThemeContext()
