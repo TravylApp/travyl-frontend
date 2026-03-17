@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { DndContext } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
@@ -23,6 +23,7 @@ import { DetailPanel } from './DetailPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
+import type { CalendarActivity } from './types'
 
 // ─── Date helpers ────────────────────────────────────────────
 
@@ -134,6 +135,7 @@ const HOTEL_BANNERS: HotelBanner[] = MOCK_HOTELS.map((hotel) => {
 
 export function CalendarDashboard() {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [activeNav, setActiveNav] = useState('calendar')
 
   // Hooks
   const {
@@ -144,6 +146,8 @@ export function CalendarDashboard() {
     error,
     moveActivity,
     removeActivity,
+    addActivity,
+    updateActivity,
   } = useYjsSync()
 
   const {
@@ -222,6 +226,19 @@ export function CalendarDashboard() {
     goToDayView(dayIndex)
   }
 
+  const handleCreateActivity = useCallback((dayIndex: number, startHour: number) => {
+    const newActivity: CalendarActivity = {
+      id: crypto.randomUUID(),
+      title: '',
+      type: 'sightseeing',
+      day: dayIndex,
+      startHour,
+      duration: 1,
+    }
+    addActivity(newActivity)
+    selectEvent(newActivity.id)
+  }, [addActivity, selectEvent])
+
   const dateRange = formatDateRange(tripStartDate, tripEndDate)
   const currentDayLabel =
     viewMode === 'day' ? TRIP_DAYS[selectedDayIndex]?.label ?? '' : ''
@@ -233,7 +250,7 @@ export function CalendarDashboard() {
     <div className="flex h-screen overflow-hidden bg-[#0f1117] text-white">
       {/* Sidebar */}
       <TripSidebar
-        activeNav="calendar"
+        activeNav={activeNav}
         tripStartDate={tripStartDate}
         tripDays={tripTotalDays}
         currentDay={selectedDayIndex}
@@ -241,6 +258,7 @@ export function CalendarDashboard() {
           selectDay(dayIndex)
           if (viewMode === 'day') goToDayView(dayIndex)
         }}
+        onNavChange={setActiveNav}
       />
 
       {/* Main column */}
@@ -266,6 +284,8 @@ export function CalendarDashboard() {
         />
 
         {/* Grid area */}
+        {activeNav === 'calendar' ? (
+        <>
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Scrollable grid */}
           <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
@@ -293,6 +313,7 @@ export function CalendarDashboard() {
                       tripStartDate={tripStartDate}
                       onSelectEvent={handleSelectEvent}
                       onClickDayHeader={handleClickDayHeader}
+                      onCreateActivity={handleCreateActivity}
                     />
                   </motion.div>
                 ) : (
@@ -313,6 +334,7 @@ export function CalendarDashboard() {
                       timeRange={timeRange}
                       tripStartDate={tripStartDate}
                       onSelectEvent={handleSelectEvent}
+                      onCreateActivity={handleCreateActivity}
                     />
                   </motion.div>
                 )}
@@ -326,6 +348,7 @@ export function CalendarDashboard() {
             viewers={collaborators}
             onClose={handleCloseDetail}
             onRemove={handleRemoveActivity}
+            onUpdateActivity={updateActivity}
           />
         </div>
 
@@ -363,6 +386,14 @@ export function CalendarDashboard() {
               />
             </svg>
             <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
+          </div>
+        )}
+        </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-gray-400 text-sm capitalize">{activeNav} — coming soon</p>
+            </div>
           </div>
         )}
       </div>
