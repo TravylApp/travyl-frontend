@@ -91,8 +91,13 @@ export function useActivityMutations(
         return
       }
 
+      const oldDay = (yMap.get('day') as number) ?? 0
+      const oldEndDay = (yMap.get('endDay') as number) ?? oldDay
+      const newEndDay = oldEndDay + (newDay - oldDay)
+
       activitiesMap.doc?.transact(() => {
         yMap.set('day', newDay)
+        yMap.set('endDay', newEndDay)
         yMap.set('startHour', newStartHour)
       })
       // Persistence handled by useYjsSync debounced flush
