@@ -7,7 +7,7 @@ Active log of work per branch. Add an entry when a branch starts, update as work
 ## `feature/tra-200` — Connect calendar to Supabase with Yjs real-time collaboration
 **Linear:** [TRA-200](https://linear.app/travyl/issue/TRA-200/connect-calendar-view-to-supabase-with-yjs-real-time-collaboration)
 **Status:** In Progress
-**PR:** [#164](https://github.com/TravylApp/travyl-frontend/pull/164)
+**PR:** [#166](https://github.com/TravylApp/travyl-frontend/pull/166)
 
 ### Goal
 Replace all mock data in the calendar view with live Supabase data. Full CRUD on activities, real-time collaboration via Yjs CRDTs, multi-user presence.
@@ -26,7 +26,6 @@ Replace all mock data in the calendar view with live Supabase data. Full CRUD on
 - Trips page: removed `MOCK_TRIPS` fallback, wired modal to "Plan a Trip" buttons
 - DB migration: renamed `trips` columns (`trip_name→title`, `starting_date→start_date`, `ending_date→end_date`, `trip_status→status`), added `destination` column
 - Drag-and-drop fixes: correct `active.data.current.activity` access, removed nested `overflow-auto` from WeekView, `moveActivity` now shifts `endDay` by same delta as `day`
-
 - TRA-202 collaborator awareness UI: `selectedDayIndex` broadcast, avatar tooltip in `CalendarHeader`, avatar stack in `DayColumn` day header
 - Fixed `@travyl/shared` sub-path import violations in all 4 calendar hooks
 
