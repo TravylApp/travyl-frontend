@@ -12,6 +12,7 @@ interface WeekViewProps {
   tripStartDate: Date
   onSelectEvent: (id: string) => void
   onClickDayHeader?: (dayIndex: number) => void
+  onCreateActivity?: (dayIndex: number, startHour: number) => void
 }
 
 export function WeekView({
@@ -23,6 +24,7 @@ export function WeekView({
   tripStartDate,
   onSelectEvent,
   onClickDayHeader,
+  onCreateActivity,
 }: WeekViewProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
@@ -50,6 +52,7 @@ export function WeekView({
               onClickDayHeader={
                 onClickDayHeader ? () => onClickDayHeader(dayIndex) : undefined
               }
+              onCreateActivity={onCreateActivity}
             />
           )
         })}
