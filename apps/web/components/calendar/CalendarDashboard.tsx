@@ -24,6 +24,8 @@ import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
+import { useCalendarTheme } from './hooks/useCalendarTheme'
+import { CalendarThemeContext } from './CalendarThemeContext'
 
 // ─── Date helpers ────────────────────────────────────────────
 
@@ -167,6 +169,8 @@ export function CalendarDashboard() {
     onMoveActivity: moveActivity,
   })
 
+  const { theme, toggleTheme } = useCalendarTheme()
+
   // Sync view mode to presence
   useEffect(() => {
     setCurrentView(viewMode)
@@ -247,7 +251,8 @@ export function CalendarDashboard() {
   const visibleDays = viewMode === 'week' ? TRIP_DAYS : [TRIP_DAYS[selectedDayIndex]]
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0f1117] text-white">
+    <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
+    <div className={'flex h-screen overflow-hidden bg-gray-50 dark:bg-[#0a1520] text-gray-900 dark:text-[#f5efe8]' + (theme === 'dark' ? ' dark' : '')}>
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
@@ -274,6 +279,8 @@ export function CalendarDashboard() {
           connectionStatus={connectionStatus}
           collaborators={collaborators}
           onShare={() => {}}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
 
         {/* All-day row: flight + hotel banners */}
@@ -398,5 +405,6 @@ export function CalendarDashboard() {
         )}
       </div>
     </div>
+    </CalendarThemeContext.Provider>
   )
 }
