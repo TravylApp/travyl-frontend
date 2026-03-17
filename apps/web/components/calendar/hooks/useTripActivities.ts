@@ -9,10 +9,10 @@ import { useYjsTripContext } from '../providers/YjsTripProvider'
 
 interface Trip {
   id: string
-  trip_name: string
-  starting_date: string
-  ending_date: string
-  trip_status: string
+  title: string
+  start_date: string
+  end_date: string
+  status: string
   user_id: string
 }
 
@@ -91,7 +91,7 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
       }
 
       const rows = (activityData ?? []) as ActivityRow[]
-      const tripStartDate = fetchedTrip.starting_date
+      const tripStartDate = fetchedTrip.start_date
 
       // Hydrate Y.Map inside a single transaction
       if (hydratedRef.current !== tripId) {
@@ -122,7 +122,7 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
     }
   }, [tripId, activitiesMap])
 
-  const tripStartDate = trip?.starting_date ?? ''
+  const tripStartDate = trip?.start_date ?? ''
 
   return { trip, tripStartDate, loading, error }
 }

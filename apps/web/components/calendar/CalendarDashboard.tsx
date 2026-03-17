@@ -71,8 +71,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }, [viewMode, setCurrentView])
 
   // ─── Derive trip structure from fetched trip ────────────────
-  const parsedStartDate = trip ? new Date(trip.starting_date + 'T00:00:00Z') : new Date()
-  const parsedEndDate = trip ? new Date(trip.ending_date + 'T00:00:00Z') : new Date()
+  const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
+  const parsedEndDate = trip ? new Date(trip.end_date + 'T00:00:00Z') : new Date()
   const tripTotalDays = trip ? Math.round((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) : 0
 
   const TRIP_DAYS = useMemo(() => Array.from({ length: tripTotalDays }, (_, i) => {
@@ -162,6 +162,19 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     scrollRef.current.scrollTop = scrollTop
   }, []) // intentionally run once on mount
 
+  const handleCreateActivity = useCallback((dayIndex: number, startHour: number) => {
+    const newActivity: CalendarActivity = {
+      id: crypto.randomUUID(),
+      title: '',
+      type: 'sightseeing',
+      day: dayIndex,
+      startHour,
+      duration: 1,
+    }
+    addActivity(newActivity)
+    selectEvent(newActivity.id)
+  }, [addActivity, selectEvent])
+
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
   if (error) return <CalendarError message={error} />
@@ -196,19 +209,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const handleClickDayHeader = (dayIndex: number) => {
     goToDayView(dayIndex)
   }
-
-  const handleCreateActivity = useCallback((dayIndex: number, startHour: number) => {
-    const newActivity: CalendarActivity = {
-      id: crypto.randomUUID(),
-      title: '',
-      type: 'sightseeing',
-      day: dayIndex,
-      startHour,
-      duration: 1,
-    }
-    addActivity(newActivity)
-    selectEvent(newActivity.id)
-  }, [addActivity, selectEvent])
 
   /** Format a date range string like "Mar 10 - Mar 16, 2026". */
   const formatDateRange = (startDate: Date, endDate: Date): string => {
@@ -245,7 +245,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
         <CalendarHeader
-          tripName={trip?.trip_name ?? 'Loading...'}
+          tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
