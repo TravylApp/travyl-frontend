@@ -359,6 +359,7 @@ export interface UserAwareness {
   isOnline: boolean;
   selectedEventId: string | null;
   currentView: ViewMode;
+  selectedDayIndex?: number;
   /** Legacy itinerary view — selected block id */
   selectedBlockId?: string;
   cursor?: { day: number; hour: number };
