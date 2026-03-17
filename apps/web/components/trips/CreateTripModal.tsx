@@ -1,11 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, Plane } from 'lucide-react'
+import { X, Plane, MapPin } from 'lucide-react'
 import { useAuthStore } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
+
+interface NominatimResult {
+  place_id: number
+  display_name: string
+}
 
 interface CreateTripModalProps {
   open: boolean
@@ -32,6 +37,11 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const [suggestions, setSuggestions] = useState<NominatimResult[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const destinationWrapperRef = useRef<HTMLDivElement>(null)
+
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
@@ -42,8 +52,54 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
       setFieldErrors({})
       setError(null)
       setSubmitting(false)
+      setSuggestions([])
+      setSuggestionsOpen(false)
     }
   }, [open])
+
+  // Debounced Nominatim fetch
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const q = destination.trim()
+    if (q.length < 2) {
+      setSuggestions([])
+      setSuggestionsOpen(false)
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
+          { headers: { 'Accept-Language': 'en' } }
+        )
+        const data: NominatimResult[] = await res.json()
+        setSuggestions(data)
+        setSuggestionsOpen(data.length > 0)
+      } catch {
+        setSuggestions([])
+        setSuggestionsOpen(false)
+      }
+    }, 350)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [destination])
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (destinationWrapperRef.current && !destinationWrapperRef.current.contains(e.target as Node)) {
+        setSuggestionsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  function selectSuggestion(name: string) {
+    setDestination(name)
+    setSuggestions([])
+    setSuggestionsOpen(false)
+    setFieldErrors((prev) => ({ ...prev, destination: undefined }))
+  }
 
   // Close on Escape key
   useEffect(() => {
@@ -160,17 +216,39 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
           </div>
 
           {/* Destination */}
-          <div>
+          <div ref={destinationWrapperRef} className="relative">
             <label htmlFor="trip-destination" className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
             <input
               id="trip-destination"
               type="text"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
+              onFocus={() => { if (suggestions.length > 0) setSuggestionsOpen(true) }}
               placeholder="e.g. Paris, France"
               disabled={submitting}
+              autoComplete="off"
               className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-50 transition-all"
             />
+            {suggestionsOpen && (
+              <ul
+                role="listbox"
+                aria-label="Destination suggestions"
+                className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden text-sm"
+              >
+                {suggestions.map((s) => (
+                  <li
+                    key={s.place_id}
+                    role="option"
+                    aria-selected={false}
+                    onMouseDown={() => selectSuggestion(s.display_name)}
+                    className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-50 text-gray-800"
+                  >
+                    <MapPin size={13} className="shrink-0 text-gray-400" aria-hidden />
+                    <span className="truncate">{s.display_name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {fieldErrors.destination && <p className="mt-1 text-xs text-red-500">{fieldErrors.destination}</p>}
           </div>
 
