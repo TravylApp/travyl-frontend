@@ -305,6 +305,8 @@ export interface PlaceItem {
 
 // ─── Calendar / Weather ────────────────────────────────────
 
+export type ViewMode = 'week' | 'day'
+
 export interface CalendarActivity {
   id: string;
   title: string;
@@ -312,26 +314,37 @@ export interface CalendarActivity {
   day: number;
   startHour: number;
   duration: number;
-  startTime: string;
-  endTime: string;
   location?: string;
   image?: string;
   rating?: number;
   price?: string;
-  color: string;
-  onCalendar: boolean;
+  notes?: string;
+  /** Formatted time string e.g. "9:00 AM" */
+  startTime?: string;
+  /** Formatted time string e.g. "10:00 AM" */
+  endTime?: string;
+  /** Whether this activity appears on the calendar grid */
+  onCalendar?: boolean;
+  /** Parent activity id for nested/grouped activities */
   parentId?: string;
+  /** Optional hex color override */
+  color?: string;
 }
 
-export interface CollaboratorPresence {
+export interface UserAwareness {
   userId: string;
   name: string;
   avatarInitial: string;
   color: string;
-  cursor: { day: number; hour: number } | null;
-  selectedBlockId: string | null;
   isOnline: boolean;
+  selectedEventId: string | null;
+  currentView: ViewMode;
+  /** Legacy itinerary view — selected block id */
+  selectedBlockId?: string;
 }
+
+/** Alias for UserAwareness — used by legacy itinerary components */
+export type CollaboratorPresence = UserAwareness;
 
 export interface WeatherForecast {
   day: string;
