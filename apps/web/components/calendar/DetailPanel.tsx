@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Clock, MapPin, Wallet, Star, Xmark } from 'iconoir-react'
 import type { CalendarActivity, UserAwareness } from './types'
@@ -11,9 +12,30 @@ interface DetailPanelProps {
   viewers: UserAwareness[]
   onClose: () => void
   onRemove: (id: string) => void
+  onUpdateActivity?: (id: string, updates: Partial<CalendarActivity>) => void
 }
 
-export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPanelProps) {
+export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActivity }: DetailPanelProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+
+  useEffect(() => {
+    if (activity && !activity.title) {
+      setIsEditingTitle(true)
+      setTitleDraft('')
+    } else if (activity) {
+      setIsEditingTitle(false)
+      setTitleDraft(activity.title)
+    }
+  }, [activity?.id])
+
+  const commitTitle = () => {
+    if (activity && onUpdateActivity) {
+      onUpdateActivity(activity.id, { title: titleDraft })
+    }
+    setIsEditingTitle(false)
+  }
+
   // Viewers watching this specific activity
   const activityViewers = viewers.filter(
     (v) => v.selectedEventId === activity?.id && v.isOnline,
@@ -43,9 +65,33 @@ export function DetailPanel({ activity, viewers, onClose, onRemove }: DetailPane
               <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
                 {activity.type}
               </span>
-              <h2 className="text-base font-semibold text-white leading-snug">
-                {activity.title}
-              </h2>
+              {isEditingTitle ? (
+                <input
+                  autoFocus
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onBlur={commitTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitTitle()
+                    if (e.key === 'Escape') {
+                      setTitleDraft(activity.title)
+                      setIsEditingTitle(false)
+                    }
+                  }}
+                  className="bg-transparent border-b border-white/30 focus:border-white/60 outline-none text-base font-semibold text-white leading-snug w-full placeholder-gray-500"
+                  placeholder="Activity name…"
+                />
+              ) : (
+                <h2
+                  className="text-base font-semibold text-white leading-snug cursor-text"
+                  onClick={() => {
+                    setTitleDraft(activity.title)
+                    setIsEditingTitle(true)
+                  }}
+                >
+                  {activity.title}
+                </h2>
+              )}
             </div>
             <button
               onClick={onClose}
