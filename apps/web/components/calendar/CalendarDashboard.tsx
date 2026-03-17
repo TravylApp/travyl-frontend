@@ -44,7 +44,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const { trip, tripStartDate, loading: tripLoading, error: tripError } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
   const { addActivity, updateActivity, moveActivity, removeActivity } = useActivityMutations(tripId, tripStartDate, userId)
-  const { collaborators, setSelectedEvent: setPresenceSelectedEvent, setCurrentView } = useCollaboratorPresence({ tripId, userId, userName })
+  const { collaborators, setSelectedEvent: setPresenceSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
@@ -69,6 +69,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   useEffect(() => {
     setCurrentView(viewMode)
   }, [viewMode, setCurrentView])
+
+  // Sync selected day to presence
+  useEffect(() => {
+    setSelectedDay(selectedDayIndex)
+  }, [selectedDayIndex, setSelectedDay])
 
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
@@ -256,6 +261,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           onShare={() => {}}
           theme={theme}
           onToggleTheme={toggleTheme}
+          tripDays={TRIP_DAYS}
         />
 
         {/* All-day row: flight + hotel banners */}
