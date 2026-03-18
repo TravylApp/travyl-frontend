@@ -17,6 +17,7 @@ export {
   fetchUserPublicTrips,
   fetchTripByShareToken,
   updateTripVisibility,
+  ensureShareLinkToken,
   addToItinerary,
   removeFromItinerary,
   toggleFavorite,
