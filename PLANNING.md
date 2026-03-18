@@ -38,7 +38,7 @@ Replace all mock data in the calendar view with live Supabase data. Full CRUD on
 
 ## `feature/tra-205` — For You Panel + SST Recommendation Engine
 **Linear:** [TRA-205](https://linear.app/travyl/issue/TRA-205/for-you-panel-+-sst-recommendation-engine)
-**Status:** In Progress (Frontend Complete, Backend Deferred)
+**Status:** In Progress (API Wiring Complete, Personalization Deferred)
 **PR:** (pending)
 **Branch:** `feature/tra-204` (working branch)
 
@@ -50,21 +50,33 @@ Pinterest-style "For You" sidebar on the calendar dashboard where users drag AI-
 - `mockSuggestions.ts` — 10 Paris activities with realistic data
 - `suggestionMapper.ts` — `suggestionToCalendarActivity()` conversion
 - `FOR_YOU_PANEL_WIDTH` constant (340px)
-- `useSuggestions` hook — mock data, search, category filtering
+- `useSuggestions` hook — React Query fetch to `GET /suggest` with JWT auth, client-side search/category filtering
 - `SuggestionCard` component — full-image masonry card with drag
-- `ForYouPanel` component — panel shell with search, filters, grid
+- `ForYouPanel` component — panel shell with search, filters, grid, retry button wired to `refetch()`
 - `useCalendarDnd` extended — `onAddFromSuggestion`, type branching
 - `CalendarDashboard` integration — DndContext hoist, right column swap, DragOverlay
 - Restore-on-delete — suggestions reappear when activities removed
+- `useInteractionTracking` hook — fire-and-forget POST to `/interact` (impression, click, drag, dismiss)
 
-### Deferred (Backend - Phase 4-7)
-- SST infrastructure setup (`sst.config.ts`, `infra/`, `services/`)
-- OpenSearch Serverless collection
-- DynamoDB cache layer
-- EventBridge interaction bus
-- Lambda functions: suggest, search, interact
-- Amazon Personalize integration
-- Bedrock Titan embeddings
-- API wiring in frontend (React Query)
+### Completed (Backend — API Wiring)
+- SST infrastructure: API Gateway, DynamoDB cache, EventBridge bus, Amazon Location PlaceIndex (HERE)
+- Lambda functions deployed: `GET /suggest`, `GET /search`, `POST /interact`
+- `services/lib/foursquare.ts` — Foursquare Places API enrichment (photos, ratings, prices, descriptions)
+- `services/suggest.ts` — Amazon Location discovery → Foursquare enrichment → DynamoDB cache (30min TTL)
+- `FoursquareApiKey` SST secret set and linked to suggest Lambda
+- Auth: Supabase JWT validation on all endpoints
 
-**Plan:** `docs/superpowers/plans/2026-03-17-for-you-panel.md`
+### Completed (Auth Fix)
+- Fixed session persistence: `configureSupabase()` with `createBrowserClient` from `@supabase/ssr`
+- Middleware runs on all routes (not just `/trip/*`), refreshes cookies on every request
+
+### Deferred (Personalization — Phase 5-7)
+- OpenSearch Serverless collection + vector similarity search
+- Amazon Personalize collaborative filtering + contextual re-ranking
+- Bedrock Titan embeddings for activity catalog
+- Catalog ingestion pipeline (`ingest.ts`, `embed.ts`)
+- Image enrichment CDN (S3 + CloudFront)
+- Taste vector pipeline (EventBridge subscribers)
+
+**Spec:** `docs/superpowers/specs/2026-03-17-for-you-api-wiring-design.md`
+**Plan:** `docs/superpowers/plans/2026-03-17-for-you-api-wiring.md`

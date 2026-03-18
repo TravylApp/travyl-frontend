@@ -24,6 +24,7 @@ export function ForYouPanel({
     activeFilter,
     setActiveFilter,
     filterCategories,
+    refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
 
   return (
@@ -99,7 +100,7 @@ export function ForYouPanel({
             <p className="text-sm text-gray-500 dark:text-[#4a7ab5]">
               Couldn&apos;t load suggestions
             </p>
-            <button className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
+            <button onClick={() => refetch()} className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
               Tap to retry
             </button>
           </div>

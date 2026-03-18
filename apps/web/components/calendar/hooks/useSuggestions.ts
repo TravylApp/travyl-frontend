@@ -2,8 +2,11 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { MOCK_SUGGESTIONS } from '@travyl/shared'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
+
+const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 const FILTER_CATEGORIES = [
   'All',
@@ -45,6 +48,24 @@ interface UseSuggestionsReturn {
   filterCategories: readonly FilterCategory[]
   removeSuggestion: (id: string) => void
   restoreSuggestion: (id: string) => void
+  refetch: () => void
+}
+
+async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new Error('Not authenticated')
+
+  const res = await fetch(`${API_URL}/suggest?destination=${encodeURIComponent(destination)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch suggestions (${res.status})`)
+  }
+
+  const data = await res.json()
+  return data.suggestions
 }
 
 export function useSuggestions({
@@ -54,6 +75,12 @@ export function useSuggestions({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All')
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
+
+  const { data: allSuggestions = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['suggestions', destination],
+    queryFn: () => fetchSuggestions(destination),
+    enabled: !!destination,
+  })
 
   const removeSuggestion = useCallback((id: string) => {
     setRemovedIds((prev) => new Set(prev).add(id))
@@ -68,7 +95,7 @@ export function useSuggestions({
   }, [])
 
   const suggestions = useMemo(() => {
-    let filtered = MOCK_SUGGESTIONS.filter(
+    let filtered = allSuggestions.filter(
       (s) => !removedIds.has(s.id) && !scheduledActivityIds.includes(s.id),
     )
 
@@ -91,12 +118,12 @@ export function useSuggestions({
     }
 
     return filtered
-  }, [searchQuery, activeFilter, removedIds, scheduledActivityIds])
+  }, [allSuggestions, searchQuery, activeFilter, removedIds, scheduledActivityIds])
 
   return {
     suggestions,
-    isLoading: false,   // mock — always ready
-    error: null,        // mock — no errors
+    isLoading,
+    error: error ? (error as Error).message : null,
     searchQuery,
     setSearchQuery,
     activeFilter,
@@ -104,5 +131,6 @@ export function useSuggestions({
     filterCategories: FILTER_CATEGORIES,
     removeSuggestion,
     restoreSuggestion,
+    refetch,
   }
 }
