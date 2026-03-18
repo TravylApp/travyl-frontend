@@ -30,6 +30,7 @@ import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
+import { useInteractionTracking } from './hooks/useInteractionTracking'
 
 // ─── Component ───────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   } = useCalendarNavigation()
 
   const { theme, toggleTheme } = useCalendarTheme()
+  const { trackInteraction } = useInteractionTracking(tripId)
 
   // Sync view mode to presence
   useEffect(() => {
@@ -158,7 +160,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-  }, [addActivity, selectEvent])
+    trackInteraction(suggestionId, 'drag')
+  }, [addActivity, selectEvent, trackInteraction])
 
   const { sensors, activeId, handleDragStart, handleDragEnd } = useCalendarDnd({
     onMoveActivity: moveActivity,
