@@ -4,7 +4,7 @@ import { supabaseServiceRoleKey, supabaseUrl } from './secrets'
 
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
-    allowOrigins: ['http://localhost:3000', 'https://*.vercel.app'],
+    allowOrigins: ['*'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Authorization', 'Content-Type'],
   },
