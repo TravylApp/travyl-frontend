@@ -44,3 +44,4 @@ supabase/.temp/
 .superpowers/
 .sst/
 sst-env.d.ts
+.worktrees/
