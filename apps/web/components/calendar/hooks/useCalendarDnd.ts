@@ -100,11 +100,11 @@ export function useCalendarDnd({
           dayIndex: newDay,
           activity: {
             id: `pending-${dragData.suggestion.id}`,
-            title: dragData.suggestion.title,
+            title: dragData.suggestion.name,
             type: dragData.suggestion.category as CalendarActivity['type'],
             day: newDay,
             startHour: snappedStartHour,
-            duration: dragData.suggestion.durationHours,
+            duration: dragData.suggestion.duration,
           },
         })
       }
