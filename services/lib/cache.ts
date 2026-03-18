@@ -33,7 +33,7 @@ export async function setCachedSuggestions(
   userId: string,
   destination: string,
   suggestions: SuggestionCard[],
-  ttlSeconds: number = 1800,
+  ttlSeconds: number = 1800, // 30 min default
 ): Promise<void> {
   await client.send(
     new PutCommand({

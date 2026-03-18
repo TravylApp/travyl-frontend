@@ -1,385 +1,274 @@
-# Trip Sharing & Notes — Design Spec
+# Trip Sharing & Post-it Notes — Design Spec
 
+**Linear:** [TRA-204](https://linear.app/travyl/issue/TRA-204/trip-sharing-and-post-it-notes)
+**Branch:** `feature/tra-204`
 **Date:** 2026-03-17
-**Branch:** feature/tra-XXX (to be created)
-**Scope:** Branch 1 of 2 — Sharing, permissions, and post-it notes. Branch 2 (community fork/discover) follows separately.
 
 ---
 
 ## Overview
 
-Add Google Docs-style sharing to trips: a visibility toggle (private / link / public), a shareable link with a configurable permission level, per-collaborator roles, and free-floating post-it notes on the calendar canvas. The eventual goal is a community loop where public trips are featured on the home page and can be forked — that is Branch 2.
+Add Google Docs-style trip sharing with three visibility tiers, per-collaborator roles, email invite flow via SST/SES, and free-floating post-it notes on the calendar canvas.
 
----
+## Data Model
 
-## Schema Changes
+### `trips` table changes
 
-### `trips` — replace old sharing columns
+Add two columns, remove three:
 
-The existing `is_shared`, `share_link_role`, and `is_public` columns are **dropped** and replaced by `visibility` and `link_permission`. `share_link_token` already exists and is kept.
+| Action | Column | Type | Default | Notes |
+|--------|--------|------|---------|-------|
+| ADD | `visibility` | text (enum) | `'private'` | `'private'` / `'link'` / `'public'`. Note: `'public'` is included in the enum for forward-compatibility but the UI to set it is deferred to Branch 2 (community fork/discover). |
+| ADD | `link_permission` | text (enum) | `'viewer'` | `'viewer'` / `'editor'` — permission granted to anyone using the share link |
+| DROP | `is_shared` | — | — | Replaced by `visibility != 'private'` |
+| DROP | `is_public` | — | — | Replaced by `visibility == 'public'` |
+| DROP | `share_link_role` | — | — | Replaced by `link_permission` |
+| KEEP | `share_link_token` | text | null | Existing column, no change |
 
-```sql
-ALTER TABLE trips
-  DROP COLUMN IF EXISTS is_shared,
-  DROP COLUMN IF EXISTS share_link_role,
-  DROP COLUMN IF EXISTS is_public,
-  ADD COLUMN visibility text NOT NULL DEFAULT 'private'
-    CHECK (visibility IN ('private', 'link', 'public')),
-  ADD COLUMN link_permission text NOT NULL DEFAULT 'view'
-    CHECK (link_permission IN ('view', 'comment', 'edit'));
-```
+Migration must backfill:
+- `is_public = true` → `visibility = 'public'`
+- `is_shared = true AND is_public = false` → `visibility = 'link'`
+- else → `visibility = 'private'`
+- `share_link_role` value → `link_permission`
 
-- `visibility = 'private'` — owner and accepted collaborators only.
-- `visibility = 'link'` — anyone with a valid `share_link_token` gets `link_permission` access. Token validity is enforced by the Server Component (query filters `WHERE share_link_token = token`); RLS allows any authenticated user to read `link`-visibility trips.
-- `visibility = 'public'` — any authenticated user, no token required. Unauthenticated access is **not** supported in Branch 1.
-- `share_link_token` — already exists; generated on first share, regeneratable to invalidate old links. Reverting `visibility` to `'private'` makes any existing token inoperative.
+### `trip_collaborators` table changes
 
-**Accessing `/t/[token]` when `visibility = 'private'` or token not found:** Return a "This trip is private" page. Do not reveal trip existence to non-collaborators.
+- `user_id` becomes **nullable** (pending invites have email but no user yet)
+- `role_type` values: `'viewer'` | `'editor'` (no commenter)
+- Add unique constraint: `(trip_id, invited_email)` to prevent duplicate invites
 
-**Updated `trips` RLS SELECT policy:** Extend to allow any authenticated user to read trips where `visibility IN ('link', 'public')`. The Server Component WHERE clause (`share_link_token = token`) is the access gate for `link`-visibility trips; DB-level token verification is not performed in RLS.
+**RLS policies (updated for nullable user_id):**
+- SELECT: `user_id = auth.uid()` OR user is trip owner OR (user_id IS NULL AND `invited_email` matches current user's email from `auth.jwt()`)
+- INSERT: user is trip owner (only owners can create collaborator rows)
+- UPDATE: user is trip owner (only owners can change roles)
+- DELETE: user is trip owner OR `user_id = auth.uid()` (collaborator can remove themselves)
 
-**`Trip` type in `packages/shared/src/types/index.ts`:** Remove `is_shared`, `share_link_role`, `is_public`. Add:
-```ts
-visibility: 'private' | 'link' | 'public';
-link_permission: 'view' | 'comment' | 'edit';
-```
+### `trip_notes` table (new)
 
-**`permissions.ts`:** Rewrite `canEditTrip`, `canViewTrip`, `canForkTrip` against `visibility` and `link_permission`. Remove all references to old fields.
+| Column | Type | Nullable | Default |
+|--------|------|----------|---------|
+| id | uuid | NO | gen_random_uuid() |
+| trip_id | uuid | NO | FK → trips.id |
+| user_id | uuid | NO | FK → auth.users |
+| day | integer | NO | — (0-indexed day of trip) |
+| hour | integer | NO | — (0-23) |
+| text | text | NO | '' |
+| color | text | NO | — (auto-assigned from author) |
+| created_at | timestamptz | NO | now() |
+| updated_at | timestamptz | NO | now() |
 
-**Mock data** (`mockTripsData.ts`, `mockItineraryData.ts`): Replace old fields with `visibility: 'private'`, `link_permission: 'view'`.
+**Triggers:**
+- `moddatetime` trigger on `updated_at` to auto-update on row modification
 
-### `trip_collaborators` — relax `user_id`, extend `role_type`, constrain `invite_status`
-
-Pending rows are created before the recipient authenticates, so `user_id` must be nullable. `role_type` gains `'commenter'`. `invite_token` must be unique. `invite_status` gets an explicit CHECK.
-
-```sql
-ALTER TABLE trip_collaborators
-  ALTER COLUMN user_id DROP NOT NULL;
-
-ALTER TABLE trip_collaborators
-  DROP CONSTRAINT IF EXISTS trip_collaborators_role_type_check;
-ALTER TABLE trip_collaborators
-  ADD CONSTRAINT trip_collaborators_role_type_check
-  CHECK (role_type IN ('viewer', 'commenter', 'editor'));
-
-ALTER TABLE trip_collaborators
-  DROP CONSTRAINT IF EXISTS trip_collaborators_invite_status_check;
-ALTER TABLE trip_collaborators
-  ADD CONSTRAINT trip_collaborators_invite_status_check
-  CHECK (invite_status IN ('pending', 'accepted', 'cancelled'));
-
-ALTER TABLE trip_collaborators
-  ADD CONSTRAINT trip_collaborators_invite_token_key UNIQUE (invite_token);
-```
-
-On acceptance, `user_id` is set to `auth.uid()` and `invite_status` flips to `'accepted'`. When the owner cancels a pending invite from the modal, `invite_status` is set to `'cancelled'`.
-
-### New `trip_notes` table
-
-```sql
-CREATE TABLE trip_notes (
-  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id     uuid        NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-  user_id     uuid        REFERENCES auth.users(id) ON DELETE SET NULL,
-  activity_id uuid        REFERENCES activity(id) ON DELETE SET NULL,
-  day         date        NOT NULL,
-  pos_x       numeric     NOT NULL DEFAULT 0.5,
-  pos_y       numeric     NOT NULL DEFAULT 0.5,
-  content     text        NOT NULL DEFAULT '',
-  color       text        NOT NULL DEFAULT '#ffd93d',
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  updated_at  timestamptz NOT NULL DEFAULT now()
-);
-```
-
-- `user_id` — nullable (`ON DELETE SET NULL`). Notes inserted by authenticated users (including link visitors) always have a non-null `user_id`. Ownerless notes (`user_id IS NULL`) only arise when a user account is later deleted — not during normal use. Ownerless notes can only be deleted by the trip owner.
-- `day` — NOT NULL. Written as `new Date(tripStartDate.getTime() + dayIndex * 86400000)` (same formula `DayColumn` uses internally to compute `columnDate`). The note-placement handler receives `tripStartDate` and `dayIndex` from the `DayColumn` context and computes the date identically — no new prop required on `DayColumn`.
-- `pos_x` / `pos_y` — 0–1 fractions of the day column's `getBoundingClientRect()` at placement or drag-end. Clamped to [0.05, 0.95]. Not viewport-relative.
-- `activity_id` — **unused in Branch 1.** Always `null`. Reserved for future use.
-- `color` — CSS hex string. Written from `pickColor(userId)` on insert; stored value used at render, never recomputed. Palette changes don't retroactively affect existing notes.
-
-### RLS policies for `trip_notes`
-
-Token validation for `link`-visibility trips is the Server Component's responsibility (WHERE clause). RLS trusts that any authenticated user who reached the calendar already has access.
-
-```sql
-ALTER TABLE trip_notes ENABLE ROW LEVEL SECURITY;
-
--- SELECT: trip owner, accepted collaborators, or link/public trips (token verified by server)
-CREATE POLICY "trip_notes_select" ON trip_notes
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM trips t WHERE t.id = trip_notes.trip_id AND (
-        t.user_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM trip_collaborators tc
-          WHERE tc.trip_id = t.id AND tc.user_id = auth.uid() AND tc.invite_status = 'accepted'
-        )
-        OR t.visibility IN ('link', 'public')
-      )
-    )
-  );
-
--- INSERT: authenticated user, and has write permission on the trip
-CREATE POLICY "trip_notes_insert" ON trip_notes
-  FOR INSERT WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM trips t WHERE t.id = trip_notes.trip_id AND (
-        t.user_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM trip_collaborators tc
-          WHERE tc.trip_id = t.id AND tc.user_id = auth.uid()
-            AND tc.invite_status = 'accepted'
-            AND tc.role_type IN ('commenter', 'editor')
-        )
-        OR (t.visibility IN ('link','public') AND t.link_permission IN ('comment','edit'))
-      )
-    )
-  );
-
--- UPDATE: own notes only
-CREATE POLICY "trip_notes_update" ON trip_notes
-  FOR UPDATE USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
--- DELETE: own notes OR trip owner; ownerless notes (user_id IS NULL) by trip owner only
-CREATE POLICY "trip_notes_delete" ON trip_notes
-  FOR DELETE USING (
-    user_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM trips t WHERE t.id = trip_notes.trip_id AND t.user_id = auth.uid()
-    )
-  );
-```
-
----
-
-## Permission Model
-
-Three layers; most permissive role for the authenticated user applies.
-
-| Layer | Source |
-|---|---|
-| Owner | `trips.user_id = auth.uid()` |
-| Collaborator | `trip_collaborators` where `user_id = auth.uid()` and `invite_status = 'accepted'` |
-| Link | `trips.link_permission` when `visibility = 'link'` (token verified by Server Component); or `visibility = 'public'` (no token required) |
-
-### Effective permission resolution (`useEffectivePermission`)
-
-The Server Component at `/t/[token]` resolves the trip and its `link_permission`, then places it in a `TripPermissionContext`. `useEffectivePermission(tripId)` resolves the effective role using this precedence:
-
-1. **Owner** → always `'edit'`
-2. **Accepted collaborator** (has a row in `trip_collaborators`) → collaborator `role_type` is used **as-is**. Link permission does **not** override or elevate a collaborator's explicit role. If an editor link is active but the user's collaborator role is `'viewer'`, they get `'viewer'`.
-3. **No collaborator row** (link visitor or public visitor) → `link_permission` from `TripPermissionContext`.
-
-On `/trip/[id]` (owner's own route), context is initialised with `'edit'`.
-
-### Role capabilities
-
-| Action | viewer | commenter | editor | owner |
-|---|---|---|---|---|
-| View trip & calendar | ✓ | ✓ | ✓ | ✓ |
-| Add / move / delete own notes | — | ✓ | ✓ | ✓ |
-| Delete any note | — | — | — | ✓ |
-| Edit activities (create / move / delete) | — | — | ✓ | ✓ |
-| Manage collaborators | — | — | — | ✓ |
-| Change visibility / regenerate link | — | — | — | ✓ |
-| Delete trip | — | — | — | ✓ |
-
-RLS policies are the authoritative gate; the UI hides unavailable controls.
-
-### Non-owner permission indicator
-
-Non-owners see a read-only role badge in the trip header ("Viewing", "Commenting", "Editing"). The Share button is not shown to non-owners.
-
----
+**RLS policies:**
+- SELECT: user is trip owner OR has a row in `trip_collaborators` for the trip
+- INSERT: user is trip owner OR has `role_type = 'editor'` in `trip_collaborators`
+- UPDATE: user is the note author (user_id matches)
+- DELETE: user is the note author OR trip owner
 
 ## Routes
 
-| Route | File location | Purpose |
-|---|---|---|
-| `/t/[token]` | `apps/web/app/t/[token]/page.tsx` (root level, **outside** `(main)/`) | New share URL — renders full calendar with permission gating. No `(main)` navbar/sidebar shell. |
-| `/invite/[invite_token]` | `apps/web/app/invite/[invite_token]/page.tsx` (root level) | Collaborator invite acceptance |
-| `/trip/[id]/share/[token]` | `apps/web/app/(main)/trip/[id]/share/[token]/page.tsx` | Existing summary view — **untouched in Branch 1** |
+### `/t/[token]` — Unified share landing (Server Component)
 
-### `middleware.ts` (new file: `apps/web/middleware.ts`)
+Single route handles all share/invite scenarios. The token can be either a `share_link_token` (from the `trips` table) or an `invite_token` (from `trip_collaborators`).
 
-`(main)/layout.tsx` has no auth check (confirmed). The only auth enforcement is client-side. Middleware is the new gate.
+**Resolution order:**
+1. Look up token in `trip_collaborators.invite_token` first → if found, this is a per-user invite
+2. If not found, look up in `trips.share_link_token` → this is a general share link
+3. No match in either → 404
+
+**Per-user invite flow** (token found in `trip_collaborators`):
+1. User logged in + email matches invite → update row: set `user_id`, `invite_status = 'accepted'`, `accepted_at = now()` → redirect to `/trip/[id]`. Role comes from the invite row's `role_type`.
+2. User logged in + email doesn't match → show error "This invite was sent to a different email"
+3. Not logged in → show read-only trip preview with signup banner. After signup with matching email, auto-accept the invite.
+
+**General share link flow** (token found in `trips`):
+1. User logged in + already a collaborator → redirect to `/trip/[id]`
+2. User logged in + has a pending invite by email → accept that invite (set `user_id`, `invite_status = 'accepted'`) → redirect to `/trip/[id]` with the invite's `role_type`
+3. User logged in + no existing relationship → show trip preview with "Join" button. Clicking creates a `trip_collaborators` row with role = trip's `link_permission`
+4. Not logged in → show read-only trip preview with signup banner
+
+No separate `/invite/[token]` route.
+
+### Middleware (`middleware.ts`)
+
+- `/t/[token]` — pass through (Server Component handles all logic)
+- `/trip/[id]/*` — check Supabase auth cookie. No session → redirect to `/login?redirect=/trip/[id]`
+- All other routes — pass through
+
+Middleware does NOT check collaborator roles. That's handled by `TripPermissionContext` on the client and RLS on the server.
+
+## Permission System
+
+### `TripPermissionContext`
+
+React context wrapping `/trip/[id]` layout. Determines the user's effective role:
+
+| Condition | Effective role |
+|-----------|---------------|
+| User is `trip.user_id` | `'owner'` |
+| User has `trip_collaborators` row with `invite_status = 'accepted'` | Row's `role_type` |
+
+The `/t/[token]` route always creates or accepts a collaborator row before redirecting to `/trip/[id]`, so every non-owner user on the trip page has a collaborator row. There is no "arrived via share link without a row" case.
+
+Exposes `useEffectivePermission()` hook:
 
 ```ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
-export function middleware(request: NextRequest) {
-  // Preserve the existing unauthenticated-friendly summary view
-  if (/^\/trip\/[^/]+\/share\//.test(request.nextUrl.pathname)) {
-    return NextResponse.next()
-  }
-  // Auth check: read Supabase session cookie; redirect to /login?redirect=... if absent
-}
-
-export const config = {
-  matcher: ['/t/:path*', '/invite/:path*', '/trip/:path*'],
+interface EffectivePermission {
+  role: 'owner' | 'editor' | 'viewer'
+  canEdit: boolean      // owner or editor
+  canDelete: boolean    // owner only
+  canInvite: boolean    // owner only
+  canCreateNotes: boolean  // owner or editor
 }
 ```
 
-### `/t/[token]` — token resolution and security model
+### UI gating
 
-**File:** `apps/web/app/t/[token]/page.tsx` — Next.js Server Component.
+- **Viewers:** see everything, interact with nothing. Drag disabled, click-to-create disabled, no Shift+Click notes, no edit buttons.
+- **Editors:** full activity CRUD, create/edit/drag notes, cannot invite or change visibility.
+- **Owner:** everything editors can do + share modal access, invite, change visibility, delete any note.
 
-Uses the regular Supabase client (publishable key):
-```ts
-supabase.from('trips').select('*').eq('share_link_token', token).neq('visibility', 'private').single()
-```
+### Security
 
-**Token security trade-off:** The extended `trips` RLS SELECT policy allows any authenticated user to read `link`/`public` trips. This means an authenticated user who knows a `trip_id` can query the trip directly without presenting the token. The token is enforced by the Server Component's WHERE clause — not at the DB level. This is an accepted trade-off (consistent with how most share-link systems work at the application layer). This is explicitly not a DB-enforced security guarantee.
+RLS policies on Supabase are the real security layer. `TripPermissionContext` is for UI gating only. Even if a viewer somehow triggers a mutation client-side, RLS blocks it.
 
-On success: passes `tripId` and resolved `link_permission` to a `TripPermissionProvider` wrapping the client tree. Shows a loading skeleton during resolution.
+## Share Modal
 
-On failure (no row / `visibility = 'private'`): renders "This trip is private" page (does not leak trip existence).
+Triggered by "Share" button in trip header (owner only). Google Docs-style single panel:
 
-Client mounts `YjsTripProvider` + `CalendarDashboard`. Effective permission computed by `useEffectivePermission(tripId)`. Yjs provisioned for all permission levels. Permission gating:
-- **viewer** — calendar read-only; drag disabled; no create/edit controls; Shift+Click is a no-op; notes visible but not editable.
-- **commenter** — same as viewer, plus Shift+Click places notes; own notes editable/deletable.
-- **editor** — full calendar editing, same as an accepted editor collaborator.
+### Section 1: Email invite bar (top)
 
-### `/invite/[invite_token]` error cases
+- Text input for email address
+- Role dropdown: Viewer / Editor
+- "Invite" button
+- On submit: calls `POST /invite` Lambda → creates `trip_collaborators` row (pending), sends SES email with `/t/[token]` link
+- Toast: "Invite sent to {email}"
 
-| Condition | Behaviour |
-|---|---|
-| Token not found | 404 page |
-| Already accepted | Redirect to `/trip/[id]` (idempotent) |
-| `auth.users.email` ≠ `invited_email` | Error page: "This invite was sent to a different email address." No state change. |
-| Valid token, email matches, status pending | Accept: `invite_status = 'accepted'`, `user_id = auth.uid()`, redirect to `/trip/[id]` |
+### Section 2: Collaborator list (middle)
 
-Email comparison uses `auth.users.email` (Supabase Auth canonical email), not `profiles.email`.
+- Owner row: avatar, name, email, "Owner" label (non-editable)
+- Each collaborator: avatar, name/email, role dropdown (owner can change), remove button (X)
+- Pending invites: shown with amber "Pending" badge, can be removed (cancels invite)
+- Data source: `useCollaborators(tripId)` hook
 
----
+### Section 3: Link sharing (bottom)
 
-## Sharing UI
-
-### Share modal
-
-Triggered by **"Share" button** in the trip header (owner only). Non-owners see the role badge instead.
-
-1. **Visibility selector** — segmented control: Private / Link / Public. Switching to Link or Public generates `share_link_token` (UUID v4) if not set.
-2. **Share link row** — `travyl.app/t/[token]`, Copy, Regenerate (new token; old links stop working). Shown when `visibility != 'private'`.
-3. **Link permission dropdown** — "Anyone with link can: View / Comment / Edit". Shown when `visibility != 'private'`.
-4. **Collaborators section:**
-   - Email input + role dropdown (Viewer / Commenter / Editor) + Invite button
-   - Accepted collaborators: avatar, name/email, role dropdown (owner can change), ✕ remove
-   - Pending invites: email, role, "Pending" badge, Resend and Cancel options. Cancel sets `invite_status = 'cancelled'`.
-
-### Invite flow
-
-1. Owner submits email + role → `trip_collaborators` row: `invite_status: 'pending'`, `user_id: null`, `invite_token: UUID v4`, `invited_by: auth.uid()`, `role_type`.
-2. Client calls `supabase.functions.invoke('send-invite-email', { body: { inviteToken, invitedEmail, tripTitle, inviterName } })`. On failure: pending row remains; toast error in modal; owner can Resend from the list.
-3. Recipient authenticates (token in `?redirect=` URL) → `/invite/[token]` validates → accept → `/trip/[id]`.
-4. Owner sees collaborator avatar appear live via Supabase Realtime.
-
----
+- Separated by divider
+- Link icon + "Anyone with the link" label
+- If visibility is `'private'`: "Enable link sharing" toggle → sets visibility to `'link'`
+- If visibility is `'link'` or `'public'`:
+  - Permission dropdown: "Can view" / "Can edit" (updates `link_permission`)
+  - "Copy link" button (copies `/t/[token]` URL, generates `share_link_token` if none exists)
 
 ## Post-it Notes
 
 ### Placement
 
-- **Shift+Click** on any empty area of a day column.
-- `pos_x = (event.clientX - rect.left) / rect.width`, `pos_y = (event.clientY - rect.top) / rect.height`, clamped to [0.05, 0.95].
-- `day` computed as `new Date(tripStartDate.getTime() + dayIndex * 86400000)` — uses `tripStartDate` and `dayIndex` already available in `DayColumn`'s render scope. No new prop added to `DayColumn`.
-- **Existing `onCreateActivity` click handler** in `DayColumn` must be updated to skip when `e.shiftKey === true`. Note placement takes precedence over activity creation on Shift+Click.
-- Commenter role or higher only. Shift+Click is a no-op for viewers.
-- **Mobile:** long-press (300ms threshold) on empty day space.
+Shift+Click on the time grid (inside `DayColumn`) creates a new note at the clicked day + hour.
 
-### Note dragging — same day column only
+### Rendering
 
-Each day column's note overlay is wrapped in its own isolated `DndContext`, separate from the activity `DndContext` on `WeekView`/`CalendarDashboard`:
+Post-it notes render in `DayColumn` alongside `EventBlock` components. Notes use `position: absolute` within the hour cell, offset to the right side of the column to avoid overlapping activities. Z-index is above `EventBlock` so notes are always visible and clickable.
 
-```tsx
-<DndContext sensors={sensors} onDragEnd={handleNoteDragEnd}>
-  {/* note overlays for this day column only */}
-</DndContext>
+- Fixed size: ~120px wide, auto-height for text content
+- Slight random rotation (-3 to +3 degrees, seeded from note `id` for consistency) for organic feel
+- Background color: auto-assigned from author's collaborator color palette (5 colors: `#fef3c7`, `#dbeafe`, `#dcfce7`, `#fce7f3`, `#ede9fe`). Mapping: `COLORS[collaboratorIndex % COLORS.length]` where `collaboratorIndex` is the collaborator's position sorted by `created_at`. Owner is always index 0.
+- Author initials badge in top-right corner
+- Semi-transparent (`opacity: 0.9`) so activities beneath remain visible
+- Hover reveals delete X button (for author and owner)
+
+### Interaction
+
+- **Create:** Shift+Click on time grid → new note at that position, auto-focused for typing
+- **Edit:** Click on note → contentEditable, auto-focus. Save on blur via `trip_notes` upsert
+- **Move:** Drag via dnd-kit (same DndContext as activities). Updates `day` + `hour` columns
+- **Delete:** X button on hover. Author and owner can delete
+
+### Real-time sync
+
+Notes use Supabase Realtime Postgres Changes subscription (not Yjs). Simple CRUD rows with no conflict resolution needed. All collaborators see notes appear/move/update/delete in real-time.
+
+### Drag data discrimination
+
+Post-it notes use `{ type: 'note', note }` in drag data, distinct from activity drag data `{ type: 'activity', activity }`. `useCalendarDnd` checks `active.data.current.type` in `onDragEnd` to route to the correct handler.
+
+## SST Infrastructure
+
+### `POST /invite` Lambda
+
+- Input: `{ tripId, email, role }`
+- Auth: verify caller is trip owner (check JWT)
+- Creates `trip_collaborators` row: `invite_status: 'pending'`, generates `invite_token`, sets `invited_email`
+- Generates `share_link_token` on the trip if one doesn't exist yet
+- Sends SES email with `/t/[invite_token]` link (per-user token, so the invite role is preserved)
+- Returns: `{ collaboratorId, status: 'invited' }`
+
+### `sst.aws.Email`
+
+- SES identity for sending invite emails
+- Template: simple branded email with trip name, inviter name, and CTA button linking to `/t/[token]`
+
+## New Types (in `@travyl/shared`)
+
+```ts
+type Visibility = 'private' | 'link' | 'public'
+type LinkPermission = 'viewer' | 'editor'
+type CollaboratorRole = 'viewer' | 'editor'
+
+interface TripNote {
+  id: string
+  trip_id: string
+  user_id: string
+  day: number
+  hour: number
+  text: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+interface TripCollaborator {
+  id: string
+  trip_id: string
+  user_id: string | null
+  invited_email: string | null
+  invite_token: string | null
+  role_type: CollaboratorRole
+  invite_status: 'pending' | 'accepted' | 'declined'
+  invited_by: string
+  accepted_at: string | null
+  created_at: string
+}
 ```
 
-- **Sensors:** `PointerSensor` with `activationConstraint: { distance: 5 }`.
-- **Collision detection:** not needed — only one droppable zone per context (the column itself).
-- **`onDragEnd`:** if `event.over` is the column's own droppable ID, update `pos_x`/`pos_y` from the delta and persist. Otherwise (`over` is null or mismatched), discard — note snaps back.
-- Position saved on `dragEnd` only. Optimistic update on drag start; rollback on Supabase error.
+## New Components
 
-Cross-day dragging is **not supported in Branch 1.**
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ShareModal` | `apps/web/components/calendar/` | Main share dialog |
+| `CollaboratorList` | `apps/web/components/calendar/` | Avatar + role list inside ShareModal |
+| `InviteBar` | `apps/web/components/calendar/` | Email + role + invite button |
+| `LinkSharingSection` | `apps/web/components/calendar/` | Link toggle, permission, copy |
+| `PostItNote` | `apps/web/components/calendar/` | Individual note on canvas |
+| `ShareButton` | `apps/web/components/calendar/` | Button in trip header opening modal |
 
-### Visual position across views
+## New Hooks
 
-Same stored fractions render at different absolute pixels in week view vs day view (different column widths). Acceptable — note is anchored to the correct day in both views.
+| Hook | Location | Purpose |
+|------|----------|---------|
+| `useEffectivePermission` | `apps/web/components/calendar/providers/` | From TripPermissionContext |
+| `useCollaborators` | `packages/shared/src/hooks/` | Fetch/mutate trip_collaborators, React Query |
+| `useTripNotes` | `packages/shared/src/hooks/` | Fetch notes + Realtime subscription + CRUD |
 
-### Color
+## Modified Files
 
-`pickColor(userId: string): string` — deterministic hash in `useCollaboratorPresence.ts`. Move it and its palette to `@travyl/shared` and export. Called on note insert; result stored in `trip_notes.color`. Stored value is used at render time — `pickColor` is not re-called. Ownerless notes (`user_id IS NULL`) render with their stored color and show "Unknown" as author.
-
-### Content editing
-
-Click a note to edit inline. Content saved **on blur**. On Supabase failure: revert to pre-edit value and surface a toast. Handled by `useNotesMutations.updateNoteContent`.
-
-### Interactions
-
-| Interaction | Behaviour |
-|---|---|
-| Shift+click empty space | Place note; `day` from `tripStartDate + dayIndex`; `content = ''`; input focused |
-| Click note | Edit inline; save on blur |
-| Hover note | Shows ✕ and drag handle (⠿) |
-| ✕ button | Shown only when `note.user_id === currentUserId` OR user is owner. Deletes note. RLS rejects unauthorized; hook rolls back. |
-| Drag (handle) | Reposition in same column; save on dragEnd |
-
-### Appearance
-
-- Slightly rotated rectangle, drop shadow, post-it aesthetic.
-- Color from `pickColor(userId)`. No user-facing picker.
-- Author display name at bottom. Ownerless notes show "Unknown".
-- Renders above activities (higher z-index). Does not push activities.
-
-### Data flow
-
-- React Query + direct Supabase write (not Yjs).
-- `useTripNotes` called inside the calendar component tree (inside `YjsTripProvider`).
-- Realtime: `postgres_changes`, event `*`, filter `trip_id=eq.{tripId}`, channel `trip-notes:{tripId}`.
-  - INSERT → upsert into cache by `id`.
-  - UPDATE → update cached entry by `id`.
-  - DELETE → remove from cache by `id`.
-  - Optimistic entries use the real server `id` on create; subsequent Realtime INSERT deduplicates by `id`.
-
----
-
-## Shared package additions
-
-New exports from `@travyl/shared`:
-
-- `pickColor(userId: string): string` — moved from `useCollaboratorPresence.ts`
-- `useTripNotes(tripId)` — React Query + Realtime subscription
-- `useNotesMutations(tripId)` — `createNote` / `updateNotePosition` / `updateNoteContent` / `deleteNote` with optimistic updates
-- `useTripSharing(tripId)` — `visibility` / `link_permission` / `share_link_token` CRUD
-- `useCollaborators(tripId)` — list / invite / update-role / remove / resend / cancel
-- `useEffectivePermission(tripId)` — reads `TripPermissionContext` (set by Server Component) and `trip_collaborators`; returns most permissive role
-- `TripPermissionContext` / `TripPermissionProvider` — React context providing resolved permission to the calendar tree
-- Updated `Trip` type: remove `is_shared`, `share_link_role`, `is_public`; add `visibility`, `link_permission`
-- New types: `TripNote`, `TripVisibility`, `LinkPermission`, `CollaboratorRole`
-- Updated `permissions.ts`: rewrite `canEditTrip`, `canViewTrip`, `canForkTrip` against new fields
-
----
-
-## Out of scope (Branch 1)
-
-- Fork mechanic and fork count
-- Discovery feed / home page evolution
-- Public trip browse / search
-- Cross-day note dragging
-- Mobile feature parity beyond long-press note placement
-- Modifying the existing `/trip/[id]/share/[token]` summary view
-- Unauthenticated (anonymous) access to public trips
-
----
-
-## Branch 2 preview
-
-- `trips.forked_from_trip_id` + `trips.fork_count`
-- Fork button on any public trip → copies trip + all activities into viewer's trips list with attribution
-- Home page `/` evolved into a community feed ranked by fork count
+| File | Change |
+|------|--------|
+| `packages/shared/src/types/index.ts` | Add `TripNote`, `TripCollaborator`, `Visibility`, `LinkPermission`, `CollaboratorRole`. Update `Trip` type. |
+| `apps/web/components/calendar/DayColumn.tsx` | Render `PostItNote` components, handle Shift+Click |
+| `apps/web/components/calendar/hooks/useCalendarDnd.ts` | Handle note drag alongside activity drag |
+| `apps/web/middleware.ts` | Add `/trip/*` auth redirect |
+| `apps/web/components/calendar/CalendarDashboard.tsx` | Wrap with `TripPermissionContext`, add ShareButton to header |
+| `packages/shared/src/utils/permissions.ts` | Replace `is_shared`/`is_public`/`share_link_role` references with `visibility`/`link_permission`. `canViewTrip` checks `visibility != 'private'` or collaborator relationship. `canEditTrip` checks owner or editor collaborator. `canForkTrip` checks `visibility == 'public'`. |
+| `packages/shared/src/services/api.ts` | Add collaborator + note API functions |

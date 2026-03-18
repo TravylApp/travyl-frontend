@@ -1,5 +1,9 @@
 // Core entity types — mirrors the Supabase schema
 
+export type Visibility = 'private' | 'link' | 'public'
+export type LinkPermission = 'viewer' | 'editor'
+export type CollaboratorRole = 'viewer' | 'editor'
+
 export interface Profile {
   id: string;
   email: string;
@@ -23,12 +27,11 @@ export interface Trip {
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
   trip_context: Record<string, unknown>;
   is_generated: boolean;
-  is_shared: boolean;
+  visibility: Visibility;
+  link_permission: LinkPermission;
   share_link_token: string | null;
-  share_link_role: 'viewer' | 'editor';
   forked_from_trip_id: string | null;
   fork_count: number;
-  is_public: boolean;
   theme: string;
   custom_theme_color: string | null;
   created_at: string;
@@ -576,4 +579,39 @@ export interface TravelBoard {
   icon: string;
   iconColor: string;
   images: string[];
+}
+
+// ─── Trip Sharing ────────────────────────────────────────────
+
+export interface TripNote {
+  id: string
+  trip_id: string
+  user_id: string
+  day: number
+  hour: number
+  text: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TripCollaborator {
+  id: string
+  trip_id: string
+  user_id: string | null
+  invited_email: string | null
+  invite_token: string | null
+  role_type: CollaboratorRole
+  invite_status: 'pending' | 'accepted' | 'declined'
+  invited_by: string
+  accepted_at: string | null
+  created_at: string
+}
+
+export interface EffectivePermission {
+  role: 'owner' | 'editor' | 'viewer'
+  canEdit: boolean
+  canDelete: boolean
+  canInvite: boolean
+  canCreateNotes: boolean
 }

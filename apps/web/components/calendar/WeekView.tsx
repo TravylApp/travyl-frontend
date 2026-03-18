@@ -13,6 +13,7 @@ interface WeekViewProps {
   onSelectEvent: (id: string) => void
   onClickDayHeader?: (dayIndex: number) => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
+  pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
 }
 
 export function WeekView({
@@ -25,6 +26,7 @@ export function WeekView({
   onSelectEvent,
   onClickDayHeader,
   onCreateActivity,
+  pendingDrop = null,
 }: WeekViewProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
@@ -53,6 +55,7 @@ export function WeekView({
                 onClickDayHeader ? () => onClickDayHeader(dayIndex) : undefined
               }
               onCreateActivity={onCreateActivity}
+              pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
             />
           )
         })}

@@ -62,3 +62,5 @@ export * from './exploreData';
 export * from './placeCardSizes';
 
 export * from './placeCollections';
+
+export * from './mockSuggestions';

@@ -24,6 +24,7 @@ export function ForYouPanel({
     activeFilter,
     setActiveFilter,
     filterCategories,
+    refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
 
   return (
@@ -83,6 +84,7 @@ export function ForYouPanel({
       {/* Content area */}
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         {isLoading ? (
+          /* Skeleton loading */
           <div className="columns-2 gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
@@ -93,15 +95,17 @@ export function ForYouPanel({
             ))}
           </div>
         ) : error ? (
+          /* Error state */
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <p className="text-sm text-gray-500 dark:text-[#4a7ab5]">
-              Couldn't load suggestions
+              Couldn&apos;t load suggestions
             </p>
-            <button className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
+            <button onClick={() => refetch()} className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
               Tap to retry
             </button>
           </div>
         ) : suggestions.length === 0 ? (
+          /* Empty state */
           <div className="flex flex-col items-center justify-center py-12 gap-1">
             <p className="text-sm text-gray-500 dark:text-[#4a7ab5]">
               {searchQuery.trim()
@@ -115,6 +119,7 @@ export function ForYouPanel({
             )}
           </div>
         ) : (
+          /* Masonry grid */
           <div className="columns-2 gap-2">
             {suggestions.map((suggestion) => (
               <SuggestionCard key={suggestion.id} suggestion={suggestion} />

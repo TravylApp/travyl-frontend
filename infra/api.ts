@@ -1,6 +1,6 @@
-import { cacheTable } from './storage'
+import { cacheTable, placeIndex } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl } from './secrets'
+import { supabaseServiceRoleKey, supabaseUrl } from './secrets'
 
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
@@ -10,17 +10,53 @@ export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   },
 })
 
+// IAM policy for Amazon Location Services
+const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
+  policy: $jsonStringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: [
+          'geo:SearchPlaceIndexForText',
+          'geo:SearchPlaceIndexForPosition',
+          'geo:GetPlace',
+        ],
+        Resource: placeIndex.indexArn,
+      },
+    ],
+  }),
+})
+
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl],
+  link: [cacheTable, supabaseServiceRoleKey, supabaseUrl],
+  environment: {
+    PLACE_INDEX_NAME: placeIndex.indexName,
+  },
+  permissions: [
+    {
+      actions: ['geo:SearchPlaceIndexForText', 'geo:GetPlace'],
+      resources: [placeIndex.indexArn],
+    },
+  ],
 })
 
 api.route('GET /search', {
   handler: 'services/search.handler',
-  link: [supabaseSecretKey, supabaseUrl],
+  link: [supabaseServiceRoleKey, supabaseUrl],
+  environment: {
+    PLACE_INDEX_NAME: placeIndex.indexName,
+  },
+  permissions: [
+    {
+      actions: ['geo:SearchPlaceIndexForText'],
+      resources: [placeIndex.indexArn],
+    },
+  ],
 })
 
 api.route('POST /interact', {
   handler: 'services/interact.handler',
-  link: [bus, supabaseSecretKey, supabaseUrl],
+  link: [bus, supabaseServiceRoleKey, supabaseUrl],
 })

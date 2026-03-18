@@ -1,6 +1,6 @@
-export type { SuggestionCard } from '@travyl/shared/types'
-
 import type { SuggestionCard } from '@travyl/shared/types'
+
+export type { SuggestionCard } from '@travyl/shared/types'
 
 export interface SuggestResponse {
   suggestions: SuggestionCard[]

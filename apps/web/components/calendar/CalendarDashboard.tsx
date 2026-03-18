@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
-import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core'
+import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   MOCK_FLIGHTS,
@@ -15,6 +15,7 @@ import { useYjsSync } from './hooks/useYjsSync'
 import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
+import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
 import { CalendarHeader } from './CalendarHeader'
 import { AllDayRow } from './AllDayRow'
@@ -22,15 +23,30 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { DetailPanel } from './DetailPanel'
 import { ForYouPanel } from './ForYouPanel'
-import { SuggestionCard } from './SuggestionCard'
-import { MOCK_SUGGESTIONS } from '@travyl/shared/config/mockSuggestions'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
-import { useInteractionTracking } from './hooks/useInteractionTracking'
+
+// ─── Category icon mapping ─────────────────────────────────────
+
+const CATEGORY_ICONS: Record<string, string> = {
+  sightseeing: '🏛️',
+  dining: '🍽️',
+  tour: '🗺️',
+  cultural: '🎭',
+  museum: '🖼️',
+  shopping: '🛍️',
+  nightlife: '🍸',
+  outdoor: '🌿',
+  default: '📍',
+}
+
+function getCategoryIcon(category: string): string {
+  return CATEGORY_ICONS[category.toLowerCase()] ?? CATEGORY_ICONS.default
+}
 
 // ─── Component ───────────────────────────────────────────────
 
@@ -63,8 +79,30 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     goToWeekView,
   } = useCalendarNavigation()
 
-  const { theme, toggleTheme } = useCalendarTheme()
   const { trackInteraction } = useInteractionTracking(tripId)
+
+  // Computed (moved up so useCalendarDnd can reference timeRange)
+  const timeRange = useMemo(() => computeTimeRange(activities), [activities])
+
+  const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
+  const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
+
+  const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
+    await addActivity(activity)
+    selectEvent(activity.id)
+    setDroppedSuggestionIds((prev) => [...prev, suggestionId])
+    setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
+    trackInteraction(suggestionId, 'drag')
+  }, [addActivity, selectEvent, trackInteraction])
+
+  const { sensors, activeId, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+    onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
+  })
+
+  const { theme, toggleTheme } = useCalendarTheme()
 
   // Sync view mode to presence
   useEffect(() => {
@@ -149,36 +187,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     })
   }, [trip, parsedStartDate.getTime(), tripTotalDays])
 
-  // Computed
-  const timeRange = useMemo(() => computeTimeRange(activities), [activities])
-
-  const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
-  const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
-
-  const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
-    await addActivity(activity)
-    selectEvent(activity.id)
-    setDroppedSuggestionIds((prev) => [...prev, suggestionId])
-    setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackInteraction(suggestionId, 'drag')
-  }, [addActivity, selectEvent, trackInteraction])
-
-  const { sensors, activeId, handleDragStart, handleDragEnd } = useCalendarDnd({
-    onMoveActivity: moveActivity,
-    onAddFromSuggestion: handleAddFromSuggestion,
-    scrollRef,
-    timeRangeStartHour: timeRange.startHour,
-  })
-
-  const rightPanel = selectedEventId ? 'detail' : 'for-you'
-
-  // Find the suggestion being dragged (for DragOverlay preview)
-  const activeSuggestion = useMemo(() => {
-    if (!activeId || !String(activeId).startsWith('suggestion-')) return null
-    const sugId = String(activeId).replace('suggestion-', '')
-    return MOCK_SUGGESTIONS.find((s) => s.id === sugId) ?? null
-  }, [activeId])
-
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
     [activities, selectedEventId],
@@ -222,6 +230,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
     if (selectedEventId === id) selectEvent(null)
+    // Restore the suggestion card in the ForYou panel
     const suggestionId = activityToSuggestion.get(id)
     if (suggestionId) {
       setDroppedSuggestionIds((prev) => prev.filter((sid) => sid !== suggestionId))
@@ -299,23 +308,15 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
         {/* Grid area */}
         {activeNav === 'calendar' ? (
-        <>
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Calendar grid column (AllDayRow + scrollable time grid) */}
-          <div className="flex flex-col flex-1 min-w-0">
-            {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
-            <AllDayRow
-              days={visibleDays}
-              flights={FLIGHT_BANNERS}
-              hotels={HOTEL_BANNERS}
-            />
-            {/* Scrollable time grid */}
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Scrollable grid */}
             <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
               <AnimatePresence mode="wait" initial={false}>
                 {viewMode === 'week' ? (
@@ -337,6 +338,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onSelectEvent={handleSelectEvent}
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
+                      pendingDrop={pendingDrop}
                     />
                   </motion.div>
                 ) : (
@@ -358,73 +360,86 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       tripStartDate={parsedStartDate}
                       onSelectEvent={handleSelectEvent}
                       onCreateActivity={handleCreateActivity}
+                      pendingDrop={pendingDrop}
                     />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Right column: For You panel or Detail panel */}
+            {selectedEventId ? (
+              <DetailPanel
+                activity={selectedActivity}
+                viewers={collaborators}
+                onClose={handleCloseDetail}
+                onRemove={handleRemoveActivity}
+                onUpdateActivity={updateActivity}
+              />
+            ) : (
+              <ForYouPanel
+                destination={trip?.destination ?? ''}
+                scheduledActivityIds={droppedSuggestionIds}
+              />
+            )}
           </div>
 
-          {/* Right panel: detail or suggestions */}
-          {rightPanel === 'detail' ? (
-            <DetailPanel
-              activity={selectedActivity}
-              viewers={collaborators}
-              onClose={handleCloseDetail}
-              onRemove={handleRemoveActivity}
-              onUpdateActivity={updateActivity}
-            />
-          ) : (
-            <ForYouPanel
-              destination={trip?.destination ?? ''}
-              scheduledActivityIds={droppedSuggestionIds}
-            />
+          {/* Drag overlay — shows ghost of dragged item */}
+          <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
+            {activeData?.type === 'suggestion' ? (
+              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+                <span className="text-lg">{getCategoryIcon(activeData.suggestion.category)}</span>
+                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                  {activeData.suggestion.name}
+                </span>
+              </div>
+            ) : activeData?.type === 'activity' ? (
+              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+                <span className="text-lg">{getCategoryIcon(activeData.activity.type)}</span>
+                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                  {activeData.activity.title || 'Untitled'}
+                </span>
+              </div>
+            ) : null}
+          </DragOverlay>
+
+          {/* Empty state -- only when no activities exist */}
+          {activities.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 48 48"
+                fill="none"
+                className="text-gray-600"
+                aria-hidden="true"
+              >
+                <rect
+                  x="6"
+                  y="8"
+                  width="36"
+                  height="34"
+                  rx="4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M16 6V10M32 6V10M6 18H42"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M24 26V34M20 30H28"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
+            </div>
           )}
-        </div>
-        <DragOverlay dropAnimation={null}>
-          {activeSuggestion ? (
-            <SuggestionCard suggestion={activeSuggestion} isOverlay />
-          ) : null}
-        </DragOverlay>
         </DndContext>
-
-        {/* Empty state -- only when no activities exist */}
-        {activities.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-            <svg
-              width="48"
-              height="48"
-              viewBox="0 0 48 48"
-              fill="none"
-              className="text-gray-600"
-              aria-hidden="true"
-            >
-              <rect
-                x="6"
-                y="8"
-                width="36"
-                height="34"
-                rx="4"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M16 6V10M32 6V10M6 18H42"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M24 26V34M20 30H28"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
-          </div>
-        )}
-        </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
