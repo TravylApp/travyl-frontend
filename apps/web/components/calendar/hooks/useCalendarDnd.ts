@@ -11,6 +11,7 @@ import { suggestionToCalendarActivity } from '@travyl/shared/utils/suggestionMap
 import { HOUR_HEIGHT } from '../constants'
 import type { CalendarActivity } from '../types'
 import type { SuggestionCard } from '../types'
+import type { TripNote } from '@travyl/shared'
 
 // Re-export DndContext for convenience
 export { DndContext } from '@dnd-kit/core'
@@ -18,6 +19,7 @@ export { DndContext } from '@dnd-kit/core'
 interface UseCalendarDndOptions {
   onMoveActivity: (id: string, newDay: number, newStartHour: number) => void
   onAddFromSuggestion: (activity: CalendarActivity, suggestionId: string) => void
+  onMoveNote?: (noteId: string, day: number, hour: number) => void
   /** Ref to the scrollable grid container — used to compute absolute drop position for suggestions */
   scrollRef: React.RefObject<HTMLDivElement | null>
   /** Start hour of the visible time range (e.g., 7 for 7 AM) */
@@ -27,6 +29,7 @@ interface UseCalendarDndOptions {
 export function useCalendarDnd({
   onMoveActivity,
   onAddFromSuggestion,
+  onMoveNote,
   scrollRef,
   timeRangeStartHour,
 }: UseCalendarDndOptions) {
@@ -71,6 +74,7 @@ export function useCalendarDnd({
       const dragData = active.data?.current as
         | { type: 'activity'; activity: CalendarActivity }
         | { type: 'suggestion'; suggestion: SuggestionCard }
+        | { type: 'note'; note: TripNote }
         | undefined
 
       if (!dragData) return
@@ -134,6 +138,7 @@ export function useCalendarDnd({
       const dragData = active.data?.current as
         | { type: 'activity'; activity: CalendarActivity }
         | { type: 'suggestion'; suggestion: SuggestionCard }
+        | { type: 'note'; note: TripNote }
         | undefined
 
       if (!dragData) return
@@ -162,9 +167,19 @@ export function useCalendarDnd({
           snappedStartHour,
         )
         onAddFromSuggestion(newActivity, dragData.suggestion.id)
+      } else if (dragData.type === 'note' && onMoveNote) {
+        // Note move — use same absolute-position logic as suggestion
+        const overRect = over.rect
+        const scrollTop = scrollRef.current?.scrollTop ?? 0
+        const pointerY = (event.activatorEvent as PointerEvent)?.clientY ?? 0
+        const dropY = pointerY + delta.y
+        const gridRelativeY = dropY - overRect.top + scrollTop
+        const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
+        const targetHour = Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+        onMoveNote(dragData.note.id, newDay, targetHour)
       }
     },
-    [onMoveActivity, onAddFromSuggestion, scrollRef, timeRangeStartHour],
+    [onMoveActivity, onAddFromSuggestion, onMoveNote, scrollRef, timeRangeStartHour],
   )
 
   return {
