@@ -1,6 +1,6 @@
 import { cacheTable } from './storage'
 import { bus } from './events'
-import { supabaseServiceRoleKey, supabaseUrl } from './secrets'
+import { supabaseSecretKey, supabaseUrl } from './secrets'
 
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
@@ -12,15 +12,15 @@ export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [cacheTable, supabaseServiceRoleKey, supabaseUrl],
+  link: [cacheTable, supabaseSecretKey, supabaseUrl],
 })
 
 api.route('GET /search', {
   handler: 'services/search.handler',
-  link: [supabaseServiceRoleKey, supabaseUrl],
+  link: [supabaseSecretKey, supabaseUrl],
 })
 
 api.route('POST /interact', {
   handler: 'services/interact.handler',
-  link: [bus, supabaseServiceRoleKey, supabaseUrl],
+  link: [bus, supabaseSecretKey, supabaseUrl],
 })
