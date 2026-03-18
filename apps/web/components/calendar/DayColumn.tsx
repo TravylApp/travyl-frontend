@@ -4,6 +4,8 @@ import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import { computeOverlapLayout } from '@travyl/shared'
+import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
 interface DayColumnProps {
   dayIndex: number
@@ -16,6 +18,7 @@ interface DayColumnProps {
   onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
+  pendingActivity?: CalendarActivity | null
 }
 
 function CurrentTimeIndicator({
@@ -66,6 +69,7 @@ export function DayColumn({
   onSelectEvent,
   onClickDayHeader,
   onCreateActivity,
+  pendingActivity = null,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -99,6 +103,38 @@ export function DayColumn({
   const hourCount = timeRange.endHour - timeRange.startHour
   const hours: number[] = []
   for (let h = timeRange.startHour; h <= timeRange.endHour; h++) hours.push(h)
+
+  // Compute overlap layout
+  // If pendingActivity is an existing activity being moved, filter original to avoid double-counting
+  const layoutActivities = pendingActivity
+    ? [
+        ...activities.filter((a) => a.id !== pendingActivity.id),
+        pendingActivity,
+      ]
+    : activities
+
+  const overlapLayout = computeOverlapLayout(layoutActivities)
+
+  // Compute hidden counts: find which column-2 block should show the "+N more" badge
+  // hiddenCount = count of activities in the same cluster whose column === -1
+  const hiddenByCluster = new Map<string, number>()
+  for (const [id, layout] of overlapLayout) {
+    if (layout.column === -1) {
+      const hiddenAct = layoutActivities.find((a) => a.id === id)!
+      for (const [otherId, otherLayout] of overlapLayout) {
+        if (otherLayout.column === 2) {
+          const otherAct = layoutActivities.find((a) => a.id === otherId)!
+          if (
+            hiddenAct.startHour < otherAct.startHour + otherAct.duration &&
+            otherAct.startHour < hiddenAct.startHour + hiddenAct.duration
+          ) {
+            hiddenByCluster.set(otherId, (hiddenByCluster.get(otherId) ?? 0) + 1)
+            break
+          }
+        }
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col flex-1 min-w-0">
@@ -183,16 +219,46 @@ export function DayColumn({
         ))}
 
         {/* Event blocks */}
-        {activities.map((activity) => (
-          <EventBlock
-            key={activity.id}
-            activity={activity}
-            viewers={viewers}
-            isSelected={selectedEventId === activity.id}
-            onSelect={onSelectEvent}
-            timeRangeStartHour={timeRange.startHour}
-          />
-        ))}
+        {activities.map((activity) => {
+          const layout = overlapLayout.get(activity.id)
+          if (!layout || layout.column === -1) return null
+          return (
+            <EventBlock
+              key={activity.id}
+              activity={activity}
+              viewers={viewers}
+              isSelected={selectedEventId === activity.id}
+              onSelect={onSelectEvent}
+              timeRangeStartHour={timeRange.startHour}
+              column={layout.column}
+              totalColumns={layout.totalColumns}
+              hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
+            />
+          )
+        })}
+
+        {/* Ghost block for pending drag activity */}
+        {pendingActivity && (() => {
+          const layout = overlapLayout.get(pendingActivity.id)
+          if (!layout || layout.column < 0) return null
+          const availableWidth = `(100% - ${2 * COLUMN_OUTER_PAD}px)`
+          const colWidth = `(${availableWidth} - ${(layout.totalColumns - 1) * COLUMN_GAP}px) / ${layout.totalColumns}`
+          const leftOffset = layout.column === 0
+            ? `${COLUMN_OUTER_PAD}px`
+            : `${COLUMN_OUTER_PAD}px + ${layout.column} * (${colWidth} + ${COLUMN_GAP}px)`
+          return (
+            <div
+              className="absolute rounded-md border-2 border-dashed border-blue-400 dark:border-blue-500 bg-blue-100/30 dark:bg-blue-500/15 pointer-events-none"
+              style={{
+                top: (pendingActivity.startHour - timeRange.startHour) * HOUR_HEIGHT,
+                height: Math.max(pendingActivity.duration * HOUR_HEIGHT - 2, 20),
+                left: `calc(${leftOffset})`,
+                width: `calc(${colWidth})`,
+                zIndex: 5,
+              }}
+            />
+          )
+        })()}
 
         {/* Current time indicator */}
         <CurrentTimeIndicator
