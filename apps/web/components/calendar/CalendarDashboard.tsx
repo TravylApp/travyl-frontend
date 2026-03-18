@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
@@ -17,7 +18,10 @@ import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
-import { CalendarHeader } from './CalendarHeader'
+import { TripNavbar } from './TripNavbar'
+import { CommandPalette } from './CommandPalette'
+import { useCalendarCommands } from './hooks/useCalendarCommands'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -59,11 +63,13 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
+  const router = useRouter()
 
   // Hooks
   const { trip, tripStartDate, loading: tripLoading, error: tripError } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
-  const { addActivity, updateActivity, moveActivity, removeActivity } = useActivityMutations(tripId, tripStartDate, userId)
+  const { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity } = useActivityMutations(tripId, tripStartDate, userId)
   const { collaborators, setSelectedEvent: setPresenceSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
@@ -216,6 +222,28 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
 
+  const commands = useCalendarCommands({
+    selectedActivity,
+    isPaletteOpen,
+    moveActivity,
+    removeActivity,
+    updateActivity,
+    duplicateActivity,
+    onViewModeChange: setViewMode,
+    selectDay,
+    tripDays: TRIP_DAYS,
+    tripStartDate: parsedStartDate,
+    onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
+    onOpenPalette: () => setIsPaletteOpen(true),
+  })
+
+  useKeyboardShortcuts(
+    commands,
+    isPaletteOpen,
+    () => setIsPaletteOpen(false),
+    () => selectEvent(null),
+  )
+
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
   if (error) return <CalendarError message={error} />
@@ -243,14 +271,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }
 
   const handleBack = () => {
-    if (viewMode === 'day') {
-      goToWeekView()
-    }
-    // In week view, back could navigate to trip overview -- no-op for now
+    router.push('/trips')
   }
 
   const handleAddEvent = () => {
-    // TODO: open add-event modal
+    handleCreateActivity(selectedDayIndex ?? 0, 12)
   }
 
   const handleClickDayHeader = (dayIndex: number) => {
@@ -292,16 +317,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
-        <CalendarHeader
+        <TripNavbar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
+          commands={commands}
+          onOpenPalette={() => setIsPaletteOpen(true)}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          onBack={handleBack}
           onAddEvent={handleAddEvent}
+          onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
           onShare={() => {}}
+          selectedActivity={selectedActivity}
+          onDeselect={() => selectEvent(null)}
           theme={theme}
           onToggleTheme={toggleTheme}
           tripDays={TRIP_DAYS}
@@ -459,6 +488,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       </div>
     </div>
     </div>
+    <CommandPalette
+      isOpen={isPaletteOpen}
+      onClose={() => setIsPaletteOpen(false)}
+      commands={commands}
+    />
     </CalendarThemeContext.Provider>
   )
 }
