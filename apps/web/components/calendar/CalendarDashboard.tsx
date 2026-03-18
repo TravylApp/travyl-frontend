@@ -79,7 +79,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     goToWeekView,
   } = useCalendarNavigation()
 
-  const { trackInteraction } = useInteractionTracking(tripId)
+  const { trackEvent } = useInteractionTracking(tripId)
 
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
@@ -92,8 +92,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackInteraction(suggestionId, 'drag')
-  }, [addActivity, selectEvent, trackInteraction])
+    trackEvent(suggestionId, 'drag')
+  }, [addActivity, selectEvent, trackEvent])
 
   const { sensors, activeId, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
