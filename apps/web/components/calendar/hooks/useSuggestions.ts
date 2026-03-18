@@ -1,10 +1,9 @@
+// apps/web/components/calendar/hooks/useSuggestions.ts
 'use client'
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useAuthStore } from '@travyl/shared/stores/authStore'
+import { useState, useMemo, useCallback } from 'react'
+import { MOCK_SUGGESTIONS } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
-
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 const FILTER_CATEGORIES = [
   'All',
@@ -39,7 +38,6 @@ interface UseSuggestionsReturn {
   suggestions: SuggestionCard[]
   isLoading: boolean
   error: string | null
-  source: 'cache' | 'fresh' | null
   searchQuery: string
   setSearchQuery: (query: string) => void
   activeFilter: FilterCategory
@@ -53,76 +51,9 @@ export function useSuggestions({
   destination,
   scheduledActivityIds = [],
 }: UseSuggestionsOptions): UseSuggestionsReturn {
-  const session = useAuthStore((s) => s.session)
-
-  const [allSuggestions, setAllSuggestions] = useState<SuggestionCard[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [source, setSource] = useState<'cache' | 'fresh' | null>(null)
-
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All')
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
-
-  // Track the current fetch to avoid race conditions
-  const fetchIdRef = useRef(0)
-
-  useEffect(() => {
-    const fetchId = ++fetchIdRef.current
-
-    // Reset state when destination changes
-    setAllSuggestions([])
-    setError(null)
-    setSource(null)
-
-    if (!destination) {
-      setIsLoading(false)
-      return
-    }
-
-    if (!API_URL || !session?.access_token) {
-      setError('Not authenticated')
-      setIsLoading(false)
-      return
-    }
-
-    setIsLoading(true)
-
-    const controller = new AbortController()
-
-    fetch(`${API_URL}/suggest?destination=${encodeURIComponent(destination)}`, {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (fetchId !== fetchIdRef.current) return // Stale request
-
-        if (!res.ok) {
-          throw new Error(`Failed to load suggestions (${res.status})`)
-        }
-
-        const data = await res.json()
-        setAllSuggestions(data.suggestions ?? [])
-        setSource(data.source ?? null)
-        setError(null)
-      })
-      .catch((err) => {
-        if (err.name === 'AbortError') return
-        if (fetchId !== fetchIdRef.current) return
-
-        setError(err.message ?? 'Failed to load suggestions')
-        setAllSuggestions([])
-      })
-      .finally(() => {
-        if (fetchId === fetchIdRef.current) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => controller.abort()
-  }, [destination, session?.access_token])
 
   const removeSuggestion = useCallback((id: string) => {
     setRemovedIds((prev) => new Set(prev).add(id))
@@ -137,7 +68,7 @@ export function useSuggestions({
   }, [])
 
   const suggestions = useMemo(() => {
-    let filtered = allSuggestions.filter(
+    let filtered = MOCK_SUGGESTIONS.filter(
       (s) => !removedIds.has(s.id) && !scheduledActivityIds.includes(s.id),
     )
 
@@ -147,7 +78,7 @@ export function useSuggestions({
       filtered = filtered.filter((s) => slugs.includes(s.category))
     }
 
-    // Search filter (client-side)
+    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       filtered = filtered.filter(
@@ -160,13 +91,12 @@ export function useSuggestions({
     }
 
     return filtered
-  }, [allSuggestions, searchQuery, activeFilter, removedIds, scheduledActivityIds])
+  }, [searchQuery, activeFilter, removedIds, scheduledActivityIds])
 
   return {
     suggestions,
-    isLoading,
-    error,
-    source,
+    isLoading: false,   // mock — always ready
+    error: null,        // mock — no errors
     searchQuery,
     setSearchQuery,
     activeFilter,
