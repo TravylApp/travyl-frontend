@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User } from 'iconoir-react'
 import { useAuthStore } from '@travyl/shared'
@@ -22,7 +23,6 @@ const MENU_LABELS: Record<MenuGroup, string> = {
 
 interface TripMenuBarProps {
   commands: Command[]
-  onOpenPalette: () => void
 }
 
 function TripMenuBar({ commands }: TripMenuBarProps) {
@@ -88,7 +88,7 @@ function TripMenuBar({ commands }: TripMenuBarProps) {
                         ? cmd.id === 'delete'
                           ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
                           : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20'
-                        : 'text-gray-400 dark:text-[#484f58] cursor-default',
+                        : 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none',
                     ].join(' ')}
                   >
                     <span>{cmd.label}</span>
@@ -162,7 +162,6 @@ export function TripNavbar({
   tripName,
   dateRange,
   commands,
-  onOpenPalette,
   viewMode,
   onViewModeChange,
   onAddEvent,
@@ -237,7 +236,7 @@ export function TripNavbar({
         </button>
 
         {/* Menu bar */}
-        <TripMenuBar commands={commands} onOpenPalette={onOpenPalette} />
+        <TripMenuBar commands={commands} />
 
         {/* Trip info */}
         <div className="flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0">
@@ -254,23 +253,31 @@ export function TripNavbar({
         <div className="flex-1" />
 
         {/* Selection indicator */}
-        {selectedActivity && (
-          <div className="flex items-center gap-2 px-3 h-full border-l border-gray-200 dark:border-[#1e3a5f]/30 shrink-0">
-            <div className="w-2 h-2 rounded-sm bg-blue-500 shrink-0" />
-            <span className="text-[12px] text-gray-700 dark:text-[#cdd9e5] truncate max-w-[140px]">
-              {selectedActivity.title || 'Untitled'}
-            </span>
-            <button
-              onClick={onDeselect}
-              aria-label="Deselect activity"
-              className="text-gray-400 dark:text-[#4a7ab5] hover:text-gray-600 dark:hover:text-white transition-colors"
+        <AnimatePresence>
+          {selectedActivity && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center gap-2 px-3 h-full border-l border-gray-200 dark:border-[#1e3a5f]/30 shrink-0"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-        )}
+              <div className="w-2 h-2 rounded-sm bg-blue-500 shrink-0" />
+              <span className="text-[12px] text-gray-700 dark:text-[#cdd9e5] truncate max-w-[140px]">
+                {selectedActivity.title || 'Untitled'}
+              </span>
+              <button
+                onClick={onDeselect}
+                aria-label="Deselect activity"
+                className="text-gray-400 dark:text-[#4a7ab5] hover:text-gray-600 dark:hover:text-white transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Right controls */}
         <div className="flex items-center gap-2 px-3 h-full shrink-0">

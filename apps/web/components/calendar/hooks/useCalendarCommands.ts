@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { differenceInDays } from 'date-fns'
 import type { CalendarActivity, ViewMode } from '../types'
 import type { Command } from '../types'
 
@@ -163,11 +164,7 @@ export function useCalendarCommands({
         shortcut: { key: 't', display: 'T' },
         isEnabled: true,
         execute: () => {
-          const today = new Date()
-          const msPerDay = 1000 * 60 * 60 * 24
-          const todayDayIndex = Math.round(
-            (today.getTime() - tripStartDate.getTime()) / msPerDay,
-          )
+          const todayDayIndex = differenceInDays(new Date(), tripStartDate)
           if (todayDayIndex >= 0 && todayDayIndex < tripDays.length) {
             selectDay(todayDayIndex)
           }

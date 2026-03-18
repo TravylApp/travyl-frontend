@@ -31,34 +31,62 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
     }
   }, [isOpen])
 
-  // Filtered and sorted commands
+  // Filtered commands
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
-    return commands
-      .filter((c) => c.label.toLowerCase().includes(q))
-      .sort((a, b) => {
-        // Enabled first, then disabled
+    return commands.filter((c) => c.label.toLowerCase().includes(q))
+  }, [commands, query])
+
+  // Grouped: edit → activity → view → insert, with disabled at end of each group
+  const grouped = useMemo(() => {
+    const map = new Map<string, Command[]>()
+    for (const g of GROUP_ORDER) map.set(g, [])
+    for (const cmd of filtered) {
+      map.get(cmd.group)?.push(cmd)
+    }
+    // Within each group: enabled first, disabled last
+    for (const g of GROUP_ORDER) {
+      const cmds = map.get(g)!
+      cmds.sort((a, b) => {
         if (a.isEnabled && !b.isEnabled) return -1
         if (!a.isEnabled && b.isEnabled) return 1
-        // Within same enabled state, preserve group order
-        const ai = GROUP_ORDER.indexOf(a.group as typeof GROUP_ORDER[number])
-        const bi = GROUP_ORDER.indexOf(b.group as typeof GROUP_ORDER[number])
-        return ai - bi
+        return 0
       })
-  }, [commands, query])
+      map.set(g, cmds)
+    }
+    return map
+  }, [filtered])
+
+  // Flat ordered list for index tracking
+  const flatCommands = useMemo(() => {
+    const result: Command[] = []
+    for (const g of GROUP_ORDER) {
+      result.push(...(grouped.get(g) ?? []))
+    }
+    return result
+  }, [grouped])
 
   // Reset highlight to first enabled when filtered list changes
   useEffect(() => {
-    const firstEnabled = filtered.findIndex((c) => c.isEnabled)
-    setHighlightedIndex(firstEnabled >= 0 ? firstEnabled : 0)
-  }, [filtered])
+    let flatIdx = 0
+    for (const g of GROUP_ORDER) {
+      for (const cmd of (grouped.get(g) ?? [])) {
+        if (cmd.isEnabled) {
+          setHighlightedIndex(flatIdx)
+          return
+        }
+        flatIdx++
+      }
+    }
+    setHighlightedIndex(0)
+  }, [filtered, grouped])
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setHighlightedIndex((prev) => {
-        for (let i = prev + 1; i < filtered.length; i++) {
-          if (filtered[i].isEnabled) return i
+        for (let i = prev + 1; i < flatCommands.length; i++) {
+          if (flatCommands[i].isEnabled) return i
         }
         return prev
       })
@@ -66,13 +94,13 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
       e.preventDefault()
       setHighlightedIndex((prev) => {
         for (let i = prev - 1; i >= 0; i--) {
-          if (filtered[i].isEnabled) return i
+          if (flatCommands[i].isEnabled) return i
         }
         return prev
       })
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      const cmd = filtered[highlightedIndex]
+      const cmd = flatCommands[highlightedIndex]
       if (cmd?.isEnabled) {
         cmd.execute()
         onClose()
@@ -82,19 +110,6 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
       onClose()
     }
   }
-
-  // Group the filtered list for rendering
-  const grouped = useMemo(() => {
-    const map = new Map<string, Command[]>()
-    for (const g of GROUP_ORDER) map.set(g, [])
-    for (const cmd of filtered) {
-      map.get(cmd.group)?.push(cmd)
-    }
-    return map
-  }, [filtered])
-
-  // Flat index for highlight tracking (needed across groups)
-  let flatIndex = 0
 
   return (
     <AnimatePresence>
@@ -144,7 +159,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
 
             {/* Results */}
             <div className="max-h-[360px] overflow-y-auto py-1">
-              {filtered.length === 0 && (
+              {flatCommands.length === 0 && (
                 <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
                   No commands found
                 </div>
@@ -158,7 +173,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
                       {GROUP_LABELS[group]}
                     </div>
                     {cmds.map((cmd) => {
-                      const index = flatIndex++
+                      const index = flatCommands.indexOf(cmd)
                       const isHighlighted = index === highlightedIndex
                       return (
                         <button
@@ -179,7 +194,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
                               ? isHighlighted
                                 ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
                                 : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20'
-                              : 'text-gray-400 dark:text-[#484f58] cursor-default',
+                              : 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none',
                             cmd.id === 'delete' && cmd.isEnabled ? 'text-red-600 dark:text-red-400' : '',
                           ].join(' ')}
                         >
