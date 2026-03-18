@@ -6,7 +6,7 @@ Active log of work per branch. Add an entry when a branch starts, update as work
 
 ## `feature/tra-200` — Connect calendar to Supabase with Yjs real-time collaboration
 **Linear:** [TRA-200](https://linear.app/travyl/issue/TRA-200/connect-calendar-view-to-supabase-with-yjs-real-time-collaboration)
-**Status:** In Progress
+**Status:** Complete ✅
 **PR:** [#166](https://github.com/TravylApp/travyl-frontend/pull/166)
 
 ### Goal
@@ -33,3 +33,38 @@ Replace all mock data in the calendar view with live Supabase data. Full CRUD on
 - Mock flight/hotel data still hardcoded in `CalendarDashboard` (`MOCK_FLIGHTS`, `MOCK_HOTELS`)
 - `MockTripCard` type still used for real trip data in trips page (misleading name, deferred)
 - Trip cover images are all the same Unsplash fallback
+
+---
+
+## `feature/tra-205` — For You Panel + SST Recommendation Engine
+**Linear:** [TRA-205](https://linear.app/travyl/issue/TRA-205/for-you-panel-+-sst-recommendation-engine)
+**Status:** In Progress (Frontend Complete, Backend Deferred)
+**PR:** (pending)
+**Branch:** `feature/tra-204` (working branch)
+
+### Goal
+Pinterest-style "For You" sidebar on the calendar dashboard where users drag AI-powered activity suggestions onto their trip calendar.
+
+### Completed (Frontend)
+- `SuggestionCard` type added to `@travyl/shared/types`
+- `mockSuggestions.ts` — 10 Paris activities with realistic data
+- `suggestionMapper.ts` — `suggestionToCalendarActivity()` conversion
+- `FOR_YOU_PANEL_WIDTH` constant (340px)
+- `useSuggestions` hook — mock data, search, category filtering
+- `SuggestionCard` component — full-image masonry card with drag
+- `ForYouPanel` component — panel shell with search, filters, grid
+- `useCalendarDnd` extended — `onAddFromSuggestion`, type branching
+- `CalendarDashboard` integration — DndContext hoist, right column swap, DragOverlay
+- Restore-on-delete — suggestions reappear when activities removed
+
+### Deferred (Backend - Phase 4-7)
+- SST infrastructure setup (`sst.config.ts`, `infra/`, `services/`)
+- OpenSearch Serverless collection
+- DynamoDB cache layer
+- EventBridge interaction bus
+- Lambda functions: suggest, search, interact
+- Amazon Personalize integration
+- Bedrock Titan embeddings
+- API wiring in frontend (React Query)
+
+**Plan:** `docs/superpowers/plans/2026-03-17-for-you-panel.md`

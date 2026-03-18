@@ -30,6 +30,24 @@ import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 
+// ─── Category icon mapping ─────────────────────────────────────
+
+const CATEGORY_ICONS: Record<string, string> = {
+  sightseeing: '🏛️',
+  dining: '🍽️',
+  tour: '🗺️',
+  cultural: '🎭',
+  museum: '🖼️',
+  shopping: '🛍️',
+  nightlife: '🍸',
+  outdoor: '🌿',
+  default: '📍',
+}
+
+function getCategoryIcon(category: string): string {
+  return CATEGORY_ICONS[category.toLowerCase()] ?? CATEGORY_ICONS.default
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 interface CalendarDashboardProps {
@@ -77,7 +95,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     trackInteraction(suggestionId, 'drag')
   }, [addActivity, selectEvent, trackInteraction])
 
-  const { sensors, activeId, handleDragStart, handleDragEnd } = useCalendarDnd({
+  const { sensors, activeId, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     scrollRef,
@@ -300,7 +318,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Scrollable grid */}
@@ -325,6 +345,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onSelectEvent={handleSelectEvent}
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
+                      pendingDrop={pendingDrop}
                     />
                   </motion.div>
                 ) : (
@@ -346,6 +367,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       tripStartDate={parsedStartDate}
                       onSelectEvent={handleSelectEvent}
                       onCreateActivity={handleCreateActivity}
+                      pendingDrop={pendingDrop}
                     />
                   </motion.div>
                 )}
@@ -370,9 +392,21 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
-          <DragOverlay dropAnimation={null}>
-            {activeId ? (
-              <div className="opacity-60 pointer-events-none rounded-lg shadow-2xl" />
+          <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
+            {activeData?.type === 'suggestion' ? (
+              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+                <span className="text-lg">{getCategoryIcon(activeData.suggestion.category)}</span>
+                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                  {activeData.suggestion.name}
+                </span>
+              </div>
+            ) : activeData?.type === 'activity' ? (
+              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+                <span className="text-lg">{getCategoryIcon(activeData.activity.type)}</span>
+                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                  {activeData.activity.title || 'Untitled'}
+                </span>
+              </div>
             ) : null}
           </DragOverlay>
 

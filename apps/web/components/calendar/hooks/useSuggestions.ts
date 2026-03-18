@@ -1,7 +1,8 @@
+// apps/web/components/calendar/hooks/useSuggestions.ts
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { MOCK_SUGGESTIONS } from '@travyl/shared/config/mockSuggestions'
+import { MOCK_SUGGESTIONS } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
 
 const FILTER_CATEGORIES = [

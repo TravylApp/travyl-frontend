@@ -23,9 +23,9 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
 
   const tagColor = getActivityColor(suggestion.category)
 
-  const formatPrice = (price: number | null) => {
+  const formatPrice = (price: number | null, currency: string) => {
     if (price === null || price === 0) return 'Free'
-    return `\u20AC${price}`
+    return `€${price}`
   }
 
   const formatDuration = (hours: number) => {
@@ -57,7 +57,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
 
       {/* Price badge — top left */}
       <div className="absolute top-[7px] left-[7px] bg-black/55 backdrop-blur-[8px] rounded-md px-[7px] py-[2px] text-[11px] font-semibold text-white">
-        {formatPrice(suggestion.price)}
+        {formatPrice(suggestion.price, suggestion.currency)}
       </div>
 
       {/* Rating badge — top right */}
@@ -88,7 +88,7 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
           >
             {suggestion.category.charAt(0).toUpperCase() + suggestion.category.slice(1)}
           </span>
-          <span className="opacity-50">&middot;</span>
+          <span className="opacity-50">·</span>
           <span>{formatDuration(suggestion.duration)}</span>
         </div>
       </div>
