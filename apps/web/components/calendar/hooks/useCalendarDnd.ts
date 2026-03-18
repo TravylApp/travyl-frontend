@@ -16,6 +16,11 @@ import type { TripNote } from '@travyl/shared'
 // Re-export DndContext for convenience
 export { DndContext } from '@dnd-kit/core'
 
+export type DragData =
+  | { type: 'activity'; activity: CalendarActivity }
+  | { type: 'suggestion'; suggestion: SuggestionCard }
+  | { type: 'note'; note: TripNote }
+
 interface UseCalendarDndOptions {
   onMoveActivity: (id: string, newDay: number, newStartHour: number) => void
   onAddFromSuggestion: (activity: CalendarActivity, suggestionId: string) => void
@@ -34,6 +39,7 @@ export function useCalendarDnd({
   timeRangeStartHour,
 }: UseCalendarDndOptions) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeData, setActiveData] = useState<DragData | null>(null)
   const [pendingDrop, setPendingDrop] = useState<{
     dayIndex: number
     activity: CalendarActivity
@@ -48,8 +54,10 @@ export function useCalendarDnd({
     useSensor(KeyboardSensor),
   )
 
-  const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
+  const handleDragStart = useCallback((event: { active: { id: string | number; data?: { current?: unknown } } }) => {
     setActiveId(String(event.active.id))
+    const data = event.active.data?.current as DragData | undefined
+    setActiveData(data ?? null)
   }, [])
 
   const handleDragOver = useCallback(
@@ -114,12 +122,14 @@ export function useCalendarDnd({
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null)
+    setActiveData(null)
     setPendingDrop(null)
   }, [])
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setActiveId(null)
+      setActiveData(null)
       setPendingDrop(null)
       const { active, over, delta } = event
 
@@ -185,6 +195,7 @@ export function useCalendarDnd({
   return {
     sensors,
     activeId,
+    activeData,
     pendingDrop,
     handleDragStart,
     handleDragOver,
