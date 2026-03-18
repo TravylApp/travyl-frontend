@@ -6,7 +6,7 @@ import {
   getActivityColorDark,
   getActivityColorDarkBorder,
 } from '@travyl/shared/viewmodels/calendarViewModel'
-import { HOUR_HEIGHT } from './constants'
+import { HOUR_HEIGHT, COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 import { formatTimeRange } from './utils'
 import { useCalendarThemeContext } from './CalendarThemeContext'
 import type { CalendarActivity, UserAwareness } from './types'
@@ -17,6 +17,9 @@ interface EventBlockProps {
   isSelected?: boolean
   onSelect: (id: string) => void
   timeRangeStartHour: number
+  column?: number
+  totalColumns?: number
+  hiddenCount?: number
 }
 
 export function EventBlock({
@@ -25,10 +28,13 @@ export function EventBlock({
   isSelected = false,
   onSelect,
   timeRangeStartHour,
+  column = 0,
+  totalColumns = 1,
+  hiddenCount = 0,
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
-    data: { activity },
+    data: { type: 'activity' as const, activity },
   })
 
   const { isDark } = useCalendarThemeContext()
@@ -39,16 +45,25 @@ export function EventBlock({
   const bgColor = isDark ? getActivityColorDark(activity.type) : color
   const borderColor = isDark ? getActivityColorDarkBorder(activity.type) : `${color}88`
 
+  // Column positioning — uses calc() with fixed pixel gaps
+  // COLUMN_OUTER_PAD preserves the existing 4px inset on each side of the day column
+  const availableWidth = `(100% - ${2 * COLUMN_OUTER_PAD}px)`
+  const colWidth = `(${availableWidth} - ${(totalColumns - 1) * COLUMN_GAP}px) / ${totalColumns}`
+  const leftOffset = column === 0
+    ? `${COLUMN_OUTER_PAD}px`
+    : `${COLUMN_OUTER_PAD}px + ${column} * (${colWidth} + ${COLUMN_GAP}px)`
+
   const style: React.CSSProperties = {
     position: 'absolute',
     top: (activity.startHour - timeRangeStartHour) * HOUR_HEIGHT,
     height: Math.max(activity.duration * HOUR_HEIGHT - 2, 20),
-    left: 4,
-    right: 4,
+    left: `calc(${leftOffset})`,
+    width: `calc(${colWidth})`,
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : isSelected ? 10 : 1,
     borderLeft: `3px solid ${borderColor}`,
+    transition: isDragging ? undefined : 'left 150ms ease, width 150ms ease',
     ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
 
@@ -145,6 +160,12 @@ export function EventBlock({
           {activeViewers.length > 5 && (
             <span className="text-[9px] opacity-80">+{activeViewers.length - 5}</span>
           )}
+        </div>
+      )}
+
+      {hiddenCount > 0 && (
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-auto">
+          +{hiddenCount} more
         </div>
       )}
     </div>

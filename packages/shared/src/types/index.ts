@@ -1,5 +1,9 @@
 // Core entity types — mirrors the Supabase schema
 
+export type Visibility = 'private' | 'link' | 'public'
+export type LinkPermission = 'viewer' | 'editor'
+export type CollaboratorRole = 'viewer' | 'editor'
+
 export interface Profile {
   id: string;
   email: string;
@@ -23,12 +27,11 @@ export interface Trip {
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
   trip_context: Record<string, unknown>;
   is_generated: boolean;
-  is_shared: boolean;
+  visibility: Visibility;
+  link_permission: LinkPermission;
   share_link_token: string | null;
-  share_link_role: 'viewer' | 'editor';
   forked_from_trip_id: string | null;
   fork_count: number;
-  is_public: boolean;
   theme: string;
   custom_theme_color: string | null;
   created_at: string;
@@ -307,6 +310,18 @@ export interface PlaceItem {
 
 export type ViewMode = 'week' | 'day'
 
+export interface ActivityData {
+  category?: string
+  location_name?: string
+  image_url?: string
+  rating?: number
+  flight_number?: string
+  airline?: string
+  check_in?: string
+  check_out?: string
+  booking_ref?: string
+}
+
 export interface CalendarActivity {
   id: string;
   title: string;
@@ -329,6 +344,34 @@ export interface CalendarActivity {
   parentId?: string;
   /** Optional hex color override */
   color?: string;
+  /** For multi-day activities (hotels). Same as day if omitted. */
+  endDay?: number;
+  /** For map integration */
+  latitude?: number;
+  /** For map integration */
+  longitude?: number;
+  /** DB sort_order */
+  sortOrder?: number;
+}
+
+// ─── Suggestion / For You Panel ─────────────────────────────
+
+export interface SuggestionCard {
+  id: string
+  name: string
+  category: ActivityCategory
+  imageUrl: string
+  duration: number        // hours
+  price: number | null
+  currency: string
+  rating: number | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+  source: 'ai' | 'search'
+  relevanceScore: number
+  reason?: string
 }
 
 export interface UserAwareness {
@@ -339,8 +382,10 @@ export interface UserAwareness {
   isOnline: boolean;
   selectedEventId: string | null;
   currentView: ViewMode;
+  selectedDayIndex?: number;
   /** Legacy itinerary view — selected block id */
   selectedBlockId?: string;
+  cursor?: { day: number; hour: number };
 }
 
 /** Alias for UserAwareness — used by legacy itinerary components */
@@ -534,4 +579,39 @@ export interface TravelBoard {
   icon: string;
   iconColor: string;
   images: string[];
+}
+
+// ─── Trip Sharing ────────────────────────────────────────────
+
+export interface TripNote {
+  id: string
+  trip_id: string
+  user_id: string
+  day: number
+  hour: number
+  text: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TripCollaborator {
+  id: string
+  trip_id: string
+  user_id: string | null
+  invited_email: string | null
+  invite_token: string | null
+  role_type: CollaboratorRole
+  invite_status: 'pending' | 'accepted' | 'declined'
+  invited_by: string
+  accepted_at: string | null
+  created_at: string
+}
+
+export interface EffectivePermission {
+  role: 'owner' | 'editor' | 'viewer'
+  canEdit: boolean
+  canDelete: boolean
+  canInvite: boolean
+  canCreateNotes: boolean
 }

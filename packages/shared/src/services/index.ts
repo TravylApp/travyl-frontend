@@ -1,4 +1,4 @@
-export { supabase } from './supabase';
+export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
   fetchSavedItems,
@@ -17,6 +17,7 @@ export {
   fetchUserPublicTrips,
   fetchTripByShareToken,
   updateTripVisibility,
+  ensureShareLinkToken,
   addToItinerary,
   removeFromItinerary,
   toggleFavorite,
