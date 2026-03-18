@@ -5,6 +5,7 @@ import {
   PointerSensor,
   KeyboardSensor,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core'
 import { suggestionToCalendarActivity } from '@travyl/shared/utils/suggestionMapper'
 import { HOUR_HEIGHT } from '../constants'
@@ -30,6 +31,10 @@ export function useCalendarDnd({
   timeRangeStartHour,
 }: UseCalendarDndOptions) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [pendingDrop, setPendingDrop] = useState<{
+    dayIndex: number
+    activity: CalendarActivity
+  } | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -44,9 +49,74 @@ export function useCalendarDnd({
     setActiveId(String(event.active.id))
   }, [])
 
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over, delta } = event
+      if (!over) {
+        setPendingDrop(null)
+        return
+      }
+
+      const overIdStr = String(over.id)
+      let newDay: number | null = null
+      if (overIdStr.startsWith('day-')) {
+        const parsed = parseInt(overIdStr.replace('day-', ''), 10)
+        if (!isNaN(parsed)) newDay = parsed
+      }
+      if (newDay === null) {
+        setPendingDrop(null)
+        return
+      }
+
+      const dragData = active.data?.current as
+        | { type: 'activity'; activity: CalendarActivity }
+        | { type: 'suggestion'; suggestion: SuggestionCard }
+        | undefined
+
+      if (!dragData) return
+
+      if (dragData.type === 'activity') {
+        const rawHourDelta = delta.y / HOUR_HEIGHT
+        const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
+        const currentStartHour = dragData.activity.startHour ?? 0
+        const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
+        setPendingDrop({
+          dayIndex: newDay,
+          activity: { ...dragData.activity, day: newDay, startHour: newStartHour },
+        })
+      } else if (dragData.type === 'suggestion') {
+        const overRect = over.rect
+        const scrollTop = scrollRef.current?.scrollTop ?? 0
+        const pointerY = (event.activatorEvent as PointerEvent)?.clientY ?? 0
+        const dropY = pointerY + delta.y
+        const gridRelativeY = dropY - overRect.top + scrollTop
+        const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
+        const snappedStartHour = Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+        setPendingDrop({
+          dayIndex: newDay,
+          activity: {
+            id: `pending-${dragData.suggestion.id}`,
+            title: dragData.suggestion.title,
+            type: dragData.suggestion.category as CalendarActivity['type'],
+            day: newDay,
+            startHour: snappedStartHour,
+            duration: dragData.suggestion.durationHours,
+          },
+        })
+      }
+    },
+    [scrollRef, timeRangeStartHour],
+  )
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null)
+    setPendingDrop(null)
+  }, [])
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setActiveId(null)
+      setPendingDrop(null)
       const { active, over, delta } = event
 
       if (!over) return
@@ -100,7 +170,10 @@ export function useCalendarDnd({
   return {
     sensors,
     activeId,
+    pendingDrop,
     handleDragStart,
+    handleDragOver,
     handleDragEnd,
+    handleDragCancel,
   }
 }
