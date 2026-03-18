@@ -35,7 +35,10 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY "trips_select_shared"
         ON trips FOR SELECT
-        USING (visibility IN ('link', 'public'))
+        USING (
+          visibility = 'public'
+          OR (visibility = 'link' AND auth.uid() IS NOT NULL)
+        )
     $policy$;
   END IF;
 END$$;
@@ -43,6 +46,9 @@ END$$;
 -- 3. Relax trip_collaborators.user_id for pending invites (no user account yet)
 ALTER TABLE trip_collaborators
   ALTER COLUMN user_id DROP NOT NULL;
+
+-- Migrate any legacy 'owner' role to 'editor' before adding new constraint
+UPDATE trip_collaborators SET role_type = 'editor' WHERE role_type = 'owner';
 
 -- Replace role_type check: old = ('viewer','editor','owner'), new = ('viewer','commenter','editor')
 ALTER TABLE trip_collaborators
@@ -87,6 +93,14 @@ CREATE TABLE IF NOT EXISTS trip_notes (
 
 ALTER TABLE trip_notes ENABLE ROW LEVEL SECURITY;
 
+-- Ensure moddatetime extension is available
+CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
+
+-- Auto-update updated_at on changes
+CREATE TRIGGER set_trip_notes_updated_at
+  BEFORE UPDATE ON trip_notes
+  FOR EACH ROW EXECUTE FUNCTION extensions.moddatetime(updated_at);
+
 -- trip owners and accepted collaborators can read notes; link/public trips too
 DO $$
 BEGIN
@@ -104,7 +118,8 @@ BEGIN
                 SELECT 1 FROM trip_collaborators tc
                 WHERE tc.trip_id = t.id AND tc.user_id = auth.uid() AND tc.invite_status = 'accepted'
               )
-              OR t.visibility IN ('link', 'public')
+              OR t.visibility = 'public'
+              OR (t.visibility = 'link' AND auth.uid() IS NOT NULL)
             )
           )
         )
