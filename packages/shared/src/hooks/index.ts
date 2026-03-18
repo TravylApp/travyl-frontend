@@ -21,3 +21,4 @@ export { useForkTrip } from './useForkTrip';
 export { useTripActions } from './useTripActions';
 export { useSimilarPlaces, getSimilarPlaces } from './useSimilarPlaces';
 export { useCollaborators } from './useCollaborators';
+export { useTripNotes } from './useTripNotes';
