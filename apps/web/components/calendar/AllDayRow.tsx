@@ -24,7 +24,7 @@ export function AllDayRow({ days, flights = [], hotels = [] }: AllDayRowProps) {
   if (flights.length === 0 && hotels.length === 0) return null
 
   return (
-    <div className="flex border-b border-gray-200 dark:border-gray-700 min-h-[2rem]">
+    <div className="flex border-b border-gray-200 dark:border-[#1e3a5f]/30 min-h-[2rem]">
       {/* Gutter spacer matching TimeGutter width */}
       <div className="flex-shrink-0 w-14" />
 
@@ -39,7 +39,7 @@ export function AllDayRow({ days, flights = [], hotels = [] }: AllDayRowProps) {
           return (
             <div
               key={dayIndex}
-              className="flex-1 min-w-0 border-l border-gray-200 dark:border-gray-700 px-1 py-0.5 flex flex-col gap-0.5"
+              className="flex-1 min-w-0 border-l border-gray-200 dark:border-[#1e3a5f]/20 px-1 py-0.5 flex flex-col gap-0.5"
             >
               {/* Hotel banners */}
               {dayHotels.map((hotel) => {
@@ -50,7 +50,7 @@ export function AllDayRow({ days, flights = [], hotels = [] }: AllDayRowProps) {
                     key={hotel.id}
                     title={hotel.label}
                     className={[
-                      'text-[10px] font-medium px-1 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 overflow-hidden',
+                      'text-[10px] font-medium px-1 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 overflow-hidden',
                       isStart && isEnd
                         ? 'rounded'
                         : isStart
@@ -63,7 +63,7 @@ export function AllDayRow({ days, flights = [], hotels = [] }: AllDayRowProps) {
                     {isStart ? (
                       <span className="truncate block">{hotel.label}</span>
                     ) : (
-                      <span className="text-amber-400 dark:text-amber-600">— — —</span>
+                      <span className="text-amber-400 dark:text-amber-700">— — —</span>
                     )}
                   </div>
                 )
@@ -77,8 +77,8 @@ export function AllDayRow({ days, flights = [], hotels = [] }: AllDayRowProps) {
                   className={[
                     'text-[10px] font-medium px-1 py-0.5 rounded truncate',
                     flight.direction === 'arrival'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                      : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+                      ? 'bg-[#EFF4FF] text-[#003594] dark:bg-[#003594]/35 dark:text-[#a0c4ff]'
+                      : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
                   ].join(' ')}
                 >
                   {flight.direction === 'arrival' ? '→ ' : '← '}

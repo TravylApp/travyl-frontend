@@ -3,11 +3,11 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useTrips, MOCK_TRIPS } from '@travyl/shared';
+import { useTrips } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { Plus, Plane } from 'lucide-react';
 import { Footer, OceanWave } from '@/components/home';
-import { ViewToggle, TripCard, TripListItem } from '@/components/trips';
+import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
 
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
@@ -95,17 +95,14 @@ function TripsContent() {
 
   // Local state for view mode
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [modalOpen, setModalOpen] = useState(false)
 
   const { data: trips, isLoading, isError } = useTrips();
 
-  // Use real trips when available, otherwise fallback to mock data
-  const allTrips: MockTripCard[] = (trips?.length && !isError)
-    ? trips.map((t) => ({
-        ...t,
-        image: MOCK_TRIPS.find((m) => m.id === t.id)?.image
-          || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
-      }))
-    : MOCK_TRIPS;
+  const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
+    ...t,
+    image: `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
+  }))
 
   // Apply filters
   let displayTrips = filterTripsByStatus(allTrips, statusParam);
@@ -140,6 +137,7 @@ function TripsContent() {
             {/* Plan a Trip Button */}
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
               style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
+              onClick={() => setModalOpen(true)}
             >
               <Plus size={16} />
               Plan a Trip
@@ -211,6 +209,7 @@ function TripsContent() {
             <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>
             <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
               style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
+              onClick={() => setModalOpen(true)}
             >
               <Plus size={16} />
               Plan a Trip
@@ -220,6 +219,7 @@ function TripsContent() {
       </div>
       <OceanWave />
       <Footer />
+      <CreateTripModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

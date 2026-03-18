@@ -4,11 +4,11 @@ import type { Activity } from '../types'
 
 describe('getActivityColor', () => {
   it('returns correct color for known types', () => {
-    expect(getActivityColor('sightseeing')).toBe('#4a7dff')
-    expect(getActivityColor('dining')).toBe('#e67e22')
+    expect(getActivityColor('sightseeing')).toBe('#003594')
+    expect(getActivityColor('dining')).toBe('#D97706')
   })
   it('returns fallback for unknown types', () => {
-    expect(getActivityColor('unknown_category')).toBe('#6b7b9e')
+    expect(getActivityColor('unknown_category')).toBe('#6b7280')
   })
 })
 

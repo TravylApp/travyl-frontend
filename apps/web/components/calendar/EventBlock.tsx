@@ -1,9 +1,14 @@
 'use client'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
+import {
+  getActivityColor,
+  getActivityColorDark,
+  getActivityColorDarkBorder,
+} from '@travyl/shared/viewmodels/calendarViewModel'
 import { HOUR_HEIGHT } from './constants'
 import { formatTimeRange } from './utils'
+import { useCalendarThemeContext } from './CalendarThemeContext'
 import type { CalendarActivity, UserAwareness } from './types'
 
 interface EventBlockProps {
@@ -23,11 +28,16 @@ export function EventBlock({
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
-    data: { activity },
+    data: { type: 'activity' as const, activity },
   })
+
+  const { isDark } = useCalendarThemeContext()
 
   const color = getActivityColor(activity.type)
   const hasImage = !!(activity.image && activity.duration >= 1)
+
+  const bgColor = isDark ? getActivityColorDark(activity.type) : color
+  const borderColor = isDark ? getActivityColorDarkBorder(activity.type) : `${color}88`
 
   const style: React.CSSProperties = {
     position: 'absolute',
@@ -38,8 +48,8 @@ export function EventBlock({
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : isSelected ? 10 : 1,
-    borderLeft: `3px solid ${color}88`,
-    ...(hasImage ? {} : { backgroundColor: color }),
+    borderLeft: `3px solid ${borderColor}`,
+    ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -67,8 +77,7 @@ export function EventBlock({
         'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
         'ring-2 ring-transparent',
-        'transition-all duration-150',
-        'hover:-translate-y-px hover:shadow-lg',
+        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg',
         isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40',
         'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}

@@ -23,6 +23,7 @@ function getInitials(name: string | undefined): string {
 export default function Navbar() {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
+  const loading = useAuthStore((s) => s.loading);
   const signOut = useAuthStore((s) => s.signOut);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -144,7 +145,9 @@ export default function Navbar() {
         </div>
 
         {/* Right side: avatar dropdown (logged in) or Login button */}
-        {user ? (
+        {loading ? (
+          <div className="w-8 h-8 rounded-full bg-[#1e3a5f]/10 animate-pulse shrink-0" />
+        ) : user ? (
           <div className="flex items-center shrink-0">
             <div className="relative" ref={dropdownRef}>
               <button
