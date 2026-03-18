@@ -51,7 +51,7 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
           exit={{ x: DETAIL_PANEL_WIDTH, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           style={{ width: DETAIL_PANEL_WIDTH }}
-          className="flex flex-col shrink-0 border-l border-white/10 bg-[#1a1f2e] overflow-y-auto"
+          className="flex flex-col shrink-0 border-l border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0f1a28] overflow-y-auto"
           aria-label="Activity details"
         >
           {/* Color bar + header */}
@@ -62,7 +62,7 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
 
           <div className="flex items-start justify-between p-4 pb-2">
             <div className="flex flex-col gap-0.5 min-w-0 pr-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-[#4a7ab5]">
                 {activity.type}
               </span>
               {isEditingTitle ? (
@@ -78,12 +78,12 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                       setIsEditingTitle(false)
                     }
                   }}
-                  className="bg-transparent border-b border-white/30 focus:border-white/60 outline-none text-base font-semibold text-white leading-snug w-full placeholder-gray-500"
+                  className="bg-transparent border-b border-gray-300 dark:border-white/30 focus:border-gray-500 dark:focus:border-white/60 outline-none text-base font-semibold text-gray-900 dark:text-white leading-snug w-full placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Activity name…"
                 />
               ) : (
                 <h2
-                  className="text-base font-semibold text-white leading-snug cursor-text"
+                  className="text-base font-semibold text-gray-900 dark:text-[#f5efe8] leading-snug cursor-text"
                   onClick={() => {
                     setTitleDraft(activity.title)
                     setIsEditingTitle(true)
@@ -96,7 +96,7 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
             <button
               onClick={onClose}
               aria-label="Close detail panel"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 dark:text-[#4a7ab5] hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
             >
               <Xmark width={16} height={16} strokeWidth={1.5} aria-hidden="true" />
             </button>
@@ -110,11 +110,11 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                 width={16}
                 height={16}
                 strokeWidth={1.5}
-                className="shrink-0 text-gray-500"
+                className="shrink-0 text-gray-400 dark:text-[#4a7ab5]"
                 aria-hidden="true"
               />
               <dt className="sr-only">Time</dt>
-              <dd className="text-gray-300">{formatTimeRange(activity)}</dd>
+              <dd className="text-gray-600 dark:text-gray-300">{formatTimeRange(activity)}</dd>
             </div>
 
             {/* Location */}
@@ -124,11 +124,11 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                   width={16}
                   height={16}
                   strokeWidth={1.5}
-                  className="mt-0.5 shrink-0 text-gray-500"
+                  className="mt-0.5 shrink-0 text-gray-400 dark:text-[#4a7ab5]"
                   aria-hidden="true"
                 />
                 <dt className="sr-only">Location</dt>
-                <dd className="text-gray-300 leading-snug">{activity.location}</dd>
+                <dd className="text-gray-600 dark:text-gray-300 leading-snug">{activity.location}</dd>
               </div>
             )}
 
@@ -139,11 +139,11 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                   width={16}
                   height={16}
                   strokeWidth={1.5}
-                  className="shrink-0 text-gray-500"
+                  className="shrink-0 text-gray-400 dark:text-[#4a7ab5]"
                   aria-hidden="true"
                 />
                 <dt className="sr-only">Price</dt>
-                <dd className="text-gray-300">{activity.price}</dd>
+                <dd className="text-gray-600 dark:text-gray-300">{activity.price}</dd>
               </div>
             )}
 
@@ -159,14 +159,14 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                   aria-hidden="true"
                 />
                 <dt className="sr-only">Rating</dt>
-                <dd className="text-gray-300">{activity.rating} / 5</dd>
+                <dd className="text-gray-600 dark:text-gray-300">{activity.rating} / 5</dd>
               </div>
             )}
           </dl>
 
           {/* Notes */}
           {activity.notes && (
-            <div className="mx-4 my-2 rounded-lg bg-white/5 p-3 text-sm text-gray-400 leading-relaxed">
+            <div className="mx-4 my-2 rounded-lg bg-gray-50 dark:bg-white/5 p-3 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
               {activity.notes}
             </div>
           )}
@@ -194,15 +194,15 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
           <div className="flex-1" />
 
           {/* Actions */}
-          <div className="flex gap-2 border-t border-white/10 p-4">
+          <div className="flex gap-2 border-t border-gray-200 dark:border-[#1e3a5f]/30 p-4">
             <button
-              className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex-1 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"
               onClick={onClose}
             >
               Edit
             </button>
             <button
-              className="flex-1 rounded-lg border border-red-500/30 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+              className="flex-1 rounded-lg border border-red-200 dark:border-red-500/30 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300 transition-colors"
               onClick={() => onRemove(activity.id)}
             >
               Remove

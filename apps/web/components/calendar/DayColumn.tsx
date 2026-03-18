@@ -101,9 +101,9 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-gray-200 dark:border-gray-700 select-none',
+          'text-center text-xs font-medium py-1 border-b border-gray-200 dark:border-[#1e3a5f]/30 text-gray-500 dark:text-[#4a7ab5] select-none',
           onClickDayHeader
-            ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
+            ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/25 transition-colors'
             : '',
         ].join(' ')}
         onClick={onClickDayHeader}
@@ -127,8 +127,8 @@ export function DayColumn({
       <div
         ref={setNodeRef}
         className={[
-          'relative flex-1 border-l border-gray-200 dark:border-gray-700',
-          isOver ? 'bg-blue-50 dark:bg-blue-900/20' : '',
+          'relative flex-1 border-l border-gray-200 dark:border-[#1e3a5f]/20',
+          isOver ? 'bg-[#EFF4FF] dark:bg-[#003594]/15' : '',
         ].join(' ')}
         style={{ height: hourCount * HOUR_HEIGHT }}
         onMouseDown={handleMouseDown}
@@ -138,7 +138,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={hour}
-            className="absolute w-full border-t border-gray-100 dark:border-gray-800 pointer-events-none"
+            className="absolute w-full border-t border-gray-100 dark:border-[#1e3a5f]/15 pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT }}
           />
         ))}
@@ -147,7 +147,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-gray-100 dark:border-gray-800 pointer-events-none opacity-60"
+            className="absolute w-full border-t border-dashed border-gray-100/60 dark:border-[#1e3a5f]/10 pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
           />
         ))}
