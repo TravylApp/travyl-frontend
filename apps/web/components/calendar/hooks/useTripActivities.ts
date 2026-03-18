@@ -6,6 +6,7 @@ import { useYjsTripContext } from '../providers/YjsTripProvider'
 interface Trip {
   id: string
   title: string
+  destination: string
   start_date: string
   end_date: string
   status: string

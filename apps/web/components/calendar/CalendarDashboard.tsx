@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
-import { DndContext } from '@dnd-kit/core'
+import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   MOCK_FLIGHTS,
@@ -15,12 +15,14 @@ import { useYjsSync } from './hooks/useYjsSync'
 import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
+import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
 import { CalendarHeader } from './CalendarHeader'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { DetailPanel } from './DetailPanel'
+import { ForYouPanel } from './ForYouPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -59,8 +61,27 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     goToWeekView,
   } = useCalendarNavigation()
 
-  const { sensors, handleDragStart, handleDragEnd } = useCalendarDnd({
+  const { trackInteraction } = useInteractionTracking(tripId)
+
+  // Computed (moved up so useCalendarDnd can reference timeRange)
+  const timeRange = useMemo(() => computeTimeRange(activities), [activities])
+
+  const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
+  const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
+
+  const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
+    await addActivity(activity)
+    selectEvent(activity.id)
+    setDroppedSuggestionIds((prev) => [...prev, suggestionId])
+    setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
+    trackInteraction(suggestionId, 'drag')
+  }, [addActivity, selectEvent, trackInteraction])
+
+  const { sensors, activeId, handleDragStart, handleDragEnd } = useCalendarDnd({
     onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
   })
 
   const { theme, toggleTheme } = useCalendarTheme()
@@ -148,9 +169,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     })
   }, [trip, parsedStartDate.getTime(), tripTotalDays])
 
-  // Computed
-  const timeRange = useMemo(() => computeTimeRange(activities), [activities])
-
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
     [activities, selectedEventId],
@@ -194,6 +212,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
     if (selectedEventId === id) selectEvent(null)
+    // Restore the suggestion card in the ForYou panel
+    const suggestionId = activityToSuggestion.get(id)
+    if (suggestionId) {
+      setDroppedSuggestionIds((prev) => prev.filter((sid) => sid !== suggestionId))
+      setActivityToSuggestion((prev) => { const next = new Map(prev); next.delete(id); return next })
+    }
   }
 
   const handleViewModeChange = (mode: typeof viewMode) => {
@@ -273,15 +297,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
         {/* Grid area */}
         {activeNav === 'calendar' ? (
-        <>
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Scrollable grid */}
-          <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
-            <DndContext
-              sensors={sensors}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Scrollable grid */}
+            <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
               <AnimatePresence mode="wait" initial={false}>
                 {viewMode === 'week' ? (
                   <motion.div
@@ -327,56 +350,69 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                   </motion.div>
                 )}
               </AnimatePresence>
-            </DndContext>
+            </div>
+
+            {/* Right column: For You panel or Detail panel */}
+            {selectedEventId ? (
+              <DetailPanel
+                activity={selectedActivity}
+                viewers={collaborators}
+                onClose={handleCloseDetail}
+                onRemove={handleRemoveActivity}
+                onUpdateActivity={updateActivity}
+              />
+            ) : (
+              <ForYouPanel
+                destination={trip?.destination ?? ''}
+                scheduledActivityIds={droppedSuggestionIds}
+              />
+            )}
           </div>
 
-          {/* Detail panel (slides in from right) */}
-          <DetailPanel
-            activity={selectedActivity}
-            viewers={collaborators}
-            onClose={handleCloseDetail}
-            onRemove={handleRemoveActivity}
-            onUpdateActivity={updateActivity}
-          />
-        </div>
+          {/* Drag overlay — shows ghost of dragged item */}
+          <DragOverlay dropAnimation={null}>
+            {activeId ? (
+              <div className="opacity-60 pointer-events-none rounded-lg shadow-2xl" />
+            ) : null}
+          </DragOverlay>
 
-        {/* Empty state -- only when no activities exist */}
-        {activities.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-            <svg
-              width="48"
-              height="48"
-              viewBox="0 0 48 48"
-              fill="none"
-              className="text-gray-600"
-              aria-hidden="true"
-            >
-              <rect
-                x="6"
-                y="8"
-                width="36"
-                height="34"
-                rx="4"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M16 6V10M32 6V10M6 18H42"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M24 26V34M20 30H28"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
-          </div>
-        )}
-        </>
+          {/* Empty state -- only when no activities exist */}
+          {activities.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 48 48"
+                fill="none"
+                className="text-gray-600"
+                aria-hidden="true"
+              >
+                <rect
+                  x="6"
+                  y="8"
+                  width="36"
+                  height="34"
+                  rx="4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M16 6V10M32 6V10M6 18H42"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M24 26V34M20 30H28"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
+            </div>
+          )}
+        </DndContext>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
