@@ -91,6 +91,6 @@ export function buildTripCardViewModel(trip: Trip): TripCardViewModel {
     dateRange: getTripDateRange(trip),
     travelersLabel: getTravelersLabel(trip.travelers),
     budget: getTripBudgetDisplay(trip.budget, trip.currency),
-    isShared: trip.is_shared,
+    isShared: trip.visibility !== 'private',
   };
 }

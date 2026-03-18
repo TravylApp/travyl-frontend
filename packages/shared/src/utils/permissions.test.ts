@@ -20,7 +20,7 @@ const baseTripFields = {
   share_link_token: 'abc123',
   forked_from_trip_id: null,
   fork_count: 0,
-  theme: null,
+  theme: 'navy',
   custom_theme_color: null,
 }
 
