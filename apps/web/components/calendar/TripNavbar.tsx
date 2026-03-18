@@ -25,7 +25,7 @@ interface TripMenuBarProps {
   onOpenPalette: () => void
 }
 
-function TripMenuBar({ commands, onOpenPalette: _ }: TripMenuBarProps) {
+function TripMenuBar({ commands }: TripMenuBarProps) {
   const [openGroup, setOpenGroup] = useState<MenuGroup | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -136,6 +136,28 @@ function getInitials(name: string | undefined): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
+interface AvatarCircleProps {
+  size?: number
+  avatarUrl?: string
+  displayName?: string
+  initials: string
+}
+
+function AvatarCircle({ size = 28, avatarUrl, displayName, initials }: AvatarCircleProps) {
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-[11px]"
+    >
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
+    </div>
+  )
+}
+
 export function TripNavbar({
   tripName,
   dateRange,
@@ -179,19 +201,6 @@ export function TripNavbar({
     setAvatarDropdownOpen(false)
     await signOut()
   }
-
-  const AvatarCircle = ({ size = 28 }: { size?: number }) => (
-    <div
-      style={{ width: size, height: size }}
-      className="flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-[11px]"
-    >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" />
-      ) : (
-        initials
-      )}
-    </div>
-  )
 
   return (
     <div className="flex flex-col shrink-0">
@@ -365,7 +374,7 @@ export function TripNavbar({
               onClick={() => setAvatarDropdownOpen((o) => !o)}
               className="rounded-full hover:ring-2 hover:ring-[#1e3a5f]/20 transition-all"
             >
-              <AvatarCircle />
+              <AvatarCircle avatarUrl={avatarUrl} displayName={displayName} initials={initials} />
             </button>
 
             {avatarDropdownOpen && (
@@ -373,7 +382,7 @@ export function TripNavbar({
                 {/* User info */}
                 <div className="px-3 py-2 border-b border-gray-100 dark:border-[#1e3a5f]/20">
                   <div className="flex items-center gap-2.5">
-                    <AvatarCircle size={32} />
+                    <AvatarCircle size={32} avatarUrl={avatarUrl} displayName={displayName} initials={initials} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8] truncate">
                         {displayName || 'User'}

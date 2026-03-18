@@ -42,6 +42,7 @@ export function useActivityMutations(
     async (activity: CalendarActivity): Promise<void> => {
       // Immediate Supabase insert
       const row = toActivityRow(activity, tripId, userId, tripStartDate)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await supabase.from('activity').insert(row as any)
       if (error) {
         console.error('[useActivityMutations] insert error:', error.message)
@@ -52,6 +53,7 @@ export function useActivityMutations(
       activitiesMap.doc?.transact(() => {
         const yMap = new Y.Map<unknown>()
         for (const key of CALENDAR_ACTIVITY_KEYS) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const val = (activity as any)[key]
           if (val !== undefined) yMap.set(key, val)
         }

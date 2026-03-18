@@ -70,7 +70,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const { trip, tripStartDate, loading: tripLoading, error: tripError } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
   const { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity } = useActivityMutations(tripId, tripStartDate, userId)
-  const { collaborators, setSelectedEvent: setPresenceSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
+  const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
@@ -82,7 +82,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectDay,
     selectEvent,
     goToDayView,
-    goToWeekView,
   } = useCalendarNavigation()
 
   const { trackEvent } = useInteractionTracking(tripId)
@@ -101,7 +100,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     trackEvent(suggestionId, 'drag')
   }, [addActivity, selectEvent, trackEvent])
 
-  const { sensors, activeId, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     scrollRef,
@@ -123,10 +122,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
   const parsedEndDate = trip ? new Date(trip.end_date + 'T00:00:00Z') : new Date()
-  const tripTotalDays = trip ? Math.round((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) : 0
+  const parsedStartMs = parsedStartDate.getTime()
+  const tripTotalDays = trip ? Math.round((parsedEndDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)) : 0
 
   const TRIP_DAYS = useMemo(() => Array.from({ length: tripTotalDays }, (_, i) => {
-    const date = new Date(parsedStartDate.getTime() + i * 24 * 60 * 60 * 1000)
+    const date = new Date(parsedStartMs + i * 24 * 60 * 60 * 1000)
     return {
       dayIndex: i,
       label: date.toLocaleDateString('en-US', {
@@ -136,7 +136,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         timeZone: 'UTC',
       }),
     }
-  }), [tripTotalDays, parsedStartDate.getTime()])
+  }), [tripTotalDays, parsedStartMs])
 
   // ─── Derive flight banners ────────────────────────────────────
   const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
@@ -157,9 +157,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         const month = months[monthStr]
         const day = parseInt(dayStr, 10)
         if (month !== undefined && !isNaN(day)) {
-          const year = parsedStartDate.getUTCFullYear()
+          const year = new Date(parsedStartMs).getUTCFullYear()
           const flightDate = new Date(Date.UTC(year, month, day))
-          const offset = Math.round((flightDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24))
+          const offset = Math.round((flightDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24))
           dayIndex = Math.max(0, Math.min(tripTotalDays - 1, offset))
         }
       }
@@ -171,7 +171,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         direction,
       }
     })
-  }, [trip, parsedStartDate.getTime(), tripTotalDays])
+  }, [trip, parsedStartMs, tripTotalDays])
 
   // ─── Derive hotel banners ─────────────────────────────────────
   const HOTEL_BANNERS: HotelBanner[] = useMemo(() => {
@@ -179,10 +179,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     return MOCK_HOTELS.map((hotel) => {
       const checkInDate = new Date(hotel.checkIn + 'T00:00:00Z')
       const checkOutDate = new Date(hotel.checkOut + 'T00:00:00Z')
-      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)))
+      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)))
       const endDayIndex = Math.max(
         startDayIndex,
-        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) - 1),
+        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)) - 1),
       )
       return {
         id: hotel.id,
@@ -191,7 +191,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         endDayIndex,
       }
     })
-  }, [trip, parsedStartDate.getTime(), tripTotalDays])
+  }, [trip, parsedStartMs, tripTotalDays])
 
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
@@ -207,6 +207,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     )
     const scrollTop = Math.max(0, (firstEvent - timeRange.startHour - 0.5) * HOUR_HEIGHT)
     scrollRef.current.scrollTop = scrollTop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // intentionally run once on mount
 
   const handleCreateActivity = useCallback((dayIndex: number, startHour: number) => {

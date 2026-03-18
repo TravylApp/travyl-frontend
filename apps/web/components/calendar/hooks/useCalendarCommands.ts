@@ -195,7 +195,6 @@ export function useCalendarCommands({
     ]
   }, [
     selectedActivity, isPaletteOpen,
-    id, day, startHour, duration,
     moveActivity, removeActivity, updateActivity, duplicateActivity,
     onViewModeChange, selectDay, tripDays, tripStartDate,
     onAddEvent, onOpenPalette,
