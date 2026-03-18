@@ -10,41 +10,45 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // /trip/[id]/* — require authentication
-  if (pathname.startsWith('/trip/')) {
-    const res = NextResponse.next()
+  const res = NextResponse.next()
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              res.cookies.set(name, value, options)
-            })
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
         },
-      }
-    )
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
+        setAll(cookiesToSet) {
+          // Update request cookies so downstream server components see fresh tokens
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value)
+          })
+          // Update response cookies so the browser persists them
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options)
+          })
+        },
+      },
     }
+  )
 
-    return res
+  const { data: { session } } = await supabase.auth.getSession()
+
+  // /trip/[id]/* — require authentication
+  if (pathname.startsWith('/trip/') && !session) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  return NextResponse.next()
+  return res
 }
 
 export const config = {
-  matcher: ['/trip/:path*', '/t/:path*'],
+  matcher: [
+    // Run on all routes except static assets and Next.js internals
+    '/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

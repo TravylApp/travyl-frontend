@@ -274,7 +274,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
-    <div className={'flex h-screen overflow-hidden bg-gray-50 dark:bg-[#0a1520] text-gray-900 dark:text-[#f5efe8]' + (theme === 'dark' ? ' dark' : '')}>
+    <div className={theme === 'dark' ? 'dark' : ''}>
+    <div className="flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]">
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
@@ -395,16 +396,16 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           {/* Drag overlay — shows ghost of dragged item */}
           <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
             {activeData?.type === 'suggestion' ? (
-              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
                 <span className="text-lg">{getCategoryIcon(activeData.suggestion.category)}</span>
-                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
                   {activeData.suggestion.name}
                 </span>
               </div>
             ) : activeData?.type === 'activity' ? (
-              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
                 <span className="text-lg">{getCategoryIcon(activeData.activity.type)}</span>
-                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
                   {activeData.activity.title || 'Untitled'}
                 </span>
               </div>
@@ -456,6 +457,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           </div>
         )}
       </div>
+    </div>
     </div>
     </CalendarThemeContext.Provider>
   )
