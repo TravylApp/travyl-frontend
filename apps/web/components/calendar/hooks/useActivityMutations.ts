@@ -28,6 +28,7 @@ interface UseActivityMutationsReturn {
   updateActivity: (id: string, patch: Partial<CalendarActivity>) => void
   moveActivity: (id: string, newDay: number, newStartHour: number) => void
   removeActivity: (id: string) => Promise<void>
+  duplicateActivity: (source: CalendarActivity) => Promise<void>
 }
 
 export function useActivityMutations(
@@ -124,5 +125,23 @@ export function useActivityMutations(
     [activitiesMap],
   )
 
-  return { addActivity, updateActivity, moveActivity, removeActivity }
+  const duplicateActivity = useCallback(
+    async (source: CalendarActivity): Promise<void> => {
+      // Compute max sortOrder from the live Yjs activitiesMap
+      let maxSortOrder = 0
+      activitiesMap.forEach((yMap) => {
+        const so = yMap.get('sortOrder') as number | undefined
+        if (so !== undefined && so > maxSortOrder) maxSortOrder = so
+      })
+      const clone: CalendarActivity = {
+        ...source,
+        id: crypto.randomUUID(),
+        sortOrder: maxSortOrder + 1,
+      }
+      await addActivity(clone)
+    },
+    [activitiesMap, addActivity],
+  )
+
+  return { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity }
 }
