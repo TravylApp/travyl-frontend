@@ -3,7 +3,9 @@ import { useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
+import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import type { TripNote } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
@@ -19,6 +21,14 @@ interface DayColumnProps {
   onClickDayHeader?: () => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingActivity?: CalendarActivity | null
+  notes?: TripNote[]
+  canCreateNotes?: boolean
+  canEditNotes?: boolean
+  userId?: string
+  isOwner?: boolean
+  onCreateNote?: (day: number, hour: number) => void
+  onUpdateNote?: (noteId: string, text: string) => void
+  onDeleteNote?: (noteId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -70,6 +80,14 @@ export function DayColumn({
   onClickDayHeader,
   onCreateActivity,
   pendingActivity = null,
+  notes,
+  canCreateNotes,
+  canEditNotes,
+  userId,
+  isOwner,
+  onCreateNote,
+  onUpdateNote,
+  onDeleteNote,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -91,6 +109,10 @@ export function DayColumn({
       const offsetY = e.clientY - rect.top
       const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
       const snappedHour = Math.round(rawHour * 2) / 2
+      if (e.shiftKey && canCreateNotes && onCreateNote) {
+        onCreateNote(dayIndex, snappedHour)
+        return
+      }
       onCreateActivity(dayIndex, snappedHour)
     }
   }
@@ -236,6 +258,20 @@ export function DayColumn({
             />
           )
         })}
+
+        {/* Post-it notes */}
+        {notes?.filter((n) => n.day === dayIndex).map((note) => (
+          <PostItNote
+            key={note.id}
+            note={note}
+            authorInitials={note.user_id.slice(0, 2).toUpperCase()}
+            canEdit={canEditNotes ?? false}
+            canDelete={(note.user_id === userId) || (isOwner ?? false)}
+            timeRangeStartHour={timeRange.startHour}
+            onUpdate={onUpdateNote ?? (() => {})}
+            onDelete={onDeleteNote ?? (() => {})}
+          />
+        ))}
 
         {/* Ghost block for pending drag activity */}
         {pendingActivity && (() => {
