@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import * as Y from 'yjs'
-import { supabase } from '@travyl/shared/services/supabase'
+import { supabase } from '@travyl/shared'
 
 interface YjsTripContextValue {
   doc: Y.Doc
