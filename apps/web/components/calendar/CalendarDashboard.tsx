@@ -386,6 +386,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             ) : (
               <ForYouPanel
                 destination={trip?.destination ?? ''}
+                tripId={trip?.id ?? ''}
                 scheduledActivityIds={droppedSuggestionIds}
               />
             )}

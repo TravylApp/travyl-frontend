@@ -5,14 +5,17 @@ import { FOR_YOU_PANEL_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
 import { useSuggestions } from './hooks/useSuggestions'
 import type { FilterCategory } from './hooks/useSuggestions'
+import { useInteractionTracking } from './hooks/useInteractionTracking'
 
 interface ForYouPanelProps {
   destination: string
+  tripId: string
   scheduledActivityIds?: string[]
 }
 
 export function ForYouPanel({
   destination,
+  tripId,
   scheduledActivityIds,
 }: ForYouPanelProps) {
   const {
@@ -26,6 +29,8 @@ export function ForYouPanel({
     filterCategories,
     refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
+
+  const { trackEvent } = useInteractionTracking(tripId)
 
   return (
     <aside
@@ -122,7 +127,11 @@ export function ForYouPanel({
           /* Masonry grid */
           <div className="columns-2 gap-2">
             {suggestions.map((suggestion) => (
-              <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                onVisible={() => trackEvent(suggestion.id, 'impression')}
+              />
             ))}
           </div>
         )}
