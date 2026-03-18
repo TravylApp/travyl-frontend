@@ -5,14 +5,17 @@ import { FOR_YOU_PANEL_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
 import { useSuggestions } from './hooks/useSuggestions'
 import type { FilterCategory } from './hooks/useSuggestions'
+import { useInteractionTracking } from './hooks/useInteractionTracking'
 
 interface ForYouPanelProps {
   destination: string
+  tripId: string
   scheduledActivityIds?: string[]
 }
 
 export function ForYouPanel({
   destination,
+  tripId,
   scheduledActivityIds,
 }: ForYouPanelProps) {
   const {
@@ -24,7 +27,10 @@ export function ForYouPanel({
     activeFilter,
     setActiveFilter,
     filterCategories,
+    refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
+
+  const { trackEvent } = useInteractionTracking(tripId)
 
   return (
     <aside
@@ -99,7 +105,7 @@ export function ForYouPanel({
             <p className="text-sm text-gray-500 dark:text-[#4a7ab5]">
               Couldn&apos;t load suggestions
             </p>
-            <button className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
+            <button onClick={() => refetch()} className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
               Tap to retry
             </button>
           </div>
@@ -121,7 +127,11 @@ export function ForYouPanel({
           /* Masonry grid */
           <div className="columns-2 gap-2">
             {suggestions.map((suggestion) => (
-              <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                onVisible={() => trackEvent(suggestion.id, 'impression')}
+              />
             ))}
           </div>
         )}
