@@ -77,7 +77,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     trackInteraction(suggestionId, 'drag')
   }, [addActivity, selectEvent, trackInteraction])
 
-  const { sensors, activeId, handleDragStart, handleDragEnd } = useCalendarDnd({
+  const { sensors, activeId, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     scrollRef,
@@ -300,7 +300,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Scrollable grid */}
@@ -325,6 +327,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onSelectEvent={handleSelectEvent}
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
+                      pendingDrop={pendingDrop}
                     />
                   </motion.div>
                 ) : (
@@ -346,6 +349,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       tripStartDate={parsedStartDate}
                       onSelectEvent={handleSelectEvent}
                       onCreateActivity={handleCreateActivity}
+                      pendingDrop={pendingDrop}
                     />
                   </motion.div>
                 )}
