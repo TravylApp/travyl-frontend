@@ -22,7 +22,7 @@
     "react": "19.2.3",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
-    "react-dom": "19.1.0",
+    "react-dom": "^19.2.3",
     "react-leaflet": "^5.0.0",
     "react-responsive-masonry": "^2.7.1",
     "y-supabase": "^0.0.4-7-alpha",

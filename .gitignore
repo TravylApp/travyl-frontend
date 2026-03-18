@@ -42,3 +42,5 @@ yarn-error.log*
 supabase/.temp/
 
 .superpowers/
+.sst/
+sst-env.d.ts
