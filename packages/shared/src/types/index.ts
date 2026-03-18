@@ -23,12 +23,11 @@ export interface Trip {
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
   trip_context: Record<string, unknown>;
   is_generated: boolean;
-  is_shared: boolean;
   share_link_token: string | null;
-  share_link_role: 'viewer' | 'editor';
+  visibility: 'private' | 'link' | 'public';
+  link_permission: 'view' | 'comment' | 'edit';
   forked_from_trip_id: string | null;
   fork_count: number;
-  is_public: boolean;
   theme: string;
   custom_theme_color: string | null;
   created_at: string;
@@ -576,4 +575,42 @@ export interface TravelBoard {
   icon: string;
   iconColor: string;
   images: string[];
+}
+
+// ─── Sharing ────────────────────────────────────────────────
+
+export type TripVisibility = 'private' | 'link' | 'public'
+export type LinkPermission = 'view' | 'comment' | 'edit'
+export type CollaboratorRole = 'viewer' | 'commenter' | 'editor'
+
+export interface TripCollaborator {
+  id: string
+  trip_id: string
+  user_id: string | null
+  invited_email: string | null
+  invite_token: string | null
+  role_type: CollaboratorRole
+  invite_status: 'pending' | 'accepted' | 'cancelled'
+  invited_by: string
+  accepted_at: string | null
+  created_at: string
+  // joined from profiles when accepted:
+  display_name?: string | null
+  avatar_url?: string | null
+}
+
+export interface TripNote {
+  id: string
+  trip_id: string
+  user_id: string | null
+  activity_id: string | null
+  day: string          // ISO date string
+  pos_x: number
+  pos_y: number
+  content: string
+  color: string
+  created_at: string
+  updated_at: string
+  // joined from profiles:
+  author_name?: string | null
 }
