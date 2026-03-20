@@ -20,6 +20,7 @@ out/
 
 # Claude
 .claude/
+CLAUDE.md
 docs/plans/
 
 # OS
