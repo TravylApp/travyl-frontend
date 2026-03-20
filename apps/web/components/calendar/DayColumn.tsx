@@ -29,6 +29,7 @@ interface DayColumnProps {
   onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
+  onResize?: (id: string, newStartHour: number, newDuration: number) => void
 }
 
 function CurrentTimeIndicator({
@@ -88,6 +89,7 @@ export function DayColumn({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
+  onResize,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -261,6 +263,8 @@ export function DayColumn({
               column={layout.column}
               totalColumns={layout.totalColumns}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
+              onResize={onResize}
+              timeRangeEndHour={timeRange.endHour}
             />
           )
         })}
