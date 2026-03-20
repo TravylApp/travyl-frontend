@@ -5,6 +5,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard as SuggestionCardType } from './types'
+import { formatDuration } from './utils'
 
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
@@ -32,12 +33,6 @@ export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
   const formatPrice = (price: number | null, currency: string) => {
     if (price === null || price === 0) return 'Free'
     return `€${price}`
-  }
-
-  const formatDuration = (hours: number) => {
-    if (hours < 1) return `${Math.round(hours * 60)}m`
-    if (hours % 1 === 0) return `${hours}h`
-    return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
   }
 
   return (
