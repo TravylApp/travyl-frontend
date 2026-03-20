@@ -22,6 +22,8 @@ import { TripNavbar } from './TripNavbar'
 import { CommandPalette } from './CommandPalette'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useMarqueeSelection } from './hooks/useMarqueeSelection'
+import { MarqueeOverlay } from './MarqueeOverlay'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -86,6 +88,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const { trackEvent } = useInteractionTracking(tripId)
 
+  const weekGridRef = useRef<HTMLDivElement>(null)
+
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
 
@@ -137,6 +141,21 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       }),
     }
   }), [tripTotalDays, parsedStartMs])
+
+  const {
+    selectedIds: marqueeSelectedIds,
+    marqueeRect,
+    startMarquee,
+    updateMarquee,
+    endMarquee,
+    toggleActivityInSelection,
+    clearSelection: clearMarqueeSelection,
+    setSelectedIds: setMarqueeSelectedIds,
+  } = useMarqueeSelection({
+    activities,
+    timeRangeStartHour: timeRange.startHour,
+    dayCount: TRIP_DAYS.length,
+  })
 
   // ─── Derive flight banners ────────────────────────────────────
   const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
@@ -251,6 +270,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   // Event handlers
   const handleSelectEvent = (id: string) => {
+    // If marquee selection is active, clear it on click without Shift
+    if (marqueeSelectedIds.size > 0) {
+      clearMarqueeSelection()
+      return // consume the click
+    }
     selectEvent(selectedEventId === id ? null : id)
   }
 
@@ -297,6 +321,19 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   // Days to show (for DayView we pass a single day)
   const visibleDays = viewMode === 'week' ? TRIP_DAYS : [TRIP_DAYS[selectedDayIndex]]
+
+  const marqueeOverlayElement = (
+    <MarqueeOverlay
+      gridRef={weekGridRef}
+      onStartMarquee={(x, y, rect) => {
+        selectEvent(null) // clear single-select
+        startMarquee(x, y, rect)
+      }}
+      onUpdateMarquee={updateMarquee}
+      onEndMarquee={endMarquee}
+      marqueeRect={marqueeRect}
+    />
+  )
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
@@ -370,6 +407,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
+                      marqueeSelectedIds={marqueeSelectedIds}
+                      gridRef={weekGridRef}
+                      marqueeOverlay={marqueeOverlayElement}
+                      onShiftClickEvent={toggleActivityInSelection}
                     />
                   </motion.div>
                 ) : (
