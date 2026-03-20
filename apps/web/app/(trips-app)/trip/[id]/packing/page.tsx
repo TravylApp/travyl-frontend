@@ -4,7 +4,7 @@ import { use, useState } from 'react';
 import { Luggage, Sun, Plus, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MOCK_PACKING_LIST, MOCK_TRIP, useItineraryScreen } from '@travyl/shared';
-import type { PackingItem, PackingList } from '@travyl/shared';
+import type { PackingList } from '@travyl/shared';
 
 import { Skeleton } from '@/components/ui';
 

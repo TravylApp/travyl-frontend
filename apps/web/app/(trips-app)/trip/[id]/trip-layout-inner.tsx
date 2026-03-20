@@ -121,14 +121,8 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   // Overview + Itinerary: clean magazine look — no header bar (itinerary has its own controls)
   if (isOverview || segment === 'itinerary') return null;
 
-  const isItineraryTab = segment === 'itinerary';
-
   return (
-    <div className={`shrink-0 border-b px-5 pt-4 pb-3 sticky top-0 z-20 ${
-      isItineraryTab
-        ? 'bg-black/40 backdrop-blur-xl border-white/10'
-        : 'bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06]'
-    }`}>
+    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 pt-4 pb-3 sticky top-0 z-20">
       <div className="flex items-center gap-3">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
@@ -139,20 +133,16 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
         <div className="flex-1">
           <h2
             className="text-[17px] tracking-tight"
-            style={{ color: isItineraryTab ? '#fff' : 'var(--trip-base)', fontWeight: 700 }}
+            style={{ color: 'var(--trip-base)', fontWeight: 700 }}
           >
             {tab.label}
           </h2>
-          <p className={`text-[12px] ${isItineraryTab ? 'text-white/60' : 'text-gray-400 dark:text-gray-500'}`}>{tab.subtitle}</p>
+          <p className="text-[12px] text-gray-400 dark:text-gray-500">{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
           <a
             href={`/trip/${tripId}/calendar`}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
-              isItineraryTab
-                ? 'border-white/20 hover:bg-white/10 text-white/80'
-                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
-            }`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400"
             title="Calendar view"
           >
             <Calendar size={13} />
@@ -163,9 +153,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
               mapOpen
                 ? 'text-white shadow-md scale-[1.02]'
-                : isItineraryTab
-                  ? 'border-white/20 hover:bg-white/10 text-white/80'
-                  : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
+                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
             }`}
             style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
             title={mapOpen ? 'Hide map' : 'Show map'}
