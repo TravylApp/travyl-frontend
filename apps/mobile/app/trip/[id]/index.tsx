@@ -8,9 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
-  MOCK_WEATHER_FORECAST,
-  MOCK_WEATHER, MOCK_NEWS, MOCK_TRIPS, formatDateRange,
-  MOCK_EXPLORE_ITEMS, NEWS_GRADIENTS,
+  formatDateRange,
+  NEWS_COLORS,
 } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition } from './_layout';
@@ -88,13 +87,12 @@ export default function OverviewScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  const forecast = MOCK_WEATHER_FORECAST;
-  const weather = MOCK_WEATHER;
-  const news = MOCK_NEWS;
+  const forecast = trip?.trip_context?.weather?.forecast ?? [];
+  const weather = trip?.trip_context?.weather?.current;
+  const news = trip?.trip_context?.news ?? [];
 
-  const tripData = MOCK_TRIPS.find((t) => t.id === (trip?.id ?? id));
-  const coverImage = tripData?.image?.replace(/\?w=\d+/, '?w=1200&q=80');
-  const destination = trip?.destination || tripData?.destination || 'Paris, France';
+  const coverImage = trip?.trip_context?.hero_image_url;
+  const destination = trip?.destination || 'Paris, France';
   const cityName = destination.split(',')[0].trim();
   const countryName = destination.split(',').slice(1).join(',').trim();
 
@@ -187,11 +185,13 @@ export default function OverviewScreen() {
           {dateStr && <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{dateStr}</Text>}
           {dateStr && travelersStr && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
           {travelersStr && <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{travelersStr}</Text>}
-          {(dateStr || travelersStr) && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <FontAwesome name={weatherIcon(weather.conditions) as any} size={13} color="rgba(255,255,255,0.5)" />
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{weather.high}° / {weather.low}°</Text>
-          </View>
+          {(dateStr || travelersStr) && weather && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
+          {weather && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <FontAwesome name={weatherIcon(weather.condition ?? '') as any} size={13} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{weather.high}° / {weather.low}°</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -218,84 +218,94 @@ export default function OverviewScreen() {
         </View>
 
         {/* Forecast strip — editorial style */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', gap: 12,
-          paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1,
-          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <FontAwesome
-              name={weatherIcon(weather.conditions) as any}
-              size={14}
-              color={ACCENT_COLOR}
-            />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT_COLOR }}>
-              {weather.high}° / {weather.low}°
-            </Text>
-            <Text style={{ fontSize: 9, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
+        {(weather || forecast.length > 0) && (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 12,
+            paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1,
+            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+          }}>
+            {weather && (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <FontAwesome
+                    name={weatherIcon(weather.condition ?? '') as any}
+                    size={14}
+                    color={ACCENT_COLOR}
+                  />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT_COLOR }}>
+                    {weather.high}° / {weather.low}°
+                  </Text>
+                  <Text style={{ fontSize: 9, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
+                </View>
+                {forecast.length > 0 && <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>}
+              </>
+            )}
+            {forecast.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
+                {forecast.slice(0, 5).map((day) => (
+                  <View key={day.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
+                    <Text style={{ fontSize: 13 }}>{day.icon}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
-          <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-            {forecast.slice(0, 5).map((day) => (
-              <View key={day.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
-                <Text style={{ fontSize: 13 }}>{day.icon}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
+        )}
+      </View>
+
+      {/* ─── Things to Do — horizontal scroll cards ───────── */}
+      {trip?.trip_context?.explore_items && trip.trip_context.explore_items.length > 0 && (
+        <View style={{ marginTop: 20 }}>
+          <View style={{ paddingHorizontal: 20 }}>
+            <SectionHeader accent="Explore" title="Things to Do" />
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+            decelerationRate="fast"
+            snapToInterval={SCREEN_WIDTH - 60}
+          >
+            {trip.trip_context.explore_items.map((item) => (
+              <View key={item.id} style={{
+                width: SCREEN_WIDTH - 60, height: 220, borderRadius: 14, overflow: 'hidden',
+              }}>
+                <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
+                  locations={[0, 0.4, 1]}
+                  pointerEvents="none"
+                  style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+                />
+                {/* Category pill */}
+                <View style={{
+                  position: 'absolute', top: 10, left: 10,
+                  backgroundColor: 'rgba(200,169,106,0.15)', borderWidth: 1,
+                  borderColor: 'rgba(200,169,106,0.2)', borderRadius: 12,
+                  paddingHorizontal: 10, paddingVertical: 4,
+                }}>
+                  <Text style={{
+                    fontSize: 9, fontWeight: '700', letterSpacing: 0.5,
+                    textTransform: 'uppercase', color: ACCENT_COLOR,
+                  }}>{item.category}</Text>
+                </View>
+                {/* Bottom text */}
+                <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
+                  <Text style={{
+                    fontSize: 17, fontWeight: '700', color: '#fff',
+                    fontFamily: 'Lustria-Regular', marginBottom: 4,
+                  }}>{item.title}</Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 16 }} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                </View>
               </View>
             ))}
           </ScrollView>
         </View>
-      </View>
-
-      {/* ─── Things to Do — horizontal scroll cards ───────── */}
-      <View style={{ marginTop: 20 }}>
-        <View style={{ paddingHorizontal: 20 }}>
-          <SectionHeader accent="Explore" title="Things to Do" />
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-          decelerationRate="fast"
-          snapToInterval={SCREEN_WIDTH - 60}
-        >
-          {MOCK_EXPLORE_ITEMS.map((item) => (
-            <View key={item.id} style={{
-              width: SCREEN_WIDTH - 60, height: 220, borderRadius: 14, overflow: 'hidden',
-            }}>
-              <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
-                locations={[0, 0.4, 1]}
-                pointerEvents="none"
-                style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-              />
-              {/* Category pill */}
-              <View style={{
-                position: 'absolute', top: 10, left: 10,
-                backgroundColor: 'rgba(200,169,106,0.15)', borderWidth: 1,
-                borderColor: 'rgba(200,169,106,0.2)', borderRadius: 12,
-                paddingHorizontal: 10, paddingVertical: 4,
-              }}>
-                <Text style={{
-                  fontSize: 9, fontWeight: '700', letterSpacing: 0.5,
-                  textTransform: 'uppercase', color: ACCENT_COLOR,
-                }}>{item.category}</Text>
-              </View>
-              {/* Bottom text */}
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
-                <Text style={{
-                  fontSize: 17, fontWeight: '700', color: '#fff',
-                  fontFamily: 'Lustria-Regular', marginBottom: 4,
-                }}>{item.title}</Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 16 }} numberOfLines={2}>
-                  {item.description}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+      )}
 
       {/* ─── Quote Divider ────────────────────────────────── */}
       <View style={{ paddingHorizontal: 32, paddingVertical: 24, alignItems: 'center' }}>
@@ -310,53 +320,57 @@ export default function OverviewScreen() {
       </View>
 
       {/* ─── What's Going On — dark gradient news cards ───── */}
-      <View style={{ paddingHorizontal: 20 }}>
-        <SectionHeader accent="What's Happening" title="What's Going On" />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 10 }}
-          decelerationRate="fast"
-          snapToInterval={SCREEN_WIDTH - 60}
-        >
-          {news.map((item, i) => {
-            const grad = NEWS_GRADIENTS[i % NEWS_GRADIENTS.length];
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => item.url && Linking.openURL(item.url)}
-                style={{ width: SCREEN_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
-              >
-                <LinearGradient
-                  colors={[grad[0], grad[1]]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={{ flex: 1, justifyContent: 'flex-end', padding: 16 }}
-                >
-                  {/* Gold accent line at top */}
-                  <View style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-                    backgroundColor: 'rgba(200,169,106,0.3)',
-                  }} />
-                  <Text style={{
-                    fontSize: 9, fontWeight: '700', letterSpacing: 1.5,
-                    textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
-                  }}>
-                    {item.category}
-                    {item.source ? <Text style={{ opacity: 0.5 }}> · {item.source}</Text> : null}
-                  </Text>
-                  <Text style={{
-                    fontSize: 15, fontWeight: '700', fontFamily: 'Lustria-Regular',
-                    color: 'rgba(255,255,255,0.9)', lineHeight: 20, marginBottom: 6,
-                  }} numberOfLines={2}>{item.title}</Text>
-                  <Text style={{
-                    fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 16,
-                  }} numberOfLines={2}>{item.snippet}</Text>
-                </LinearGradient>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {news.length > 0 && (() => {
+        return (
+          <View style={{ paddingHorizontal: 20 }}>
+            <SectionHeader accent="What's Happening" title="What's Going On" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10 }}
+              decelerationRate="fast"
+              snapToInterval={SCREEN_WIDTH - 60}
+            >
+              {news.map((item, i) => {
+                const grad = NEWS_COLORS[i % NEWS_COLORS.length];
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => item.url && Linking.openURL(item.url)}
+                    style={{ width: SCREEN_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
+                  >
+                    <LinearGradient
+                      colors={[grad[0], grad[1]]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={{ flex: 1, justifyContent: 'flex-end', padding: 16 }}
+                    >
+                      {/* Gold accent line at top */}
+                      <View style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                        backgroundColor: 'rgba(200,169,106,0.3)',
+                      }} />
+                      <Text style={{
+                        fontSize: 9, fontWeight: '700', letterSpacing: 1.5,
+                        textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
+                      }}>
+                        {item.category}
+                        {item.source ? <Text style={{ opacity: 0.5 }}> · {item.source}</Text> : null}
+                      </Text>
+                      <Text style={{
+                        fontSize: 15, fontWeight: '700', fontFamily: 'Lustria-Regular',
+                        color: 'rgba(255,255,255,0.9)', lineHeight: 20, marginBottom: 6,
+                      }} numberOfLines={2}>{item.title}</Text>
+                      <Text style={{
+                        fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 16,
+                      }} numberOfLines={2}>{item.snippet}</Text>
+                    </LinearGradient>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        );
+      })()}
 
       {/* ─── Before You Go (essentials footer) ────────────── */}
       <View style={{
