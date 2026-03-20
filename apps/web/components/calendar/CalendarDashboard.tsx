@@ -26,7 +26,6 @@ import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
-import { DetailPanel } from './DetailPanel'
 import { ForYouPanel } from './ForYouPanel'
 import { formatDuration } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
@@ -35,6 +34,9 @@ import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
+import { ShareModal } from './sharing/ShareModal'
+import { inviteCollaborator } from '@travyl/shared'
+import type { CollaboratorRole } from '@travyl/shared'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -96,6 +98,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const [popoverEventId, setPopoverEventId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
 
   const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
     await addActivity(activity)
@@ -104,6 +107,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
     trackEvent(suggestionId, 'drag')
   }, [addActivity, selectEvent, trackEvent])
+
+  const handleInvite = useCallback(async (email: string, role: CollaboratorRole) => {
+    if (!trip) return
+    await inviteCollaborator(trip.id, email, role)
+  }, [trip])
 
   const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
@@ -266,23 +274,21 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Event handlers
   const handleClickEvent = (id: string, anchorEl: HTMLElement) => {
     if (popoverEventId === id) {
+      // Toggle off
       setPopoverEventId(null)
       setPopoverAnchor(null)
-      selectEvent(null)
     } else {
       setPopoverEventId(id)
       setPopoverAnchor(anchorEl)
-      selectEvent(id)
     }
+    // Don't call selectEvent here — it causes a layout shift
+    // that triggers scroll-to-close on the popover.
   }
 
   const handlePopoverClose = () => {
     setPopoverEventId(null)
     setPopoverAnchor(null)
-    selectEvent(null)
   }
-
-  const handleCloseDetail = () => selectEvent(null)
 
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
@@ -350,7 +356,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
-          onShare={() => {}}
+          onShare={() => setShareModalOpen(true)}
           selectedActivity={selectedActivity}
           onDeselect={() => selectEvent(null)}
           theme={theme}
@@ -358,11 +364,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripDays={TRIP_DAYS}
         />
 
+        {trip && (
+          <ShareModal
+            trip={trip}
+            isOpen={shareModalOpen}
+            onClose={() => setShareModalOpen(false)}
+            onInvite={handleInvite}
+          />
+        )}
+
         {/* Grid area */}
         {activeNav === 'calendar' ? (
         <DndContext
           sensors={sensors}
-          onDragStart={handleDragStart}
+          onDragStart={(e) => { setPopoverEventId(null); setPopoverAnchor(null); handleDragStart(e); }}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
@@ -421,22 +436,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
               </AnimatePresence>
             </div>
 
-            {/* Right column: For You panel or Detail panel */}
-            {selectedEventId ? (
-              <DetailPanel
-                activity={selectedActivity}
-                viewers={collaborators}
-                onClose={handleCloseDetail}
-                onRemove={handleRemoveActivity}
-                onUpdateActivity={updateActivity}
-              />
-            ) : (
-              <ForYouPanel
-                destination={trip?.destination ?? ''}
-                tripId={trip?.id ?? ''}
-                scheduledActivityIds={droppedSuggestionIds}
-              />
-            )}
+            {/* Right column: For You panel */}
+            <ForYouPanel
+              destination={trip?.destination ?? ''}
+              tripId={trip?.id ?? ''}
+              scheduledActivityIds={droppedSuggestionIds}
+            />
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -515,16 +520,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             price={popoverActivity?.price ?? undefined}
             duration={popoverActivity ? formatDuration(popoverActivity.duration) : undefined}
             actions={popoverActivity ? [
-              {
-                label: 'Edit',
-                onClick: () => {
-                  const activityId = popoverActivity.id
-                  setPopoverEventId(null)
-                  setPopoverAnchor(null)
-                  selectEvent(activityId)
-                },
-                variant: 'ghost' as const,
-              },
               {
                 label: 'Delete',
                 onClick: () => {
