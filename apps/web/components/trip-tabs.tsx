@@ -7,7 +7,7 @@ import {
   Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
   Luggage, PieChart, Heart, Car,
   GripVertical, GripHorizontal,
-  Settings2, SlidersHorizontal, Check, X,
+  SlidersHorizontal, Check, X,
   type LucideIcon,
 } from "lucide-react";
 import { useTripTheme } from "@/components/trip/TripThemeContext";
@@ -35,7 +35,6 @@ const ALL_TABS: TabDef[] = [
   { segment: "budget",      label: "Budget",        subtitle: "Trip expenses & spending",            icon: PieChart,          color: DEFAULT_COLOR },
   { segment: "cars",        label: "Car Rental",    subtitle: "Vehicle rentals & transport",         icon: Car,               color: DEFAULT_COLOR },
   { segment: "favorites",   label: "Favorites",     subtitle: "Saved places & activities",           icon: Heart,             color: DEFAULT_COLOR },
-  { segment: "settings",    label: "Settings",      subtitle: "Trip preferences & account",          icon: Settings2,         color: DEFAULT_COLOR },
 ];
 
 // ─── Spine Position ─────────────────────────────────────────
@@ -98,7 +97,7 @@ function TabCustomizePopover({
   onClose: () => void;
   anchorSide: 'left' | 'right' | 'bottom';
 }) {
-  const { theme, tabColorOverrides, setTabColor, hiddenTabs, setTabHidden } = useTripTheme();
+  const { theme, tabColorOverrides, setTabColor } = useTripTheme();
   const [editingColor, setEditingColor] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -126,18 +125,18 @@ function TabCustomizePopover({
   return (
     <div
       ref={panelRef}
-      className={`absolute ${positionClass} z-50 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden`}
+      className={`absolute ${positionClass} z-50 w-64 bg-white dark:bg-[#1a2230] rounded-xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden`}
       style={{ maxHeight: 420 }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal size={13} className="text-gray-500" />
-          <span className="text-xs font-semibold text-gray-800">Customize Tabs</span>
+          <SlidersHorizontal size={13} className="text-gray-500 dark:text-gray-400" />
+          <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Customize Tabs</span>
         </div>
         <button
           onClick={onClose}
-          className="w-5 h-5 rounded flex items-center justify-center hover:bg-gray-100 transition-colors"
+          className="w-5 h-5 rounded flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
         >
           <X size={11} className="text-gray-400" />
         </button>
@@ -147,44 +146,26 @@ function TabCustomizePopover({
       <div className="overflow-y-auto" style={{ maxHeight: 360 }}>
         {ALL_TABS.map(({ segment, label, icon: Icon }) => {
           const key = segment || 'index';
-          const isAlwaysOn = segment === '' || segment === 'settings';
-          const isEnabled = !hiddenTabs[segment];
           const tabColor = tabColorOverrides[key] ?? theme.tabColors[key] ?? theme.base;
           const isEditingThis = editingColor === key;
 
           return (
             <div key={key}>
-              <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
                 {/* Color dot — click to edit */}
                 <button
                   onClick={() => setEditingColor(isEditingThis ? null : key)}
                   className="w-5 h-5 rounded-md shrink-0 transition-all hover:scale-110"
                   style={{
-                    backgroundColor: isEnabled ? tabColor : '#d1d5db',
+                    backgroundColor: tabColor,
                     boxShadow: isEditingThis ? `0 0 0 2px white, 0 0 0 3px ${tabColor}` : 'none',
                   }}
                   title="Change color"
                 />
 
                 {/* Icon + Label */}
-                <Icon size={13} className="text-gray-400 shrink-0" />
-                <span className="text-[12px] text-gray-700 flex-1">{label}</span>
-
-                {/* Toggle */}
-                {isAlwaysOn ? (
-                  <span className="text-[9px] text-gray-400 px-1.5 py-0.5 rounded bg-gray-100">Required</span>
-                ) : (
-                  <button
-                    onClick={() => setTabHidden(segment, isEnabled)}
-                    className="relative w-8 h-[18px] rounded-full transition-colors duration-200 shrink-0"
-                    style={{ backgroundColor: isEnabled ? theme.base : '#d1d5db' }}
-                  >
-                    <span
-                      className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200"
-                      style={{ transform: isEnabled ? 'translateX(15px)' : 'translateX(2px)' }}
-                    />
-                  </button>
-                )}
+                <Icon size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                <span className="text-[12px] text-gray-700 dark:text-gray-300 flex-1">{label}</span>
               </div>
 
               {/* Inline color swatches */}
@@ -227,14 +208,16 @@ export default function TripTabs({
   tripId,
   position = "left",
   onPositionChange,
+  dark = false,
 }: {
   tripId: string;
   position?: SpinePosition;
   onPositionChange?: (pos: SpinePosition) => void;
+  dark?: boolean;
 }) {
   const pathname = usePathname();
   const basePath = `/trip/${tripId}`;
-  const { theme, tabColorOverrides, hiddenTabs } = useTripTheme();
+  const { theme, tabColorOverrides } = useTripTheme();
 
   const textOnBase = theme.textOnBase;
 
@@ -248,11 +231,8 @@ export default function TripTabs({
     return pathname === `${basePath}/${segment}`;
   }
 
-  // Filter out hidden tabs (Overview and Settings always visible)
-  const visibleTabs = ALL_TABS.filter((t) => {
-    if (t.segment === '' || t.segment === 'settings') return true;
-    return !hiddenTabs[t.segment];
-  });
+  // Show all tabs — no filtering
+  const visibleTabs = ALL_TABS;
 
   const { onPointerDown, onPointerMove, onPointerUp } = useDragToReposition(onPositionChange);
 
@@ -295,11 +275,12 @@ export default function TripTabs({
 
     return (
       <div
-        className="hidden md:flex flex-col self-stretch shrink-0 z-20 py-1"
+        className={`hidden md:flex flex-col self-stretch shrink-0 z-20 py-1.5 px-0.5 ${dark ? 'pt-[72px]' : ''}`}
         style={{
-          width: 36,
-          gap: 2,
+          width: 56,
+          gap: 4,
           order: isLeft ? 0 : 2,
+          ...(dark ? { backgroundColor: 'rgba(255,255,255,0.03)' } : {}),
         }}
       >
         {/* Drag handle */}
@@ -308,14 +289,13 @@ export default function TripTabs({
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            className="flex items-center justify-center h-7 cursor-grab active:cursor-grabbing transition-all touch-none select-none"
+            className="flex items-center justify-center h-6 cursor-grab active:cursor-grabbing transition-all touch-none select-none rounded-md mx-0.5"
             style={{
-              ...borderRadius,
-              backgroundColor: theme.base + '40',
+              backgroundColor: dark ? 'rgba(255,255,255,0.06)' : theme.base + '25',
             }}
             title="Drag to reposition"
           >
-            <GripVertical size={12} style={{ color: textOnBase + '80' }} />
+            <GripVertical size={10} style={{ color: dark ? 'rgba(255,255,255,0.3)' : textOnBase + '60' }} />
           </div>
         )}
 
@@ -335,15 +315,26 @@ export default function TripTabs({
               onMouseLeave={cancelLongPress}
               onTouchStart={startLongPress}
               onTouchEnd={cancelLongPress}
-              className="flex-1 flex items-center justify-center group relative transition-all duration-300 ease-out"
+              className="flex items-center justify-center group relative transition-all duration-200 ease-out rounded-lg mx-0.5"
               style={{
-                ...borderRadius,
-                backgroundColor: active ? tabColor : tabColor + 'B3',
+                backgroundColor: active
+                  ? tabColor
+                  : dark
+                    ? tabColor + '40'
+                    : tabColor + '18',
+                height: 44,
+                ...(active ? { boxShadow: `0 0 8px ${tabColor}40` } : {}),
               }}
             >
               <Icon
-                size={14}
-                style={{ color: active ? textOnBase : textOnBase + '99' }}
+                size={19}
+                style={{
+                  color: active
+                    ? textOnBase
+                    : dark
+                      ? 'rgba(255,255,255,0.5)'
+                      : tabColor,
+                }}
                 className="group-hover:opacity-100 transition-opacity"
               />
               {/* Tooltip */}
@@ -357,6 +348,22 @@ export default function TripTabs({
             </Link>
           );
         })}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Customize button */}
+        <button
+          onClick={() => setCustomizeOpen((v) => !v)}
+          title="Customize tabs"
+          className="flex items-center justify-center transition-all duration-200 hover:opacity-80 rounded-lg mx-0.5"
+          style={{
+            backgroundColor: dark ? 'rgba(255,255,255,0.05)' : theme.base + '15',
+            height: 30,
+          }}
+        >
+          <SlidersHorizontal size={11} style={{ color: dark ? 'rgba(255,255,255,0.25)' : theme.base + '80' }} />
+        </button>
 
         {/* Popover anchored to spine */}
         <TabCustomizePopover
@@ -373,24 +380,27 @@ export default function TripTabs({
   const horizontalSpine = (isMobile: boolean) => (
     <div
       className={`overflow-x-auto scrollbar-hide relative ${isMobile ? "md:hidden" : "hidden md:block"}`}
-      style={{ order: isMobile ? undefined : -1 }}
+      style={{
+        order: isMobile ? undefined : -1,
+        ...(dark ? { backgroundColor: 'rgba(255,255,255,0.03)' } : {}),
+      }}
     >
-      <div className="flex items-end gap-[2px]">
+      <div className="flex items-end gap-[2px] p-[2px]">
         {/* Drag handle — same height as tabs */}
         {!isMobile && onPositionChange && (
           <div
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            className="flex items-center justify-center shrink-0 h-[38px] px-1 cursor-grab active:cursor-grabbing touch-none select-none"
+            className="flex items-center justify-center shrink-0 h-[48px] px-1 cursor-grab active:cursor-grabbing touch-none select-none"
             style={{
-              backgroundColor: theme.base + '80',
+              backgroundColor: dark ? 'rgba(255,255,255,0.06)' : theme.base + '80',
               borderTopLeftRadius: 8,
               borderTopRightRadius: 8,
             }}
             title="Drag to reposition"
           >
-            <GripHorizontal size={12} style={{ color: textOnBase + '80' }} />
+            <GripHorizontal size={12} style={{ color: dark ? 'rgba(255,255,255,0.3)' : textOnBase + '80' }} />
           </div>
         )}
 
@@ -409,24 +419,39 @@ export default function TripTabs({
               onMouseLeave={cancelLongPress}
               onTouchStart={startLongPress}
               onTouchEnd={cancelLongPress}
-              className="flex-1 flex items-center justify-center gap-1.5 shrink-0 h-[38px] px-3 transition-colors duration-200"
+              className="flex-1 flex items-center justify-center gap-1.5 shrink-0 h-[48px] px-4 transition-colors duration-200"
               style={{
-                backgroundColor: active ? tabColor : tabColor + 'B3',
+                backgroundColor: active
+                  ? tabColor
+                  : dark
+                    ? tabColor + '40'
+                    : tabColor + 'B3',
                 borderTopLeftRadius: 8,
                 borderTopRightRadius: 8,
+                ...(active ? { boxShadow: `0 0 8px ${tabColor}40` } : {}),
               }}
             >
               <Icon
-                size={15}
-                style={{ color: active ? textOnBase : textOnBase + '99' }}
+                size={18}
+                style={{
+                  color: active
+                    ? textOnBase
+                    : dark
+                      ? 'rgba(255,255,255,0.45)'
+                      : textOnBase + '99',
+                }}
               />
               <span
-                className={`text-[11px] whitespace-nowrap ${
+                className={`text-[13px] whitespace-nowrap ${
                   active ? "" : "hidden sm:inline"
                 }`}
                 style={{
                   fontWeight: active ? 600 : 400,
-                  color: active ? textOnBase : textOnBase + '99',
+                  color: active
+                    ? textOnBase
+                    : dark
+                      ? 'rgba(255,255,255,0.35)'
+                      : textOnBase + '99',
                 }}
               >
                 {label}
