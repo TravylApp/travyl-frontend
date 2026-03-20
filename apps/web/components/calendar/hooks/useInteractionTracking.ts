@@ -1,34 +1,41 @@
 'use client'
 
-import { useCallback } from 'react'
-import { useAuthStore } from '@travyl/shared/stores/authStore'
-
-type InteractionAction = 'impression' | 'click' | 'drag' | 'dismiss'
+import { useCallback, useRef } from 'react'
+import { supabase } from '@travyl/shared'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
+type InteractionAction = 'impression' | 'click' | 'drag' | 'dismiss'
+
 export function useInteractionTracking(tripId: string) {
-  const session = useAuthStore((s) => s.session)
+  // Deduplicate impressions within a session
+  const impressedIds = useRef(new Set<string>())
 
-  const trackInteraction = useCallback(
-    async (suggestionId: string, action: InteractionAction) => {
-      if (!API_URL || !session?.access_token) return
+  const trackEvent = useCallback(
+    (suggestionId: string, action: InteractionAction) => {
+      // Skip duplicate impressions
+      if (action === 'impression') {
+        if (impressedIds.current.has(suggestionId)) return
+        impressedIds.current.add(suggestionId)
+      }
 
-      try {
-        await fetch(`${API_URL}/interact`, {
+      // Fire and forget — no await, no error handling
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const token = session?.access_token
+        if (!token) return
+
+        fetch(`${API_URL}/interact`, {
           method: 'POST',
           headers: {
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ suggestionId, action, tripId }),
-        })
-      } catch {
-        // Fire-and-forget — don't block UI on tracking failures
-      }
+        }).catch(() => {}) // swallow errors
+      })
     },
-    [tripId, session?.access_token],
+    [tripId],
   )
 
-  return { trackInteraction }
+  return { trackEvent }
 }

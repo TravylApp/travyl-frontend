@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:where(.dark *));
 
 :root {
   --background: #FFFFFF;
@@ -21,6 +21,27 @@
   --ocean-primary: var(--primary);
 }
 
+/* Calendar theme tokens - light mode defaults */
+:root {
+  --cal-bg: #f9fafb;
+  --cal-surface: #ffffff;
+  --cal-surface-elevated: #ffffff;
+  --cal-text: #111827;
+  --cal-text-secondary: #6b7280;
+  --cal-text-tertiary: #9ca3af;
+  --cal-border: #e5e7eb;
+  --cal-border-light: #f3f4f6;
+  --cal-accent: #003594;
+  --cal-accent-bg: #EFF4FF;
+  --cal-nav-active-bg: #EFF4FF;
+  --cal-nav-active-text: #003594;
+  --cal-nav-inactive: #9ca3af;
+  --cal-grid-line: #f3f4f6;
+  --cal-grid-line-half: rgba(229, 231, 235, 0.6);
+  --cal-drag-over: #EFF4FF;
+  --cal-hour-text: #9ca3af;
+}
+
 .dark {
   --background: #0c1117;
   --foreground: #e5e7eb;
@@ -39,6 +60,23 @@
   --sand-wash: #2a2622;
   --sand-base: #1c1917;
   --ocean-primary: #0f2a4a;
+  --cal-bg: #0a1520;
+  --cal-surface: #0a1520;
+  --cal-surface-elevated: #0f1a28;
+  --cal-text: #f5efe8;
+  --cal-text-secondary: #4a7ab5;
+  --cal-text-tertiary: #6b8aa8;
+  --cal-border: rgba(30, 58, 95, 0.3);
+  --cal-border-light: rgba(30, 58, 95, 0.15);
+  --cal-accent: #4a7ab5;
+  --cal-accent-bg: rgba(0, 53, 148, 0.35);
+  --cal-nav-active-bg: rgba(0, 53, 148, 0.35);
+  --cal-nav-active-text: #ffffff;
+  --cal-nav-inactive: #4a7ab5;
+  --cal-grid-line: rgba(30, 58, 95, 0.15);
+  --cal-grid-line-half: rgba(30, 58, 95, 0.1);
+  --cal-drag-over: rgba(0, 53, 148, 0.15);
+  --cal-hour-text: rgba(74, 122, 181, 0.7);
 }
 
 @variant dark (&:where(.dark, .dark *));
