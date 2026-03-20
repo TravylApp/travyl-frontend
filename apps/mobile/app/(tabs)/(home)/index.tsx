@@ -124,7 +124,7 @@ function AnimatedCounter({
   }, [trigger, value, suffix, decimals]);
 
   return (
-    <Text style={{ fontSize: 28, fontWeight: '700', color: '#2a1f17', marginBottom: 2 }}>
+    <Text style={{ fontSize: 28, fontWeight: '700', fontFamily: 'Lustria-Regular', color: '#2a1f17', marginBottom: 2 }}>
       {display}
     </Text>
   );
@@ -354,12 +354,14 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInUp.duration(600)}>
           <Text
             style={{
-              fontSize: 28,
+              fontSize: 30,
               fontWeight: '800',
-              color: '#1e3a5f',
+              fontFamily: 'Lustria-Regular',
+              color: '#fff',
               textAlign: 'center',
               marginBottom: 8,
-              textShadowColor: 'rgba(255,255,255,0.6)',
+              letterSpacing: 0.5,
+              textShadowColor: 'rgba(0,0,0,0.5)',
               textShadowOffset: { width: 0, height: 2 },
               textShadowRadius: 12,
             }}
@@ -498,7 +500,7 @@ export default function HomeScreen() {
                 marginBottom: 16,
               }}
             >
-              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'Lustria-Regular', color: colors.text }}>
                 Your Recent Trips
               </Text>
               <Pressable
@@ -526,7 +528,7 @@ export default function HomeScreen() {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={{ fontWeight: '600', fontSize: 16, color: colors.text }}>
+                    <Text style={{ fontWeight: '600', fontSize: 16, fontFamily: 'Lustria-Regular', color: colors.text }}>
                       {trip.title}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
@@ -612,7 +614,7 @@ export default function HomeScreen() {
             >
               <PaperPlane size={32} color={Blue[600]} style={{ transform: [{ rotate: '-12deg' }] }} />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'Lustria-Regular', color: colors.text, marginBottom: 8, textAlign: 'center' }}>
               No trips yet
             </Text>
             <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 24, paddingHorizontal: 16 }}>

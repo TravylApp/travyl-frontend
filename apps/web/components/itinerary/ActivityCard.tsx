@@ -17,7 +17,7 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
   const hasImage = !!(activity as any).image && !imgError;
 
   return (
-    <div className="rounded-[14px] bg-white border border-gray-200 overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.02]" onClick={onClick}>
+    <div className="rounded-[14px] bg-white dark:bg-[var(--muted)] border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.02]" onClick={onClick}>
       {/* Image section */}
       <div className="relative h-[150px] overflow-hidden" style={{ backgroundColor: typeColor.bg }}>
         {hasImage ? (
@@ -61,18 +61,18 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
       </div>
 
       {/* Info bar */}
-      <div className="flex items-center justify-between px-3 py-2.5 bg-white">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[var(--muted)]">
         <div className="flex items-center gap-2.5">
           {activity.timeDisplay && (
             <div className="flex items-center gap-1">
-              <Clock size={11} className="text-gray-400" />
-              <span className="text-xs text-gray-600">{activity.timeDisplay}</span>
+              <Clock size={11} className="text-gray-400 dark:text-gray-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-300">{activity.timeDisplay}</span>
             </div>
           )}
         </div>
         <div className="flex items-center gap-2.5">
           {activity.costDisplay && (
-            <span className="text-[13px] font-bold text-gray-900">{activity.costDisplay}</span>
+            <span className="text-[13px] font-bold text-gray-900 dark:text-gray-100">{activity.costDisplay}</span>
           )}
         </div>
       </div>
