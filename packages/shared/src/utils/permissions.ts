@@ -17,8 +17,9 @@ export function canEditTrip(trip: Trip, userId: string | null): boolean {
 }
 
 export function canForkTrip(trip: Trip, userId: string | null): boolean {
+  if (!userId) return false
   if (isTripOwner(trip, userId)) return false
-  return trip.visibility === 'public'
+  return trip.visibility !== 'private'
 }
 
 export function canMakePublic(trip: Trip, userId: string | null): boolean {
