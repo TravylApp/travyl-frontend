@@ -35,6 +35,7 @@ import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { ShareModal } from './sharing/ShareModal'
+import { ForkAttribution } from '../trip/ForkAttribution'
 import { inviteCollaborator } from '@travyl/shared'
 import type { CollaboratorRole } from '@travyl/shared'
 
@@ -371,6 +372,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             onClose={() => setShareModalOpen(false)}
             onInvite={handleInvite}
           />
+        )}
+
+        {trip?.forked_from_trip_id && (
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0f1a28]">
+            <ForkAttribution trip={trip} />
+          </div>
         )}
 
         {/* Grid area */}
