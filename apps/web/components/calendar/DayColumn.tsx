@@ -101,6 +101,12 @@ export function DayColumn({
 
   const handleMouseUp = (e: React.MouseEvent) => {
     if (!mouseDownPos.current || !onCreateActivity) return
+    // Only create an activity when clicking directly on the empty grid,
+    // not when clicking on a child element (EventBlock, PostItNote, etc.)
+    if (e.target !== e.currentTarget) {
+      mouseDownPos.current = null
+      return
+    }
     const dx = Math.abs(e.clientX - mouseDownPos.current.x)
     const dy = Math.abs(e.clientY - mouseDownPos.current.y)
     mouseDownPos.current = null
