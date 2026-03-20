@@ -15,6 +15,9 @@ interface UseCalendarCommandsInput {
   tripStartDate: Date
   onAddEvent: () => void
   onOpenPalette: () => void
+  marqueeSelectedIds?: Set<string>
+  onBulkDelete?: () => void
+  onBulkDuplicate?: () => void
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -34,6 +37,9 @@ export function useCalendarCommands({
   tripStartDate,
   onAddEvent,
   onOpenPalette,
+  marqueeSelectedIds,
+  onBulkDelete,
+  onBulkDuplicate,
 }: UseCalendarCommandsInput): Command[] {
   return useMemo<Command[]>(() => {
     const hasSelection = selectedActivity !== null
@@ -65,7 +71,7 @@ export function useCalendarCommands({
         label: 'Delete Activity',
         group: 'edit',
         shortcut: { key: 'Delete', display: 'Del' },
-        isEnabled: hasSelection,
+        isEnabled: hasSelection && (marqueeSelectedIds?.size ?? 0) === 0,
         execute: () => { if (hasSelection) removeActivity(id) },
       },
       {
@@ -73,8 +79,25 @@ export function useCalendarCommands({
         label: 'Duplicate Activity',
         group: 'edit',
         shortcut: { key: 'd', meta: true, display: 'Ctrl D' },
-        isEnabled: hasSelection,
+        isEnabled: hasSelection && (marqueeSelectedIds?.size ?? 0) === 0,
         execute: () => { if (selectedActivity) duplicateActivity(selectedActivity) },
+      },
+      // ── Bulk Edit (marquee) ─────────────────────────────────────
+      {
+        id: 'bulk-delete',
+        label: 'Delete Selected Activities',
+        group: 'edit',
+        shortcut: { key: 'Delete', display: 'Del' },
+        isEnabled: (marqueeSelectedIds?.size ?? 0) > 0,
+        execute: () => { if (onBulkDelete) onBulkDelete() },
+      },
+      {
+        id: 'bulk-duplicate',
+        label: 'Duplicate Selected Activities',
+        group: 'edit',
+        shortcut: { key: 'd', meta: true, display: 'Ctrl D' },
+        isEnabled: (marqueeSelectedIds?.size ?? 0) > 0,
+        execute: () => { if (onBulkDuplicate) onBulkDuplicate() },
       },
 
       // ── Activity ──────────────────────────────────────────────
@@ -198,5 +221,6 @@ export function useCalendarCommands({
     moveActivity, removeActivity, updateActivity, duplicateActivity,
     onViewModeChange, selectDay, tripDays, tripStartDate,
     onAddEvent, onOpenPalette,
+    marqueeSelectedIds, onBulkDelete, onBulkDuplicate,
   ])
 }
