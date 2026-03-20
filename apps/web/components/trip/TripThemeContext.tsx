@@ -76,16 +76,7 @@ export function TripThemeProvider({
   const [customColor, setCustomColor] = useState<string | null>(initialCustomColor ?? null);
   const [tabColorOverrides, setTabColorOverrides] = useState<Record<string, string>>({});
   const [itineraryColorOverrides, setItineraryColorOverrides] = useState<Record<string, string>>({});
-  const [hiddenTabs, setHiddenTabs] = useState<Record<string, boolean>>({
-    hotels: true,
-    flights: true,
-    restaurants: true,
-    activities: true,
-    packing: true,
-    budget: true,
-    cars: true,
-    favorites: true,
-  });
+  const [hiddenTabs, setHiddenTabs] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
 
   // After mount, restore persisted state from localStorage

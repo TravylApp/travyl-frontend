@@ -2,7 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useAuthStore } from '@travyl/shared';
+import { useAuthStore, configureSupabase } from '@travyl/shared';
+import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -19,6 +20,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((s) => s.initialize);
 
   useEffect(() => {
+    // Swap in the cookie-based client before initializing auth
+    configureSupabase(getSupabaseBrowser());
     const unsubscribe = initialize();
     return unsubscribe;
   }, [initialize]);

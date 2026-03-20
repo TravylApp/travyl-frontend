@@ -163,9 +163,9 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-gray-200 dark:border-[#1e3a5f]/30 text-gray-500 dark:text-[#4a7ab5] select-none',
+          'text-center text-xs font-medium py-1 border-b border-[var(--cal-border)] text-[var(--cal-text-secondary)] select-none',
           onClickDayHeader
-            ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/25 transition-colors'
+            ? 'cursor-pointer hover:bg-[var(--cal-border-light)] transition-colors'
             : '',
         ].join(' ')}
         onClick={onClickDayHeader}
@@ -197,13 +197,13 @@ export function DayColumn({
                   marginLeft: i === 0 ? 0 : '-4px',
                   zIndex: 3 - i,
                 }}
-                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-white dark:ring-[#0a1520]"
+                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-[var(--cal-surface)]"
               >
                 {c.avatarInitial}
               </div>
             ))}
             {dayCollaborators.length > 3 && (
-              <span className="text-[9px] text-gray-400 ml-1">
+              <span className="text-[9px] text-[var(--cal-text-tertiary)] ml-1">
                 +{dayCollaborators.length - 3}
               </span>
             )}
@@ -215,8 +215,8 @@ export function DayColumn({
       <div
         ref={setNodeRef}
         className={[
-          'relative flex-1 border-l border-gray-200 dark:border-[#1e3a5f]/20',
-          isOver ? 'bg-[#EFF4FF] dark:bg-[#003594]/15' : '',
+          'relative flex-1 border-l border-[var(--cal-border-light)]',
+          isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
         style={{ height: hourCount * HOUR_HEIGHT }}
         onMouseDown={handleMouseDown}
@@ -226,7 +226,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={hour}
-            className="absolute w-full border-t border-gray-100 dark:border-[#1e3a5f]/15 pointer-events-none"
+            className="absolute w-full border-t border-[var(--cal-grid-line)] pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT }}
           />
         ))}
@@ -235,7 +235,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-gray-100/60 dark:border-[#1e3a5f]/10 pointer-events-none"
+            className="absolute w-full border-t border-dashed border-[var(--cal-grid-line-half)] pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
           />
         ))}
@@ -284,7 +284,7 @@ export function DayColumn({
             : `${COLUMN_OUTER_PAD}px + ${layout.column} * (${colWidth} + ${COLUMN_GAP}px)`
           return (
             <div
-              className="absolute rounded-md border-2 border-dashed border-blue-400 dark:border-blue-500 bg-blue-100/30 dark:bg-blue-500/15 pointer-events-none"
+              className="absolute rounded-md border-2 border-dashed border-blue-400 bg-blue-100/30 pointer-events-none"
               style={{
                 top: (pendingActivity.startHour - timeRange.startHour) * HOUR_HEIGHT,
                 height: Math.max(pendingActivity.duration * HOUR_HEIGHT - 2, 20),

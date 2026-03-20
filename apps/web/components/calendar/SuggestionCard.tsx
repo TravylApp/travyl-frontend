@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
@@ -7,14 +8,19 @@ import type { SuggestionCard as SuggestionCardType } from './types'
 
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
+  onVisible?: () => void
 }
 
-export function SuggestionCard({ suggestion }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `suggestion-${suggestion.id}`,
       data: { type: 'suggestion' as const, suggestion },
     })
+
+  useEffect(() => {
+    onVisible?.()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),

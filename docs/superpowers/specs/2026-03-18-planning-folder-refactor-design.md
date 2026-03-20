@@ -114,6 +114,8 @@ The planning file tracks: goal, completed work, known issues, and links to Linea
 3. Delete root `PLANNING.md`
 4. Update `CLAUDE.md` with new instructions
 
+**Note:** Active branches without planning content (e.g., TRA-203) will have their planning files created when work starts on them.
+
 ## Benefits
 
 - **O(1) lookup** — Find plan by issue ID directly
