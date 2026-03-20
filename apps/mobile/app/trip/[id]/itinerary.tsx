@@ -10,10 +10,12 @@ import {
   MOCK_HOTEL_DETAIL,
   MOCK_DISCOVER_ACTIVITIES,
   MOCK_DESTINATION_COORDS,
+  GLANCE_HERO_IMAGES,
   adjustBrightness,
+  getActivityTypeColor,
+  TIME_OF_DAY_CONFIG,
 } from '@travyl/shared';
 import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
-import { getActivityTypeColor, TIME_OF_DAY_CONFIG } from '@travyl/shared';
 import MapView, { Marker } from 'react-native-maps';
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
@@ -117,22 +119,7 @@ function CollapsibleSection({ title, icon, accent, count, defaultOpen = false, c
 }
 
 // ─── Draggable Map Sheet ─────────────────────────────────
-// Snap points: PEEK (just handle + header), DEFAULT (map visible), EXPANDED (near full screen)
 const SCREEN_H = Dimensions.get('window').height;
-const SHEET_PEEK = 44;        // drag handle + header row
-const SHEET_DEFAULT = 320;    // map + header
-const SHEET_EXPANDED = Math.round(SCREEN_H * 0.75);
-const SNAP_POINTS = [0, SHEET_PEEK, SHEET_DEFAULT, SHEET_EXPANDED];
-
-function snapTo(value: number): number {
-  let best = SNAP_POINTS[0];
-  let bestDist = Math.abs(value - best);
-  for (const p of SNAP_POINTS) {
-    const d = Math.abs(value - p);
-    if (d < bestDist) { best = p; bestDist = d; }
-  }
-  return best;
-}
 
 // Route color palette
 const ROUTE_COLORS = [
@@ -377,7 +364,7 @@ function DayMap({ todayActivities, allActivities, onClose }: {
               shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
             }}>
               <FontAwesome name="map-marker" size={12} color={ACCENT} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
                 {markers.length} {markers.length === 1 ? 'stop' : 'stops'}
               </Text>
             </View>
@@ -618,12 +605,12 @@ function DayMap({ todayActivities, allActivities, onClose }: {
 
 // ─── MobileCalendarView ─────────────────────────────────────
 
+const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
+
 function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedDayIndex: number }) {
   const colors = useThemeColors();
   const selectedDay = days[selectedDayIndex];
   if (!selectedDay) return null;
-
-  const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
 
   // Collect all activities from all time groups
   const allActivities = selectedDay.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
@@ -720,7 +707,6 @@ function SkeletonActivityCard() {
 }
 
 function SkeletonTimeSection({ icon }: { icon: string }) {
-  const colors = useThemeColors();
   return (
     <View style={{ marginBottom: 14 }}>
       <View
@@ -1317,7 +1303,7 @@ function ReminderRow({ icon, text }: { icon: string; text: string }) {
 // ─── Browse/Add Constants ───────────────────────────────────
 
 const ADD_CATEGORIES = ['All', 'Tours', 'Museums', 'Restaurants', 'Sightseeing', 'Nightlife'];
-const TIME_TO_HOUR: Record<string, number> = { morning: 9, afternoon: 13, evening: 19, latenight: 22 };
+
 
 // ─── BrowseActivityPanel ────────────────────────────────────
 
@@ -1536,182 +1522,123 @@ function BrowseActivityPanel({
 
 // ─── Main Screen ────────────────────────────────────────────
 
-// ─── FontAwesome icon mapping for time-of-day ─────────────────
-const TOD_FA_ICONS: Record<string, string> = {
-  sun: 'sun-o',
-  sunset: 'sun-o',
-  moon: 'moon-o',
-  sparkles: 'star',
-};
 
-// ─── FontAwesome icon mapping for activity categories ──────────
-const CAT_FA_ICONS: Record<string, string> = {
-  sightseeing: 'eye',
-  landmark: 'camera',
-  tour: 'compass',
-  dining: 'cutlery',
-  food: 'cutlery',
-  outdoor: 'tree',
-  cultural: 'university',
-  shopping: 'shopping-bag',
-  nightlife: 'music',
-  wellness: 'heartbeat',
-  transport: 'bus',
-};
+// ─── View Toggle (single icon button) ─────────────────────────
+function ViewToggle({ mode, onToggle, accent }: { mode: 'glance' | 'detailed'; onToggle: (m: 'glance' | 'detailed') => void; accent: string }) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      onPress={() => onToggle(mode === 'glance' ? 'detailed' : 'glance')}
+      style={{
+        width: 32, height: 32, borderRadius: 8,
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: mode === 'glance' ? accent : colors.cardBackground,
+        borderWidth: mode === 'glance' ? 0 : 1,
+        borderColor: colors.border,
+        marginLeft: 4,
+      }}
+    >
+      <FontAwesome
+        name="list-ul"
+        size={13}
+        color={mode === 'glance' ? '#fff' : colors.textSecondary}
+      />
+    </Pressable>
+  );
+}
 
-// ─── Glance Day Card ───────────────────────────────────────────
-function GlanceDayCard({
-  day,
-  isFirst,
-  isLast,
-  arrivalFlight,
-  returnFlight,
-  hotel,
-  accent,
+// ─── Glance View: selected day card with image at bottom ───
+function GlancePager({
+  days, selectedDayIndex, arrivalFlightNumber, returnFlightNumber,
 }: {
-  day: ItineraryDayViewModel;
-  isFirst: boolean;
-  isLast: boolean;
-  arrivalFlight?: MockFlightDetail;
-  returnFlight?: MockFlightDetail;
-  hotel: MockHotelDetail;
-  accent: string;
+  days: ItineraryDayViewModel[];
+  selectedDayIndex: number;
+  arrivalFlightNumber: string | null;
+  returnFlightNumber: string | null;
 }) {
   const colors = useThemeColors();
+  const day = days[selectedDayIndex];
+  if (!day) return null;
+
+  const heroImg = GLANCE_HERO_IMAGES[selectedDayIndex % GLANCE_HERO_IMAGES.length];
+  const isFirstDay = selectedDayIndex === 0;
+  const isLastDay = selectedDayIndex === days.length - 1;
 
   return (
-    <View style={{ borderRadius: 14, borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden' }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Day header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        backgroundColor: accent,
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{
-            width: 28, height: 28, borderRadius: 8,
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{day.dayNumber}</Text>
-          </View>
+      <View style={{ paddingHorizontal: 20, paddingTop: 14, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{day.dayLabel}</Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{day.dateLabel}</Text>
+            <Text style={{
+              fontSize: 9, fontWeight: '700', letterSpacing: 2.5,
+              textTransform: 'uppercase', color: '#c8a96a', marginBottom: 2,
+            }}>
+              {day.dateLabel}
+            </Text>
+            <Text style={{
+              fontSize: 24, fontWeight: '700', color: colors.text, fontFamily: 'Lustria-Regular',
+            }}>
+              {day.dayLabel}
+            </Text>
           </View>
+          <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+            {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
+          </Text>
         </View>
-        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>
-          {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
-        </Text>
       </View>
 
-      {/* Day content — compact timeline */}
-      <View style={{ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.surface }}>
-        {/* Arrival flight */}
-        {isFirst && arrivalFlight && (
+      {/* Activity timeline */}
+      <View style={{ paddingHorizontal: 20 }}>
+        {isFirstDay && arrivalFlightNumber && (
           <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            marginBottom: 8, paddingBottom: 8,
+            borderBottomWidth: 1, borderBottomColor: colors.borderLight,
           }}>
-            <FontAwesome name="plane" size={13} color="#16a34a" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
-                Arrive — {arrivalFlight.flightNumber}
-              </Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{arrivalFlight.arrivalTime}</Text>
-            </View>
-            <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#16a34a' }}>Booked</Text>
-            </View>
+            <FontAwesome name="plane" size={11} color="#4ade80" />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
+              Arrive — {arrivalFlightNumber}
+            </Text>
           </View>
         )}
 
-        {/* Hotel check-in */}
-        {isFirst && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-          }}>
-            <FontAwesome name="building-o" size={13} color="#2563eb" />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text, flex: 1 }}>{hotel.name}</Text>
-            <Text style={{ fontSize: 11, color: colors.textTertiary }}>Check-in</Text>
-          </View>
-        )}
-
-        {/* Time groups */}
-        {day.timeGroups.map((group) => {
+        {day.timeGroups.map((group, gi) => {
           const config = TIME_OF_DAY_CONFIG[group.timeOfDay as keyof typeof TIME_OF_DAY_CONFIG];
-          const faIcon = TOD_FA_ICONS[config.icon] ?? 'sun-o';
-
           return (
-            <View key={group.timeOfDay}>
-              {/* Time-of-day label */}
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 8,
-                paddingTop: 10, paddingBottom: 4,
+            <View key={group.timeOfDay} style={{ marginBottom: gi < day.timeGroups.length - 1 ? 10 : 0 }}>
+              <Text style={{
+                fontSize: 8, fontWeight: '700', letterSpacing: 2,
+                textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.7,
               }}>
-                <FontAwesome name={faIcon as any} size={11} color={accent} />
-                <Text style={{
-                  fontSize: 11, fontWeight: '700', color: accent,
-                  textTransform: 'uppercase', letterSpacing: 1,
-                }}>
-                  {config.label}
-                </Text>
-                <View style={{ flex: 1, height: 1, backgroundColor: colors.borderLight }} />
-              </View>
-
-              {/* Activities */}
+                {config.label}
+              </Text>
               {group.activities.map((activity) => {
                 const catColor = getActivityTypeColor(activity.category);
-                const catIcon = CAT_FA_ICONS[activity.category] ?? 'eye';
-
                 return (
-                  <View
-                    key={activity.id}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', gap: 8,
-                      paddingVertical: 6, paddingLeft: 4,
-                    }}
-                  >
-                    {/* Category icon */}
-                    <View style={{
-                      width: 24, height: 24, borderRadius: 6,
-                      alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: catColor.bg, borderWidth: 1, borderColor: catColor.border,
+                  <View key={activity.id} style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    paddingVertical: 4,
+                  }}>
+                    <Text style={{
+                      fontSize: 10, color: colors.textTertiary, width: 52,
+                      fontVariant: ['tabular-nums'],
                     }}>
-                      <FontAwesome name={catIcon as any} size={10} color={catColor.primary} />
-                    </View>
-
-                    {/* Name + location */}
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
-                        {activity.name}
-                      </Text>
-                      {activity.locationName && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
-                          <FontAwesome name="map-marker" size={9} color={colors.textTertiary} />
-                          <Text numberOfLines={1} style={{ fontSize: 11, color: colors.textTertiary }}>
-                            {activity.locationName}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Time + cost */}
-                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                      {activity.startTime && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                          <FontAwesome name="clock-o" size={9} color={colors.textTertiary} />
-                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>{activity.startTime}</Text>
-                        </View>
-                      )}
-                      {activity.costDisplay && (
-                        <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>{activity.costDisplay}</Text>
-                      )}
-                    </View>
+                      {activity.startTime || '—'}
+                    </Text>
+                    <View style={{
+                      width: 5, height: 5, borderRadius: 2.5,
+                      backgroundColor: catColor.primary,
+                    }} />
+                    <Text numberOfLines={1} style={{
+                      fontSize: 13, color: colors.text, flex: 1, fontWeight: '500',
+                    }}>
+                      {activity.name}
+                    </Text>
                   </View>
                 );
               })}
@@ -1719,79 +1646,35 @@ function GlanceDayCard({
           );
         })}
 
-        {/* Return flight */}
-        {isLast && returnFlight && (
+        {isLastDay && returnFlightNumber && (
           <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.borderLight, marginTop: 4,
-          }}>
-            <FontAwesome name="plane" size={13} color="#2563eb" style={{ transform: [{ rotate: '180deg' }] }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
-                Depart — {returnFlight.flightNumber}
-              </Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{returnFlight.departureTime}</Text>
-            </View>
-            <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#16a34a' }}>Booked</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Hotel checkout on last day */}
-        {isLast && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.borderLight,
-          }}>
-            <FontAwesome name="building-o" size={13} color="#2563eb" />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text, flex: 1 }}>{hotel.name}</Text>
-            <Text style={{ fontSize: 11, color: colors.textTertiary }}>Check-out</Text>
-          </View>
-        )}
-
-        {/* Day notes */}
-        {day.notes && (
-          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            marginTop: 8, paddingTop: 8,
             borderTopWidth: 1, borderTopColor: colors.borderLight,
-            paddingTop: 8, marginTop: 4,
           }}>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', lineHeight: 18 }}>
-              {day.notes}
+            <FontAwesome name="plane" size={11} color="#60a5fa" style={{ transform: [{ rotate: '180deg' }] }} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
+              Depart — {returnFlightNumber}
             </Text>
           </View>
         )}
       </View>
-    </View>
-  );
-}
 
-// ─── View Toggle (At a Glance / Detailed) ─────────────────────
-function ViewToggle({ mode, onToggle, accent }: { mode: 'glance' | 'detailed'; onToggle: (m: 'glance' | 'detailed') => void; accent: string }) {
-  return (
-    <View style={{
-      flexDirection: 'row', marginHorizontal: 14, marginTop: 10, marginBottom: 6,
-      borderRadius: 10, backgroundColor: '#f3f4f6', padding: 3,
-    }}>
-      {(['glance', 'detailed'] as const).map((m) => (
-        <Pressable
-          key={m}
-          onPress={() => onToggle(m)}
-          style={{
-            flex: 1, paddingVertical: 7, borderRadius: 8,
-            alignItems: 'center',
-            backgroundColor: mode === m ? accent : 'transparent',
-          }}
-        >
-          <Text style={{
-            fontSize: 12, fontWeight: '600',
-            color: mode === m ? '#fff' : '#6b7280',
-          }}>
-            {m === 'glance' ? 'At a Glance' : 'Detailed'}
+      {/* Destination image card */}
+      <View style={{ marginTop: 16, marginHorizontal: 16, borderRadius: 14, overflow: 'hidden', height: 180 }}>
+        <Image source={{ uri: heroImg }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.5)']}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' }}
+        />
+        <View style={{ position: 'absolute', bottom: 12, left: 14 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', fontFamily: 'Lustria-Regular' }}>
+            {day.dayLabel}
           </Text>
-        </Pressable>
-      ))}
-    </View>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{day.dateLabel}</Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -1799,9 +1682,9 @@ export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { days, selectedDayIndex, setSelectedDayIndex, selectedDay, isLoading, isEmpty } =
+  const { days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
-  const { calendarOpen, setCalendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides } = useContext(TabCtx);
+  const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides } = useContext(TabCtx);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -1813,6 +1696,8 @@ export default function ItineraryScreen() {
 
   // (Map is now a modal overlay — no need to collapse sections)
 
+  const arrivalFlightNumber = flights[0]?.flightNumber ?? null;
+  const returnFlightNumber = flights[1]?.flightNumber ?? null;
   const arrivalFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'arrival');
   const returnFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'return');
 
@@ -1865,7 +1750,7 @@ export default function ItineraryScreen() {
     setAddSearch('');
   }, []);
 
-  const handleAddItem = useCallback((item: DiscoverItem, timeOfDay: string) => {
+  const handleAddItem = useCallback((_item: DiscoverItem, _timeOfDay: string) => {
     setAddingTo(null);
     setAddSearch('');
     setAddCategory('All');
@@ -1946,8 +1831,32 @@ export default function ItineraryScreen() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <DaySelector days={days} selectedIndex={selectedDayIndex} onSelect={setSelectedDayIndex} accentColor={ACCENT} />
         </View>
-        {/* Collapse All */}
+        {/* Quick-add button */}
         {!calendarOpen && (
+          <Pressable
+            onPress={() => {
+              setViewMode('detailed');
+              setAddingTo('morning');
+              setAddCategory('All');
+              setAddSearch('');
+            }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#c8a96a' + '25',
+              borderWidth: 1,
+              borderColor: '#c8a96a' + '40',
+              marginLeft: 4,
+            }}
+          >
+            <FontAwesome name="plus" size={13} color="#c8a96a" />
+          </Pressable>
+        )}
+        {/* Collapse All */}
+        {!calendarOpen && viewMode === 'detailed' && (
           <Pressable
             onPress={toggleCollapseAll}
             style={{
@@ -1967,10 +1876,21 @@ export default function ItineraryScreen() {
             />
           </Pressable>
         )}
+        {/* View Toggle — inline next to collapse button */}
+        {!calendarOpen && (
+          <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
+        )}
       </View>
 
       {calendarOpen ? (
         <MobileCalendarView days={days} selectedDayIndex={selectedDayIndex} />
+      ) : viewMode === 'glance' ? (
+        <GlancePager
+          days={days}
+          selectedDayIndex={selectedDayIndex}
+          arrivalFlightNumber={arrivalFlightNumber}
+          returnFlightNumber={returnFlightNumber}
+        />
       ) : (
       <View style={{ flex: 1, flexDirection: 'column' }}>
         {/* Itinerary content */}
