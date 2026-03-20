@@ -25,8 +25,10 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
+import { CardPopover } from './CardPopover'
 import { DetailPanel } from './DetailPanel'
 import { ForYouPanel } from './ForYouPanel'
+import { formatDuration } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -91,6 +93,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
+
+  const [popoverEventId, setPopoverEventId] = useState<string | null>(null)
+  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
 
   const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
     await addActivity(activity)
@@ -198,6 +203,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     [activities, selectedEventId],
   )
 
+  const popoverActivity = useMemo(
+    () => activities.find((a) => a.id === popoverEventId) ?? null,
+    [activities, popoverEventId],
+  )
+
   // Auto-scroll to first event on mount
   useEffect(() => {
     if (!scrollRef.current) return
@@ -250,8 +260,22 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   if (error) return <CalendarError message={error} />
 
   // Event handlers
-  const handleSelectEvent = (id: string) => {
-    selectEvent(selectedEventId === id ? null : id)
+  const handleClickEvent = (id: string, anchorEl: HTMLElement) => {
+    if (popoverEventId === id) {
+      setPopoverEventId(null)
+      setPopoverAnchor(null)
+      selectEvent(null)
+    } else {
+      setPopoverEventId(id)
+      setPopoverAnchor(anchorEl)
+      selectEvent(id)
+    }
+  }
+
+  const handlePopoverClose = () => {
+    setPopoverEventId(null)
+    setPopoverAnchor(null)
+    selectEvent(null)
   }
 
   const handleCloseDetail = () => selectEvent(null)
@@ -366,7 +390,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       selectedEventId={selectedEventId}
                       timeRange={timeRange}
                       tripStartDate={parsedStartDate}
-                      onSelectEvent={handleSelectEvent}
+                      onClickEvent={handleClickEvent}
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
@@ -389,7 +413,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       selectedEventId={selectedEventId}
                       timeRange={timeRange}
                       tripStartDate={parsedStartDate}
-                      onSelectEvent={handleSelectEvent}
+                      onClickEvent={handleClickEvent}
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
                     />
@@ -479,6 +503,40 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           </div>
         )}
+
+          <CardPopover
+            anchorEl={popoverAnchor}
+            isOpen={!!popoverActivity}
+            onClose={handlePopoverClose}
+            position="right"
+            image={popoverActivity?.image}
+            title={popoverActivity?.title ?? ''}
+            category={popoverActivity?.type ?? ''}
+            rating={popoverActivity?.rating}
+            price={popoverActivity?.price ?? undefined}
+            duration={popoverActivity ? formatDuration(popoverActivity.duration) : undefined}
+            actions={popoverActivity ? [
+              {
+                label: 'Edit',
+                onClick: () => {
+                  const activityId = popoverActivity.id
+                  setPopoverEventId(null)
+                  setPopoverAnchor(null)
+                  selectEvent(activityId)
+                },
+                variant: 'ghost' as const,
+              },
+              {
+                label: 'Delete',
+                onClick: () => {
+                  handleRemoveActivity(popoverActivity.id)
+                  setPopoverEventId(null)
+                  setPopoverAnchor(null)
+                },
+                variant: 'danger' as const,
+              },
+            ] : []}
+          />
       </div>
     </div>
     </div>
