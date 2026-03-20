@@ -10,18 +10,24 @@ import { formatDuration } from './utils'
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
   onVisible?: () => void
+  onClick?: (suggestion: SuggestionCardType, anchorEl: HTMLElement) => void
 }
 
-export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, onVisible, onClick }: SuggestionCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `suggestion-${suggestion.id}`,
       data: { type: 'suggestion' as const, suggestion },
+      activationConstraint: { distance: 5 },
     })
 
   useEffect(() => {
     onVisible?.()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    onClick?.(suggestion, e.currentTarget)
+  }
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -41,6 +47,7 @@ export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
       style={style}
       {...attributes}
       {...listeners}
+      onClick={handleClick}
       className={[
         'group break-inside-avoid mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
         'relative transition-all duration-200',

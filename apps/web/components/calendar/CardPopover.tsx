@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
-import { formatDuration } from './utils'
 
 interface PopoverAction {
   label: string
