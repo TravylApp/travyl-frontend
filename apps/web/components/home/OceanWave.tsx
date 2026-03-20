@@ -19,8 +19,8 @@ export function OceanWave() {
       >
         <defs>
           <linearGradient id="oceanGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="var(--primary)" />
+            <stop offset="0%" stopColor="var(--ocean-primary)" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="var(--ocean-primary)" />
           </linearGradient>
         </defs>
 
@@ -54,7 +54,7 @@ export function OceanWave() {
 
         {/* Sand wash — semi-transparent layer */}
         <motion.path
-          fill="#d4c4a8"
+          fill="var(--sand-wash)"
           opacity={0.35}
           animate={{
             d: [
@@ -68,7 +68,7 @@ export function OceanWave() {
 
         {/* Final sand — blends into footer */}
         <motion.path
-          fill="#e8d5c0"
+          fill="var(--sand-base)"
           animate={{
             d: [
               "M0,130 C200,122 400,138 600,128 C800,118 1000,135 1200,125 L1200,160 L0,160 Z",

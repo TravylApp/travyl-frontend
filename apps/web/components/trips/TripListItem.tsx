@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight } from 'lucide-react';
+import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2 } from 'lucide-react';
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 
@@ -24,6 +25,7 @@ interface TripListItemProps {
 
 export function TripListItem({ trip }: TripListItemProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
+  const [copied, setCopied] = useState(false);
 
   return (
     <Link
@@ -82,8 +84,22 @@ export function TripListItem({ trip }: TripListItemProps) {
         </div>
       </div>
 
-      {/* Chevron */}
-      <div className="shrink-0">
+      {/* Share + Chevron */}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const url = `${window.location.origin}/trip/${trip.id}`;
+            navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          className="p-1.5 rounded-full hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
+          title="Share trip"
+        >
+          <Share2 size={14} className={copied ? 'text-emerald-500' : 'text-gray-400'} />
+        </button>
         <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
       </div>
     </Link>

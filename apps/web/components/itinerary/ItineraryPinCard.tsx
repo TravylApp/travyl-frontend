@@ -75,9 +75,12 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
       className="break-inside-avoid mb-2"
     >
       <div
-        className={`group relative bg-white cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 ${fc.container}`}
+        className={`group relative bg-white dark:bg-[var(--muted)] cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 ${fc.container}`}
         style={{
-          border: item.isBooked ? `2px solid ${accentColor}` : '1px solid #e5e7eb',
+          border: item.isBooked ? `2px solid ${accentColor}` : undefined,
+          borderWidth: item.isBooked ? undefined : 1,
+          borderStyle: item.isBooked ? undefined : 'solid',
+          borderColor: item.isBooked ? undefined : 'var(--border)',
         }}
         onClick={onClick}
       >
@@ -180,15 +183,15 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
 
         {/* Content */}
         <div className="px-2.5 pt-1.5 pb-2">
-          <h3 className="text-[12px] font-semibold text-gray-900 leading-tight line-clamp-1">{item.name}</h3>
+          <h3 className="text-[12px] font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-1">{item.name}</h3>
 
           <div className="flex items-center gap-2 mt-0.5">
-            <div className="flex items-center gap-0.5 text-[10px] text-gray-500">
+            <div className="flex items-center gap-0.5 text-[10px] text-gray-500 dark:text-gray-400">
               <MapPin size={9} />
               <span className="truncate">{item.location}</span>
             </div>
             {item.distance && (
-              <span className="text-[9px] text-gray-400">{item.distance}</span>
+              <span className="text-[9px] text-gray-400 dark:text-gray-500">{item.distance}</span>
             )}
           </div>
 
@@ -199,10 +202,10 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
                 <Star
                   key={i}
                   size={9}
-                  className={i < Math.floor(item.rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}
+                  className={i < Math.floor(item.rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}
                 />
               ))}
-              <span className="text-[10px] text-gray-500 ml-0.5">{item.rating}</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-0.5">{item.rating}</span>
             </div>
 
             {item.isOpen !== undefined && (
@@ -213,33 +216,33 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
           </div>
 
           {item.price && (
-            <div className="text-[11px] font-semibold text-gray-900 mt-1">{item.price}</div>
+            <div className="text-[11px] font-semibold text-gray-900 dark:text-gray-100 mt-1">{item.price}</div>
           )}
 
           {/* Description */}
           {item.description && (
-            <p className="text-[10px] text-gray-600 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>
+            <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>
           )}
 
           {/* Tags */}
           {item.tags && item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {item.tags.slice(0, 3).map(tag => (
-                <span key={tag} className="px-2 py-0.5 rounded-md text-[9px] bg-gray-100 border border-gray-200 text-gray-500">{tag}</span>
+                <span key={tag} className="px-2 py-0.5 rounded-md text-[9px] bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400">{tag}</span>
               ))}
             </div>
           )}
 
           {/* Time display (flat mode) */}
           {flat && item.bookedTime && (
-            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-500">
-              <Clock size={9} className="text-gray-400" />
+            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+              <Clock size={9} className="text-gray-400 dark:text-gray-500" />
               <span>{item.bookedTime}</span>
             </div>
           )}
 
           {/* Compact action row */}
-          <div className="flex items-center justify-between border-t border-gray-100 pt-1.5 mt-1.5">
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-white/[0.06] pt-1.5 mt-1.5">
             {/* Left: Add/Remove button */}
             {item.isBooked && onRemoveFromItinerary ? (
               <button
