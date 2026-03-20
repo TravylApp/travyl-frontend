@@ -305,13 +305,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
-        tripStartDate={parsedStartDate}
-        tripDays={tripTotalDays}
-        currentDay={selectedDayIndex}
-        onSelectDay={(dayIndex) => {
-          selectDay(dayIndex)
-          if (viewMode === 'day') goToDayView(dayIndex)
-        }}
         onNavChange={setActiveNav}
       />
 
