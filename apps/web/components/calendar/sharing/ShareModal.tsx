@@ -49,7 +49,7 @@ export function ShareModal({ trip, isOpen, onClose, onInvite }: ShareModalProps)
 
   const handleCopyLink = async () => {
     const token = await ensureShareLinkToken(trip.id)
-    const url = `${window.location.origin}/t/${token}`
+    const url = `${window.location.origin}/trip/${trip.id}/share/${token}`
     await navigator.clipboard.writeText(url)
   }
 
