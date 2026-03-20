@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Search } from 'iconoir-react'
 import { FOR_YOU_PANEL_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
@@ -25,6 +25,9 @@ export function ForYouPanel({
   const {
     suggestions,
     isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     error,
     searchQuery,
     setSearchQuery,
@@ -33,6 +36,32 @@ export function ForYouPanel({
     filterCategories,
     refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  // Prefetch next page as soon as the current page lands
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasNextPage])
+
+  // Also trigger on scroll — 400px before sentinel becomes visible
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const { trackEvent } = useInteractionTracking(tripId)
 
@@ -114,17 +143,28 @@ export function ForYouPanel({
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3">
         {isLoading ? (
           /* Skeleton loading */
-          <div className="columns-2 gap-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="break-inside-avoid mb-2 rounded-[10px] bg-[var(--cal-border)] animate-pulse"
-                style={{ height: 120 + i * 20 }}
-              />
-            ))}
+          <div className="flex gap-2">
+            <div className="flex-1 flex flex-col gap-2">
+              {[0, 2].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-[10px] bg-[var(--cal-border)] animate-pulse"
+                  style={{ height: 120 + i * 20 }}
+                />
+              ))}
+            </div>
+            <div className="flex-1 flex flex-col gap-2">
+              {[1, 3].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-[10px] bg-[var(--cal-border)] animate-pulse"
+                  style={{ height: 120 + i * 20 }}
+                />
+              ))}
+            </div>
           </div>
         ) : error ? (
           /* Error state */
@@ -151,16 +191,37 @@ export function ForYouPanel({
             )}
           </div>
         ) : (
-          /* Masonry grid */
-          <div className="columns-2 gap-2">
-            {suggestions.map((suggestion) => (
-              <SuggestionCard
-                key={suggestion.id}
-                suggestion={suggestion}
-                onVisible={() => trackEvent(suggestion.id, 'impression')}
-                onClick={handleCardClick}
-              />
-            ))}
+          /* Masonry grid — two explicit flex columns avoid the css columns/overflow-y clipping bug */
+          <div className="flex gap-2">
+            <div className="flex-1 flex flex-col gap-2">
+              {suggestions.filter((_, i) => i % 2 === 0).map((suggestion) => (
+                <SuggestionCard
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  onVisible={() => trackEvent(suggestion.id, 'impression')}
+                  onClick={handleCardClick}
+                />
+              ))}
+            </div>
+            <div className="flex-1 flex flex-col gap-2">
+              {suggestions.filter((_, i) => i % 2 === 1).map((suggestion) => (
+                <SuggestionCard
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  onVisible={() => trackEvent(suggestion.id, 'impression')}
+                  onClick={handleCardClick}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} className="h-4" />
+
+        {isFetchingNextPage && (
+          <div className="flex justify-center py-3">
+            <div className="w-4 h-4 rounded-full border-2 border-[var(--cal-border)] border-t-[var(--cal-accent)] animate-spin" />
           </div>
         )}
       </div>

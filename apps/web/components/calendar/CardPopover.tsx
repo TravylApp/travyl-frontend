@@ -111,13 +111,20 @@ export function CardPopover({
     return () => document.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
+  // Scroll to close — delay listener registration so layout-induced scrolls
+  // (e.g. panel swaps) don't immediately close the popover
   useEffect(() => {
     if (!isOpen) return
     function handleScroll() {
       onClose()
     }
-    document.addEventListener('scroll', handleScroll, { capture: true })
-    return () => document.removeEventListener('scroll', handleScroll, { capture: true })
+    const timer = setTimeout(() => {
+      document.addEventListener('scroll', handleScroll, { capture: true })
+    }, 100)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('scroll', handleScroll, { capture: true })
+    }
   }, [isOpen, onClose])
 
   const tagColor = getActivityColor(category)

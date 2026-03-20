@@ -13,13 +13,13 @@ interface CacheEntry {
 }
 
 export async function getCachedSuggestions(
-  userId: string,
   destination: string,
+  category: string,
 ): Promise<SuggestionCard[] | null> {
   const result = await client.send(
     new GetCommand({
       TableName: Resource.RecommendationCache.name,
-      Key: { pk: `${userId}:${destination}`, sk: 'suggestions' },
+      Key: { pk: `${destination}:${category}`, sk: 'suggestions' },
     }),
   )
 
@@ -30,8 +30,8 @@ export async function getCachedSuggestions(
 }
 
 export async function setCachedSuggestions(
-  userId: string,
   destination: string,
+  category: string,
   suggestions: SuggestionCard[],
   ttlSeconds: number = 1800, // 30 min default
 ): Promise<void> {
@@ -39,7 +39,7 @@ export async function setCachedSuggestions(
     new PutCommand({
       TableName: Resource.RecommendationCache.name,
       Item: {
-        pk: `${userId}:${destination}`,
+        pk: `${destination}:${category}`,
         sk: 'suggestions',
         suggestions,
         expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,

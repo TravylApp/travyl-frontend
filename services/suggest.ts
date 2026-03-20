@@ -1,33 +1,39 @@
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { validateAuth } from './lib/auth'
 import { getCachedSuggestions, setCachedSuggestions } from './lib/cache'
-import { searchPlaces } from './lib/location'
-import { enrichSuggestions } from './lib/foursquare'
+import { searchPlaces } from './lib/serpapi'
 import type { SuggestResponse } from './lib/types'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     const userId = await validateAuth(event.headers.authorization)
     const destination = event.queryStringParameters?.destination
+    const category = event.queryStringParameters?.category ?? 'all'
 
     if (!destination) {
       return { statusCode: 400, body: JSON.stringify({ error: 'destination required' }) }
     }
 
+    console.log('[suggest] destination:', destination, 'category:', category, 'userId:', userId)
+
     // Check cache first
-    const cached = await getCachedSuggestions(userId, destination)
+    const cached = await getCachedSuggestions(destination, category)
     if (cached) {
+      console.log('[suggest] cache hit, returning', cached.length, 'suggestions')
       const response: SuggestResponse = { suggestions: cached, source: 'cache' }
       return { statusCode: 200, body: JSON.stringify(response) }
     }
 
-    // Query Amazon Location Services for POIs, then enrich with Foursquare
-    const basicSuggestions = await searchPlaces(destination, { maxResults: 10 })
-    const suggestions = await enrichSuggestions(basicSuggestions)
+    console.log('[suggest] cache miss, calling SerpAPI')
 
-    // Cache enriched results (30min default TTL)
+    // Search SerpAPI for places matching category
+    const suggestions = await searchPlaces(destination, category, { limit: 10 })
+
+    console.log('[suggest] SerpAPI returned', suggestions.length, 'suggestions')
+
+    // Cache results (30min default TTL)
     if (suggestions.length > 0) {
-      await setCachedSuggestions(userId, destination, suggestions)
+      await setCachedSuggestions(destination, category, suggestions)
     }
 
     const response: SuggestResponse = { suggestions, source: 'fresh' }

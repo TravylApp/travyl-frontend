@@ -1,6 +1,6 @@
 import { cacheTable, placeIndex } from './storage'
 import { bus } from './events'
-import { supabaseServiceRoleKey, supabaseUrl, foursquareApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey } from './secrets'
 
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
@@ -30,21 +30,12 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [cacheTable, supabaseServiceRoleKey, supabaseUrl, foursquareApiKey],
-  environment: {
-    PLACE_INDEX_NAME: placeIndex.indexName,
-  },
-  permissions: [
-    {
-      actions: ['geo:SearchPlaceIndexForText', 'geo:GetPlace'],
-      resources: [placeIndex.indexArn],
-    },
-  ],
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
 api.route('GET /search', {
   handler: 'services/search.handler',
-  link: [supabaseServiceRoleKey, supabaseUrl],
+  link: [supabaseSecretKey, supabaseUrl],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -58,5 +49,5 @@ api.route('GET /search', {
 
 api.route('POST /interact', {
   handler: 'services/interact.handler',
-  link: [bus, supabaseServiceRoleKey, supabaseUrl],
+  link: [bus, supabaseSecretKey, supabaseUrl],
 })

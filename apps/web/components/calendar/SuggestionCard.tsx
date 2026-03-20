@@ -46,22 +46,33 @@ export function SuggestionCard({ suggestion, onVisible, onClick }: SuggestionCar
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       onClick={handleClick}
       className={[
-        'group break-inside-avoid mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
+        'group rounded-[10px] overflow-hidden cursor-pointer',
         'relative transition-all duration-200',
         isDragging ? '' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
       ].join(' ')}
     >
       {/* Image */}
-      <img
-        src={suggestion.imageUrl}
-        alt=""
-        className="w-full block object-cover"
-        style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
-        draggable={false}
-      />
+      {suggestion.imageUrl ? (
+        <img
+          src={suggestion.imageUrl}
+          alt=""
+          className="w-full block object-cover"
+          style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
+          draggable={false}
+        />
+      ) : (
+        <div
+          className="w-full flex items-center justify-center text-2xl"
+          style={{
+            height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10],
+            backgroundColor: tagColor + '33',
+          }}
+        >
+          {suggestion.category.charAt(0).toUpperCase()}
+        </div>
+      )}
 
       {/* Price badge — top left */}
       <div className="absolute top-[7px] left-[7px] bg-black/55 backdrop-blur-[8px] rounded-md px-[7px] py-[2px] text-[11px] font-semibold text-white">
@@ -101,9 +112,13 @@ export function SuggestionCard({ suggestion, onVisible, onClick }: SuggestionCar
         </div>
       </div>
 
-      {/* Hover overlay + drag badge */}
+      {/* Hover overlay */}
       <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-[10px] rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-white text-[11px] font-medium flex items-center gap-[5px]">
+      {/* Drag handle — only this element captures pointer events for dnd */}
+      <div
+        {...listeners}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-[10px] rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-white text-[11px] font-medium flex items-center gap-[5px]"
+      >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="9" cy="6" r="1.5" />
           <circle cx="15" cy="6" r="1.5" />

@@ -10,10 +10,6 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
-    "GooglePlacesApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "InteractionBus": {
       "arn": string
       "name": string
@@ -26,6 +22,10 @@ declare module "sst" {
     "RecommendationCache": {
       "name": string
       "type": "sst.aws.Dynamo"
+    }
+    "SerpApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
     }
     "SupabaseSecretKey": {
       "type": "sst.sst.Secret"
