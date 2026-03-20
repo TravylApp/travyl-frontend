@@ -1,61 +1,48 @@
 'use client'
-import { STORAGE_KEY } from './hooks/useCalendarTheme'
 
 export function CalendarSkeleton() {
-  // Rendered outside CalendarDashboard — read localStorage directly for initial theme (intentionally non-reactive)
-  const isDark =
-    typeof window !== 'undefined' &&
-    localStorage.getItem(STORAGE_KEY) === 'dark'
-
   return (
-    <div
-      className={
-        'flex h-screen overflow-hidden animate-pulse bg-gray-50 dark:bg-[#0a1520]' +
-        (isDark ? ' dark' : '')
-      }
-    >
-      {/* Sidebar placeholder */}
-      <div className="w-60 flex-shrink-0 bg-white dark:bg-[#0f1a28] border-r border-gray-200 dark:border-[#1e3a5f]/30" />
+    <div className="flex h-screen bg-[var(--cal-bg)] text-[var(--cal-text)]">
+      {/* Sidebar skeleton */}
+      <div className="w-14 border-r border-[var(--cal-border)] bg-[var(--cal-surface)] flex flex-col gap-1 p-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="w-10 h-10 rounded-lg bg-[var(--cal-border)] animate-pulse" />
+        ))}
+      </div>
 
-      {/* Main column */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* Header placeholder */}
-        <div className="h-14 bg-white dark:bg-[#0f1a28] border-b border-gray-200 dark:border-[#1e3a5f]/30 flex items-center px-4 gap-4">
-          <div className="h-5 w-40 rounded bg-gray-200 dark:bg-[#1e3a5f]/40" />
-          <div className="ml-auto h-5 w-24 rounded bg-gray-200 dark:bg-[#1e3a5f]/40" />
+      {/* Main area skeleton */}
+      <div className="flex-1 flex flex-col">
+        {/* Header skeleton */}
+        <div className="h-14 border-b border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] flex items-center gap-3 px-4">
+          <div className="w-8 h-8 rounded-lg bg-[var(--cal-border)] animate-pulse" />
+          <div className="w-32 h-4 rounded bg-[var(--cal-border)] animate-pulse" />
+          <div className="w-24 h-8 rounded-lg bg-[var(--cal-border)] animate-pulse" />
+          <div className="flex-1" />
+          <div className="w-8 h-8 rounded-lg bg-[var(--cal-border)] animate-pulse" />
         </div>
 
-        {/* All-day row placeholder */}
-        <div className="h-10 bg-gray-50 dark:bg-[#0a1520] border-b border-gray-200 dark:border-[#1e3a5f]/30" />
-
-        {/* Grid placeholder — 5 columns */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Time gutter placeholder */}
-          <div className="w-16 flex-shrink-0 bg-gray-50 dark:bg-[#0a1520] border-r border-gray-200 dark:border-[#1e3a5f]/30" />
+        {/* Grid skeleton */}
+        <div className="flex-1 flex">
+          {/* Time gutter */}
+          <div className="w-14 border-r border-[var(--cal-border)] flex flex-col pt-0">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-12 pr-3 flex items-start justify-end">
+                <div className="w-6 h-3 rounded bg-[var(--cal-border)] animate-pulse" />
+              </div>
+            ))}
+          </div>
 
           {/* Day columns */}
-          <div className="flex flex-1 min-w-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex flex-col flex-1 min-w-0 border-l border-gray-200 dark:border-[#1e3a5f]/30"
-              >
-                {/* Column header */}
-                <div className="h-7 border-b border-gray-200 dark:border-[#1e3a5f]/30 flex items-center justify-center">
-                  <div className="h-3 w-16 rounded bg-gray-200 dark:bg-[#1e3a5f]/40" />
-                </div>
-
-                {/* Event placeholders */}
-                <div className="relative flex-1 p-1 space-y-2">
+          <div className="flex-1 flex">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex-1 border-r border-[var(--cal-border)] flex flex-col gap-2 p-2">
+                {Array.from({ length: 3 }).map((_, j) => (
                   <div
-                    className="rounded bg-gray-200 dark:bg-[#1e3a5f]/40 mx-1"
-                    style={{ height: 48, marginTop: 60 }}
+                    key={j}
+                    className="rounded-md bg-[var(--cal-border)] animate-pulse"
+                    style={{ height: 40 + j * 20 }}
                   />
-                  <div
-                    className="rounded bg-gray-200 dark:bg-[#1e3a5f]/40 mx-1"
-                    style={{ height: 36, marginTop: 20 }}
-                  />
-                </div>
+                ))}
               </div>
             ))}
           </div>

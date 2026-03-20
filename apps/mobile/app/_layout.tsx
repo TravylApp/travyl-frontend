@@ -52,7 +52,8 @@ export default function RootLayout() {
     'Satoshi-Medium': require('../assets/fonts/Satoshi-Medium.ttf'),
     'Satoshi-Bold': require('../assets/fonts/Satoshi-Bold.ttf'),
     'Satoshi-Black': require('../assets/fonts/Satoshi-Black.ttf'),
-    ...FontAwesome.font,
+    'Lustria-Regular': require('../assets/fonts/Lustria-Regular.ttf'),
+    FontAwesome: require('../assets/fonts/FontAwesome.ttf'),
   });
 
   useEffect(() => {

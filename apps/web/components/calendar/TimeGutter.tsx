@@ -11,7 +11,7 @@ export function TimeGutter({ timeRange }: TimeGutterProps) {
   return (
     <div className="relative flex-shrink-0 w-14 text-right pr-3">
       {hours.map((hour) => (
-        <div key={hour} className="relative text-xs text-gray-400 dark:text-[#4a7ab5]/70 select-none" style={{ height: HOUR_HEIGHT }}>
+        <div key={hour} className="relative text-xs text-[var(--cal-hour-text)] select-none" style={{ height: HOUR_HEIGHT }}>
           <span className="absolute -top-2 right-3">{formatHourGutter(hour)}</span>
         </div>
       ))}

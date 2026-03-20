@@ -5,14 +5,17 @@ import { FOR_YOU_PANEL_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
 import { useSuggestions } from './hooks/useSuggestions'
 import type { FilterCategory } from './hooks/useSuggestions'
+import { useInteractionTracking } from './hooks/useInteractionTracking'
 
 interface ForYouPanelProps {
   destination: string
+  tripId: string
   scheduledActivityIds?: string[]
 }
 
 export function ForYouPanel({
   destination,
+  tripId,
   scheduledActivityIds,
 }: ForYouPanelProps) {
   const {
@@ -27,23 +30,25 @@ export function ForYouPanel({
     refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
 
+  const { trackEvent } = useInteractionTracking(tripId)
+
   return (
     <aside
       style={{ width: FOR_YOU_PANEL_WIDTH }}
-      className="flex flex-col shrink-0 border-l border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0f1d2e] overflow-hidden"
+      className="flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
       {/* Header */}
-      <div className="p-3.5 pb-3 border-b border-gray-200/50 dark:border-[#1e3a5f]/20">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8] mb-2.5">
+      <div className="p-3.5 pb-3 border-b border-[var(--cal-border-light)]">
+        <h2 className="text-sm font-semibold text-[var(--cal-text)] mb-2.5">
           For You
         </h2>
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-[#1a2d42] border border-gray-200 dark:border-[#1e3a5f] rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 bg-[var(--cal-border-light)] border border-[var(--cal-border)] rounded-lg px-3 py-2">
           <Search
             width={14}
             height={14}
             strokeWidth={1.5}
-            className="shrink-0 text-gray-400 dark:text-[#4a7ab5] opacity-50"
+            className="shrink-0 text-[var(--cal-text-tertiary)] opacity-50"
             aria-hidden="true"
           />
           <input
@@ -51,7 +56,7 @@ export function ForYouPanel({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search activities..."
-            className="flex-1 bg-transparent text-sm text-gray-900 dark:text-[#f5efe8] placeholder-gray-400 dark:placeholder-[#4a7ab5] outline-none"
+            className="flex-1 bg-transparent text-sm text-[var(--cal-text)] placeholder-[var(--cal-text-tertiary)] outline-none"
           />
         </div>
       </div>
@@ -66,7 +71,7 @@ export function ForYouPanel({
               'text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap transition-all border',
               activeFilter === cat
                 ? 'bg-[#003594] border-[#003594] text-white'
-                : 'border-gray-200 dark:border-[#1e3a5f] text-gray-500 dark:text-[#6a8fba] hover:bg-gray-100 dark:hover:bg-[#1a2d42] hover:text-gray-900 dark:hover:text-[#f5efe8]',
+                : 'border-[var(--cal-border)] text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]',
             ].join(' ')}
           >
             {cat}
@@ -75,7 +80,7 @@ export function ForYouPanel({
       </div>
 
       {/* Section label */}
-      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-gray-400 dark:text-[#4a7ab5] px-3.5 pt-3 pb-1.5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5">
         {searchQuery.trim()
           ? `Results for '${searchQuery}'`
           : `Recommended for ${destination}`}
@@ -89,7 +94,7 @@ export function ForYouPanel({
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="break-inside-avoid mb-2 rounded-[10px] bg-gray-200 dark:bg-[#1a2d42] animate-pulse"
+                className="break-inside-avoid mb-2 rounded-[10px] bg-[var(--cal-border)] animate-pulse"
                 style={{ height: 120 + i * 20 }}
               />
             ))}
@@ -97,23 +102,23 @@ export function ForYouPanel({
         ) : error ? (
           /* Error state */
           <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <p className="text-sm text-gray-500 dark:text-[#4a7ab5]">
+            <p className="text-sm text-[var(--cal-text-secondary)]">
               Couldn&apos;t load suggestions
             </p>
-            <button onClick={() => refetch()} className="text-xs text-[#003594] dark:text-[#4a7dff] hover:underline">
+            <button onClick={() => refetch()} className="text-xs text-[var(--cal-accent)] hover:underline">
               Tap to retry
             </button>
           </div>
         ) : suggestions.length === 0 ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-12 gap-1">
-            <p className="text-sm text-gray-500 dark:text-[#4a7ab5]">
+            <p className="text-sm text-[var(--cal-text-secondary)]">
               {searchQuery.trim()
                 ? `No results for '${searchQuery}'`
                 : 'No suggestions available'}
             </p>
             {searchQuery.trim() && (
-              <p className="text-xs text-gray-400 dark:text-[#4a7ab5]/70">
+              <p className="text-xs text-[var(--cal-text-tertiary)]">
                 Try broader terms
               </p>
             )}
@@ -122,7 +127,11 @@ export function ForYouPanel({
           /* Masonry grid */
           <div className="columns-2 gap-2">
             {suggestions.map((suggestion) => (
-              <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                onVisible={() => trackEvent(suggestion.id, 'impression')}
+              />
             ))}
           </div>
         )}
@@ -130,7 +139,7 @@ export function ForYouPanel({
 
       {/* Footer hint */}
       {suggestions.length > 0 && (
-        <div className="text-center text-[11px] text-gray-400/50 dark:text-[#4a7ab5]/30 py-2.5 border-t border-gray-100 dark:border-[#1e3a5f]/15">
+        <div className="text-center text-[11px] text-[var(--cal-text-tertiary)] py-2.5 border-t border-[var(--cal-border-light)]">
           Drag any card onto the calendar to schedule it
         </div>
       )}
