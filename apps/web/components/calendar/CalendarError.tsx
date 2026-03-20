@@ -1,5 +1,4 @@
 'use client'
-import { STORAGE_KEY } from './hooks/useCalendarTheme'
 
 interface CalendarErrorProps {
   message: string
@@ -7,18 +6,8 @@ interface CalendarErrorProps {
 }
 
 export function CalendarError({ message, onBack }: CalendarErrorProps) {
-  // Rendered outside CalendarDashboard — read localStorage directly for initial theme (intentionally non-reactive)
-  const isDark =
-    typeof window !== 'undefined' &&
-    localStorage.getItem(STORAGE_KEY) === 'dark'
-
   return (
-    <div
-      className={
-        'flex h-screen items-center justify-center bg-gray-50 dark:bg-[#0a1520] text-gray-900 dark:text-[#f5efe8]' +
-        (isDark ? ' dark' : '')
-      }
-    >
+    <div className="flex h-screen items-center justify-center bg-[var(--cal-bg)] text-[var(--cal-text)]">
       <div className="flex flex-col items-center gap-4 text-center max-w-sm px-4">
         <svg
           width="48"
@@ -36,11 +25,11 @@ export function CalendarError({ message, onBack }: CalendarErrorProps) {
             strokeLinecap="round"
           />
         </svg>
-        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
+        <p className="text-sm text-[var(--cal-text-secondary)]">{message}</p>
         {onBack && (
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-sm font-medium text-gray-700 dark:text-white"
+            className="px-4 py-2 rounded bg-[var(--cal-border)] hover:bg-[var(--cal-border-light)] transition-colors text-sm font-medium text-[var(--cal-text)]"
           >
             Go back
           </button>

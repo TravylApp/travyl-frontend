@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import {
@@ -17,7 +18,10 @@ import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
-import { CalendarHeader } from './CalendarHeader'
+import { TripNavbar } from './TripNavbar'
+import { CommandPalette } from './CommandPalette'
+import { useCalendarCommands } from './hooks/useCalendarCommands'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -59,12 +63,14 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
+  const router = useRouter()
 
   // Hooks
   const { trip, tripStartDate, loading: tripLoading, error: tripError } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
-  const { addActivity, updateActivity, moveActivity, removeActivity } = useActivityMutations(tripId, tripStartDate, userId)
-  const { collaborators, setSelectedEvent: setPresenceSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
+  const { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity } = useActivityMutations(tripId, tripStartDate, userId)
+  const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
@@ -76,10 +82,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectDay,
     selectEvent,
     goToDayView,
-    goToWeekView,
   } = useCalendarNavigation()
 
-  const { trackInteraction } = useInteractionTracking(tripId)
+  const { trackEvent } = useInteractionTracking(tripId)
 
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
@@ -92,10 +97,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackInteraction(suggestionId, 'drag')
-  }, [addActivity, selectEvent, trackInteraction])
+    trackEvent(suggestionId, 'drag')
+  }, [addActivity, selectEvent, trackEvent])
 
-  const { sensors, activeId, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     scrollRef,
@@ -117,10 +122,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
   const parsedEndDate = trip ? new Date(trip.end_date + 'T00:00:00Z') : new Date()
-  const tripTotalDays = trip ? Math.round((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) : 0
+  const parsedStartMs = parsedStartDate.getTime()
+  const tripTotalDays = trip ? Math.round((parsedEndDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)) : 0
 
   const TRIP_DAYS = useMemo(() => Array.from({ length: tripTotalDays }, (_, i) => {
-    const date = new Date(parsedStartDate.getTime() + i * 24 * 60 * 60 * 1000)
+    const date = new Date(parsedStartMs + i * 24 * 60 * 60 * 1000)
     return {
       dayIndex: i,
       label: date.toLocaleDateString('en-US', {
@@ -130,7 +136,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         timeZone: 'UTC',
       }),
     }
-  }), [tripTotalDays, parsedStartDate.getTime()])
+  }), [tripTotalDays, parsedStartMs])
 
   // ─── Derive flight banners ────────────────────────────────────
   const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
@@ -151,9 +157,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         const month = months[monthStr]
         const day = parseInt(dayStr, 10)
         if (month !== undefined && !isNaN(day)) {
-          const year = parsedStartDate.getUTCFullYear()
+          const year = new Date(parsedStartMs).getUTCFullYear()
           const flightDate = new Date(Date.UTC(year, month, day))
-          const offset = Math.round((flightDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24))
+          const offset = Math.round((flightDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24))
           dayIndex = Math.max(0, Math.min(tripTotalDays - 1, offset))
         }
       }
@@ -165,7 +171,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         direction,
       }
     })
-  }, [trip, parsedStartDate.getTime(), tripTotalDays])
+  }, [trip, parsedStartMs, tripTotalDays])
 
   // ─── Derive hotel banners ─────────────────────────────────────
   const HOTEL_BANNERS: HotelBanner[] = useMemo(() => {
@@ -173,10 +179,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     return MOCK_HOTELS.map((hotel) => {
       const checkInDate = new Date(hotel.checkIn + 'T00:00:00Z')
       const checkOutDate = new Date(hotel.checkOut + 'T00:00:00Z')
-      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)))
+      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)))
       const endDayIndex = Math.max(
         startDayIndex,
-        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) - 1),
+        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)) - 1),
       )
       return {
         id: hotel.id,
@@ -185,7 +191,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         endDayIndex,
       }
     })
-  }, [trip, parsedStartDate.getTime(), tripTotalDays])
+  }, [trip, parsedStartMs, tripTotalDays])
 
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
@@ -201,6 +207,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     )
     const scrollTop = Math.max(0, (firstEvent - timeRange.startHour - 0.5) * HOUR_HEIGHT)
     scrollRef.current.scrollTop = scrollTop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // intentionally run once on mount
 
   const handleCreateActivity = useCallback((dayIndex: number, startHour: number) => {
@@ -215,6 +222,28 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     addActivity(newActivity)
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
+
+  const commands = useCalendarCommands({
+    selectedActivity,
+    isPaletteOpen,
+    moveActivity,
+    removeActivity,
+    updateActivity,
+    duplicateActivity,
+    onViewModeChange: setViewMode,
+    selectDay,
+    tripDays: TRIP_DAYS,
+    tripStartDate: parsedStartDate,
+    onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
+    onOpenPalette: () => setIsPaletteOpen(true),
+  })
+
+  useKeyboardShortcuts(
+    commands,
+    isPaletteOpen,
+    () => setIsPaletteOpen(false),
+    () => selectEvent(null),
+  )
 
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
@@ -243,14 +272,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }
 
   const handleBack = () => {
-    if (viewMode === 'day') {
-      goToWeekView()
-    }
-    // In week view, back could navigate to trip overview -- no-op for now
+    router.push('/trips')
   }
 
   const handleAddEvent = () => {
-    // TODO: open add-event modal
+    handleCreateActivity(selectedDayIndex ?? 0, 12)
   }
 
   const handleClickDayHeader = (dayIndex: number) => {
@@ -274,7 +300,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
-    <div className={'flex h-screen overflow-hidden bg-gray-50 dark:bg-[#0a1520] text-gray-900 dark:text-[#f5efe8]' + (theme === 'dark' ? ' dark' : '')}>
+    <div className={theme === 'dark' ? 'dark' : ''}>
+    <div className="flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]">
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
@@ -291,16 +318,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
-        <CalendarHeader
+        <TripNavbar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
+          commands={commands}
+          onOpenPalette={() => setIsPaletteOpen(true)}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          onBack={handleBack}
           onAddEvent={handleAddEvent}
+          onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
           onShare={() => {}}
+          selectedActivity={selectedActivity}
+          onDeselect={() => selectEvent(null)}
           theme={theme}
           onToggleTheme={toggleTheme}
           tripDays={TRIP_DAYS}
@@ -379,6 +410,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             ) : (
               <ForYouPanel
                 destination={trip?.destination ?? ''}
+                tripId={trip?.id ?? ''}
                 scheduledActivityIds={droppedSuggestionIds}
               />
             )}
@@ -387,16 +419,16 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           {/* Drag overlay — shows ghost of dragged item */}
           <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
             {activeData?.type === 'suggestion' ? (
-              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
                 <span className="text-lg">{getCategoryIcon(activeData.suggestion.category)}</span>
-                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
                   {activeData.suggestion.name}
                 </span>
               </div>
             ) : activeData?.type === 'activity' ? (
-              <div className="bg-white dark:bg-[#1a2d42] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-gray-200 dark:border-[#1e3a5f]">
+              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
                 <span className="text-lg">{getCategoryIcon(activeData.activity.type)}</span>
-                <span className="font-medium text-sm text-gray-900 dark:text-[#f5efe8] truncate max-w-[150px]">
+                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
                   {activeData.activity.title || 'Untitled'}
                 </span>
               </div>
@@ -449,6 +481,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         )}
       </div>
     </div>
+    </div>
+    <CommandPalette
+      isOpen={isPaletteOpen}
+      onClose={() => setIsPaletteOpen(false)}
+      commands={commands}
+    />
     </CalendarThemeContext.Provider>
   )
 }
