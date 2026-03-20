@@ -11,7 +11,7 @@ export default function MainLayout({
       <Suspense>
         <Navbar />
       </Suspense>
-      <main className="pt-16">{children}</main>
+      <main className="pt-16 bg-background text-foreground transition-colors duration-500">{children}</main>
     </>
   );
 }
