@@ -55,19 +55,20 @@ function mapCategory(categories: FsqCategory[]): SuggestionCard['category'] {
 
 // --- Field mapping ---
 
+const PRICE_MAP: Record<number, number> = { 1: 10, 2: 25, 3: 50, 4: 100 }
+
 function mapPlace(place: FsqSearchPlace, index: number, destination: string): SuggestionCard {
   const photo = place.photos?.[0]
   const imageUrl = photo ? `${photo.prefix}400x300${photo.suffix}` : ''
   const rating = place.rating != null ? Math.round((place.rating / 2) * 10) / 10 : null
-  const priceMap: Record<number, number> = { 1: 10, 2: 25, 3: 50, 4: 100 }
-  const price = place.price != null ? (priceMap[place.price] ?? null) : null
+  const price = place.price != null ? (PRICE_MAP[place.price] ?? null) : null
 
   return {
     id: `fsq-${place.fsq_id}`,
     name: place.name,
     category: mapCategory(place.categories),
     imageUrl,
-    duration: 2,
+    duration: 2, // Foursquare does not provide visit duration data
     price,
     currency: 'USD',
     rating,
@@ -87,7 +88,6 @@ export async function searchPlaces(
   options?: {
     query?: string
     maxResults?: number
-    categories?: string[]
   },
 ): Promise<SuggestionCard[]> {
   const { query, maxResults = 10 } = options ?? {}
@@ -109,11 +109,15 @@ export async function searchPlaces(
       },
     })
 
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error(`[location] Foursquare search failed: ${res.status}`, await res.text().catch(() => ''))
+      return []
+    }
 
     const data: FsqSearchResponse = await res.json()
     return data.results.map((place, i) => mapPlace(place, i, destination))
-  } catch {
+  } catch (err) {
+    console.error('[location] searchPlaces failed:', err)
     return []
   }
 }
