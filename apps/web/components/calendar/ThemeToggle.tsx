@@ -14,7 +14,7 @@ export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
       onClick={onToggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Light mode' : 'Dark mode'}
-      className="flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-[#4a7ab5] dark:hover:bg-[#1e3a5f]/25 dark:hover:text-white transition-colors shrink-0"
+      className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--cal-nav-inactive)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)] transition-colors shrink-0"
     >
       {isDark ? (
         <SunLight width={18} height={18} strokeWidth={1.5} aria-hidden="true" />

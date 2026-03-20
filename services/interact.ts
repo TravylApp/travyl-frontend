@@ -1,5 +1,5 @@
 import { Resource } from 'sst'
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge'
 import { validateAuth } from './lib/auth'
 import type { InteractRequest } from './lib/types'

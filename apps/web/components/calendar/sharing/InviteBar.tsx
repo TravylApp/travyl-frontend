@@ -1,0 +1,49 @@
+'use client'
+
+import { useState } from 'react'
+import type { CollaboratorRole } from '@travyl/shared'
+
+interface InviteBarProps {
+  onInvite: (email: string, role: CollaboratorRole) => void
+  isLoading?: boolean
+}
+
+export function InviteBar({ onInvite, isLoading }: InviteBarProps) {
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<CollaboratorRole>('viewer')
+
+  const handleSubmit = () => {
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return
+    onInvite(trimmed, role)
+    setEmail('')
+  }
+
+  return (
+    <div className="flex gap-2">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+        placeholder="Add people by email..."
+        className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-[#003594]"
+      />
+      <select
+        value={role}
+        onChange={(e) => setRole(e.target.value as CollaboratorRole)}
+        className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-sm text-white/80"
+      >
+        <option value="viewer">Viewer</option>
+        <option value="editor">Editor</option>
+      </select>
+      <button
+        onClick={handleSubmit}
+        disabled={isLoading || !email.trim()}
+        className="rounded-lg bg-[#003594] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        Invite
+      </button>
+    </div>
+  )
+}

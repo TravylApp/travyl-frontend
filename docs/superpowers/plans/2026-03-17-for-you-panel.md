@@ -1,6 +1,6 @@
 # For You Panel + SST Recommendation Engine — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x] `) syntax for tracking.
 
 **Goal:** Build a Pinterest-style "For You" sidebar on the calendar dashboard where users drag AI-powered activity suggestions onto their trip calendar, backed by an SST-deployed AWS recommendation engine.
 
@@ -73,7 +73,7 @@
 - Modify: `packages/shared/src/types/index.ts`
 - Create: `packages/shared/src/config/mockSuggestions.ts`
 
-- [ ] **Step 1: Add SuggestionCard type**
+- [x] **Step 1: Add SuggestionCard type**
 
 In `packages/shared/src/types/index.ts`, add after the `CalendarActivity` interface:
 
@@ -99,7 +99,7 @@ export interface SuggestionCard {
 }
 ```
 
-- [ ] **Step 2: Create mock suggestions**
+- [x]  **Step 2: Create mock suggestions**
 
 Create `packages/shared/src/config/mockSuggestions.ts` with 10 Paris activities. Use Unsplash image URLs matching the mockup (e.g., `https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=300&h=220&fit=crop` for Eiffel Tower). Include a mix of categories: sightseeing, museum, dining, tour, cultural, shopping, nightlife, outdoor. Vary durations (1-3h) and prices (Free to €87).
 
@@ -275,12 +275,12 @@ export const MOCK_SUGGESTIONS: SuggestionCard[] = [
 ]
 ```
 
-- [ ] **Step 3: Run typecheck**
+- [x]  **Step 3: Run typecheck**
 
 Run: `npx tsc --noEmit -p packages/shared/tsconfig.json`
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [x]  **Step 4: Commit**
 
 ```bash
 git add packages/shared/src/types/index.ts packages/shared/src/config/mockSuggestions.ts
@@ -295,7 +295,7 @@ git commit -m "feat: add SuggestionCard type and mock suggestion data"
 - Create: `packages/shared/src/utils/suggestionMapper.ts`
 - Create: `packages/shared/src/utils/suggestionMapper.test.ts`
 
-- [ ] **Step 1: Write the test**
+- [x]  **Step 1: Write the test**
 
 ```typescript
 // packages/shared/src/utils/suggestionMapper.test.ts
@@ -355,12 +355,12 @@ describe('suggestionToCalendarActivity', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x]  **Step 2: Run test to verify it fails**
 
 Run: `npm -w @travyl/shared run test -- suggestionMapper`
 Expected: FAIL — module not found
 
-- [ ] **Step 3: Write the mapper**
+- [x]  **Step 3: Write the mapper**
 
 ```typescript
 // packages/shared/src/utils/suggestionMapper.ts
@@ -395,12 +395,12 @@ export function suggestionToCalendarActivity(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x]  **Step 4: Run test to verify it passes**
 
 Run: `npm -w @travyl/shared run test -- suggestionMapper`
 Expected: 3 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x]  **Step 5: Commit**
 
 ```bash
 git add packages/shared/src/utils/suggestionMapper.ts packages/shared/src/utils/suggestionMapper.test.ts
@@ -415,7 +415,7 @@ git commit -m "feat: add suggestionToCalendarActivity mapper with tests"
 - Modify: `apps/web/components/calendar/constants.ts`
 - Modify: `apps/web/components/calendar/types.ts`
 
-- [ ] **Step 1: Add constant**
+- [x]  **Step 1: Add constant**
 
 In `apps/web/components/calendar/constants.ts`, add:
 
@@ -423,7 +423,7 @@ In `apps/web/components/calendar/constants.ts`, add:
 export const FOR_YOU_PANEL_WIDTH = 340
 ```
 
-- [ ] **Step 2: Re-export SuggestionCard from calendar types**
+- [x]  **Step 2: Re-export SuggestionCard from calendar types**
 
 In `apps/web/components/calendar/types.ts`, add:
 
@@ -431,7 +431,7 @@ In `apps/web/components/calendar/types.ts`, add:
 export type { SuggestionCard } from '@travyl/shared/types'
 ```
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/constants.ts apps/web/components/calendar/types.ts
@@ -445,7 +445,7 @@ git commit -m "feat: add FOR_YOU_PANEL_WIDTH constant and SuggestionCard re-expo
 **Files:**
 - Create: `apps/web/components/calendar/hooks/useSuggestions.ts`
 
-- [ ] **Step 1: Create the hook**
+- [x]  **Step 1: Create the hook**
 
 This hook manages suggestion state: loads mock data, handles search filtering, category filtering. Will be swapped to React Query + API calls later.
 
@@ -560,11 +560,11 @@ export function useSuggestions({
 }
 ```
 
-- [ ] **Step 2: Verify typecheck passes**
+- [x]  **Step 2: Verify typecheck passes**
 
 Run: `npx tsc --noEmit -p apps/web/tsconfig.json`
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/hooks/useSuggestions.ts
@@ -578,7 +578,7 @@ git commit -m "feat: add useSuggestions hook with mock data, search, and categor
 **Files:**
 - Create: `apps/web/components/calendar/SuggestionCard.tsx`
 
-- [ ] **Step 1: Create the component**
+- [x]  **Step 1: Create the component**
 
 Full-image card with overlaid metadata. Uses `useDraggable` from @dnd-kit/core with `data: { type: 'suggestion', suggestion }`.
 
@@ -697,11 +697,11 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
 }
 ```
 
-- [ ] **Step 2: Verify typecheck passes**
+- [x]  **Step 2: Verify typecheck passes**
 
 Run: `npx tsc --noEmit -p apps/web/tsconfig.json`
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/SuggestionCard.tsx
@@ -715,7 +715,7 @@ git commit -m "feat: add SuggestionCard component with full-image masonry layout
 **Files:**
 - Create: `apps/web/components/calendar/ForYouPanel.tsx`
 
-- [ ] **Step 1: Create the panel**
+- [x]  **Step 1: Create the panel**
 
 Shell component: header with search box, filter chips, masonry grid of SuggestionCards, loading/error/empty states.
 
@@ -861,11 +861,11 @@ export function ForYouPanel({
 }
 ```
 
-- [ ] **Step 2: Verify typecheck passes**
+- [x]  **Step 2: Verify typecheck passes**
 
 Run: `npx tsc --noEmit -p apps/web/tsconfig.json`
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/ForYouPanel.tsx
@@ -881,7 +881,7 @@ git commit -m "feat: add ForYouPanel with masonry grid, search, filter chips, an
 **Files:**
 - Modify: `apps/web/components/calendar/EventBlock.tsx:29-32`
 
-- [ ] **Step 1: Update drag data**
+- [x]  **Step 1: Update drag data**
 
 In `EventBlock.tsx`, change line 31 from:
 
@@ -897,11 +897,11 @@ to:
 
 This adds the type discriminator so `handleDragEnd` can distinguish activity moves from suggestion drops.
 
-- [ ] **Step 2: Verify typecheck and existing drag still works**
+- [x]  **Step 2: Verify typecheck and existing drag still works**
 
 Run: `npx tsc --noEmit -p apps/web/tsconfig.json`
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/EventBlock.tsx
@@ -915,7 +915,7 @@ git commit -m "feat: add type discriminator to EventBlock drag data"
 **Files:**
 - Modify: `apps/web/components/calendar/hooks/useCalendarDnd.ts`
 
-- [ ] **Step 1: Update the hook**
+- [x]  **Step 1: Update the hook**
 
 Replace the entire file content with:
 
@@ -1029,11 +1029,11 @@ export function useCalendarDnd({
 }
 ```
 
-- [ ] **Step 2: Verify typecheck passes**
+- [x]  **Step 2: Verify typecheck passes**
 
 Run: `npx tsc --noEmit -p apps/web/tsconfig.json`
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/hooks/useCalendarDnd.ts
@@ -1056,7 +1056,7 @@ This is the largest single change. Key modifications:
 4. Wire `onAddFromSuggestion` into the dnd hook
 5. Switch right column between ForYouPanel and DetailPanel
 
-- [ ] **Step 1: Add imports**
+- [x]  **Step 1: Add imports**
 
 At the top of CalendarDashboard.tsx, add:
 
@@ -1064,7 +1064,7 @@ At the top of CalendarDashboard.tsx, add:
 import { ForYouPanel } from './ForYouPanel'
 ```
 
-- [ ] **Step 2: Add state for tracking dropped suggestion IDs**
+- [x]  **Step 2: Add state for tracking dropped suggestion IDs**
 
 After the existing hook calls, add:
 
@@ -1072,7 +1072,7 @@ After the existing hook calls, add:
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
 ```
 
-- [ ] **Step 3: Update useCalendarDnd call**
+- [x]  **Step 3: Update useCalendarDnd call**
 
 Change the existing `useCalendarDnd` call (around line 62) to pass `scrollRef`, `timeRangeStartHour`, and the new `onAddFromSuggestion` callback:
 
@@ -1091,7 +1091,7 @@ Change the existing `useCalendarDnd` call (around line 62) to pass `scrollRef`, 
   })
 ```
 
-- [ ] **Step 4: Add right panel state**
+- [x]  **Step 4: Add right panel state**
 
 After the `useCalendarNavigation` hook, add:
 
@@ -1100,7 +1100,7 @@ After the `useCalendarNavigation` hook, add:
   const rightPanel = selectedEventId ? 'detail' : 'for-you'
 ```
 
-- [ ] **Step 5: Add DragOverlay import**
+- [x]  **Step 5: Add DragOverlay import**
 
 Add to the imports at the top:
 
@@ -1110,7 +1110,7 @@ import { DndContext, DragOverlay } from '@dnd-kit/core'
 
 (Remove the existing `import { DndContext } from '@dnd-kit/core'` if present.)
 
-- [ ] **Step 6: Restructure the JSX — hoist DndContext, add right column, add DragOverlay**
+- [x]  **Step 6: Restructure the JSX — hoist DndContext, add right column, add DragOverlay**
 
 Replace the grid area section (from the `{activeNav === 'calendar' ? (` block through the closing `)}`) with the restructured version that:
 - Moves `DndContext` outside the scrollable grid to wrap both grid + right column
@@ -1211,7 +1211,7 @@ The key structural change:
 )}
 ```
 
-- [ ] **Step 7: Wire restore-on-delete — suggestion reappears when activity is removed**
+- [x]  **Step 7: Wire restore-on-delete — suggestion reappears when activity is removed**
 
 Update the `handleRemoveActivity` function to also remove the suggestion ID from the tracked list:
 
@@ -1246,7 +1246,7 @@ Update `handleRemoveActivity` to restore the suggestion:
   }
 ```
 
-- [ ] **Step 8: Verify the app runs**
+- [x]  **Step 8: Verify the app runs**
 
 Run: `npm -w @travyl/web run dev`
 Open a trip page. Verify:
@@ -1259,7 +1259,7 @@ Open a trip page. Verify:
 - The dragged suggestion disappears from the ForYou panel
 - Hover over a suggestion card shows the "Drag to schedule" badge
 
-- [ ] **Step 9: Commit**
+- [x]  **Step 9: Commit**
 
 ```bash
 git add apps/web/components/calendar/CalendarDashboard.tsx
@@ -1276,13 +1276,13 @@ git commit -m "feat: integrate ForYouPanel into CalendarDashboard with DndContex
 - Create: `sst.config.ts`
 - Modify: `package.json` (if needed for workspaces)
 
-- [ ] **Step 1: Install SST**
+- [x]  **Step 1: Install SST**
 
 Run: `npx sst@latest init`
 
 Follow the prompts. This creates `sst.config.ts` at the repo root. If it asks about framework, select "Other" (we'll configure Next.js manually).
 
-- [ ] **Step 2: Configure sst.config.ts**
+- [x]  **Step 2: Configure sst.config.ts**
 
 Replace the generated `sst.config.ts` with:
 
@@ -1311,7 +1311,7 @@ export default $config({
 })
 ```
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add sst.config.ts
@@ -1325,7 +1325,7 @@ git commit -m "feat: initialize SST v3 in monorepo root"
 **Files:**
 - Create: `infra/secrets.ts`
 
-- [ ] **Step 1: Create secrets file**
+- [x]  **Step 1: Create secrets file**
 
 ```typescript
 // infra/secrets.ts
@@ -1334,7 +1334,7 @@ export const supabaseServiceRoleKey = new sst.Secret('SupabaseServiceRoleKey')
 export const supabaseUrl = new sst.Secret('SupabaseUrl')
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add infra/secrets.ts
@@ -1348,7 +1348,7 @@ git commit -m "feat: add SST secrets for API keys"
 **Files:**
 - Create: `infra/storage.ts`
 
-- [ ] **Step 1: Create storage definitions**
+- [x]  **Step 1: Create storage definitions**
 
 ```typescript
 // infra/storage.ts
@@ -1378,7 +1378,7 @@ export const cdn = new sst.aws.Router('ActivityCdn', {
 // incurring costs before the catalog ingestion pipeline is ready.
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add infra/storage.ts
@@ -1392,7 +1392,7 @@ git commit -m "feat: add SST storage resources — DynamoDB cache, S3, CloudFron
 **Files:**
 - Create: `infra/events.ts`
 
-- [ ] **Step 1: Create events definition**
+- [x]  **Step 1: Create events definition**
 
 ```typescript
 // infra/events.ts
@@ -1403,7 +1403,7 @@ export const bus = new sst.aws.Bus('InteractionBus')
 // bus.subscribe('services/handle-interaction.handler')
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add infra/events.ts
@@ -1417,7 +1417,7 @@ git commit -m "feat: add SST EventBridge bus for interaction events"
 **Files:**
 - Create: `infra/api.ts`
 
-- [ ] **Step 1: Create API definition**
+- [x]  **Step 1: Create API definition**
 
 ```typescript
 // infra/api.ts
@@ -1449,7 +1449,7 @@ api.route('POST /interact', {
 })
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add infra/api.ts
@@ -1466,7 +1466,7 @@ git commit -m "feat: add SST API Gateway with suggest, search, and interact rout
 - Create: `services/lib/auth.ts`
 - Create: `services/lib/types.ts`
 
-- [ ] **Step 1: Create auth helper**
+- [x]  **Step 1: Create auth helper**
 
 ```typescript
 // services/lib/auth.ts
@@ -1493,7 +1493,7 @@ export async function validateAuth(authHeader: string | undefined) {
 }
 ```
 
-- [ ] **Step 2: Create shared types**
+- [x]  **Step 2: Create shared types**
 
 ```typescript
 // services/lib/types.ts
@@ -1519,7 +1519,7 @@ export interface InteractRequest {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add services/lib/auth.ts services/lib/types.ts
@@ -1534,7 +1534,7 @@ git commit -m "feat: add Supabase JWT auth helper and shared Lambda types"
 - Create: `services/lib/cache.ts`
 - Create: `services/suggest.ts`
 
-- [ ] **Step 1: Create cache helper**
+- [x]  **Step 1: Create cache helper**
 
 ```typescript
 // services/lib/cache.ts
@@ -1589,7 +1589,7 @@ export async function setCachedSuggestions(
 }
 ```
 
-- [ ] **Step 2: Create suggest Lambda**
+- [x]  **Step 2: Create suggest Lambda**
 
 ```typescript
 // services/suggest.ts
@@ -1629,7 +1629,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add services/lib/cache.ts services/suggest.ts
@@ -1643,7 +1643,7 @@ git commit -m "feat: add suggest Lambda with DynamoDB cache layer"
 **Files:**
 - Create: `services/search.ts`
 
-- [ ] **Step 1: Create search Lambda**
+- [x]  **Step 1: Create search Lambda**
 
 ```typescript
 // services/search.ts
@@ -1675,7 +1675,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add services/search.ts
@@ -1689,7 +1689,7 @@ git commit -m "feat: add search Lambda stub with auth validation"
 **Files:**
 - Create: `services/interact.ts`
 
-- [ ] **Step 1: Create interact Lambda**
+- [x]  **Step 1: Create interact Lambda**
 
 ```typescript
 // services/interact.ts
@@ -1746,7 +1746,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add services/interact.ts
@@ -1762,7 +1762,7 @@ git commit -m "feat: add interact Lambda publishing to EventBridge"
 **Files:**
 - Create: `apps/web/components/calendar/hooks/useInteractionTracking.ts`
 
-- [ ] **Step 1: Create the hook**
+- [x]  **Step 1: Create the hook**
 
 ```typescript
 // apps/web/components/calendar/hooks/useInteractionTracking.ts
@@ -1802,7 +1802,7 @@ export function useInteractionTracking(tripId: string) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x]  **Step 2: Commit**
 
 ```bash
 git add apps/web/components/calendar/hooks/useInteractionTracking.ts
@@ -1816,7 +1816,7 @@ git commit -m "feat: add useInteractionTracking hook for suggestion interaction 
 **Files:**
 - Modify: `apps/web/components/calendar/CalendarDashboard.tsx`
 
-- [ ] **Step 1: Import and use the hook**
+- [x]  **Step 1: Import and use the hook**
 
 Add import:
 ```typescript
@@ -1837,12 +1837,12 @@ Update `handleAddFromSuggestion` to fire the drag event:
   }, [addActivity, selectEvent, trackInteraction])
 ```
 
-- [ ] **Step 2: Verify the app runs**
+- [x]  **Step 2: Verify the app runs**
 
 Run: `npm -w @travyl/web run dev`
 Verify drag-to-calendar still works and no console errors appear.
 
-- [ ] **Step 3: Commit**
+- [x]  **Step 3: Commit**
 
 ```bash
 git add apps/web/components/calendar/CalendarDashboard.tsx
@@ -1855,7 +1855,7 @@ git commit -m "feat: wire interaction tracking into suggestion drop handler"
 
 ### Task 21: First SST deploy
 
-- [ ] **Step 1: Set secrets**
+- [x]  **Step 1: Set secrets**
 
 Run:
 ```bash
@@ -1864,20 +1864,20 @@ npx sst secret set SupabaseServiceRoleKey <your-key>
 npx sst secret set SupabaseUrl <your-url>
 ```
 
-- [ ] **Step 2: Deploy to dev stage**
+- [x]  **Step 2: Deploy to dev stage**
 
 Run: `npx sst deploy --stage dev`
 
 Expected: Deploys API Gateway, Lambda functions, DynamoDB table, S3 bucket, CloudFront distribution, EventBridge bus. Outputs the API URL.
 
-- [ ] **Step 3: Add API URL to frontend env**
+- [x]  **Step 3: Add API URL to frontend env**
 
 Add to `apps/web/.env.local`:
 ```
 NEXT_PUBLIC_RECOMMENDATION_API_URL=<api-url-from-deploy-output>
 ```
 
-- [ ] **Step 4: Verify endpoints**
+- [x]  **Step 4: Verify endpoints**
 
 Test the suggest endpoint:
 ```bash
@@ -1885,7 +1885,7 @@ curl -H "Authorization: Bearer <valid-supabase-jwt>" "<api-url>/suggest?destinat
 ```
 Expected: `{ "suggestions": [], "source": "fresh" }` (empty until OpenSearch is wired)
 
-- [ ] **Step 5: Commit env example**
+- [x]  **Step 5: Commit env example**
 
 ```bash
 echo "NEXT_PUBLIC_RECOMMENDATION_API_URL=" >> apps/web/.env.example

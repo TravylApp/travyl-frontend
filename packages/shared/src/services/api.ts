@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel } from '../types';
+import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
 export async function fetchTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
@@ -309,18 +309,21 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
   return data;
 }
 
-/**
- * Update trip public status
- */
-export async function updateTripVisibility(tripId: string, isPublic: boolean): Promise<Trip> {
-  const { data, error } = await supabase
-    .from('trips')
-    .update({ is_public: isPublic, updated_at: new Date().toISOString() })
-    .eq('id', tripId)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+export async function updateTripVisibility(tripId: string, visibility: Visibility, linkPermission?: LinkPermission): Promise<void> {
+  const updates: Record<string, unknown> = { visibility }
+  if (linkPermission !== undefined) { updates.link_permission = linkPermission }
+  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  if (error) throw error
+}
+
+export async function ensureShareLinkToken(tripId: string): Promise<string> {
+  const { data: trip, error: fetchError } = await supabase.from('trips').select('share_link_token').eq('id', tripId).single()
+  if (fetchError) throw fetchError
+  if (trip.share_link_token) return trip.share_link_token
+  const token = crypto.randomUUID()
+  const { error: updateError } = await supabase.from('trips').update({ share_link_token: token }).eq('id', tripId)
+  if (updateError) throw updateError
+  return token
 }
 
 // ─── Mutations ─────────────────────────────────────────────
@@ -381,4 +384,68 @@ export async function updateTripSettings(tripId: string, settings: Record<string
     .update({ settings })
     .eq('id', tripId);
   if (error) throw error;
+}
+
+// ── Collaborators ──────────────────────────────────────
+
+export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
+  const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function updateCollaboratorRole(collaboratorId: string, role: CollaboratorRole): Promise<void> {
+  const { error } = await supabase.from('trip_collaborators').update({ role_type: role }).eq('id', collaboratorId)
+  if (error) throw error
+}
+
+export async function removeCollaborator(collaboratorId: string): Promise<void> {
+  const { error } = await supabase.from('trip_collaborators').delete().eq('id', collaboratorId)
+  if (error) throw error
+}
+
+export async function acceptInviteByToken(inviteToken: string, userId: string): Promise<{ tripId: string }> {
+  const { data, error } = await supabase.from('trip_collaborators').update({ user_id: userId, invite_status: 'accepted', accepted_at: new Date().toISOString() }).eq('invite_token', inviteToken).eq('invite_status', 'pending').select('trip_id').single()
+  if (error) throw error
+  return { tripId: data.trip_id }
+}
+
+export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
+  const { error } = await supabase.from('trip_collaborators').insert({ trip_id: tripId, user_id: userId, role_type: role, invite_status: 'accepted', invited_by: userId, accepted_at: new Date().toISOString() })
+  if (error) throw error
+}
+
+export async function findPendingInviteByEmail(tripId: string, email: string): Promise<TripCollaborator | null> {
+  const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('invited_email', email.toLowerCase()).eq('invite_status', 'pending').maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// ── Trip Notes ─────────────────────────────────────────
+
+export async function fetchTripNotes(tripId: string): Promise<TripNote[]> {
+  const { data, error } = await supabase.from('trip_notes').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function createTripNote(tripId: string, userId: string, day: number, hour: number, color: string): Promise<TripNote> {
+  const { data, error } = await supabase.from('trip_notes').insert({ trip_id: tripId, user_id: userId, day, hour, text: '', color }).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updateTripNote(noteId: string, text: string): Promise<void> {
+  const { error } = await supabase.from('trip_notes').update({ text }).eq('id', noteId)
+  if (error) throw error
+}
+
+export async function moveTripNote(noteId: string, day: number, hour: number): Promise<void> {
+  const { error } = await supabase.from('trip_notes').update({ day, hour }).eq('id', noteId)
+  if (error) throw error
+}
+
+export async function deleteTripNote(noteId: string): Promise<void> {
+  const { error } = await supabase.from('trip_notes').delete().eq('id', noteId)
+  if (error) throw error
 }

@@ -1,5 +1,9 @@
 // Core entity types — mirrors the Supabase schema
 
+export type Visibility = 'private' | 'link' | 'public'
+export type LinkPermission = 'viewer' | 'editor'
+export type CollaboratorRole = 'viewer' | 'editor'
+
 export interface Profile {
   id: string;
   email: string;
@@ -23,9 +27,9 @@ export interface Trip {
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
   trip_context: Record<string, unknown>;
   is_generated: boolean;
+  visibility: Visibility;
+  link_permission: LinkPermission;
   share_link_token: string | null;
-  visibility: 'private' | 'link' | 'public';
-  link_permission: 'view' | 'comment' | 'edit';
   forked_from_trip_id: string | null;
   fork_count: number;
   theme: string;
@@ -577,11 +581,22 @@ export interface TravelBoard {
   images: string[];
 }
 
-// ─── Sharing ────────────────────────────────────────────────
+// ─── Trip Sharing ────────────────────────────────────────────
 
-export type TripVisibility = 'private' | 'link' | 'public'
-export type LinkPermission = 'view' | 'comment' | 'edit'
-export type CollaboratorRole = 'viewer' | 'commenter' | 'editor'
+// TripVisibility is an alias for Visibility (exported at top of file)
+export type TripVisibility = Visibility
+
+export interface TripNote {
+  id: string
+  trip_id: string
+  user_id: string
+  day: number
+  hour: number
+  text: string
+  color: string
+  created_at: string
+  updated_at: string
+}
 
 export interface TripCollaborator {
   id: string
@@ -590,27 +605,16 @@ export interface TripCollaborator {
   invited_email: string | null
   invite_token: string | null
   role_type: CollaboratorRole
-  invite_status: 'pending' | 'accepted' | 'cancelled'
+  invite_status: 'pending' | 'accepted' | 'declined'
   invited_by: string
   accepted_at: string | null
   created_at: string
-  // joined from profiles when accepted:
-  display_name?: string | null
-  avatar_url?: string | null
 }
 
-export interface TripNote {
-  id: string
-  trip_id: string
-  user_id: string | null
-  activity_id: string | null
-  day: string          // ISO date string
-  pos_x: number
-  pos_y: number
-  content: string
-  color: string
-  created_at: string
-  updated_at: string
-  // joined from profiles:
-  author_name?: string | null
+export interface EffectivePermission {
+  role: 'owner' | 'editor' | 'viewer'
+  canEdit: boolean
+  canDelete: boolean
+  canInvite: boolean
+  canCreateNotes: boolean
 }

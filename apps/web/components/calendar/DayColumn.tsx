@@ -3,7 +3,11 @@ import { useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
+import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import type { TripNote } from '@travyl/shared'
+import { computeOverlapLayout } from '@travyl/shared'
+import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
 interface DayColumnProps {
   dayIndex: number
@@ -16,6 +20,15 @@ interface DayColumnProps {
   onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
+  pendingActivity?: CalendarActivity | null
+  notes?: TripNote[]
+  canCreateNotes?: boolean
+  canEditNotes?: boolean
+  userId?: string
+  isOwner?: boolean
+  onCreateNote?: (day: number, hour: number) => void
+  onUpdateNote?: (noteId: string, text: string) => void
+  onDeleteNote?: (noteId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -66,6 +79,15 @@ export function DayColumn({
   onSelectEvent,
   onClickDayHeader,
   onCreateActivity,
+  pendingActivity = null,
+  notes,
+  canCreateNotes,
+  canEditNotes,
+  userId,
+  isOwner,
+  onCreateNote,
+  onUpdateNote,
+  onDeleteNote,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -87,6 +109,10 @@ export function DayColumn({
       const offsetY = e.clientY - rect.top
       const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
       const snappedHour = Math.round(rawHour * 2) / 2
+      if (e.shiftKey && canCreateNotes && onCreateNote) {
+        onCreateNote(dayIndex, snappedHour)
+        return
+      }
       onCreateActivity(dayIndex, snappedHour)
     }
   }
@@ -100,14 +126,46 @@ export function DayColumn({
   const hours: number[] = []
   for (let h = timeRange.startHour; h <= timeRange.endHour; h++) hours.push(h)
 
+  // Compute overlap layout
+  // If pendingActivity is an existing activity being moved, filter original to avoid double-counting
+  const layoutActivities = pendingActivity
+    ? [
+        ...activities.filter((a) => a.id !== pendingActivity.id),
+        pendingActivity,
+      ]
+    : activities
+
+  const overlapLayout = computeOverlapLayout(layoutActivities)
+
+  // Compute hidden counts: find which column-2 block should show the "+N more" badge
+  // hiddenCount = count of activities in the same cluster whose column === -1
+  const hiddenByCluster = new Map<string, number>()
+  for (const [id, layout] of overlapLayout) {
+    if (layout.column === -1) {
+      const hiddenAct = layoutActivities.find((a) => a.id === id)!
+      for (const [otherId, otherLayout] of overlapLayout) {
+        if (otherLayout.column === 2) {
+          const otherAct = layoutActivities.find((a) => a.id === otherId)!
+          if (
+            hiddenAct.startHour < otherAct.startHour + otherAct.duration &&
+            otherAct.startHour < hiddenAct.startHour + hiddenAct.duration
+          ) {
+            hiddenByCluster.set(otherId, (hiddenByCluster.get(otherId) ?? 0) + 1)
+            break
+          }
+        }
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 min-w-0">
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-gray-200 dark:border-[#1e3a5f]/30 text-gray-500 dark:text-[#4a7ab5] select-none',
+          'text-center text-xs font-medium py-1 border-b border-[var(--cal-border)] text-[var(--cal-text-secondary)] select-none',
           onClickDayHeader
-            ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/25 transition-colors'
+            ? 'cursor-pointer hover:bg-[var(--cal-border-light)] transition-colors'
             : '',
         ].join(' ')}
         onClick={onClickDayHeader}
@@ -139,13 +197,13 @@ export function DayColumn({
                   marginLeft: i === 0 ? 0 : '-4px',
                   zIndex: 3 - i,
                 }}
-                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-white dark:ring-[#0a1520]"
+                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-[var(--cal-surface)]"
               >
                 {c.avatarInitial}
               </div>
             ))}
             {dayCollaborators.length > 3 && (
-              <span className="text-[9px] text-gray-400 ml-1">
+              <span className="text-[9px] text-[var(--cal-text-tertiary)] ml-1">
                 +{dayCollaborators.length - 3}
               </span>
             )}
@@ -157,8 +215,8 @@ export function DayColumn({
       <div
         ref={setNodeRef}
         className={[
-          'relative flex-1 border-l border-gray-200 dark:border-[#1e3a5f]/20',
-          isOver ? 'bg-[#EFF4FF] dark:bg-[#003594]/15' : '',
+          'relative flex-1 border-l border-[var(--cal-border-light)]',
+          isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
         style={{ height: hourCount * HOUR_HEIGHT }}
         onMouseDown={handleMouseDown}
@@ -168,7 +226,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={hour}
-            className="absolute w-full border-t border-gray-100 dark:border-[#1e3a5f]/15 pointer-events-none"
+            className="absolute w-full border-t border-[var(--cal-grid-line)] pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT }}
           />
         ))}
@@ -177,22 +235,66 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-gray-100/60 dark:border-[#1e3a5f]/10 pointer-events-none"
+            className="absolute w-full border-t border-dashed border-[var(--cal-grid-line-half)] pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
           />
         ))}
 
         {/* Event blocks */}
-        {activities.map((activity) => (
-          <EventBlock
-            key={activity.id}
-            activity={activity}
-            viewers={viewers}
-            isSelected={selectedEventId === activity.id}
-            onSelect={onSelectEvent}
+        {activities.map((activity) => {
+          const layout = overlapLayout.get(activity.id)
+          if (!layout || layout.column === -1) return null
+          return (
+            <EventBlock
+              key={activity.id}
+              activity={activity}
+              viewers={viewers}
+              isSelected={selectedEventId === activity.id}
+              onSelect={onSelectEvent}
+              timeRangeStartHour={timeRange.startHour}
+              column={layout.column}
+              totalColumns={layout.totalColumns}
+              hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
+            />
+          )
+        })}
+
+        {/* Post-it notes */}
+        {notes?.filter((n) => n.day === dayIndex).map((note) => (
+          <PostItNote
+            key={note.id}
+            note={note}
+            authorInitials={note.user_id.slice(0, 2).toUpperCase()}
+            canEdit={canEditNotes ?? false}
+            canDelete={(note.user_id === userId) || (isOwner ?? false)}
             timeRangeStartHour={timeRange.startHour}
+            onUpdate={onUpdateNote ?? (() => {})}
+            onDelete={onDeleteNote ?? (() => {})}
           />
         ))}
+
+        {/* Ghost block for pending drag activity */}
+        {pendingActivity && (() => {
+          const layout = overlapLayout.get(pendingActivity.id)
+          if (!layout || layout.column < 0) return null
+          const availableWidth = `(100% - ${2 * COLUMN_OUTER_PAD}px)`
+          const colWidth = `(${availableWidth} - ${(layout.totalColumns - 1) * COLUMN_GAP}px) / ${layout.totalColumns}`
+          const leftOffset = layout.column === 0
+            ? `${COLUMN_OUTER_PAD}px`
+            : `${COLUMN_OUTER_PAD}px + ${layout.column} * (${colWidth} + ${COLUMN_GAP}px)`
+          return (
+            <div
+              className="absolute rounded-md border-2 border-dashed border-blue-400 bg-blue-100/30 pointer-events-none"
+              style={{
+                top: (pendingActivity.startHour - timeRange.startHour) * HOUR_HEIGHT,
+                height: Math.max(pendingActivity.duration * HOUR_HEIGHT - 2, 20),
+                left: `calc(${leftOffset})`,
+                width: `calc(${colWidth})`,
+                zIndex: 5,
+              }}
+            />
+          )
+        })()}
 
         {/* Current time indicator */}
         <CurrentTimeIndicator

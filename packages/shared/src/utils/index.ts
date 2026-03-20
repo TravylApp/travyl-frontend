@@ -75,3 +75,6 @@ export {
   mapToDbType, toCalendarActivity, toActivityRow,
 } from './activityMapper'
 export type { ActivityRow } from './activityMapper'
+
+export { computeOverlapLayout } from './overlapLayout'
+export type { OverlapLayoutItem } from './overlapLayout'
