@@ -92,8 +92,10 @@ export function EventBlock({
         'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
         'ring-2 ring-transparent',
-        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg',
-        isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40',
+        isDragging
+          ? ''
+          : `transition-[ring,shadow,opacity,transform] duration-150${!isSelected ? ' hover:-translate-y-px hover:shadow-lg' : ''}`,
+        isSelected ? 'ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg' : 'hover:ring-white/40',
         'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}
       onClick={() => onSelect(activity.id)}
