@@ -3,8 +3,8 @@
 import { use, useState } from 'react';
 import { Luggage, Sun, Plus, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared/src/config/mockItineraryData';
-import type { PackingItem, PackingList } from '@travyl/shared';
+import { MOCK_PACKING_LIST, MOCK_TRIP, useItineraryScreen } from '@travyl/shared';
+import type { PackingList } from '@travyl/shared';
 
 import { Skeleton } from '@/components/ui';
 
@@ -50,8 +50,10 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');
 
-  const trip = MOCK_TRIP;
-  const destination = trip.destination ?? MOCK_WEATHER.destination;
+  const { trip: liveTrip } = useItineraryScreen(id);
+  const trip = liveTrip ?? MOCK_TRIP;
+  const destination = trip.destination ?? '';
+  const currentWeather = trip.trip_context?.weather?.current;
 
   /* derived counts */
   const allItems = Object.values(packingList).flat();
@@ -160,11 +162,17 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
             <Sun className="text-blue-600" size={16} />
             <h5 className="text-xs text-gray-900">{destination} Weather</h5>
           </div>
-          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-gray-700 mb-1">
-            <div>High: {MOCK_WEATHER.high}{MOCK_WEATHER.unit}</div>
-            <div>Low: {MOCK_WEATHER.low}{MOCK_WEATHER.unit}</div>
-          </div>
-          <p className="text-xs text-gray-600">{MOCK_WEATHER.conditions}</p>
+          {currentWeather ? (
+            <>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-gray-700 mb-1">
+                <div>High: {currentWeather.high}°</div>
+                <div>Low: {currentWeather.low}°</div>
+              </div>
+              <p className="text-xs text-gray-600">{currentWeather.condition}</p>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400">No weather data available</p>
+          )}
         </motion.div>
 
         {/* Packing Tips */}
