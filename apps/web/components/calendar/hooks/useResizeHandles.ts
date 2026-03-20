@@ -26,8 +26,6 @@ interface UseResizeHandlesReturn {
   bottomHandleProps: HandleProps
 }
 
-type Edge = 'top' | 'bottom'
-
 const MIN_DURATION = 0.25
 
 function snap(value: number): number {
@@ -45,7 +43,7 @@ export function useResizeHandles({
   const [previewStartHour, setPreviewStartHour] = useState<number | null>(null)
   const [previewDuration, setPreviewDuration] = useState<number | null>(null)
 
-  const edgeRef = useRef<Edge>('bottom')
+  const edgeRef = useRef<'top' | 'bottom'>('bottom')
   const startYRef = useRef(0)
   const origStartHourRef = useRef(0)
   const origDurationRef = useRef(0)
@@ -84,14 +82,34 @@ export function useResizeHandles({
     [timeRangeStartHour, timeRangeEndHour],
   )
 
-  const handlePointerDown = useCallback(
-    (edge: Edge) => (e: React.PointerEvent) => {
+  const handlePointerDownTop = useCallback(
+    (e: React.PointerEvent) => {
       e.stopPropagation()
       e.nativeEvent.stopImmediatePropagation()
       e.preventDefault()
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
 
-      edgeRef.current = edge
+      edgeRef.current = 'top'
+      startYRef.current = e.clientY
+      origStartHourRef.current = startHour
+      origDurationRef.current = duration
+      bottomEdgeRef.current = startHour + duration
+
+      setPreviewStartHour(startHour)
+      setPreviewDuration(duration)
+      setIsResizing(true)
+    },
+    [startHour, duration],
+  )
+
+  const handlePointerDownBottom = useCallback(
+    (e: React.PointerEvent) => {
+      e.stopPropagation()
+      e.nativeEvent.stopImmediatePropagation()
+      e.preventDefault()
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+
+      edgeRef.current = 'bottom'
       startYRef.current = e.clientY
       origStartHourRef.current = startHour
       origDurationRef.current = duration
@@ -116,8 +134,6 @@ export function useResizeHandles({
     (e: React.PointerEvent) => {
       if (!isResizing) return
       ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
-
-      computePreview(e.clientY)
 
       const deltaY = e.clientY - startYRef.current
       const deltaHours = snap(deltaY / HOUR_HEIGHT)
@@ -148,7 +164,7 @@ export function useResizeHandles({
       setPreviewDuration(null)
       setIsResizing(false)
     },
-    [isResizing, computePreview, onResize, timeRangeStartHour, timeRangeEndHour],
+    [isResizing, onResize, timeRangeStartHour, timeRangeEndHour],
   )
 
   const handlePointerCancel = useCallback(
@@ -163,14 +179,14 @@ export function useResizeHandles({
   )
 
   const topHandleProps: HandleProps = {
-    onPointerDown: handlePointerDown('top'),
+    onPointerDown: handlePointerDownTop,
     onPointerMove: handlePointerMove,
     onPointerUp: handlePointerUp,
     onPointerCancel: handlePointerCancel,
   }
 
   const bottomHandleProps: HandleProps = {
-    onPointerDown: handlePointerDown('bottom'),
+    onPointerDown: handlePointerDownBottom,
     onPointerMove: handlePointerMove,
     onPointerUp: handlePointerUp,
     onPointerCancel: handlePointerCancel,

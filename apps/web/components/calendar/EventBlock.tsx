@@ -116,7 +116,7 @@ export function EventBlock({
       {...listeners}
       role="gridcell"
       tabIndex={0}
-      aria-label={`${activity.title}, ${formatTimeRange(activity)}`}
+      aria-label={`${activity.title}, ${formatTimeRange(displayActivity)}`}
       aria-selected={isSelected}
       className={[
         'group rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
