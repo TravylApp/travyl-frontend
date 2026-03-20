@@ -14,6 +14,7 @@ interface DayViewProps {
   onClickEvent: (id: string, anchorEl: HTMLElement) => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
+  onResize?: (id: string, newStartHour: number, newDuration: number) => void
 }
 
 export function DayView({
@@ -27,6 +28,7 @@ export function DayView({
   onClickEvent,
   onCreateActivity,
   pendingDrop = null,
+  onResize,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -46,6 +48,7 @@ export function DayView({
           onClickDayHeader={undefined}
           onCreateActivity={onCreateActivity}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+          onResize={onResize}
         />
       </div>
     </div>
