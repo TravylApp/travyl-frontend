@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
   View, Text, Pressable, Share, Modal, Image,
-  Platform, PanResponder, Animated, Easing,
+  Platform, PanResponder, Animated, Easing, useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
@@ -114,8 +114,8 @@ export function useThemeBase() {
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const isFocused = useIsFocused();
   const { spinePosition, navDirection } = useContext(TabCtx);
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const anim = useRef(new Animated.Value(0)).current;
-  // Capture direction at mount so it doesn't flip mid-animation
   const dirRef = useRef(navDirection);
   const spineRef = useRef(spinePosition);
   if (isFocused) {
@@ -128,37 +128,26 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       anim.setValue(0);
       Animated.timing(anim, {
         toValue: 1,
-        duration: 280,
+        duration: 320,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     }
   }, [isFocused]);
 
-  const isVerticalSpine = spineRef.current === 'left' || spineRef.current === 'right';
+  const spine = spineRef.current;
   const dir = dirRef.current;
 
   const opacity = anim.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.7, 1],
+    inputRange: [0, 0.3, 1],
+    outputRange: [0.1, 0.7, 1],
   });
 
-  if (isVerticalSpine) {
-    // Circular Z-axis: page rotates towards you (dir=1) or away from you (dir=-1)
-    // like a rolodex spinning in depth
+  if (spine === 'left' || spine === 'right') {
+    // Tabs on left/right: pages cycle vertically (rotate around X-axis)
     const rotateX = anim.interpolate({
       inputRange: [0, 1],
-      // dir=1 (going down): starts tilted back, swings toward you
-      // dir=-1 (going up): starts tilted forward, swings away then settles
-      outputRange: [dir > 0 ? '-55deg' : '55deg', '0deg'],
-    });
-    const scale = anim.interpolate({
-      inputRange: [0, 0.5, 1],
-      outputRange: [0.75, 0.92, 1],
-    });
-    const translateY = anim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [dir > 0 ? 80 : -80, 0],
+      outputRange: [dir > 0 ? '-45deg' : '45deg', '0deg'],
     });
 
     return (
@@ -167,10 +156,8 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
           flex: 1,
           opacity,
           transform: [
-            { perspective: 600 },
-            { translateY },
+            { perspective: 1000 },
             { rotateX },
-            { scale },
           ],
         }}
       >
@@ -179,10 +166,10 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Horizontal slide for top/bottom
-  const translateX = anim.interpolate({
+  // Tabs on top/bottom: pages cycle horizontally (rotate around Y-axis)
+  const rotateY = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [dir > 0 ? 60 : -60, 0],
+    outputRange: [dir > 0 ? '45deg' : '-45deg', '0deg'],
   });
 
   return (
@@ -190,7 +177,10 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       style={{
         flex: 1,
         opacity,
-        transform: [{ translateX }],
+        transform: [
+          { perspective: 1000 },
+          { rotateY },
+        ],
       }}
     >
       {children}
@@ -503,7 +493,7 @@ function useTabScrub(
   const containerRef = useRef<View>(null);
   const lastScrubIdx = useRef<number>(-1);
   const scrubTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Stores { start, end } for each tab index, measured via onLayout
+  // Stores { start, end } for each tab index, measured via registerTabLayout
   const tabRegions = useRef<{ start: number; end: number }[]>([]);
   // Keep refs to avoid stale closures in PanResponder
   const routesRef = useRef(visibleRoutes);
@@ -561,130 +551,56 @@ function useTabScrub(
     })
   ).current;
 
-  const onLayout = useCallback(() => {}, []);
-
-  return { containerRef, panResponder, onLayout, registerTabLayout };
-}
-
-// ─── Horizontal Book Tab Bar (top position) ──────────────
-function HorizontalTabBar({ state, navigation }: MaterialTopTabBarProps) {
-  const { theme, tabColorOverrides, enabledTabs, setShowTabPicker } = useContext(TabCtx);
-  const visibleRoutes = getVisibleRoutes(state, enabledTabs);
-  const { containerRef, panResponder, onLayout, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
-
-  return (
-    <View
-      ref={containerRef}
-      onLayout={onLayout}
-      {...panResponder.panHandlers}
-      style={{ flexDirection: 'row', alignItems: 'flex-end' }}
-    >
-      {/* Drag handle — same size as a tab */}
-      <View style={{
-        height: TAB_NOTCH_W,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.base + '80',
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        marginHorizontal: 1,
-        paddingHorizontal: 4,
-      }}>
-        <DragHandle direction="horizontal" />
-      </View>
-
-      {visibleRoutes.map(({ route, index }, i) => {
-        const isFocused = state.index === index;
-        const tab = ALL_TABS.find((t) => t.name === route.name);
-        const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
-
-        return (
-          <Pressable
-            key={route.key}
-            onPress={() => navigation.navigate(route.name)}
-            onLayout={(e) => registerTabLayout(i, e)}
-            style={{
-              flex: 1,
-              height: TAB_NOTCH_W,
-              backgroundColor: isFocused ? color : color + 'B3',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginHorizontal: 1,
-              borderTopLeftRadius: 8,
-              borderTopRightRadius: 8,
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
-            }}
-          >
-            <FontAwesome
-              name={(tab?.icon ?? 'circle') as any}
-              size={16}
-              color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
-            />
-          </Pressable>
-        );
-      })}
-
-      {/* Manage tabs button */}
-      <Pressable
-        onPress={() => setShowTabPicker(true)}
-        style={{
-          height: TAB_NOTCH_W,
-          paddingHorizontal: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.base + '40',
-          borderTopLeftRadius: 8,
-          borderTopRightRadius: 8,
-          marginHorizontal: 1,
-        }}
-      >
-        <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-h'} size={14} color="rgba(255,255,255,0.6)" />
-      </Pressable>
-    </View>
-  );
+  return { containerRef, panResponder, registerTabLayout };
 }
 
 // ─── Book-style Tab Sidebar (left / right) ───────────────
 const TAB_NOTCH_W = 38;
-const SIDE_TAB_W = 36;
+const SIDE_TAB_W = 30;
+
 
 function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
   const { spinePosition, theme, tabColorOverrides, enabledTabs, setShowTabPicker } = useContext(TabCtx);
   const visibleRoutes = getVisibleRoutes(state, enabledTabs);
   const side = spinePosition as 'left' | 'right';
   const isLeft = side === 'left';
-  const { containerRef, panResponder, onLayout, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'y');
+  const { containerRef, panResponder, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'y');
+  const { height: screenH } = useWindowDimensions();
+
+  // Round the outer corners (screen-edge side)
+  const outerRadii = {
+    borderTopLeftRadius: isLeft ? 6 : 0,
+    borderBottomLeftRadius: isLeft ? 6 : 0,
+    borderTopRightRadius: isLeft ? 0 : 6,
+    borderBottomRightRadius: isLeft ? 0 : 6,
+  };
+
+  const HANDLE_H = 28;
+  const MANAGE_H = 28;
+  const GAP = 2;
+  const tabCount = visibleRoutes.length;
 
   return (
     <View
       ref={containerRef}
-      onLayout={onLayout}
       {...panResponder.panHandlers}
       style={{
         position: 'absolute',
-        top: 4,
-        bottom: 4,
-        [side]: 2,
+        top: 0,
+        bottom: BOTTOM_BAR_OFFSET,
+        [side]: 0,
         zIndex: 10,
         width: SIDE_TAB_W,
-        gap: 2,
-        paddingVertical: 4,
       }}
     >
       {/* Drag handle */}
       <View style={{
-        height: 28,
+        height: HANDLE_H,
         width: SIDE_TAB_W,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: theme.base + '40',
-        borderTopLeftRadius: isLeft ? 6 : 0,
-        borderBottomLeftRadius: isLeft ? 6 : 0,
-        borderTopRightRadius: isLeft ? 0 : 6,
-        borderBottomRightRadius: isLeft ? 0 : 6,
+        ...outerRadii,
       }}>
         <DragHandle direction="vertical" />
       </View>
@@ -702,18 +618,16 @@ function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
             style={{
               flex: 1,
               width: SIDE_TAB_W,
+              marginTop: GAP,
               backgroundColor: isFocused ? color : color + '99',
               alignItems: 'center',
               justifyContent: 'center',
-              borderTopLeftRadius: isLeft ? 6 : 0,
-              borderBottomLeftRadius: isLeft ? 6 : 0,
-              borderTopRightRadius: isLeft ? 0 : 6,
-              borderBottomRightRadius: isLeft ? 0 : 6,
+              ...outerRadii,
             }}
           >
             <FontAwesome
               name={(tab?.icon ?? 'circle') as any}
-              size={14}
+              size={tabCount > 6 ? 12 : 14}
               color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
             />
           </Pressable>
@@ -724,18 +638,16 @@ function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
       <Pressable
         onPress={() => setShowTabPicker(true)}
         style={{
-          height: 28,
+          height: MANAGE_H,
           width: SIDE_TAB_W,
+          marginTop: GAP,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: theme.base + '40',
-          borderTopLeftRadius: isLeft ? 6 : 0,
-          borderBottomLeftRadius: isLeft ? 6 : 0,
-          borderTopRightRadius: isLeft ? 0 : 6,
-          borderBottomRightRadius: isLeft ? 0 : 6,
+          ...outerRadii,
         }}
       >
-        <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-v'} size={12} color="rgba(255,255,255,0.6)" />
+        <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-v'} size={11} color="rgba(255,255,255,0.5)" />
       </Pressable>
     </View>
   );
@@ -745,12 +657,11 @@ function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
 function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const { theme, tabColorOverrides, enabledTabs, setShowTabPicker } = useContext(TabCtx);
   const visibleRoutes = getVisibleRoutes(state, enabledTabs);
-  const { containerRef, panResponder, onLayout, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
+  const { containerRef, panResponder, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
 
   return (
     <View
       ref={containerRef}
-      onLayout={onLayout}
       {...panResponder.panHandlers}
       style={{
         position: 'absolute',
@@ -837,22 +748,29 @@ const tabNavRef = { current: null as MaterialTopTabBarProps['navigation'] | null
 // Also tracks navigation direction for PageTransition animations.
 const navDirectionRef = { current: 1 as 1 | -1 };
 const prevTabIndexRef = { current: 0 };
+const activeTabNameRef = { current: 'index' };
+let setActiveTabFn: (name: string) => void = () => {};
 
 function CustomTabBar(props: MaterialTopTabBarProps) {
   const { spinePosition } = useContext(TabCtx);
   tabNavRef.current = props.navigation;
 
-  // Track direction based on tab index changes
+  // Track direction and active tab name
   const idx = props.state.index;
   if (idx !== prevTabIndexRef.current) {
     navDirectionRef.current = idx > prevTabIndexRef.current ? 1 : -1;
     prevTabIndexRef.current = idx;
   }
+  const tabName = props.state.routes[idx]?.name ?? 'index';
+  activeTabNameRef.current = tabName;
 
-  if (spinePosition === 'top') {
-    return <HorizontalTabBar {...props} />;
-  }
-  if (spinePosition === 'bottom') {
+  // Sync active tab into layout state (for conditional TripHero rendering)
+  useEffect(() => {
+    setActiveTabFn(tabName);
+  }, [tabName]);
+
+  // "top" is unreachable on mobile — treat it as bottom
+  if (spinePosition === 'top' || spinePosition === 'bottom') {
     return <BottomTabBar {...props} />;
   }
 
@@ -940,8 +858,10 @@ export default function TripLayout() {
   const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trip, refetch } = useItineraryScreen(id);
-  const [spinePosition, setSpinePosition] = useState<SpinePosition>('bottom');
+  const [spinePosition, setSpinePosition] = useState<SpinePosition>('left');
   const [scrubbing, setScrubbing] = useState(false);
+  const [activeTab, setActiveTab] = useState('index');
+  setActiveTabFn = setActiveTab;
 
   const [enabledTabs, setEnabledTabs] = useState<string[]>(DEFAULT_ENABLED_TABS);
   const [showTabPicker, setShowTabPicker] = useState(false);
@@ -1036,8 +956,12 @@ export default function TripLayout() {
       value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker }}
     >
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <TripHero trip={trip} refetch={refetch} />
-        <View style={{ height: 1, backgroundColor: colors.border }} />
+        {activeTab !== 'index' && (
+          <>
+            <TripHero trip={trip} refetch={refetch} />
+            <View style={{ height: 1, backgroundColor: colors.border }} />
+          </>
+        )}
 
         <View style={{ flex: 1, position: 'relative' }}>
           <TopTabs
@@ -1049,7 +973,7 @@ export default function TripLayout() {
               sceneStyle: {
                 paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
                 paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
-                paddingBottom: spinePosition === 'bottom' ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
+                paddingBottom: (spinePosition === 'bottom' || spinePosition === 'top') ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
                 backgroundColor: colors.cardBackground,
               },
             }}
