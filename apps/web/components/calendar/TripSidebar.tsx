@@ -83,7 +83,7 @@ export function TripSidebar({
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative flex flex-col shrink-0 overflow-hidden border-r border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0a1520]"
+      className="relative flex flex-col shrink-0 overflow-hidden border-r border-[var(--cal-border)] bg-[var(--cal-surface)]"
       aria-label="Trip navigation"
     >
       {/* Nav items */}
@@ -98,8 +98,8 @@ export function TripSidebar({
                 className={[
                   'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors',
                   isActive
-                    ? 'bg-[#EFF4FF] text-[#003594] dark:bg-[#003594]/35 dark:text-white'
-                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-[#4a7ab5] dark:hover:bg-[#1e3a5f]/25 dark:hover:text-white',
+                    ? 'bg-[var(--cal-nav-active-bg)] text-[var(--cal-nav-active-text)]'
+                    : 'text-[var(--cal-nav-inactive)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]',
                 ].join(' ')}
               >
                 <span className="shrink-0">{item.icon}</span>
@@ -119,7 +119,7 @@ export function TripSidebar({
 
       {/* Mini calendar (expanded only) */}
       {expanded && (
-        <div className="border-t border-gray-200 dark:border-[#1e3a5f]/30">
+        <div className="border-t border-[var(--cal-border)]">
           <MiniCalendar
             tripStartDate={tripStartDate}
             tripDays={tripDays}

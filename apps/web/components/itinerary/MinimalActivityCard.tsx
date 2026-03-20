@@ -28,7 +28,7 @@ export function MinimalActivityCard({
 
   return (
     <div
-      className="flex items-center gap-3 rounded-xl bg-white border border-gray-200 p-2.5 cursor-pointer group transition-all hover:shadow-md hover:border-gray-300"
+      className="flex items-center gap-3 rounded-xl bg-white dark:bg-[var(--muted)] border border-gray-200 dark:border-white/[0.08] p-2.5 cursor-pointer group transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-white/[0.15]"
       onClick={onClick}
     >
       {/* Thumbnail */}
@@ -52,11 +52,11 @@ export function MinimalActivityCard({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">{activity.name}</h3>
-        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{activity.name}</h3>
+        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
           {activity.timeDisplay && (
             <span className="flex items-center gap-1">
-              <Clock size={10} className="text-gray-400" />
+              <Clock size={10} className="text-gray-400 dark:text-gray-500" />
               {activity.timeDisplay}
             </span>
           )}
@@ -73,12 +73,12 @@ export function MinimalActivityCard({
       <div className="flex flex-col items-end gap-2 shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); onFavorite?.(); }}
-          className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100"
+          className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 dark:hover:bg-white/10"
         >
           <Heart size={12} className={isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-400'} />
         </button>
         {activity.costDisplay && (
-          <span className="text-sm font-bold text-gray-900">{activity.costDisplay}</span>
+          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{activity.costDisplay}</span>
         )}
       </div>
     </div>

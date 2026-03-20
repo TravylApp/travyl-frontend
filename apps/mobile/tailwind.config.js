@@ -14,6 +14,7 @@ module.exports = {
         'sans-medium': ['Satoshi-Medium'],
         'sans-bold': ['Satoshi-Bold'],
         'sans-black': ['Satoshi-Black'],
+        serif: ['Lustria-Regular'],
       },
       colors: {
         primary: "#1e3a5f",

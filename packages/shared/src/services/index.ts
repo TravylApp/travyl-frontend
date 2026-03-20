@@ -1,4 +1,4 @@
-export { supabase } from './supabase';
+export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
   fetchSavedItems,

@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { validateAuth } from './lib/auth'
 import { getCachedSuggestions, setCachedSuggestions } from './lib/cache'
 import { searchPlaces } from './lib/location'
+import { enrichSuggestions } from './lib/foursquare'
 import type { SuggestResponse } from './lib/types'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
@@ -20,10 +21,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 200, body: JSON.stringify(response) }
     }
 
-    // Query Amazon Location Services for POIs
-    const suggestions = await searchPlaces(destination, { maxResults: 10 })
+    // Query Amazon Location Services for POIs, then enrich with Foursquare
+    const basicSuggestions = await searchPlaces(destination, { maxResults: 10 })
+    const suggestions = await enrichSuggestions(basicSuggestions)
 
-    // Cache for 30 minutes
+    // Cache enriched results (30min default TTL)
     if (suggestions.length > 0) {
       await setCachedSuggestions(userId, destination, suggestions)
     }
