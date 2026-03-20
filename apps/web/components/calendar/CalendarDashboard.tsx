@@ -242,6 +242,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
 
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(marqueeSelectedIds)
+    clearMarqueeSelection()
+    await Promise.all(ids.map((id) => removeActivity(id)))
+  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivity])
+
+  const handleBulkDuplicate = useCallback(async () => {
+    const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    clearMarqueeSelection()
+    for (const act of toDuplicate) {
+      await duplicateActivity(act)
+    }
+  }, [marqueeSelectedIds, clearMarqueeSelection, activities, duplicateActivity])
+
   const commands = useCalendarCommands({
     selectedActivity,
     isPaletteOpen,
@@ -255,6 +269,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
     onOpenPalette: () => setIsPaletteOpen(true),
+    marqueeSelectedIds,
+    onBulkDelete: handleBulkDelete,
+    onBulkDuplicate: handleBulkDuplicate,
   })
 
   useKeyboardShortcuts(
@@ -262,6 +279,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     isPaletteOpen,
     () => setIsPaletteOpen(false),
     () => selectEvent(null),
+    marqueeSelectedIds.size > 0,
+    clearMarqueeSelection,
   )
 
   // Early returns for loading / error states (must come after all hooks)
