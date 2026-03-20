@@ -233,6 +233,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
 
+  const handleResize = useCallback((id: string, newStartHour: number, newDuration: number) => {
+    updateActivity(id, { startHour: newStartHour, duration: newDuration })
+  }, [updateActivity])
+
   const commands = useCalendarCommands({
     selectedActivity,
     isPaletteOpen,
@@ -387,6 +391,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onClickDayHeader={handleClickDayHeader}
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
+                      onResize={handleResize}
                     />
                   </motion.div>
                 ) : (
@@ -409,6 +414,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onClickEvent={handleClickEvent}
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
+                      onResize={handleResize}
                     />
                   </motion.div>
                 )}
