@@ -17,7 +17,7 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
+  onClickEvent: (id: string, anchorEl: HTMLElement) => void
   onClickDayHeader?: () => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingActivity?: CalendarActivity | null
@@ -76,7 +76,7 @@ export function DayColumn({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onSelectEvent,
+  onClickEvent,
   onClickDayHeader,
   onCreateActivity,
   pendingActivity = null,
@@ -256,7 +256,7 @@ export function DayColumn({
               activity={activity}
               viewers={viewers}
               isSelected={selectedEventId === activity.id}
-              onSelect={onSelectEvent}
+              onClickEvent={onClickEvent}
               timeRangeStartHour={timeRange.startHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
