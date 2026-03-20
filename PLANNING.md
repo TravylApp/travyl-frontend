@@ -4,6 +4,20 @@ Active log of work per branch. Add an entry when a branch starts, update as work
 
 ---
 
+## `feature/tra-217` — Calendar UX fixes
+**Linear:** [TRA-217](https://linear.app/travyl/issue/TRA-217/ux-remove-accidental-click-to-create-and-improve-activity-focus)
+**Status:** Complete ✅
+**PR:** —
+
+### Goal
+Remove accidental click-to-create from the trip calendar and improve the selected-activity focus indicator.
+
+### Completed
+- Task 1 ✅ — `EventBlock.tsx`: upgraded selected ring (`ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg`), added `transform` to transition list, suppressed hover lift when selected
+- Task 2 ✅ — Removed `onCreateActivity` prop chain (DayColumn/WeekView/DayView/CalendarDashboard). Added `onDeselect` prop. Background click now deselects (with `e.target === e.currentTarget` guard to prevent bubbling from EventBlock).
+
+---
+
 ## `feature/tra-204` — Trip sharing & post-it notes
 **Linear:** [TRA-204](https://linear.app/travyl/issue/TRA-204/trip-sharing-and-post-it-notes)
 **Status:** In Progress
