@@ -10,25 +10,25 @@ import { PlaceCard } from '@/components/PlaceCard';
 // ─── Section Header ──────────────────────────────────────────
 function SectionHeader({
   title,
-  gradient,
   isExpanded,
   onToggle,
 }: {
   title: string;
-  gradient: { from: string; to: string };
+  gradient?: { from: string; to: string };
   isExpanded: boolean;
   onToggle: () => void;
 }) {
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
-      style={{ background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border bg-white dark:bg-white/[0.04] border-gray-100 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+      style={{ color: 'var(--magazine-heading, var(--foreground))' }}
     >
       <span className="tracking-wide">{title}</span>
       <motion.div
         animate={{ rotate: isExpanded ? 180 : 0 }}
         transition={{ duration: 0.3 }}
+        style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}
       >
         <ChevronDown size={16} />
       </motion.div>
@@ -180,10 +180,11 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
       <div className="max-w-6xl mx-auto">
         {/* Collapse/Expand All toggle */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-extrabold text-gray-900">Explore</h2>
+          <h2 className="text-xl font-extrabold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>Explore</h2>
           <button
             onClick={allExpanded ? collapseAll : expandAll}
-            className="text-xs font-medium text-gray-700 hover:text-gray-900 transition-colors px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50"
+            className="text-xs font-medium transition-colors px-3 py-1 rounded-lg border border-gray-200 dark:border-white/[0.1] hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+            style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}
           >
             {allExpanded ? 'Collapse All' : 'Expand All'}
           </button>

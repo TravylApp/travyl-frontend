@@ -9,5 +9,5 @@ export function SkeletonBlock({ width, height, radius = 6, style }: {
   style?: ViewStyle;
 }) {
   const colors = useThemeColors();
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
+  return <View style={[{ width: width as any, height, borderRadius: radius, backgroundColor: colors.skeleton }, style]} />;
 }

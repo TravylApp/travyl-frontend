@@ -172,20 +172,20 @@ travyl-frontend/
 ├── sst.config.ts               ← SST entry point, links infra + app
 ├── infra/
 │   ├── api.ts                  ← API Gateway + Lambda route bindings
-│   ├── storage.ts              ← OpenSearch Serverless, DynamoDB, S3, CloudFront
+│   ├── storage.ts              ← DynamoDB, S3, Amazon Location PlaceIndex (HERE)
 │   ├── events.ts               ← EventBridge bus + event rules
-│   └── secrets.ts              ← SST secrets (API keys, Supabase service role key)
+│   └── secrets.ts              ← SST secrets (Supabase keys, FoursquareApiKey)
 ├── services/
-│   ├── suggest.ts              ← GET /suggest — personalized recommendations
-│   ├── search.ts               ← GET /search — semantic activity search
+│   ├── suggest.ts              ← GET /suggest — Amazon Location + Foursquare enrichment
+│   ├── search.ts               ← GET /search — location-based activity search
 │   ├── interact.ts             ← POST /interact — log user interactions
-│   ├── ingest.ts               ← Catalog ingestion job (Google Places, Viator)
-│   ├── embed.ts                ← Batch compute Bedrock Titan embeddings
+│   ├── ingest.ts               ← Catalog ingestion job (deferred)
+│   ├── embed.ts                ← Batch compute embeddings (deferred)
 │   └── lib/
-│       ├── embedding.ts        ← Bedrock Titan embedding client
-│       ├── opensearch.ts       ← OpenSearch vector query builder
+│       ├── auth.ts             ← Supabase JWT validation
+│       ├── location.ts         ← Amazon Location Services client
+│       ├── foursquare.ts       ← Foursquare Places API enrichment
 │       ├── cache.ts            ← DynamoDB recommendation cache
-│       ├── personalize.ts      ← Amazon Personalize runtime client
 │       └── types.ts            ← Shared backend types
 ├── apps/
 ├── packages/
@@ -219,14 +219,20 @@ travyl-frontend/
 | Interaction tracking | AWS EventBridge + DynamoDB | High-throughput event ingestion |
 | Image CDN | AWS S3 + CloudFront | Edge delivery, on-the-fly resize |
 
-### Recommendation Data Flow
+### Recommendation Data Flow (Current — MVP)
 
-1. User opens trip → frontend calls `GET /suggest?destination=Paris&tripId=xxx&userId=xxx`
-2. Lambda checks DynamoDB cache (key: `{userId}:{destination}:{travelStyle}:{budgetTier}`)
+1. User opens trip → frontend calls `GET /suggest?destination=Paris` with Supabase JWT
+2. Lambda validates JWT, checks DynamoDB cache (key: `{userId}:{destination}`, TTL 30min)
 3. Cache hit → return immediately
-4. Cache miss → query OpenSearch (vector similarity by destination + user taste vector) → re-rank via Personalize → write to DynamoDB → return
-5. User interacts with suggestion cards → `POST /interact` → EventBridge → async update user taste vector
-6. Nightly batch: `ingest.ts` pulls from Google Places / Viator → `embed.ts` computes vectors → upserts to OpenSearch
+4. Cache miss → Amazon Location `SearchPlaceIndexForText` → Foursquare enrichment (photos, ratings, prices) → write to DynamoDB → return
+5. User interacts with suggestion cards → `POST /interact` → EventBridge (data capture, no subscribers yet)
+6. Frontend: React Query fetches suggestions, client-side search/category filtering
+
+### Recommendation Data Flow (Future — Personalization)
+
+1. Cache miss → query OpenSearch (vector similarity by destination + user taste vector) → re-rank via Personalize → return
+2. EventBridge subscribers update user taste vectors
+3. Nightly batch: `ingest.ts` pulls from Google Places / Viator → `embed.ts` computes Bedrock Titan vectors → upserts to OpenSearch
 
 ### Personalization Signals
 

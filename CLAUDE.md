@@ -4,10 +4,10 @@ Collaborative travel planning app — web (Next.js) + mobile (Expo), shared back
 
 ## At the start of each session
 
-Read these three files before doing anything else:
+Read these files before doing anything else:
 - `PLATFORM.md` — what the product is and who it's for
 - `ARCHITECTURE.md` — tech stack, data layer, DB schema, conventions
-- `PLANNING.md` — active branch log and current work
+- `planning/TRA-XXX.md` — current branch's planning file (match issue ID from branch name; create if missing)
 
 ## Monorepo layout
 
@@ -36,3 +36,13 @@ cd packages/shared && npm test  # Run shared package tests
 3. Claude will look up the issue via Linear MCP for context
 
 This applies before invoking `/brainstorm`. No Linear issue = no new branch.
+
+## Planning files
+
+Each Linear issue has a planning file at `planning/TRA-XXX.md`. When starting a new feature:
+
+1. Create the Linear issue in the Travyl workspace
+2. Create `planning/TRA-XXX.md` from the template
+3. Name the branch `feature/tra-XXX`
+
+The planning file tracks: goal, completed work, known issues, and links to Linear + PR.

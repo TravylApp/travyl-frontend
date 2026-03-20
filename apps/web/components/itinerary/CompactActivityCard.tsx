@@ -39,7 +39,7 @@ export function CompactActivityCard({
 
   return (
     <div
-      className="rounded-xl bg-white border border-gray-200 overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.01]"
+      className="rounded-xl bg-white dark:bg-[var(--muted)] border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.01]"
       onClick={onClick}
     >
       {/* Image section */}
@@ -118,7 +118,7 @@ export function CompactActivityCard({
       <div className="px-3 pt-1.5 pb-2.5">
         {/* Location */}
         {activity.locationName && (
-          <div className="flex items-center gap-1 text-[10px] text-gray-500">
+          <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
             <MapPin size={9} />
             <span className="truncate">{activity.locationName}</span>
           </div>
@@ -131,14 +131,14 @@ export function CompactActivityCard({
               <Star
                 key={i}
                 size={9}
-                className={i < Math.floor(rating ?? 4.5) ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}
+                className={i < Math.floor(rating ?? 4.5) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}
               />
             ))}
-            <span className="text-[10px] text-gray-500 ml-0.5">{(rating ?? 4.5).toFixed(1)}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-0.5">{(rating ?? 4.5).toFixed(1)}</span>
           </div>
           {activity.timeDisplay && (
-            <div className="flex items-center gap-0.5 text-[10px] text-gray-500">
-              <Clock size={9} className="text-gray-400" />
+            <div className="flex items-center gap-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+              <Clock size={9} className="text-gray-400 dark:text-gray-500" />
               <span>{activity.timeDisplay}</span>
             </div>
           )}
@@ -146,23 +146,23 @@ export function CompactActivityCard({
 
         {/* Price */}
         {activity.costDisplay && (
-          <div className="text-[11px] font-semibold text-gray-900 mt-1">{activity.costDisplay}</div>
+          <div className="text-[11px] font-semibold text-gray-900 dark:text-gray-100 mt-1">{activity.costDisplay}</div>
         )}
 
         {/* Description / Notes */}
         {activity.notes && (
-          <p className="text-[10px] text-gray-600 mt-1 line-clamp-2 leading-relaxed">{activity.notes}</p>
+          <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 leading-relaxed">{activity.notes}</p>
         )}
 
 
         {/* Booked info bar */}
         {activity.startTime && (
-          <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-gray-100">
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-medium">
+          <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-gray-100 dark:border-white/[0.06]">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
               <CalendarCheck size={9} />
               Booked
             </div>
-            <span className="text-[10px] text-gray-400">{activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}</span>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">{activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}</span>
           </div>
         )}
       </div>

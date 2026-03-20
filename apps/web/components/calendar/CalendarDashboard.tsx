@@ -337,13 +337,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripDays={TRIP_DAYS}
         />
 
-        {/* All-day row: flight + hotel banners */}
-        <AllDayRow
-          days={visibleDays}
-          flights={FLIGHT_BANNERS}
-          hotels={HOTEL_BANNERS}
-        />
-
         {/* Grid area */}
         {activeNav === 'calendar' ? (
         <DndContext
