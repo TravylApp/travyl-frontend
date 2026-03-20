@@ -15,7 +15,7 @@ interface EventBlockProps {
   activity: CalendarActivity
   viewers?: UserAwareness[]
   isSelected?: boolean
-  onSelect: (id: string) => void
+  onClickEvent: (id: string, anchorEl: HTMLElement) => void
   timeRangeStartHour: number
   column?: number
   totalColumns?: number
@@ -26,7 +26,7 @@ export function EventBlock({
   activity,
   viewers = [],
   isSelected = false,
-  onSelect,
+  onClickEvent,
   timeRangeStartHour,
   column = 0,
   totalColumns = 1,
@@ -35,6 +35,7 @@ export function EventBlock({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { type: 'activity' as const, activity },
+    activationConstraint: { distance: 5 },
   })
 
   const { isDark } = useCalendarThemeContext()
@@ -67,10 +68,14 @@ export function EventBlock({
     ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
 
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    onClickEvent(activity.id, e.currentTarget)
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      onSelect(activity.id)
+      onClickEvent(activity.id, e.currentTarget as HTMLElement)
     }
   }
 
@@ -92,11 +97,10 @@ export function EventBlock({
         'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
         'ring-2 ring-transparent',
-        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg',
-        isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40',
+        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg hover:ring-white/40',
         'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}
-      onClick={() => onSelect(activity.id)}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
       {hasImage ? (
