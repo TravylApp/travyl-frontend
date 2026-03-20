@@ -376,7 +376,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         tripStartDate={parsedStartDate}
                         onSelectEvent={handleSelectEvent}
                         onClickDayHeader={handleClickDayHeader}
-                        onCreateActivity={handleCreateActivity}
+                        onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
                       />
                     </motion.div>
@@ -398,7 +398,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         timeRange={timeRange}
                         tripStartDate={parsedStartDate}
                         onSelectEvent={handleSelectEvent}
-                        onCreateActivity={handleCreateActivity}
+                        onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
                       />
                     </motion.div>
