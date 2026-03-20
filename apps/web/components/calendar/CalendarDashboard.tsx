@@ -104,12 +104,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     trackEvent(suggestionId, 'drag')
   }, [addActivity, selectEvent, trackEvent])
 
-  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
-    onAddFromSuggestion: handleAddFromSuggestion,
-    scrollRef,
-    timeRangeStartHour: timeRange.startHour,
-  })
+  // useCalendarDnd is called below after marquee selection hook is instantiated
 
   const { theme, toggleTheme } = useCalendarTheme()
 
@@ -155,6 +150,36 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     activities,
     timeRangeStartHour: timeRange.startHour,
     dayCount: TRIP_DAYS.length,
+  })
+
+  const handleGroupMove = useCallback((dayDelta: number, hourDelta: number) => {
+    const selected = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    if (selected.length === 0) return
+
+    // Clamp delta so ALL activities stay in bounds
+    let clampedDayDelta = dayDelta
+    let clampedHourDelta = hourDelta
+    for (const act of selected) {
+      const newDay = act.day + clampedDayDelta
+      const newHour = act.startHour + clampedHourDelta
+      if (newDay < 0) clampedDayDelta = Math.max(clampedDayDelta, -act.day)
+      if (newDay >= tripTotalDays) clampedDayDelta = Math.min(clampedDayDelta, tripTotalDays - 1 - act.day)
+      if (newHour < 0) clampedHourDelta = Math.max(clampedHourDelta, -act.startHour)
+      if (newHour + act.duration > 24) clampedHourDelta = Math.min(clampedHourDelta, 24 - act.duration - act.startHour)
+    }
+
+    for (const act of selected) {
+      moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
+    }
+  }, [activities, marqueeSelectedIds, moveActivity, tripTotalDays])
+
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+    onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    onGroupMove: handleGroupMove,
+    marqueeSelectedIds,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
   })
 
   // ─── Derive flight banners ────────────────────────────────────
