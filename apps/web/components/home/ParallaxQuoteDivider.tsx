@@ -60,7 +60,7 @@ export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, { bgY: MotionValu
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.97 }}
               transition={{ duration: 0.8 }}
-              className="text-sm sm:text-base md:text-lg text-white font-light italic text-center w-fit max-w-[85%] md:max-w-xl px-4 py-1.5 md:px-6 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/40 shadow-sm drop-shadow-sm"
+              className="text-sm sm:text-base md:text-lg text-white font-light italic text-center max-w-[85%] md:max-w-xl drop-shadow-md"
             >
               &ldquo;<TypeWriter key={slideIndex} text={PARALLAX_SLIDES[slideIndex].quote} delay={300} speed={35} />&rdquo;
               {PARALLAX_SLIDES[slideIndex].author && (
