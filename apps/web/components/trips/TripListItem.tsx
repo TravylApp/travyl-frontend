@@ -73,7 +73,7 @@ export function TripListItem({ trip }: TripListItemProps) {
               {formatCurrency(trip.budget, trip.currency)}
             </span>
           )}
-          {trip.is_shared && (
+          {trip.visibility !== 'private' && (
             <span className="flex items-center gap-1 text-[#1e3a5f]" title="Shared trip">
               <Users2 size={12} />
               Shared
