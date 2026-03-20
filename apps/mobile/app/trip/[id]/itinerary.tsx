@@ -1793,7 +1793,7 @@ export default function ItineraryScreen() {
 
     // Fallback: build a minimal PlaceItem from the ActivityViewModel
     const idx = allActivities.indexOf(activity);
-    const coords = mockActivityCoords(idx, allActivities.length);
+    const coords = mockActivityCoords(idx, allActivities.length, centerLat, centerLng);
     return {
       id: activity.id,
       name: activity.name,
