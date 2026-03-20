@@ -24,9 +24,10 @@ Remove the `handleMouseDown`/`handleMouseUp` click-to-create path from `DayColum
 | Interaction | Before | After |
 |---|---|---|
 | Click empty calendar area | Creates new activity | Deselects (closes detail panel) |
-| Shift+click empty area | Creates post-it note | Creates post-it note (unchanged — TRA-204) |
+| Shift+click empty area | Creates post-it note (not yet wired — TRA-204) | Same — guard preserved in DayColumn, silently no-ops until TRA-204 wires the prop chain |
 | Press `N` | Creates activity at noon on selected day | Same (unchanged) |
 | Click existing activity | Selects it | Same (unchanged) |
+| Click already-selected activity | Deselects (toggles off) | Same (unchanged — toggle stays in EventBlock) |
 
 ### Implementation
 
@@ -34,14 +35,30 @@ Remove the `handleMouseDown`/`handleMouseUp` click-to-create path from `DayColum
 - Remove `mouseDownPos` ref
 - Remove `handleMouseDown` and `handleMouseUp` functions
 - Remove `onMouseDown` and `onMouseUp` props from the droppable background div
+- Remove `onCreateActivity` from `DayColumnProps` — no longer needed
 - Replace with a single `onClick` handler that:
+  - Guards with `e.target === e.currentTarget` to ignore bubbled clicks from `EventBlock` and `PostItNote` children (without this guard, clicking an activity would select it and then immediately deselect it as the click bubbles up)
   - On Shift+click: calls `onCreateNote(dayIndex, hour)` if `canCreateNotes && onCreateNote`
   - Otherwise: calls `onDeselect()` to close the detail panel
-- Remove `onCreateActivity` prop from `DayColumn` — no longer needed
-- `CalendarDashboard` passes `onDeselect={() => selectEvent(null)}` to each `DayColumn`
+- Add `onDeselect: () => void` to `DayColumnProps`
+
+**`apps/web/components/calendar/WeekView.tsx`**
+- Remove `onCreateActivity` from `WeekViewProps`
+- Remove the `onCreateActivity` prop forwarded to `DayColumn`
+- Add `onDeselect: () => void` to `WeekViewProps` and forward to `DayColumn`
+
+**`apps/web/components/calendar/DayView.tsx`**
+- Remove `onCreateActivity` from `DayViewProps`
+- Remove the `onCreateActivity` prop forwarded to `DayColumn`
+- Add `onDeselect: () => void` to `DayViewProps` and forward to `DayColumn`
+
+**`apps/web/components/calendar/CalendarDashboard.tsx`**
+- Stop passing `onCreateActivity` to `WeekView` and `DayView`
+- Pass `onDeselect={() => selectEvent(null)}` instead
+- `handleCreateActivity` is **retained** — it is still used by the `N` keyboard shortcut via `useCalendarCommands` (`onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12)`)
 
 ### What stays the same
-- Shift+click note creation (TRA-204 feature, same event, different modifier)
+- Shift+click note creation guard is preserved in `DayColumn`, but silently no-ops until TRA-204 wires `onCreateNote`/`canCreateNotes` through `WeekView`, `DayView`, and `CalendarDashboard` — those props are not currently forwarded above `DayColumn`
 - Drag-and-drop is unaffected (dnd-kit manages its own pointer events)
 - The 5px drag threshold logic is removed entirely — dnd-kit handles drag vs click discrimination on event blocks
 
@@ -66,17 +83,22 @@ Changes from current: `ring-white ring-offset-1` → `ring-2 ring-white ring-off
 
 **`apps/web/components/calendar/EventBlock.tsx`**
 - Replace `isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40'` with `isSelected ? 'ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg' : 'hover:ring-white/40'`
-- The existing `transition-[ring,shadow,opacity] duration-150` transition already in place will animate the ring and scale smoothly — no change needed there
+- Replace `transition-[ring,shadow,opacity]` with `transition-[ring,shadow,opacity,transform]` so the scale animates in. (`transition-all` is avoided because `left` and `width` are already handled by the inline `style.transition` on the same element.)
+- The existing static class `hover:-translate-y-px hover:shadow-lg` must be suppressed when selected to avoid stacking with `scale-[1.02]`. Make it conditional: apply `hover:-translate-y-px hover:shadow-lg` only when `!isSelected && !isDragging`. `shadow-lg` on hover is redundant with the selected state's own `shadow-lg`, so this is safe to drop.
+- Note: `ring-2` is already present as a permanent base class (`ring-2 ring-transparent`). The selected state adds `ring-white ring-offset-2` on top — no duplicate `ring-2` needed in the class string.
 
 ---
 
 ## Scope
 
-- No schema changes
-- No Yjs changes
-- No new hooks or components
-- Two files touched: `DayColumn.tsx`, `EventBlock.tsx`
-- `CalendarDashboard.tsx` needs a minor prop update (remove `onCreateActivity` from DayColumn calls, add `onDeselect`)
+Five files touched:
+- `apps/web/components/calendar/DayColumn.tsx` — remove click-to-create, add `onDeselect`
+- `apps/web/components/calendar/WeekView.tsx` — remove `onCreateActivity`, add `onDeselect`
+- `apps/web/components/calendar/DayView.tsx` — remove `onCreateActivity`, add `onDeselect`
+- `apps/web/components/calendar/CalendarDashboard.tsx` — prop wiring update
+- `apps/web/components/calendar/EventBlock.tsx` — selected ring classes + transition
+
+No schema changes, no Yjs changes, no new hooks or components.
 
 ---
 
