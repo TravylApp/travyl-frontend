@@ -3,7 +3,6 @@
 import { use, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Plane,
   Search,
   ChevronDown,
   ChevronUp,
@@ -26,6 +25,7 @@ import {
   Info,
   Plus,
 } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import { useItineraryScreen, useFlights } from '@travyl/shared';
 
 /* ================================================================
@@ -198,7 +198,7 @@ function FlightSearchSection() {
       <button onClick={() => setCollapsed(!collapsed)} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#2563eb] flex items-center justify-center">
-            <Plane size={14} className="text-white" />
+            <PaperPlane size={14} className="text-white" />
           </div>
           <div className="text-left">
             <p className="text-sm font-medium text-gray-800">Search Flights</p>
@@ -390,7 +390,7 @@ function BookedFlightCard({ flight }: { flight: typeof BOOKED_FLIGHTS[0] }) {
       {/* Header */}
       <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3 text-white" style={{ background: gradient }}>
         <div className="flex items-center gap-2">
-          <Plane size={14} className={isOutbound ? '' : 'rotate-180'} />
+          <PaperPlane size={14} className={isOutbound ? '' : 'rotate-180'} />
           <span className="text-sm font-semibold">{flight.flightNumber}</span>
           <span className="text-xs text-white/70">{flight.date}</span>
         </div>
@@ -413,7 +413,7 @@ function BookedFlightCard({ flight }: { flight: typeof BOOKED_FLIGHTS[0] }) {
             <div className="flex items-center w-full">
               <div className="flex-1 border-t border-dashed border-gray-300" />
               <div className="w-7 h-7 rounded-full flex items-center justify-center mx-1.5" style={{ backgroundColor: '#2563eb' }}>
-                <Plane size={12} className="text-white" />
+                <PaperPlane size={12} className="text-white" />
               </div>
               <div className="flex-1 border-t border-dashed border-gray-300" />
             </div>

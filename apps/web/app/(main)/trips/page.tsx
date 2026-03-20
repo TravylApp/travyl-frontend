@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
-import { Plus, Plane } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import { Footer, OceanWave } from '@/components/home';
 import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
 
@@ -327,7 +328,7 @@ function TripsContent() {
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Plane size={32} className="text-gray-400" />
+              <PaperPlane size={32} className="text-gray-400" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800 mb-1">No trips yet</h2>
             <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>

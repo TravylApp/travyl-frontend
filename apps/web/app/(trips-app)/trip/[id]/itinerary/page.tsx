@@ -12,9 +12,10 @@ import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import {
-  ChevronDown, X, Search, Compass, LayoutList, Plane, Map, Plus,
+  ChevronDown, X, Search, Compass, LayoutList, Map, Plus, Calendar,
 } from 'lucide-react';
 import { TIME_OF_DAY_CONFIG, getActivityTypeColor } from '@travyl/shared';
+import { PaperPlane } from '@/components/ui';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 
 // ─── Mock activity coordinates (keyed by activity id) ────────────
@@ -128,7 +129,7 @@ function GlanceView({
                 <div className="flex-1 overflow-y-auto scrollbar-hide">
                   {isFirst && arrivalFlight && (
                     <div className="flex items-center gap-2 mb-1.5 pb-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                      <Plane size={10} className="shrink-0" style={{ color: '#4ade80' }} />
+                      <PaperPlane size={10} className="shrink-0" style={{ color: '#4ade80' }} />
                       <span className="text-[10px] font-semibold text-white/80">Arrive — {arrivalFlight.flightNumber}</span>
                       <span className="text-[9px] ml-auto text-white/40">{arrivalFlight.arrivalTime}</span>
                     </div>
@@ -164,7 +165,7 @@ function GlanceView({
 
                   {isLast && returnFlight && (
                     <div className="flex items-center gap-2 mt-1 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <Plane size={10} className="shrink-0 rotate-180" style={{ color: '#60a5fa' }} />
+                      <PaperPlane size={10} className="shrink-0 rotate-180" style={{ color: '#60a5fa' }} />
                       <span className="text-[10px] font-semibold text-white/80">Depart — {returnFlight.flightNumber}</span>
                       <span className="text-[9px] ml-auto text-white/40">{returnFlight.departureTime}</span>
                     </div>
@@ -444,6 +445,14 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               >
                 <Plus size={13} style={{ color: 'var(--magazine-accent, #c8a96a)' }} />
               </button>
+              <a
+                href={`/trip/${id}/calendar`}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))' }}
+                title="Calendar view"
+              >
+                <Calendar size={13} style={{ color: 'var(--magazine-text, var(--muted-foreground))' }} />
+              </a>
               <button
                 onClick={() => setRequestMapOpen((v: boolean) => !v)}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
