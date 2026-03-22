@@ -490,6 +490,13 @@ export interface SuggestionCard {
   reason?: string
 }
 
+export interface RecommendationSection {
+  sectionType: 'destination' | 'category' | 'affinity' | 'schedule' | 'social'
+  sectionTitle: string
+  sectionSubtitle?: string
+  suggestions: SuggestionCard[]
+}
+
 export interface UserAwareness {
   userId: string;
   name: string;
