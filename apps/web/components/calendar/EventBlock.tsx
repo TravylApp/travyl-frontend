@@ -98,8 +98,10 @@ export function EventBlock({
         isMultiSelected
           ? 'ring-2 ring-blue-400 bg-blue-500/10'
           : 'ring-2 ring-transparent',
-        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg',
-        !isMultiSelected && (isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40'),
+        isDragging
+          ? ''
+          : `transition-[ring,shadow,opacity,transform] duration-150${!isSelected ? ' hover:-translate-y-px hover:shadow-lg' : ''}`,
+        !isMultiSelected && (isSelected ? 'ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg' : 'hover:ring-white/40'),
         'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].filter(Boolean).join(' ')}
       onClick={(e: React.MouseEvent<HTMLDivElement>) => {

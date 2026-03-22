@@ -10,7 +10,7 @@ export function usePollSync(tripId: string) {
   const { pollsMap } = useYjsTripContext()
   const dirtyIds = useRef(new Set<string>())
   const deletedIds = useRef(new Set<string>())
-  const flushTimer = useRef<ReturnType<typeof setTimeout>>()
+  const flushTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const flush = useCallback(async () => {
     const toUpsert = [...dirtyIds.current]

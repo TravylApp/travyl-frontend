@@ -7,6 +7,7 @@ import { Calendar, Users, PieChart, MapPin, Users2 } from 'lucide-react';
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
+import { ForkCountBadge } from '../trip/ForkAttribution';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -77,6 +78,11 @@ export function TripCard({ trip }: TripCardProps) {
 
         {/* Card Body - White background with trip name prominent */}
         <div className="px-4 py-3">
+          {/* Fork badge */}
+          {trip.fork_count > 0 && (
+            <ForkCountBadge count={trip.fork_count} />
+          )}
+
           {/* Trip Title - PRIMARY (large, bold) */}
           <h2 className="text-lg font-bold text-gray-900 leading-tight mb-1 line-clamp-1">
             {trip.title}

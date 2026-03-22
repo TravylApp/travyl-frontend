@@ -65,18 +65,8 @@ export function DayView({
           tripStartDate={tripStartDate}
           onSelectEvent={onSelectEvent}
           onClickDayHeader={undefined}
-          onCreateActivity={onCreateActivity}
+          onDeselect={onDeselect}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
-          onResize={onResize}
-          polls={polls}
-          pollUserId={pollUserId}
-          pollCollaborators={pollCollaborators}
-          tripOwnerId={tripOwnerId}
-          onVote={onVote}
-          onStartPoll={onStartPoll}
-          onClosePoll={onClosePoll}
-          onRestoreActivity={onRestoreActivity}
-          onRemoveActivity={onRemoveActivity}
         />
       </div>
     </div>
