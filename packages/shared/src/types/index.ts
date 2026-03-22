@@ -372,6 +372,7 @@ export interface ActivityData {
   check_in?: string
   check_out?: string
   booking_ref?: string
+  pollResult?: 'remove'
 }
 
 export interface CalendarActivity {
@@ -404,6 +405,16 @@ export interface CalendarActivity {
   longitude?: number;
   /** DB sort_order */
   sortOrder?: number;
+  pollResult?: 'remove'
+}
+
+export interface Poll {
+  activityId: string
+  startedBy: string
+  startedAt: string
+  status: 'active' | 'resolved'
+  result: 'keep' | 'remove' | ''
+  votes: Record<string, 'yes' | 'no'>
 }
 
 // ─── Suggestion / For You Panel ─────────────────────────────
