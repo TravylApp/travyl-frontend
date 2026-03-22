@@ -22,7 +22,7 @@ async function fetchContextSearch(query: string): Promise<ContextSearchResult[]>
   const token = session?.access_token
   if (!token) return []
 
-  const res = await fetch(`${API_URL}/context-search?q=${encodeURIComponent(query)}`, {
+  const res = await fetch(`${API_URL}/api/events/search?city=${encodeURIComponent(query)}&country=`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 

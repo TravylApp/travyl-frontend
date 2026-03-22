@@ -56,58 +56,29 @@ interface UseSuggestionsReturn {
 async function fetchSuggestions(
   destination: string,
   category: string,
-  start: number,
+  _start: number,
 ): Promise<SuggestionCard[]> {
-  const params = new URLSearchParams({ destination, category, start: String(start) })
+  if (!API_URL) return []
 
-  // Try authenticated /recommend endpoint first
-  if (API_URL) {
-    try {
-      const { supabase } = await import('@travyl/shared')
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+  try {
+    const { supabase } = await import('@travyl/shared')
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
 
-      if (token) {
-        const url = `${API_URL}/recommend?${params}`
-        console.log('[ForYou] fetching (recommend):', url)
+    const params = new URLSearchParams({ category, limit: '20' })
+    const url = `${API_URL}/api/places/nearby?${params}`
 
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-          },
-        })
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (token) headers.Authorization = `Bearer ${token}`
 
-        if (res.ok) {
-          const data = await res.json()
-          const items = data.suggestions ?? []
-          console.log('[ForYou] got', items.length, 'personalized suggestions')
-          if (items.length > 0) return items
-          console.warn('[ForYou] /recommend returned 0 results, falling back to /api/suggest')
-        } else {
-          console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
-        }
-      }
-    } catch (err) {
-      console.warn('[ForYou] /recommend auth error, falling back to /api/suggest', err)
-    }
+    const res = await fetch(url, { headers })
+    if (!res.ok) return []
+
+    const data = await res.json()
+    return Array.isArray(data) ? data : data.suggestions ?? data.places ?? []
+  } catch {
+    return []
   }
-
-  // Fallback: unauthenticated Next.js proxy
-  const url = `/api/suggest?${params}`
-  console.log('[ForYou] fetching (fallback):', url)
-
-  const res = await fetch(url)
-
-  if (!res.ok) {
-    const body = await res.text()
-    console.error('[ForYou] error body:', body)
-    throw new Error(`${res.status}: ${body}`)
-  }
-
-  const data = await res.json()
-  console.log('[ForYou] got', data.suggestions?.length ?? 0, 'suggestions at start', start)
-  return data.suggestions ?? []
 }
 
 export function useSuggestions({

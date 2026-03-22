@@ -24,7 +24,7 @@ export function useInteractionTracking(tripId: string) {
         const token = session?.access_token
         if (!token) return
 
-        fetch(`${API_URL}/interact`, {
+        fetch(`${API_URL}/api/trips/${tripId}/activities`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
