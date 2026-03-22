@@ -12,7 +12,7 @@ interface WeekViewProps {
   tripStartDate: Date
   onClickEvent: (id: string, anchorEl: HTMLElement) => void
   onClickDayHeader?: (dayIndex: number) => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
+  onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
 }
 
@@ -25,7 +25,7 @@ export function WeekView({
   tripStartDate,
   onClickEvent,
   onClickDayHeader,
-  onCreateActivity,
+  onDeselect,
   pendingDrop = null,
 }: WeekViewProps) {
   return (
@@ -48,7 +48,7 @@ export function WeekView({
               onClickDayHeader={
                 onClickDayHeader ? () => onClickDayHeader(dayIndex) : undefined
               }
-              onCreateActivity={onCreateActivity}
+              onDeselect={onDeselect}
               pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
             />
           )

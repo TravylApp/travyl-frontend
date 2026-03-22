@@ -15,7 +15,7 @@ interface EventBlockProps {
   activity: CalendarActivity
   viewers?: UserAwareness[]
   isSelected?: boolean
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onSelect: (id: string) => void
   timeRangeStartHour: number
   column?: number
   totalColumns?: number
@@ -26,7 +26,7 @@ export function EventBlock({
   activity,
   viewers = [],
   isSelected = false,
-  onClickEvent,
+  onSelect,
   timeRangeStartHour,
   column = 0,
   totalColumns = 1,
@@ -35,7 +35,6 @@ export function EventBlock({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { type: 'activity' as const, activity },
-    activationConstraint: { distance: 5 },
   })
 
   const { isDark } = useCalendarThemeContext()
@@ -68,14 +67,10 @@ export function EventBlock({
     ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    onClickEvent(activity.id, e.currentTarget)
-  }
-
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      onClickEvent(activity.id, e.currentTarget as HTMLElement)
+      onSelect(activity.id)
     }
   }
 
@@ -97,10 +92,13 @@ export function EventBlock({
         'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
         'ring-2 ring-transparent',
-        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg hover:ring-white/40',
+        isDragging
+          ? ''
+          : `transition-[ring,shadow,opacity,transform] duration-150${!isSelected ? ' hover:-translate-y-px hover:shadow-lg' : ''}`,
+        isSelected ? 'ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg' : 'hover:ring-white/40',
         'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}
-      onClick={handleClick}
+      onClick={() => onSelect(activity.id)}
       onKeyDown={handleKeyDown}
     >
       {hasImage ? (

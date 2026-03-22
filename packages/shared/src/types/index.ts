@@ -583,6 +583,9 @@ export interface TravelBoard {
 
 // ─── Trip Sharing ────────────────────────────────────────────
 
+// TripVisibility is an alias for Visibility (exported at top of file)
+export type TripVisibility = Visibility
+
 export interface TripNote {
   id: string
   trip_id: string

@@ -1,5 +1,4 @@
 'use client'
-import { useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
@@ -17,9 +16,9 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
+  onDeselect: () => void
   pendingActivity?: CalendarActivity | null
   notes?: TripNote[]
   canCreateNotes?: boolean
@@ -76,9 +75,9 @@ export function DayColumn({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onClickEvent,
+  onSelectEvent,
   onClickDayHeader,
-  onCreateActivity,
+  onDeselect,
   pendingActivity = null,
   notes,
   canCreateNotes,
@@ -89,38 +88,21 @@ export function DayColumn({
   onUpdateNote,
   onDeleteNote,
 }: DayColumnProps) {
-  const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
-
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    mouseDownPos.current = { x: e.clientX, y: e.clientY }
-  }
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (!mouseDownPos.current || !onCreateActivity) return
-    // Only create an activity when clicking directly on the empty grid,
-    // not when clicking on a child element (EventBlock, PostItNote, etc.)
-    if (e.target !== e.currentTarget) {
-      mouseDownPos.current = null
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return  // ignore bubbled clicks from EventBlock/PostItNote
+    const rect = e.currentTarget.getBoundingClientRect()
+    const offsetY = e.clientY - rect.top
+    const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
+    const snappedHour = Math.round(rawHour * 2) / 2
+    if (e.shiftKey && canCreateNotes && onCreateNote) {
+      onCreateNote(dayIndex, snappedHour)
       return
     }
-    const dx = Math.abs(e.clientX - mouseDownPos.current.x)
-    const dy = Math.abs(e.clientY - mouseDownPos.current.y)
-    mouseDownPos.current = null
-    if (dx < 5 && dy < 5) {
-      const rect = e.currentTarget.getBoundingClientRect()
-      const offsetY = e.clientY - rect.top
-      const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-      const snappedHour = Math.round(rawHour * 2) / 2
-      if (e.shiftKey && canCreateNotes && onCreateNote) {
-        onCreateNote(dayIndex, snappedHour)
-        return
-      }
-      onCreateActivity(dayIndex, snappedHour)
-    }
+    onDeselect()
   }
 
   const { isOver, setNodeRef } = useDroppable({
@@ -225,8 +207,7 @@ export function DayColumn({
           isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
         style={{ height: hourCount * HOUR_HEIGHT }}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
+        onClick={handleBackgroundClick}
       >
         {/* Hour grid lines */}
         {hours.map((hour) => (
@@ -256,7 +237,7 @@ export function DayColumn({
               activity={activity}
               viewers={viewers}
               isSelected={selectedEventId === activity.id}
-              onClickEvent={onClickEvent}
+              onSelect={onSelectEvent}
               timeRangeStartHour={timeRange.startHour}
               column={layout.column}
               totalColumns={layout.totalColumns}

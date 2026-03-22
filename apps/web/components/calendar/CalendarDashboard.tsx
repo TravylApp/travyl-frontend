@@ -25,10 +25,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
-import { CardPopover } from './CardPopover'
 import { DetailPanel } from './DetailPanel'
 import { ForYouPanel } from './ForYouPanel'
-import { formatDuration } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -93,9 +91,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
-
-  const [popoverEventId, setPopoverEventId] = useState<string | null>(null)
-  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
 
   const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
     await addActivity(activity)
@@ -203,11 +198,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     [activities, selectedEventId],
   )
 
-  const popoverActivity = useMemo(
-    () => activities.find((a) => a.id === popoverEventId) ?? null,
-    [activities, popoverEventId],
-  )
-
   // Auto-scroll to first event on mount
   useEffect(() => {
     if (!scrollRef.current) return
@@ -260,22 +250,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   if (error) return <CalendarError message={error} />
 
   // Event handlers
-  const handleClickEvent = (id: string, anchorEl: HTMLElement) => {
-    if (popoverEventId === id) {
-      setPopoverEventId(null)
-      setPopoverAnchor(null)
-      selectEvent(null)
-    } else {
-      setPopoverEventId(id)
-      setPopoverAnchor(anchorEl)
-      selectEvent(id)
-    }
-  }
-
-  const handlePopoverClose = () => {
-    setPopoverEventId(null)
-    setPopoverAnchor(null)
-    selectEvent(null)
+  const handleSelectEvent = (id: string) => {
+    selectEvent(selectedEventId === id ? null : id)
   }
 
   const handleCloseDetail = () => selectEvent(null)
@@ -329,6 +305,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
+        tripStartDate={parsedStartDate}
+        tripDays={tripTotalDays}
+        currentDay={selectedDayIndex}
+        onSelectDay={(dayIndex) => {
+          selectDay(dayIndex)
+          if (viewMode === 'day') goToDayView(dayIndex)
+        }}
         onNavChange={setActiveNav}
       />
 
@@ -364,55 +347,64 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           onDragCancel={handleDragCancel}
         >
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Scrollable grid */}
-            <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
-              <AnimatePresence mode="wait" initial={false}>
-                {viewMode === 'week' ? (
-                  <motion.div
-                    key="week"
-                    className="flex flex-1 min-w-0"
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 12 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <WeekView
-                      days={TRIP_DAYS}
-                      activities={activities}
-                      viewers={collaborators}
-                      selectedEventId={selectedEventId}
-                      timeRange={timeRange}
-                      tripStartDate={parsedStartDate}
-                      onClickEvent={handleClickEvent}
-                      onClickDayHeader={handleClickDayHeader}
-                      onCreateActivity={handleCreateActivity}
-                      pendingDrop={pendingDrop}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={`day-${selectedDayIndex}`}
-                    className="flex flex-1 min-w-0"
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <DayView
-                      dayIndex={selectedDayIndex}
-                      label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
-                      activities={activities}
-                      viewers={collaborators}
-                      selectedEventId={selectedEventId}
-                      timeRange={timeRange}
-                      tripStartDate={parsedStartDate}
-                      onClickEvent={handleClickEvent}
-                      onCreateActivity={handleCreateActivity}
-                      pendingDrop={pendingDrop}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            {/* Calendar grid column (AllDayRow + scrollable time grid) */}
+            <div className="flex flex-col flex-1 min-w-0">
+              {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
+              <AllDayRow
+                days={visibleDays}
+                flights={FLIGHT_BANNERS}
+                hotels={HOTEL_BANNERS}
+              />
+              {/* Scrollable time grid */}
+              <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
+                <AnimatePresence mode="wait" initial={false}>
+                  {viewMode === 'week' ? (
+                    <motion.div
+                      key="week"
+                      className="flex flex-1 min-w-0"
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <WeekView
+                        days={TRIP_DAYS}
+                        activities={activities}
+                        viewers={collaborators}
+                        selectedEventId={selectedEventId}
+                        timeRange={timeRange}
+                        tripStartDate={parsedStartDate}
+                        onSelectEvent={handleSelectEvent}
+                        onClickDayHeader={handleClickDayHeader}
+                        onDeselect={() => selectEvent(null)}
+                        pendingDrop={pendingDrop}
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key={`day-${selectedDayIndex}`}
+                      className="flex flex-1 min-w-0"
+                      initial={{ opacity: 0, x: 12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -12 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <DayView
+                        dayIndex={selectedDayIndex}
+                        label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
+                        activities={activities}
+                        viewers={collaborators}
+                        selectedEventId={selectedEventId}
+                        timeRange={timeRange}
+                        tripStartDate={parsedStartDate}
+                        onSelectEvent={handleSelectEvent}
+                        onDeselect={() => selectEvent(null)}
+                        pendingDrop={pendingDrop}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Right column: For You panel or Detail panel */}
@@ -496,40 +488,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           </div>
         )}
-
-          <CardPopover
-            anchorEl={popoverAnchor}
-            isOpen={!!popoverActivity}
-            onClose={handlePopoverClose}
-            position="right"
-            image={popoverActivity?.image}
-            title={popoverActivity?.title ?? ''}
-            category={popoverActivity?.type ?? ''}
-            rating={popoverActivity?.rating}
-            price={popoverActivity?.price ?? undefined}
-            duration={popoverActivity ? formatDuration(popoverActivity.duration) : undefined}
-            actions={popoverActivity ? [
-              {
-                label: 'Edit',
-                onClick: () => {
-                  const activityId = popoverActivity.id
-                  setPopoverEventId(null)
-                  setPopoverAnchor(null)
-                  selectEvent(activityId)
-                },
-                variant: 'ghost' as const,
-              },
-              {
-                label: 'Delete',
-                onClick: () => {
-                  handleRemoveActivity(popoverActivity.id)
-                  setPopoverEventId(null)
-                  setPopoverAnchor(null)
-                },
-                variant: 'danger' as const,
-              },
-            ] : []}
-          />
       </div>
     </div>
     </div>
