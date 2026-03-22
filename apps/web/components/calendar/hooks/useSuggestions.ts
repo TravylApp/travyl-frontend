@@ -59,12 +59,14 @@ async function fetchSuggestions(
   category: string,
   start: number,
 ): Promise<SuggestionCard[]> {
+  const params = new URLSearchParams({ destination, category, start: String(start) })
+
   // Try authenticated /recommend endpoint first
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
 
   if (token && API_URL) {
-    const url = `${API_URL}/recommend?destination=${encodeURIComponent(destination)}&category=${encodeURIComponent(category)}&start=${start}`
+    const url = `${API_URL}/recommend?${params}`
     console.log('[ForYou] fetching (recommend):', url)
 
     const res = await fetch(url, {
@@ -80,11 +82,11 @@ async function fetchSuggestions(
       return data.suggestions ?? []
     }
 
-    console.warn('[ForYou] /recommend failed, falling back to /api/suggest')
+    console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
   }
 
   // Fallback: unauthenticated Next.js proxy
-  const url = `/api/suggest?destination=${encodeURIComponent(destination)}&category=${encodeURIComponent(category)}&start=${start}`
+  const url = `/api/suggest?${params}`
   console.log('[ForYou] fetching (fallback):', url)
 
   const res = await fetch(url)
@@ -147,9 +149,11 @@ export function useSuggestions({
     [data],
   )
 
+  const scheduledSet = useMemo(() => new Set(scheduledActivityIds), [scheduledActivityIds])
+
   const suggestions = useMemo(() => {
     let filtered = allSuggestions.filter(
-      (s) => !removedIds.has(s.id) && !scheduledActivityIds.includes(s.id),
+      (s) => !removedIds.has(s.id) && !scheduledSet.has(s.id),
     )
 
     if (searchQuery.trim()) {
@@ -162,7 +166,7 @@ export function useSuggestions({
     }
 
     return filtered
-  }, [allSuggestions, searchQuery, removedIds, scheduledActivityIds])
+  }, [allSuggestions, searchQuery, removedIds, scheduledSet])
 
   return {
     suggestions,
