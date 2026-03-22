@@ -100,15 +100,15 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
   if (isLoading) return <RestaurantsSkeleton />;
 
   return (
-    <div className="space-y-0">
+    <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
       {/* -- View Mode Toggle ------------------------------------------- */}
-      <div className="flex items-center gap-0 mb-1">
+      <div className="flex items-center gap-0 px-4 pt-3 mb-1">
         <button
           onClick={() => setViewMode('booked')}
           className={`flex items-center gap-1.5 px-3 py-2 text-[13px] border-b-2 transition-all ${
             viewMode === 'booked'
               ? ''
-              : 'border-transparent text-gray-400 hover:text-gray-600'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
           style={{
             fontWeight: viewMode === 'booked' ? 600 : 400,
@@ -136,7 +136,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
           className={`flex items-center gap-1.5 px-3 py-2 text-[13px] border-b-2 transition-all ${
             viewMode === 'discover'
               ? ''
-              : 'border-transparent text-gray-400 hover:text-gray-600'
+              : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           }`}
           style={{
             fontWeight: viewMode === 'discover' ? 600 : 400,
@@ -162,7 +162,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
       </div>
 
       {/* -- Sticky Header: Categories + Search + Subcategory ----------- */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm pb-0">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-sm pb-0 px-4">
         {/* Category tabs -- icon-above-label underline style */}
         <div className="flex items-end gap-0 overflow-x-auto scrollbar-hide border-b border-gray-200">
           {RESTAURANT_CATEGORIES.map((f) => {
@@ -176,7 +176,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
                 className={`group flex flex-col items-center gap-1 px-3 pb-2 pt-2 border-b-2 whitespace-nowrap transition-all cursor-pointer ${
                   isActive
                     ? ''
-                    : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
+                    : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300'
                 }`}
                 style={isActive ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
               >
@@ -204,7 +204,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-full bg-gray-100 border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:bg-white transition-all"
+              className="w-full pl-9 pr-8 py-2 rounded-full bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/10 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:bg-white dark:focus:bg-white/15 transition-all"
             />
             {searchQuery && (
               <button
@@ -249,7 +249,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
       </div>
 
       {/* -- Masonry Grid with textured background ---------------------- */}
-      <div className="relative">
+      <div className="relative px-4 pb-4">
         <div
           className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 rounded-xl"
           style={{
@@ -260,10 +260,10 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
         <AnimatePresence mode="wait">
           <motion.div
             key={`${viewMode}-${categoryFilter}-${cuisineSubFilter}-${searchQuery}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10"
           >
             {filteredItems.length > 0 ? (

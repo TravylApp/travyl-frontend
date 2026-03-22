@@ -2,6 +2,7 @@
 import { TimeGutter } from './TimeGutter'
 import { DayColumn } from './DayColumn'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import type { Poll } from '@travyl/shared'
 
 interface DayViewProps {
   dayIndex: number
@@ -14,6 +15,16 @@ interface DayViewProps {
   onSelectEvent: (id: string) => void
   onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
+  onResize?: (id: string, newStartHour: number, newDuration: number) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  pollCollaborators?: UserAwareness[]
+  tripOwnerId?: string
+  onVote?: (activityId: string, vote: 'yes' | 'no') => void
+  onStartPoll?: (activityId: string) => void
+  onClosePoll?: (activityId: string) => void
+  onRestoreActivity?: (activityId: string) => void
+  onRemoveActivity?: (activityId: string) => void
 }
 
 export function DayView({
@@ -27,6 +38,16 @@ export function DayView({
   onSelectEvent,
   onDeselect,
   pendingDrop = null,
+  onResize,
+  polls,
+  pollUserId,
+  pollCollaborators,
+  tripOwnerId,
+  onVote,
+  onStartPoll,
+  onClosePoll,
+  onRestoreActivity,
+  onRemoveActivity,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -46,6 +67,16 @@ export function DayView({
           onClickDayHeader={undefined}
           onDeselect={onDeselect}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+          onResize={onResize}
+          polls={polls}
+          pollUserId={pollUserId}
+          pollCollaborators={pollCollaborators}
+          tripOwnerId={tripOwnerId}
+          onVote={onVote}
+          onStartPoll={onStartPoll}
+          onClosePoll={onClosePoll}
+          onRestoreActivity={onRestoreActivity}
+          onRemoveActivity={onRemoveActivity}
         />
       </div>
     </div>

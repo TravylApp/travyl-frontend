@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, Pressable, Dimensions, PanResponder } from 'react-native';
+import {
+  View, Text, Pressable, Dimensions, PanResponder, Modal,
+  Animated as RNAnimated, Platform, UIManager,
+} from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   FadeIn,
@@ -8,23 +11,25 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  interpolate,
-  useDerivedValue,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { LinearGradient } from 'expo-linear-gradient';
+import MapView, { Marker } from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PlaceItem } from '@travyl/shared';
-import CardBack from './CardBack';
 import { MagazineCurtain } from './MagazineCurtain';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
-const MAGAZINE_DELAY = 5000;
+const MAP_DEFAULT = 200;
+const MAP_MIN = 120;
 
 const SPRING_IN = { damping: 28, stiffness: 400, mass: 0.5 };
-const FLIP_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
 /* ═══════════════ Types ═══════════════ */
 
@@ -38,9 +43,6 @@ export interface CardStackCarouselProps {
   overlay?: boolean;
   onClose?: () => void;
   navColor?: string;
-  enableMagazine?: boolean;
-  /** When provided, tapping a card calls this instead of flipping */
-  onCardPress?: (place: PlaceItem, index: number) => void;
 }
 
 /* ═══════════════ Component ═══════════════ */
@@ -55,42 +57,90 @@ export function CardStackCarousel({
   overlay = false,
   onClose,
   navColor,
-  enableMagazine = false,
-  onCardPress,
 }: CardStackCarouselProps) {
+  const insets = useSafeAreaInsets();
   const CARD_W = cardWidth ?? SCREEN_WIDTH - 48;
   const CARD_H = cardHeight ?? CARD_W * 1.3;
 
   const [currentIdx, setCurrentIdx] = useState(initialIndex);
-  const [imgIdx, setImgIdx] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [phase, setPhase] = useState<'card' | 'magazine'>('card');
+  const [showMap, setShowMap] = useState(false);
+  const [selfOverlay, setSelfOverlay] = useState(false); // promote to overlay for map
+  const mapRef = useRef<MapView>(null);
   const isAnimating = useRef(false);
   const clearAnimating = useCallback(() => { isAnimating.current = false; }, []);
-  const phaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showMapRef = useRef(showMap);
+  showMapRef.current = showMap;
 
-  // Prefetch all place images with expo-image caching
+  // Magazine dimensions
+  const magW = Math.min(SCREEN_WIDTH - 32, CARD_W * 1.15);
+  const magH = CARD_H;
+
+  // ── Map height animation ──
+  const mapHeight = useRef(new RNAnimated.Value(0)).current;
+  const mapHRef = useRef(0);
+  const isMapAnimating = useRef(false);
+
+  // Max map height — in overlay, allow full screen (just handle visible)
+  const mapMax = overlay
+    ? SCREEN_H - insets.top - insets.bottom - 80
+    : Math.min(SCREEN_H * 0.5, 400);
+  const mapMaxRef = useRef(mapMax);
+  mapMaxRef.current = mapMax;
+
+  const toggleMap = useCallback(() => {
+    if (isMapAnimating.current) return;
+    isMapAnimating.current = true;
+
+    if (showMapRef.current) {
+      // Closing — shrink then unmount
+      RNAnimated.timing(mapHeight, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start(() => {
+        setShowMap(false);
+        mapHRef.current = 0;
+        isMapAnimating.current = false;
+      });
+    } else {
+      // Opening — mount then spring open
+      setShowMap(true);
+      mapHRef.current = MAP_DEFAULT;
+      mapHeight.setValue(0);
+      RNAnimated.spring(mapHeight, {
+        toValue: MAP_DEFAULT,
+        tension: 50, friction: 10,
+        useNativeDriver: false,
+      }).start(() => {
+        isMapAnimating.current = false;
+      });
+    }
+  }, []);
+
+  // Center map on current place when card changes or map opens
+  useEffect(() => {
+    const p = places[currentIdx];
+    const shouldCenter = showMap
+      ? p?.latitude != null && p?.longitude != null
+      : showMapRef.current && p?.latitude != null && p?.longitude != null;
+    if (!shouldCenter) return;
+    const delay = showMap ? 400 : 200;
+    const id = setTimeout(() => {
+      mapRef.current?.animateToRegion({
+        latitude: p!.latitude!, longitude: p!.longitude!,
+        latitudeDelta: 0.02, longitudeDelta: 0.02,
+      }, 400);
+    }, delay);
+    return () => clearTimeout(id);
+  }, [currentIdx, showMap]);
+
+  // Prefetch images
   useEffect(() => {
     const urls = places.flatMap((p) => [p.image, ...(p.images ?? [])]);
     Image.prefetch(urls);
   }, [places]);
 
-  // Magazine phase timer — after 5s idle, switch to magazine
-  const resetPhaseTimer = useCallback(() => {
-    if (!enableMagazine) return;
-    if (phaseTimer.current) clearTimeout(phaseTimer.current);
-    setPhase('card');
-    phaseTimer.current = setTimeout(() => setPhase('magazine'), MAGAZINE_DELAY);
-  }, [enableMagazine]);
-
-  useEffect(() => {
-    if (enableMagazine) {
-      resetPhaseTimer();
-    }
-    return () => { if (phaseTimer.current) clearTimeout(phaseTimer.current); };
-  }, [enableMagazine]);
-
-  // ── Shuffle animation values ──
+  // ── Shuffle animation ──
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotate = useSharedValue(0);
@@ -107,38 +157,8 @@ export function CardStackCarousel({
     opacity: opacity.value,
   }));
 
-  // ── Flip animation ──
-  const flipRotation = useSharedValue(0);
-  const isPastHalf = useDerivedValue(() => flipRotation.value > 90);
-
-  const frontStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateY: `${interpolate(flipRotation.value, [0, 180], [0, 180])}deg` }],
-    opacity: isPastHalf.value ? 0 : 1,
-    zIndex: isPastHalf.value ? 0 : 1,
-  }));
-
-  const backStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateY: `${interpolate(flipRotation.value, [0, 180], [180, 360])}deg` }],
-    opacity: isPastHalf.value ? 1 : 0,
-    zIndex: isPastHalf.value ? 1 : 0,
-  }));
-
-  const toggleFlip = useCallback(() => {
-    const next = !isFlipped;
-    setIsFlipped(next);
-    flipRotation.value = withSpring(next ? 180 : 0, FLIP_SPRING);
-  }, [isFlipped]);
-
-  const resetFlip = useCallback(() => {
-    setIsFlipped(false);
-    flipRotation.value = withTiming(0, { duration: 0 });
-  }, []);
-
-  // ── Shuffle transition ──
   const animateTransition = useCallback((direction: number, callback: () => void) => {
     isAnimating.current = true;
-    resetFlip();
-
     translateX.value = withTiming(direction > 0 ? -180 : 180, { duration: 150, easing: Easing.in(Easing.quad) });
     translateY.value = withTiming(-30, { duration: 150, easing: Easing.in(Easing.quad) });
     rotate.value = withTiming(direction > 0 ? -10 : 10, { duration: 150, easing: Easing.in(Easing.quad) });
@@ -149,9 +169,7 @@ export function CardStackCarousel({
       rotate.value = direction > 0 ? 8 : -8;
       scale.value = 0.92;
       opacity.value = 0;
-
       runOnJS(callback)();
-
       opacity.value = withTiming(1, { duration: 100 });
       translateX.value = withSpring(0, SPRING_IN);
       translateY.value = withSpring(0, SPRING_IN);
@@ -160,43 +178,71 @@ export function CardStackCarousel({
         runOnJS(clearAnimating)();
       });
     });
-  }, [resetFlip]);
+  }, []);
 
   const place = places[currentIdx];
-  const prevIdx = currentIdx === 0 ? places.length - 1 : currentIdx - 1;
-  const nextIdx = (currentIdx + 1) % places.length;
   const isFav = place ? favorites.includes(place.id) : false;
-  const images = place?.images?.length ? place.images : [place?.image];
-
-  // Peek cards — positioned from screen edges so they're always visible
-  const PEEK_W = CARD_W * 0.55;
-  const PEEK_H = CARD_H * 0.8;
-  const PEEK_EDGE = 8; // px from screen edge
 
   const goNext = useCallback(() => {
-    resetPhaseTimer();
-    animateTransition(1, () => {
-      setCurrentIdx((i) => (i + 1) % places.length);
-      setImgIdx(0);
-    });
-  }, [places.length, animateTransition, resetPhaseTimer]);
+    animateTransition(1, () => setCurrentIdx((i) => (i + 1) % places.length));
+  }, [places.length, animateTransition]);
 
   const goPrev = useCallback(() => {
-    resetPhaseTimer();
-    animateTransition(-1, () => {
-      setCurrentIdx((i) => (i === 0 ? places.length - 1 : i - 1));
-      setImgIdx(0);
-    });
-  }, [places.length, animateTransition, resetPhaseTimer]);
+    animateTransition(-1, () => setCurrentIdx((i) => (i === 0 ? places.length - 1 : i - 1)));
+  }, [places.length, animateTransition]);
 
-  // Swipe gesture — disabled when flipped
+  const goNextRef = useRef(goNext);
+  goNextRef.current = goNext;
+  const goPrevRef = useRef(goPrev);
+  goPrevRef.current = goPrev;
+
+  // Combined pan: horizontal swipe (navigate) + vertical drag (resize map)
+  const gestureDir = useRef<'h' | 'v' | null>(null);
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy),
+      onMoveShouldSetPanResponderCapture: (_, gs) => {
+        if (Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy)) {
+          gestureDir.current = 'h';
+          return true;
+        }
+        if (showMapRef.current && Math.abs(gs.dy) > 8 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.5) {
+          gestureDir.current = 'v';
+          return true;
+        }
+        return false;
+      },
+      onPanResponderMove: (_, gs) => {
+        if (gestureDir.current === 'v') {
+          const newH = Math.max(MAP_MIN, Math.min(mapMaxRef.current, mapHRef.current + gs.dy));
+          mapHeight.setValue(newH);
+        }
+      },
       onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -SWIPE_THRESHOLD) goNext();
-        else if (gs.dx > SWIPE_THRESHOLD) goPrev();
+        if (gestureDir.current === 'v') {
+          const clamped = Math.max(MAP_MIN, Math.min(mapMaxRef.current, mapHRef.current + gs.dy));
+          const max = mapMaxRef.current;
+          const wasFullScreen = mapHRef.current >= max * 0.95;
+          const isFastDown = gs.vy > 0.5 && gs.dy > 20;
+          const isFastUp = gs.vy < -0.5 && gs.dy < -20;
+
+          let snapTo = clamped;
+          if (clamped > max * 0.75 || isFastDown) {
+            snapTo = max;
+          } else if (isFastUp && wasFullScreen) {
+            snapTo = MAP_DEFAULT;
+          }
+
+          RNAnimated.spring(mapHeight, {
+            toValue: snapTo,
+            tension: 65, friction: 11,
+            useNativeDriver: false,
+          }).start();
+          mapHRef.current = snapTo;
+        } else if (gestureDir.current === 'h') {
+          if (gs.dx < -SWIPE_THRESHOLD) goNextRef.current();
+          else if (gs.dx > SWIPE_THRESHOLD) goPrevRef.current();
+        }
+        gestureDir.current = null;
       },
     })
   ).current;
@@ -207,247 +253,160 @@ export function CardStackCarousel({
   const navBtnBg = overlay ? 'rgba(255,255,255,0.9)' : '#fff';
   const navBtnBorder = overlay ? 'transparent' : '#e5e7eb';
   const navIconColor = '#333';
+  const hasCoords = place.latitude != null && place.longitude != null;
 
-  // Magazine width — slightly wider than card for editorial feel
-  const magW = Math.min(SCREEN_WIDTH - 32, CARD_W * 1.15);
-  const magH = CARD_H;
+  /* ── Shared sub-views ── */
 
-  const content = (
-    <View style={{ alignItems: 'center', paddingTop: 12 }}>
-      {phase === 'card' ? (
-        /* ── Card phase — tinder stack ── */
-        <View style={{ width: SCREEN_WIDTH, height: CARD_H, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-          {/* Left peek card */}
-          <Pressable
-            onPress={goPrev}
-            style={{
-              position: 'absolute',
-              left: PEEK_EDGE,
-              top: (CARD_H - PEEK_H) / 2,
-              width: PEEK_W, height: PEEK_H,
-              borderRadius: 20, overflow: 'hidden',
-              opacity: 0.35, zIndex: 1,
-              transform: [{ rotate: '-6deg' }],
-            }}
-          >
-            <Image source={places[prevIdx]?.image} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
-          </Pressable>
-
-          {/* Right peek card */}
-          <Pressable
-            onPress={goNext}
-            style={{
-              position: 'absolute',
-              right: PEEK_EDGE,
-              top: (CARD_H - PEEK_H) / 2,
-              width: PEEK_W, height: PEEK_H,
-              borderRadius: 20, overflow: 'hidden',
-              opacity: 0.35, zIndex: 1,
-              transform: [{ rotate: '6deg' }],
-            }}
-          >
-            <Image source={places[nextIdx]?.image} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
-          </Pressable>
-
-          {/* Active card — shuffle + flip */}
-          <Animated.View
-            {...(isFlipped ? {} : panResponder.panHandlers)}
-            style={[
-              {
-                width: CARD_W, height: CARD_H,
-                borderRadius: 20, overflow: 'hidden',
-                zIndex: 5,
-                shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.3, shadowRadius: 16, elevation: 12,
-              },
-              animatedCardStyle,
-            ]}
-          >
-            {/* Heart button — always above flip */}
-            <Pressable
-              onPress={() => onToggleFav(place.id)}
-              style={{
-                position: 'absolute', top: 14, right: 14, zIndex: 30,
-                width: 36, height: 36, borderRadius: 18,
-                backgroundColor: isFav ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.9)',
-                borderWidth: isFav ? 1 : 0, borderColor: 'rgba(239,68,68,0.5)',
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={16} color={isFav ? '#ef4444' : '#9ca3af'} />
-            </Pressable>
-
-            {/* Front face */}
-            <Animated.View style={[{ position: 'absolute', width: CARD_W, height: CARD_H }, frontStyle]}>
-              <Pressable onPress={onCardPress ? () => onCardPress(place, currentIdx) : toggleFlip} style={{ flex: 1 }}>
-                <Image
-                  source={images[imgIdx]}
-                  style={{ width: '100%', height: '100%', position: 'absolute' }}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  transition={200}
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.7)']}
-                  locations={[0.35, 1]}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '60%' }}
-                />
-
-                {/* Tap zones for image nav */}
-                {images.length > 1 && (
-                  <>
-                    <Pressable
-                      onPress={() => setImgIdx((i) => (i === 0 ? images.length - 1 : i - 1))}
-                      style={{ position: 'absolute', left: 0, top: 0, width: '33%', height: '66%', zIndex: 15 }}
-                    />
-                    <Pressable
-                      onPress={() => setImgIdx((i) => (i + 1) % images.length)}
-                      style={{ position: 'absolute', right: 0, top: 0, width: '33%', height: '66%', zIndex: 15 }}
-                    />
-                  </>
-                )}
-
-                {/* Bottom content */}
-                <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
-                  <Text style={{
-                    fontSize: 9, fontWeight: '700', color: '#7dd3fc',
-                    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6,
-                  }}>
-                    {place.type}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', flex: 1 }} numberOfLines={1}>
-                      {place.name}
-                    </Text>
-                    {place.rating != null && (
-                      <View style={{
-                        flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
-                      }}>
-                        <FontAwesome name="star" size={11} color="#facc15" style={{ marginRight: 4 }} />
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{place.rating.toFixed(1)}</Text>
-                      </View>
-                    )}
-                  </View>
-                  {place.tagline && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                      <FontAwesome name="map-marker" size={12} color="rgba(255,255,255,0.6)" style={{ marginRight: 4 }} />
-                      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }} numberOfLines={1}>{place.tagline}</Text>
-                    </View>
-                  )}
-                  {place.description && (
-                    <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18 }} numberOfLines={2}>
-                      {place.description}
-                    </Text>
-                  )}
-
-                  {/* Image dots */}
-                  {images.length > 1 && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12 }}>
-                      {images.slice(0, 5).map((_, i) => (
-                        <Pressable
-                          key={i}
-                          onPress={() => setImgIdx(i)}
-                          style={{
-                            width: i === imgIdx ? 18 : 6, height: 6, borderRadius: 3,
-                            backgroundColor: i === imgIdx ? '#fff' : 'rgba(255,255,255,0.5)',
-                          }}
-                        />
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                {/* Flip hint */}
-                <View style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 25 }}>
-                  <FontAwesome name="repeat" size={12} color="rgba(255,255,255,0.4)" />
-                </View>
-              </Pressable>
-            </Animated.View>
-
-            {/* Back face */}
-            <Animated.View style={[{ position: 'absolute', width: CARD_W, height: CARD_H }, backStyle]}>
-              <CardBack
-                place={place}
-                isFav={isFav}
-                onToggleFav={() => onToggleFav(place.id)}
-                onFlip={toggleFlip}
-                onSearchTag={() => {}}
-                width={CARD_W}
-                height={CARD_H}
-              />
-            </Animated.View>
-          </Animated.View>
-        </View>
-      ) : (
-        /* ── Magazine phase — editorial curtain ── */
-        <View style={{ width: SCREEN_WIDTH, height: magH, alignItems: 'center', justifyContent: 'center' }}>
-          <MagazineCurtain
-            place={place}
-            totalCount={places.length}
-            placeIndex={currentIdx}
-            isFav={isFav}
-            onToggleFav={() => onToggleFav(place.id)}
-            width={magW}
-            height={magH}
-          />
-        </View>
-      )}
-
-      {/* Navigation row */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: 20, marginTop: 16,
+  const navRow = (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: 20, marginTop: 12, paddingBottom: 4,
+    }}>
+      <Pressable onPress={goPrev} style={{
+        width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
+        borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
       }}>
-        <Pressable
-          onPress={goPrev}
-          style={{
-            width: 40, height: 40, borderRadius: 20,
-            backgroundColor: navBtnBg,
-            borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
-            alignItems: 'center', justifyContent: 'center',
-            shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
-          }}
-        >
-          <FontAwesome name="chevron-left" size={14} color={navIconColor} />
-        </Pressable>
-        <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
-          {currentIdx + 1} / {places.length}
-        </Text>
-        <Pressable
-          onPress={goNext}
-          style={{
-            width: 40, height: 40, borderRadius: 20,
-            backgroundColor: navBtnBg,
-            borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
-            alignItems: 'center', justifyContent: 'center',
-            shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
-          }}
-        >
-          <FontAwesome name="chevron-right" size={14} color={navIconColor} />
-        </Pressable>
-      </View>
+        <FontAwesome name="chevron-left" size={14} color={navIconColor} />
+      </Pressable>
+      <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
+        {currentIdx + 1} / {places.length}
+      </Text>
+      <Pressable onPress={goNext} style={{
+        width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
+        borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+      }}>
+        <FontAwesome name="chevron-right" size={14} color={navIconColor} />
+      </Pressable>
     </View>
   );
 
-  if (!overlay) return content;
+  const magazineCard = (
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        { width: SCREEN_WIDTH, height: magH, alignItems: 'center', justifyContent: 'center' },
+        animatedCardStyle,
+      ]}
+    >
+      <MagazineCurtain
+        place={place}
+        isFav={isFav}
+        onToggleFav={() => onToggleFav(place.id)}
+        onMapPress={!showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
+        width={magW}
+        height={magH}
+      />
+    </Animated.View>
+  );
 
+  const mapSection = showMap && hasCoords && (
+    <>
+      <RNAnimated.View style={{
+        height: mapHeight,
+        marginHorizontal: 16,
+        borderRadius: 16, overflow: 'hidden',
+      }}>
+        <MapView
+          ref={mapRef}
+          style={{ flex: 1 }}
+          initialRegion={{
+            latitude: place.latitude!, longitude: place.longitude!,
+            latitudeDelta: 0.02, longitudeDelta: 0.02,
+          }}
+          scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
+        >
+          <Marker coordinate={{ latitude: place.latitude!, longitude: place.longitude! }} title={place.name} />
+        </MapView>
+
+        {/* Place name pill */}
+        <View style={{
+          position: 'absolute', bottom: 10, left: 10, right: 10,
+          backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12,
+          paddingHorizontal: 12, paddingVertical: 8,
+          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4,
+        }}>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: '#333' }}>{place.name}</Text>
+          {place.tagline ? <Text style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{place.tagline}</Text> : null}
+        </View>
+      </RNAnimated.View>
+
+      {/* Map toolbar — between map and card */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 12, paddingVertical: 8, marginHorizontal: 16,
+      }}>
+        <Pressable onPress={() => {
+          if (place.latitude != null && place.longitude != null) {
+            mapRef.current?.animateToRegion({
+              latitude: place.latitude, longitude: place.longitude,
+              latitudeDelta: 0.02, longitudeDelta: 0.02,
+            }, 400);
+          }
+        }} style={{
+          width: 32, height: 32, borderRadius: 16,
+          backgroundColor: overlay ? 'rgba(255,255,255,0.15)' : '#f3f4f6',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <FontAwesome name="crosshairs" size={13} color={overlay ? '#fff' : '#666'} />
+        </Pressable>
+
+        <Pressable onPress={toggleMap} style={{
+          flexDirection: 'row', alignItems: 'center', gap: 6,
+          paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
+          backgroundColor: overlay ? 'rgba(255,255,255,0.15)' : '#f3f4f6',
+        }}>
+          <FontAwesome name="map" size={11} color={overlay ? '#fff' : '#666'} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: overlay ? '#fff' : '#666' }}>Hide Map</Text>
+        </Pressable>
+      </View>
+    </>
+  );
+
+  /* ── Non-overlay: inline ── */
+  if (!overlay) {
+    return (
+      <>
+        <View style={{ alignItems: 'center', paddingTop: 12 }}>
+          {magazineCard}
+          {navRow}
+        </View>
+        {/* When map is requested from inline, open full-screen overlay */}
+        <Modal visible={selfOverlay} transparent animationType="fade" statusBarTranslucent>
+          <CardStackCarousel
+            places={places}
+            initialIndex={currentIdx}
+            favorites={favorites}
+            onToggleFav={onToggleFav}
+            overlay
+            onClose={() => setSelfOverlay(false)}
+          />
+        </Modal>
+      </>
+    );
+  }
+
+  /* ── Overlay: full screen, card flush at bottom ── */
   return (
+    <Modal visible transparent animationType="fade" statusBarTranslucent>
     <Animated.View
       entering={FadeIn.duration(300)}
       exiting={FadeOut.duration(200)}
       onStartShouldSetResponder={() => true}
       onResponderTerminationRequest={() => false}
       style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100,
-        justifyContent: 'center', alignItems: 'center',
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
       }}
     >
+      {/* Close button */}
       <Pressable
         onPress={onClose}
         style={{
-          position: 'absolute', top: 56, right: 20, zIndex: 110,
+          position: 'absolute', top: insets.top + 8, right: 16, zIndex: 110,
           width: 36, height: 36, borderRadius: 18,
           backgroundColor: 'rgba(255,255,255,0.9)',
           alignItems: 'center', justifyContent: 'center',
@@ -457,7 +416,26 @@ export function CardStackCarousel({
         <FontAwesome name="times" size={16} color="#333" />
       </Pressable>
 
-      {content}
+      {/* Content — map at top, card pushed down as map grows */}
+      <View style={{
+        flex: 1,
+        paddingTop: insets.top + 52,
+        paddingBottom: insets.bottom,
+        overflow: 'hidden',
+      }}>
+        {showMap ? (
+          <>
+            {mapSection}
+            {magazineCard}
+          </>
+        ) : (
+          <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+            {magazineCard}
+            {navRow}
+          </View>
+        )}
+      </View>
     </Animated.View>
+    </Modal>
   );
 }

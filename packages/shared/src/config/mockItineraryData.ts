@@ -1,21 +1,6 @@
 import type { ItineraryDayViewModel, TimeGroup, ActivityViewModel, FlightViewModel, HotelViewModel } from '../viewmodels/itineraryViewModel';
-import type { Trip, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
-
-export interface MockBudgetSummary {
-  total: number;
-  totalFormatted: string;
-  categories: Array<{ label: string; amount: number; formatted: string }>;
-  currency: string;
-}
-
-interface MockBudgetItem {
-  id: string;
-  category: string;
-  budgeted: number;
-  actual: number;
-  fixed: boolean;
-  expenses?: Array<{ id: string; description: string; amount: number }>;
-}
+import type { BudgetSummary } from '../viewmodels/budgetViewModel';
+import type { Trip, BudgetItem, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
 
 // ─── Mock Activities ────────────────────────────────────────
 
@@ -307,6 +292,135 @@ export const MOCK_HOTELS: HotelViewModel[] = [
 
 // ─── Mock Trip ──────────────────────────────────────────────
 
+export const PARIS_TRIP_CONTEXT: import('../types').TripContextData = {
+  hero_image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1600&q=80',
+  hero_images: [
+    'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1549144511-f099e773c147?w=1400&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=1400&fit=crop&q=85',
+  ],
+  lat: 48.8566,
+  lng: 2.3522,
+  lede_text: 'Paris never reveals itself all at once. It unfolds — slowly, generously — in the steam rising from a morning café crème, in the light that catches the Seine just before sunset.',
+  quick_facts: {
+    currency: 'EUR € · €1 ≈ $1.08',
+    language: 'French · English widely spoken',
+    timezone: 'CET +1 · 6h ahead of EST',
+    power: 'Type C/E · 230V adapter',
+    transport: 'Métro · Lines 1, 4 & 7',
+    taxi: 'Taxi · Airport €50–70',
+    tipping: 'Tip · Included, round up',
+    water: 'Water · Tap is safe',
+    emergency: '112',
+  },
+  weather: {
+    current: { high: 12, low: 4, condition: 'Partly Cloudy' },
+    forecast: [
+      { day: 'Mon', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
+      { day: 'Tue', high: 14, low: 5, icon: '☀️', condition: 'Sunny' },
+      { day: 'Wed', high: 11, low: 4, icon: '🌧️', condition: 'Rainy' },
+      { day: 'Thu', high: 13, low: 5, icon: '⛅', condition: 'Partly Cloudy' },
+      { day: 'Fri', high: 15, low: 6, icon: '☀️', condition: 'Sunny' },
+    ],
+  },
+  explore_items: [
+    {
+      id: 'exp-1',
+      title: "Musée d'Orsay",
+      category: 'Art & Culture',
+      description: 'Van Gogh, Monet, and Renoir under a stunning Beaux-Arts glass ceiling. Go on a Thursday evening when the crowds thin.',
+      image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800',
+    },
+    {
+      id: 'exp-2',
+      title: 'Le Marais',
+      category: 'Neighborhood',
+      description: 'Medieval streets lined with concept stores, falafel joints, and hidden courtyards. Get lost on purpose.',
+      image: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=800',
+    },
+    {
+      id: 'exp-3',
+      title: 'Café de Flore',
+      category: 'Café',
+      description: 'The hot chocolate is legendary. Sit on the terrace, order a croque-monsieur, and watch the boulevard unfold.',
+      image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+    },
+    {
+      id: 'exp-4',
+      title: 'Montmartre at Dawn',
+      category: 'Experience',
+      description: 'Climb the steps of Sacré-Cœur at first light. The city spreads below you in a pastel haze — pure cinema.',
+      image: 'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=800',
+    },
+    {
+      id: 'exp-5',
+      title: 'Seine River Cruise',
+      category: 'Experience',
+      description: 'Board a Bateaux Mouches at sunset. The bridges, the light, the reflections — it never gets old.',
+      image: 'https://images.unsplash.com/photo-1549144511-f099e773c147?w=800',
+    },
+    {
+      id: 'exp-6',
+      title: 'Versailles',
+      category: 'Day Trip',
+      description: "Skip the château crowds — head straight for the gardens. Marie Antoinette's hamlet feels like stepping into a painting.",
+      image: 'https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=800',
+    },
+    {
+      id: 'exp-7',
+      title: 'Saint-Germain Markets',
+      category: 'Food & Market',
+      description: 'Wednesdays and Saturdays on Rue de Buci. Artisanal cheese, fresh oysters, and the best croissants you\'ll ever taste.',
+      image: 'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=800',
+    },
+  ],
+  news: [
+    {
+      id: 'news-1',
+      title: 'Metro Line 14 Extension Now Open',
+      snippet: 'The new southern extension adds 7 stations connecting Orly Airport directly to central Paris — no more bus transfers.',
+      category: 'news',
+      source: 'RATP',
+      date: '2026-03-08',
+    },
+    {
+      id: 'news-2',
+      title: 'Strikes Expected on Regional Trains March 15-16',
+      snippet: 'SNCF workers have announced a 48-hour walkout. Eurostar and metro services are expected to run normally.',
+      category: 'advisory',
+      source: 'France 24',
+      date: '2026-03-07',
+    },
+    {
+      id: 'news-3',
+      title: 'Nuit Blanche Arts Festival This Weekend',
+      snippet: 'Paris transforms into an open-air gallery with free installations, performances, and exhibits across the city from dusk till dawn.',
+      category: 'event',
+      source: 'Paris Tourism',
+      date: '2026-03-09',
+      image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=800',
+    },
+    {
+      id: 'news-4',
+      title: 'Skip the Line: Book Louvre Tickets 2 Weeks Ahead',
+      snippet: 'Spring crowds are picking up. Pre-booking online saves up to 45 minutes of waiting at the pyramid entrance.',
+      category: 'tip',
+      source: 'Travyl',
+      date: '2026-03-06',
+    },
+    {
+      id: 'news-5',
+      title: 'Cherry Blossoms Arriving Early at Jardin des Plantes',
+      snippet: 'Warmer-than-usual temperatures mean peak bloom is expected around March 18 — a week ahead of schedule.',
+      category: 'event',
+      source: 'Le Parisien',
+      date: '2026-03-05',
+    },
+  ],
+};
+
 export const MOCK_TRIP: Trip = {
   id: 'mock-trip-1',
   user_id: 'mock-user',
@@ -318,7 +432,7 @@ export const MOCK_TRIP: Trip = {
   currency: 'USD',
   travelers: 2,
   status: 'planning',
-  trip_context: {},
+  trip_context: PARIS_TRIP_CONTEXT,
   is_generated: true,
   visibility: 'private' as const,
   link_permission: 'viewer' as const,
@@ -331,13 +445,9 @@ export const MOCK_TRIP: Trip = {
   updated_at: '2026-03-01T00:00:00Z',
 };
 
-// ─── Mock Destination Coordinates ────────────────────────────
-
-export const MOCK_DESTINATION_COORDS = { lat: 48.8566, lng: 2.3522 }; // Paris, France
-
 // ─── Mock Budget ────────────────────────────────────────────
 
-export const MOCK_BUDGET: MockBudgetSummary = {
+export const MOCK_BUDGET: BudgetSummary = {
   total: 2085,
   totalFormatted: '$2,085',
   categories: [
@@ -350,7 +460,7 @@ export const MOCK_BUDGET: MockBudgetSummary = {
 
 // ─── Mock Budget Items (Interactive) ────────────────────────
 
-export const MOCK_BUDGET_ITEMS: MockBudgetItem[] = [
+export const MOCK_BUDGET_ITEMS: BudgetItem[] = [
   {
     id: 'flights',
     category: 'Flights',
@@ -431,13 +541,53 @@ export const MOCK_BUDGET_ITEMS: MockBudgetItem[] = [
   },
 ];
 
-export const MOCK_WEATHER: WeatherInfo = {
-  destination: 'Paris',
-  high: 12,
-  low: 4,
-  unit: '°C',
-  conditions: 'Partly cloudy with occasional showers. Pack layers.',
+// ─── Mock Packing List ──────────────────────────────────────
+
+export const MOCK_PACKING_LIST: PackingList = {
+  'Clothing': [
+    { item: 'Shirts (7)', packed: false },
+    { item: 'Pants/Shorts (4)', packed: false },
+    { item: 'Underwear (7)', packed: false },
+    { item: 'Socks (7 pairs)', packed: false },
+    { item: 'Jacket/Sweater', packed: false },
+    { item: 'Comfortable shoes', packed: false },
+    { item: 'Sandals', packed: false },
+    { item: 'Sleepwear', packed: false },
+  ],
+  'Toiletries': [
+    { item: 'Toothbrush & toothpaste', packed: false },
+    { item: 'Shampoo & conditioner', packed: false },
+    { item: 'Body wash/soap', packed: false },
+    { item: 'Deodorant', packed: false },
+    { item: 'Sunscreen SPF 30+', packed: false },
+    { item: 'Medications', packed: false },
+    { item: 'First aid kit', packed: false },
+  ],
+  'Electronics': [
+    { item: 'Phone & charger', packed: false },
+    { item: 'Camera & charger', packed: false },
+    { item: 'Power adapter (EU plug)', packed: false },
+    { item: 'Headphones', packed: false },
+    { item: 'Portable battery', packed: false },
+  ],
+  'Documents': [
+    { item: 'Passport', packed: false },
+    { item: 'Flight tickets', packed: false },
+    { item: 'Hotel confirmations', packed: false },
+    { item: 'Travel insurance', packed: false },
+    { item: 'Credit cards & cash', packed: false },
+    { item: 'Driver\'s license', packed: false },
+  ],
+  'Miscellaneous': [
+    { item: 'Reusable water bottle', packed: false },
+    { item: 'Umbrella', packed: false },
+    { item: 'Sunglasses', packed: false },
+    { item: 'Day backpack', packed: false },
+    { item: 'Travel pillow', packed: false },
+    { item: 'Book/Entertainment', packed: false },
+  ],
 };
+
 
 // ─── Mock Discover Activities ───────────────────────────────
 
@@ -1127,62 +1277,7 @@ export const MOCK_COLLABORATORS: UserAwareness[] = [
   { userId: 'user-3', name: 'Alex', avatarInitial: 'A', color: '#2ecc71', isOnline: false, selectedEventId: null, currentView: 'week' },
 ];
 
-// ─── Weather Forecast ─────────────────────────────────────
 
-export const MOCK_WEATHER_FORECAST: WeatherForecast[] = [
-  { day: 'Mon', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
-  { day: 'Tue', high: 14, low: 6, icon: '☀️', condition: 'Sunny' },
-  { day: 'Wed', high: 11, low: 5, icon: '🌧️', condition: 'Light Rain' },
-  { day: 'Thu', high: 13, low: 5, icon: '⛅', condition: 'Partly Cloudy' },
-  { day: 'Fri', high: 15, low: 7, icon: '☀️', condition: 'Sunny' },
-  { day: 'Sat', high: 10, low: 3, icon: '🌧️', condition: 'Showers' },
-  { day: 'Sun', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
-];
-
-// ─── News & Events ───────────────────────────────────────────
-
-export const MOCK_NEWS: import('../types').NewsItem[] = [
-  {
-    id: 'news-1',
-    title: 'Nuit Blanche Arts Festival This Weekend',
-    snippet: 'Paris transforms into an open-air gallery with free installations, performances, and exhibits across the city from dusk till dawn.',
-    category: 'event',
-    source: 'Paris Tourism',
-    date: '2026-03-14',
-  },
-  {
-    id: 'news-2',
-    title: 'Metro Line 14 Extension Now Open',
-    snippet: 'The new southern extension adds 7 stations connecting Orly Airport directly to central Paris — no more bus transfers.',
-    category: 'news',
-    source: 'RATP',
-    date: '2026-03-10',
-  },
-  {
-    id: 'news-3',
-    title: 'Strikes Expected on Regional Trains March 15-16',
-    snippet: 'SNCF workers have announced a 48-hour walkout. Eurostar and metro services are expected to run normally.',
-    category: 'advisory',
-    source: 'France 24',
-    date: '2026-03-12',
-  },
-  {
-    id: 'news-4',
-    title: 'Skip the Line: Book Louvre Tickets 2 Weeks Ahead',
-    snippet: 'Spring crowds are picking up. Pre-booking online saves up to 45 minutes of waiting at the pyramid entrance.',
-    category: 'tip',
-    source: 'Travyl',
-    date: '2026-03-09',
-  },
-  {
-    id: 'news-5',
-    title: 'Cherry Blossoms Arriving Early at Jardin des Plantes',
-    snippet: 'Warmer-than-usual temperatures mean peak bloom is expected around March 18 — a week ahead of schedule.',
-    category: 'event',
-    source: 'Le Parisien',
-    date: '2026-03-11',
-  },
-];
 
 // ─── Glance Hero Images (shared by web + mobile) ─────────────
 
@@ -1194,52 +1289,10 @@ export const GLANCE_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
 ];
 
-// ─── Explore Items (Things to Do cards) ──────────────────────
-
-export const MOCK_EXPLORE_ITEMS = [
-  {
-    id: 'ex1', title: 'Musée d\'Orsay', subtitle: 'Impressionism\'s spiritual home', category: 'Art & Culture',
-    image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=80',
-    description: 'Van Gogh, Monet, and Renoir under a stunning Beaux-Arts glass ceiling. Go on a Thursday evening when the crowds thin.',
-  },
-  {
-    id: 'ex2', title: 'Le Marais', subtitle: 'The heart of old Paris', category: 'Neighborhood',
-    image: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1200&q=80',
-    description: 'Medieval streets lined with concept stores, falafel joints, and hidden courtyards. Get lost on purpose.',
-  },
-  {
-    id: 'ex3', title: 'Café de Flore', subtitle: 'Where Sartre drank his espresso', category: 'Café',
-    image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1200&q=80',
-    description: 'The hot chocolate is legendary. Sit on the terrace, order a croque-monsieur, and watch the boulevard unfold.',
-  },
-  {
-    id: 'ex4', title: 'Montmartre at Dawn', subtitle: 'Before the tourists arrive', category: 'Experience',
-    image: 'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1200&q=80',
-    description: 'Climb the steps of Sacré-Cœur at first light. The city spreads below you in a pastel haze — pure cinema.',
-  },
-  {
-    id: 'ex5', title: 'Seine River Cruise', subtitle: 'Golden hour on the water', category: 'Experience',
-    image: 'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1200&q=80',
-    description: 'Board a Bateaux Mouches at sunset. The bridges, the light, the reflections — it never gets old.',
-  },
-  {
-    id: 'ex6', title: 'Versailles', subtitle: 'A day trip worth the journey', category: 'Day Trip',
-    image: 'https://images.unsplash.com/photo-1551410224-699683e15636?w=1200&q=80',
-    description: 'Skip the château crowds — head straight for the gardens. Marie Antoinette\'s hamlet feels like stepping into a painting.',
-  },
-  {
-    id: 'ex7', title: 'Saint-Germain Markets', subtitle: 'Shop like a local', category: 'Food & Market',
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038024a?w=1200&q=80',
-    description: 'Wednesdays and Saturdays on Rue de Buci. Artisanal cheese, fresh oysters, and the best croissants you\'ll ever taste.',
-  },
-];
-
-// ─── News Gradients (shared by web + mobile) ─────────────────
-
-export const NEWS_GRADIENTS: [string, string][] = [
+// ─── UI Constants (not mock data — used by both web and mobile) ──
+export const NEWS_COLORS: [string, string][] = [
   ['#1a1a2e', '#16213e'],
   ['#0f3460', '#1a1a2e'],
-  ['#1b2838', '#0d1b2a'],
-  ['#162447', '#1f4068'],
-  ['#1a1a2e', '#0f3460'],
+  ['#533483', '#0f3460'],
 ];
+

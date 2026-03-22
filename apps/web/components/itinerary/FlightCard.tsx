@@ -1,6 +1,6 @@
 'use client';
 
-import { Plane } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import type { FlightViewModel } from '@travyl/shared';
 
 interface FlightCardProps {
@@ -23,7 +23,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
         }}
       >
         <div className="flex items-center gap-2">
-          <Plane size={16} className="text-white" style={isReturn ? { transform: 'rotate(180deg)' } : undefined} />
+          <PaperPlane size={16} className="text-white" style={isReturn ? { transform: 'rotate(180deg)' } : undefined} />
           <div>
             <span className="block text-sm font-medium text-white">
               {isReturn ? 'Return Flight' : 'Outbound Flight'}
@@ -60,7 +60,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
             <div className="flex items-center w-full">
               <div className="flex-1 border-t border-dashed border-gray-300" />
               <div className="w-7 h-7 rounded-full bg-[#0ea5e9] flex items-center justify-center mx-1">
-                <Plane size={12} className="text-white" />
+                <PaperPlane size={12} className="text-white" />
               </div>
               <div className="flex-1 border-t border-dashed border-gray-300" />
             </div>

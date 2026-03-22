@@ -32,6 +32,7 @@ const CALENDAR_ACTIVITY_KEYS: (keyof CalendarActivity)[] = [
   'latitude',
   'longitude',
   'sortOrder',
+  'pollResult',
 ]
 
 function yMapToCalendarActivity(

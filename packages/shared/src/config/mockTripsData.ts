@@ -1,4 +1,5 @@
 import type { Trip } from '../types';
+import { PARIS_TRIP_CONTEXT } from './mockItineraryData';
 
 export interface TripMember {
   id: string;
@@ -26,7 +27,7 @@ export const MOCK_TRIPS: MockTripCard[] = [
     currency: 'USD',
     travelers: 2,
     status: 'planning',
-    trip_context: {},
+    trip_context: PARIS_TRIP_CONTEXT,
     is_generated: true,
     visibility: 'private' as const,
     link_permission: 'viewer' as const,
