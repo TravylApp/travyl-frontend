@@ -78,3 +78,7 @@ export type { ActivityRow } from './activityMapper'
 
 export { computeOverlapLayout } from './overlapLayout'
 export type { OverlapLayoutItem } from './overlapLayout'
+
+// Budget utilities
+export { mapActivityToBudgetCategory } from './budgetMapping'
+export { convertToTripCurrency, formatBudgetAmount } from './currency'
