@@ -37,7 +37,7 @@ export function useActivityMutations(
   tripStartDate: string,
   userId: string,
 ): UseActivityMutationsReturn {
-  const { activitiesMap } = useYjsTripContext()
+  const { activitiesMap, pollsMap } = useYjsTripContext()
 
   const addActivity = useCallback(
     async (activity: CalendarActivity): Promise<void> => {
@@ -122,10 +122,15 @@ export function useActivityMutations(
         throw error
       }
 
-      // Remove from Y.Map
-      activitiesMap.delete(id)
+      // Remove from Y.Map + clean up any associated poll atomically
+      activitiesMap.doc?.transact(() => {
+        activitiesMap.delete(id)
+        if (pollsMap.has(id)) {
+          pollsMap.delete(id)
+        }
+      })
     },
-    [activitiesMap],
+    [activitiesMap, pollsMap],
   )
 
   const duplicateActivity = useCallback(
