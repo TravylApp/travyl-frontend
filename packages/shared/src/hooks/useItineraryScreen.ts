@@ -42,13 +42,12 @@ export function useItineraryScreen(tripId: string | undefined) {
     [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency],
   );
 
-  // Treat errored queries as done loading (don't spin forever)
-  const isStillLoading =
+  const isLoading =
     (tripQuery.isLoading && !tripQuery.error) ||
     (daysQuery.isLoading && !daysQuery.error);
 
   const trip = tripQuery.data ?? null;
-  const isEmpty = !isStillLoading && days.length === 0 && flights.length === 0 && hotels.length === 0;
+  const isEmpty = !isLoading && days.length === 0 && flights.length === 0 && hotels.length === 0;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();
@@ -66,10 +65,9 @@ export function useItineraryScreen(tripId: string | undefined) {
     flights,
     hotels,
     budget,
-    isLoading: isStillLoading,
+    isLoading,
     refetch,
     error: tripQuery.error || daysQuery.error,
     isEmpty,
-    isMockData: false,
   };
 }

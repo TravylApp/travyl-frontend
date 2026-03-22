@@ -4,7 +4,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
+  Home, Calendar, CalendarDays, Plane, Building2, UtensilsCrossed, Compass,
   Luggage, PieChart, Heart, Car, Settings,
   GripVertical, GripHorizontal,
   SlidersHorizontal, Check, X,
@@ -27,6 +27,7 @@ const DEFAULT_COLOR = '#1e3a5f';
 const ALL_TABS: TabDef[] = [
   { segment: "",             label: "Overview",      subtitle: "Trip overview & info",               icon: Home,              color: DEFAULT_COLOR },
   { segment: "itinerary",   label: "Itinerary",     subtitle: "Your day-by-day travel plan",        icon: Calendar,          color: DEFAULT_COLOR },
+  { segment: "calendar",    label: "Calendar",      subtitle: "Visual calendar & For You",          icon: CalendarDays,      color: DEFAULT_COLOR },
   { segment: "hotels",      label: "Hotels",        subtitle: "Accommodation & stays",              icon: Building2,         color: DEFAULT_COLOR },
   { segment: "flights",     label: "Flights",       subtitle: "Flight bookings & details",          icon: Plane,             color: DEFAULT_COLOR },
   { segment: "restaurants", label: "Restaurants",    subtitle: "Dining reservations & discoveries",  icon: UtensilsCrossed,   color: DEFAULT_COLOR },

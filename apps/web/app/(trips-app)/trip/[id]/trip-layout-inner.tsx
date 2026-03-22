@@ -222,6 +222,7 @@ function TripLayoutContent({
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
   const isItinerary = currentSegment === 'itinerary';
+  const isCalendar = currentSegment === 'calendar';
   const isMagazineLayout = isOverview || isItinerary;
 
   // Track exit animation from magazine pages to prevent white flash
@@ -241,7 +242,7 @@ function TripLayoutContent({
 
   const useOverviewBg = isMagazineLayout || exitingFromMagazine;
 
-  const tabOrder = ['', 'itinerary', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
+  const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
   const prevSegmentRef = useRef(currentSegment);
   const directionRef = useRef<1 | -1>(1);
 
@@ -271,6 +272,11 @@ function TripLayoutContent({
         animate: { opacity: 1, x: 0 },
         exit: { opacity: 0, x: dir > 0 ? -12 : 12 },
       };
+
+  // Calendar is a full-screen component with its own sidebar/navbar — bypass all layout chrome
+  if (isCalendar) {
+    return <>{children}</>;
+  }
 
   return (
     <div

@@ -41,9 +41,6 @@ export function SuggestionSection({
                 key={suggestion.id}
                 suggestion={suggestion}
                 onVisible={() => onCardVisible?.(suggestion.id, suggestion.category)}
-                onClick={onCardClick}
-                onSave={onSave}
-                onSchedule={onSchedule}
               />
             ))}
           </div>
