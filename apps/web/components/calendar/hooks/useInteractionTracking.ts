@@ -12,7 +12,7 @@ export function useInteractionTracking(tripId: string) {
   const impressedIds = useRef(new Set<string>())
 
   const trackEvent = useCallback(
-    (suggestionId: string, action: InteractionAction) => {
+    (suggestionId: string, action: InteractionAction, category: string) => {
       // Skip duplicate impressions
       if (action === 'impression') {
         if (impressedIds.current.has(suggestionId)) return
@@ -30,7 +30,7 @@ export function useInteractionTracking(tripId: string) {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ suggestionId, action, tripId }),
+          body: JSON.stringify({ suggestionId, action, tripId, category }),
         }).catch(() => {}) // swallow errors
       })
     },

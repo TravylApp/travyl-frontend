@@ -326,6 +326,28 @@ export async function ensureShareLinkToken(tripId: string): Promise<string> {
   return token
 }
 
+export async function updateTripDetails(
+  tripId: string,
+  updates: Partial<Pick<Trip, 'title' | 'destination' | 'start_date' | 'end_date' | 'budget' | 'currency' | 'travelers' | 'status'>>
+): Promise<void> {
+  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  if (error) throw error
+}
+
+export async function deleteTrip(tripId: string): Promise<void> {
+  const { error } = await supabase.from('trips').delete().eq('id', tripId)
+  if (error) throw error
+}
+
+export async function leaveTrip(tripId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('trip_collaborators')
+    .delete()
+    .eq('trip_id', tripId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 // ─── Mutations ─────────────────────────────────────────────
 
 export async function addToItinerary(tripId: string, itemId: string, dayNumber: number, timeSlot?: string) {
@@ -439,6 +461,32 @@ export async function joinTripViaLink(tripId: string, userId: string, role: Coll
 
 export async function findPendingInviteByEmail(tripId: string, email: string): Promise<TripCollaborator | null> {
   const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('invited_email', email.toLowerCase()).eq('invite_status', 'pending').maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function inviteCollaborator(tripId: string, email: string, role: CollaboratorRole): Promise<TripCollaborator> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+
+  // Skip if there's already a pending invite for this email
+  const existing = await findPendingInviteByEmail(tripId, email)
+  if (existing) return existing
+
+  const inviteToken = crypto.randomUUID()
+  const { data, error } = await supabase
+    .from('trip_collaborators')
+    .insert({
+      trip_id: tripId,
+      invited_email: email.toLowerCase(),
+      role_type: role,
+      invite_status: 'pending',
+      invited_by: user.id,
+      invite_token: inviteToken,
+    })
+    .select()
+    .single()
+
   if (error) throw error
   return data
 }

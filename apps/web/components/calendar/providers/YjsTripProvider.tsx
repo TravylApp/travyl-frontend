@@ -15,6 +15,7 @@ import { supabase } from '@travyl/shared'
 interface YjsTripContextValue {
   doc: Y.Doc
   activitiesMap: Y.Map<Y.Map<unknown>>
+  pollsMap: Y.Map<Y.Map<unknown>>
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected'
 }
 
@@ -112,6 +113,7 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
     () => ({
       doc: docRef.current!,
       activitiesMap: docRef.current!.getMap('activities') as Y.Map<Y.Map<unknown>>,
+      pollsMap: docRef.current!.getMap('polls') as Y.Map<Y.Map<unknown>>,
       connectionStatus,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

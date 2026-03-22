@@ -51,7 +51,8 @@ describe('canForkTrip', () => {
   it('cannot fork own trip', () => { expect(canForkTrip(publicTrip, 'owner-1')).toBe(false) })
   it('can fork public trip', () => { expect(canForkTrip(publicTrip, 'other-user')).toBe(true) })
   it('cannot fork private trip', () => { expect(canForkTrip(privateTrip, 'other-user')).toBe(false) })
-  it('cannot fork link trip', () => { expect(canForkTrip(linkTrip, 'other-user')).toBe(false) })
+  it('can fork link trip', () => { expect(canForkTrip(linkTrip, 'other-user')).toBe(true) })
+  it('cannot fork when not authenticated', () => { expect(canForkTrip(publicTrip, null)).toBe(false) })
 })
 
 describe('canMakePublic', () => {

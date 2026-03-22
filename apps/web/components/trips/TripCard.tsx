@@ -7,6 +7,7 @@ import { Calendar, Users, MapPin, Coins, MoreHorizontal, Trash2, UserMinus, Shar
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
+import { ForkCountBadge } from '../trip/ForkAttribution';
 
 function formatCurrency(amount: number, currency: string): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0, notation: 'compact' }).format(amount);
@@ -210,6 +211,10 @@ export function TripCard({ trip, index = 0, className = '', style }: TripCardPro
             <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold mb-2 backdrop-blur-sm shadow-sm ${statusInfo.color}`}>
               {statusInfo.label}
             </span>
+          )}
+
+          {trip.fork_count > 0 && (
+            <ForkCountBadge count={trip.fork_count} />
           )}
 
           <h2 className="text-lg font-bold text-white leading-snug line-clamp-1" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}>

@@ -2,6 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Calendar, Users, GitFork, Loader2, Lock, AlertCircle } from 'lucide-react';
 import { fetchTripByShareToken, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
@@ -16,11 +17,15 @@ interface SharedTripViewProps {
 function SharedTripView({ trip }: SharedTripViewProps) {
   const user = useAuthStore((s) => s.user);
   const { mutate: forkTripMutation, isPending } = useForkTrip();
+  const router = useRouter();
 
   const canFork = canForkTrip(trip, user?.id ?? null);
 
   const handleFork = () => {
-    forkTripMutation({ tripId: trip.id });
+    forkTripMutation(
+      { tripId: trip.id },
+      { onSuccess: () => router.push('/trips') }
+    );
   };
 
   return (

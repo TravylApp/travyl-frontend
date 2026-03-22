@@ -8,7 +8,6 @@ import {
   buildFlightViewModel,
   buildHotelViewModel,
 } from '../viewmodels/itineraryViewModel';
-import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { MOCK_DAYS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_TRIP, MOCK_BUDGET } from '../config/mockItineraryData';
 
 export function useItineraryScreen(tripId: string | undefined) {
@@ -33,16 +32,6 @@ export function useItineraryScreen(tripId: string | undefined) {
     [hotelsQuery.data],
   );
 
-  const budgetSummary = useMemo(
-    () => buildBudgetSummary(
-      daysQuery.data ?? [],
-      flightsQuery.data ?? [],
-      hotelsQuery.data ?? [],
-      tripQuery.data?.currency ?? 'USD',
-    ),
-    [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency],
-  );
-
   // Treat errored queries as done loading (don't spin forever)
   const isStillLoading =
     (tripQuery.isLoading && !tripQuery.error) ||
@@ -56,7 +45,7 @@ export function useItineraryScreen(tripId: string | undefined) {
   const flights = useMock ? MOCK_FLIGHTS : flightViewModels;
   const hotels = useMock ? MOCK_HOTELS : hotelViewModels;
   const trip = useMock ? MOCK_TRIP : (tripQuery.data ?? null);
-  const budget = useMock ? MOCK_BUDGET : budgetSummary;
+  const budget = MOCK_BUDGET;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();

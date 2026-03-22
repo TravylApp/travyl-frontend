@@ -114,7 +114,6 @@ export interface TripNavbarProps {
   tripName: string
   dateRange: string
   commands: Command[]
-  onOpenPalette: () => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onAddEvent: () => void
@@ -219,10 +218,9 @@ export function TripNavbar({
         {/* Logo */}
         <Link
           href="/trips"
-          className="flex items-center gap-1 px-3 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 text-[#1e3a5f] dark:text-[#f5efe8] shrink-0"
-          style={{ fontFamily: 'var(--font-brand)', fontWeight: 800, fontSize: 13, letterSpacing: 2 }}
+          className="flex items-center gap-1 px-3 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 text-[#1e3a5f] dark:text-[#f5efe8] shrink-0 text-[13px] font-bold"
         >
-          <span className="hidden sm:inline">TRAVYL</span>
+          <span className="hidden sm:inline font-serif tracking-[0.15em]">TRAVYL</span>
           <span>&#9992;</span>
         </Link>
 
@@ -241,8 +239,7 @@ export function TripNavbar({
         {/* Trip info */}
         <div className="flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0">
           <span
-            className="truncate text-[13px] text-[#1e3a5f] dark:text-[#f5efe8] leading-tight"
-            style={{ fontFamily: 'var(--font-brand)' }}
+            className="truncate text-[13px] font-serif font-normal tracking-wide text-[#1e3a5f] dark:text-[#f5efe8] leading-tight"
           >
             {tripName}
           </span>

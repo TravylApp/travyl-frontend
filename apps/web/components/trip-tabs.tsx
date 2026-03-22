@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
-  Luggage, PieChart, Heart, Car,
+  Luggage, PieChart, Heart, Car, Settings2,
   GripVertical, GripHorizontal,
   SlidersHorizontal, Check, X,
   type LucideIcon,
@@ -35,6 +35,7 @@ const ALL_TABS: TabDef[] = [
   { segment: "budget",      label: "Budget",        subtitle: "Trip expenses & spending",            icon: PieChart,          color: DEFAULT_COLOR },
   { segment: "cars",        label: "Car Rental",    subtitle: "Vehicle rentals & transport",         icon: Car,               color: DEFAULT_COLOR },
   { segment: "favorites",   label: "Favorites",     subtitle: "Saved places & activities",           icon: Heart,             color: DEFAULT_COLOR },
+  { segment: "settings",    label: "Settings",      subtitle: "Trip preferences & sharing",          icon: Settings2,         color: DEFAULT_COLOR },
 ];
 
 // ─── Spine Position ─────────────────────────────────────────
