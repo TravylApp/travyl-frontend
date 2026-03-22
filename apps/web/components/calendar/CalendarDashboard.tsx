@@ -43,6 +43,7 @@ import { inviteCollaborator, isTripOwner, canEditTrip } from '@travyl/shared'
 import type { CollaboratorRole } from '@travyl/shared'
 import { TripSettingsLayout } from '../trip/settings/TripSettingsLayout'
 import { TripThemeProvider } from '../trip/TripThemeContext'
+import { BudgetPanel } from '../budget/BudgetPanel'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -602,6 +603,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                 onRefetch={() => {}}
               />
             </TripThemeProvider>
+          </div>
+        ) : activeNav === 'budget' ? (
+          <div className="flex-1 overflow-auto p-6">
+            <BudgetPanel tripId={tripId} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
