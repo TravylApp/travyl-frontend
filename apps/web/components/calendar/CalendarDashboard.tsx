@@ -112,7 +112,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackEvent(suggestionId, 'drag')
+    trackEvent(suggestionId, 'drag', activity.type)
   }, [addActivity, selectEvent, trackEvent])
 
   const handleInvite = useCallback(async (email: string, role: CollaboratorRole) => {

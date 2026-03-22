@@ -69,6 +69,7 @@ export function ForYouPanel({
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
 
   const handleCardClick = useCallback((suggestion: SuggestionCardType, anchorEl: HTMLElement) => {
+    trackEvent(suggestion.id, 'click', suggestion.category)
     if (popoverSuggestion?.id === suggestion.id) {
       setPopoverSuggestion(null)
       setPopoverAnchor(null)
@@ -76,7 +77,7 @@ export function ForYouPanel({
       setPopoverSuggestion(suggestion)
       setPopoverAnchor(anchorEl)
     }
-  }, [popoverSuggestion?.id])
+  }, [popoverSuggestion?.id, trackEvent])
 
   const handlePopoverClose = useCallback(() => {
     setPopoverSuggestion(null)
@@ -198,7 +199,7 @@ export function ForYouPanel({
                 <SuggestionCard
                   key={suggestion.id}
                   suggestion={suggestion}
-                  onVisible={() => trackEvent(suggestion.id, 'impression')}
+                  onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
                   onClick={handleCardClick}
                 />
               ))}
@@ -208,7 +209,7 @@ export function ForYouPanel({
                 <SuggestionCard
                   key={suggestion.id}
                   suggestion={suggestion}
-                  onVisible={() => trackEvent(suggestion.id, 'impression')}
+                  onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
                   onClick={handleCardClick}
                 />
               ))}
