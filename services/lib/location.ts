@@ -1,101 +1,123 @@
-import {
-  LocationClient,
-  SearchPlaceIndexForTextCommand,
-  GetPlaceCommand,
-} from '@aws-sdk/client-location'
-import type { SuggestionCard } from './types'
+// services/lib/location.ts
+import { Resource } from 'sst'
+import type { SuggestionCard } from '@travyl/shared'
 
-const client = new LocationClient({})
-const PLACE_INDEX = process.env.PLACE_INDEX_NAME!
+const FSQ_BASE = 'https://api.foursquare.com/v3'
 
-/** Category mapping from Amazon Location categories to our activity types */
-const CATEGORY_MAP: Record<string, string> = {
-  'Museum': 'museum',
-  'Art Gallery': 'museum',
-  'Tourist Attraction': 'sightseeing',
-  'Monument': 'sightseeing',
-  'Historical Monument': 'sightseeing',
-  'Church': 'cultural',
-  'Place of Worship': 'cultural',
-  'Theater': 'cultural',
-  'Restaurant': 'dining',
-  'Cafe/Pub': 'dining',
-  'Bar': 'nightlife',
-  'Night Club': 'nightlife',
-  'Shopping Center': 'shopping',
-  'Market': 'shopping',
-  'Park': 'outdoor',
-  'Garden': 'outdoor',
-  'Tour': 'tour',
+// --- Foursquare v3 response types ---
+
+interface FsqCategory {
+  id: number
+  name: string
+  short_name: string
+  plural_name: string
+  icon: { prefix: string; suffix: string }
 }
 
-function mapCategory(categories: string[] | undefined): string {
-  if (!categories) return 'sightseeing'
+interface FsqSearchPlace {
+  fsq_id: string
+  name: string
+  categories: FsqCategory[]
+  photos?: { prefix: string; suffix: string }[]
+  rating?: number      // 0–10
+  price?: number       // 1–4
+  tips?: { text: string }[]
+  geocodes: { main: { latitude: number; longitude: number } }
+  location: { locality?: string; region?: string }
+  description?: string
+}
+
+interface FsqSearchResponse {
+  results: FsqSearchPlace[]
+}
+
+// --- Category mapping ---
+
+const CATEGORY_MAP: Array<[string[], SuggestionCard['category']]> = [
+  [['museum', 'gallery', 'exhibition'], 'museum'],
+  [['restaurant', 'food', 'café', 'cafe', 'bar'], 'dining'],
+  [['nightlife', 'club'], 'nightlife'],
+  [['shopping', 'market', 'boutique'], 'shopping'],
+  [['park', 'garden', 'trail', 'outdoor', 'nature'], 'outdoor'],
+  [['theater', 'music', 'cultural', 'arts'], 'cultural'],
+  [['tour', 'sightseeing', 'landmark', 'monument', 'historic'], 'sightseeing'],
+]
+
+function mapCategory(categories: FsqCategory[]): SuggestionCard['category'] {
   for (const cat of categories) {
-    const mapped = CATEGORY_MAP[cat]
-    if (mapped) return mapped
+    const lower = cat.name.toLowerCase()
+    for (const [keywords, slug] of CATEGORY_MAP) {
+      if (keywords.some((kw) => lower.includes(kw))) return slug
+    }
   }
   return 'sightseeing'
 }
 
-/**
- * Search for places/activities near a destination using Amazon Location Services.
- * Returns results mapped to our SuggestionCard format.
- */
+// --- Field mapping ---
+
+const PRICE_MAP: Record<number, number> = { 1: 10, 2: 25, 3: 50, 4: 100 }
+
+function mapPlace(place: FsqSearchPlace, index: number, destination: string): SuggestionCard {
+  const photo = place.photos?.[0]
+  const imageUrl = photo ? `${photo.prefix}400x300${photo.suffix}` : ''
+  const rating = place.rating != null ? Math.round((place.rating / 2) * 10) / 10 : null
+  const price = place.price != null ? (PRICE_MAP[place.price] ?? null) : null
+
+  return {
+    id: `fsq-${place.fsq_id}`,
+    name: place.name,
+    category: mapCategory(place.categories),
+    imageUrl,
+    duration: 2, // Foursquare does not provide visit duration data
+    price,
+    currency: 'USD',
+    rating,
+    location: place.location.locality ?? place.location.region ?? destination,
+    latitude: place.geocodes.main.latitude,
+    longitude: place.geocodes.main.longitude,
+    description: place.tips?.[0]?.text ?? place.description ?? '',
+    source: 'ai',
+    relevanceScore: Math.max(0, 1 - index * 0.05),
+  }
+}
+
+// --- Public API (signature unchanged) ---
+
 export async function searchPlaces(
   destination: string,
   options?: {
     query?: string
     maxResults?: number
-    categories?: string[]
   },
 ): Promise<SuggestionCard[]> {
-  const { query, maxResults = 10, categories } = options ?? {}
+  const { query, maxResults = 10 } = options ?? {}
 
-  const command = new SearchPlaceIndexForTextCommand({
-    IndexName: PLACE_INDEX,
-    Text: query ? `${query} in ${destination}` : `things to do in ${destination}`,
-    MaxResults: maxResults,
-    FilterCategories: categories,
-  })
+  const url = new URL(`${FSQ_BASE}/places/search`)
+  url.searchParams.set('query', query ?? 'things to do')
+  url.searchParams.set('near', destination)
+  url.searchParams.set('limit', String(maxResults))
+  url.searchParams.set(
+    'fields',
+    'fsq_id,name,categories,photos,rating,price,tips,geocodes,location,description',
+  )
 
-  const result = await client.send(command)
-
-  if (!result.Results) return []
-
-  return result.Results
-    .filter((r) => r.Place)
-    .map((r, i) => {
-      const place = r.Place!
-      const point = place.Geometry?.Point ?? [0, 0]
-
-      return {
-        id: `loc-${r.PlaceId ?? i}`,
-        name: place.Label?.split(',')[0] ?? 'Unknown',
-        category: mapCategory(place.Categories) as SuggestionCard['category'],
-        imageUrl: '', // Amazon Location doesn't provide images — filled by enrichment pipeline
-        duration: 2,  // default estimate
-        price: null,
-        currency: 'EUR',
-        rating: null, // Amazon Location doesn't provide ratings
-        location: place.Municipality ?? place.SubRegion ?? destination,
-        latitude: point[1],  // [lng, lat] format
-        longitude: point[0],
-        description: place.Label ?? '',
-        source: 'ai' as const,
-        relevanceScore: Math.max(0, 1 - i * 0.05), // rank-based score
-      }
+  try {
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: Resource.FoursquareApiKey.value,
+        Accept: 'application/json',
+      },
     })
-}
 
-/**
- * Get detailed info about a specific place by PlaceId.
- */
-export async function getPlaceDetails(placeId: string) {
-  const command = new GetPlaceCommand({
-    IndexName: PLACE_INDEX,
-    PlaceId: placeId,
-  })
+    if (!res.ok) {
+      console.error(`[location] Foursquare search failed: ${res.status}`, await res.text().catch(() => ''))
+      return []
+    }
 
-  return client.send(command)
+    const data: FsqSearchResponse = await res.json()
+    return data.results.map((place, i) => mapPlace(place, i, destination))
+  } catch (err) {
+    console.error('[location] searchPlaces failed:', err)
+    return []
+  }
 }

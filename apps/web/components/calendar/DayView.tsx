@@ -11,10 +11,9 @@ interface DayViewProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
+  onSelectEvent: (id: string) => void
+  onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
-  onResize?: (id: string, newStartHour: number, newDuration: number) => void
 }
 
 export function DayView({
@@ -25,10 +24,9 @@ export function DayView({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onClickEvent,
-  onCreateActivity,
+  onSelectEvent,
+  onDeselect,
   pendingDrop = null,
-  onResize,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -44,11 +42,10 @@ export function DayView({
           selectedEventId={selectedEventId}
           timeRange={timeRange}
           tripStartDate={tripStartDate}
-          onClickEvent={onClickEvent}
+          onSelectEvent={onSelectEvent}
           onClickDayHeader={undefined}
-          onCreateActivity={onCreateActivity}
+          onDeselect={onDeselect}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
-          onResize={onResize}
         />
       </div>
     </div>
