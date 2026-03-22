@@ -8,7 +8,12 @@ import {
   MOCK_FLIGHTS,
   MOCK_HOTELS,
 } from '@travyl/shared/config/mockItineraryData'
-import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
+import {
+  computeTimeRange,
+  getActivityColor,
+  getActivityColorDark,
+  getActivityColorDarkBorder,
+} from '@travyl/shared/viewmodels/calendarViewModel'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
 import { useTripActivities } from './hooks/useTripActivities'
@@ -28,7 +33,7 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
-import { formatDuration } from './utils'
+import { formatDuration, formatTimeRange } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import { useMarqueeSelection } from './hooks/useMarqueeSelection'
@@ -537,23 +542,76 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             />
           </div>
 
-          {/* Drag overlay — shows ghost of dragged item */}
+          {/* Drag overlay — shows ghost of dragged item matching actual block size */}
           <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
-            {activeData?.type === 'suggestion' ? (
-              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
-                <span className="text-lg">{getCategoryIcon(activeData.suggestion.category)}</span>
-                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
-                  {activeData.suggestion.name}
-                </span>
-              </div>
-            ) : activeData?.type === 'activity' ? (
-              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
-                <span className="text-lg">{getCategoryIcon(activeData.activity.type)}</span>
-                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
-                  {activeData.activity.title || 'Untitled'}
-                </span>
-              </div>
-            ) : null}
+            {activeData?.type === 'activity' ? (() => {
+              const act = activeData.activity
+              const h = Math.max(act.duration * HOUR_HEIGHT - 2, 20)
+              const color = theme === 'dark' ? getActivityColorDark(act.type) : getActivityColor(act.type)
+              const border = theme === 'dark' ? getActivityColorDarkBorder(act.type) : `${getActivityColor(act.type)}88`
+              const hasImage = !!(act.image && act.duration >= 1)
+              return (
+                <div
+                  className="relative rounded-md shadow-2xl overflow-hidden text-white text-xs pointer-events-none"
+                  style={{
+                    width: 160,
+                    height: h,
+                    borderLeft: `3px solid ${border}`,
+                    backgroundColor: hasImage ? undefined : color,
+                    opacity: 0.85,
+                  }}
+                >
+                  {hasImage ? (
+                    <>
+                      <div
+                        className="absolute inset-0 bg-cover bg-center rounded-md"
+                        style={{ backgroundImage: `url(${act.image})` }}
+                      />
+                      <div
+                        className="absolute inset-0 rounded-md"
+                        style={{ background: `linear-gradient(135deg, ${getActivityColor(act.type)}4d, ${getActivityColor(act.type)}33)` }}
+                      />
+                      <div
+                        className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-6"
+                        style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
+                      >
+                        <div className="font-semibold truncate">{act.title || 'Untitled'}</div>
+                        <div className="text-[10px] text-white/85 truncate">{formatTimeRange(act)}</div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="px-2 py-1 flex flex-col gap-0.5">
+                      <span className="font-semibold truncate leading-tight">{act.title || 'Untitled'}</span>
+                      <span className="opacity-80 truncate">{formatTimeRange(act)}</span>
+                      {act.location && <span className="opacity-70 truncate text-[10px]">{act.location}</span>}
+                    </div>
+                  )}
+                </div>
+              )
+            })() : activeData?.type === 'suggestion' ? (() => {
+              const sug = activeData.suggestion
+              const dur = sug.duration ?? 1
+              const h = Math.max(dur * HOUR_HEIGHT - 2, 20)
+              const color = theme === 'dark' ? getActivityColorDark(sug.category) : getActivityColor(sug.category)
+              const border = theme === 'dark' ? getActivityColorDarkBorder(sug.category) : `${getActivityColor(sug.category)}88`
+              return (
+                <div
+                  className="rounded-md shadow-2xl overflow-hidden text-white text-xs pointer-events-none"
+                  style={{
+                    width: 160,
+                    height: h,
+                    borderLeft: `3px solid ${border}`,
+                    backgroundColor: color,
+                    opacity: 0.85,
+                  }}
+                >
+                  <div className="px-2 py-1 flex flex-col gap-0.5">
+                    <span className="font-semibold truncate leading-tight">{sug.name}</span>
+                    <span className="opacity-80 truncate">{formatDuration(dur)}</span>
+                  </div>
+                </div>
+              )
+            })() : null}
           </DragOverlay>
 
           {/* Empty state -- only when no activities exist */}
