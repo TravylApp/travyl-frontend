@@ -43,12 +43,6 @@ export { PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from './logo';
 
 export * from './itineraryData';
 
-export * from './mockItineraryData';
-
-export * from './mockPlacesData';
-
-export * from './mockTripsData';
-
 export * from './mockLoginData';
 
 export * from './mockProfileData';

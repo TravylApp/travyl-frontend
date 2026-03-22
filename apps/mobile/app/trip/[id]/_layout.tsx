@@ -11,7 +11,8 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, MOCK_TRIPS } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, resolveTheme } from '@travyl/shared';
+import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';

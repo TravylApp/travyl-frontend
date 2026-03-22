@@ -2,6 +2,7 @@ import { View, ScrollView, Text, Pressable, Linking, Platform } from 'react-nati
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, ITINERARY_COLORS } from '@travyl/shared';
+import { MOCK_WEATHER_FORECAST } from '@travyl/shared/src/config/mockItineraryData';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTabAccent } from './_layout';
 
@@ -106,11 +107,10 @@ function InfoSectionCard({ section }: { section: InfoSection }) {
   );
 }
 
-function WeatherForecastCard({ forecast }: {
-  forecast: { day: string; high: number; low: number; icon: string; condition: string }[];
-}) {
+function WeatherForecastCard() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
+  const forecast = MOCK_WEATHER_FORECAST;
 
   return (
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
@@ -181,8 +181,6 @@ export default function InfoScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
 
-  const forecast = trip?.trip_context?.weather?.forecast ?? [];
-
   if (isLoading) {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
@@ -210,7 +208,7 @@ export default function InfoScreen() {
         </View>
       </View>
 
-      {forecast.length > 0 && <WeatherForecastCard forecast={forecast} />}
+      <WeatherForecastCard />
       <InfoSectionCard section={TRANSPORT_INFO} />
       <InfoSectionCard section={EMERGENCY_CONTACTS} />
       <InfoSectionCard section={DESTINATION_TIPS} />

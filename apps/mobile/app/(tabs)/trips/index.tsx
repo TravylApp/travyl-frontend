@@ -19,8 +19,9 @@ import {
   useTrips,
   Navy,
   formatDateRange,
-  type MockTripCard,
 } from '@travyl/shared';
+import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
+import type { MockTripCard } from '@travyl/shared/src/config/mockTripsData';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

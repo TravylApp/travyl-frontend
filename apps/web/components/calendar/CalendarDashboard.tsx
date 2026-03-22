@@ -4,10 +4,7 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
-import {
-  MOCK_FLIGHTS,
-  MOCK_HOTELS,
-} from '@travyl/shared/config/mockItineraryData'
+import { MOCK_FLIGHTS, MOCK_HOTELS } from '@travyl/shared/src/config/mockItineraryData'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'

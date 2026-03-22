@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Navy } from '@travyl/shared';
-import type { HotelViewModel, MockHotelDetail, MockHotelRoom } from '@travyl/shared';
+import type { HotelViewModel } from '@travyl/shared';
+import type { MockHotelDetail, MockHotelRoom } from '@travyl/shared/src/config/mockItineraryData';
 
 interface HotelCardProps {
   hotel: HotelViewModel;

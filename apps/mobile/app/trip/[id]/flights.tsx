@@ -816,12 +816,10 @@ function ComparisonAlternatives() {
                     <View style={{ width: 1, height: 32, backgroundColor: colors.border }} />
 
                     {/* Price */}
-                    <View style={{ alignItems: 'flex-end', minWidth: 56 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: ACCENT }}>${flight.price}</Text>
-                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>{flight.fareClass}</Text>
+                    <View style={{ alignItems: 'flex-end', minWidth: 70 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: ACCENT }} numberOfLines={1}>${flight.price}</Text>
+                      <Text style={{ fontSize: 10, color: colors.textTertiary }} numberOfLines={1}>{flight.fareClass}</Text>
                     </View>
-
-                    <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} color="#d1d5db" />
                   </View>
 
                   {/* Amenity row */}

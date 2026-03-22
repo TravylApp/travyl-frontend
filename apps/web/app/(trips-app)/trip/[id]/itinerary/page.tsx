@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useItineraryScreen, MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DISCOVER_ACTIVITIES, GLANCE_HERO_IMAGES } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
+import { MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DISCOVER_ACTIVITIES, GLANCE_HERO_IMAGES } from '@travyl/shared/src/config/mockItineraryData';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {

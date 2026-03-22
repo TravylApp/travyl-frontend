@@ -3,28 +3,11 @@
 import { useRef, useEffect } from 'react';
 import { Cloud, Droplets, Sun } from 'lucide-react';
 import { formatDateRange } from '@travyl/shared';
+import { MOCK_WEATHER, MOCK_WEATHER_FORECAST } from '@travyl/shared/src/config/mockItineraryData';
+import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
 import type { Trip } from '@travyl/shared';
 
-function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
-  const valid = facts.filter(Boolean) as string[];
-  if (!valid.length) return null;
-  return (
-    <div className={`flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] ${className ?? ''}`}
-      style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
-      {valid.map((fact, i) => {
-        const [label, ...rest] = fact.split(' · ');
-        return (
-          <span key={i} className="text-white/80">
-            <span className="font-semibold text-white">{label}</span>
-            {rest.length > 0 && ` · ${rest.join(' · ')}`}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-export function TripMagazineHero({ trip }: { tripId?: string; trip?: Trip | null }) {
+export function TripMagazineHero({ tripId, trip }: { tripId: string; trip?: Trip | null }) {
   const bgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
@@ -37,19 +20,19 @@ export function TripMagazineHero({ trip }: { tripId?: string; trip?: Trip | null
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const weather = trip?.trip_context?.weather?.current;
-  const forecast = trip?.trip_context?.weather?.forecast;
-  const coverImage = trip?.trip_context?.hero_image_url;
-  const destination = trip?.destination || 'Destination';
+  const weather = MOCK_WEATHER;
+  const forecast = MOCK_WEATHER_FORECAST;
+  const tripData = MOCK_TRIPS.find((t) => t.id === (trip?.id ?? tripId));
+  const coverImage = (trip as any)?.image?.replace(/\?w=\d+/, '?w=1600&q=80')
+    || tripData?.image?.replace(/\?w=\d+/, '?w=1600&q=80');
+  const destination = trip?.destination || tripData?.destination || 'Paris, France';
   const cityName = destination.split(',')[0].trim();
   const countryName = destination.split(',').slice(1).join(',').trim();
   const dateStr = trip ? formatDateRange(trip.start_date, trip.end_date) : null;
   const travelersStr = trip ? `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}` : null;
 
-  const conditions = weather?.condition?.toLowerCase() ?? '';
+  const conditions = weather.conditions.toLowerCase();
   const WeatherIcon = conditions.includes('cloud') ? Cloud : conditions.includes('rain') ? Droplets : Sun;
-
-  const hasEssentials = !!(trip?.trip_context?.quick_facts || weather);
 
   return (
     <>
@@ -81,46 +64,40 @@ export function TripMagazineHero({ trip }: { tripId?: string; trip?: Trip | null
       </div>
 
       {/* Essentials + forecast */}
-      {hasEssentials && (
-        <div className="relative z-10 px-6 sm:px-10 mb-6">
-          {trip?.trip_context?.quick_facts && (() => {
-            const qf = trip.trip_context.quick_facts!;
-            return (
-              <>
-                <QuickFactRow facts={[qf.currency, qf.language, qf.timezone, qf.power]} className="mb-3" />
-                <QuickFactRow facts={[qf.transport, qf.taxi, qf.tipping, qf.water]} className="mb-5" />
-                {qf.emergency && (
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] mb-5" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
-                    <span className="text-white/60"><span className="font-semibold text-red-400">{qf.emergency}</span> Emergency</span>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-
-          <div className="flex items-center gap-5 sm:gap-7 text-[12px] tracking-wider uppercase overflow-x-auto scrollbar-hide">
-            {weather && (
-              <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
-                <WeatherIcon size={16} />
-                <span className="font-bold">{weather.high}° / {weather.low}°</span>
-                <span className="text-[10px]" style={{ opacity: 0.7 }}>Now</span>
-              </span>
-            )}
-            {weather && forecast && forecast.length > 0 && (
-              <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
-            )}
-            {forecast && forecast.length > 0 && (
-              forecast.slice(0, 5).map((d) => (
-                <span key={d.day} className="flex items-center gap-1.5 shrink-0">
-                  <span className="font-semibold" style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}>{d.day}</span>
-                  <span className="text-[14px]">{d.icon}</span>
-                  <span className="font-bold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>{d.high}°</span>
-                </span>
-              ))
-            )}
-          </div>
+      <div className="relative z-10 px-6 sm:px-10 mb-6">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] mb-3"
+          style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
+          <span className="text-white/80"><span className="font-semibold text-white">EUR €</span> · €1 ≈ $1.08</span>
+          <span className="text-white/80"><span className="font-semibold text-white">French</span> · English widely spoken</span>
+          <span className="text-white/80"><span className="font-semibold text-white">CET +1</span> · 6h ahead of EST</span>
+          <span className="text-white/80"><span className="font-semibold text-white">Type C/E</span> · 230V adapter</span>
         </div>
-      )}
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] mb-5"
+          style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
+          <span className="text-white/80"><span className="font-semibold text-white">Métro</span> · Lines 1, 4 & 7</span>
+          <span className="text-white/80"><span className="font-semibold text-white">Taxi</span> · Airport €50–70</span>
+          <span className="text-white/80"><span className="font-semibold text-white">Tip</span> · Included, round up</span>
+          <span className="text-white/80"><span className="font-semibold text-white">Water</span> · Tap is safe</span>
+          <span className="text-white/60"><span className="font-semibold text-red-400">112</span> Emergency</span>
+        </div>
+
+        <div className="flex items-center gap-5 sm:gap-7 text-[12px] tracking-wider uppercase overflow-x-auto scrollbar-hide">
+          <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+            <WeatherIcon size={16} />
+            <span className="font-bold">{weather.high}° / {weather.low}°</span>
+            <span className="text-[10px]" style={{ opacity: 0.7 }}>Now</span>
+          </span>
+          <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
+          {forecast.slice(0, 5).map((d) => (
+            <span key={d.day} className="flex items-center gap-1.5 shrink-0">
+              <span className="font-semibold" style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}>{d.day}</span>
+              <span className="text-[14px]">{d.icon}</span>
+              <span className="font-bold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>{d.high}°</span>
+            </span>
+          ))}
+        </div>
+      </div>
     </>
   );
 }

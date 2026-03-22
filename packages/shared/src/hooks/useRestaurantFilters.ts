@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MOCK_DISCOVER_RESTAURANTS } from '../config';
+import { MOCK_DISCOVER_RESTAURANTS } from '../config/mockItineraryData';
 import type { DiscoverItem } from '../types';
 
 // ─── Constants (shared between web + mobile) ──────────────────
