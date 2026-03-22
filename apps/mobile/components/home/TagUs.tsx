@@ -1,13 +1,15 @@
 import { View, Text, Pressable, Linking } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { SOCIAL_HASHTAGS, SOCIAL_LINKS, CATEGORY_GRADIENT_CYCLE, Gray, useTagUsDestinations } from '@travyl/shared';
+import { SOCIAL_HASHTAGS, SOCIAL_LINKS, CATEGORY_GRADIENT_CYCLE, useTagUsDestinations } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 const PLATFORM_ICONS: Record<string, keyof typeof FontAwesome.glyphMap> = {
   instagram: 'instagram',
 };
 
 export function TagUs() {
+  const colors = useThemeColors();
   const destinations = useTagUsDestinations();
 
   return (
@@ -17,7 +19,7 @@ export function TagUs() {
         style={{
           fontSize: 20,
           fontWeight: '700',
-          color: Gray[900],
+          color: colors.text,
           textAlign: 'center',
           marginBottom: 24,
         }}
@@ -72,7 +74,7 @@ export function TagUs() {
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: Gray[100],
+              backgroundColor: colors.surface,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -80,7 +82,7 @@ export function TagUs() {
             <FontAwesome
               name={PLATFORM_ICONS[link.platform] ?? 'globe'}
               size={18}
-              color={Gray[700]}
+              color={colors.textSecondary}
             />
           </Pressable>
         ))}
@@ -88,7 +90,7 @@ export function TagUs() {
 
       <Animated.Text
         entering={FadeIn.delay(400).duration(400)}
-        style={{ fontSize: 12, color: Gray[500], textAlign: 'center', lineHeight: 20 }}
+        style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', lineHeight: 20 }}
       >
         {SOCIAL_HASHTAGS.join('  ')}
       </Animated.Text>
