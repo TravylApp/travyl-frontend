@@ -6,6 +6,8 @@ export function useKeyboardShortcuts(
   isPaletteOpen: boolean,
   onClosePalette: () => void,
   onDeselect: () => void,
+  hasMarqueeSelection?: boolean,
+  onClearMarquee?: () => void,
 ): void {
   useEffect(() => {
     function handler(e: KeyboardEvent) {
@@ -20,6 +22,8 @@ export function useKeyboardShortcuts(
         e.preventDefault()
         if (isPaletteOpen) {
           onClosePalette()
+        } else if (hasMarqueeSelection && onClearMarquee) {
+          onClearMarquee()
         } else if (commands.some((c) => c.id === 'delete' && c.isEnabled)) {
           // 'delete' command is only enabled when an activity is selected
           onDeselect()
@@ -50,5 +54,5 @@ export function useKeyboardShortcuts(
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [commands, isPaletteOpen, onClosePalette, onDeselect])
+  }, [commands, isPaletteOpen, onClosePalette, onDeselect, hasMarqueeSelection, onClearMarquee])
 }

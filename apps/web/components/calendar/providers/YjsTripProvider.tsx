@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import * as Y from 'yjs'
-import { supabase } from '@travyl/shared/services/supabase'
+import { supabase } from '@travyl/shared'
 
 interface YjsTripContextValue {
   doc: Y.Doc
@@ -48,12 +48,12 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
     docRef.current = doc
     let isMounted = true
 
-    // Load persisted state from Supabase
+    // Load persisted state from Supabase (maybeSingle: no row = new trip, not an error)
     supabase
       .from('yjs_documents')
       .select('content')
       .eq('id', tripId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data?.content && isMounted) {
           Y.applyUpdate(doc, new Uint8Array(data.content as number[]))

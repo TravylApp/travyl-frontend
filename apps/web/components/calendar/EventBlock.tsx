@@ -15,7 +15,9 @@ interface EventBlockProps {
   activity: CalendarActivity
   viewers?: UserAwareness[]
   isSelected?: boolean
+  isMultiSelected?: boolean
   onSelect: (id: string) => void
+  onShiftClick?: (id: string) => void
   timeRangeStartHour: number
   column?: number
   totalColumns?: number
@@ -26,7 +28,9 @@ export function EventBlock({
   activity,
   viewers = [],
   isSelected = false,
+  isMultiSelected = false,
   onSelect,
+  onShiftClick,
   timeRangeStartHour,
   column = 0,
   totalColumns = 1,
@@ -91,12 +95,21 @@ export function EventBlock({
       className={[
         'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
-        'ring-2 ring-transparent',
+        isMultiSelected
+          ? 'ring-2 ring-blue-400 bg-blue-500/10'
+          : 'ring-2 ring-transparent',
         isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg',
-        isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40',
+        !isMultiSelected && (isSelected ? 'ring-white ring-offset-1' : 'hover:ring-white/40'),
         'focus:outline-none focus:ring-white focus:ring-offset-1',
-      ].join(' ')}
-      onClick={() => onSelect(activity.id)}
+      ].filter(Boolean).join(' ')}
+      onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.shiftKey && onShiftClick) {
+          e.stopPropagation()
+          onShiftClick(activity.id)
+          return
+        }
+        onSelect(activity.id)
+      }}
       onKeyDown={handleKeyDown}
     >
       {hasImage ? (

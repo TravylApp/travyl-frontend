@@ -14,6 +14,10 @@ interface WeekViewProps {
   onClickDayHeader?: (dayIndex: number) => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
+  marqueeSelectedIds?: Set<string>
+  gridRef?: React.RefObject<HTMLDivElement | null>
+  marqueeOverlay?: React.ReactNode
+  onShiftClickEvent?: (id: string) => void
 }
 
 export function WeekView({
@@ -27,6 +31,10 @@ export function WeekView({
   onClickDayHeader,
   onCreateActivity,
   pendingDrop = null,
+  marqueeSelectedIds,
+  gridRef,
+  marqueeOverlay,
+  onShiftClickEvent,
 }: WeekViewProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') {
@@ -37,7 +45,7 @@ export function WeekView({
   return (
     <div role="grid" className="flex flex-1 min-w-0" onKeyDown={handleKeyDown}>
       <TimeGutter timeRange={timeRange} />
-      <div className="flex flex-1 min-w-0">
+      <div ref={gridRef} className="flex flex-1 min-w-0 relative">
         {days.map(({ dayIndex, label }) => {
           const dayActivities = activities.filter((a) => a.day === dayIndex)
           return (
@@ -56,9 +64,12 @@ export function WeekView({
               }
               onCreateActivity={onCreateActivity}
               pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+              marqueeSelectedIds={marqueeSelectedIds}
+              onShiftClickEvent={onShiftClickEvent}
             />
           )
         })}
+        {marqueeOverlay}
       </div>
     </div>
   )
