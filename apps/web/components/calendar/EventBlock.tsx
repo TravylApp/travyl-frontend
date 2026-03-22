@@ -195,14 +195,13 @@ export function EventBlock({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       role="gridcell"
       tabIndex={0}
       aria-label={`${activity.title}, ${formatTimeRange(displayActivity)}`}
       aria-selected={isSelected}
       onContextMenu={handleContextMenu}
       className={[
-        'group rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative flex flex-col',
+        'group rounded-md overflow-hidden select-none relative flex flex-col',
         'text-white text-xs',
         isMultiSelected
           ? 'ring-2 ring-blue-400 bg-blue-500/10'
@@ -213,6 +212,11 @@ export function EventBlock({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
+      {/* Drag handle — scopes dnd-kit listeners away from root so onContextMenu fires */}
+      <div
+        className="absolute inset-0 cursor-grab active:cursor-grabbing z-0"
+        {...listeners}
+      />
       <div className={`flex-1 min-h-0 overflow-hidden relative ${isGrayedOut ? 'opacity-40 grayscale' : ''}`}>
         {hasImage ? (
           <>
