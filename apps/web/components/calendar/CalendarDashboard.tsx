@@ -30,6 +30,8 @@ import { ForYouPanel } from './ForYouPanel'
 import { formatDuration } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
+import { useMarqueeSelection } from './hooks/useMarqueeSelection'
+import { MarqueeOverlay } from './MarqueeOverlay'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
@@ -94,6 +96,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
 
+  const weekGridRef = useRef<HTMLDivElement>(null)
+
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
 
@@ -113,13 +117,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     if (!trip) return
     await inviteCollaborator(trip.id, email, role)
   }, [trip])
-
-  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
-    onAddFromSuggestion: handleAddFromSuggestion,
-    scrollRef,
-    timeRangeStartHour: timeRange.startHour,
-  })
 
   const { theme, toggleTheme } = useCalendarTheme()
 
@@ -151,6 +148,49 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       }),
     }
   }), [tripTotalDays, parsedStartMs])
+
+  const {
+    selectedIds: marqueeSelectedIds,
+    marqueeRect,
+    startMarquee,
+    updateMarquee,
+    endMarquee,
+    toggleActivityInSelection,
+    clearSelection: clearMarqueeSelection,
+  } = useMarqueeSelection({
+    activities,
+    timeRangeStartHour: timeRange.startHour,
+    dayCount: TRIP_DAYS.length,
+  })
+
+  const handleGroupMove = useCallback((dayDelta: number, hourDelta: number) => {
+    const selected = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    if (selected.length === 0) return
+
+    let clampedDayDelta = dayDelta
+    let clampedHourDelta = hourDelta
+    for (const act of selected) {
+      const newDay = act.day + clampedDayDelta
+      const newHour = act.startHour + clampedHourDelta
+      if (newDay < 0) clampedDayDelta = Math.max(clampedDayDelta, -act.day)
+      if (newDay >= TRIP_DAYS.length) clampedDayDelta = Math.min(clampedDayDelta, TRIP_DAYS.length - 1 - act.day)
+      if (newHour < 0) clampedHourDelta = Math.max(clampedHourDelta, -act.startHour)
+      if (newHour + act.duration > 24) clampedHourDelta = Math.min(clampedHourDelta, 24 - act.duration - act.startHour)
+    }
+
+    for (const act of selected) {
+      moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
+    }
+  }, [activities, marqueeSelectedIds, moveActivity, TRIP_DAYS.length])
+
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+    onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    onGroupMove: handleGroupMove,
+    marqueeSelectedIds,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
+  })
 
   // ─── Derive flight banners ────────────────────────────────────
   const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
@@ -246,6 +286,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     updateActivity(id, { startHour: newStartHour, duration: newDuration })
   }, [updateActivity])
 
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(marqueeSelectedIds)
+    clearMarqueeSelection()
+    await Promise.all(ids.map((id) => removeActivity(id)))
+  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivity])
+
+  const handleBulkDuplicate = useCallback(async () => {
+    const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    clearMarqueeSelection()
+    for (const act of toDuplicate) {
+      await duplicateActivity(act)
+    }
+  }, [marqueeSelectedIds, clearMarqueeSelection, activities, duplicateActivity])
+
   const commands = useCalendarCommands({
     selectedActivity,
     isPaletteOpen,
@@ -259,6 +313,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
     onOpenPalette: () => setIsPaletteOpen(true),
+    marqueeSelectedIds,
+    onBulkDelete: handleBulkDelete,
+    onBulkDuplicate: handleBulkDuplicate,
   })
 
   useKeyboardShortcuts(
@@ -266,6 +323,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     isPaletteOpen,
     () => setIsPaletteOpen(false),
     () => selectEvent(null),
+    marqueeSelectedIds.size > 0,
+    clearMarqueeSelection,
   )
 
   // Early returns for loading / error states (must come after all hooks)
@@ -274,16 +333,17 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   // Event handlers
   const handleClickEvent = (id: string, anchorEl: HTMLElement) => {
+    if (marqueeSelectedIds.size > 0) {
+      clearMarqueeSelection()
+      return
+    }
     if (popoverEventId === id) {
-      // Toggle off
       setPopoverEventId(null)
       setPopoverAnchor(null)
     } else {
       setPopoverEventId(id)
       setPopoverAnchor(anchorEl)
     }
-    // Don't call selectEvent here — it causes a layout shift
-    // that triggers scroll-to-close on the popover.
   }
 
   const handlePopoverClose = () => {
@@ -414,6 +474,21 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
                       onResize={handleResize}
+                      marqueeSelectedIds={marqueeSelectedIds}
+                      gridRef={weekGridRef}
+                      marqueeOverlay={
+                        <MarqueeOverlay
+                          gridRef={weekGridRef}
+                          onStartMarquee={(x, y, rect) => {
+                            selectEvent(null)
+                            startMarquee(x, y, rect)
+                          }}
+                          onUpdateMarquee={updateMarquee}
+                          onEndMarquee={endMarquee}
+                          marqueeRect={marqueeRect}
+                        />
+                      }
+                      onShiftClickEvent={toggleActivityInSelection}
                     />
                   </motion.div>
                 ) : (

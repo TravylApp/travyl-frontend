@@ -16,7 +16,9 @@ interface EventBlockProps {
   activity: CalendarActivity
   viewers?: UserAwareness[]
   isSelected?: boolean
+  isMultiSelected?: boolean
   onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onShiftClick?: (id: string) => void
   timeRangeStartHour: number
   column?: number
   totalColumns?: number
@@ -29,7 +31,9 @@ export function EventBlock({
   activity,
   viewers = [],
   isSelected = false,
+  isMultiSelected = false,
   onClickEvent,
+  onShiftClick,
   timeRangeStartHour,
   column = 0,
   totalColumns = 1,
@@ -94,6 +98,11 @@ export function EventBlock({
   }
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.shiftKey && onShiftClick) {
+      e.stopPropagation()
+      onShiftClick(activity.id)
+      return
+    }
     onClickEvent(activity.id, e.currentTarget)
   }
 
@@ -121,7 +130,9 @@ export function EventBlock({
       className={[
         'group rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
-        isResizing ? 'ring-2 ring-white/50' : 'ring-2 ring-transparent',
+        isMultiSelected
+          ? 'ring-2 ring-blue-400 bg-blue-500/10'
+          : isResizing ? 'ring-2 ring-white/50' : 'ring-2 ring-transparent',
         isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg hover:ring-white/40',
         isResizing ? 'focus:outline-none' : 'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}
