@@ -5,7 +5,7 @@ import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
 import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
-import type { TripNote } from '@travyl/shared'
+import type { TripNote, Poll } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
@@ -32,6 +32,15 @@ interface DayColumnProps {
   onResize?: (id: string, newStartHour: number, newDuration: number) => void
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  pollCollaborators?: UserAwareness[]
+  tripOwnerId?: string
+  onVote?: (activityId: string, vote: 'yes' | 'no') => void
+  onStartPoll?: (activityId: string) => void
+  onClosePoll?: (activityId: string) => void
+  onRestoreActivity?: (activityId: string) => void
+  onRemoveActivity?: (activityId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -94,6 +103,15 @@ export function DayColumn({
   onResize,
   marqueeSelectedIds,
   onShiftClickEvent,
+  polls,
+  pollUserId,
+  pollCollaborators,
+  tripOwnerId,
+  onVote,
+  onStartPoll,
+  onClosePoll,
+  onRestoreActivity,
+  onRemoveActivity,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -269,6 +287,20 @@ export function DayColumn({
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
               onResize={onResize}
               timeRangeEndHour={timeRange.endHour}
+              poll={polls?.get(activity.id) ?? null}
+              pollUserId={pollUserId}
+              pollCollaborators={pollCollaborators}
+              isPollManager={
+                polls?.get(activity.id)
+                  ? (polls.get(activity.id)!.startedBy === pollUserId || tripOwnerId === pollUserId)
+                  : false
+              }
+              tripOwnerId={tripOwnerId}
+              onVote={onVote}
+              onStartPoll={onStartPoll}
+              onClosePoll={onClosePoll}
+              onRestoreActivity={onRestoreActivity}
+              onRemoveActivity={onRemoveActivity}
             />
           )
         })}
