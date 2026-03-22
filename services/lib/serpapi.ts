@@ -72,10 +72,16 @@ export async function searchPlaces(
   const query = CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all
   const limit = options?.limit ?? 10
 
+  // SerpAPI google_local only accepts simple locations like "Paris, France".
+  // Trip destinations are full geocoded strings like "Paris, Ile-de-France, Metropolitan France, France".
+  // Take the first and last comma-separated parts to get "City, Country".
+  const parts = destination.split(',').map((p) => p.trim())
+  const serpLocation = parts.length >= 2 ? `${parts[0]}, ${parts[parts.length - 1]}` : destination
+
   const url = new URL(SERPAPI_BASE)
   url.searchParams.set('engine', 'google_local')
   url.searchParams.set('q', query)
-  url.searchParams.set('location', destination)
+  url.searchParams.set('location', serpLocation)
   url.searchParams.set('api_key', getApiKey())
 
   console.log('[serpapi] searching:', query, 'in', destination, '(category:', category, ')')

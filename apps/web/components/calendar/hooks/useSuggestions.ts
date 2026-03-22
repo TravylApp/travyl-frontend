@@ -80,11 +80,13 @@ async function fetchSuggestions(
 
         if (res.ok) {
           const data = await res.json()
-          console.log('[ForYou] got', data.suggestions?.length ?? 0, 'personalized suggestions')
-          return data.suggestions ?? []
+          const items = data.suggestions ?? []
+          console.log('[ForYou] got', items.length, 'personalized suggestions')
+          if (items.length > 0) return items
+          console.warn('[ForYou] /recommend returned 0 results, falling back to /api/suggest')
+        } else {
+          console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
         }
-
-        console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
       }
     } catch (err) {
       console.warn('[ForYou] /recommend auth error, falling back to /api/suggest', err)
