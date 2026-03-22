@@ -1,12 +1,13 @@
 'use client';
 
 import { use, useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useItineraryScreen, MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DISCOVER_ACTIVITIES, GLANCE_HERO_IMAGES, MOCK_PLACES, TOD_START_HOURS, QUICK_FILL_CATEGORIES, pickRandomActivity } from '@travyl/shared';
+import { useItineraryScreen, GLANCE_HERO_IMAGES, TOD_START_HOURS, QUICK_FILL_CATEGORIES, pickRandomActivity } from '@travyl/shared';
+import type { MockFlightDetail, PlaceItem } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {
   ItineraryEmpty, TimeGroupSection, SplitScreenModal,
-  FlightSection, HotelSection, CheckoutSection,
+  FlightSection,
 } from '@/components/itinerary';
 import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
@@ -36,32 +37,6 @@ import { TIME_OF_DAY_CONFIG, getActivityTypeColor } from '@travyl/shared';
 import { PaperPlane } from '@/components/ui';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 
-// ─── Mock activity coordinates (keyed by activity id) ────────────
-const MOCK_ACTIVITY_COORDS: Record<string, { lat: number; lng: number }> = {
-  // Legacy IDs
-  'mock-a1': { lat: 48.8584, lng: 2.2945 },
-  'mock-a2': { lat: 48.8590, lng: 2.2930 },
-  'mock-a3': { lat: 48.8510, lng: 2.3360 },
-  'mock-a4': { lat: 48.8606, lng: 2.3376 },
-  'mock-a5': { lat: 48.8584, lng: 2.2945 },
-  'mock-a6': { lat: 48.8867, lng: 2.3431 },
-  'mock-a7': { lat: 48.8049, lng: 2.1204 },
-  'mock-a8': { lat: 48.8048, lng: 2.1172 },
-  'mock-a9': { lat: 48.8698, lng: 2.3075 },
-  // Calendar activity IDs
-  'cal-1':  { lat: 48.8584, lng: 2.2945 },  // Eiffel Tower
-  'cal-2':  { lat: 48.8566, lng: 2.3622 },  // Le Marais
-  'cal-3':  { lat: 48.8606, lng: 2.3376 },  // Louvre Museum
-  'cal-4':  { lat: 48.8867, lng: 2.3431 },  // Montmartre
-  'cal-5':  { lat: 48.8530, lng: 2.3499 },  // Le Foodist (cooking class)
-  'cal-6':  { lat: 48.8510, lng: 2.3360 },  // Le Comptoir, Saint-Germain
-  'cal-7':  { lat: 48.8049, lng: 2.1204 },  // Versailles
-  'cal-8':  { lat: 48.8566, lng: 2.3425 },  // Seine River Cruise, Pont Neuf
-  'cal-9':  { lat: 48.8600, lng: 2.3266 },  // Musée d'Orsay
-  'cal-10': { lat: 48.8462, lng: 2.3372 },  // Luxembourg Gardens
-  'cal-11': { lat: 48.8510, lng: 2.3230 },  // Le Bon Marché
-  'cal-12': { lat: 48.8584, lng: 2.2945 },  // Le Jules Verne (Eiffel Tower)
-};
 
 
 import { Skeleton } from '@/components/ui';
@@ -106,9 +81,7 @@ function GlanceSearchInput({ query, onChange, onClose, onSelect }: {
   onClose: () => void;
   onSelect: (place: import('@travyl/shared').PlaceItem) => void;
 }) {
-  const results = query.length > 1
-    ? MOCK_PLACES.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())).slice(0, 3)
-    : [];
+  const results: import('@travyl/shared').PlaceItem[] = []; // TODO: wire up real place search API
   return (
     <div className="mt-1">
       <div className="relative">
@@ -163,8 +136,8 @@ function GlanceView({
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
   onSelectDay: (i: number) => void;
-  arrivalFlight?: typeof MOCK_FLIGHT_DETAILS[number];
-  returnFlight?: typeof MOCK_FLIGHT_DETAILS[number];
+  arrivalFlight?: MockFlightDetail;
+  returnFlight?: MockFlightDetail;
   onActivityClick?: (activityId: string) => void;
   addActivity?: (activity: import('@travyl/shared').CalendarActivity) => void;
   removeActivity?: (id: string) => void;
@@ -531,11 +504,11 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const [browseIndex, setBrowseIndex] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
 
-  const arrivalFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'arrival');
-  const returnFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'return');
+  const arrivalFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
+  const returnFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
 
   const filteredDiscoverItems = useMemo(() => {
-    let items = MOCK_DISCOVER_ACTIVITIES;
+    let items: DiscoverItem[] = []; // TODO: wire up real discover/suggestions API
     if (addSearch) {
       const q = addSearch.toLowerCase();
       items = items.filter((i) =>
@@ -593,25 +566,20 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     for (const day of days) {
       for (const group of day.timeGroups) {
         for (const a of group.activities) {
-          // Try to find matching discover activity for richer data (images, etc.)
-          const discover = MOCK_DISCOVER_ACTIVITIES.find((d) =>
-            d.name.toLowerCase() === a.name.toLowerCase() ||
-            d.id === a.id,
-          );
           items.push({
             id: a.id,
             name: a.name,
-            location: a.locationName || discover?.location || 'Paris, France',
-            description: a.notes || discover?.description || `${a.category} activity`,
-            images: discover?.images || [],
-            rating: discover?.rating || 4.5,
+            location: a.locationName || '',
+            description: a.notes || `${a.category} activity`,
+            images: [],
+            rating: 0,
             tags: [a.category, group.timeOfDay, a.costDisplay || ''].filter(Boolean),
-            price: a.costDisplay || discover?.price || undefined,
+            price: a.costDisplay || undefined,
             category: a.category,
             isBooked: true,
             bookedDay: day.dayNumber,
             bookedTime: a.startTime || undefined,
-            bookingUrl: a.bookingUrl || discover?.bookingUrl || undefined,
+            bookingUrl: a.bookingUrl || undefined,
           });
         }
       }
@@ -620,19 +588,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   }, [days]);
 
   const mapLocations: MapLocation[] = useMemo(() => {
-    if (!selectedDay) return [];
-    return selectedDay.timeGroups.flatMap((g) =>
-      g.activities
-        .filter((a) => MOCK_ACTIVITY_COORDS[a.id])
-        .map((a) => ({
-          id: a.id,
-          lat: MOCK_ACTIVITY_COORDS[a.id].lat,
-          lng: MOCK_ACTIVITY_COORDS[a.id].lng,
-          name: a.name,
-          color: getActivityTypeColor(a.category).primary,
-          category: a.category,
-        })),
-    );
+    // TODO: wire up real activity coordinates from API
+    return [];
   }, [selectedDay]);
 
   // Push markers to layout map
@@ -799,9 +756,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           {isFirstDay && arrivalFlight && (
             <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
           )}
-          {isFirstDay && (
-            <HotelSection hotel={MOCK_HOTEL_DETAIL} label="Check-in · Mar 10" collapsed={allCollapsedOverride ?? undefined} />
-          )}
+          {/* TODO: wire up real hotel check-in data */}
 
           {selectedDay.timeGroups.map((group) => (
             <div key={group.timeOfDay}>
@@ -901,18 +856,11 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           ))}
 
-          {!isFirstDay && !isLastDay && (
-            <HotelSection hotel={MOCK_HOTEL_DETAIL} label={`Night ${selectedDay.dayNumber} · ${selectedDay.dateLabel}`} collapsed={allCollapsedOverride ?? undefined} />
-          )}
+          {/* TODO: wire up real hotel data for non-first/non-last days */}
 
           {isLastDay && (
             <>
-              <CheckoutSection
-                hotelName={MOCK_HOTEL_DETAIL.name}
-                hotelAddress={MOCK_HOTEL_DETAIL.address}
-                checkOutTime={MOCK_HOTEL_DETAIL.checkOutTime}
-                collapsed={allCollapsedOverride ?? undefined}
-              />
+              {/* TODO: wire up real hotel checkout data */}
               {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />}
             </>
           )}

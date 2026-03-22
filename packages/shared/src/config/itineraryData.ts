@@ -1,4 +1,3 @@
-import { MOCK_DISCOVER_ACTIVITIES } from './mockItineraryData';
 import type { DiscoverItem } from '../types';
 
 // Navy and TAB_COLORS are now exported from colors.ts via config/index.ts
@@ -124,12 +123,16 @@ export function formatHourToTime(hour: number): string {
   return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-export function pickRandomActivity(category: string | null, excludeIds: string[]): DiscoverItem | null {
-  let pool = MOCK_DISCOVER_ACTIVITIES.filter((a) => !excludeIds.includes(a.id));
-  if (category) {
-    const filtered = pool.filter((a) => a.category?.toLowerCase().includes(category));
-    if (filtered.length > 0) pool = filtered;
-  }
-  if (pool.length === 0) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
+export function pickRandomActivity(_category: string | null, _excludeIds: string[]): DiscoverItem | null {
+  // TODO: Replace with real activity data source
+  return null;
 }
+
+// ─── Glance Hero Images ────────────────────────────────────
+export const GLANCE_HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
+  'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&q=85',
+  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1400&q=85',
+  'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1400&q=85',
+  'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
+];

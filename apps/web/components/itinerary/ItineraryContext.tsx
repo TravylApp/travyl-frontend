@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-import { MOCK_CALENDAR_ACTIVITIES, MOCK_DAYS } from '@travyl/shared/src/config/mockItineraryData';
+const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [];
+const MOCK_DAYS: { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string }[] = [];
 import type { MapLocation } from '@/components/leaflet-map';
 
 // ─── Conversion: CalendarActivity[] → ItineraryDayViewModel[] ─────
@@ -78,8 +79,8 @@ function calendarActivitiesToDayViewModels(
       dayNumber: baseDay.dayNumber,
       dayLabel: baseDay.dayLabel,
       dateLabel: baseDay.dateLabel,
-      theme: baseDay.theme,
-      notes: baseDay.notes,
+      theme: baseDay.theme ?? null,
+      notes: baseDay.notes ?? null,
       timeGroups,
       activityCount: allVMs.length,
     };
