@@ -33,6 +33,8 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
+import { ResizeDivider } from './ResizeDivider'
+import { useResizablePanel } from './hooks/useResizablePanel'
 import { formatDuration, formatTimeRange } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
@@ -128,6 +130,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }, [trip])
 
   const { theme, toggleTheme } = useCalendarTheme()
+
+  const {
+    width: forYouWidth,
+    columnCount: forYouColumnCount,
+    handleDragStart: handleResizeStart,
+    handleDrag: handleResizeDrag,
+    handleDragEnd: handleResizeEnd,
+  } = useResizablePanel()
 
   // Sync view mode to presence
   useEffect(() => {
@@ -535,10 +545,18 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
 
             {/* Right column: For You panel */}
+            <ResizeDivider
+              width={forYouWidth}
+              onDragStart={handleResizeStart}
+              onDrag={handleResizeDrag}
+              onDragEnd={handleResizeEnd}
+            />
             <ForYouPanel
               destination={trip?.destination ?? ''}
               tripId={trip?.id ?? ''}
               scheduledActivityIds={droppedSuggestionIds}
+              width={forYouWidth}
+              columnCount={forYouColumnCount}
             />
           </div>
 
@@ -668,7 +686,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             <BudgetPanel tripId={tripId} />
           </div>
         ) : activeNav === 'packing' ? (
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto p-4">
             <PackingPanel tripId={tripId} />
           </div>
         ) : (
