@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Pla
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useAuthStore, Navy } from '@travyl/shared';
+import { useAuthStore, Navy, TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
 function SocialButton({ label, iconName, iconColor, onPress }: {
@@ -20,7 +20,7 @@ function SocialButton({ label, iconName, iconColor, onPress }: {
       }}
     >
       <FontAwesome name={iconName as any} size={16} color={iconColor ?? Navy.DEFAULT} />
-      <Text style={{ fontSize: 13, color: Navy.DEFAULT }}>{label}</Text>
+      <Text style={{ ...TextStyles.bodyLg, color: Navy.DEFAULT }}>{label}</Text>
     </Pressable>
   );
 }
@@ -65,7 +65,7 @@ export default function LoginScreen() {
           {/* Branding */}
           <View style={{ alignItems: 'center', marginBottom: 28 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Text style={{ color: Navy.DEFAULT, fontWeight: '900', fontSize: 24, letterSpacing: 2 }}>TRAVYL</Text>
+              <Text style={{ ...TextStyles.headline, fontFamily: FontFamily.sansBlack, fontWeight: '900', color: Navy.DEFAULT, letterSpacing: 2 }}>TRAVYL</Text>
               <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(30,58,95,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                 <FontAwesome name="send" size={14} color={Navy.DEFAULT} />
               </View>
@@ -73,17 +73,17 @@ export default function LoginScreen() {
           </View>
 
           {/* Heading */}
-          <Text style={{ color: Navy.DEFAULT, fontSize: 20, fontWeight: '900', marginBottom: 4 }}>
+          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.sansBlack, fontWeight: '900', color: Navy.DEFAULT, marginBottom: 4 }}>
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </Text>
-          <Text style={{ color: 'rgba(30,58,95,0.5)', fontSize: 13, marginBottom: 20 }}>
+          <Text style={{ ...TextStyles.bodyLg, color: 'rgba(30,58,95,0.5)', marginBottom: 20 }}>
             {isSignUp ? 'Start planning your dream trips today.' : 'Sign in to continue your journey.'}
           </Text>
 
           {/* Error */}
           {error ? (
             <View style={{ backgroundColor: colors.errorBg, padding: 10, borderRadius: 10, marginBottom: 12 }}>
-              <Text style={{ color: colors.error, fontSize: 12 }}>{error}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.error }}>{error}</Text>
             </View>
           ) : null}
 
@@ -100,7 +100,7 @@ export default function LoginScreen() {
           {/* Divider */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.borderLight }} />
-            <Text style={{ color: 'rgba(30,58,95,0.3)', fontSize: 10, letterSpacing: 1 }}>OR</Text>
+            <Text style={{ ...TextStyles.sm, color: 'rgba(30,58,95,0.3)', letterSpacing: 1 }}>OR</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.borderLight }} />
           </View>
 
@@ -115,7 +115,7 @@ export default function LoginScreen() {
                   value={name}
                   onChangeText={setName}
                   autoCapitalize="words"
-                  style={{ flex: 1, height: 48, paddingHorizontal: 10, fontSize: 13, color: Navy.DEFAULT }}
+                  style={{ flex: 1, height: 48, paddingHorizontal: 10, fontSize: FontSize.bodyLg, color: Navy.DEFAULT }}
                 />
               </View>
             </View>
@@ -133,7 +133,7 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
-                style={{ flex: 1, height: 48, paddingHorizontal: 10, fontSize: 13, color: Navy.DEFAULT }}
+                style={{ flex: 1, height: 48, paddingHorizontal: 10, fontSize: FontSize.bodyLg, color: Navy.DEFAULT }}
               />
             </View>
           </View>
@@ -148,7 +148,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                style={{ flex: 1, height: 48, paddingHorizontal: 10, fontSize: 13, color: Navy.DEFAULT }}
+                style={{ flex: 1, height: 48, paddingHorizontal: 10, fontSize: FontSize.bodyLg, color: Navy.DEFAULT }}
               />
               <Pressable onPress={() => setShowPassword(!showPassword)}>
                 <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} size={14} color="rgba(30,58,95,0.3)" />
@@ -158,7 +158,7 @@ export default function LoginScreen() {
 
           {!isSignUp && (
             <Pressable style={{ alignSelf: 'flex-end', marginBottom: 16 }}>
-              <Text style={{ fontSize: 11, color: 'rgba(30,58,95,0.5)' }}>Forgot password?</Text>
+              <Text style={{ ...TextStyles.caption, color: 'rgba(30,58,95,0.5)' }}>Forgot password?</Text>
             </Pressable>
           )}
 
@@ -174,7 +174,7 @@ export default function LoginScreen() {
               shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8,
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+            <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>
               {submitting ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
             </Text>
             <FontAwesome name="send" size={12} color="#fff" />
@@ -182,7 +182,7 @@ export default function LoginScreen() {
 
           {/* Toggle */}
           <View style={{ alignItems: 'center', marginTop: 20 }}>
-            <Text style={{ fontSize: 13, color: 'rgba(30,58,95,0.4)' }}>
+            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(30,58,95,0.4)' }}>
               {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
               <Text onPress={() => setIsSignUp(!isSignUp)} style={{ color: Navy.DEFAULT, fontWeight: '600' }}>
                 {isSignUp ? 'Sign in' : 'Sign up'}
@@ -192,11 +192,11 @@ export default function LoginScreen() {
 
           {/* Continue as Guest */}
           <Pressable onPress={() => router.replace('/')} style={{ alignItems: 'center', marginTop: 12 }}>
-            <Text style={{ fontSize: 11, color: 'rgba(30,58,95,0.3)', textDecorationLine: 'underline' }}>Continue as Guest</Text>
+            <Text style={{ ...TextStyles.caption, color: 'rgba(30,58,95,0.3)', textDecorationLine: 'underline' }}>Continue as Guest</Text>
           </Pressable>
 
           {/* Terms */}
-          <Text style={{ textAlign: 'center', marginTop: 16, fontSize: 9, color: 'rgba(30,58,95,0.25)', lineHeight: 14 }}>
+          <Text style={{ ...TextStyles.xs, textAlign: 'center', marginTop: 16, color: 'rgba(30,58,95,0.25)' }}>
             By continuing, you agree to Travyl's Terms of Service and Privacy Policy.
           </Text>
         </ScrollView>

@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -273,10 +274,10 @@ function SectionToggle({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name={icon as any} size={14} color={ACCENT} />
-        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{title}</Text>
+        <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{title}</Text>
         {badge && (
           <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-            <Text style={{ fontSize: 10, color: ACCENT, fontWeight: '600' }}>{badge}</Text>
+            <Text style={{ ...TextStyles.smEm, color: ACCENT }}>{badge}</Text>
           </View>
         )}
       </View>
@@ -299,7 +300,7 @@ function RatingBadge({ rating }: { rating: number }) {
   const ACCENT = useTabAccent('hotels');
   return (
     <View style={{ backgroundColor: ratingColor(rating, ACCENT), paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 }}>
-      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{rating}</Text>
+      <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>{rating}</Text>
     </View>
   );
 }
@@ -345,7 +346,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
               backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>
+            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
               {idx + 1} / {images.length}
             </Text>
           </View>
@@ -406,29 +407,29 @@ function RoomSelection({
                 <View style={{ flex: 1, padding: 10 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? ACCENT : colors.text }}>
+                      <Text style={{ ...TextStyles.bodyEm, color: isSelected ? ACCENT : colors.text }}>
                         {room.type}
                       </Text>
                       {isSelected && (
                         <View style={{ backgroundColor: ACCENT, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Selected</Text>
+                          <Text style={{ ...TextStyles.xs, color: '#fff' }}>Selected</Text>
                         </View>
                       )}
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: isSelected ? ACCENT : colors.text }}>
+                      <Text style={{ ...TextStyles.bodyXlEm, color: isSelected ? ACCENT : colors.text }}>
                         {'\u20ac'}{room.price}
                       </Text>
-                      <Text style={{ fontSize: 9, color: colors.textTertiary }}>per night</Text>
+                      <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
                     </View>
                   </View>
-                  <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>{room.beds}</Text>
+                  <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginTop: 2 }}>{room.beds}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                       <FontAwesome name="users" size={9} color="#9ca3af" />
-                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>{room.guests}</Text>
+                      <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{room.guests}</Text>
                     </View>
-                    <Text style={{ fontSize: 10, color: colors.textSecondary }}>{room.size}</Text>
+                    <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{room.size}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -468,40 +469,40 @@ function PriceBreakdown({ room, pricePerNight }: { room: RoomType; pricePerNight
         <View style={{ backgroundColor: ACCENT + '08', borderRadius: 10, padding: 14 }}>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Room</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{room.type}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Room</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{room.type}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Nightly Rate</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{pricePerNight}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Nightly Rate</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{'\u20ac'}{pricePerNight}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{nights} nights subtotal</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{'\u20ac'}{subtotal.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{nights} nights subtotal</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{'\u20ac'}{subtotal.toFixed(2)}</Text>
             </View>
 
             <View style={{ height: 1, backgroundColor: ACCENT + '15', marginVertical: 4 }} />
-            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <Text style={{ ...TextStyles.smEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Taxes & Fees
             </Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>City Tax</Text>
-              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{cityTax.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>City Tax</Text>
+              <Text style={{ ...TextStyles.body, color: colors.text }}>{'\u20ac'}{cityTax.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Service Fee</Text>
-              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{serviceFee.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Service Fee</Text>
+              <Text style={{ ...TextStyles.body, color: colors.text }}>{'\u20ac'}{serviceFee.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>VAT (10%)</Text>
-              <Text style={{ fontSize: 12, color: colors.text }}>{'\u20ac'}{vat.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>VAT (10%)</Text>
+              <Text style={{ ...TextStyles.body, color: colors.text }}>{'\u20ac'}{vat.toFixed(2)}</Text>
             </View>
 
             <View style={{ height: 1, backgroundColor: ACCENT + '25', marginVertical: 4 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Total</Text>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: ACCENT }}>{'\u20ac'}{total.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Total</Text>
+              <Text style={{ ...TextStyles.subhead, color: ACCENT }}>{'\u20ac'}{total.toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -519,7 +520,7 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
   const ACCENT = useTabAccent('hotels');
   return (
     <View style={{ marginTop: 14 }}>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 10 }}>Contact & Location</Text>
+      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 10 }}>Contact & Location</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <Pressable
           onPress={() => Linking.openURL(`tel:${phone}`)}
@@ -530,7 +531,7 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
           }}
         >
           <FontAwesome name="phone" size={14} color="#16a34a" />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#16a34a' }}>Call</Text>
+          <Text style={{ ...TextStyles.bodyEm, color: '#16a34a' }}>Call</Text>
         </Pressable>
         <Pressable
           onPress={() => Linking.openURL(`mailto:${email}`)}
@@ -541,7 +542,7 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
           }}
         >
           <FontAwesome name="envelope" size={13} color={ACCENT} />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>Email</Text>
+          <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Email</Text>
         </Pressable>
         <Pressable
           onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`)}
@@ -552,7 +553,7 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
           }}
         >
           <FontAwesome name="map-marker" size={14} color="#d97706" />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#d97706' }}>Map</Text>
+          <Text style={{ ...TextStyles.bodyEm, color: '#d97706' }}>Map</Text>
         </Pressable>
       </View>
     </View>
@@ -596,11 +597,11 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>{ratings.overall}</Text>
+              <Text style={{ ...TextStyles.title, color: '#fff' }}>{ratings.overall}</Text>
             </View>
             <View>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>{ratings.label}</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{reviews.toLocaleString()} reviews</Text>
+              <Text style={{ ...TextStyles.subhead, color: colors.text }}>{ratings.label}</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{reviews.toLocaleString()} reviews</Text>
             </View>
           </View>
 
@@ -609,8 +610,8 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
             {subscores.map((s) => (
               <View key={s.label}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{s.label}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: ACCENT }}>{s.value}</Text>
+                  <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{s.label}</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{s.value}</Text>
                 </View>
                 <View style={{ height: 6, backgroundColor: colors.borderLight, borderRadius: 3 }}>
                   <View
@@ -652,7 +653,7 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
         <View style={{ gap: 14 }}>
           {categories.map((cat) => (
             <View key={cat.category}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 {cat.category}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -667,7 +668,7 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
                     }}
                   >
                     <FontAwesome name={item.icon as any} size={11} color={ACCENT} />
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500' }}>{item.name}</Text>
+                    <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{item.name}</Text>
                   </View>
                 ))}
               </View>
@@ -697,22 +698,22 @@ function OtherHotelCard({ hotel }: { hotel: typeof OTHER_HOTELS[number] }) {
       <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>
               {hotel.name}
             </Text>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: ACCENT, marginLeft: 8 }}>
+            <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT, marginLeft: 8 }}>
               {'\u20ac'}{hotel.price}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
             <StarRow count={hotel.stars} />
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
           <RatingBadge rating={hotel.rating} />
-          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary }}>{hotel.label}</Text>
-          <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
+          <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{hotel.label}</Text>
+          <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
         </View>
       </View>
     </View>
@@ -772,10 +773,10 @@ function HotelFilterBar({
           }}
         >
           <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : '#64748b'} />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: activeCount > 0 ? ACCENT : colors.textSecondary }}>Filters</Text>
+          <Text style={{ ...TextStyles.bodyEm, color: activeCount > 0 ? ACCENT : colors.textSecondary }}>Filters</Text>
           {activeCount > 0 && (
             <View style={{ backgroundColor: ACCENT, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{activeCount}</Text>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{activeCount}</Text>
             </View>
           )}
         </Pressable>
@@ -785,7 +786,7 @@ function HotelFilterBar({
             const idx = SORT_OPTIONS.findIndex((o) => o.key === sortBy);
             setSortBy(SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key);
           }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>
+            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>
               {SORT_OPTIONS.find((o) => o.key === sortBy)?.label}
             </Text>
           </Pressable>
@@ -796,7 +797,7 @@ function HotelFilterBar({
       {showFilters && (
         <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
           {/* Star rating */}
-          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
             Star Rating
           </Text>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
@@ -813,7 +814,7 @@ function HotelFilterBar({
                     borderWidth: 1, borderColor: active ? ACCENT : colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: active ? ACCENT : colors.textSecondary }}>{s}</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: active ? ACCENT : colors.textSecondary }}>{s}</Text>
                   <FontAwesome name="star" size={10} color={active ? '#fbbf24' : colors.border} />
                 </Pressable>
               );
@@ -821,7 +822,7 @@ function HotelFilterBar({
           </View>
 
           {/* Amenities */}
-          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
             Amenities
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
@@ -839,14 +840,14 @@ function HotelFilterBar({
                   }}
                 >
                   <FontAwesome name={AMENITY_ICONS[a] as any} size={11} color={active ? ACCENT : colors.textTertiary} />
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: active ? ACCENT : colors.textSecondary }}>{a}</Text>
+                  <Text style={{ ...TextStyles.caption, color: active ? ACCENT : colors.textSecondary }}>{a}</Text>
                 </Pressable>
               );
             })}
           </View>
 
           {/* Brands */}
-          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
             Brand
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
@@ -862,7 +863,7 @@ function HotelFilterBar({
                     borderWidth: 1, borderColor: active ? ACCENT : colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: active ? ACCENT : colors.textSecondary }}>{b}</Text>
+                  <Text style={{ ...TextStyles.caption, color: active ? ACCENT : colors.textSecondary }}>{b}</Text>
                 </Pressable>
               );
             })}
@@ -871,7 +872,7 @@ function HotelFilterBar({
           {/* Reset */}
           {activeCount > 0 && (
             <Pressable onPress={resetAll} style={{ alignSelf: 'flex-start' }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#ef4444' }}>Reset Filters</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: '#ef4444' }}>Reset Filters</Text>
             </Pressable>
           )}
         </View>
@@ -898,28 +899,28 @@ function BrowseHotelCard({ hotel }: { hotel: typeof BROWSE_HOTELS[number] }) {
       <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>
               {hotel.name}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
             <StarRow count={hotel.stars} />
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
           <RatingBadge rating={hotel.rating} />
-          <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
+          <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
           {hotel.label ? (
             <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-              <Text style={{ fontSize: 9, fontWeight: '600', color: ACCENT }}>{hotel.label}</Text>
+              <Text style={{ ...TextStyles.xs, color: ACCENT }}>{hotel.label}</Text>
             </View>
           ) : <View />}
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 15, fontWeight: '800', color: ACCENT }}>{'\u20ac'}{hotel.price}</Text>
-            <Text style={{ fontSize: 9, color: colors.textTertiary }}>per night</Text>
+            <Text style={{ ...TextStyles.subhead, color: ACCENT }}>{'\u20ac'}{hotel.price}</Text>
+            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
           </View>
         </View>
       </View>
@@ -963,8 +964,8 @@ function HotelPoliciesSection() {
                   <FontAwesome name={p.icon as any} size={13} color={ACCENT} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, color: colors.textTertiary, fontWeight: '600' }}>{p.label}</Text>
-                  <Text style={{ fontSize: 12, color: colors.text, fontWeight: '600' }}>{p.value}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>{p.label}</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{p.value}</Text>
                 </View>
               </View>
             ))}
@@ -1101,7 +1102,7 @@ export default function HotelsScreen() {
             ) : filteredHotels.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 24 }}>
                 <FontAwesome name="search" size={24} color="#d1d5db" />
-                <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 8 }}>No hotels match your filters</Text>
+                <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary, marginTop: 8 }}>No hotels match your filters</Text>
               </View>
             ) : (
               filteredHotels.map((h) => <BrowseHotelCard key={h.id} hotel={h} />)
@@ -1122,15 +1123,15 @@ export default function HotelsScreen() {
           {/* Name & Stars Row */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{hotel.name}</Text>
+              <Text style={{ ...TextStyles.title, color: colors.text }}>{hotel.name}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <StarRow count={hotel.stars} />
-                <Text style={{ fontSize: 11, color: colors.textTertiary }}>{hotel.stars}-star hotel</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{hotel.stars}-star hotel</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <RatingBadge rating={hotel.rating} />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: ratingColor(hotel.rating, ACCENT), marginTop: 3 }}>
+              <Text style={{ ...TextStyles.smEm, color: ratingColor(hotel.rating, ACCENT), marginTop: 3 }}>
                 {hotel.guestRatings.label}
               </Text>
             </View>
@@ -1139,30 +1140,30 @@ export default function HotelsScreen() {
           {/* Address */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
             <FontAwesome name="map-marker" size={13} color="#9ca3af" />
-            <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>{hotel.address}</Text>
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, flex: 1 }}>{hotel.address}</Text>
           </View>
 
           {/* Reviews count */}
-          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 4 }}>
             {hotel.reviews.toLocaleString()} verified reviews
           </Text>
 
           {/* Check-in / Check-out Badges */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
             <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT, marginBottom: 2 }}>Check-in</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>Mar 22 {'\u00b7'} {hotel.checkIn}</Text>
+              <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-in</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Mar 22 {'\u00b7'} {hotel.checkIn}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT, marginBottom: 2 }}>Check-out</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>Mar 27 {'\u00b7'} {hotel.checkOut}</Text>
+              <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-out</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Mar 27 {'\u00b7'} {hotel.checkOut}</Text>
             </View>
           </View>
 
           {/* Cancellation */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: '#f0fdf4', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#bbf7d0' }}>
             <FontAwesome name="shield" size={11} color="#16a34a" />
-            <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: '600' }}>{hotel.cancellation}</Text>
+            <Text style={{ ...TextStyles.captionEm, color: '#16a34a' }}>{hotel.cancellation}</Text>
           </View>
 
           {/* ── Collapsible Sections ── */}
@@ -1190,9 +1191,9 @@ export default function HotelsScreen() {
             {booked ? (
               <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center' }}>
                 <FontAwesome name="check-circle" size={28} color="#16a34a" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#16a34a', marginTop: 8 }}>Hotel Booked!</Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
-                <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+                <Text style={{ ...TextStyles.subhead, color: '#16a34a', marginTop: 8 }}>Hotel Booked!</Text>
+                <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
                   {currentRoom.type} {'\u00b7'} {'\u20ac'}{currentRoom.price}/night {'\u00b7'} 5 nights
                 </Text>
               </View>
@@ -1208,7 +1209,7 @@ export default function HotelsScreen() {
                   }}
                 >
                   <FontAwesome name="calendar-check-o" size={16} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Book Hotel</Text>
+                  <Text style={{ ...TextStyles.subhead, color: '#fff' }}>Book Hotel</Text>
                 </LinearGradient>
               </Pressable>
             )}
@@ -1218,7 +1219,7 @@ export default function HotelsScreen() {
 
       {/* ── Other Hotels ── */}
       <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
+        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
         {OTHER_HOTELS.map((h) => (
           <OtherHotelCard key={h.id} hotel={h} />
         ))}
@@ -1234,7 +1235,7 @@ export default function HotelsScreen() {
           }}
         >
           <FontAwesome name="plus-circle" size={16} color="#9ca3af" />
-          <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>Add Hotel</Text>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary }}>Add Hotel</Text>
         </Pressable>
       </View>
     </ScrollView>
