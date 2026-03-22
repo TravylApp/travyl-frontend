@@ -48,3 +48,4 @@ supabase/.temp/
 .sst/
 sst-env.d.ts
 .worktrees/
+.worktrees/

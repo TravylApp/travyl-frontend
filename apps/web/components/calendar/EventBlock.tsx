@@ -9,68 +9,38 @@ import {
 import { HOUR_HEIGHT, COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 import { formatTimeRange } from './utils'
 import { useCalendarThemeContext } from './CalendarThemeContext'
-import { useResizeHandles } from './hooks/useResizeHandles'
 import type { CalendarActivity, UserAwareness } from './types'
 
 interface EventBlockProps {
   activity: CalendarActivity
   viewers?: UserAwareness[]
   isSelected?: boolean
-  isMultiSelected?: boolean
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
-  onShiftClick?: (id: string) => void
+  onSelect: (id: string) => void
   timeRangeStartHour: number
   column?: number
   totalColumns?: number
   hiddenCount?: number
-  onResize?: (id: string, newStartHour: number, newDuration: number) => void
-  timeRangeEndHour?: number
 }
 
 export function EventBlock({
   activity,
   viewers = [],
   isSelected = false,
-  isMultiSelected = false,
-  onClickEvent,
-  onShiftClick,
+  onSelect,
   timeRangeStartHour,
   column = 0,
   totalColumns = 1,
   hiddenCount = 0,
-  onResize,
-  timeRangeEndHour,
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { type: 'activity' as const, activity },
-    activationConstraint: { distance: 5 },
   })
 
   const { isDark } = useCalendarThemeContext()
 
-  const {
-    isResizing,
-    previewStartHour,
-    previewDuration,
-    topHandleProps,
-    bottomHandleProps,
-  } = useResizeHandles({
-    startHour: activity.startHour,
-    duration: activity.duration,
-    timeRangeStartHour,
-    timeRangeEndHour: onResize ? timeRangeEndHour! : timeRangeStartHour + 24,
-    onResize: onResize
-      ? (s, d) => onResize(activity.id, s, d)
-      : () => {},
-  })
-
-  const displayActivity = isResizing && previewStartHour != null && previewDuration != null
-    ? { ...activity, startHour: previewStartHour, duration: previewDuration }
-    : activity
-
   const color = getActivityColor(activity.type)
-  const hasImage = !!(activity.image && displayActivity.duration >= 1)
+  const hasImage = !!(activity.image && activity.duration >= 1)
 
   const bgColor = isDark ? getActivityColorDark(activity.type) : color
   const borderColor = isDark ? getActivityColorDarkBorder(activity.type) : `${color}88`
@@ -85,8 +55,8 @@ export function EventBlock({
 
   const style: React.CSSProperties = {
     position: 'absolute',
-    top: (displayActivity.startHour - timeRangeStartHour) * HOUR_HEIGHT,
-    height: Math.max(displayActivity.duration * HOUR_HEIGHT - 2, 20),
+    top: (activity.startHour - timeRangeStartHour) * HOUR_HEIGHT,
+    height: Math.max(activity.duration * HOUR_HEIGHT - 2, 20),
     left: `calc(${leftOffset})`,
     width: `calc(${colWidth})`,
     transform: CSS.Translate.toString(transform),
@@ -97,19 +67,10 @@ export function EventBlock({
     ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.shiftKey && onShiftClick) {
-      e.stopPropagation()
-      onShiftClick(activity.id)
-      return
-    }
-    onClickEvent(activity.id, e.currentTarget)
-  }
-
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      onClickEvent(activity.id, e.currentTarget as HTMLElement)
+      onSelect(activity.id)
     }
   }
 
@@ -125,18 +86,19 @@ export function EventBlock({
       {...listeners}
       role="gridcell"
       tabIndex={0}
-      aria-label={`${activity.title}, ${formatTimeRange(displayActivity)}`}
+      aria-label={`${activity.title}, ${formatTimeRange(activity)}`}
       aria-selected={isSelected}
       className={[
-        'group rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
+        'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
         'text-white text-xs',
-        isMultiSelected
-          ? 'ring-2 ring-blue-400 bg-blue-500/10'
-          : isResizing ? 'ring-2 ring-white/50' : 'ring-2 ring-transparent',
-        isDragging ? '' : 'transition-[ring,shadow,opacity] duration-150 hover:-translate-y-px hover:shadow-lg hover:ring-white/40',
-        isResizing ? 'focus:outline-none' : 'focus:outline-none focus:ring-white focus:ring-offset-1',
+        'ring-2 ring-transparent',
+        isDragging
+          ? ''
+          : `transition-[ring,shadow,opacity,transform] duration-150${!isSelected ? ' hover:-translate-y-px hover:shadow-lg' : ''}`,
+        isSelected ? 'ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg' : 'hover:ring-white/40',
+        'focus:outline-none focus:ring-white focus:ring-offset-1',
       ].join(' ')}
-      onClick={handleClick}
+      onClick={() => onSelect(activity.id)}
       onKeyDown={handleKeyDown}
     >
       {hasImage ? (
@@ -163,7 +125,7 @@ export function EventBlock({
               className="text-[10px] text-white/85 truncate"
               style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
             >
-              {formatTimeRange(displayActivity)}
+              {formatTimeRange(activity)}
             </div>
             {activity.location && (
               <div
@@ -178,7 +140,7 @@ export function EventBlock({
       ) : (
         <div className="px-2 py-1 flex flex-col gap-0.5">
           <span className="font-semibold truncate leading-tight text-white">{activity.title}</span>
-          <span className="opacity-80 truncate text-white">{formatTimeRange(displayActivity)}</span>
+          <span className="opacity-80 truncate text-white">{formatTimeRange(activity)}</span>
           {activity.location && (
             <span className="opacity-70 truncate text-[10px] text-white">{activity.location}</span>
           )}
@@ -207,35 +169,6 @@ export function EventBlock({
         <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-auto">
           +{hiddenCount} more
         </div>
-      )}
-
-      {onResize && (
-        <>
-          {/* Top resize handle */}
-          <div
-            className={[
-              'absolute left-0 right-0 top-0 h-1.5 cursor-ns-resize z-[2]',
-              isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-              'transition-opacity duration-150',
-            ].join(' ')}
-            onClick={(e) => e.stopPropagation()}
-            {...topHandleProps}
-          >
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-white/30" />
-          </div>
-          {/* Bottom resize handle */}
-          <div
-            className={[
-              'absolute left-0 right-0 bottom-0 h-1.5 cursor-ns-resize z-[2]',
-              isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-              'transition-opacity duration-150',
-            ].join(' ')}
-            onClick={(e) => e.stopPropagation()}
-            {...bottomHandleProps}
-          >
-            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/30" />
-          </div>
-        </>
       )}
     </div>
   )

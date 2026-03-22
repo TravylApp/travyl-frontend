@@ -2,7 +2,8 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
@@ -18,15 +19,15 @@ const FILTER_CATEGORIES = [
   'Outdoor',
 ] as const
 
-const FILTER_TO_CATEGORY: Record<string, string> = {
-  All: 'all',
-  Sightseeing: 'sightseeing',
-  Dining: 'dining',
-  Tours: 'tour',
-  Culture: 'cultural',
-  Shopping: 'shopping',
-  Nightlife: 'nightlife',
-  Outdoor: 'outdoor',
+/** Maps filter chip labels to activity category slugs */
+const CATEGORY_MAP: Record<string, string[]> = {
+  Sightseeing: ['sightseeing'],
+  Dining: ['dining'],
+  Tours: ['tour'],
+  Culture: ['cultural', 'museum'],
+  Shopping: ['shopping'],
+  Nightlife: ['nightlife'],
+  Outdoor: ['outdoor'],
 }
 
 export type FilterCategory = (typeof FILTER_CATEGORIES)[number]
@@ -39,9 +40,6 @@ interface UseSuggestionsOptions {
 interface UseSuggestionsReturn {
   suggestions: SuggestionCard[]
   isLoading: boolean
-  isFetchingNextPage: boolean
-  hasNextPage: boolean
-  fetchNextPage: () => void
   error: string | null
   searchQuery: string
   setSearchQuery: (query: string) => void
@@ -53,59 +51,21 @@ interface UseSuggestionsReturn {
   refetch: () => void
 }
 
-async function fetchSuggestions(
-  destination: string,
-  category: string,
-  start: number,
-): Promise<SuggestionCard[]> {
-  const params = new URLSearchParams({ destination, category, start: String(start) })
+async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new Error('Not authenticated')
 
-  // Try authenticated /recommend endpoint first
-  if (API_URL) {
-    try {
-      const { supabase } = await import('@travyl/shared')
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-
-      if (token) {
-        const url = `${API_URL}/recommend?${params}`
-        console.log('[ForYou] fetching (recommend):', url)
-
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-          },
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          console.log('[ForYou] got', data.suggestions?.length ?? 0, 'personalized suggestions')
-          return data.suggestions ?? []
-        }
-
-        console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
-      }
-    } catch (err) {
-      console.warn('[ForYou] /recommend auth error, falling back to /api/suggest', err)
-    }
-  }
-
-  // Fallback: unauthenticated Next.js proxy
-  const url = `/api/suggest?${params}`
-  console.log('[ForYou] fetching (fallback):', url)
-
-  const res = await fetch(url)
+  const res = await fetch(`${API_URL}/suggest?destination=${encodeURIComponent(destination)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 
   if (!res.ok) {
-    const body = await res.text()
-    console.error('[ForYou] error body:', body)
-    throw new Error(`${res.status}: ${body}`)
+    throw new Error(`Failed to fetch suggestions (${res.status})`)
   }
 
   const data = await res.json()
-  console.log('[ForYou] got', data.suggestions?.length ?? 0, 'suggestions at start', start)
-  return data.suggestions ?? []
+  return data.suggestions
 }
 
 export function useSuggestions({
@@ -116,26 +76,10 @@ export function useSuggestions({
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All')
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
 
-  const category = FILTER_TO_CATEGORY[activeFilter] ?? 'all'
-
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['suggestions', destination, activeFilter],
-    queryFn: ({ pageParam }) => fetchSuggestions(destination, category, pageParam as number),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < 20) return undefined
-      return allPages.length * 20
-    },
+  const { data: allSuggestions = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['suggestions', destination],
+    queryFn: () => fetchSuggestions(destination),
     enabled: !!destination,
-    staleTime: 30 * 60 * 1000,
   })
 
   const removeSuggestion = useCallback((id: string) => {
@@ -150,36 +94,35 @@ export function useSuggestions({
     })
   }, [])
 
-  const allSuggestions = useMemo(
-    () => data?.pages.flat() ?? [],
-    [data],
-  )
-
-  const scheduledSet = useMemo(() => new Set(scheduledActivityIds), [scheduledActivityIds])
-
   const suggestions = useMemo(() => {
     let filtered = allSuggestions.filter(
-      (s) => !removedIds.has(s.id) && !scheduledSet.has(s.id),
+      (s) => !removedIds.has(s.id) && !scheduledActivityIds.includes(s.id),
     )
 
+    // Category filter
+    if (activeFilter !== 'All') {
+      const slugs = CATEGORY_MAP[activeFilter] ?? []
+      filtered = filtered.filter((s) => slugs.includes(s.category))
+    }
+
+    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      filtered = filtered.filter((s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.location.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q),
+      filtered = filtered.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.category.toLowerCase().includes(q) ||
+          s.location.toLowerCase().includes(q) ||
+          s.description.toLowerCase().includes(q),
       )
     }
 
     return filtered
-  }, [allSuggestions, searchQuery, removedIds, scheduledSet])
+  }, [allSuggestions, searchQuery, activeFilter, removedIds, scheduledActivityIds])
 
   return {
     suggestions,
     isLoading,
-    isFetchingNextPage,
-    hasNextPage: hasNextPage ?? false,
-    fetchNextPage,
     error: error ? (error as Error).message : null,
     searchQuery,
     setSearchQuery,

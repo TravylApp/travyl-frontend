@@ -1,5 +1,4 @@
 'use client'
-import { useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
@@ -17,9 +16,9 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
+  onDeselect: () => void
   pendingActivity?: CalendarActivity | null
   notes?: TripNote[]
   canCreateNotes?: boolean
@@ -29,9 +28,6 @@ interface DayColumnProps {
   onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
-  onResize?: (id: string, newStartHour: number, newDuration: number) => void
-  marqueeSelectedIds?: Set<string>
-  onShiftClickEvent?: (id: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -79,9 +75,9 @@ export function DayColumn({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onClickEvent,
+  onSelectEvent,
   onClickDayHeader,
-  onCreateActivity,
+  onDeselect,
   pendingActivity = null,
   notes,
   canCreateNotes,
@@ -91,40 +87,22 @@ export function DayColumn({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
-  onResize,
-  marqueeSelectedIds,
-  onShiftClickEvent,
 }: DayColumnProps) {
-  const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
-
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    mouseDownPos.current = { x: e.clientX, y: e.clientY }
-  }
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (!mouseDownPos.current) return
-    // Only handle clicks directly on the empty grid,
-    // not on a child element (EventBlock, PostItNote, etc.)
-    if (e.target !== e.currentTarget) {
-      mouseDownPos.current = null
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return  // ignore bubbled clicks from EventBlock/PostItNote
+    const rect = e.currentTarget.getBoundingClientRect()
+    const offsetY = e.clientY - rect.top
+    const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
+    const snappedHour = Math.round(rawHour * 2) / 2
+    if (e.shiftKey && canCreateNotes && onCreateNote) {
+      onCreateNote(dayIndex, snappedHour)
       return
     }
-    const dx = Math.abs(e.clientX - mouseDownPos.current.x)
-    const dy = Math.abs(e.clientY - mouseDownPos.current.y)
-    mouseDownPos.current = null
-    if (dx < 5 && dy < 5) {
-      if (e.shiftKey && canCreateNotes && onCreateNote) {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const offsetY = e.clientY - rect.top
-        const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-        const snappedHour = Math.round(rawHour * 2) / 2
-        onCreateNote(dayIndex, snappedHour)
-      }
-    }
+    onDeselect()
   }
 
   const { isOver, setNodeRef } = useDroppable({
@@ -229,8 +207,7 @@ export function DayColumn({
           isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
         style={{ height: hourCount * HOUR_HEIGHT }}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
+        onClick={handleBackgroundClick}
       >
         {/* Hour grid lines */}
         {hours.map((hour) => (
@@ -260,15 +237,11 @@ export function DayColumn({
               activity={activity}
               viewers={viewers}
               isSelected={selectedEventId === activity.id}
-              isMultiSelected={marqueeSelectedIds?.has(activity.id)}
-              onClickEvent={onClickEvent}
-              onShiftClick={onShiftClickEvent}
+              onSelect={onSelectEvent}
               timeRangeStartHour={timeRange.startHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
-              onResize={onResize}
-              timeRangeEndHour={timeRange.endHour}
             />
           )
         })}

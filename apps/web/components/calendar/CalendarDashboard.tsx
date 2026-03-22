@@ -19,31 +19,20 @@ import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
 import { TripNavbar } from './TripNavbar'
+import { CommandPalette } from './CommandPalette'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
-import { useIndexTrip } from '@/hooks/useIndexTrip'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
-import { CardPopover } from './CardPopover'
+import { DetailPanel } from './DetailPanel'
 import { ForYouPanel } from './ForYouPanel'
-import { formatDuration } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
-import { useMarqueeSelection } from './hooks/useMarqueeSelection'
-import { MarqueeOverlay } from './MarqueeOverlay'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
-import { ShareModal } from './sharing/ShareModal'
-import { ForkAttribution } from '../trip/ForkAttribution'
-import { inviteCollaborator, isTripOwner, canEditTrip } from '@travyl/shared'
-import type { CollaboratorRole } from '@travyl/shared'
-import { TripSettingsLayout } from '../trip/settings/TripSettingsLayout'
-import { TripThemeProvider } from '../trip/TripThemeContext'
-import { BudgetPanel } from '../budget/BudgetPanel'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -74,6 +63,7 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const router = useRouter()
 
   // Hooks
@@ -99,27 +89,23 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
 
-  const weekGridRef = useRef<HTMLDivElement>(null)
-
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
-
-  const [popoverEventId, setPopoverEventId] = useState<string | null>(null)
-  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
-  const [shareModalOpen, setShareModalOpen] = useState(false)
 
   const handleAddFromSuggestion = useCallback(async (activity: CalendarActivity, suggestionId: string) => {
     await addActivity(activity)
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackEvent(suggestionId, 'drag', activity.type)
+    trackEvent(suggestionId, 'drag')
   }, [addActivity, selectEvent, trackEvent])
 
-  const handleInvite = useCallback(async (email: string, role: CollaboratorRole) => {
-    if (!trip) return
-    await inviteCollaborator(trip.id, email, role)
-  }, [trip])
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+    onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
+  })
 
   const { theme, toggleTheme } = useCalendarTheme()
 
@@ -151,49 +137,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       }),
     }
   }), [tripTotalDays, parsedStartMs])
-
-  const {
-    selectedIds: marqueeSelectedIds,
-    marqueeRect,
-    startMarquee,
-    updateMarquee,
-    endMarquee,
-    toggleActivityInSelection,
-    clearSelection: clearMarqueeSelection,
-  } = useMarqueeSelection({
-    activities,
-    timeRangeStartHour: timeRange.startHour,
-    dayCount: TRIP_DAYS.length,
-  })
-
-  const handleGroupMove = useCallback((dayDelta: number, hourDelta: number) => {
-    const selected = activities.filter((a) => marqueeSelectedIds.has(a.id))
-    if (selected.length === 0) return
-
-    let clampedDayDelta = dayDelta
-    let clampedHourDelta = hourDelta
-    for (const act of selected) {
-      const newDay = act.day + clampedDayDelta
-      const newHour = act.startHour + clampedHourDelta
-      if (newDay < 0) clampedDayDelta = Math.max(clampedDayDelta, -act.day)
-      if (newDay >= TRIP_DAYS.length) clampedDayDelta = Math.min(clampedDayDelta, TRIP_DAYS.length - 1 - act.day)
-      if (newHour < 0) clampedHourDelta = Math.max(clampedHourDelta, -act.startHour)
-      if (newHour + act.duration > 24) clampedHourDelta = Math.min(clampedHourDelta, 24 - act.duration - act.startHour)
-    }
-
-    for (const act of selected) {
-      moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
-    }
-  }, [activities, marqueeSelectedIds, moveActivity, TRIP_DAYS.length])
-
-  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
-    onAddFromSuggestion: handleAddFromSuggestion,
-    onGroupMove: handleGroupMove,
-    marqueeSelectedIds,
-    scrollRef,
-    timeRangeStartHour: timeRange.startHour,
-  })
 
   // ─── Derive flight banners ────────────────────────────────────
   const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
@@ -255,11 +198,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     [activities, selectedEventId],
   )
 
-  const popoverActivity = useMemo(
-    () => activities.find((a) => a.id === popoverEventId) ?? null,
-    [activities, popoverEventId],
-  )
-
   // Auto-scroll to first event on mount
   useEffect(() => {
     if (!scrollRef.current) return
@@ -285,26 +223,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
 
-  const handleResize = useCallback((id: string, newStartHour: number, newDuration: number) => {
-    updateActivity(id, { startHour: newStartHour, duration: newDuration })
-  }, [updateActivity])
-
-  const handleBulkDelete = useCallback(async () => {
-    const ids = Array.from(marqueeSelectedIds)
-    clearMarqueeSelection()
-    await Promise.all(ids.map((id) => removeActivity(id)))
-  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivity])
-
-  const handleBulkDuplicate = useCallback(async () => {
-    const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))
-    clearMarqueeSelection()
-    for (const act of toDuplicate) {
-      await duplicateActivity(act)
-    }
-  }, [marqueeSelectedIds, clearMarqueeSelection, activities, duplicateActivity])
-
   const commands = useCalendarCommands({
     selectedActivity,
+    isPaletteOpen,
     moveActivity,
     removeActivity,
     updateActivity,
@@ -314,28 +235,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripDays: TRIP_DAYS,
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
-    marqueeSelectedIds,
-    onBulkDelete: handleBulkDelete,
-    onBulkDuplicate: handleBulkDuplicate,
+    onOpenPalette: () => setIsPaletteOpen(true),
   })
-
-  // Publish commands to Zustand store for GlobalCommandPalette
-  const setStoreCommands = useCalendarCommandsStore((s) => s.setCommands)
-  const clearStoreCommands = useCalendarCommandsStore((s) => s.clearCommands)
-  useEffect(() => { setStoreCommands(commands) }, [commands, setStoreCommands])
-  useEffect(() => { return () => clearStoreCommands() }, [clearStoreCommands])
-
-  // Index trip for semantic search
-  const { indexTrip } = useIndexTrip()
-  useEffect(() => {
-    if (tripId && activities.length > 0) { indexTrip(tripId) }
-  }, [tripId, activities.length, indexTrip])
 
   useKeyboardShortcuts(
     commands,
+    isPaletteOpen,
+    () => setIsPaletteOpen(false),
     () => selectEvent(null),
-    marqueeSelectedIds.size > 0,
-    clearMarqueeSelection,
   )
 
   // Early returns for loading / error states (must come after all hooks)
@@ -343,24 +250,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   if (error) return <CalendarError message={error} />
 
   // Event handlers
-  const handleClickEvent = (id: string, anchorEl: HTMLElement) => {
-    if (marqueeSelectedIds.size > 0) {
-      clearMarqueeSelection()
-      return
-    }
-    if (popoverEventId === id) {
-      setPopoverEventId(null)
-      setPopoverAnchor(null)
-    } else {
-      setPopoverEventId(id)
-      setPopoverAnchor(anchorEl)
-    }
+  const handleSelectEvent = (id: string) => {
+    selectEvent(selectedEventId === id ? null : id)
   }
 
-  const handlePopoverClose = () => {
-    setPopoverEventId(null)
-    setPopoverAnchor(null)
-  }
+  const handleCloseDetail = () => selectEvent(null)
 
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
@@ -411,6 +305,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
+        tripStartDate={parsedStartDate}
+        tripDays={tripTotalDays}
+        currentDay={selectedDayIndex}
+        onSelectDay={(dayIndex) => {
+          selectDay(dayIndex)
+          if (viewMode === 'day') goToDayView(dayIndex)
+        }}
         onNavChange={setActiveNav}
       />
 
@@ -421,13 +322,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           commands={commands}
+          onOpenPalette={() => setIsPaletteOpen(true)}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
           onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
-          onShare={() => setShareModalOpen(true)}
+          onShare={() => {}}
           selectedActivity={selectedActivity}
           onDeselect={() => selectEvent(null)}
           theme={theme}
@@ -435,105 +337,92 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripDays={TRIP_DAYS}
         />
 
-        {trip && (
-          <ShareModal
-            trip={trip}
-            isOpen={shareModalOpen}
-            onClose={() => setShareModalOpen(false)}
-            onInvite={handleInvite}
-          />
-        )}
-
-        {trip?.forked_from_trip_id && (
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0f1a28]">
-            <ForkAttribution trip={trip} />
-          </div>
-        )}
-
         {/* Grid area */}
         {activeNav === 'calendar' ? (
         <DndContext
           sensors={sensors}
-          onDragStart={(e) => { setPopoverEventId(null); setPopoverAnchor(null); handleDragStart(e); }}
+          onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Scrollable grid */}
-            <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
-              <AnimatePresence mode="wait" initial={false}>
-                {viewMode === 'week' ? (
-                  <motion.div
-                    key="week"
-                    className="flex flex-1 min-w-0"
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 12 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <WeekView
-                      days={TRIP_DAYS}
-                      activities={activities}
-                      viewers={collaborators}
-                      selectedEventId={selectedEventId}
-                      timeRange={timeRange}
-                      tripStartDate={parsedStartDate}
-                      onClickEvent={handleClickEvent}
-                      onClickDayHeader={handleClickDayHeader}
-                      onCreateActivity={handleCreateActivity}
-                      pendingDrop={pendingDrop}
-                      onResize={handleResize}
-                      marqueeSelectedIds={marqueeSelectedIds}
-                      gridRef={weekGridRef}
-                      marqueeOverlay={
-                        <MarqueeOverlay
-                          gridRef={weekGridRef}
-                          onStartMarquee={(x, y, rect) => {
-                            selectEvent(null)
-                            startMarquee(x, y, rect)
-                          }}
-                          onUpdateMarquee={updateMarquee}
-                          onEndMarquee={endMarquee}
-                          marqueeRect={marqueeRect}
-                        />
-                      }
-                      onShiftClickEvent={toggleActivityInSelection}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={`day-${selectedDayIndex}`}
-                    className="flex flex-1 min-w-0"
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <DayView
-                      dayIndex={selectedDayIndex}
-                      label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
-                      activities={activities}
-                      viewers={collaborators}
-                      selectedEventId={selectedEventId}
-                      timeRange={timeRange}
-                      tripStartDate={parsedStartDate}
-                      onClickEvent={handleClickEvent}
-                      onCreateActivity={handleCreateActivity}
-                      pendingDrop={pendingDrop}
-                      onResize={handleResize}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            {/* Calendar grid column (AllDayRow + scrollable time grid) */}
+            <div className="flex flex-col flex-1 min-w-0">
+              {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
+              <AllDayRow
+                days={visibleDays}
+                flights={FLIGHT_BANNERS}
+                hotels={HOTEL_BANNERS}
+              />
+              {/* Scrollable time grid */}
+              <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
+                <AnimatePresence mode="wait" initial={false}>
+                  {viewMode === 'week' ? (
+                    <motion.div
+                      key="week"
+                      className="flex flex-1 min-w-0"
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <WeekView
+                        days={TRIP_DAYS}
+                        activities={activities}
+                        viewers={collaborators}
+                        selectedEventId={selectedEventId}
+                        timeRange={timeRange}
+                        tripStartDate={parsedStartDate}
+                        onSelectEvent={handleSelectEvent}
+                        onClickDayHeader={handleClickDayHeader}
+                        onDeselect={() => selectEvent(null)}
+                        pendingDrop={pendingDrop}
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key={`day-${selectedDayIndex}`}
+                      className="flex flex-1 min-w-0"
+                      initial={{ opacity: 0, x: 12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -12 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <DayView
+                        dayIndex={selectedDayIndex}
+                        label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
+                        activities={activities}
+                        viewers={collaborators}
+                        selectedEventId={selectedEventId}
+                        timeRange={timeRange}
+                        tripStartDate={parsedStartDate}
+                        onSelectEvent={handleSelectEvent}
+                        onDeselect={() => selectEvent(null)}
+                        pendingDrop={pendingDrop}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
-            {/* Right column: For You panel */}
-            <ForYouPanel
-              destination={trip?.destination ?? ''}
-              tripId={trip?.id ?? ''}
-              scheduledActivityIds={droppedSuggestionIds}
-            />
+            {/* Right column: For You panel or Detail panel */}
+            {selectedEventId ? (
+              <DetailPanel
+                activity={selectedActivity}
+                viewers={collaborators}
+                onClose={handleCloseDetail}
+                onRemove={handleRemoveActivity}
+                onUpdateActivity={updateActivity}
+              />
+            ) : (
+              <ForYouPanel
+                destination={trip?.destination ?? ''}
+                tripId={trip?.id ?? ''}
+                scheduledActivityIds={droppedSuggestionIds}
+              />
+            )}
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -592,22 +481,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           )}
         </DndContext>
-        ) : activeNav === 'settings' && trip ? (
-          <div className="flex-1 overflow-auto p-4">
-            <TripThemeProvider tripId={trip.id} initialThemeId={trip.theme} initialCustomColor={trip.custom_theme_color}>
-              <TripSettingsLayout
-                trip={trip}
-                userId={userId}
-                isOwner={isTripOwner(trip, userId)}
-                canEdit={canEditTrip(trip, userId)}
-                onRefetch={() => {}}
-              />
-            </TripThemeProvider>
-          </div>
-        ) : activeNav === 'budget' ? (
-          <div className="flex-1 overflow-auto p-6">
-            <BudgetPanel tripId={tripId} />
-          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -615,33 +488,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           </div>
         )}
-
-          <CardPopover
-            anchorEl={popoverAnchor}
-            isOpen={!!popoverActivity}
-            onClose={handlePopoverClose}
-            position="right"
-            image={popoverActivity?.image}
-            title={popoverActivity?.title ?? ''}
-            category={popoverActivity?.type ?? ''}
-            rating={popoverActivity?.rating}
-            price={popoverActivity?.price ?? undefined}
-            duration={popoverActivity ? formatDuration(popoverActivity.duration) : undefined}
-            actions={popoverActivity ? [
-              {
-                label: 'Delete',
-                onClick: () => {
-                  handleRemoveActivity(popoverActivity.id)
-                  setPopoverEventId(null)
-                  setPopoverAnchor(null)
-                },
-                variant: 'danger' as const,
-              },
-            ] : []}
-          />
       </div>
     </div>
     </div>
+    <CommandPalette
+      isOpen={isPaletteOpen}
+      onClose={() => setIsPaletteOpen(false)}
+      commands={commands}
+    />
     </CalendarThemeContext.Provider>
   )
 }
