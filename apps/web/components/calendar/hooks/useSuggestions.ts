@@ -3,7 +3,10 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { supabase } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
+
+const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 const FILTER_CATEGORIES = [
   'All',
@@ -56,8 +59,33 @@ async function fetchSuggestions(
   category: string,
   start: number,
 ): Promise<SuggestionCard[]> {
+  // Try authenticated /recommend endpoint first
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+
+  if (token && API_URL) {
+    const url = `${API_URL}/recommend?destination=${encodeURIComponent(destination)}&category=${encodeURIComponent(category)}&start=${start}`
+    console.log('[ForYou] fetching (recommend):', url)
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      console.log('[ForYou] got', data.suggestions?.length ?? 0, 'personalized suggestions')
+      return data.suggestions ?? []
+    }
+
+    console.warn('[ForYou] /recommend failed, falling back to /api/suggest')
+  }
+
+  // Fallback: unauthenticated Next.js proxy
   const url = `/api/suggest?destination=${encodeURIComponent(destination)}&category=${encodeURIComponent(category)}&start=${start}`
-  console.log('[ForYou] fetching:', url)
+  console.log('[ForYou] fetching (fallback):', url)
 
   const res = await fetch(url)
 
