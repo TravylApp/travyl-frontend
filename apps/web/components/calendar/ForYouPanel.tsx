@@ -96,7 +96,7 @@ export function ForYouPanel({
     >
       {/* Header */}
       <div className="p-3.5 pb-3 border-b border-[var(--cal-border-light)]">
-        <h2 className="text-sm font-semibold text-[var(--cal-text)] mb-2.5">
+        <h2 className="text-base font-serif font-normal tracking-wide text-[var(--cal-text)] mb-2.5">
           For You
         </h2>
         <div className="flex items-center gap-2 bg-[var(--cal-border-light)] border border-[var(--cal-border)] rounded-lg px-3 py-2">
@@ -136,7 +136,7 @@ export function ForYouPanel({
       </div>
 
       {/* Section label */}
-      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5">
+      <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5">
         {searchQuery.trim()
           ? `Results for '${searchQuery}'`
           : `Recommended for ${destination}`}

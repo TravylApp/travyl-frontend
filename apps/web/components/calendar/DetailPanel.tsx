@@ -62,7 +62,7 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
 
           <div className="flex items-start justify-between p-4 pb-2">
             <div className="flex flex-col gap-0.5 min-w-0 pr-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-[var(--cal-text-secondary)]">
+              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--cal-text-secondary)]">
                 {activity.type}
               </span>
               {isEditingTitle ? (
@@ -78,12 +78,12 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
                       setIsEditingTitle(false)
                     }
                   }}
-                  className="bg-transparent border-b border-[var(--cal-border)] focus:border-[var(--cal-text)] outline-none text-base font-semibold text-[var(--cal-text)] leading-snug w-full placeholder-[var(--cal-text-tertiary)]"
+                  className="bg-transparent border-b border-[var(--cal-border)] focus:border-[var(--cal-text)] outline-none text-lg font-serif font-normal tracking-wide text-[var(--cal-text)] leading-snug w-full placeholder-[var(--cal-text-tertiary)]"
                   placeholder="Activity name…"
                 />
               ) : (
                 <h2
-                  className="text-base font-semibold text-[var(--cal-text)] leading-snug cursor-text"
+                  className="text-lg font-serif font-normal tracking-wide text-[var(--cal-text)] leading-snug cursor-text"
                   onClick={() => {
                     setTitleDraft(activity.title)
                     setIsEditingTitle(true)

@@ -106,9 +106,9 @@ export function DayColumn({
   }
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (!mouseDownPos.current || !onCreateActivity) return
-    // Only create an activity when clicking directly on the empty grid,
-    // not when clicking on a child element (EventBlock, PostItNote, etc.)
+    if (!mouseDownPos.current) return
+    // Only handle clicks directly on the empty grid,
+    // not on a child element (EventBlock, PostItNote, etc.)
     if (e.target !== e.currentTarget) {
       mouseDownPos.current = null
       return
@@ -117,15 +117,13 @@ export function DayColumn({
     const dy = Math.abs(e.clientY - mouseDownPos.current.y)
     mouseDownPos.current = null
     if (dx < 5 && dy < 5) {
-      const rect = e.currentTarget.getBoundingClientRect()
-      const offsetY = e.clientY - rect.top
-      const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-      const snappedHour = Math.round(rawHour * 2) / 2
       if (e.shiftKey && canCreateNotes && onCreateNote) {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const offsetY = e.clientY - rect.top
+        const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
+        const snappedHour = Math.round(rawHour * 2) / 2
         onCreateNote(dayIndex, snappedHour)
-        return
       }
-      onCreateActivity(dayIndex, snappedHour)
     }
   }
 
