@@ -26,7 +26,7 @@ export const MOCK_TRIPS: MockTripCard[] = [
     budget: 3000,
     currency: 'USD',
     travelers: 2,
-    status: 'planning',
+    status: 'completed',
     trip_context: PARIS_TRIP_CONTEXT,
     is_generated: true,
     visibility: 'private' as const,
