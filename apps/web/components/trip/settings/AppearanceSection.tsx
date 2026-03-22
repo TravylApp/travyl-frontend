@@ -2,13 +2,14 @@
 
 import { ThemePicker } from '@/components/trip/ThemePicker'
 import { useTripTheme } from '@/components/trip/TripThemeContext'
-import { SectionHeading, SectionDescription } from './shared'
+import { SectionHeading } from './shared'
 
 interface AppearanceSectionProps {
   canEdit: boolean
+  onDirty: () => void
 }
 
-export function AppearanceSection({ canEdit }: AppearanceSectionProps) {
+export function AppearanceSection({ canEdit, onDirty }: AppearanceSectionProps) {
   const {
     theme, themeId, customColor,
     setTripTheme,
@@ -20,7 +21,7 @@ export function AppearanceSection({ canEdit }: AppearanceSectionProps) {
     return (
       <div>
         <SectionHeading>Theme & Colors</SectionHeading>
-        <p className="text-sm text-gray-500">You don&apos;t have permission to change the trip theme.</p>
+        <p className="text-sm text-gray-500">You don't have permission to change the trip theme.</p>
       </div>
     )
   }
@@ -28,19 +29,18 @@ export function AppearanceSection({ canEdit }: AppearanceSectionProps) {
   return (
     <div>
       <SectionHeading>Theme & Colors</SectionHeading>
-      <SectionDescription>Customize the look and feel of your trip.</SectionDescription>
       <ThemePicker
         currentTheme={themeId}
         customColor={customColor}
-        onSelectTheme={(tid, color) => setTripTheme(tid, color)}
+        onSelectTheme={(tid, color) => { setTripTheme(tid, color); onDirty() }}
         tabColors={theme.tabColors}
         tabColorOverrides={tabColorOverrides}
-        onTabColorChange={(name, color) => setTabColor(name, color)}
-        onResetTabColors={() => resetTabColors()}
+        onTabColorChange={(name, color) => { setTabColor(name, color); onDirty() }}
+        onResetTabColors={() => { resetTabColors(); onDirty() }}
         itineraryColors={theme.itineraryColors}
         itineraryColorOverrides={itineraryColorOverrides}
-        onItineraryColorChange={(section, color) => setItineraryColor(section, color)}
-        onResetItineraryColors={() => resetItineraryColors()}
+        onItineraryColorChange={(section, color) => { setItineraryColor(section, color); onDirty() }}
+        onResetItineraryColors={() => { resetItineraryColors(); onDirty() }}
       />
     </div>
   )

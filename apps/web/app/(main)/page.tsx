@@ -23,6 +23,55 @@ import {
   ParallaxQuoteDivider,
 } from "@/components/home";
 import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
+import { memo } from "react";
+
+const PLACEHOLDER_PHRASES = [
+  "7 days in Paris with my partner...",
+  "A week in Tokyo exploring street food...",
+  "Family beach vacation in Bali...",
+  "Weekend getaway to the Swiss Alps...",
+  "Solo backpacking through Southeast Asia...",
+];
+
+const SUBTITLE_PHRASES = [
+  "Type your dream trip and let us plan it for you",
+  "Discover hidden gems around the world",
+  "Your next adventure starts with a single search",
+  "From idea to itinerary in seconds",
+  "Tell us where you want to go",
+];
+
+const CyclingSubtitle = memo(function CyclingSubtitle() {
+  const text = useCyclingPlaceholder(SUBTITLE_PHRASES, 40, 2500, 25);
+  return <>{text}<span className="animate-pulse">|</span></>;
+});
+
+const HeroSearchInput = memo(function HeroSearchInput({
+  tripQuery,
+  setTripQuery,
+  onSearch,
+  staticPlaceholder,
+}: {
+  tripQuery: string;
+  setTripQuery: (v: string) => void;
+  onSearch: () => void;
+  staticPlaceholder?: string;
+}) {
+  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  return (
+    <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
+      <Search className="text-gray-400 shrink-0" size={18} />
+      <input
+        type="text"
+        value={tripQuery}
+        onChange={(e) => setTripQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onSearch()}
+        placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
+        className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
+      />
+    </div>
+  );
+});
 
 export default function Home() {
   const router = useRouter();
@@ -44,24 +93,8 @@ export default function Home() {
   const [heroSlide, setHeroSlide] = useState(0);
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
 
-  const PLACEHOLDER_PHRASES = [
-    "7 days in Paris with my partner...",
-    "A week in Tokyo exploring street food...",
-    "Family beach vacation in Bali...",
-    "Weekend getaway to the Swiss Alps...",
-    "Solo backpacking through Southeast Asia...",
-  ];
-  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
-
-  // Cycling subtitle phrases
-  const SUBTITLE_PHRASES = [
-    "Type your dream trip and let us plan it for you",
-    "Discover hidden gems around the world",
-    "Your next adventure starts with a single search",
-    "From idea to itinerary in seconds",
-    "Tell us where you want to go",
-  ];
-  const cyclingSubtitle = useCyclingPlaceholder(SUBTITLE_PHRASES, 40, 2500, 25);
+  // Cycling placeholders live in isolated memo components above
+  // to avoid re-rendering the entire page every ~25ms
 
   // Cycling suggestion pills
   const allSuggestions = heroConfig?.suggestions?.length
@@ -175,7 +208,7 @@ export default function Home() {
             {heroConfig?.subtitle ? (
               <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
             ) : (
-              <>{cyclingSubtitle}<span className="animate-pulse">|</span></>
+              <CyclingSubtitle />
             )}
           </motion.p>
 
@@ -188,17 +221,12 @@ export default function Home() {
           >
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
               <div className="flex items-center p-1.5 gap-2">
-                <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
-                  <Search className="text-gray-400 shrink-0" size={18} />
-                  <input
-                    type="text"
-                    value={tripQuery}
-                    onChange={(e) => setTripQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && onSearch()}
-                    placeholder={tripQuery ? "" : (heroConfig?.search_placeholder ?? typingPlaceholder)}
-                    className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
-                  />
-                </div>
+                <HeroSearchInput
+                  tripQuery={tripQuery}
+                  setTripQuery={setTripQuery}
+                  onSearch={onSearch}
+                  staticPlaceholder={heroConfig?.search_placeholder}
+                />
                 <button
                   ref={sendButtonRef}
                   onClick={onSearch}

@@ -5,7 +5,7 @@ import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
 import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
-import type { TripNote, Poll } from '@travyl/shared'
+import type { TripNote } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
@@ -17,7 +17,7 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
   onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingActivity?: CalendarActivity | null
@@ -29,18 +29,8 @@ interface DayColumnProps {
   onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
-  onResize?: (id: string, newStartHour: number, newDuration: number) => void
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
-  polls?: Map<string, Poll>
-  pollUserId?: string
-  pollCollaborators?: UserAwareness[]
-  tripOwnerId?: string
-  onVote?: (activityId: string, vote: 'yes' | 'no') => void
-  onStartPoll?: (activityId: string) => void
-  onClosePoll?: (activityId: string) => void
-  onRestoreActivity?: (activityId: string) => void
-  onRemoveActivity?: (activityId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -88,7 +78,7 @@ export function DayColumn({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onClickEvent,
+  onSelectEvent,
   onClickDayHeader,
   onCreateActivity,
   pendingActivity = null,
@@ -100,18 +90,8 @@ export function DayColumn({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
-  onResize,
   marqueeSelectedIds,
   onShiftClickEvent,
-  polls,
-  pollUserId,
-  pollCollaborators,
-  tripOwnerId,
-  onVote,
-  onStartPoll,
-  onClosePoll,
-  onRestoreActivity,
-  onRemoveActivity,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -124,9 +104,9 @@ export function DayColumn({
   }
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (!mouseDownPos.current) return
-    // Only handle clicks directly on the empty grid,
-    // not on a child element (EventBlock, PostItNote, etc.)
+    if (!mouseDownPos.current || !onCreateActivity) return
+    // Only create an activity when clicking directly on the empty grid,
+    // not when clicking on a child element (EventBlock, PostItNote, etc.)
     if (e.target !== e.currentTarget) {
       mouseDownPos.current = null
       return
@@ -135,13 +115,15 @@ export function DayColumn({
     const dy = Math.abs(e.clientY - mouseDownPos.current.y)
     mouseDownPos.current = null
     if (dx < 5 && dy < 5) {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const offsetY = e.clientY - rect.top
+      const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
+      const snappedHour = Math.round(rawHour * 2) / 2
       if (e.shiftKey && canCreateNotes && onCreateNote) {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const offsetY = e.clientY - rect.top
-        const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-        const snappedHour = Math.round(rawHour * 2) / 2
         onCreateNote(dayIndex, snappedHour)
+        return
       }
+      onCreateActivity(dayIndex, snappedHour)
     }
   }
 
@@ -279,28 +261,12 @@ export function DayColumn({
               viewers={viewers}
               isSelected={selectedEventId === activity.id}
               isMultiSelected={marqueeSelectedIds?.has(activity.id)}
-              onClickEvent={onClickEvent}
+              onSelect={onSelectEvent}
               onShiftClick={onShiftClickEvent}
               timeRangeStartHour={timeRange.startHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
-              onResize={onResize}
-              timeRangeEndHour={timeRange.endHour}
-              poll={polls?.get(activity.id) ?? null}
-              pollUserId={pollUserId}
-              pollCollaborators={pollCollaborators}
-              isPollManager={
-                polls?.get(activity.id)
-                  ? (polls.get(activity.id)!.startedBy === pollUserId || tripOwnerId === pollUserId)
-                  : false
-              }
-              tripOwnerId={tripOwnerId}
-              onVote={onVote}
-              onStartPoll={onStartPoll}
-              onClosePoll={onClosePoll}
-              onRestoreActivity={onRestoreActivity}
-              onRemoveActivity={onRemoveActivity}
             />
           )
         })}

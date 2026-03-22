@@ -158,15 +158,19 @@ export function useCalendarDnd({
       if (!dragData) return
 
       if (dragData.type === 'activity') {
+        // Existing activity move — use delta from current position
         const rawHourDelta = delta.y / HOUR_HEIGHT
         const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
         const currentStartHour = dragData.activity.startHour ?? 0
         const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
 
-        if (marqueeSelectedIds && marqueeSelectedIds.has(String(active.id)) && marqueeSelectedIds.size > 1 && onGroupMove) {
+        if (marqueeSelectedIds && marqueeSelectedIds.has(String(active.id)) && marqueeSelectedIds.size > 1) {
+          // Group move — compute delta and apply to all selected
           const dayDelta = newDay - dragData.activity.day
           const hourDelta = newStartHour - currentStartHour
-          onGroupMove(dayDelta, hourDelta)
+          if (onGroupMove) {
+            onGroupMove(dayDelta, hourDelta)
+          }
         } else {
           onMoveActivity(String(active.id), newDay, newStartHour)
         }

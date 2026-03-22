@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Star, Calendar, MapPin, Plane, Heart, LayoutGrid, Globe, RotateCcw } from 'lucide-react';
+import { X, Star, Calendar, MapPin, Heart, LayoutGrid, Globe, RotateCcw } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import type { PostcardData } from '@travyl/shared';
 
 interface PostcardDetailProps {
@@ -186,7 +187,7 @@ export function PostcardDetail({ data, onClose }: PostcardDetailProps) {
                         zIndex: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
                       }}
                     >
-                      <Plane style={{ width: 16, height: 16, color: stamp.text, opacity: 0.7, transform: 'rotate(-20deg)' }} />
+                      <PaperPlane style={{ width: 16, height: 16, color: stamp.text, opacity: 0.7, transform: 'rotate(-20deg)' }} />
                       <span style={{ fontSize: 6, fontWeight: 800, color: stamp.text, marginTop: 2, letterSpacing: '0.5px' }}>AIRMAIL</span>
                       <span style={{ fontSize: 5, color: stamp.text, opacity: 0.6 }}>TRAVYL</span>
                     </motion.div>
