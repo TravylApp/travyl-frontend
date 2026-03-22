@@ -10,7 +10,7 @@ interface ExchangeRatesResult {
 async function fetchRates(baseCurrency: string): Promise<Record<string, number>> {
   const res = await fetch(`https://api.frankfurter.app/latest?from=${baseCurrency}`)
   if (!res.ok) throw new Error(`Exchange rate fetch failed: ${res.status}`)
-  const data = await res.json()
+  const data = (await res.json()) as { rates: Record<string, number> }
   return data.rates
 }
 

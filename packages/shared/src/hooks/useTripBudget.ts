@@ -40,11 +40,10 @@ export function useTripBudget(tripId: string | undefined, tripCurrency = 'USD') 
     enabled: !!tripId,
   })
 
-  const budgetCategories = categoriesQuery.data ?? []
-  const manualExpenses = expensesQuery.data ?? []
-
   // ─── Compute category data ─────────────────────────────────
   const categories: BudgetCategoryData[] = useMemo(() => {
+    const budgetCategories = categoriesQuery.data ?? []
+    const manualExpenses = expensesQuery.data ?? []
     const costMap = new Map<string, { calendarItems: BudgetCategoryData['calendarItems']; manualTotal: number; manualExpenses: TripManualExpense[] }>()
 
     for (const cat of budgetCategories) {
@@ -142,7 +141,7 @@ export function useTripBudget(tripId: string | undefined, tripCurrency = 'USD') 
         percentUsed: cat.budgeted > 0 ? (actual / cat.budgeted) * 100 : 0,
       }
     })
-  }, [days, flights, hotels, manualExpenses, budgetCategories, tripCurrency, rates])
+  }, [days, flights, hotels, expensesQuery.data, categoriesQuery.data, tripCurrency, rates])
 
   // ─── Derived totals ────────────────────────────────────────
   const totalBudgeted = categories.reduce((sum, c) => sum + c.budgeted, 0)

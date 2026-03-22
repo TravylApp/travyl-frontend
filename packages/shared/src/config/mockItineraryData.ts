@@ -1,6 +1,21 @@
 import type { ItineraryDayViewModel, TimeGroup, ActivityViewModel, FlightViewModel, HotelViewModel } from '../viewmodels/itineraryViewModel';
-import type { BudgetSummary } from '../viewmodels/budgetViewModel';
-import type { Trip, BudgetItem, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
+import type { Trip, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
+
+export interface MockBudgetSummary {
+  total: number;
+  totalFormatted: string;
+  categories: Array<{ label: string; amount: number; formatted: string }>;
+  currency: string;
+}
+
+interface MockBudgetItem {
+  id: string;
+  category: string;
+  budgeted: number;
+  actual: number;
+  fixed: boolean;
+  expenses?: Array<{ id: string; description: string; amount: number }>;
+}
 
 // ─── Mock Activities ────────────────────────────────────────
 
@@ -322,7 +337,7 @@ export const MOCK_DESTINATION_COORDS = { lat: 48.8566, lng: 2.3522 }; // Paris, 
 
 // ─── Mock Budget ────────────────────────────────────────────
 
-export const MOCK_BUDGET: BudgetSummary = {
+export const MOCK_BUDGET: MockBudgetSummary = {
   total: 2085,
   totalFormatted: '$2,085',
   categories: [
@@ -335,7 +350,7 @@ export const MOCK_BUDGET: BudgetSummary = {
 
 // ─── Mock Budget Items (Interactive) ────────────────────────
 
-export const MOCK_BUDGET_ITEMS: BudgetItem[] = [
+export const MOCK_BUDGET_ITEMS: MockBudgetItem[] = [
   {
     id: 'flights',
     category: 'Flights',
