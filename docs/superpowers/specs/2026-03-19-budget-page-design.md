@@ -124,7 +124,7 @@ Each `BudgetCategoryData` includes:
 2. **Monochrome at rest, color on hover.** The donut chart provides all color. Category rows are gray-scale until interacted with.
 3. **Hover reveals features.** Progress bars, action buttons, tooltips, and cross-highlights all appear on hover. The page looks almost static until you move your mouse.
 4. **One accent source.** The donut is the single piece of visual richness. Everything else recedes behind it.
-5. **All transitions:** `transition-all duration-200 ease-out`. No springs, no bounce — quiet linear dissolves.
+5. **Default transition:** `transition-all duration-200 ease-out`. No springs, no bounce — quiet linear dissolves. Specific elements override duration as noted in the Animations section.
 
 ### Summary Strip (top)
 
@@ -137,7 +137,7 @@ Total Budget              Total Spent               Remaining
 
 - Numbers: `text-3xl font-serif font-normal tracking-wide text-gray-900` (Lustria)
 - Labels: `text-[11px] font-medium uppercase tracking-[0.08em] text-gray-400` (Satoshi overline)
-- "Total Budget" is **hover-editable**: on hover, a subtle pencil icon (`EditPencil` from iconoir, 14px, `text-gray-300`) fades in to the right of the number (`opacity-0 group-hover:opacity-100 transition-opacity`). Click transitions the number to an inline input with same typography, auto-focused, commits on Enter/blur.
+- "Total Budget" is **hover-editable**: on hover, a subtle pencil icon (`EditPencil` from iconoir-react, 14px, `text-gray-300`) fades in to the right of the number (`opacity-0 group-hover:opacity-100 transition-opacity`). Click transitions the number to an inline input with same typography, auto-focused, commits on Enter/blur. **Editing the total proportionally redistributes across all category `budgeted` values** — e.g. if total changes from $3000 to $3300, each category's budget scales by 1.1x. This is a convenience shortcut; individual category budgets are the source of truth (there is no `total_budget` column).
 - "Remaining" number: `text-emerald-600` when positive, `text-red-500` when negative
 - Below the strip: a single `h-[1px] bg-gray-100` divider with `my-6` spacing
 
@@ -166,7 +166,7 @@ Hand-rolled SVG, no chart library. Sized to fill column width, max ~280px.
 **Hover behavior (per segment):**
 - Hovered segment: `opacity: 1`, slight `filter: brightness(1.05)`
 - All other segments: `opacity: 0.25`
-- **Tooltip**: floating pill that appears near the hovered segment, positioned radially (outside the ring). White bg, `shadow-md`, `rounded-full`, `px-3 py-1.5`. Content: `"Flights · $750 · 29%"` in `text-xs font-medium text-gray-700`. Pointer events none. Appears with `opacity` + `translate` transition (subtle slide-in from center).
+- **Tooltip**: floating pill positioned at the angular midpoint of the hovered segment. To compute position: each segment's start angle is the cumulative percentage of preceding segments × 360°. The midpoint angle = startAngle + (segmentPercentage × 360° / 2). Convert to Cartesian: `x = cx + (r + offset) * cos(midAngle - 90°)`, `y = cy + (r + offset) * sin(midAngle - 90°)` where `offset ≈ 40px` pushes the tooltip outside the ring. Render as an absolutely-positioned `<div>` overlaying the SVG (not inside the SVG), using the SVG container's pixel dimensions to scale viewBox coords to DOM coords. White bg, `shadow-md`, `rounded-full`, `px-3 py-1.5`. Content: `"Flights · $750 · 29%"` in `text-xs font-medium text-gray-700`. `pointer-events-none`. Appears with `opacity` + `translate` transition (subtle slide-in from center). Clamp to container bounds so it doesn't overflow.
 - **Cross-highlight**: sets `hoveredCategory` state, which the category list reads
 
 **Empty state (no budget data):**
@@ -190,16 +190,16 @@ A vertical stack of category rows. No grid, no cards — just clean rows separat
 
 **Hover behavior (per row):**
 - Row background: `bg-gray-50` fades in via `hover:bg-gray-50 transition-colors`
-- A **2px progress bar fades in below the row** (`opacity-0 group-hover:opacity-100 transition-opacity duration-200`). Category color fill, `bg-gray-100` track, `h-0.5 rounded-full`. Width = percentage used, capped at 100%. Turns `bg-red-500` if over budget, `bg-amber-500` if >80%.
-- **Hover actions appear** at the right edge: edit (pencil) and delete (x) icons, `opacity-0 group-hover:opacity-100`, `text-gray-300 hover:text-gray-600`, 14px icons
+- A **2px progress bar fades in below the row** (`opacity-0 group-hover:opacity-100 transition-opacity duration-200`). Category color fill, `bg-gray-100` track, `h-0.5 rounded-full`. Width = percentage used, capped at 100%. Turns `bg-red-500` if `percentUsed >= 100`, `bg-amber-500` if `percentUsed >= 80`.
+- **Hover actions appear** at the right edge: `EditPencil` and `Xmark` icons (iconoir-react), `opacity-0 group-hover:opacity-100`, `text-gray-300 hover:text-gray-600`, 14px
 - **Cross-highlight**: sets `hoveredCategory`, causing corresponding donut segment to highlight
 
 **Click behavior:**
-- Clicking a row expands it inline to show `BudgetCategoryDetail` (AnimatePresence height animation)
-- Chevron icon rotates 180 degrees on expand
+- Clicking a row expands it inline to show `BudgetCategoryDetail` (AnimatePresence height animation). **Accordion behavior** — only one category can be expanded at a time. Expanding a new row collapses the previous one.
+- `NavArrowDown` icon (iconoir-react) rotates 180 degrees on expand
 
 **Bottom action:**
-- `+ Add category` as a text link: `text-sm text-gray-400 hover:text-gray-600 transition-colors`, with a small `+` icon. No dashed border card. Clicking expands an inline form.
+- `+ Add category` as a text link: `text-sm text-gray-400 hover:text-gray-600 transition-colors`, with a small `Plus` icon (iconoir-react). No dashed border card. Clicking expands an inline form.
 
 ### Cross-Highlight System
 
@@ -232,7 +232,7 @@ Appears below the clicked category row via `motion.div` with `initial={{ height:
 - Section label: `text-[11px] font-medium uppercase tracking-[0.08em] text-gray-400 mb-2 mt-4` — "Manual Expenses"
 - Same row layout as calendar items, but with:
   - A `text-[10px] uppercase tracking-[0.06em] text-amber-500 font-medium` "Manual" tag inline after the description
-  - Delete button: `opacity-0 group-hover:opacity-100` x icon at far right, `text-gray-300 hover:text-red-500 transition-colors`
+  - Delete button: `opacity-0 group-hover:opacity-100` `Xmark` icon (iconoir-react) at far right, `text-gray-300 hover:text-red-500 transition-colors`
 
 **"Add expense" action:**
 - `+ Add expense` text link in `text-xs text-gray-400 hover:text-gray-600 mt-3`
@@ -273,7 +273,7 @@ Muted, sophisticated palette — not saturated primaries. These map to both donu
 |---|---|---|
 | Flights | `#6B8EAE` | slate-blue |
 | Hotels | `#C4956A` | warm sand |
-| Food & Dining | `var(--trip-base)` | trip theme color |
+| Food & Dining | `var(--trip-base)` | trip theme color — apply via CSS class `style={{ stroke: 'var(--trip-base)' }}` on the SVG element so the custom property resolves through CSS, not as an SVG attribute |
 | Activities | `#7BA69E` | sage green |
 | Transport | `#9B8EC4` | soft purple |
 | Shopping | `#8FB87A` | muted green |
@@ -283,11 +283,14 @@ These are intentionally desaturated to keep the donut elegant. On hover, they ga
 
 ### Skeleton Loading State
 
-Matches the minimal aesthetic:
-- Summary strip: three `h-8 w-20` skeleton bars where numbers would be
-- Donut area: a `w-[200px] h-[200px] rounded-full` skeleton ring (border only, not filled)
-- Category list: 4-5 rows of `h-4` skeleton bars at varying widths
+Matches the minimal aesthetic and the two-column layout:
+- Summary strip: three `h-8 w-20` skeleton bars where numbers would be, in a horizontal row
+- Main area: same `grid grid-cols-1 md:grid-cols-2 gap-8` wrapper
+  - Left: a `w-[200px] h-[200px] rounded-full` skeleton ring (border only, not filled), centered
+  - Right: 4-5 rows of `h-4` skeleton bars at varying widths
 - All skeletons use `bg-gray-100 animate-pulse rounded`
+
+The page uses `useTripBudget`'s `isLoading` return value (not `useItineraryScreen`) to gate the skeleton.
 
 ## Component Architecture
 
@@ -299,8 +302,13 @@ Matches the minimal aesthetic:
 | `BudgetDonutChart` | `categories, hoveredCategory, onHoverCategory` | SVG donut ring with radial hover tooltips |
 | `BudgetCategoryList` | `categories, hoveredCategory, onHoverCategory, expandedCategory, onExpandCategory, mutations` | Rows with hover progress bars + cross-highlight |
 | `BudgetCategoryDetail` | `category, mutations` | Expanded view: calendar items + manual expenses |
-| `AddExpenseForm` | `categoryId, tripCurrency, onSubmit, onCancel` | Inline underline-style form |
-| `CurrencyFooter` | `tripCurrency, rates, isLoading, onRefresh` | Single line of rate text |
+| `AddExpenseForm` | `categoryId, tripCurrency, onSubmit, onCancel` | Inline underline-style form for manual expenses |
+| `AddCategoryForm` | `onSubmit, onCancel` | Inline underline-style form for new categories |
+| `CurrencyFooter` | `tripCurrency, rates, isLoading, onRefresh` | Single line of rate text, filtered to currencies present in trip data |
+
+`expandedCategory` is `string | null` (accordion — one at a time).
+
+`mutations` is a subset of the `useTripBudget` return: `{ upsertCategory, deleteCategory, addExpense, deleteExpense }`. Passed through `BudgetCategoryList` to `BudgetCategoryDetail` and `AddExpenseForm`.
 
 ### Shared package (`packages/shared/`)
 
@@ -332,11 +340,15 @@ All animations use `motion/react` (Framer Motion v12):
 - **Tooltip:** `transition: opacity 150ms, transform 150ms` (fade + slight translate)
 - **Inline edit transition:** `transition-all duration-150` on input appearance
 
+## Currency Formatting
+
+All monetary amounts use `Intl.NumberFormat` with `style: 'currency'` and the trip's currency code. This handles symbol placement and decimal formatting for any currency. Utility: `formatBudgetAmount(amount: number, currency: string): string` in `packages/shared/src/utils/currency.ts` (alongside `convertToTripCurrency`).
+
 ## Error Handling
 
-- Budget categories fail to load: show error state with retry button
+- Budget categories fail to load: the two-column main area is replaced with a centered error message (`text-sm text-gray-500`) and a "Retry" text link (`text-sm font-medium text-gray-600 hover:text-gray-900`). Summary strip still renders with zeros.
 - Exchange rate fetch fails: show "Rates unavailable" in CurrencyFooter, display amounts in original currencies
-- Manual expense CRUD fails: toast notification, optimistic update rollback via React Query
+- Manual expense CRUD fails: toast notification, optimistic update rollback handled inside `useTripBudget` (the hook's `useMutation` `onMutate`/`onError` callbacks manage rollback — components just call the `Promise<void>` functions)
 
 ## Out of Scope
 
