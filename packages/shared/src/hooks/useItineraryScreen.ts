@@ -9,8 +9,6 @@ import {
   buildHotelViewModel,
 } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
-import { MOCK_DAYS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_TRIP, MOCK_BUDGET } from '../config/mockItineraryData';
-import { USE_MOCK_DATA } from '../config/featureFlags';
 
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -19,22 +17,22 @@ export function useItineraryScreen(tripId: string | undefined) {
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
 
-  const dayViewModels = useMemo(
+  const days = useMemo(
     () => (daysQuery.data ?? []).map(buildItineraryDayViewModel),
     [daysQuery.data],
   );
 
-  const flightViewModels = useMemo(
+  const flights = useMemo(
     () => (flightsQuery.data ?? []).map(buildFlightViewModel),
     [flightsQuery.data],
   );
 
-  const hotelViewModels = useMemo(
+  const hotels = useMemo(
     () => (hotelsQuery.data ?? []).map(buildHotelViewModel),
     [hotelsQuery.data],
   );
 
-  const budgetSummary = useMemo(
+  const budget = useMemo(
     () => buildBudgetSummary(
       daysQuery.data ?? [],
       flightsQuery.data ?? [],
@@ -49,16 +47,8 @@ export function useItineraryScreen(tripId: string | undefined) {
     (tripQuery.isLoading && !tripQuery.error) ||
     (daysQuery.isLoading && !daysQuery.error);
 
-  // Fall back to mock data when real data is empty and USE_MOCK_DATA is enabled
-  // To disable mock fallbacks: set USE_MOCK_DATA = false in config/featureFlags.ts
-  const hasRealData = dayViewModels.length > 0 || flightViewModels.length > 0 || hotelViewModels.length > 0;
-  const useMock = USE_MOCK_DATA && !isStillLoading && !hasRealData;
-
-  const days = useMock ? MOCK_DAYS : dayViewModels;
-  const flights = useMock ? MOCK_FLIGHTS : flightViewModels;
-  const hotels = useMock ? MOCK_HOTELS : hotelViewModels;
-  const trip = useMock ? MOCK_TRIP : (tripQuery.data ?? null);
-  const budget = useMock ? MOCK_BUDGET : budgetSummary;
+  const trip = tripQuery.data ?? null;
+  const isEmpty = !isStillLoading && days.length === 0 && flights.length === 0 && hotels.length === 0;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();
@@ -79,7 +69,7 @@ export function useItineraryScreen(tripId: string | undefined) {
     isLoading: isStillLoading,
     refetch,
     error: tripQuery.error || daysQuery.error,
-    isEmpty: false, // Never empty — mock data fills in
-    isMockData: useMock,
+    isEmpty,
+    isMockData: false,
   };
 }

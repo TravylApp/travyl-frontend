@@ -6,7 +6,10 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
-import { MOCK_DISCOVER_ACTIVITIES, MOCK_DISCOVER_RESTAURANTS } from '@travyl/shared/src/config/mockItineraryData';
+import type { DiscoverItem as DiscoverItemType } from '@travyl/shared';
+
+const MOCK_DISCOVER_ACTIVITIES: DiscoverItemType[] = [];
+const MOCK_DISCOVER_RESTAURANTS: DiscoverItemType[] = [];
 import type { DiscoverItem } from '@travyl/shared';
 import { SplitScreenModal } from '@/components/itinerary';
 

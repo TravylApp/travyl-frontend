@@ -20,7 +20,9 @@ import {
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
 import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
-import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
+import type { PlaceItem as PlaceItemType } from '@travyl/shared';
+
+const MOCK_PLACES: PlaceItemType[] = [];
 import type { PlaceItem } from '@travyl/shared';
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';

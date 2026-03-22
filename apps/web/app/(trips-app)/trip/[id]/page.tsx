@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useRef } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useItineraryScreen, NEWS_COLORS } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
 import type { TripContextData } from '@travyl/shared';
 
 // ── Hooks ─────────────────────────────────────────────────────
@@ -47,6 +47,13 @@ function AddToTripButton({ isAdded, onToggle }: { isAdded: boolean; onToggle: ()
     </button>
   );
 }
+
+const NEWS_COLORS: [string, string][] = [
+  ['#1a1a2e', '#16213e'],
+  ['#0f3460', '#1a1a2e'],
+  ['#2c3e50', '#1a1a2e'],
+  ['#1b2838', '#0f3460'],
+];
 
 // ── Sections ─────────────────────────────────────────────────
 
