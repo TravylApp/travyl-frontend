@@ -1,5 +1,5 @@
 import type { ItineraryDayViewModel, TimeGroup, ActivityViewModel, FlightViewModel, HotelViewModel } from '../viewmodels/itineraryViewModel';
-import type { Trip, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
+import type { Trip, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
 
 export interface MockBudgetSummary {
   total: number;
@@ -430,53 +430,6 @@ export const MOCK_BUDGET_ITEMS: MockBudgetItem[] = [
     ],
   },
 ];
-
-// ─── Mock Packing List ──────────────────────────────────────
-
-export const MOCK_PACKING_LIST: PackingList = {
-  'Clothing': [
-    { item: 'Shirts (7)', packed: false },
-    { item: 'Pants/Shorts (4)', packed: false },
-    { item: 'Underwear (7)', packed: false },
-    { item: 'Socks (7 pairs)', packed: false },
-    { item: 'Jacket/Sweater', packed: false },
-    { item: 'Comfortable shoes', packed: false },
-    { item: 'Sandals', packed: false },
-    { item: 'Sleepwear', packed: false },
-  ],
-  'Toiletries': [
-    { item: 'Toothbrush & toothpaste', packed: false },
-    { item: 'Shampoo & conditioner', packed: false },
-    { item: 'Body wash/soap', packed: false },
-    { item: 'Deodorant', packed: false },
-    { item: 'Sunscreen SPF 30+', packed: false },
-    { item: 'Medications', packed: false },
-    { item: 'First aid kit', packed: false },
-  ],
-  'Electronics': [
-    { item: 'Phone & charger', packed: false },
-    { item: 'Camera & charger', packed: false },
-    { item: 'Power adapter (EU plug)', packed: false },
-    { item: 'Headphones', packed: false },
-    { item: 'Portable battery', packed: false },
-  ],
-  'Documents': [
-    { item: 'Passport', packed: false },
-    { item: 'Flight tickets', packed: false },
-    { item: 'Hotel confirmations', packed: false },
-    { item: 'Travel insurance', packed: false },
-    { item: 'Credit cards & cash', packed: false },
-    { item: 'Driver\'s license', packed: false },
-  ],
-  'Miscellaneous': [
-    { item: 'Reusable water bottle', packed: false },
-    { item: 'Umbrella', packed: false },
-    { item: 'Sunglasses', packed: false },
-    { item: 'Day backpack', packed: false },
-    { item: 'Travel pillow', packed: false },
-    { item: 'Book/Entertainment', packed: false },
-  ],
-};
 
 export const MOCK_WEATHER: WeatherInfo = {
   destination: 'Paris',
