@@ -4,6 +4,7 @@ import type { Command } from '../types'
 
 interface UseCalendarCommandsInput {
   selectedActivity: CalendarActivity | null
+  isPaletteOpen: boolean
   moveActivity: (id: string, newDay: number, newStartHour: number) => void
   removeActivity: (id: string) => Promise<void>
   updateActivity: (id: string, patch: Partial<CalendarActivity>) => void
@@ -13,6 +14,7 @@ interface UseCalendarCommandsInput {
   tripDays: { dayIndex: number; label: string }[]
   tripStartDate: Date
   onAddEvent: () => void
+  onOpenPalette: () => void
   marqueeSelectedIds?: Set<string>
   onBulkDelete?: () => void
   onBulkDuplicate?: () => void
@@ -24,6 +26,7 @@ function clamp(value: number, min: number, max: number): number {
 
 export function useCalendarCommands({
   selectedActivity,
+  isPaletteOpen,
   moveActivity,
   removeActivity,
   updateActivity,
@@ -33,6 +36,7 @@ export function useCalendarCommands({
   tripDays,
   tripStartDate,
   onAddEvent,
+  onOpenPalette,
   marqueeSelectedIds,
   onBulkDelete,
   onBulkDuplicate,
@@ -78,6 +82,7 @@ export function useCalendarCommands({
         isEnabled: hasSelection && (marqueeSelectedIds?.size ?? 0) === 0,
         execute: () => { if (selectedActivity) duplicateActivity(selectedActivity) },
       },
+      // ── Bulk Edit (marquee) ─────────────────────────────────────
       {
         id: 'bulk-delete',
         label: 'Delete Selected Activities',
@@ -101,7 +106,7 @@ export function useCalendarCommands({
         label: 'Move Up 30 min',
         group: 'activity',
         shortcut: { key: 'ArrowUp', display: '↑' },
-        isEnabled: hasSelection,
+        isEnabled: hasSelection && !isPaletteOpen,
         execute: () => {
           if (hasSelection) moveActivity(id, day, clamp(startHour - 0.5, 0, 24 - duration))
         },
@@ -111,7 +116,7 @@ export function useCalendarCommands({
         label: 'Move Down 30 min',
         group: 'activity',
         shortcut: { key: 'ArrowDown', display: '↓' },
-        isEnabled: hasSelection,
+        isEnabled: hasSelection && !isPaletteOpen,
         execute: () => {
           if (hasSelection) moveActivity(id, day, clamp(startHour + 0.5, 0, 24 - duration))
         },
@@ -121,7 +126,7 @@ export function useCalendarCommands({
         label: 'Move to Prev Day',
         group: 'activity',
         shortcut: { key: 'ArrowLeft', display: '←' },
-        isEnabled: hasSelection,
+        isEnabled: hasSelection && !isPaletteOpen,
         execute: () => {
           if (hasSelection) moveActivity(id, clamp(day - 1, 0, tripDays.length - 1), startHour)
         },
@@ -131,7 +136,7 @@ export function useCalendarCommands({
         label: 'Move to Next Day',
         group: 'activity',
         shortcut: { key: 'ArrowRight', display: '→' },
-        isEnabled: hasSelection,
+        isEnabled: hasSelection && !isPaletteOpen,
         execute: () => {
           if (hasSelection) moveActivity(id, clamp(day + 1, 0, tripDays.length - 1), startHour)
         },
@@ -192,6 +197,15 @@ export function useCalendarCommands({
           // No-op if today is outside trip date range
         },
       },
+      {
+        id: 'open-palette',
+        label: 'Open Command Palette',
+        group: 'view',
+        shortcut: { key: 'k', meta: true, display: 'Ctrl K' },
+        isEnabled: true,
+        execute: onOpenPalette,
+      },
+
       // ── Insert ────────────────────────────────────────────────
       {
         id: 'new-activity',
@@ -203,9 +217,10 @@ export function useCalendarCommands({
       },
     ]
   }, [
-    selectedActivity,
+    selectedActivity, isPaletteOpen,
     moveActivity, removeActivity, updateActivity, duplicateActivity,
     onViewModeChange, selectDay, tripDays, tripStartDate,
-    onAddEvent, marqueeSelectedIds, onBulkDelete, onBulkDuplicate,
+    onAddEvent, onOpenPalette,
+    marqueeSelectedIds, onBulkDelete, onBulkDuplicate,
   ])
 }

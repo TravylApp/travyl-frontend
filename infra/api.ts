@@ -24,3 +24,14 @@ api.route('POST /interact', {
   handler: 'services/interact.handler',
   link: [bus, supabaseServiceRoleKey, supabaseUrl],
 })
+
+api.route('POST /packing-suggest', {
+  handler: 'services/packing-suggest.handler',
+  link: [supabaseServiceRoleKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})

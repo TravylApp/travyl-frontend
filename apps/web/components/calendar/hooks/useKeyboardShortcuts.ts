@@ -3,6 +3,8 @@ import type { Command } from '../types'
 
 export function useKeyboardShortcuts(
   commands: Command[],
+  isPaletteOpen: boolean,
+  onClosePalette: () => void,
   onDeselect: () => void,
   hasMarqueeSelection?: boolean,
   onClearMarquee?: () => void,
@@ -18,9 +20,12 @@ export function useKeyboardShortcuts(
       // Escape is always handled, even inside inputs
       if (e.key === 'Escape') {
         e.preventDefault()
-        if (hasMarqueeSelection && onClearMarquee) {
+        if (isPaletteOpen) {
+          onClosePalette()
+        } else if (hasMarqueeSelection && onClearMarquee) {
           onClearMarquee()
         } else if (commands.some((c) => c.id === 'delete' && c.isEnabled)) {
+          // 'delete' command is only enabled when an activity is selected
           onDeselect()
         }
         return
@@ -49,5 +54,5 @@ export function useKeyboardShortcuts(
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [commands, onDeselect, hasMarqueeSelection, onClearMarquee])
+  }, [commands, isPaletteOpen, onClosePalette, onDeselect, hasMarqueeSelection, onClearMarquee])
 }

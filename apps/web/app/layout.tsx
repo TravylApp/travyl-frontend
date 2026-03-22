@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Sora } from "next/font/google";
+import { Geist_Mono, Sora, Lustria } from "next/font/google";
 import Providers from "@/components/providers";
 import "./globals.css";
 
@@ -12,6 +12,12 @@ const sora = Sora({
   variable: "--font-brand",
   subsets: ["latin"],
   weight: ["700", "800"],
+});
+
+const lustria = Lustria({
+  variable: "--font-lustria",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -37,7 +43,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
       </head>
       <body
-        className={`${geistMono.variable} ${sora.variable} antialiased`}
+        className={`${geistMono.variable} ${sora.variable} ${lustria.variable} antialiased`}
         style={{ fontFamily: "'Satoshi', sans-serif" }}
       >
         <Providers>

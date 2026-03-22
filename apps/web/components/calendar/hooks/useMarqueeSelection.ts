@@ -49,6 +49,7 @@ export function useMarqueeSelection({
       const containerRect = containerRectRef.current
       if (!containerRect) return new Set()
 
+      // Normalize marquee rect (user may drag in any direction)
       const mLeft = Math.min(rect.startX, rect.endX)
       const mRight = Math.max(rect.startX, rect.endX)
       const mTop = Math.min(rect.startY, rect.endY)
@@ -57,6 +58,7 @@ export function useMarqueeSelection({
       const columnWidth = containerRect.width / dayCount
       const result = new Set<string>()
 
+      // Group activities by day for overlap layout
       const actsByDay = new Map<number, CalendarActivity[]>()
       for (const act of activities) {
         const list = actsByDay.get(act.day) ?? []
@@ -72,6 +74,7 @@ export function useMarqueeSelection({
           const layout = overlapLayout.get(act.id)
           if (!layout || layout.column === -1) continue
 
+          // Compute activity bounding box in container-relative coords
           const availableWidth = columnWidth - 2 * COLUMN_OUTER_PAD
           const colWidth =
             (availableWidth - (layout.totalColumns - 1) * COLUMN_GAP) /
@@ -113,6 +116,7 @@ export function useMarqueeSelection({
       setMarqueeRect((prev) => {
         if (!prev) return null
         const next = { ...prev, endX: x, endY: y }
+        // Live hit-test
         const hits = computeSelectedActivities(next)
         setSelectedIds(hits)
         return next
@@ -123,6 +127,7 @@ export function useMarqueeSelection({
 
   const endMarquee = useCallback(() => {
     setMarqueeRect(null)
+    // selectedIds remain — user can now act on them
   }, [])
 
   const toggleActivityInSelection = useCallback((activityId: string) => {

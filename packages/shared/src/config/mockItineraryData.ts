@@ -1183,3 +1183,63 @@ export const MOCK_NEWS: import('../types').NewsItem[] = [
     date: '2026-03-11',
   },
 ];
+
+// ─── Glance Hero Images (shared by web + mobile) ─────────────
+
+export const GLANCE_HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
+  'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&q=85',
+  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1400&q=85',
+  'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1400&q=85',
+  'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
+];
+
+// ─── Explore Items (Things to Do cards) ──────────────────────
+
+export const MOCK_EXPLORE_ITEMS = [
+  {
+    id: 'ex1', title: 'Musée d\'Orsay', subtitle: 'Impressionism\'s spiritual home', category: 'Art & Culture',
+    image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=80',
+    description: 'Van Gogh, Monet, and Renoir under a stunning Beaux-Arts glass ceiling. Go on a Thursday evening when the crowds thin.',
+  },
+  {
+    id: 'ex2', title: 'Le Marais', subtitle: 'The heart of old Paris', category: 'Neighborhood',
+    image: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1200&q=80',
+    description: 'Medieval streets lined with concept stores, falafel joints, and hidden courtyards. Get lost on purpose.',
+  },
+  {
+    id: 'ex3', title: 'Café de Flore', subtitle: 'Where Sartre drank his espresso', category: 'Café',
+    image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1200&q=80',
+    description: 'The hot chocolate is legendary. Sit on the terrace, order a croque-monsieur, and watch the boulevard unfold.',
+  },
+  {
+    id: 'ex4', title: 'Montmartre at Dawn', subtitle: 'Before the tourists arrive', category: 'Experience',
+    image: 'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1200&q=80',
+    description: 'Climb the steps of Sacré-Cœur at first light. The city spreads below you in a pastel haze — pure cinema.',
+  },
+  {
+    id: 'ex5', title: 'Seine River Cruise', subtitle: 'Golden hour on the water', category: 'Experience',
+    image: 'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1200&q=80',
+    description: 'Board a Bateaux Mouches at sunset. The bridges, the light, the reflections — it never gets old.',
+  },
+  {
+    id: 'ex6', title: 'Versailles', subtitle: 'A day trip worth the journey', category: 'Day Trip',
+    image: 'https://images.unsplash.com/photo-1551410224-699683e15636?w=1200&q=80',
+    description: 'Skip the château crowds — head straight for the gardens. Marie Antoinette\'s hamlet feels like stepping into a painting.',
+  },
+  {
+    id: 'ex7', title: 'Saint-Germain Markets', subtitle: 'Shop like a local', category: 'Food & Market',
+    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038024a?w=1200&q=80',
+    description: 'Wednesdays and Saturdays on Rue de Buci. Artisanal cheese, fresh oysters, and the best croissants you\'ll ever taste.',
+  },
+];
+
+// ─── News Gradients (shared by web + mobile) ─────────────────
+
+export const NEWS_GRADIENTS: [string, string][] = [
+  ['#1a1a2e', '#16213e'],
+  ['#0f3460', '#1a1a2e'],
+  ['#1b2838', '#0d1b2a'],
+  ['#162447', '#1f4068'],
+  ['#1a1a2e', '#0f3460'],
+];

@@ -9,6 +9,16 @@
   --muted: #F3F4F6;
   --muted-foreground: #6B7280;
   --border: #E5E7EB;
+  --magazine-bg: #FAF8F5;
+  --magazine-surface: #f5f1eb;
+  --magazine-text: #4a4540;
+  --magazine-heading: #1a1a1a;
+  --magazine-accent: #b8953e;
+  --magazine-border: rgba(184,149,62,0.15);
+  --magazine-success: #34d399;
+  --sand-wash: #d4c4a8;
+  --sand-base: #e8d5c0;
+  --ocean-primary: var(--primary);
 }
 
 /* Calendar theme tokens - light mode defaults */
@@ -32,8 +42,24 @@
   --cal-hour-text: #9ca3af;
 }
 
-/* Calendar theme tokens - dark mode overrides */
 .dark {
+  --background: #0c1117;
+  --foreground: #e5e7eb;
+  --primary: #60a5fa;
+  --accent: #c8a96a;
+  --muted: #1a2230;
+  --muted-foreground: #9ca3af;
+  --border: rgba(255, 255, 255, 0.08);
+  --magazine-bg: #0c1117;
+  --magazine-surface: #151d28;
+  --magazine-text: #e0d8cc;
+  --magazine-heading: #f5f0ea;
+  --magazine-accent: #c8a96a;
+  --magazine-border: rgba(255,255,255,0.12);
+  --magazine-success: #34d399;
+  --sand-wash: #2a2622;
+  --sand-base: #1c1917;
+  --ocean-primary: #0f2a4a;
   --cal-bg: #0a1520;
   --cal-surface: #0a1520;
   --cal-surface-elevated: #0f1a28;
@@ -53,9 +79,7 @@
   --cal-hour-text: rgba(74, 122, 181, 0.7);
 }
 
-/* Dark mode: scoped to calendar dashboard via .dark class */
-
-/* Dark mode: scoped to calendar dashboard via .dark class */
+@variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -65,7 +89,15 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-magazine-bg: var(--magazine-bg);
+  --color-magazine-surface: var(--magazine-surface);
+  --color-magazine-text: var(--magazine-text);
+  --color-magazine-heading: var(--magazine-heading);
+  --color-magazine-accent: var(--magazine-accent);
+  --color-magazine-border: var(--magazine-border);
+  --color-magazine-success: var(--magazine-success);
   --font-sans: 'Satoshi', system-ui, sans-serif;
+  --font-serif: var(--font-lustria), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono);
   --font-serif: 'Lustria', Georgia, serif;
 
@@ -113,4 +145,28 @@ body::-webkit-scrollbar {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* Reveal animations for overview page */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal-on-scroll.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-on-scroll:nth-child(2) { transition-delay: 0.1s; }
+.reveal-on-scroll:nth-child(3) { transition-delay: 0.2s; }
+.reveal-on-scroll:nth-child(4) { transition-delay: 0.3s; }
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
 }
