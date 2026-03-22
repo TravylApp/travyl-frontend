@@ -18,7 +18,7 @@ import { PageTransition, useTabAccent } from './_layout';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { RatingStars } from '@/components/ui/RatingStars';
 import { MapPreview } from '@/components/itinerary/MapPreview';
-import PlaceDetailModal from '@/components/places/PlaceDetailModal';
+import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -524,7 +524,6 @@ function ActivityDetailSheet({
   const ACCENT = useTabAccent('activities');
   const [imgError, setImgError] = useState(false);
   const hasImage = item.images.length > 0 && !imgError;
-  const categoryColor = ACCENT;
 
   // Animations: map from top, content from bottom
   const mapSlide = useRef(new Animated.Value(-160)).current;
@@ -618,7 +617,7 @@ function ActivityDetailSheet({
                           flexDirection: 'row',
                           alignItems: 'center',
                           gap: 4,
-                          backgroundColor: categoryColor + '15',
+                          backgroundColor: ACCENT + '15',
                           paddingHorizontal: 10,
                           paddingVertical: 4,
                           borderRadius: 12,
@@ -627,9 +626,9 @@ function ActivityDetailSheet({
                         <FontAwesome
                           name={(ACTIVITY_CATEGORY_ICONS[item.category] || 'compass') as any}
                           size={11}
-                          color={categoryColor}
+                          color={ACCENT}
                         />
-                        <Text style={{ fontSize: 12, fontWeight: '500', color: categoryColor }}>{item.category}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '500', color: ACCENT }}>{item.category}</Text>
                       </View>
                     </View>
                   )}
@@ -1037,6 +1036,11 @@ export default function ActivitiesScreen() {
     return filteredItems.filter(item => (item.rating ?? 0) >= minRating);
   }, [filteredItems, minRating]);
 
+  const allPlacesFromSource = useMemo(
+    () => sourceItems.map(discoverItemToPlaceItem),
+    [sourceItems],
+  );
+
   const activeFilterCount = [
     categoryFilter !== 'All',
     searchQuery !== '',
@@ -1379,23 +1383,15 @@ export default function ActivitiesScreen() {
           </View>
         )}
 
-      {/* ---- Activity Detail Modal (map + card) ---- */}
+      {/* ---- Activity Detail — magazine card overlay ---- */}
       {selectedItem && (
-        <PlaceDetailModal
-          place={discoverItemToPlaceItem(selectedItem)}
-          allPlaces={sourceItems.map(discoverItemToPlaceItem)}
-          onClose={() => setSelectedItem(null)}
+        <CardStackCarousel
+          places={allPlacesFromSource}
+          initialIndex={Math.max(0, sourceItems.findIndex((i) => i.id === selectedItem.id))}
           favorites={favorites}
           onToggleFav={toggleFavorite}
-          renderFooter={(currentPlace) => (
-            <ActivityDetailFooter
-              place={currentPlace}
-              allPlaces={sourceItems.map(discoverItemToPlaceItem)}
-              onSelectPlace={() => {}}
-              favorites={favorites}
-              onToggleFav={toggleFavorite}
-            />
-          )}
+          overlay
+          onClose={() => setSelectedItem(null)}
         />
       )}
     </ScrollView>
