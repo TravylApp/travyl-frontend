@@ -23,3 +23,4 @@ export { useSimilarPlaces, getSimilarPlaces } from './useSimilarPlaces';
 export { useCollaborators } from './useCollaborators';
 export { useTripNotes } from './useTripNotes';
 export { useExchangeRates } from './useExchangeRates';
+export { useTripBudget } from './useTripBudget';
