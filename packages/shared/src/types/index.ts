@@ -241,19 +241,43 @@ export interface DiscoverItem {
 
 // ─── Budget Types ───────────────────────────────────────────
 
-export interface BudgetExpense {
-  id: string;
-  description: string;
-  amount: number;
+export interface TripBudgetCategory {
+  id: string
+  trip_id: string
+  category: string
+  budgeted: number
+  sort_order: number
+  created_by: string
+  created_at: string
+  updated_at: string
 }
 
-export interface BudgetItem {
-  id: string;
-  category: string;
-  budgeted: number;
-  actual: number;
-  fixed: boolean;
-  expenses?: BudgetExpense[];
+export interface TripManualExpense {
+  id: string
+  trip_id: string
+  category_id: string
+  description: string
+  amount: number
+  currency: string
+  created_by: string
+  created_at: string
+}
+
+export interface BudgetCategoryData {
+  id: string
+  name: string
+  budgeted: number
+  actual: number
+  calendarItems: Array<{
+    id: string
+    name: string
+    day: number
+    time?: string
+    cost: number
+    originalCurrency?: string
+  }>
+  manualExpenses: TripManualExpense[]
+  percentUsed: number
 }
 
 // ─── Packing Types ──────────────────────────────────────────
