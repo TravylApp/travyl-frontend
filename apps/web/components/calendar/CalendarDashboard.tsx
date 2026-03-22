@@ -38,8 +38,10 @@ import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { ShareModal } from './sharing/ShareModal'
 import { ForkAttribution } from '../trip/ForkAttribution'
-import { inviteCollaborator } from '@travyl/shared'
+import { inviteCollaborator, isTripOwner, canEditTrip } from '@travyl/shared'
 import type { CollaboratorRole } from '@travyl/shared'
+import { TripSettingsLayout } from '../trip/settings/TripSettingsLayout'
+import { TripThemeProvider } from '../trip/TripThemeContext'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -582,6 +584,18 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           )}
         </DndContext>
+        ) : activeNav === 'settings' && trip ? (
+          <div className="flex-1 overflow-auto p-4">
+            <TripThemeProvider tripId={trip.id} initialThemeId={trip.theme} initialCustomColor={trip.custom_theme_color}>
+              <TripSettingsLayout
+                trip={trip}
+                userId={userId}
+                isOwner={isTripOwner(trip, userId)}
+                canEdit={canEditTrip(trip, userId)}
+                onRefetch={() => {}}
+              />
+            </TripThemeProvider>
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">

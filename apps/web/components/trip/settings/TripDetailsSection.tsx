@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Trip } from '@travyl/shared'
-import { SectionHeading, FieldLabel, Input, Select, ReadOnlyField } from './shared'
+import { SectionHeading, SectionDescription, FieldLabel, Select, ReadOnlyField } from './shared'
 
 const CURRENCY_OPTIONS = [
   { value: 'USD', label: 'USD ($)' },
@@ -23,57 +23,62 @@ const STATUS_OPTIONS = [
 interface TripDetailsSectionProps {
   trip: Trip
   canEdit: boolean
-  onDirty: () => void
   onFieldChange: (updates: Partial<Trip>) => void
 }
 
-export function TripDetailsSection({ trip, canEdit, onDirty, onFieldChange }: TripDetailsSectionProps) {
-  const [title, setTitle] = useState(trip.title)
-  const [destination, setDestination] = useState(trip.destination)
-  const [startDate, setStartDate] = useState(trip.start_date)
-  const [endDate, setEndDate] = useState(trip.end_date)
-  const [budget, setBudget] = useState(trip.budget?.toString() ?? '')
-  const [currency, setCurrency] = useState(trip.currency)
-  const [travelers, setTravelers] = useState(trip.travelers.toString())
-  const [status, setStatus] = useState(trip.status)
+// Text input that saves on blur
+function BlurInput({
+  value: initialValue,
+  onSave,
+  type = 'text',
+  placeholder,
+}: {
+  value: string
+  onSave: (v: string) => void
+  type?: string
+  placeholder?: string
+}) {
+  const [value, setValue] = useState(initialValue)
+  const ref = useRef(initialValue)
 
   useEffect(() => {
-    setTitle(trip.title)
-    setDestination(trip.destination)
-    setStartDate(trip.start_date)
-    setEndDate(trip.end_date)
-    setBudget(trip.budget?.toString() ?? '')
-    setCurrency(trip.currency)
-    setTravelers(trip.travelers.toString())
-    setStatus(trip.status)
-  }, [trip])
+    setValue(initialValue)
+    ref.current = initialValue
+  }, [initialValue])
 
-  const update = (field: string, value: string) => {
-    onDirty()
-    switch (field) {
-      case 'title': setTitle(value); onFieldChange({ title: value }); break
-      case 'destination': setDestination(value); onFieldChange({ destination: value }); break
-      case 'start_date': setStartDate(value); onFieldChange({ start_date: value }); break
-      case 'end_date': setEndDate(value); onFieldChange({ end_date: value }); break
-      case 'budget': setBudget(value); onFieldChange({ budget: value === '' ? null : Number(value) }); break
-      case 'currency': setCurrency(value); onFieldChange({ currency: value }); break
-      case 'travelers': setTravelers(value); onFieldChange({ travelers: Number(value) || 1 }); break
-      case 'status': setStatus(value as Trip['status']); onFieldChange({ status: value as Trip['status'] }); break
+  const handleBlur = () => {
+    if (value !== ref.current) {
+      ref.current = value
+      onSave(value)
     }
   }
 
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#003594]/20 focus:border-[#003594] transition"
+    />
+  )
+}
+
+export function TripDetailsSection({ trip, canEdit, onFieldChange }: TripDetailsSectionProps) {
   if (!canEdit) {
     const budgetDisplay = trip.budget != null ? `${trip.budget} ${trip.currency}` : 'Not set'
     return (
       <div>
         <SectionHeading>Trip Details</SectionHeading>
+        <SectionDescription>Basic information about your trip.</SectionDescription>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ReadOnlyField label="Title" value={trip.title} />
           <ReadOnlyField label="Destination" value={trip.destination} />
           <ReadOnlyField label="Start Date" value={trip.start_date} />
           <ReadOnlyField label="End Date" value={trip.end_date} />
           <ReadOnlyField label="Budget" value={budgetDisplay} />
-          <ReadOnlyField label="Travelers" value={String(trip.travelers)} />
+          <ReadOnlyField label="Travelers" value={String(trip.travelers ?? 1)} />
           <ReadOnlyField label="Status" value={trip.status} />
         </div>
       </div>
@@ -83,38 +88,48 @@ export function TripDetailsSection({ trip, canEdit, onDirty, onFieldChange }: Tr
   return (
     <div>
       <SectionHeading>Trip Details</SectionHeading>
+      <SectionDescription>Basic information about your trip.</SectionDescription>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>Title</FieldLabel>
-          <Input value={title} onChange={(v) => update('title', v)} />
+          <BlurInput value={trip.title} onSave={(v) => onFieldChange({ title: v })} />
         </div>
         <div>
           <FieldLabel>Destination</FieldLabel>
-          <Input value={destination} onChange={(v) => update('destination', v)} />
+          <BlurInput value={trip.destination} onSave={(v) => onFieldChange({ destination: v })} />
         </div>
         <div>
           <FieldLabel>Start Date</FieldLabel>
-          <Input value={startDate} onChange={(v) => update('start_date', v)} type="date" />
+          <BlurInput value={trip.start_date} onSave={(v) => onFieldChange({ start_date: v })} type="date" />
         </div>
         <div>
           <FieldLabel>End Date</FieldLabel>
-          <Input value={endDate} onChange={(v) => update('end_date', v)} type="date" />
+          <BlurInput value={trip.end_date} onSave={(v) => onFieldChange({ end_date: v })} type="date" />
         </div>
         <div>
           <FieldLabel>Budget</FieldLabel>
-          <Input value={budget} onChange={(v) => update('budget', v)} type="number" placeholder="Optional" />
+          <BlurInput
+            value={trip.budget?.toString() ?? ''}
+            onSave={(v) => onFieldChange({ budget: v === '' ? null : Number(v) })}
+            type="number"
+            placeholder="Optional"
+          />
         </div>
         <div>
           <FieldLabel>Currency</FieldLabel>
-          <Select value={currency} onChange={(v) => update('currency', v)} options={CURRENCY_OPTIONS} />
+          <Select value={trip.currency} onChange={(v) => onFieldChange({ currency: v })} options={CURRENCY_OPTIONS} />
         </div>
         <div>
           <FieldLabel>Travelers</FieldLabel>
-          <Input value={travelers} onChange={(v) => update('travelers', v)} type="number" />
+          <BlurInput
+            value={(trip.travelers ?? 1).toString()}
+            onSave={(v) => onFieldChange({ travelers: Number(v) || 1 })}
+            type="number"
+          />
         </div>
         <div>
           <FieldLabel>Status</FieldLabel>
-          <Select value={status} onChange={(v) => update('status', v)} options={STATUS_OPTIONS} />
+          <Select value={trip.status} onChange={(v) => onFieldChange({ status: v as Trip['status'] })} options={STATUS_OPTIONS} />
         </div>
       </div>
     </div>

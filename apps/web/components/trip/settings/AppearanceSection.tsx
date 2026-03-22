@@ -2,14 +2,13 @@
 
 import { ThemePicker } from '@/components/trip/ThemePicker'
 import { useTripTheme } from '@/components/trip/TripThemeContext'
-import { SectionHeading } from './shared'
+import { SectionHeading, SectionDescription } from './shared'
 
 interface AppearanceSectionProps {
   canEdit: boolean
-  onDirty: () => void
 }
 
-export function AppearanceSection({ canEdit, onDirty }: AppearanceSectionProps) {
+export function AppearanceSection({ canEdit }: AppearanceSectionProps) {
   const {
     theme, themeId, customColor,
     setTripTheme,
@@ -29,18 +28,19 @@ export function AppearanceSection({ canEdit, onDirty }: AppearanceSectionProps) 
   return (
     <div>
       <SectionHeading>Theme & Colors</SectionHeading>
+      <SectionDescription>Customize the look and feel of your trip.</SectionDescription>
       <ThemePicker
         currentTheme={themeId}
         customColor={customColor}
-        onSelectTheme={(tid, color) => { setTripTheme(tid, color); onDirty() }}
+        onSelectTheme={(tid, color) => setTripTheme(tid, color)}
         tabColors={theme.tabColors}
         tabColorOverrides={tabColorOverrides}
-        onTabColorChange={(name, color) => { setTabColor(name, color); onDirty() }}
-        onResetTabColors={() => { resetTabColors(); onDirty() }}
+        onTabColorChange={(name, color) => setTabColor(name, color)}
+        onResetTabColors={() => resetTabColors()}
         itineraryColors={theme.itineraryColors}
         itineraryColorOverrides={itineraryColorOverrides}
-        onItineraryColorChange={(section, color) => { setItineraryColor(section, color); onDirty() }}
-        onResetItineraryColors={() => { resetItineraryColors(); onDirty() }}
+        onItineraryColorChange={(section, color) => setItineraryColor(section, color)}
+        onResetItineraryColors={() => resetItineraryColors()}
       />
     </div>
   )
