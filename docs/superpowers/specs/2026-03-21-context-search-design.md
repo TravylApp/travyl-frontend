@@ -272,32 +272,30 @@ Positioned to the right of the result item (or left if insufficient space).
 
 Keyboard accessibility: preview appears when a trip result is focused via arrow keys (same content as hover).
 
-### CalendarCommandsContext
+### Calendar Commands Store (Zustand)
 
-**New file:** `apps/web/components/calendar/CalendarCommandsContext.tsx`
+**New file:** `apps/web/stores/calendarCommandsStore.ts`
+
+Uses a Zustand store instead of React Context to share calendar commands with the global palette. This avoids context tree ordering issues — `GlobalCommandPalette` (in root Providers) and `CalendarDashboard` (deep in the trip page tree) can't be wired with React Context because the palette is a sibling of the page content, not a descendant.
 
 ```typescript
-const CalendarCommandsContext = createContext<Command[] | null>(null)
+import { create } from 'zustand'
+import type { Command } from '@/components/calendar/types'
 
-export function CalendarCommandsProvider({ children, commands }: {
-  children: React.ReactNode
-  commands: Command[]
-}) {
-  return (
-    <CalendarCommandsContext.Provider value={commands}>
-      {children}
-    </CalendarCommandsContext.Provider>
-  )
+interface CalendarCommandsState {
+  commands: Command[] | null
+  setCommands: (commands: Command[]) => void
+  clearCommands: () => void
 }
 
-export function useCalendarCommandsContext(): Command[] | null {
-  return useContext(CalendarCommandsContext)
-}
+export const useCalendarCommandsStore = create<CalendarCommandsState>((set) => ({
+  commands: null,
+  setCommands: (commands) => set({ commands }),
+  clearCommands: () => set({ commands: null }),
+}))
 ```
 
-**Placement:** The `CalendarCommandsProvider` is mounted in the trip page layout (`apps/web/app/(trips-app)/trip/[id]/layout.tsx` or the trip page component), NOT inside `CalendarDashboard`. This ensures it's above `GlobalCommandPalette` (which lives in the root layout) in the React context tree. `CalendarDashboard` calls `useCalendarCommands` and passes the result into the provider.
-
-The `GlobalCommandPalette` consumes this context — if commands are available (on a trip page), they appear in the "Commands" group; if null (any other page), the group is hidden.
+`CalendarDashboard` publishes commands to the store via `setCommands(commands)` in a `useEffect`, and calls `clearCommands()` on unmount. The `GlobalCommandPalette` reads from the store — if commands are non-null (on a trip page), they appear in the "Commands" group; if null (any other page), the group is hidden.
 
 **Ctrl+K conflict resolution:** The `open-palette` command must be removed from `useCalendarCommands` since the global palette owns Ctrl+K. The Ctrl+K handler in `useKeyboardShortcuts` is also removed — the global palette registers its own `keydown` listener at the document level.
 
