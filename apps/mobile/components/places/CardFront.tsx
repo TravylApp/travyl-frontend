@@ -18,6 +18,7 @@ interface CardFrontProps {
   isFav: boolean;
   onToggleFav: () => void;
   onFlip: () => void;
+  onMapPress?: () => void;
   width: number;
   height: number;
   /** Controlled image index — parent owns the cycling logic */
@@ -33,6 +34,7 @@ export default function CardFront({
   isFav,
   onToggleFav,
   onFlip,
+  onMapPress,
   width,
   height,
   imageIndex = 0,
@@ -165,30 +167,47 @@ export default function CardFront({
         </Text>
       </View>
 
-      {/* ── Heart button — top-right ──────────────────────────────────── */}
-      <Pressable
-        onPress={(e) => {
-          e.stopPropagation?.();
-          onToggleFav();
-        }}
-        style={{
-          position: 'absolute',
-          top: 10,
-          right: 10,
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <FontAwesome
-          name={isFav ? 'heart' : 'heart-o'}
-          size={14}
-          color={isFav ? '#ef4444' : '#9ca3af'}
-        />
-      </Pressable>
+      {/* ── Top-right buttons — heart + map ─────────────────────────── */}
+      <View style={{ position: 'absolute', top: 10, right: 10, gap: 8 }}>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onToggleFav();
+          }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <FontAwesome
+            name={isFav ? 'heart' : 'heart-o'}
+            size={14}
+            color={isFav ? '#ef4444' : '#9ca3af'}
+          />
+        </Pressable>
+        {onMapPress && (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onMapPress();
+            }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <FontAwesome name="map" size={13} color={Navy.DEFAULT} />
+          </Pressable>
+        )}
+      </View>
 
       {/* ── Text overlay — bottom ─────────────────────────────────────── */}
       <View

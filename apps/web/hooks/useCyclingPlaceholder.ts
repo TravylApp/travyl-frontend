@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 
-export function useCyclingPlaceholder(phrases: string[], typeSpeed = 50, pauseMs = 2000, deleteSpeed = 30) {
+export function useCyclingPlaceholder(phrases: string[], typeSpeed = 25, pauseMs = 2000, deleteSpeed = 15) {
   const [placeholder, setPlaceholder] = useState("");
   const indexRef = useRef(0);
   const charRef = useRef(0);
   const deletingRef = useRef(false);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const tick = () => {
       const current = phrases[indexRef.current % phrases.length];
 
@@ -32,7 +34,6 @@ export function useCyclingPlaceholder(phrases: string[], typeSpeed = 50, pauseMs
       }
     };
 
-    let timeoutId: ReturnType<typeof setTimeout>;
     const schedule = () => {
       const nextDelay = tick();
       timeoutId = setTimeout(schedule, nextDelay);

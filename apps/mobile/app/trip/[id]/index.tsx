@@ -8,10 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
-  MOCK_WEATHER_FORECAST,
-  MOCK_WEATHER, MOCK_NEWS, MOCK_TRIPS, formatDateRange,
-  MOCK_EXPLORE_ITEMS, NEWS_GRADIENTS,
+  formatDateRange,
 } from '@travyl/shared';
+import { MOCK_WEATHER_FORECAST, MOCK_WEATHER, MOCK_NEWS, MOCK_EXPLORE_ITEMS, NEWS_GRADIENTS } from '@travyl/shared/src/config/mockItineraryData';
+import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition } from './_layout';
 

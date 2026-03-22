@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
-  Luggage, PieChart, Heart, Car, Settings2,
+  Luggage, PieChart, Heart, Car, Settings,
   GripVertical, GripHorizontal,
   SlidersHorizontal, Check, X,
   type LucideIcon,
@@ -35,7 +35,7 @@ const ALL_TABS: TabDef[] = [
   { segment: "budget",      label: "Budget",        subtitle: "Trip expenses & spending",            icon: PieChart,          color: DEFAULT_COLOR },
   { segment: "cars",        label: "Car Rental",    subtitle: "Vehicle rentals & transport",         icon: Car,               color: DEFAULT_COLOR },
   { segment: "favorites",   label: "Favorites",     subtitle: "Saved places & activities",           icon: Heart,             color: DEFAULT_COLOR },
-  { segment: "settings",    label: "Settings",      subtitle: "Trip preferences & sharing",          icon: Settings2,         color: DEFAULT_COLOR },
+  { segment: "settings",   label: "Settings",      subtitle: "Trip preferences & theme",            icon: Settings,          color: DEFAULT_COLOR },
 ];
 
 // ─── Spine Position ─────────────────────────────────────────
@@ -321,7 +321,7 @@ export default function TripTabs({
                 backgroundColor: active
                   ? tabColor
                   : dark
-                    ? tabColor + '40'
+                    ? tabColor + '55'
                     : tabColor + '18',
                 height: 44,
                 ...(active ? { boxShadow: `0 0 8px ${tabColor}40` } : {}),
@@ -333,7 +333,7 @@ export default function TripTabs({
                   color: active
                     ? textOnBase
                     : dark
-                      ? 'rgba(255,255,255,0.5)'
+                      ? 'rgba(255,255,255,0.75)'
                       : tabColor,
                 }}
                 className="group-hover:opacity-100 transition-opacity"

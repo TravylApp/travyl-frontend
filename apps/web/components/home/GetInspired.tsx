@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion, type PanInfo } from "motion/react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
-import { MOCK_PLACES, EASE_OUT_EXPO, Navy } from "@travyl/shared";
+import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
+import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
 import type { PlaceItem } from "@travyl/shared";
 
 const INSPIRED_PLACES = MOCK_PLACES.slice(0, 8);

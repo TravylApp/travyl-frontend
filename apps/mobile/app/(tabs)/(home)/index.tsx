@@ -26,9 +26,12 @@ import {
   useHeroConfig,
   Blue,
   hexToRgba,
+  MOCK_PLACES,
 } from '@travyl/shared';
+import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
+import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import {
   HowItWorks,
   GetInspired,
@@ -238,6 +241,12 @@ export default function HomeScreen() {
     ? [heroConfig.background_image_url]
     : FALLBACK_SLIDES;
   const [heroSlide, setHeroSlide] = useState(0);
+  const [selectedPlaceIdx, setSelectedPlaceIdx] = useState(-1);
+  const setSelectedPlace = useCallback((place: PlaceItem | null) => {
+    if (!place) { setSelectedPlaceIdx(-1); return; }
+    const idx = MOCK_PLACES.findIndex((p) => p.id === place.id);
+    setSelectedPlaceIdx(idx >= 0 ? idx : -1);
+  }, []);
   useEffect(() => {
     if (heroSlides.length <= 1) return;
     const interval = setInterval(() => {
@@ -433,7 +442,7 @@ export default function HomeScreen() {
               onLayout={onButtonLayout}
               collapsable={false}
               style={{
-                backgroundColor: '#1e3a5f',
+                backgroundColor: colors.tint,
                 borderRadius: 12,
                 paddingHorizontal: 16,
                 paddingVertical: 10,
@@ -687,7 +696,7 @@ export default function HomeScreen() {
       </FadeInOnScroll>
 
       <FadeInOnScroll scrollY={scrollY}>
-        <ExplorePreview />
+        <ExplorePreview onPlacePress={setSelectedPlace} />
       </FadeInOnScroll>
 
       {/* ─── Ocean Wave + Footer ──────────────────────────────── */}
@@ -705,6 +714,18 @@ export default function HomeScreen() {
         router.push('/(tabs)/trips');
       }}
     />
+
+    {/* ─── Place Detail — Magazine Card ─────────────────────────────── */}
+    {selectedPlaceIdx >= 0 && (
+      <CardStackCarousel
+        places={MOCK_PLACES}
+        initialIndex={selectedPlaceIdx}
+        favorites={[]}
+        onToggleFav={() => {}}
+        overlay
+        onClose={() => setSelectedPlaceIdx(-1)}
+      />
+    )}
     </View>
   );
 }

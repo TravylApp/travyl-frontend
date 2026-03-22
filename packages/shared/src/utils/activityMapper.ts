@@ -101,6 +101,7 @@ export function toCalendarActivity(row: ActivityRow, tripStartDate: string): Cal
     latitude: row.latitude,
     longitude: row.longitude,
     sortOrder: row.sort_order,
+    pollResult: row.activity_data?.pollResult,
   }
 }
 
@@ -128,6 +129,7 @@ export function toActivityRow(
       location_name: cal.location,
       image_url: cal.image,
       rating: cal.rating,
+      pollResult: cal.pollResult,
     },
   }
 }

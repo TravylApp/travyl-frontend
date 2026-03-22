@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { MOCK_PLACES, Navy, groupPlacesByCollection, type PlaceItem } from '@travyl/shared';
+import { Navy, groupPlacesByCollection, type PlaceItem } from '@travyl/shared';
+import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';

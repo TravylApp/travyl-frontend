@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
-import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal } from 'react-native';
+import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
@@ -9,18 +12,24 @@ import {
   MOCK_FLIGHT_DETAILS,
   MOCK_HOTEL_DETAIL,
   MOCK_DISCOVER_ACTIVITIES,
-  MOCK_DESTINATION_COORDS,
   GLANCE_HERO_IMAGES,
   adjustBrightness,
   getActivityTypeColor,
   TIME_OF_DAY_CONFIG,
+  TOD_START_TIMES,
+  TOD_START_HOURS,
+  TOD_END_HOURS,
+  QUICK_FILL_CATEGORIES,
+  ACTIVITY_TYPE_ICONS,
+  formatHourToTime,
+  pickRandomActivity,
 } from '@travyl/shared';
 import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
 import MapView, { Marker } from 'react-native-maps';
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import PlaceDetailModal from '@/components/places/PlaceDetailModal';
+import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
 import { PageTransition, TabCtx, useTabAccent } from './_layout';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
@@ -54,20 +63,20 @@ function findDiscoverMatch(activityName: string): typeof MOCK_DISCOVER_ACTIVITIE
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
 
-// Generate mock coordinates spread around Paris center for each activity
-function mockActivityCoords(index: number, total: number): { lat: number; lng: number } {
+// Generate mock coordinates spread around destination center for each activity
+function mockActivityCoords(index: number, total: number, centerLat: number, centerLng: number): { lat: number; lng: number } {
   const spread = 0.018; // ~1.8km radius
   const angle = (index / Math.max(total, 1)) * 2 * Math.PI;
   const r = spread * (0.4 + (index % 3) * 0.3);
   return {
-    lat: MOCK_DESTINATION_COORDS.lat + r * Math.sin(angle),
-    lng: MOCK_DESTINATION_COORDS.lng + r * Math.cos(angle),
+    lat: centerLat + r * Math.sin(angle),
+    lng: centerLng + r * Math.cos(angle),
   };
 }
 
-function buildMarkers(activities: ActivityViewModel[], accent: string): MapMarker[] {
+function buildMarkers(activities: ActivityViewModel[], accent: string, centerLat: number, centerLng: number): MapMarker[] {
   return activities.map((a, i) => {
-    const coords = mockActivityCoords(i, activities.length);
+    const coords = mockActivityCoords(i, activities.length, centerLat, centerLng);
     return {
       lat: coords.lat,
       lng: coords.lng,
@@ -135,10 +144,12 @@ const ROUTE_COLORS = [
   { color: '#64748b', label: 'Slate' },
 ];
 
-function DayMap({ todayActivities, allActivities, onClose }: {
+function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng }: {
   todayActivities: ActivityViewModel[];
   allActivities: ActivityViewModel[];
   onClose: () => void;
+  centerLat: number;
+  centerLng: number;
 }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
@@ -226,14 +237,14 @@ function DayMap({ todayActivities, allActivities, onClose }: {
     [stopOrder, todayActivities],
   );
 
-  const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT), [orderedActivities, ACCENT]);
+  const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT, centerLat, centerLng), [orderedActivities, ACCENT, centerLat, centerLng]);
 
   const focusStop = useCallback((index: number) => {
     setSelectedStop((prev) => {
       if (prev === index) {
         mapRef.current?.animateToRegion({
-          latitude: MOCK_DESTINATION_COORDS.lat,
-          longitude: MOCK_DESTINATION_COORDS.lng,
+          latitude: centerLat,
+          longitude: centerLng,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }, 400);
@@ -302,8 +313,8 @@ function DayMap({ todayActivities, allActivities, onClose }: {
             ref={mapRef}
             style={{ flex: 1 }}
             initialRegion={{
-              latitude: MOCK_DESTINATION_COORDS.lat,
-              longitude: MOCK_DESTINATION_COORDS.lng,
+              latitude: centerLat,
+              longitude: centerLng,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }}
@@ -337,8 +348,8 @@ function DayMap({ todayActivities, allActivities, onClose }: {
           {/* Recenter button */}
           <Pressable
             onPress={() => mapRef.current?.animateToRegion({
-              latitude: MOCK_DESTINATION_COORDS.lat,
-              longitude: MOCK_DESTINATION_COORDS.lng,
+              latitude: centerLat,
+              longitude: centerLng,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }, 400)}
@@ -1547,134 +1558,421 @@ function ViewToggle({ mode, onToggle, accent }: { mode: 'glance' | 'detailed'; o
   );
 }
 
-// ─── Glance View: selected day card with image at bottom ───
+
+
+// ─── Add Activity Panel (self-contained state to avoid parent re-renders) ───
+function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
+  dayIndex: number; timeOfDay: string;
+  days: ItineraryDayViewModel[];
+  onAddActivity: (dayIndex: number, timeOfDay: string, name: string, category: string) => void;
+}) {
+  const colors = useThemeColors();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const results = useMemo(() => {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    return MOCK_DISCOVER_ACTIVITIES.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
+    ).slice(0, 4);
+  }, [query]);
+
+  const handleQuickFill = useCallback((filter: string | null) => {
+    const allIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
+    const item = pickRandomActivity(filter, allIds);
+    if (item) {
+      onAddActivity(dayIndex, timeOfDay, item.name, item.category || 'activity');
+    }
+    setOpen(false);
+    setQuery('');
+  }, [days, dayIndex, timeOfDay, onAddActivity]);
+
+  if (!open) {
+    return (
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={{
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+          alignSelf: 'flex-start', marginTop: 6,
+          paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12,
+          borderWidth: 1, borderColor: colors.borderLight, backgroundColor: colors.surface,
+        }}
+      >
+        <FontAwesome name="plus" size={8} color={colors.textTertiary} />
+        <Text style={{ fontSize: 9, color: colors.textTertiary, fontWeight: '500' }}>Add</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+        {QUICK_FILL_CATEGORIES.map((cat) => (
+          <Pressable key={cat.label}
+            onPress={() => handleQuickFill(cat.filter)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, backgroundColor: colors.surface }}>
+            <Text style={{ fontSize: 10 }}>{cat.icon}</Text>
+            <Text style={{ fontSize: 9, color: colors.textTertiary, fontWeight: '500' }}>{cat.label}</Text>
+          </Pressable>
+        ))}
+        <Pressable onPress={() => { setOpen(false); setQuery(''); }} hitSlop={6}
+          style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.1)' }}>
+          <FontAwesome name="times" size={9} color="#ef4444" />
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 10, height: 32, borderWidth: 1, borderColor: colors.borderLight }}>
+        <FontAwesome name="search" size={10} color={colors.textTertiary} />
+        <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Search places..." placeholderTextColor={colors.textTertiary}
+          style={{ flex: 1, fontSize: 12, color: colors.text, paddingVertical: 0 }} />
+        {query.length > 0 && (
+          <Pressable onPress={() => setQuery('')}><FontAwesome name="times-circle" size={13} color={colors.textTertiary} /></Pressable>
+        )}
+      </View>
+      {results.map((item) => (
+        <Pressable key={item.id} onPress={() => { onAddActivity(dayIndex, timeOfDay, item.name, item.category || 'activity'); setOpen(false); setQuery(''); }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 4 }}>
+          <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
+          <Text numberOfLines={1} style={{ fontSize: 12, color: colors.text, flex: 1 }}>{item.name}</Text>
+          <Text style={{ fontSize: 9, color: colors.textTertiary }}>{item.category}</Text>
+        </Pressable>
+      ))}
+      {query.length >= 2 && results.length === 0 && (
+        <Text style={{ fontSize: 11, color: colors.textTertiary, fontStyle: 'italic', paddingVertical: 6, paddingHorizontal: 4 }}>No results</Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Inline Time Picker — horizontal scrollable time slots ───
+function InlineTimePicker({ currentTime, timeOfDay, onSelect, onClose }: {
+  currentTime: string | null;
+  timeOfDay: string;
+  onSelect: (time: string) => void;
+  onClose: () => void;
+}) {
+  const colors = useThemeColors();
+  const startH = TOD_START_HOURS[timeOfDay] ?? 6;
+  const endH = TOD_END_HOURS[timeOfDay] ?? 24;
+  const slots: string[] = [];
+  for (let h = startH; h < endH; h++) {
+    slots.push(formatHourToTime(h));
+    slots.push(formatHourToTime(h + 0.5));
+  }
+
+  return (
+    <View style={{ marginTop: 4, marginBottom: 4 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 6, paddingVertical: 4 }}
+      >
+        {slots.map((time) => {
+          const isSelected = time === currentTime;
+          return (
+            <Pressable
+              key={time}
+              onPress={() => { onSelect(time); onClose(); }}
+              style={{
+                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                backgroundColor: isSelected ? '#c8a96a' : colors.surface,
+                borderWidth: 1,
+                borderColor: isSelected ? '#c8a96a' : colors.borderLight,
+              }}
+            >
+              <Text style={{
+                fontSize: 11, fontWeight: isSelected ? '700' : '500',
+                color: isSelected ? '#fff' : colors.text,
+                fontVariant: ['tabular-nums'],
+              }}>
+                {time}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── Activity Row — self-contained to avoid parent re-renders ───
+function GlanceActivityRow({ activity, dayIndex, timeOfDay, drag, isActive, onRemove, onRegenerate, onUpdateTime, onPress }: {
+  activity: ActivityViewModel;
+  dayIndex: number;
+  timeOfDay: string;
+  drag: () => void;
+  isActive: boolean;
+  onRemove: (dayIndex: number, activityId: string) => void;
+  onRegenerate: (dayIndex: number, activityId: string) => void;
+  onUpdateTime: (dayIndex: number, activityId: string, time: string) => void;
+  onPress: (activityId: string) => void;
+}) {
+  const colors = useThemeColors();
+  const [editingTime, setEditingTime] = useState(false);
+  const catColor = getActivityTypeColor(activity.category);
+  const iconName = ACTIVITY_TYPE_ICONS[activity.category] || ACTIVITY_TYPE_ICONS.default;
+
+  return (
+    <>
+      <ScaleDecorator>
+        <Pressable onPress={() => onPress(activity.id)} style={{
+          flexDirection: 'row', alignItems: 'center', gap: 6,
+          paddingVertical: 5,
+          backgroundColor: isActive ? 'rgba(200,169,106,0.12)' : 'transparent',
+          borderRadius: 8, marginHorizontal: -4, paddingHorizontal: 4,
+        }}>
+          <Pressable onLongPress={drag} delayLongPress={200} disabled={isActive} hitSlop={8}
+            style={{ opacity: isActive ? 0.7 : 0.25, paddingVertical: 6, paddingRight: 4 }}>
+            <View style={{ gap: 2 }}>
+              {[0, 1, 2].map((r) => (
+                <View key={r} style={{ flexDirection: 'row', gap: 2 }}>
+                  <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isActive ? '#c8a96a' : colors.textSecondary }} />
+                  <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isActive ? '#c8a96a' : colors.textSecondary }} />
+                </View>
+              ))}
+            </View>
+          </Pressable>
+          <FontAwesome name={iconName as any} size={10} color={catColor.primary} />
+          <Text numberOfLines={1} style={{ fontSize: 13, color: colors.text, flex: 1, fontWeight: '500' }}>
+            {activity.name}
+          </Text>
+          <Pressable onPress={() => setEditingTime(!editingTime)} hitSlop={4}
+            style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: editingTime ? 'rgba(200,169,106,0.15)' : 'transparent' }}>
+            <Text style={{ fontSize: 9, fontVariant: ['tabular-nums'], color: editingTime ? '#c8a96a' : colors.textTertiary, fontWeight: editingTime ? '600' : '400' }}>
+              {activity.startTime || 'Set time'}
+            </Text>
+          </Pressable>
+          <Pressable onPress={() => onRegenerate(dayIndex, activity.id)} hitSlop={6}
+            style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(200,169,106,0.1)' }}>
+            <FontAwesome name="refresh" size={8} color="#c8a96a" />
+          </Pressable>
+          <Pressable onPress={() => onRemove(dayIndex, activity.id)} hitSlop={6}
+            style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.1)' }}>
+            <FontAwesome name="times" size={9} color="#ef4444" />
+          </Pressable>
+        </Pressable>
+      </ScaleDecorator>
+      {editingTime && (
+        <InlineTimePicker currentTime={activity.startTime} timeOfDay={timeOfDay}
+          onSelect={(time) => onUpdateTime(dayIndex, activity.id, time)} onClose={() => setEditingTime(false)} />
+      )}
+    </>
+  );
+}
+
+// ─── Glance View: swipeable day cards with add/remove/regenerate ───
 function GlancePager({
-  days, selectedDayIndex, arrivalFlightNumber, returnFlightNumber,
+  days, selectedDayIndex, onSelectDay, arrivalFlightNumber, returnFlightNumber,
+  onRemoveActivity, onRegenerateActivity, onAddActivity, onReorderDay, onUpdateTime, onActivityPress,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
+  onSelectDay: (i: number) => void;
   arrivalFlightNumber: string | null;
   returnFlightNumber: string | null;
+  onRemoveActivity: (dayIndex: number, activityId: string) => void;
+  onRegenerateActivity: (dayIndex: number, activityId: string) => void;
+  onAddActivity: (dayIndex: number, timeOfDay: string, name: string, category: string) => void;
+  onReorderDay: (dayIndex: number, reorderedActivities: ActivityViewModel[]) => void;
+  onUpdateTime: (dayIndex: number, activityId: string, newTime: string) => void;
+  onActivityPress: (activityId: string) => void;
 }) {
   const colors = useThemeColors();
-  const day = days[selectedDayIndex];
-  if (!day) return null;
+  const { width: screenW } = useWindowDimensions();
+  const flatListRef = useRef<FlatList>(null);
+  const isScrolling = useRef(false);
 
-  const heroImg = GLANCE_HERO_IMAGES[selectedDayIndex % GLANCE_HERO_IMAGES.length];
-  const isFirstDay = selectedDayIndex === 0;
-  const isLastDay = selectedDayIndex === days.length - 1;
+  // Scroll to selected day when tapped from DaySelector
+  useEffect(() => {
+    if (!isScrolling.current) {
+      flatListRef.current?.scrollToIndex({ index: selectedDayIndex, animated: true });
+    }
+  }, [selectedDayIndex]);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index != null) {
+      onSelectDay(viewableItems[0].index);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+
+  const renderDay = useCallback(({ item: day, index: i }: { item: ItineraryDayViewModel; index: number }) => {
+    const isFirstDay = i === 0;
+    const isLastDay = i === days.length - 1;
+
+    // Flat list of real activities only — no placeholders
+    const allTods: Array<'morning' | 'afternoon' | 'evening' | 'latenight'> = ['morning', 'afternoon', 'evening', 'latenight'];
+    const activeTods = new Set(day.timeGroups.map((g) => g.timeOfDay));
+    const flatItems = day.timeGroups.flatMap((g) => g.activities);
+
+    const headerFlags = flatItems.map((a, idx) => {
+      const prev = idx > 0 ? flatItems[idx - 1] : null;
+      return a.timeOfDay !== prev?.timeOfDay;
+    });
+    const lastInGroupFlags = flatItems.map((a, idx) => {
+      const next = idx < flatItems.length - 1 ? flatItems[idx + 1] : null;
+      return a.timeOfDay !== next?.timeOfDay;
+    });
+
+    // Empty groups — shown statically in header/footer
+    const emptyTodsBefore: string[] = [];
+    const emptyTodsAfter: string[] = [];
+    const firstActiveTodIdx = allTods.findIndex((t) => activeTods.has(t));
+    const lastActiveTodIdx = allTods.length - 1 - [...allTods].reverse().findIndex((t) => activeTods.has(t));
+    for (let ti = 0; ti < allTods.length; ti++) {
+      if (!activeTods.has(allTods[ti])) {
+        if (firstActiveTodIdx < 0 || ti < firstActiveTodIdx) emptyTodsBefore.push(allTods[ti]);
+        else if (ti > lastActiveTodIdx) emptyTodsAfter.push(allTods[ti]);
+      }
+    }
+
+    const listHeader = (
+      <View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 14, marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <View>
+              <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 2 }}>
+                {day.dateLabel}
+              </Text>
+              <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text, fontFamily: 'Lustria-Regular' }}>
+                {day.dayLabel}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+              {flatItems.length} {flatItems.length === 1 ? 'activity' : 'activities'}
+            </Text>
+          </View>
+        </View>
+        {isFirstDay && arrivalFlightNumber && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 8, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+            <FontAwesome name="plane" size={11} color="#4ade80" />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>Arrive — {arrivalFlightNumber}</Text>
+          </View>
+        )}
+        {/* Empty groups before first populated group */}
+        {emptyTodsBefore.map((tod) => (
+          <View key={tod} style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+            <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
+              {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
+            </Text>
+            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
+          </View>
+        ))}
+      </View>
+    );
+
+    const listFooter = (
+      <View>
+        {isLastDay && returnFlightNumber && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, paddingHorizontal: 20, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+            <FontAwesome name="plane" size={11} color="#60a5fa" style={{ transform: [{ rotate: '180deg' }] }} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>Depart — {returnFlightNumber}</Text>
+          </View>
+        )}
+        {/* Empty groups after last populated group */}
+        {emptyTodsAfter.map((tod) => (
+          <View key={tod} style={{ paddingHorizontal: 20, marginTop: 8 }}>
+            <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
+              {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
+            </Text>
+            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
+          </View>
+        ))}
+      </View>
+    );
+
+    return (
+      <GestureHandlerRootView style={{ width: screenW - 28, flex: 1 }}>
+        <DraggableFlatList
+          data={flatItems}
+          keyExtractor={(a) => a.id}
+          activationDistance={10}
+          containerStyle={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={listHeader}
+          ListFooterComponent={listFooter}
+          onDragEnd={({ data: reordered }) => {
+            onReorderDay(i, reordered);
+          }}
+          renderItem={({ item: activity, getIndex, drag, isActive }: RenderItemParams<ActivityViewModel>) => {
+            const currentIdx = getIndex() ?? 0;
+            const currentTod = activity.timeOfDay;
+            const showHeader = headerFlags[currentIdx] ?? false;
+            const config = TIME_OF_DAY_CONFIG[currentTod as keyof typeof TIME_OF_DAY_CONFIG];
+            const isLastInGroup = lastInGroupFlags[currentIdx] ?? true;
+            const emptyGapTods = isLastInGroup ? (() => {
+              const todIdx = allTods.indexOf(currentTod as typeof allTods[number]);
+              const nextItem = flatItems[currentIdx + 1];
+              const nextTodIdx = nextItem ? allTods.indexOf(nextItem.timeOfDay as typeof allTods[number]) : -1;
+              if (nextTodIdx <= todIdx + 1) return [];
+              return allTods.slice(todIdx + 1, nextTodIdx).filter((t) => !activeTods.has(t));
+            })() : [];
+
+            return (
+              <View style={{ paddingHorizontal: 20 }}>
+                {showHeader && !isActive && (
+                  <Text style={{
+                    fontSize: 8, fontWeight: '700', letterSpacing: 2,
+                    textTransform: 'uppercase', color: '#c8a96a',
+                    marginBottom: 4, marginTop: currentIdx > 0 ? 10 : 0, opacity: 0.7,
+                  }}>
+                    {config.label}
+                  </Text>
+                )}
+                <GlanceActivityRow
+                  activity={activity}
+                  dayIndex={i}
+                  timeOfDay={currentTod}
+                  drag={drag}
+                  isActive={isActive}
+                  onRemove={onRemoveActivity}
+                  onRegenerate={onRegenerateActivity}
+                  onUpdateTime={onUpdateTime}
+                  onPress={onActivityPress}
+                />
+                {isLastInGroup && (
+                  <AddActivityPanel dayIndex={i} timeOfDay={currentTod} days={days} onAddActivity={onAddActivity} />
+                )}
+                {emptyGapTods.map((tod) => (
+                  <View key={tod} style={{ marginTop: 10 }}>
+                    <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
+                      {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
+                    </Text>
+                    <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
+                  </View>
+                ))}
+              </View>
+            );
+          }}
+        />
+      </GestureHandlerRootView>
+    );
+  }, [days, colors, screenW, arrivalFlightNumber, returnFlightNumber, onRemoveActivity, onRegenerateActivity, onReorderDay, onAddActivity, onUpdateTime, onActivityPress]);
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ paddingBottom: 24 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Day header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 14, marginBottom: 10 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <View>
-            <Text style={{
-              fontSize: 9, fontWeight: '700', letterSpacing: 2.5,
-              textTransform: 'uppercase', color: '#c8a96a', marginBottom: 2,
-            }}>
-              {day.dateLabel}
-            </Text>
-            <Text style={{
-              fontSize: 24, fontWeight: '700', color: colors.text, fontFamily: 'Lustria-Regular',
-            }}>
-              {day.dayLabel}
-            </Text>
-          </View>
-          <Text style={{ fontSize: 11, color: colors.textSecondary }}>
-            {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Activity timeline */}
-      <View style={{ paddingHorizontal: 20 }}>
-        {isFirstDay && arrivalFlightNumber && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8,
-            marginBottom: 8, paddingBottom: 8,
-            borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-          }}>
-            <FontAwesome name="plane" size={11} color="#4ade80" />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
-              Arrive — {arrivalFlightNumber}
-            </Text>
-          </View>
-        )}
-
-        {day.timeGroups.map((group, gi) => {
-          const config = TIME_OF_DAY_CONFIG[group.timeOfDay as keyof typeof TIME_OF_DAY_CONFIG];
-          return (
-            <View key={group.timeOfDay} style={{ marginBottom: gi < day.timeGroups.length - 1 ? 10 : 0 }}>
-              <Text style={{
-                fontSize: 8, fontWeight: '700', letterSpacing: 2,
-                textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.7,
-              }}>
-                {config.label}
-              </Text>
-              {group.activities.map((activity) => {
-                const catColor = getActivityTypeColor(activity.category);
-                return (
-                  <View key={activity.id} style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 8,
-                    paddingVertical: 4,
-                  }}>
-                    <Text style={{
-                      fontSize: 10, color: colors.textTertiary, width: 52,
-                      fontVariant: ['tabular-nums'],
-                    }}>
-                      {activity.startTime || '—'}
-                    </Text>
-                    <View style={{
-                      width: 5, height: 5, borderRadius: 2.5,
-                      backgroundColor: catColor.primary,
-                    }} />
-                    <Text numberOfLines={1} style={{
-                      fontSize: 13, color: colors.text, flex: 1, fontWeight: '500',
-                    }}>
-                      {activity.name}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          );
-        })}
-
-        {isLastDay && returnFlightNumber && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8,
-            marginTop: 8, paddingTop: 8,
-            borderTopWidth: 1, borderTopColor: colors.borderLight,
-          }}>
-            <FontAwesome name="plane" size={11} color="#60a5fa" style={{ transform: [{ rotate: '180deg' }] }} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
-              Depart — {returnFlightNumber}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Destination image card */}
-      <View style={{ marginTop: 16, marginHorizontal: 16, borderRadius: 14, overflow: 'hidden', height: 180 }}>
-        <Image source={{ uri: heroImg }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.5)']}
-          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' }}
-        />
-        <View style={{ position: 'absolute', bottom: 12, left: 14 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', fontFamily: 'Lustria-Regular' }}>
-            {day.dayLabel}
-          </Text>
-          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{day.dateLabel}</Text>
-        </View>
-      </View>
-    </ScrollView>
+    <FlatList
+      ref={flatListRef}
+      data={days}
+      keyExtractor={(d) => d.id}
+      renderItem={renderDay}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={screenW - 28}
+      decelerationRate="fast"
+      disableIntervalMomentum
+      onScrollBeginDrag={() => { isScrolling.current = true; }}
+      onMomentumScrollEnd={() => { isScrolling.current = false; }}
+      onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={viewabilityConfig}
+      contentContainerStyle={{ gap: 0 }}
+      getItemLayout={(_, index) => ({
+        length: screenW - 28,
+        offset: (screenW - 28) * index,
+        index,
+      })}
+    />
   );
 }
 
@@ -1682,9 +1980,12 @@ export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
+  const { trip, days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
-  const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides } = useContext(TabCtx);
+  const centerLat = trip?.trip_context?.lat ?? 0;
+  const centerLng = trip?.trip_context?.lng ?? 0;
+  const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
+  const isFocused = useIsFocused();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -1692,7 +1993,190 @@ export default function ItineraryScreen() {
   const [addSearch, setAddSearch] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const [openPlace, setOpenPlace] = useState<import('@travyl/shared').PlaceItem | null>(null);
   const [viewMode, setViewMode] = useState<'glance' | 'detailed'>('glance');
+
+  // ─── Local mutable copy of days for glance add/remove/regenerate ───
+  const [glanceDays, setGlanceDays] = useState<ItineraryDayViewModel[]>([]);
+  const glanceSynced = useRef(false);
+  useEffect(() => {
+    if (days.length > 0 && !glanceSynced.current) {
+      setGlanceDays(days.map((d) => ({
+        ...d,
+        timeGroups: d.timeGroups.map((g) => ({ ...g, activities: [...g.activities] })),
+      })));
+      glanceSynced.current = true;
+    }
+  }, [days]);
+  const effectiveDays = glanceDays.length > 0 ? glanceDays : days;
+
+  const removeGlanceActivity = useCallback((dayIndex: number, activityId: string) => {
+    setGlanceDays((prev) => prev.map((day, di) => {
+      if (di !== dayIndex) return day;
+      return {
+        ...day,
+        timeGroups: day.timeGroups
+          .map((g) => ({ ...g, activities: g.activities.filter((a) => a.id !== activityId) }))
+          .filter((g) => g.activities.length > 0),
+        activityCount: day.activityCount - 1,
+      };
+    }));
+  }, []);
+
+  const regenerateGlanceActivity = useCallback((dayIndex: number, activityId: string) => {
+    setGlanceDays((prev) => {
+      const allIds = prev.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
+      const current = prev[dayIndex]?.timeGroups.flatMap((g) => g.activities).find((a) => a.id === activityId);
+      if (!current) return prev;
+      const replacement = pickRandomActivity(current.category, allIds);
+      if (!replacement) return prev;
+      return prev.map((day, di) => {
+        if (di !== dayIndex) return day;
+        return {
+          ...day,
+          timeGroups: day.timeGroups.map((g) => ({
+            ...g,
+            activities: g.activities.map((a) => {
+              if (a.id !== activityId) return a;
+              return { ...a, id: `regen-${Date.now()}`, name: replacement.name, category: replacement.category || a.category };
+            }),
+          })),
+        };
+      });
+    });
+  }, []);
+
+  const addGlanceActivity = useCallback((dayIndex: number, timeOfDay: string, name: string, category: string) => {
+    const newAct: ActivityViewModel = {
+      id: `add-${Date.now()}`,
+      name,
+      category,
+      locationName: null,
+      startTime: TOD_START_TIMES[timeOfDay] ?? '12:00 PM',
+      endTime: formatHourToTime((TOD_START_HOURS[timeOfDay] ?? 12) + 1.5),
+      timeDisplay: `${TOD_START_TIMES[timeOfDay] ?? '12:00 PM'} – ${formatHourToTime((TOD_START_HOURS[timeOfDay] ?? 12) + 1.5)}`,
+      costDisplay: null,
+      bookingUrl: null,
+      notes: null,
+      source: 'agent' as const,
+      timeOfDay: timeOfDay as ActivityViewModel['timeOfDay'],
+    };
+    setGlanceDays((prev) => prev.map((day, di) => {
+      if (di !== dayIndex) return day;
+      const hasGroup = day.timeGroups.some((g) => g.timeOfDay === timeOfDay);
+      return {
+        ...day,
+        timeGroups: hasGroup
+          ? day.timeGroups.map((g) => g.timeOfDay === timeOfDay ? { ...g, activities: [...g.activities, newAct] } : g)
+          : [...day.timeGroups, { timeOfDay: timeOfDay as ActivityViewModel['timeOfDay'], activities: [newAct] }],
+        activityCount: day.activityCount + 1,
+      };
+    }));
+  }, []);
+
+  const reorderGlanceDay = useCallback((dayIndex: number, reorderedActivities: ActivityViewModel[]) => {
+    setGlanceDays((prev) => {
+      const day = prev[dayIndex];
+      if (!day) return prev;
+
+      // Build original index map (O(n) instead of O(n²) findIndex)
+      const originalFlat = day.timeGroups.flatMap((g) => g.activities);
+      const origPosMap = new Map<string, number>();
+      originalFlat.forEach((a, idx) => origPosMap.set(a.id, idx));
+
+      // Detect which item was moved — find candidates with max position jump,
+      // then pick the one that's "out of place" (surrounded by a different group)
+      let movedNewIdx = -1;
+      let maxJump = 0;
+      const len = reorderedActivities.length;
+      for (let j = 0; j < len; j++) {
+        const jump = Math.abs(j - (origPosMap.get(reorderedActivities[j].id) ?? j));
+        if (jump > maxJump) { maxJump = jump; movedNewIdx = j; }
+      }
+
+      // When there are ties (e.g., last item in group), find the one surrounded by a different group
+      if (maxJump > 0) {
+        const candidates: number[] = [];
+        for (let j = 0; j < len; j++) {
+          const jump = Math.abs(j - (origPosMap.get(reorderedActivities[j].id) ?? j));
+          if (jump === maxJump) candidates.push(j);
+        }
+        if (candidates.length > 1) {
+          // Pick the candidate whose original tod differs from BOTH new neighbors
+          for (const idx of candidates) {
+            const a = reorderedActivities[idx];
+            const prevTod = idx > 0 ? reorderedActivities[idx - 1].timeOfDay : null;
+            const nextTod = idx < len - 1 ? reorderedActivities[idx + 1].timeOfDay : null;
+            const outOfPlace = (prevTod && prevTod !== a.timeOfDay) && (nextTod && nextTod !== a.timeOfDay);
+            // Also match if at edge and single neighbor differs
+            const edgeOutOfPlace = (!prevTod && nextTod && nextTod !== a.timeOfDay) || (!nextTod && prevTod && prevTod !== a.timeOfDay);
+            if (outOfPlace || edgeOutOfPlace) { movedNewIdx = idx; break; }
+          }
+        }
+      }
+
+      // Assign the moved item the group of its nearest neighbor
+      let movedTod: string | null = null;
+      if (maxJump > 0 && movedNewIdx >= 0) {
+        const movedItem = reorderedActivities[movedNewIdx];
+        const neighbor = reorderedActivities[movedNewIdx > 0 ? movedNewIdx - 1 : movedNewIdx + 1];
+        if (neighbor && neighbor.timeOfDay !== movedItem.timeOfDay) {
+          movedTod = neighbor.timeOfDay;
+        }
+      }
+
+      // Rebuild groups — reuse original activity objects where possible
+      const groupOrder = day.timeGroups.map((g) => g.timeOfDay);
+      const groupMap = new Map<string, ActivityViewModel[]>();
+      for (const tod of groupOrder) groupMap.set(tod, []);
+      for (let j = 0; j < reorderedActivities.length; j++) {
+        const a = reorderedActivities[j];
+        const tod = (j === movedNewIdx && movedTod) ? movedTod : a.timeOfDay;
+        const list = groupMap.get(tod);
+        if (list) list.push(tod !== a.timeOfDay ? { ...a, timeOfDay: tod as ActivityViewModel['timeOfDay'] } : a);
+      }
+
+      // Rebuild with updated times
+      const next = [...prev];
+      next[dayIndex] = {
+        ...day,
+        timeGroups: groupOrder
+          .filter((tod) => (groupMap.get(tod)?.length ?? 0) > 0)
+          .map((tod) => {
+            const acts = groupMap.get(tod)!;
+            const startH = TOD_START_HOURS[tod] ?? 9;
+            const endH = TOD_END_HOURS[tod] ?? startH + 4;
+            const interval = acts.length > 1 ? (endH - startH) / acts.length : 1.5;
+            return {
+              timeOfDay: tod as ActivityViewModel['timeOfDay'],
+              activities: acts.map((a, ai) => {
+                const time = formatHourToTime(startH + ai * interval);
+                return a.startTime === time ? a : { ...a, startTime: time };
+              }),
+            };
+          }),
+      };
+      return next;
+    });
+  }, []);
+
+  const updateActivityTime = useCallback((dayIndex: number, activityId: string, newTime: string) => {
+    setGlanceDays((prev) => {
+      const next = [...prev];
+      const day = next[dayIndex];
+      if (!day) return prev;
+      next[dayIndex] = {
+        ...day,
+        timeGroups: day.timeGroups.map((g) => ({
+          ...g,
+          activities: g.activities.map((a) =>
+            a.id === activityId ? { ...a, startTime: newTime } : a,
+          ),
+        })),
+      };
+      return next;
+    });
+  }, []);
 
   // (Map is now a modal overlay — no need to collapse sections)
 
@@ -1756,42 +2240,83 @@ export default function ItineraryScreen() {
     setAddCategory('All');
   }, []);
 
-  // Build activity → image URL map by keyword-matching to DiscoverItem images
+  // Shared lookup: call findDiscoverMatch once per unique activity across all days
+  const discoverMatchMap = useMemo(() => {
+    const map = new Map<string, typeof MOCK_DISCOVER_ACTIVITIES[number]>();
+    for (const day of effectiveDays) {
+      for (const group of day.timeGroups) {
+        for (const activity of group.activities) {
+          if (!map.has(activity.id)) {
+            const match = findDiscoverMatch(activity.name);
+            if (match) map.set(activity.id, match);
+          }
+        }
+      }
+    }
+    return map;
+  }, [effectiveDays]);
+
   const activityImages = useMemo(() => {
     if (!selectedDay) return {};
     const map: Record<string, string> = {};
-    // Collect all discover images as fallback pool
     const allImages = MOCK_DISCOVER_ACTIVITIES.flatMap((d) => d.images ?? []).filter(Boolean);
     for (const group of selectedDay.timeGroups) {
       for (const activity of group.activities) {
-        const match = findDiscoverMatch(activity.name);
+        const match = discoverMatchMap.get(activity.id);
         if (match?.images?.[0]) {
           map[activity.id] = match.images[0];
         } else if (allImages.length > 0) {
-          // Fallback: assign a discover image based on activity index for variety
           const idx = Object.keys(map).length % allImages.length;
           map[activity.id] = allImages[idx];
         }
       }
     }
     return map;
-  }, [selectedDay]);
+  }, [selectedDay, discoverMatchMap]);
+
+  const dayHeroImages = useMemo(() => {
+    const allImages = MOCK_DISCOVER_ACTIVITIES.flatMap((d) => d.images ?? []).filter(Boolean);
+    return effectiveDays.map((day, dayIdx) => {
+      for (const group of day.timeGroups) {
+        for (const activity of group.activities) {
+          const match = discoverMatchMap.get(activity.id);
+          if (match?.images?.[0]) return match.images[0];
+        }
+      }
+      return allImages.length > 0 ? allImages[dayIdx % allImages.length] : null;
+    });
+  }, [effectiveDays, discoverMatchMap]);
+
+  // Update hero image when selected day changes — clear when tab loses focus
+  useEffect(() => {
+    if (!isFocused) {
+      setHeroImageOverride(null);
+      return;
+    }
+    // Glance mode: use curated per-day hero images; detailed: use activity-matched images
+    const img = viewMode === 'glance'
+      ? GLANCE_HERO_IMAGES[selectedDayIndex % GLANCE_HERO_IMAGES.length]
+      : dayHeroImages[selectedDayIndex];
+    if (img) setHeroImageOverride(img);
+    return () => setHeroImageOverride(null);
+  }, [selectedDayIndex, dayHeroImages, isFocused, viewMode]);
 
   // Build PlaceItem for tapped activity — try matching DiscoverItem first, fall back to ActivityViewModel
-  const selectedPlace = useMemo(() => {
-    if (!selectedActivityId || !selectedDay) return null;
-    const allActivities = selectedDay.timeGroups.flatMap((g) => g.activities);
+  // Capture place data once when activity is selected — stable reference for the modal
+  useEffect(() => {
+    if (!selectedActivityId) { setOpenPlace(null); return; }
+    const currentDay = effectiveDays[selectedDayIndex] ?? selectedDay;
+    if (!currentDay) { setOpenPlace(null); return; }
+    const allActivities = currentDay.timeGroups.flatMap((g) => g.activities);
     const activity = allActivities.find((a) => a.id === selectedActivityId);
-    if (!activity) return null;
+    if (!activity) { setOpenPlace(null); return; }
 
-    // Try to find a matching DiscoverItem (keyword match)
-    const discoverMatch = findDiscoverMatch(activity.name);
-    if (discoverMatch) return discoverItemToPlaceItem(discoverMatch);
+    const discoverMatch = discoverMatchMap.get(activity.id);
+    if (discoverMatch) { setOpenPlace(discoverItemToPlaceItem(discoverMatch)); return; }
 
-    // Fallback: build a minimal PlaceItem from the ActivityViewModel
     const idx = allActivities.indexOf(activity);
-    const coords = mockActivityCoords(idx, allActivities.length);
-    return {
+    const coords = mockActivityCoords(idx, allActivities.length, centerLat, centerLng);
+    setOpenPlace({
       id: activity.id,
       name: activity.name,
       image: '',
@@ -1805,8 +2330,8 @@ export default function ItineraryScreen() {
       duration: activity.timeDisplay ?? undefined,
       admissionFee: activity.costDisplay ?? undefined,
       website: activity.bookingUrl ?? undefined,
-    };
-  }, [selectedActivityId, selectedDay]);
+    });
+  }, [selectedActivityId]); // Only run when selection changes, not on every data mutation
 
   const allPlacesFromDiscover = useMemo(
     () => MOCK_DISCOVER_ACTIVITIES.map(discoverItemToPlaceItem),
@@ -1886,13 +2411,20 @@ export default function ItineraryScreen() {
         <MobileCalendarView days={days} selectedDayIndex={selectedDayIndex} />
       ) : viewMode === 'glance' ? (
         <GlancePager
-          days={days}
+          days={effectiveDays}
           selectedDayIndex={selectedDayIndex}
+          onSelectDay={setSelectedDayIndex}
           arrivalFlightNumber={arrivalFlightNumber}
           returnFlightNumber={returnFlightNumber}
+          onRemoveActivity={removeGlanceActivity}
+          onRegenerateActivity={regenerateGlanceActivity}
+          onAddActivity={addGlanceActivity}
+          onReorderDay={reorderGlanceDay}
+          onUpdateTime={updateActivityTime}
+          onActivityPress={setSelectedActivityId}
         />
       ) : (
-      <View style={{ flex: 1, flexDirection: 'column' }}>
+      <View style={{ flex: 1 }}>
         {/* Itinerary content */}
         <ScrollView
           style={{ flex: 1 }}
@@ -2002,17 +2534,20 @@ export default function ItineraryScreen() {
           todayActivities={selectedDay.timeGroups.flatMap((g) => g.activities ?? [])}
           allActivities={days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities ?? []))}
           onClose={() => setMapOpen(false)}
+          centerLat={centerLat}
+          centerLng={centerLng}
         />
       )}
 
-      {/* Activity detail modal — map + card like Places page */}
-      {selectedPlace && (
-        <PlaceDetailModal
-          place={selectedPlace}
-          allPlaces={allPlacesFromDiscover}
-          onClose={() => setSelectedActivityId(null)}
+      {/* Activity detail — magazine card overlay */}
+      {openPlace && (
+        <CardStackCarousel
+          places={allPlacesFromDiscover}
+          initialIndex={Math.max(0, allPlacesFromDiscover.findIndex((p) => p.id === openPlace.id))}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          overlay
+          onClose={() => setSelectedActivityId(null)}
         />
       )}
     </PageTransition>

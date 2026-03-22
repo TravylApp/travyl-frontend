@@ -8,7 +8,9 @@ import {
   buildFlightViewModel,
   buildHotelViewModel,
 } from '../viewmodels/itineraryViewModel';
+import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { MOCK_DAYS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_TRIP, MOCK_BUDGET } from '../config/mockItineraryData';
+import { USE_MOCK_DATA } from '../config/featureFlags';
 
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -32,20 +34,31 @@ export function useItineraryScreen(tripId: string | undefined) {
     [hotelsQuery.data],
   );
 
+  const budgetSummary = useMemo(
+    () => buildBudgetSummary(
+      daysQuery.data ?? [],
+      flightsQuery.data ?? [],
+      hotelsQuery.data ?? [],
+      tripQuery.data?.currency ?? 'USD',
+    ),
+    [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency],
+  );
+
   // Treat errored queries as done loading (don't spin forever)
   const isStillLoading =
     (tripQuery.isLoading && !tripQuery.error) ||
     (daysQuery.isLoading && !daysQuery.error);
 
-  // Fall back to mock data when real data is empty (demo mode)
+  // Fall back to mock data when real data is empty and USE_MOCK_DATA is enabled
+  // To disable mock fallbacks: set USE_MOCK_DATA = false in config/featureFlags.ts
   const hasRealData = dayViewModels.length > 0 || flightViewModels.length > 0 || hotelViewModels.length > 0;
-  const useMock = !isStillLoading && !hasRealData;
+  const useMock = USE_MOCK_DATA && !isStillLoading && !hasRealData;
 
   const days = useMock ? MOCK_DAYS : dayViewModels;
   const flights = useMock ? MOCK_FLIGHTS : flightViewModels;
   const hotels = useMock ? MOCK_HOTELS : hotelViewModels;
   const trip = useMock ? MOCK_TRIP : (tripQuery.data ?? null);
-  const budget = MOCK_BUDGET;
+  const budget = useMock ? MOCK_BUDGET : budgetSummary;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();

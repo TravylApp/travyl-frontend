@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, Dimensions } from 'react-native';
-import { MOCK_PLACES, Gray } from '@travyl/shared';
+import { Gray } from '@travyl/shared';
+import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

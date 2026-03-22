@@ -106,7 +106,7 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
               sizes="(max-width: 640px) 100vw, (max-width: 900px) 50vw, 33vw"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />
+            <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
 
@@ -247,7 +247,7 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
             {item.isBooked && onRemoveFromItinerary ? (
               <button
                 onClick={(e) => { e.stopPropagation(); onRemoveFromItinerary(item.id); }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
               >
                 <MinusCircle size={10} />
                 Remove
