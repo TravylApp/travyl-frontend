@@ -44,6 +44,7 @@ import type { CollaboratorRole } from '@travyl/shared'
 import { TripSettingsLayout } from '../trip/settings/TripSettingsLayout'
 import { TripThemeProvider } from '../trip/TripThemeContext'
 import { BudgetPanel } from '../budget/BudgetPanel'
+import { PackingPanel } from '@/components/packing/PackingPanel'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -607,6 +608,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         ) : activeNav === 'budget' ? (
           <div className="flex-1 overflow-auto p-6">
             <BudgetPanel tripId={tripId} />
+          </div>
+        ) : activeNav === 'packing' ? (
+          <div className="flex-1 overflow-auto">
+            <PackingPanel tripId={tripId} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">

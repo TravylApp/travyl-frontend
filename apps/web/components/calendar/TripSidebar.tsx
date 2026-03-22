@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { motion } from 'motion/react'
-import { Map, Calendar, PageEdit, Wallet, Settings } from 'iconoir-react'
+import { Map, Calendar, PageEdit, Wallet, Settings, Suitcase } from 'iconoir-react'
 import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_EXPANDED_WIDTH,
@@ -34,6 +34,11 @@ const NAV_ITEMS: NavItem[] = [
     id: 'budget',
     label: 'Budget',
     icon: <Wallet width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+  },
+  {
+    id: 'packing',
+    label: 'Packing',
+    icon: <Suitcase width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
   {
     id: 'settings',
