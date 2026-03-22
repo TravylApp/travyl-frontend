@@ -3,23 +3,30 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { NavArrowDown, NavArrowRight } from 'iconoir-react'
-import type { DbPackingItem, PackingCategory as PackingCategoryType } from '@travyl/shared'
+import type { DbPackingItem, PackingCategory as PackingCategoryType, PackingSuggestion } from '@travyl/shared'
 import { CATEGORY_LABELS } from './utils'
 import { PackingItem } from './PackingItem'
+import { SuggestionChip } from './SuggestionChip'
 
 interface PackingCategoryProps {
   category: PackingCategoryType
   items: DbPackingItem[]
+  suggestions?: PackingSuggestion[]
   onToggle: (id: string) => void
   onRemove: (id: string) => void
+  onAcceptSuggestion?: (id: string) => void
+  onDismissSuggestion?: (id: string) => void
   defaultExpanded?: boolean
 }
 
 export function PackingCategory({
   category,
   items,
+  suggestions = [],
   onToggle,
   onRemove,
+  onAcceptSuggestion,
+  onDismissSuggestion,
   defaultExpanded = true,
 }: PackingCategoryProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -76,6 +83,14 @@ export function PackingCategory({
                     item={item}
                     onToggle={onToggle}
                     onRemove={onRemove}
+                  />
+                ))}
+                {suggestions.map((suggestion) => (
+                  <SuggestionChip
+                    key={`suggestion-${suggestion.id}`}
+                    suggestion={suggestion}
+                    onAccept={onAcceptSuggestion ?? (() => {})}
+                    onDismiss={onDismissSuggestion ?? (() => {})}
                   />
                 ))}
               </AnimatePresence>

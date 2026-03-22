@@ -319,6 +319,17 @@ export interface CatalogItem {
   tags: string[]
 }
 
+export interface PackingSuggestion {
+  id: string
+  trip_id: string
+  user_id: string
+  name: string
+  category: PackingCategory
+  reason: string
+  status: 'pending' | 'accepted' | 'dismissed'
+  created_at: string
+}
+
 export interface WeatherInfo {
   destination: string;
   high: number;

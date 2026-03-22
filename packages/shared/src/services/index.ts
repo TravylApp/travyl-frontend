@@ -43,4 +43,7 @@ export {
   insertPackingItem,
   updatePackingItemPacked,
   deletePackingItem,
+  fetchPackingSuggestions,
+  updateSuggestionStatus,
+  dismissAllSuggestions,
 } from './packingService';
