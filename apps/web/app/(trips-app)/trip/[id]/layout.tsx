@@ -1,8 +1,13 @@
-export default function TripLayout({
+import TripLayoutInner from "./trip-layout-inner";
+
+export default async function TripLayout({
   children,
+  params,
 }: {
-  children: React.ReactNode
-  params: Promise<{ id: string }>
+  children: React.ReactNode;
+  params: Promise<{ id: string }>;
 }) {
-  return <>{children}</>
+  const { id } = await params;
+
+  return <TripLayoutInner tripId={id}>{children}</TripLayoutInner>;
 }

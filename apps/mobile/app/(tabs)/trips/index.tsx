@@ -19,9 +19,11 @@ import {
   useTrips,
   Navy,
   formatDateRange,
-  type MockTripCard,
 } from '@travyl/shared';
+import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
+import type { MockTripCard } from '@travyl/shared/src/config/mockTripsData';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -216,21 +218,21 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
               {trip.destination}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <FontAwesome name="calendar" size={10} color="rgba(255,255,255,0.6)" />
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap', overflow: 'hidden', maxHeight: 18 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="calendar" size={9} color="rgba(255,255,255,0.6)" />
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }} numberOfLines={1}>
                 {formatDateRange(trip.start_date, trip.end_date)}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <FontAwesome name="users" size={10} color="rgba(255,255,255,0.6)" />
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{trip.travelers}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="users" size={9} color="rgba(255,255,255,0.6)" />
+              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }}>{trip.travelers}</Text>
             </View>
             {trip.budget ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <FontAwesome name="pie-chart" size={10} color="rgba(255,255,255,0.6)" />
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{fmtBudget(trip.budget, trip.currency)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <FontAwesome name="pie-chart" size={9} color="rgba(255,255,255,0.6)" />
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }} numberOfLines={1}>{fmtBudget(trip.budget, trip.currency)}</Text>
               </View>
             ) : null}
           </View>
@@ -276,7 +278,7 @@ function FeedCard({ item, onPress }: { item: MockTripCard; onPress: () => void }
                 <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{badge.label}</Text>
               </View>
             )}
-            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Lustria-Regular', marginBottom: 3 }}>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Lustria-Regular', marginBottom: 3 }} numberOfLines={1}>
               {item.title}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
@@ -370,6 +372,7 @@ function TripMasonryGrid({ trips, screenWidth }: { trips: MockTripCard[]; screen
 export default function TripsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { data: trips, isLoading } = useTrips();
   const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
@@ -431,7 +434,7 @@ export default function TripsScreen() {
 
   /* ── Header ── */
   const titleRow = (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, paddingBottom: 10 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: Math.max(insets.top, 16), paddingBottom: 10 }}>
       <View>
         <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text, fontFamily: 'Lustria-Regular' }}>My Trips</Text>
         {tripCount > 0 && (

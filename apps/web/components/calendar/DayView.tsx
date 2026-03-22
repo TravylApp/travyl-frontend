@@ -2,6 +2,7 @@
 import { TimeGutter } from './TimeGutter'
 import { DayColumn } from './DayColumn'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import type { Poll } from '@travyl/shared'
 
 interface DayViewProps {
   dayIndex: number
@@ -11,9 +12,19 @@ interface DayViewProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
-  onDeselect: () => void
+  onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
+  onResize?: (id: string, newStartHour: number, newDuration: number) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  pollCollaborators?: UserAwareness[]
+  tripOwnerId?: string
+  onVote?: (activityId: string, vote: 'yes' | 'no') => void
+  onStartPoll?: (activityId: string) => void
+  onClosePoll?: (activityId: string) => void
+  onRestoreActivity?: (activityId: string) => void
+  onRemoveActivity?: (activityId: string) => void
 }
 
 export function DayView({
@@ -24,9 +35,19 @@ export function DayView({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onSelectEvent,
-  onDeselect,
+  onClickEvent,
+  onCreateActivity,
   pendingDrop = null,
+  onResize,
+  polls,
+  pollUserId,
+  pollCollaborators,
+  tripOwnerId,
+  onVote,
+  onStartPoll,
+  onClosePoll,
+  onRestoreActivity,
+  onRemoveActivity,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -42,10 +63,20 @@ export function DayView({
           selectedEventId={selectedEventId}
           timeRange={timeRange}
           tripStartDate={tripStartDate}
-          onSelectEvent={onSelectEvent}
+          onClickEvent={onClickEvent}
           onClickDayHeader={undefined}
-          onDeselect={onDeselect}
+          onCreateActivity={onCreateActivity}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+          onResize={onResize}
+          polls={polls}
+          pollUserId={pollUserId}
+          pollCollaborators={pollCollaborators}
+          tripOwnerId={tripOwnerId}
+          onVote={onVote}
+          onStartPoll={onStartPoll}
+          onClosePoll={onClosePoll}
+          onRestoreActivity={onRestoreActivity}
+          onRemoveActivity={onRemoveActivity}
         />
       </div>
     </div>

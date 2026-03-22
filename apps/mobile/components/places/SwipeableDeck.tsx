@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Dimensions, View, Text, StyleSheet, PanResponder } from 'react-native';
+import { Dimensions, View, StyleSheet, PanResponder } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -145,11 +145,6 @@ export default function SwipeableDeck({
 
   return (
     <View style={styles.container}>
-      {/* Counter pill */}
-      <Text style={styles.counterPill}>
-        {currentIndex + 1} of {places.length}
-      </Text>
-
       {/* Card stack */}
       <View style={[styles.deckContainer, { height: cardHeight }]}>
         {/* Next card (behind) */}
@@ -178,17 +173,6 @@ export default function SwipeableDeck({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  counterPill: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'center',
-    marginBottom: 8,
-    overflow: 'hidden',
   },
   deckContainer: {
     flex: 1,

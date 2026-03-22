@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Gray, getCyclicGradient, MOCK_PLACES } from '@travyl/shared';
+import { useExploreRows, Gray, getCyclicGradient } from '@travyl/shared';
+import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
 import type { PlaceItem } from '@travyl/shared';
 import { ExploreRow } from './ExploreRow';
 

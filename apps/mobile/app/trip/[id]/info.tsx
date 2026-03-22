@@ -1,7 +1,7 @@
 import { View, ScrollView, Text, Pressable, Linking, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, ITINERARY_COLORS } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTabAccent } from './_layout';
 
