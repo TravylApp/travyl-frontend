@@ -98,6 +98,18 @@ export default function LeafletMap({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Invalidate size when container resizes (e.g. animated panel open)
+  useEffect(() => {
+    const el = containerRef.current;
+    const map = mapRef.current;
+    if (!el || !map) return;
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Single-location marker
   useEffect(() => {
     const map = mapRef.current;

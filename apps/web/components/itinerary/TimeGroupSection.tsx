@@ -105,8 +105,8 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
           {/* Add Activity button */}
           <button
             onClick={() => onAddActivity?.(group.timeOfDay)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-trip-base/40 hover:bg-trip-base/5 transition-colors"
-            style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)', color: 'var(--trip-base)' }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-trip-base/40 transition-colors backdrop-blur-md"
+            style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)', color: 'var(--trip-base)', backgroundColor: 'var(--magazine-bg, rgba(255,255,255,0.85))' }}
           >
             <Plus size={14} />
             <span className="text-[12px] font-medium">Add {config.label} Activity</span>

@@ -3,116 +3,36 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { Map, MapPin, Calendar, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import type { SpinePosition } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
-import { MOCK_DESTINATION_COORDS } from '@travyl/shared/src/config/mockItineraryData';
-import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
+import { useItineraryScreen } from '@travyl/shared';
 import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
-import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
+import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
-const CalendarView = dynamic(
-  () => import('@/components/itinerary/CalendarView').then((m) => m.CalendarView),
-  { ssr: false },
-);
 
-// ─── Trip Hero Banner ───────────────────────────────────────
 
-function TripHero({
-  tripId,
-}: {
-  tripId: string;
-}) {
-  const { trip, isLoading, refetch } = useItineraryScreen(tripId);
-  const user = useAuthStore((s) => s.user);
-  const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
-
-  const handleShare = async () => {
-    if (!trip) return;
-    const shareData = {
-      title: trip.title ?? `Trip to ${trip.destination}`,
-      text: `Check out my trip to ${trip.destination}! ${trip.start_date} – ${trip.end_date}`,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch (_) {}
-    } else {
-      await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
-    }
-  };
-
-  // Buttons only shown for owners
-  const ownerButtons = [
-    { icon: RefreshCw, label: 'Regenerate', onClick: () => refetch() },
-    { icon: Share2, label: 'Share', onClick: handleShare },
-  ];
-
-  const tripImage = trip ? MOCK_TRIPS.find(t => t.id === trip.id)?.image : undefined;
-
-  return (
-    <div className="relative h-[200px] sm:h-[240px] overflow-hidden">
-      {tripImage ? (
-        <img src={tripImage} alt={trip?.destination ?? 'Trip'} className="w-full h-full object-cover" />
-      ) : (
-        <div className="flex h-full items-center justify-center bg-slate-300">
-          <ImageIcon size={32} className="text-slate-400" />
-        </div>
-      )}
-      <div
-        className="absolute inset-x-0 bottom-0 h-1/2"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)' }}
-      />
-      <div className="absolute bottom-0 left-0 right-0 max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <MapPin size={14} className="text-white/60" />
-          {trip && !isLoading ? (
-            <span className="text-lg font-bold text-white">{trip.destination}</span>
-          ) : (
-            <div className="h-5 w-[55%] rounded-md bg-white/25" />
-          )}
-        </div>
-        {trip && !isLoading ? (
-          <span className="text-xs text-white/80">
-            {formatDateRange(trip.start_date, trip.end_date)} · {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
-          </span>
-        ) : (
-          <div className="h-3 w-[45%] rounded-md bg-white/[0.18]" />
-        )}
-      </div>
-      {/* Action buttons — bottom right */}
-      <div className="absolute bottom-3 right-4 sm:right-6 flex gap-1.5">
-        {/* Fork button - shown for non-owners */}
-        {trip && !isOwner && <ForkButton trip={trip} variant="compact" />}
-        {/* Owner buttons */}
-        {isOwner && ownerButtons.map(({ icon: Icon, label, onClick }, i) => (
-          <button
-            key={i}
-            onClick={onClick}
-            title={label}
-            className="flex items-center gap-1.5 h-[34px] px-3 rounded-xl border border-white/20 bg-white/10 text-white/80 hover:bg-white/20 backdrop-blur-md transition-all text-[11px] font-medium"
-          >
-            <Icon size={13} />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ─── Per-tab hero images ────────────────────────────────────
+const TAB_HERO_IMAGES: Record<string, string> = {
+  hotels:      'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1400&q=85',
+  flights:     'https://images.unsplash.com/photo-1436491865332-7a61a109db05?w=1400&q=85',
+  restaurants: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1400&q=85',
+  activities:  'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=1400&q=85',
+  packing:     'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=1400&q=85',
+  favorites:   'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
+  cars:        'https://images.unsplash.com/photo-1449965408869-ebd3fee7710d?w=1400&q=85',
+};
 
 // ─── Content Header Bar (per-tab) ───────────────────────────
 
-function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCalendar }: {
+function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   tripId: string;
   mapOpen: boolean;
   onToggleMap: () => void;
-  calendarOpen: boolean;
-  onToggleCalendar: () => void;
 }) {
   const pathname = usePathname();
   const basePath = `/trip/${tripId}`;
@@ -123,64 +43,48 @@ function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCal
 
   if (!tab) return null;
 
-  const Icon = tab.icon;
   const isOverview = segment === '';
 
-  // Overview + Itinerary: clean magazine look — no header bar
+  // Overview + Itinerary: clean magazine look — no header bar (itinerary has its own controls)
   if (isOverview || segment === 'itinerary') return null;
 
   return (
-    <div className="shrink-0 bg-white dark:bg-[var(--background)] border-b border-gray-100 dark:border-white/[0.06] px-5 pt-4 pb-3 sticky top-0 z-20">
+    <div className="shrink-0 px-6 sm:px-10 pt-4 pb-3 relative z-20">
       <div className="flex items-center gap-3">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
-          style={{ backgroundColor: tab.color }}
-        >
-          <Icon size={15} className="text-white" />
-        </div>
         <div className="flex-1">
-          <h2
-            className="text-[17px] tracking-tight"
-            style={{ color: 'var(--trip-base)', fontWeight: 700 }}
-          >
+          <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 px-2.5 py-1 rounded-full backdrop-blur-md"
+            style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent, #c8a96a)', border: '1px solid rgba(200,169,106,0.25)' }}>
+            {tab.subtitle}
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-white"
+            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
             {tab.label}
           </h2>
-          <p className="text-[12px] text-gray-400 dark:text-gray-500">{tab.subtitle}</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={onToggleCalendar}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
-              calendarOpen
-                ? 'text-white shadow-md scale-[1.02]'
-                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
-            }`}
-            style={calendarOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
-            title={calendarOpen ? 'List view' : 'Calendar view'}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md"
+          style={{ backgroundColor: 'var(--magazine-bg, rgba(245,240,235,0.85))' }}>
+          <a
+            href={`/trip/${tripId}/calendar`}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))' }}
+            title="Calendar view"
           >
-            <Calendar size={13} />
-            <span className="text-[12px] font-medium">Calendar</span>
-          </button>
+            <Calendar size={13} style={{ color: 'var(--magazine-text, var(--muted-foreground))' }} />
+          </a>
           <button
             onClick={onToggleMap}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
-              mapOpen
-                ? 'text-white shadow-md scale-[1.02]'
-                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
-            }`}
-            style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            style={{
+              border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))',
+              backgroundColor: mapOpen ? 'var(--magazine-accent, #c8a96a)' : 'transparent',
+              color: mapOpen ? 'white' : 'var(--magazine-text, var(--muted-foreground))',
+            }}
             title={mapOpen ? 'Hide map' : 'Show map'}
           >
             <Map size={13} />
-            <span className="text-[12px] font-medium">Map</span>
           </button>
         </div>
       </div>
-      {/* Gradient underline */}
-      <div
-        className="mt-3 h-[2px] rounded-full opacity-80"
-        style={{ background: `linear-gradient(90deg, ${tab.color}, ${tab.color}40, transparent)` }}
-      />
     </div>
   );
 }
@@ -212,52 +116,115 @@ function TripLayoutContent({
 }) {
   const [spinePosition, setSpinePosition] = useState<SpinePosition>("left");
   const [mapOpen, setMapOpen] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const { trip } = useItineraryScreen(tripId);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
   const isTopMode = spinePosition === "top";
   const isVerticalSpine = spinePosition === "left" || spinePosition === "right";
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
 
-  // Sync map open with context requests
   useEffect(() => {
-    if (requestMapOpen && !mapOpen) setMapOpen(true);
-    if (!requestMapOpen && mapOpen && mapMarkers.length > 0) setMapOpen(false);
-  }, [requestMapOpen, mapOpen, mapMarkers.length]);
-
-  // When map is manually closed, clear the request
-  const handleCloseMap = () => {
-    setMapOpen(false);
-    setRequestMapOpen(false);
-  };
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setContentHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Page-slide direction tracking
   const pathname = usePathname();
   const basePath = `/trip/${tripId}`;
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
-  const isItinerary = currentSegment === 'itinerary';
-  const isMagazineLayout = isOverview || isItinerary;
 
-  // Track exit animation from magazine pages to prevent white flash
-  const [exitingFromMagazine, setExitingFromMagazine] = useState(false);
-  const wasMagazineRef = useRef(isMagazineLayout);
-
+  // Close map when on overview page
   useEffect(() => {
-    if (wasMagazineRef.current && !isMagazineLayout) {
-      setExitingFromMagazine(true);
+    if (isOverview && mapOpen) {
+      setMapOpen(false);
+      setRequestMapOpen(false);
     }
-    wasMagazineRef.current = isMagazineLayout;
-  }, [isMagazineLayout]);
+  }, [isOverview, mapOpen, setRequestMapOpen]);
 
-  const handleExitComplete = () => {
-    setExitingFromMagazine(false);
+  // Sync map open with context requests (skip on overview)
+  useEffect(() => {
+    if (isOverview) return;
+    if (requestMapOpen && !mapOpen) setMapOpen(true);
+    if (!requestMapOpen && mapOpen) setMapOpen(false);
+  }, [requestMapOpen, mapOpen, isOverview]);
+
+  // When map is manually closed, clear the request
+  const handleCloseMap = () => {
+    setMapOpen(false);
+    setRequestMapOpen(false);
   };
+  const handleExitComplete = () => {};
 
-  const useOverviewBg = isMagazineLayout || exitingFromMagazine;
-
-  const tabOrder = ['', 'itinerary', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
+  const tabOrder = ['', 'itinerary', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites', 'settings'];
   const prevSegmentRef = useRef(currentSegment);
   const directionRef = useRef<1 | -1>(1);
+  const router = useRouter();
+
+  // Drag-to-change-tab gesture
+  const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
+  const isDraggingPage = useRef(false);
+  const dragLocked = useRef<'x' | 'y' | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const el = e.target as HTMLElement;
+    // Skip any interactive element or anything inside a no-swipe zone
+    if (el.closest('button, a, input, textarea, select, [draggable], [data-no-page-swipe]')) return;
+    if (['img', 'canvas', 'video'].includes(el.tagName.toLowerCase())) return;
+
+    dragStartX.current = e.clientX;
+    dragStartY.current = e.clientY;
+    isDraggingPage.current = false;
+    dragLocked.current = null;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (dragStartX.current === 0) return;
+    const dx = e.clientX - dragStartX.current;
+    const dy = e.clientY - dragStartY.current;
+
+    // Lock axis after 8px movement
+    if (!dragLocked.current && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      dragLocked.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+
+    // Only handle horizontal drags
+    if (dragLocked.current !== 'x') return;
+
+    isDraggingPage.current = true;
+    setDragOffset(dx * 0.3); // damped so it feels weighted
+  };
+
+  const handlePointerUp = () => {
+    if (isDraggingPage.current && dragLocked.current === 'x') {
+      const dx = dragOffset / 0.3; // un-damp for threshold check
+      const currentIdx = tabOrder.indexOf(currentSegment);
+
+      if (dx < -80 && currentIdx < tabOrder.length - 1) {
+        // Swiped left → next tab
+        const next = tabOrder[currentIdx + 1];
+        router.push(`/trip/${tripId}${next ? `/${next}` : ''}`);
+      } else if (dx > 80 && currentIdx > 0) {
+        // Swiped right → previous tab
+        const prev = tabOrder[currentIdx - 1];
+        router.push(`/trip/${tripId}${prev ? `/${prev}` : ''}`);
+      }
+    }
+
+    dragStartX.current = 0;
+    dragStartY.current = 0;
+    isDraggingPage.current = false;
+    dragLocked.current = null;
+    setDragOffset(0);
+  };
 
   // Update direction in an effect to avoid ref mutation during render
   useEffect(() => {
@@ -273,132 +240,91 @@ function TripLayoutContent({
   const hasMarkers = mapMarkers.length > 0;
 
   // Page transition — rolodex flip for side spine, horizontal slide for top
+  // Magazine page-turn — lightweight rotateY
   const dir = directionRef.current;
-  const pageVariants = isVerticalSpine
-    ? {
-        initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
-        animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
-        exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
-      }
-    : {
-        initial: { opacity: 0, x: dir > 0 ? 24 : -24 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: dir > 0 ? -12 : 12 },
-      };
-
-  if (calendarOpen) {
-    return (
-      <div className="bg-white dark:bg-[var(--background)] min-h-screen flex flex-col">
-        {/* Compact header with calendar toggle */}
-        <div className="shrink-0 bg-white dark:bg-[var(--background)] border-b border-gray-100 dark:border-white/[0.06] px-5 pt-3 pb-2.5 sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
-              style={{ backgroundColor: 'var(--trip-base)' }}
-            >
-              <Calendar size={15} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-[17px] tracking-tight" style={{ color: 'var(--trip-base)', fontWeight: 700 }}>
-                Itinerary
-              </h2>
-              <p className="text-[12px] text-gray-400">{trip?.destination || 'Your trip'} · Calendar View</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setCalendarOpen(false)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-white shadow-md scale-[1.02]"
-                style={{ borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' }}
-              >
-                <Calendar size={13} />
-                <span className="text-[12px] font-medium">Calendar</span>
-              </button>
-            </div>
-          </div>
-          <div
-            className="mt-2.5 h-[2px] rounded-full opacity-80"
-            style={{ background: `linear-gradient(90deg, var(--trip-base), var(--trip-base)40, transparent)` }}
-          />
-        </div>
-        {/* Calendar fills remaining space */}
-        <div className="flex-1 min-h-0">
-          <CalendarView />
-        </div>
-      </div>
-    );
-  }
+  const pageVariants = {
+    initial: {
+      opacity: 0,
+      rotateY: dir > 0 ? 20 : -20,
+      x: dir > 0 ? 40 : -40,
+    },
+    animate: {
+      opacity: 1,
+      rotateY: 0,
+      x: 0,
+    },
+    exit: {
+      opacity: 0,
+      rotateY: dir > 0 ? -15 : 15,
+      x: dir > 0 ? -30 : 30,
+    },
+  };
 
   return (
     <div
-      className={`${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16' : 'bg-white dark:bg-[var(--background)]'}`}
-      style={{ transition: 'background-color 0.5s ease' }}
+      className="bg-[var(--magazine-bg)] dark:bg-[var(--background)] -mt-16"
+      style={{ transition: 'background-color 0.3s ease' }}
     >
       <div className="mx-auto max-w-7xl">
-        {/* Hero banner — hidden on overview (the cover replaces it) */}
-        {!isOverview && currentSegment !== 'itinerary' && <TripHero tripId={tripId} />}
-        {!isOverview && currentSegment !== 'itinerary' && <div className="h-2" />}
 
         {/* Suitcase card */}
-        <div
-          className={`relative z-10 ${
-            isOverview || currentSegment === 'itinerary'
-              ? ''
-              : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
-          }`}
-          style={
-            isOverview || currentSegment === 'itinerary'
-              ? undefined
-              : {
-                  boxShadow:
-                    '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)',
-                }
-          }
-        >
+        <div className="relative z-10">
         <div className={`flex ${isTopMode ? 'flex-col' : 'flex-col md:flex-row'}`}>
           {/* Spine */}
           <TripTabs
             tripId={tripId}
             position={spinePosition}
             onPositionChange={setSpinePosition}
-            dark={isOverview}
+            dark
           />
 
-          {/* Content area */}
+          {/* Content area — drag to change tabs */}
           <div
-            className="flex-1 flex flex-col min-w-0"
+            className="flex-1 flex flex-col min-w-0 touch-pan-y"
             style={{ order: spinePosition === "right" ? 0 : 1 }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
           >
+            {/* Magazine hero — consistent across all tabs, image changes per tab */}
+            <TripMagazineHero tripId={tripId} trip={trip} overrideImage={TAB_HERO_IMAGES[currentSegment]} />
+
             <ContentHeader
               tripId={tripId}
               mapOpen={mapOpen}
-              onToggleMap={() => {
-                setMapOpen((v) => !v);
-                if (!mapOpen) setCalendarOpen(false);
-              }}
-              calendarOpen={calendarOpen}
-              onToggleCalendar={() => {
-                setCalendarOpen((v) => !v);
-                if (!calendarOpen) setMapOpen(false);
-              }}
+              onToggleMap={() => setRequestMapOpen((v: boolean) => !v)}
             />
 
             {/* Content body */}
-            <div className="flex">
+            <div className="flex items-start bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
               <div
+                ref={contentRef}
                 className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isOverview || currentSegment === 'itinerary' ? '' : 'bg-white dark:bg-[var(--background)] px-5 pt-4 pb-5'
+                  !isOverview && currentSegment !== 'itinerary'
+                    ? 'px-6 sm:px-10 pb-6'
+                    : ''
                 }`}
                 style={{ perspective: 1200 }}
               >
                 <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
                   <motion.div
                     key={`tab-${currentSegment}`}
-                    layout
                     initial={pageVariants.initial}
-                    animate={pageVariants.animate}
+                    animate={{
+                      ...pageVariants.animate,
+                      x: dragOffset,
+                      rotateY: dragOffset ? dragOffset * -0.12 : 0,
+                    }}
                     exit={pageVariants.exit}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    style={isVerticalSpine ? { transformOrigin: 'center top' } : undefined}
+                    transition={dragOffset
+                      ? { duration: 0 }
+                      : { duration: 0.35, ease: [0.22, 1, 0.36, 1] }
+                    }
+                    style={{
+                      transformOrigin: dragOffset > 0 ? 'left center' : 'right center',
+                      willChange: 'transform, opacity',
+                    }}
                   >
                     {children}
                   </motion.div>
@@ -409,13 +335,14 @@ function TripLayoutContent({
               <AnimatePresence>
               {mapOpen && (
                 <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: '35%', opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden rounded-r-2xl"
+                  initial={{ width: 0, opacity: 0, x: 40 }}
+                  animate={{ width: '30%', opacity: 1, x: 0 }}
+                  exit={{ width: 0, opacity: 0, x: 40 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden mt-16"
+                  style={{ maxWidth: 380 }}
                 >
-                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
+                  <div className="sticky top-16 flex flex-col bg-white dark:bg-[var(--background)] overflow-hidden" style={{ height: contentHeight > 0 ? contentHeight : 'calc(100vh - 4rem)', maxHeight: 'calc(100vh - 4rem)' }}>
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
                       <div className="flex items-center gap-2">
                         <Map size={13} className="text-[var(--trip-base)]" />
@@ -446,9 +373,9 @@ function TripLayoutContent({
                           />
                         ) : (
                           <LeafletMap
-                            lat={MOCK_DESTINATION_COORDS.lat}
-                            lng={MOCK_DESTINATION_COORDS.lng}
-                            label={trip?.destination || 'Paris, France'}
+                            lat={trip?.trip_context?.lat ?? 0}
+                            lng={trip?.trip_context?.lng ?? 0}
+                            label={trip?.destination || ''}
                             zoom={13}
                             height="100%"
                             className="!rounded-none !border-0"
@@ -476,8 +403,9 @@ function TripLayoutContent({
       </div>{/* end max-w-7xl */}
 
       {/* Explore + Footer */}
-      <div className="w-full bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-        <div className="max-w-7xl mx-auto px-3 py-3">
+      <div className="relative z-10 w-full bg-[var(--magazine-surface)] dark:bg-[var(--background)]">
+        <div className="border-t border-[var(--magazine-border)]" />
+        <div className="max-w-7xl mx-auto px-3 py-6">
           <ExplorePreview />
         </div>
         <OceanWave />
