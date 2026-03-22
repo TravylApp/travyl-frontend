@@ -282,13 +282,41 @@ export interface BudgetCategoryData {
 
 // ─── Packing Types ──────────────────────────────────────────
 
-export interface PackingItem {
-  item: string;
-  packed: boolean;
+export const PACKING_CATEGORIES = ['clothing', 'toiletries', 'electronics', 'documents', 'accessories', 'essentials'] as const
+export type PackingCategory = (typeof PACKING_CATEGORIES)[number]
+
+export interface DbPackingItem {
+  id: string
+  trip_id: string
+  user_id: string
+  name: string
+  category: PackingCategory
+  is_packed: boolean
+  packed_by: string | null
+  packed_at: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+  user_display_name?: string
+  user_avatar_url?: string
 }
 
-export interface PackingList {
-  [category: string]: PackingItem[];
+export interface PackingAuditEntry {
+  id: string
+  trip_id: string
+  user_id: string
+  item_id: string | null
+  action: 'added' | 'packed' | 'unpacked' | 'removed'
+  item_name: string
+  created_at: string
+  user_display_name?: string
+  user_avatar_url?: string
+}
+
+export interface CatalogItem {
+  name: string
+  category: PackingCategory
+  tags: string[]
 }
 
 export interface WeatherInfo {

@@ -37,3 +37,10 @@ export {
   addManualExpense,
   deleteManualExpense,
 } from './budgetService';
+export {
+  fetchPackingItems,
+  fetchPackingAuditLog,
+  insertPackingItem,
+  updatePackingItemPacked,
+  deletePackingItem,
+} from './packingService';

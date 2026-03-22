@@ -64,3 +64,5 @@ export * from './placeCardSizes';
 export * from './placeCollections';
 
 export * from './mockSuggestions';
+
+export * from './packingCatalog';
