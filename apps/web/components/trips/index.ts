@@ -1,5 +1,5 @@
 export { ViewToggle } from './ViewToggle';
-export { TripCard } from './TripCard';
+export { TripCard, getDurationHeight } from './TripCard';
 export { TripListItem } from './TripListItem';
 export { TripRouteHover } from './TripRouteHover';
 export { RouteMap } from './RouteMap';

@@ -2,7 +2,6 @@
 import { useState, useRef } from 'react'
 import { motion } from 'motion/react'
 import { Map, Calendar, PageEdit, Wallet, Settings } from 'iconoir-react'
-import { MiniCalendar } from './MiniCalendar'
 import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_EXPANDED_WIDTH,
@@ -46,19 +45,11 @@ const NAV_ITEMS: NavItem[] = [
 interface TripSidebarProps {
   activeNav?: string
   onNavChange?: (id: string) => void
-  tripStartDate: Date
-  tripDays: number
-  currentDay: number
-  onSelectDay: (dayIndex: number) => void
 }
 
 export function TripSidebar({
   activeNav = 'calendar',
   onNavChange,
-  tripStartDate,
-  tripDays,
-  currentDay,
-  onSelectDay,
 }: TripSidebarProps) {
   const [expanded, setExpanded] = useState(false)
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -117,17 +108,6 @@ export function TripSidebar({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Mini calendar (expanded only) */}
-      {expanded && (
-        <div className="border-t border-[var(--cal-border)]">
-          <MiniCalendar
-            tripStartDate={tripStartDate}
-            tripDays={tripDays}
-            currentDay={currentDay}
-            onSelectDay={onSelectDay}
-          />
-        </div>
-      )}
     </motion.nav>
   )
 }

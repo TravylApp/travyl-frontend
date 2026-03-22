@@ -72,7 +72,7 @@ function SkeletonCard() {
 export default function MyTripsPage() {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
         </div>
@@ -85,6 +85,94 @@ export default function MyTripsPage() {
     }>
       <TripsContent />
     </Suspense>
+  );
+}
+
+function getTripDuration(start: string, end: string): number {
+  const s = new Date(start + 'T00:00:00');
+  const e = new Date(end + 'T00:00:00');
+  return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Duration → flex weight (wider = longer trip) and row height
+function getTripWeight(days: number): number {
+  if (days <= 1) return 1;
+  if (days <= 3) return 1.3;
+  if (days <= 5) return 1.6;
+  if (days <= 7) return 2;
+  if (days <= 10) return 2.4;
+  return 3;
+}
+
+function getRowHeight(maxDays: number): number {
+  if (maxDays <= 3) return 200;
+  if (maxDays <= 5) return 240;
+  if (maxDays <= 7) return 280;
+  if (maxDays <= 10) return 320;
+  return 360;
+}
+
+// Pack trips into rows: always 2–3 cards per row, never 1
+function buildRows(trips: { trip: MockTripCard; duration: number; weight: number }[]) {
+  const rows: typeof trips[] = [];
+  let i = 0;
+
+  while (i < trips.length) {
+    const remaining = trips.length - i;
+
+    if (remaining <= 3) {
+      // Last few cards — put them all in one row
+      rows.push(trips.slice(i));
+      break;
+    }
+
+    // Decide: 2 or 3 cards in this row
+    // Use 3 cards when the next trips are shorter (lower weight), 2 when they're long
+    const totalWeight3 = trips[i].weight + trips[i + 1].weight + trips[i + 2].weight;
+    if (totalWeight3 <= 5.5) {
+      rows.push(trips.slice(i, i + 3));
+      i += 3;
+    } else {
+      rows.push(trips.slice(i, i + 2));
+      i += 2;
+    }
+  }
+
+  return rows;
+}
+
+function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
+  const items = trips.map((trip) => {
+    const duration = getTripDuration(trip.start_date, trip.end_date);
+    return { trip, duration, weight: getTripWeight(duration) };
+  });
+
+  const rows = buildRows(items);
+  let globalIdx = 0;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((row, rowIdx) => {
+        const maxDays = Math.max(...row.map((r) => r.duration));
+        const height = getRowHeight(maxDays);
+        const startIdx = globalIdx;
+        globalIdx += row.length;
+
+        return (
+          <div key={rowIdx} className="flex gap-3" style={{ height }}>
+            {row.map((item, j) => (
+              <TripCard
+                key={item.trip.id}
+                trip={item.trip}
+                index={startIdx + j}
+                className="h-full"
+                style={{ flex: item.weight }}
+              />
+            ))}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -110,7 +198,7 @@ function TripsContent() {
 
   if (isLoading && !isError) {
     return (
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
         </div>
@@ -125,7 +213,7 @@ function TripsContent() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex-1 w-full">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
@@ -187,19 +275,55 @@ function TripsContent() {
 
         {/* Grid or List View */}
         {displayTrips.length > 0 ? (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {displayTrips.map((trip) => (
-                <TripListItem key={trip.id} trip={trip} />
-              ))}
-            </div>
-          )
+          (() => {
+            // Separate past trips from current/upcoming when viewing "all"
+            const currentTrips = statusParam === 'all'
+              ? displayTrips.filter((t) => getTripStatusFilter(t) !== 'past')
+              : statusParam === 'past' ? [] : displayTrips;
+            const pastTrips = statusParam === 'all'
+              ? displayTrips.filter((t) => getTripStatusFilter(t) === 'past')
+              : statusParam === 'past' ? displayTrips : [];
+
+            return (
+              <>
+                {/* Current / Upcoming / Active trips */}
+                {currentTrips.length > 0 && (
+                  viewMode === 'grid' ? (
+                    <TripMasonryGrid trips={currentTrips} />
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {currentTrips.map((trip) => (
+                        <TripListItem key={trip.id} trip={trip} />
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {/* Past trips section */}
+                {pastTrips.length > 0 && (
+                  <div className="mt-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <h2 className="text-lg font-semibold text-gray-400">Past Trips</h2>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                    {viewMode === 'grid' ? (
+                      <div className="relative">
+                        <div className="grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                          <TripMasonryGrid trips={pastTrips} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3 opacity-60">
+                        {pastTrips.map((trip) => (
+                          <TripListItem key={trip.id} trip={trip} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">

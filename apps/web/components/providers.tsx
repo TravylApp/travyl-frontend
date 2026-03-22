@@ -19,9 +19,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
   const initialize = useAuthStore((s) => s.initialize);
 
+  // Configure synchronously during render so child component effects see the
+  // cookie-based client. useEffect fires after child effects, which is too late.
+  configureSupabase(getSupabaseBrowser());
+
   useEffect(() => {
-    // Swap in the cookie-based client before initializing auth
-    configureSupabase(getSupabaseBrowser());
     const unsubscribe = initialize();
     return unsubscribe;
   }, [initialize]);

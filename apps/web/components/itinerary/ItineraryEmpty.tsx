@@ -8,8 +8,8 @@ export function ItineraryEmpty() {
       <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.15)' }}>
         <CalendarDays size={24} style={{ color: 'var(--trip-base)' }} />
       </div>
-      <h2 className="text-[17px] font-bold text-gray-900 mb-1.5 text-center">No itinerary yet</h2>
-      <p className="text-[13px] text-gray-500 text-center max-w-xs leading-5">
+      <h2 className="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-1.5 text-center">No itinerary yet</h2>
+      <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center max-w-xs leading-5">
         Your AI-generated itinerary will appear here once your trip is planned.
       </p>
     </div>
