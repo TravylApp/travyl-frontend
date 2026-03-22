@@ -21,6 +21,7 @@ const CALENDAR_ACTIVITY_KEYS = [
   'latitude',
   'longitude',
   'sortOrder',
+  'pollResult',
 ] as const
 
 interface UseActivityMutationsReturn {
