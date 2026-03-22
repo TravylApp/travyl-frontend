@@ -9,7 +9,8 @@ import {
   Utensils, Camera,
   Phone, ShieldAlert, Ambulance,
 } from 'lucide-react';
-import { useItineraryScreen, MOCK_TRIP } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
+import { MOCK_TRIP } from '@travyl/shared/src/config/mockItineraryData';
 
 // ─── Collapsible Section ────────────────────────────────────────
 

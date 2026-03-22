@@ -8,7 +8,7 @@ import {
   buildFlightViewModel,
   buildHotelViewModel,
 } from '../viewmodels/itineraryViewModel';
-import { MOCK_DAYS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_TRIP, MOCK_BUDGET } from '../config/mockItineraryData';
+import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -32,20 +32,21 @@ export function useItineraryScreen(tripId: string | undefined) {
     [hotelsQuery.data],
   );
 
-  // Treat errored queries as done loading (don't spin forever)
+  const budgetSummary = useMemo(
+    () => buildBudgetSummary(
+      daysQuery.data ?? [],
+      flightsQuery.data ?? [],
+      hotelsQuery.data ?? [],
+      tripQuery.data?.currency ?? 'USD',
+    ),
+    [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency],
+  );
+
   const isStillLoading =
     (tripQuery.isLoading && !tripQuery.error) ||
     (daysQuery.isLoading && !daysQuery.error);
 
-  // Fall back to mock data when real data is empty (demo mode)
   const hasRealData = dayViewModels.length > 0 || flightViewModels.length > 0 || hotelViewModels.length > 0;
-  const useMock = !isStillLoading && !hasRealData;
-
-  const days = useMock ? MOCK_DAYS : dayViewModels;
-  const flights = useMock ? MOCK_FLIGHTS : flightViewModels;
-  const hotels = useMock ? MOCK_HOTELS : hotelViewModels;
-  const trip = useMock ? MOCK_TRIP : (tripQuery.data ?? null);
-  const budget = MOCK_BUDGET;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();
@@ -55,18 +56,18 @@ export function useItineraryScreen(tripId: string | undefined) {
   }, [tripQuery, daysQuery, flightsQuery, hotelsQuery]);
 
   return {
-    trip,
-    days,
+    trip: tripQuery.data ?? null,
+    days: dayViewModels,
     selectedDayIndex,
     setSelectedDayIndex,
-    selectedDay: days[selectedDayIndex] ?? null,
-    flights,
-    hotels,
-    budget,
+    selectedDay: dayViewModels[selectedDayIndex] ?? null,
+    flights: flightViewModels,
+    hotels: hotelViewModels,
+    budget: budgetSummary,
     isLoading: isStillLoading,
     refetch,
     error: tripQuery.error || daysQuery.error,
-    isEmpty: false, // Never empty — mock data fills in
-    isMockData: useMock,
+    isEmpty: !isStillLoading && !hasRealData,
+    isMockData: false,
   };
 }

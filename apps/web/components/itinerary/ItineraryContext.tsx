@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-import { MOCK_CALENDAR_ACTIVITIES, MOCK_DAYS } from '@travyl/shared';
+import { MOCK_CALENDAR_ACTIVITIES, MOCK_DAYS } from '@travyl/shared/src/config/mockItineraryData';
 import type { MapLocation } from '@/components/leaflet-map';
 
 // ─── Conversion: CalendarActivity[] → ItineraryDayViewModel[] ─────

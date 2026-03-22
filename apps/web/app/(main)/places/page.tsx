@@ -19,7 +19,8 @@ import {
   LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { MOCK_PLACES, groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
+import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
+import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
 import type { PlaceItem } from '@travyl/shared';
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';

@@ -6,15 +6,13 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
   ITINERARY_COLORS,
-  MOCK_FLIGHT_DETAILS,
-  MOCK_HOTEL_DETAIL,
-  MOCK_DISCOVER_ACTIVITIES,
-  GLANCE_HERO_IMAGES,
   adjustBrightness,
   getActivityTypeColor,
   TIME_OF_DAY_CONFIG,
 } from '@travyl/shared';
-import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
+import { MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DISCOVER_ACTIVITIES, MOCK_DESTINATION_COORDS, GLANCE_HERO_IMAGES } from '@travyl/shared/src/config/mockItineraryData';
+import type { DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
+import type { MockFlightDetail, MockHotelDetail } from '@travyl/shared/src/config/mockItineraryData';
 import MapView, { Marker } from 'react-native-maps';
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
@@ -53,20 +51,20 @@ function findDiscoverMatch(activityName: string): typeof MOCK_DISCOVER_ACTIVITIE
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
 
-// Generate mock coordinates spread around destination center for each activity
-function mockActivityCoords(index: number, total: number, centerLat: number, centerLng: number): { lat: number; lng: number } {
+// Generate mock coordinates spread around Paris center for each activity
+function mockActivityCoords(index: number, total: number): { lat: number; lng: number } {
   const spread = 0.018; // ~1.8km radius
   const angle = (index / Math.max(total, 1)) * 2 * Math.PI;
   const r = spread * (0.4 + (index % 3) * 0.3);
   return {
-    lat: centerLat + r * Math.sin(angle),
-    lng: centerLng + r * Math.cos(angle),
+    lat: MOCK_DESTINATION_COORDS.lat + r * Math.sin(angle),
+    lng: MOCK_DESTINATION_COORDS.lng + r * Math.cos(angle),
   };
 }
 
-function buildMarkers(activities: ActivityViewModel[], accent: string, centerLat: number, centerLng: number): MapMarker[] {
+function buildMarkers(activities: ActivityViewModel[], accent: string): MapMarker[] {
   return activities.map((a, i) => {
-    const coords = mockActivityCoords(i, activities.length, centerLat, centerLng);
+    const coords = mockActivityCoords(i, activities.length);
     return {
       lat: coords.lat,
       lng: coords.lng,
@@ -134,12 +132,10 @@ const ROUTE_COLORS = [
   { color: '#64748b', label: 'Slate' },
 ];
 
-function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng }: {
+function DayMap({ todayActivities, allActivities, onClose }: {
   todayActivities: ActivityViewModel[];
   allActivities: ActivityViewModel[];
   onClose: () => void;
-  centerLat: number;
-  centerLng: number;
 }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
@@ -227,14 +223,14 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
     [stopOrder, todayActivities],
   );
 
-  const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT, centerLat, centerLng), [orderedActivities, ACCENT, centerLat, centerLng]);
+  const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT), [orderedActivities, ACCENT]);
 
   const focusStop = useCallback((index: number) => {
     setSelectedStop((prev) => {
       if (prev === index) {
         mapRef.current?.animateToRegion({
-          latitude: centerLat,
-          longitude: centerLng,
+          latitude: MOCK_DESTINATION_COORDS.lat,
+          longitude: MOCK_DESTINATION_COORDS.lng,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }, 400);
@@ -303,8 +299,8 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
             ref={mapRef}
             style={{ flex: 1 }}
             initialRegion={{
-              latitude: centerLat,
-              longitude: centerLng,
+              latitude: MOCK_DESTINATION_COORDS.lat,
+              longitude: MOCK_DESTINATION_COORDS.lng,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }}
@@ -338,8 +334,8 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
           {/* Recenter button */}
           <Pressable
             onPress={() => mapRef.current?.animateToRegion({
-              latitude: centerLat,
-              longitude: centerLng,
+              latitude: MOCK_DESTINATION_COORDS.lat,
+              longitude: MOCK_DESTINATION_COORDS.lng,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }, 400)}
@@ -1683,10 +1679,8 @@ export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { trip, days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
+  const { days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
-  const centerLat = trip?.trip_context?.lat ?? 0;
-  const centerLng = trip?.trip_context?.lng ?? 0;
   const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides } = useContext(TabCtx);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
@@ -1793,7 +1787,7 @@ export default function ItineraryScreen() {
 
     // Fallback: build a minimal PlaceItem from the ActivityViewModel
     const idx = allActivities.indexOf(activity);
-    const coords = mockActivityCoords(idx, allActivities.length, centerLat, centerLng);
+    const coords = mockActivityCoords(idx, allActivities.length);
     return {
       id: activity.id,
       name: activity.name,
@@ -2005,8 +1999,6 @@ export default function ItineraryScreen() {
           todayActivities={selectedDay.timeGroups.flatMap((g) => g.activities ?? [])}
           allActivities={days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities ?? []))}
           onClose={() => setMapOpen(false)}
-          centerLat={centerLat}
-          centerLng={centerLng}
         />
       )}
 

@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams } from 'expo-router';
-import { MOCK_PACKING_LIST, useItineraryScreen } from '@travyl/shared';
+import { MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared/src/config/mockItineraryData';
 import type { PackingList, PackingItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
@@ -65,9 +64,6 @@ function ProgressBar({
 /* ------------------------------------------------------------------ */
 
 export default function PackingScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { trip } = useItineraryScreen(id);
-
   const [packingList, setPackingList] = useState<PackingList>({ ...MOCK_PACKING_LIST });
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(Object.keys(MOCK_PACKING_LIST)),
@@ -78,7 +74,8 @@ export default function PackingScreen() {
 
   const ACCENT = useTabAccent('packing');
   const colors = useThemeColors();
-  const destination = trip?.destination ?? '';
+  const trip = MOCK_TRIP;
+  const destination = trip.destination ?? MOCK_WEATHER.destination;
 
   /* ---- derived counts ---- */
   const allItems = Object.values(packingList).flat();
@@ -214,12 +211,10 @@ export default function PackingScreen() {
         </LinearGradient>
 
         {/* Weather Info */}
-        {trip?.trip_context?.weather?.current && (() => {
-          const currentWeather = trip.trip_context.weather!.current!;
-          const condition = currentWeather.condition ?? '';
-          const weatherIcon = condition.toLowerCase().includes('sun') ? 'sun-o'
-            : condition.toLowerCase().includes('rain') ? 'umbrella'
-            : condition.toLowerCase().includes('cloud') ? 'cloud' : 'sun-o';
+        {(() => {
+          const weatherIcon = MOCK_WEATHER.conditions.toLowerCase().includes('sun') ? 'sun-o'
+            : MOCK_WEATHER.conditions.toLowerCase().includes('rain') ? 'umbrella'
+            : MOCK_WEATHER.conditions.toLowerCase().includes('cloud') ? 'cloud' : 'sun-o';
           return (
             <View
               style={{
@@ -236,13 +231,13 @@ export default function PackingScreen() {
                 Weather
               </Text>
               <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 2 }}>
-                {currentWeather.high}°
+                {MOCK_WEATHER.high}{MOCK_WEATHER.unit}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
-                Low: {currentWeather.low}°
+                Low: {MOCK_WEATHER.low}{MOCK_WEATHER.unit}
               </Text>
               <Text style={{ fontSize: 11, color: colors.text, marginBottom: 4 }}>
-                {condition}
+                {MOCK_WEATHER.conditions}
               </Text>
               <Text style={{ fontSize: 10, color: colors.textTertiary }}>
                 {destination}
