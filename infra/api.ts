@@ -1,4 +1,4 @@
-import { cacheTable, placeIndex } from './storage'
+import { cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
 import { supabaseSecretKey, supabaseUrl, serpApiKey } from './secrets'
 
@@ -72,4 +72,9 @@ api.route('GET /context-search', {
       resources: ['arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0'],
     },
   ],
+})
+
+api.route('GET /recommend', {
+  handler: 'services/recommend.handler',
+  link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
