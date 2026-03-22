@@ -23,6 +23,9 @@ import {
   ACTIVITY_TYPE_ICONS,
   formatHourToTime,
   pickRandomActivity,
+  TextStyles,
+  FontSize,
+  FontFamily,
 } from '@travyl/shared';
 import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
 import MapView, { Marker } from 'react-native-maps';
@@ -110,13 +113,13 @@ function CollapsibleSection({ title, icon, accent, count, defaultOpen = false, c
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name={icon as any} size={11} color={accent} />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{title}</Text>
+          <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{title}</Text>
           {count != null && (
             <View style={{
               backgroundColor: accent + '20', borderRadius: 8,
               paddingHorizontal: 6, paddingVertical: 1,
             }}>
-              <Text style={{ fontSize: 10, fontWeight: '600', color: accent }}>{count}</Text>
+              <Text style={{ ...TextStyles.smEm, color: accent }}>{count}</Text>
             </View>
           )}
         </View>
@@ -375,7 +378,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
               shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
             }}>
               <FontAwesome name="map-marker" size={12} color={ACCENT} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>
                 {markers.length} {markers.length === 1 ? 'stop' : 'stops'}
               </Text>
             </View>
@@ -452,24 +455,24 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
                     shadowRadius: isSelected ? 6 : 0,
                     elevation: isSelected ? 4 : 0,
                   }}>
-                    <Text style={{ fontSize: isSelected ? 11 : 10, fontWeight: '700', color: '#fff' }}>{i + 1}</Text>
+                    <Text style={{ ...(isSelected ? TextStyles.captionEm : TextStyles.smEm), color: '#fff' }}>{i + 1}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text numberOfLines={1} style={{
-                      fontSize: 12, fontWeight: isSelected ? '600' : '500',
+                      ...(isSelected ? TextStyles.bodyEm : TextStyles.body),
                       color: isSelected ? ACCENT : colors.text,
                     }}>
                       {activity.name}
                     </Text>
                     {activity.startTime && (
-                      <Text style={{ fontSize: 10, color: colors.textTertiary }}>{activity.startTime}</Text>
+                      <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{activity.startTime}</Text>
                     )}
                   </View>
                   <View style={{
                     backgroundColor: ACCENT + '18', borderRadius: 6,
                     paddingHorizontal: 6, paddingVertical: 2,
                   }}>
-                    <Text style={{ fontSize: 9, fontWeight: '500', color: ACCENT }}>{activity.category}</Text>
+                    <Text style={{ ...TextStyles.xs, color: ACCENT }}>{activity.category}</Text>
                   </View>
                 </Pressable>
               );
@@ -494,7 +497,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
                 onChangeText={setExploreSearch}
                 placeholder="Search places, tours, food..."
                 placeholderTextColor={colors.textTertiary}
-                style={{ flex: 1, fontSize: 12, color: colors.text, paddingVertical: 0 }}
+                style={{ flex: 1, ...TextStyles.body, color: colors.text, paddingVertical: 0 }}
               />
               {exploreSearch.length > 0 && (
                 <Pressable onPress={() => setExploreSearch('')}>
@@ -523,22 +526,22 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
                     resizeMode="cover"
                   />
                   <View style={{ padding: 8 }}>
-                    <Text numberOfLines={2} style={{ fontSize: 11, fontWeight: '600', color: colors.text, lineHeight: 14 }}>
+                    <Text numberOfLines={2} style={{ ...TextStyles.captionEm, color: colors.text }}>
                       {item.name}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                       {item.rating && (
                         <>
                           <FontAwesome name="star" size={9} color="#f59e0b" />
-                          <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '500' }}>{item.rating}</Text>
+                          <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{item.rating}</Text>
                         </>
                       )}
                       {item.category && (
-                        <Text style={{ fontSize: 9, color: colors.textTertiary }}> · {item.category}</Text>
+                        <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}> · {item.category}</Text>
                       )}
                     </View>
                     {item.price && (
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#6366f1', marginTop: 3 }}>
+                      <Text style={{ ...TextStyles.captionEm, color: '#6366f1', marginTop: 3 }}>
                         {item.dealPrice ?? item.price}
                       </Text>
                     )}
@@ -555,7 +558,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
 
             {/* Route Color */}
             <View>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, marginBottom: 6 }}>Route Color</Text>
+              <Text style={{ ...TextStyles.captionEm, color: colors.text, marginBottom: 6 }}>Route Color</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {ROUTE_COLORS.map((rc) => (
                   <Pressable
@@ -587,7 +590,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <FontAwesome name="compass" size={11} color="#6366f1" />
-                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text }}>Show nearby on map</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.text }}>Show nearby on map</Text>
               </View>
               <View style={{
                 width: 36, height: 20, borderRadius: 10,
@@ -640,7 +643,7 @@ function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedD
           <View key={hour} style={{ flexDirection: 'row', minHeight: 52, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
             {/* Hour label */}
             <View style={{ width: 48, paddingRight: 8, paddingTop: 4, alignItems: 'flex-end' }}>
-              <Text style={{ fontSize: 10, color: colors.textTertiary }}>{timeLabel}</Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{timeLabel}</Text>
             </View>
             {/* Activities in this hour */}
             <View style={{ flex: 1, paddingVertical: 2, paddingHorizontal: 4, gap: 2 }}>
@@ -658,11 +661,11 @@ function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedD
                       borderLeftColor: adjustBrightness(bgColor, -30),
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }} numberOfLines={1}>
+                    <Text style={{ ...TextStyles.captionEm, color: '#fff' }} numberOfLines={1}>
                       {activity.name}
                     </Text>
                     {activity.startTime && (
-                      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>
+                      <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>
                         {activity.startTime}{activity.endTime ? ` - ${activity.endTime}` : ''}
                       </Text>
                     )}
@@ -805,14 +808,14 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
             <FontAwesome name="plane" size={18} color="#fff" />
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{label}</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{label}</Text>
                 {flight.isBooked && (
                   <View style={{ backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>Booked</Text>
+                    <Text style={{ ...TextStyles.smEm, color: '#fff' }}>Booked</Text>
                   </View>
                 )}
               </View>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>
+              <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>
                 Flight {flight.flightNumber} &bull; {flight.departureTime}
               </Text>
             </View>
@@ -845,12 +848,12 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               {/* Departure */}
               <View style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 2 }}>Departure</Text>
-                <Text style={{ fontSize: 22, color: ACCENT, fontWeight: '700' }}>{flight.originIata}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 4 }}>{flight.departureTime}</Text>
-                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{flight.departureTerminal}</Text>
-                <Text style={{ fontSize: 10, color: colors.textTertiary }}>Gate {flight.gate}</Text>
-                <Text style={{ fontSize: 10, color: colors.textTertiary }}>Boarding: {flight.boardingTime}</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginBottom: 2 }}>Departure</Text>
+                <Text style={{ ...TextStyles.headline, color: ACCENT }}>{flight.originIata}</Text>
+                <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginTop: 4 }}>{flight.departureTime}</Text>
+                <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginTop: 2 }}>{flight.departureTerminal}</Text>
+                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>Gate {flight.gate}</Text>
+                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>Boarding: {flight.boardingTime}</Text>
               </View>
 
               {/* Duration line */}
@@ -870,16 +873,16 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
                     <FontAwesome name="plane" size={10} color="#fff" />
                   </View>
                 </View>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 12 }}>{flight.duration}</Text>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: '#10b981' }}>Direct</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginTop: 12 }}>{flight.duration}</Text>
+                <Text style={{ ...TextStyles.smEm, color: '#10b981' }}>Direct</Text>
               </View>
 
               {/* Arrival */}
               <View style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 2 }}>Arrival</Text>
-                <Text style={{ fontSize: 22, color: ACCENT, fontWeight: '700' }}>{flight.destIata}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 4 }}>{flight.arrivalTime}</Text>
-                <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}>{flight.arrivalTerminal}</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginBottom: 2 }}>Arrival</Text>
+                <Text style={{ ...TextStyles.headline, color: ACCENT }}>{flight.destIata}</Text>
+                <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginTop: 4 }}>{flight.arrivalTime}</Text>
+                <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginTop: 2 }}>{flight.arrivalTerminal}</Text>
               </View>
             </View>
 
@@ -893,11 +896,11 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
               alignItems: 'center',
               justifyContent: 'space-between',
             }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{flight.airline}</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{flight.airline}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 11, color: colors.textSecondary }}>Check-in: {flight.boardingTime}</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Check-in: {flight.boardingTime}</Text>
                 <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT }}>{flight.status}</Text>
+                  <Text style={{ ...TextStyles.smEm, color: ACCENT }}>{flight.status}</Text>
                 </View>
               </View>
             </View>
@@ -914,19 +917,19 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
               ].map((row, i) => (
                 <View key={i} style={{ flexDirection: 'row', marginBottom: 6 }}>
                   <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingRight: 12 }}>
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginRight: 6 }}>{row.left.label}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, flexShrink: 1, textAlign: 'right' }}>{row.left.value}</Text>
+                    <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginRight: 6 }}>{row.left.label}</Text>
+                    <Text style={{ ...TextStyles.captionEm, color: colors.text, flexShrink: 1, textAlign: 'right' }}>{row.left.value}</Text>
                   </View>
                   <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 12 }}>
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginRight: 6 }}>{row.right.label}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, flexShrink: 1, textAlign: 'right' }}>{row.right.value}</Text>
+                    <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginRight: 6 }}>{row.right.label}</Text>
+                    <Text style={{ ...TextStyles.captionEm, color: colors.text, flexShrink: 1, textAlign: 'right' }}>{row.right.value}</Text>
                   </View>
                 </View>
               ))}
               {/* Confirmation */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                <Text style={{ fontSize: 11, color: colors.textSecondary }}>Confirmation</Text>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT, fontFamily: 'monospace' }}>{flight.confirmation}</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Confirmation</Text>
+                <Text style={{ ...TextStyles.mono, color: ACCENT }}>{flight.confirmation}</Text>
               </View>
             </View>
 
@@ -941,9 +944,9 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
               justifyContent: 'space-between',
             }}>
               <View>
-                <Text style={{ fontSize: 10, color: colors.textSecondary }}>Per traveler</Text>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: ACCENT }}>${flight.pricePerTraveler}</Text>
-                <Text style={{ fontSize: 10, color: colors.textTertiary }}>Total: ${flight.totalPrice}</Text>
+                <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>Per traveler</Text>
+                <Text style={{ ...TextStyles.title, color: ACCENT }}>${flight.pricePerTraveler}</Text>
+                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>Total: ${flight.totalPrice}</Text>
               </View>
               <View style={{
                 backgroundColor: flight.isBooked ? '#10b981' : ACCENT,
@@ -955,7 +958,7 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
                 gap: 6,
               }}>
                 <FontAwesome name={flight.isBooked ? 'check' : 'plane'} size={12} color="#fff" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>
+                <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>
                   {flight.isBooked ? 'Flight Booked' : 'Book Flight'}
                 </Text>
               </View>
@@ -1004,8 +1007,8 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
             <FontAwesome name="building" size={16} color="#fff" />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{hotel.name}</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>
+              <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{hotel.name}</Text>
+              <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>
                 {'★'} {hotel.rating} &bull; ${roomPrice}/night &bull; {label}
               </Text>
             </View>
@@ -1042,7 +1045,7 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
                 paddingVertical: 4,
                 borderRadius: 10,
               }}>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>
+                <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
                   {isConfirmed ? 'Confirmed' : 'Selected'}
                 </Text>
               </View>
@@ -1056,7 +1059,7 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
                 borderRadius: 4,
               }}>
                 <FontAwesome name="star" size={9} color={ACCENT} />
-                <Text style={{ fontSize: 10, fontWeight: '600', color: ACCENT }}>
+                <Text style={{ ...TextStyles.smEm, color: ACCENT }}>
                   {hotel.rating}/5
                 </Text>
               </View>
@@ -1070,10 +1073,10 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
             </View>
 
             {/* Hotel name */}
-            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 }}>{hotel.name}</Text>
+            <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 4 }}>{hotel.name}</Text>
 
             {/* Check-in / Check-out times */}
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 12 }}>
+            <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 12 }}>
               Check-in: {hotel.checkInTime} &bull; Check-out: {hotel.checkOutTime}
             </Text>
 
@@ -1091,9 +1094,9 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
             }}>
               <FontAwesome name="map-marker" size={14} color="#8b6f47" style={{ marginTop: 1 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: colors.text, lineHeight: 17 }}>{hotel.address}</Text>
+                <Text style={{ ...TextStyles.body, color: colors.text }}>{hotel.address}</Text>
                 {hotel.neighborhood && (
-                  <Text style={{ fontSize: 10, color: ACCENT, marginTop: 2 }}>{hotel.neighborhood}</Text>
+                  <Text style={{ ...TextStyles.sm, color: ACCENT, marginTop: 2 }}>{hotel.neighborhood}</Text>
                 )}
               </View>
             </View>
@@ -1111,22 +1114,22 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <FontAwesome name="bed" size={12} color={ACCENT} />
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{selectedRoom.name}</Text>
+                      <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{selectedRoom.name}</Text>
                     </View>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>${selectedRoom.pricePerNight}/nt</Text>
+                    <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>${selectedRoom.pricePerNight}/nt</Text>
                   </View>
                   {selectedRoom.beds && (
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 2 }}>{selectedRoom.beds}</Text>
+                    <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 2 }}>{selectedRoom.beds}</Text>
                   )}
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     {selectedRoom.maxGuests && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                         <FontAwesome name="user" size={10} color={colors.textSecondary} />
-                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>{selectedRoom.maxGuests} guests</Text>
+                        <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{selectedRoom.maxGuests} guests</Text>
                       </View>
                     )}
                     {selectedRoom.size && (
-                      <Text style={{ fontSize: 10, color: colors.textSecondary }}>{selectedRoom.size}</Text>
+                      <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{selectedRoom.size}</Text>
                     )}
                   </View>
                 </View>
@@ -1145,7 +1148,7 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
                     borderWidth: 1,
                     borderColor: colors.border,
                   }}>
-                    <Text style={{ fontSize: 10, color: colors.textSecondary }}>{amenity}</Text>
+                    <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{amenity}</Text>
                   </View>
                 ))}
               </View>
@@ -1165,8 +1168,8 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
               }}>
                 <FontAwesome name="check-circle" size={14} color="#10b981" />
                 <View>
-                  <Text style={{ fontSize: 9, color: '#059669', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirmation</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857', fontFamily: 'monospace' }}>{hotel.confirmationNumber}</Text>
+                  <Text style={{ ...TextStyles.xs, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirmation</Text>
+                  <Text style={{ ...TextStyles.mono, color: '#047857' }}>{hotel.confirmationNumber}</Text>
                 </View>
               </View>
             )}
@@ -1216,8 +1219,8 @@ function CheckoutSection({ hotelName, hotelAddress, checkOutTime, collapsed }: {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <FontAwesome name="sign-out" size={18} color="#fff" />
             <View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Check-out</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>
+              <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Check-out</Text>
+              <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>
                 {checkOutTime} &bull; {hotelName}
               </Text>
             </View>
@@ -1253,8 +1256,8 @@ function CheckoutSection({ hotelName, hotelAddress, checkOutTime, collapsed }: {
           }}>
             <FontAwesome name="clock-o" size={16} color="#f97316" />
             <View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Check-out by {checkOutTime}</Text>
-              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>Late checkout may incur additional charges</Text>
+              <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Check-out by {checkOutTime}</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginTop: 2 }}>Late checkout may incur additional charges</Text>
             </View>
           </View>
 
@@ -1269,17 +1272,17 @@ function CheckoutSection({ hotelName, hotelAddress, checkOutTime, collapsed }: {
           }}>
             <FontAwesome name="building" size={16} color={colors.textSecondary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text }}>{hotelName}</Text>
+              <Text style={{ ...TextStyles.bodyXl, color: colors.text }}>{hotelName}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
                 <FontAwesome name="map-marker" size={10} color="#9ca3af" />
-                <Text style={{ fontSize: 11, color: colors.textSecondary }}>{hotelAddress}</Text>
+                <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{hotelAddress}</Text>
               </View>
             </View>
           </View>
 
           {/* Reminders */}
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Reminders</Text>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 8 }}>Reminders</Text>
             <View style={{ gap: 6 }}>
               <ReminderRow icon="key" text="Return room keys to front desk" />
               <ReminderRow icon="exclamation-circle" text="Check minibar charges before leaving" />
@@ -1306,7 +1309,7 @@ function ReminderRow({ icon, text }: { icon: string; text: string }) {
       borderColor: '#fef3c7',
     }}>
       <FontAwesome name={icon as any} size={13} color="#d97706" />
-      <Text style={{ fontSize: 12, color: colors.text, flex: 1 }}>{text}</Text>
+      <Text style={{ ...TextStyles.body, color: colors.text, flex: 1 }}>{text}</Text>
     </View>
   );
 }
@@ -1372,7 +1375,7 @@ function BrowseActivityPanel({
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <FontAwesome name="compass" size={13} color="rgba(255,255,255,0.8)" />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>
+          <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>
             Add to {label}
           </Text>
         </View>
@@ -1401,7 +1404,7 @@ function BrowseActivityPanel({
             onChangeText={onSearchChange}
             style={{
               flex: 1,
-              fontSize: 12,
+              ...TextStyles.body,
               color: colors.text,
               padding: 0,
             }}
@@ -1434,8 +1437,7 @@ function BrowseActivityPanel({
             }}
           >
             <Text style={{
-              fontSize: 11,
-              fontWeight: category === cat ? '600' : '400',
+              ...(category === cat ? TextStyles.captionEm : TextStyles.caption),
               color: category === cat ? '#fff' : colors.textSecondary,
             }}>
               {cat}
@@ -1468,23 +1470,23 @@ function BrowseActivityPanel({
                 />
                 {/* Details */}
                 <View style={{ flex: 1, padding: 10, justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+                  <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }} numberOfLines={1}>
                     {item.name}
                   </Text>
                   {item.category && (
-                    <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>
+                    <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginTop: 2 }}>
                       {item.category}
                     </Text>
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                       <FontAwesome name="star" size={10} color="#f59e0b" />
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
+                      <Text style={{ ...TextStyles.captionEm, color: colors.text }}>
                         {item.rating}
                       </Text>
                     </View>
                     {item.price && (
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>
+                      <Text style={{ ...TextStyles.captionEm, color: ACCENT }}>
                         {item.price}
                       </Text>
                     )}
@@ -1508,7 +1510,7 @@ function BrowseActivityPanel({
                       borderRadius: 12,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>Add</Text>
+                    <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>Add</Text>
                   </Pressable>
                 </View>
               </View>
@@ -1516,12 +1518,12 @@ function BrowseActivityPanel({
           ) : (
             <View style={{ alignItems: 'center', paddingVertical: 32 }}>
               <FontAwesome name="search" size={24} color={colors.border} />
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 8 }}>No results match your search</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 8 }}>No results match your search</Text>
               <Pressable
                 onPress={() => { onSearchChange(''); onCategoryChange('All'); }}
                 style={{ marginTop: 6 }}
               >
-                <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>Clear filters</Text>
+                <Text style={{ ...TextStyles.caption, color: ACCENT }}>Clear filters</Text>
               </Pressable>
             </View>
           )}
@@ -1600,7 +1602,7 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
         }}
       >
         <FontAwesome name="plus" size={8} color={colors.textTertiary} />
-        <Text style={{ fontSize: 9, color: colors.textTertiary, fontWeight: '500' }}>Add</Text>
+        <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>Add</Text>
       </Pressable>
     );
   }
@@ -1612,8 +1614,8 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
           <Pressable key={cat.label}
             onPress={() => handleQuickFill(cat.filter)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, backgroundColor: colors.surface }}>
-            <Text style={{ fontSize: 10 }}>{cat.icon}</Text>
-            <Text style={{ fontSize: 9, color: colors.textTertiary, fontWeight: '500' }}>{cat.label}</Text>
+            <Text style={{ ...TextStyles.sm }}>{cat.icon}</Text>
+            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{cat.label}</Text>
           </Pressable>
         ))}
         <Pressable onPress={() => { setOpen(false); setQuery(''); }} hitSlop={6}
@@ -1624,7 +1626,7 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 10, height: 32, borderWidth: 1, borderColor: colors.borderLight }}>
         <FontAwesome name="search" size={10} color={colors.textTertiary} />
         <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Search places..." placeholderTextColor={colors.textTertiary}
-          style={{ flex: 1, fontSize: 12, color: colors.text, paddingVertical: 0 }} />
+          style={{ flex: 1, ...TextStyles.body, color: colors.text, paddingVertical: 0 }} />
         {query.length > 0 && (
           <Pressable onPress={() => setQuery('')}><FontAwesome name="times-circle" size={13} color={colors.textTertiary} /></Pressable>
         )}
@@ -1633,12 +1635,12 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
         <Pressable key={item.id} onPress={() => { onAddActivity(dayIndex, timeOfDay, item.name, item.category || 'activity'); setOpen(false); setQuery(''); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 4 }}>
           <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
-          <Text numberOfLines={1} style={{ fontSize: 12, color: colors.text, flex: 1 }}>{item.name}</Text>
-          <Text style={{ fontSize: 9, color: colors.textTertiary }}>{item.category}</Text>
+          <Text numberOfLines={1} style={{ ...TextStyles.body, color: colors.text, flex: 1 }}>{item.name}</Text>
+          <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{item.category}</Text>
         </Pressable>
       ))}
       {query.length >= 2 && results.length === 0 && (
-        <Text style={{ fontSize: 11, color: colors.textTertiary, fontStyle: 'italic', paddingVertical: 6, paddingHorizontal: 4 }}>No results</Text>
+        <Text style={{ ...TextStyles.caption, color: colors.textTertiary, fontStyle: 'italic', paddingVertical: 6, paddingHorizontal: 4 }}>No results</Text>
       )}
     </View>
   );
@@ -1681,7 +1683,7 @@ function InlineTimePicker({ currentTime, timeOfDay, onSelect, onClose }: {
               }}
             >
               <Text style={{
-                fontSize: 11, fontWeight: isSelected ? '700' : '500',
+                ...(isSelected ? TextStyles.captionEm : TextStyles.caption),
                 color: isSelected ? '#fff' : colors.text,
                 fontVariant: ['tabular-nums'],
               }}>
@@ -1733,12 +1735,12 @@ function GlanceActivityRow({ activity, dayIndex, timeOfDay, drag, isActive, onRe
             </View>
           </Pressable>
           <FontAwesome name={iconName as any} size={10} color={catColor.primary} />
-          <Text numberOfLines={1} style={{ fontSize: 13, color: colors.text, flex: 1, fontWeight: '500' }}>
+          <Text numberOfLines={1} style={{ ...TextStyles.bodyLg, color: colors.text, flex: 1 }}>
             {activity.name}
           </Text>
           <Pressable onPress={() => setEditingTime(!editingTime)} hitSlop={4}
             style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: editingTime ? 'rgba(200,169,106,0.15)' : 'transparent' }}>
-            <Text style={{ fontSize: 9, fontVariant: ['tabular-nums'], color: editingTime ? '#c8a96a' : colors.textTertiary, fontWeight: editingTime ? '600' : '400' }}>
+            <Text style={{ ...(editingTime ? TextStyles.xs : TextStyles.xs), fontVariant: ['tabular-nums'], color: editingTime ? '#c8a96a' : colors.textTertiary }}>
               {activity.startTime || 'Set time'}
             </Text>
           </Pressable>
@@ -1832,14 +1834,14 @@ function GlancePager({
         <View style={{ paddingHorizontal: 20, paddingTop: 14, marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <View>
-              <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 2 }}>
+              <Text style={{ ...TextStyles.xs, letterSpacing: 2.5, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 2 }}>
                 {day.dateLabel}
               </Text>
-              <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text, fontFamily: 'Lustria-Regular' }}>
+              <Text style={{ ...TextStyles.headline, color: colors.text }}>
                 {day.dayLabel}
               </Text>
             </View>
-            <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+            <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>
               {flatItems.length} {flatItems.length === 1 ? 'activity' : 'activities'}
             </Text>
           </View>
@@ -1847,13 +1849,13 @@ function GlancePager({
         {isFirstDay && arrivalFlightNumber && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 8, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
             <FontAwesome name="plane" size={11} color="#4ade80" />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>Arrive — {arrivalFlightNumber}</Text>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Arrive — {arrivalFlightNumber}</Text>
           </View>
         )}
         {/* Empty groups before first populated group */}
         {emptyTodsBefore.map((tod) => (
           <View key={tod} style={{ paddingHorizontal: 20, marginBottom: 8 }}>
-            <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
+            <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
               {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
             </Text>
             <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
@@ -1867,13 +1869,13 @@ function GlancePager({
         {isLastDay && returnFlightNumber && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, paddingHorizontal: 20, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
             <FontAwesome name="plane" size={11} color="#60a5fa" style={{ transform: [{ rotate: '180deg' }] }} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>Depart — {returnFlightNumber}</Text>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Depart — {returnFlightNumber}</Text>
           </View>
         )}
         {/* Empty groups after last populated group */}
         {emptyTodsAfter.map((tod) => (
           <View key={tod} style={{ paddingHorizontal: 20, marginTop: 8 }}>
-            <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
+            <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
               {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
             </Text>
             <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
@@ -1914,7 +1916,7 @@ function GlancePager({
               <View style={{ paddingHorizontal: 20 }}>
                 {showHeader && !isActive && (
                   <Text style={{
-                    fontSize: 8, fontWeight: '700', letterSpacing: 2,
+                    ...TextStyles.micro, letterSpacing: 2,
                     textTransform: 'uppercase', color: '#c8a96a',
                     marginBottom: 4, marginTop: currentIdx > 0 ? 10 : 0, opacity: 0.7,
                   }}>
@@ -1937,7 +1939,7 @@ function GlancePager({
                 )}
                 {emptyGapTods.map((tod) => (
                   <View key={tod} style={{ marginTop: 10 }}>
-                    <Text style={{ fontSize: 8, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
+                    <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
                       {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
                     </Text>
                     <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
@@ -2514,7 +2516,7 @@ export default function ItineraryScreen() {
                   borderWidth: 1,
                   borderColor: colors.borderLight,
                 }}>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', lineHeight: 18 }}>
+                  <Text style={{ ...TextStyles.body, color: colors.textSecondary, fontStyle: 'italic' }}>
                     {selectedDay.notes}
                   </Text>
                 </View>

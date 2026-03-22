@@ -12,6 +12,7 @@ import {
   ACTIVITY_SUBFILTERS,
   ACTIVITY_SORT_OPTIONS,
 } from '@travyl/shared';
+import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import type { DiscoverItem, PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
@@ -46,7 +47,7 @@ function MinRatingFilter({ value, onChange }: { value: number | null; onChange: 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
       <FontAwesome name="star" size={12} color="#fbbf24" />
-      <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>Min rating:</Text>
+      <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Min rating:</Text>
       {options.map((opt) => {
         const isActive = value === opt.value;
         return (
@@ -62,8 +63,7 @@ function MinRatingFilter({ value, onChange }: { value: number | null; onChange: 
           >
             <Text
               style={{
-                fontSize: 12,
-                fontWeight: isActive ? '600' : '400',
+                ...(isActive ? TextStyles.bodyEm : TextStyles.body),
                 color: isActive ? '#fff' : colors.textSecondary,
               }}
             >
@@ -186,9 +186,9 @@ function ActivityCard({
             }}
           >
             <FontAwesome name="star" size={11} color="#fbbf24" />
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{item.rating.toFixed(1)}</Text>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{item.rating.toFixed(1)}</Text>
             {item.reviewCount != null && (
-              <Text style={{ fontSize: 10, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()})</Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()})</Text>
             )}
           </View>
 
@@ -239,7 +239,7 @@ function ActivityCard({
               }}
             >
               <FontAwesome name="calendar-check-o" size={11} color="#fff" />
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
+              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>
                 Day {item.bookedDay}
               </Text>
             </View>
@@ -258,7 +258,7 @@ function ActivityCard({
                 borderRadius: 8,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{item.price}</Text>
+              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{item.price}</Text>
             </View>
           )}
 
@@ -283,7 +283,7 @@ function ActivityCard({
                 size={9}
                 color="rgba(255,255,255,0.9)"
               />
-              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: '500' }}>
+              <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.9)' }}>
                 {item.category}
               </Text>
             </View>
@@ -306,10 +306,10 @@ function ActivityCard({
               }}
             >
               <FontAwesome name="tag" size={9} color="#fff" />
-              <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', textDecorationLine: 'line-through' }}>
+              <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.7)', textDecorationLine: 'line-through' }}>
                 {item.originalPrice}
               </Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{item.dealPrice}</Text>
+              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{item.dealPrice}</Text>
             </View>
           )}
         </View>
@@ -332,15 +332,15 @@ function ActivityCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
               <FontAwesome name="map-marker" size={11} color={colors.textTertiary} />
-              <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={1}>{item.location}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }} numberOfLines={1}>{item.location}</Text>
             </View>
             {item.distance && (
-              <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 8 }}>{item.distance}</Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 8 }}>{item.distance}</Text>
             )}
           </View>
 
           {/* Title */}
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 }} numberOfLines={1}>
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }} numberOfLines={1}>
             {item.name}
           </Text>
 
@@ -348,19 +348,19 @@ function ActivityCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <RatingStars rating={item.rating} size={12} />
             {item.reviewCount != null && (
-              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{item.reviewCount.toLocaleString()} reviews</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{item.reviewCount.toLocaleString()} reviews</Text>
             )}
           </View>
 
           {/* Price + Open Status Row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             {item.price && (
-              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{item.price}</Text>
+              <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{item.price}</Text>
             )}
             {item.isOpen !== undefined && (
               <>
-                {item.price && <Text style={{ fontSize: 11, color: colors.border }}>|</Text>}
-                <Text style={{ fontSize: 11, fontWeight: '600', color: item.isOpen ? '#059669' : '#ef4444' }}>
+                {item.price && <Text style={{ ...TextStyles.caption, color: colors.border }}>|</Text>}
+                <Text style={{ ...TextStyles.captionEm, color: item.isOpen ? '#059669' : '#ef4444' }}>
                   {item.isOpen ? 'Open Now' : 'Closed'}
                 </Text>
               </>
@@ -369,7 +369,7 @@ function ActivityCard({
 
           {/* Description */}
           <Text
-            style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 10 }}
+            style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 10 }}
             numberOfLines={expanded ? undefined : 2}
           >
             {item.description}
@@ -389,7 +389,7 @@ function ActivityCard({
                   borderRadius: 20,
                 }}
               >
-                <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>{tag}</Text>
+                <Text style={{ ...TextStyles.caption, color: ACCENT }}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -409,25 +409,25 @@ function ActivityCard({
               {item.bookedTime && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <FontAwesome name="clock-o" size={12} color={colors.textSecondary} />
-                  <Text style={{ fontSize: 12, color: colors.text }}>Scheduled: {item.bookedTime}</Text>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>Scheduled: {item.bookedTime}</Text>
                 </View>
               )}
               {item.distance && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <FontAwesome name="road" size={12} color={colors.textSecondary} />
-                  <Text style={{ fontSize: 12, color: colors.text }}>Distance: {item.distance}</Text>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>Distance: {item.distance}</Text>
                 </View>
               )}
               {item.price && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <FontAwesome name="money" size={12} color={colors.textSecondary} />
-                  <Text style={{ fontSize: 12, color: colors.text }}>Price: {item.price}</Text>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>Price: {item.price}</Text>
                 </View>
               )}
               {item.category && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <FontAwesome name={(ACTIVITY_CATEGORY_ICONS[item.category] || 'compass') as any} size={12} color={colors.textSecondary} />
-                  <Text style={{ fontSize: 12, color: colors.text }}>Category: {item.category}</Text>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>Category: {item.category}</Text>
                 </View>
               )}
             </View>
@@ -436,7 +436,7 @@ function ActivityCard({
           {/* Expand / Collapse hint */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
             <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.textTertiary} />
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 4 }}>
               {expanded ? 'Show less' : 'Show more'}
             </Text>
           </View>
@@ -456,7 +456,7 @@ function ActivityCard({
                 }}
               >
                 <FontAwesome name="check" size={11} color="#fff" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>Booked</Text>
+                <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Booked</Text>
               </View>
             ) : onAddToItinerary ? (
               <Pressable
@@ -473,7 +473,7 @@ function ActivityCard({
                 }}
               >
                 <FontAwesome name="plus" size={11} color={ACCENT} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>Add to Itinerary</Text>
+                <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Add to Itinerary</Text>
               </Pressable>
             ) : null}
 
@@ -492,7 +492,7 @@ function ActivityCard({
                 }}
               >
                 <FontAwesome name="external-link" size={10} color="#fff" />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>
+                <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>
                   {item.bookingLabel || 'Book Now'}
                 </Text>
               </View>
@@ -607,7 +607,7 @@ function ActivityDetailSheet({
 
                 <View style={{ padding: 16 }}>
                   {/* Name */}
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 6 }}>{item.name}</Text>
+                  <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 6 }}>{item.name}</Text>
 
                   {/* Category badge */}
                   {item.category && (
@@ -628,7 +628,7 @@ function ActivityDetailSheet({
                           size={11}
                           color={ACCENT}
                         />
-                        <Text style={{ fontSize: 12, fontWeight: '500', color: ACCENT }}>{item.category}</Text>
+                        <Text style={{ ...TextStyles.body, color: ACCENT }}>{item.category}</Text>
                       </View>
                     </View>
                   )}
@@ -636,21 +636,21 @@ function ActivityDetailSheet({
                   {/* Rating stars + reviews */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <RatingStars rating={item.rating} size={14} />
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{item.rating.toFixed(1)}</Text>
+                    <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{item.rating.toFixed(1)}</Text>
                     {item.reviewCount != null && (
-                      <Text style={{ fontSize: 12, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()} reviews)</Text>
+                      <Text style={{ ...TextStyles.body, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()} reviews)</Text>
                     )}
                   </View>
 
                   {/* Price row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     {item.price && (
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{item.price}</Text>
+                      <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>{item.price}</Text>
                     )}
                     {item.dealPrice && item.originalPrice && (
                       <>
-                        <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#ef4444' }}>{item.dealPrice}</Text>
+                        <Text style={{ ...TextStyles.body, color: colors.textTertiary, textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
+                        <Text style={{ ...TextStyles.bodyXlEm, color: '#ef4444' }}>{item.dealPrice}</Text>
                       </>
                     )}
                   </View>
@@ -670,14 +670,14 @@ function ActivityDetailSheet({
                             borderRadius: 20,
                           }}
                         >
-                          <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>{tag}</Text>
+                          <Text style={{ ...TextStyles.caption, color: ACCENT }}>{tag}</Text>
                         </View>
                       ))}
                     </View>
                   )}
 
                   {/* Description */}
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>{item.description}</Text>
+                  <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, marginBottom: 14 }}>{item.description}</Text>
 
                   {/* Open / Closed status */}
                   {item.isOpen !== undefined && (
@@ -699,7 +699,7 @@ function ActivityDetailSheet({
                         size={13}
                         color={item.isOpen ? '#16a34a' : '#ef4444'}
                       />
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: item.isOpen ? '#16a34a' : '#ef4444' }}>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: item.isOpen ? '#16a34a' : '#ef4444' }}>
                         {item.isOpen ? 'Open Now' : 'Currently Closed'}
                       </Text>
                     </View>
@@ -740,7 +740,7 @@ function ActivityDetailSheet({
                       }}
                     >
                       <FontAwesome name="plus" size={12} color="#fff" />
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Add to Itinerary</Text>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add to Itinerary</Text>
                     </Pressable>
 
                     <Pressable
@@ -758,7 +758,7 @@ function ActivityDetailSheet({
                       }}
                     >
                       <FontAwesome name="external-link" size={12} color="#10b981" />
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#10b981' }}>Book Now</Text>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: '#10b981' }}>Book Now</Text>
                     </Pressable>
                   </View>
 
@@ -767,7 +767,7 @@ function ActivityDetailSheet({
                     <View style={{ marginTop: 16, marginBottom: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                         <FontAwesome name="compass" size={14} color={ACCENT} />
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Explore Similar</Text>
+                        <Text style={{ ...TextStyles.subhead, color: colors.text }}>Explore Similar</Text>
                       </View>
                       <ScrollView
                         horizontal
@@ -801,13 +801,13 @@ function ActivityDetailSheet({
                               </View>
                             )}
                             <View style={{ padding: 8 }}>
-                              <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{sim.name}</Text>
-                              <Text numberOfLines={1} style={{ fontSize: 10, color: colors.textTertiary }}>{sim.location}</Text>
+                              <Text numberOfLines={1} style={{ ...TextStyles.bodyEm, color: colors.text, marginBottom: 2 }}>{sim.name}</Text>
+                              <Text numberOfLines={1} style={{ ...TextStyles.sm, color: colors.textTertiary }}>{sim.location}</Text>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 }}>
                                 <FontAwesome name="star" size={9} color="#f59e0b" />
-                                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.text }}>{sim.rating.toFixed(1)}</Text>
+                                <Text style={{ ...TextStyles.smEm, color: colors.text }}>{sim.rating.toFixed(1)}</Text>
                                 {sim.category && (
-                                  <Text style={{ fontSize: 9, color: ACCENT, marginLeft: 4 }}>{sim.category}</Text>
+                                  <Text style={{ ...TextStyles.xs, color: ACCENT, marginLeft: 4 }}>{sim.category}</Text>
                                 )}
                               </View>
                             </View>
@@ -826,7 +826,7 @@ function ActivityDetailSheet({
                       marginTop: 4,
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>Close</Text>
+                    <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary }}>Close</Text>
                   </Pressable>
                 </View>
               </Animated.View>
@@ -896,7 +896,7 @@ function ActivityDetailFooter({
             }}
           >
             <FontAwesome name="location-arrow" size={13} color={colors.text} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Directions</Text>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Directions</Text>
           </Pressable>
         )}
 
@@ -909,7 +909,7 @@ function ActivityDetailFooter({
           }}
         >
           <FontAwesome name="share-alt" size={13} color={colors.text} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Share</Text>
+          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Share</Text>
         </Pressable>
 
         <Pressable
@@ -924,7 +924,7 @@ function ActivityDetailFooter({
           }}
         >
           <FontAwesome name="external-link" size={12} color="#fff" />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Book</Text>
+          <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Book</Text>
         </Pressable>
       </View>
 
@@ -933,7 +933,7 @@ function ActivityDetailFooter({
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <FontAwesome name="compass" size={14} color={ACCENT} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Explore Similar</Text>
+            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Explore Similar</Text>
           </View>
           <ScrollView
             horizontal
@@ -962,12 +962,12 @@ function ActivityDetailFooter({
                   </View>
                 )}
                 <View style={{ padding: 8 }}>
-                  <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '600', color: colors.text, marginBottom: 2 }}>{sim.name}</Text>
-                  <Text numberOfLines={1} style={{ fontSize: 10, color: colors.textTertiary }}>{sim.tagline}</Text>
+                  <Text numberOfLines={1} style={{ ...TextStyles.bodyEm, color: colors.text, marginBottom: 2 }}>{sim.name}</Text>
+                  <Text numberOfLines={1} style={{ ...TextStyles.sm, color: colors.textTertiary }}>{sim.tagline}</Text>
                   {sim.rating != null && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 }}>
                       <FontAwesome name="star" size={9} color="#f59e0b" />
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.text }}>{sim.rating.toFixed(1)}</Text>
+                      <Text style={{ ...TextStyles.smEm, color: colors.text }}>{sim.rating.toFixed(1)}</Text>
                     </View>
                   )}
                 </View>
@@ -1094,7 +1094,7 @@ export default function ActivitiesScreen() {
           }}
         >
           <FontAwesome name="calendar-check-o" size={12} color={viewMode === 'booked' ? '#fff' : colors.textSecondary} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: viewMode === 'booked' ? '#fff' : colors.textSecondary }}>
+          <Text style={{ ...TextStyles.bodyLgEm, color: viewMode === 'booked' ? '#fff' : colors.textSecondary }}>
             Booked ({bookedItems.length})
           </Text>
         </Pressable>
@@ -1107,7 +1107,7 @@ export default function ActivitiesScreen() {
           }}
         >
           <FontAwesome name="compass" size={12} color={viewMode === 'discover' ? '#fff' : colors.textSecondary} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: viewMode === 'discover' ? '#fff' : colors.textSecondary }}>
+          <Text style={{ ...TextStyles.bodyLgEm, color: viewMode === 'discover' ? '#fff' : colors.textSecondary }}>
             Discover ({discoverItems.length})
           </Text>
         </Pressable>
@@ -1133,7 +1133,7 @@ export default function ActivitiesScreen() {
             placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={{ flex: 1, fontSize: 13, color: colors.text, paddingVertical: 0 }}
+            style={{ flex: 1, ...TextStyles.bodyLg, color: colors.text, paddingVertical: 0 }}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
@@ -1146,7 +1146,7 @@ export default function ActivitiesScreen() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
           >
             <FontAwesome name="sort-amount-desc" size={11} color={ACCENT} />
-            <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>
+            <Text style={{ ...TextStyles.caption, color: ACCENT }}>
               {ACTIVITY_SORT_OPTIONS.find((s) => s.key === sortBy)?.label}
             </Text>
             <FontAwesome name={showSortDropdown ? 'chevron-up' : 'chevron-down'} size={8} color={colors.textTertiary} />
@@ -1164,7 +1164,7 @@ export default function ActivitiesScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>{activeFilterCount}</Text>
+                <Text style={{ ...TextStyles.xs, color: '#fff' }}>{activeFilterCount}</Text>
               </View>
             )}
           </Pressable>
@@ -1206,7 +1206,7 @@ export default function ActivitiesScreen() {
                     backgroundColor: isActive ? ACCENT + '10' : 'transparent',
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: isActive ? '600' : '400', color: isActive ? ACCENT : colors.textSecondary }}>
+                  <Text style={{ ...(isActive ? TextStyles.bodyEm : TextStyles.body), color: isActive ? ACCENT : colors.textSecondary }}>
                     {opt.label}
                   </Text>
                   {isActive && <FontAwesome name="check" size={10} color={ACCENT} />}
@@ -1251,8 +1251,7 @@ export default function ActivitiesScreen() {
               />
               <Text
                 style={{
-                  fontSize: 12,
-                  fontWeight: isActive ? '600' : '400',
+                  ...(isActive ? TextStyles.bodyEm : TextStyles.body),
                   color: isActive ? '#fff' : colors.textSecondary,
                 }}
               >
@@ -1289,8 +1288,7 @@ export default function ActivitiesScreen() {
               >
                 <Text
                   style={{
-                    fontSize: 11,
-                    fontWeight: isActive ? '600' : '400',
+                    ...(isActive ? TextStyles.captionEm : TextStyles.caption),
                     color: isActive ? ACCENT : colors.textSecondary,
                   }}
                 >
@@ -1307,7 +1305,7 @@ export default function ActivitiesScreen() {
 
       {/* -- Results count -- */}
       <View style={{ paddingVertical: 6, paddingHorizontal: 2 }}>
-        <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+        <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
           {displayItems.length} {displayItems.length === 1 ? 'activity' : 'activities'} found
         </Text>
       </View>
@@ -1337,7 +1335,7 @@ export default function ActivitiesScreen() {
                     borderColor: colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>View Details</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>View Details</Text>
                 </Pressable>
               </View>
             ))}
@@ -1358,10 +1356,10 @@ export default function ActivitiesScreen() {
             >
               <FontAwesome name="search" size={22} color={ACCENT} />
             </View>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 6 }}>
               No results found
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+            <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
               Try adjusting your search or filters to find activities.
             </Text>
             <Pressable
@@ -1378,7 +1376,7 @@ export default function ActivitiesScreen() {
               }}
             >
               <FontAwesome name="refresh" size={12} color={ACCENT} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>Clear Filters</Text>
+              <Text style={{ ...TextStyles.bodyLgEm, color: ACCENT }}>Clear Filters</Text>
             </Pressable>
           </View>
         )}

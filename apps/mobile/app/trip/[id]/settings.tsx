@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -84,7 +84,7 @@ function SettingsSection({
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
       <View style={{ backgroundColor: color, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name={icon} size={14} color="#fff" />
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{title}</Text>
+        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{title}</Text>
       </View>
       <View style={{ padding: 14 }}>{children}</View>
     </View>
@@ -119,8 +119,8 @@ function ToggleRow({
         <FontAwesome name={setting.icon} size={12} color={accentColor} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>{setting.label}</Text>
-        <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{setting.description}</Text>
+        <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>{setting.label}</Text>
+        <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>{setting.description}</Text>
       </View>
       <Switch
         value={value}
@@ -151,7 +151,7 @@ function SettingsInput({
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <FontAwesome name={icon} size={11} color={colors.textSecondary} />
-        <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary }}>{label}</Text>
+        <Text style={{ ...TextStyles.body, fontWeight: '500', color: colors.textSecondary }}>{label}</Text>
       </View>
       <TextInput
         value={value}
@@ -163,7 +163,7 @@ function SettingsInput({
           borderRadius: 8,
           paddingHorizontal: 10,
           paddingVertical: 8,
-          fontSize: 13,
+          fontSize: FontSize.bodyLg,
           color: colors.text,
           backgroundColor: colors.surface,
         }}
@@ -307,8 +307,8 @@ export default function SettingsScreen() {
             <FontAwesome name="cog" size={20} color={SETTINGS_COLOR} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: theme.base }}>Trip Settings</Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+            <Text style={{ ...TextStyles.subhead, fontWeight: '700', color: theme.base }}>Trip Settings</Text>
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 2 }}>
               {trip?.destination ?? 'Trip'} preferences
             </Text>
           </View>
@@ -372,11 +372,11 @@ export default function SettingsScreen() {
             >
               <FontAwesome name={brandIcon(card.brand)} size={20} color={card.isDefault ? theme.base : colors.textTertiary} style={{ marginRight: 10 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
+                <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
                   {card.brand} ending in {card.last4}
                 </Text>
                 {card.isDefault && (
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: theme.base, marginTop: 1 }}>Default</Text>
+                  <Text style={{ ...TextStyles.caption, fontWeight: '500', color: theme.base, marginTop: 1 }}>Default</Text>
                 )}
               </View>
               <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -391,7 +391,7 @@ export default function SettingsScreen() {
                       borderColor: colors.border,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>Set Default</Text>
+                    <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.textSecondary }}>Set Default</Text>
                   </Pressable>
                 )}
                 <Pressable
@@ -403,7 +403,7 @@ export default function SettingsScreen() {
                     backgroundColor: colors.errorBg,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: colors.error }}>Remove</Text>
+                  <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.error }}>Remove</Text>
                 </Pressable>
               </View>
             </View>
@@ -422,7 +422,7 @@ export default function SettingsScreen() {
             }}
           >
             <FontAwesome name="plus" size={12} color="#fff" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Add New Card</Text>
+            <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add New Card</Text>
           </Pressable>
         </SettingsSection>
 
@@ -434,8 +434,8 @@ export default function SettingsScreen() {
               <FontAwesome name="dollar" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Currency</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Display currency for budget</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Currency</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>Display currency for budget</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['USD', 'EUR', 'GBP'] as const).map((c) => (
@@ -449,7 +449,7 @@ export default function SettingsScreen() {
                     backgroundColor: currency === c ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: currency === c ? '#fff' : colors.textSecondary }}>{c}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: currency === c ? '#fff' : colors.textSecondary }}>{c}</Text>
                 </Pressable>
               ))}
             </View>
@@ -461,8 +461,8 @@ export default function SettingsScreen() {
               <FontAwesome name="calendar-o" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Date Format</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>How dates are displayed</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Date Format</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>How dates are displayed</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['MM/DD', 'DD/MM'] as const).map((f) => (
@@ -476,7 +476,7 @@ export default function SettingsScreen() {
                     backgroundColor: dateFormat === f ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: dateFormat === f ? '#fff' : colors.textSecondary }}>{f}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: dateFormat === f ? '#fff' : colors.textSecondary }}>{f}</Text>
                 </Pressable>
               ))}
             </View>
@@ -488,8 +488,8 @@ export default function SettingsScreen() {
               <FontAwesome name="language" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Language</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>App display language</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Language</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>App display language</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {([
@@ -508,7 +508,7 @@ export default function SettingsScreen() {
                     backgroundColor: language === l.key ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: language === l.key ? '#fff' : colors.textSecondary }}>{l.label}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: language === l.key ? '#fff' : colors.textSecondary }}>{l.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -520,8 +520,8 @@ export default function SettingsScreen() {
               <FontAwesome name="clock-o" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Time Format</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Clock display format</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Time Format</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>Clock display format</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['12h', '24h'] as const).map((t) => (
@@ -535,7 +535,7 @@ export default function SettingsScreen() {
                     backgroundColor: timeFormat === t ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: timeFormat === t ? '#fff' : colors.textSecondary }}>{t}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: timeFormat === t ? '#fff' : colors.textSecondary }}>{t}</Text>
                 </Pressable>
               ))}
             </View>
@@ -547,8 +547,8 @@ export default function SettingsScreen() {
               <FontAwesome name="road" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Distance Unit</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Measurement system</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Distance Unit</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>Measurement system</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['mi', 'km'] as const).map((d) => (
@@ -562,7 +562,7 @@ export default function SettingsScreen() {
                     backgroundColor: distanceUnit === d ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: distanceUnit === d ? '#fff' : colors.textSecondary }}>{d}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: distanceUnit === d ? '#fff' : colors.textSecondary }}>{d}</Text>
                 </Pressable>
               ))}
             </View>
@@ -574,8 +574,8 @@ export default function SettingsScreen() {
               <FontAwesome name="thermometer" size={12} color={theme.base} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Temperature Unit</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>Temperature display</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Temperature Unit</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 1 }}>Temperature display</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['F', 'C'] as const).map((u) => (
@@ -589,7 +589,7 @@ export default function SettingsScreen() {
                     backgroundColor: temperatureUnit === u ? theme.base : colors.borderLight,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: temperatureUnit === u ? '#fff' : colors.textSecondary }}>{u === 'F' ? '\u00B0F' : '\u00B0C'}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: temperatureUnit === u ? '#fff' : colors.textSecondary }}>{u === 'F' ? '\u00B0F' : '\u00B0C'}</Text>
                 </Pressable>
               ))}
             </View>
@@ -630,13 +630,13 @@ export default function SettingsScreen() {
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#3b82f615', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
               <FontAwesome name="user-plus" size={18} color="#3b82f6" />
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 4 }}>Invite Travelers</Text>
-            <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginBottom: 12 }}>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 4 }}>Invite Travelers</Text>
+            <Text style={{ ...TextStyles.body, color: colors.textTertiary, textAlign: 'center', marginBottom: 12 }}>
               Share this trip with friends and family to plan together.
             </Text>
             <Pressable style={{ backgroundColor: '#3b82f6', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <FontAwesome name="envelope" size={12} color="#fff" />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Send Invite</Text>
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Send Invite</Text>
             </Pressable>
           </View>
         </SettingsSection>
@@ -645,7 +645,7 @@ export default function SettingsScreen() {
         <View style={{ backgroundColor: colors.errorBg, borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', padding: 14, marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <FontAwesome name="exclamation-triangle" size={14} color="#ef4444" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>Danger Zone</Text>
+            <Text style={{ ...TextStyles.bodyXlEm, color: '#ef4444' }}>Danger Zone</Text>
           </View>
           <Pressable
             onPress={handleDeleteTrip}
@@ -660,7 +660,7 @@ export default function SettingsScreen() {
             }}
           >
             <FontAwesome name="trash" size={14} color="#fff" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Delete Trip</Text>
+            <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Delete Trip</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -699,7 +699,7 @@ export default function SettingsScreen() {
             }}
           >
             <FontAwesome name="times" size={14} color={colors.textSecondary} />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Discard</Text>
+            <Text style={{ ...TextStyles.bodyXlEm, color: colors.textSecondary }}>Discard</Text>
           </Pressable>
           <Pressable
             onPress={handleSave}
@@ -715,7 +715,7 @@ export default function SettingsScreen() {
             }}
           >
             <FontAwesome name="check" size={14} color="#fff" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Save Changes</Text>
+            <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Save Changes</Text>
           </Pressable>
         </View>
       )}
