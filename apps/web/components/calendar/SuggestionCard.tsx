@@ -110,6 +110,11 @@ export function SuggestionCard({ suggestion, onVisible, onClick }: SuggestionCar
           <span className="opacity-50">·</span>
           <span>{formatDuration(suggestion.duration)}</span>
         </div>
+        {suggestion.reason && (
+          <div className="text-[9px] text-white/55 mt-[2px] [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]">
+            {suggestion.reason}
+          </div>
+        )}
       </div>
 
       {/* Hover overlay */}
