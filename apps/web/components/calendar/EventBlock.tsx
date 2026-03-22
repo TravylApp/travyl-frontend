@@ -139,21 +139,20 @@ export function EventBlock({
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; activityId: string } | null>(null)
 
-  // Window capturing listener fires BEFORE dnd-kit's window.addEventListener('contextmenu', preventDefault)
-  // dnd-kit registers its handler via element listeners which bubble from the target,
-  // but its internal window listener is added by a native addEventListener.
-  // Use capture: true + { once: true, capture: true } to fire before dnd-kit.
+  // Window capturing listener fires BEFORE dnd-kit's window listener in the bubble phase.
+  // We call preventDefault() to block the native menu, then show our custom one.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const el = (e.target as HTMLElement).closest('[data-event-block-id]')
       if (!el) return
       const id = el.getAttribute('data-event-block-id')
       if (id === activity.id) {
-        e.stopImmediatePropagation() // prevent lower-priority handlers (incl. dnd-kit) from seeing this event
+        e.preventDefault()
+        e.stopImmediatePropagation()
         setContextMenu({ x: e.clientX, y: e.clientY, activityId: id })
       }
     }
-    window.addEventListener('contextmenu', handler, true) // capture: true = fires before others
+    window.addEventListener('contextmenu', handler, true)
     return () => window.removeEventListener('contextmenu', handler, true)
   }, [activity.id])
 
