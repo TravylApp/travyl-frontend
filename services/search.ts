@@ -13,7 +13,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'q and destination required' }) }
     }
 
-    // Search Foursquare Places with user's query
+    // Search Amazon Location Services with user's query
     const results = await searchPlaces(destination, {
       query,
       maxResults: 10,

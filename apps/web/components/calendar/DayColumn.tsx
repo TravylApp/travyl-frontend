@@ -19,7 +19,7 @@ interface DayColumnProps {
   tripStartDate: Date
   onSelectEvent: (id: string) => void
   onClickDayHeader?: () => void
-  onDeselect: () => void
+  onCreateActivity?: (dayIndex: number, startHour: number) => void
   pendingActivity?: CalendarActivity | null
   notes?: TripNote[]
   canCreateNotes?: boolean
@@ -29,7 +29,6 @@ interface DayColumnProps {
   onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
 }
@@ -81,7 +80,7 @@ export function DayColumn({
   tripStartDate,
   onSelectEvent,
   onClickDayHeader,
-  onDeselect,
+  onCreateActivity,
   pendingActivity = null,
   notes,
   canCreateNotes,
@@ -91,15 +90,14 @@ export function DayColumn({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
-  onCreateActivity,
   marqueeSelectedIds,
   onShiftClickEvent,
 }: DayColumnProps) {
+  const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
+
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
-
-  const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     mouseDownPos.current = { x: e.clientX, y: e.clientY }
