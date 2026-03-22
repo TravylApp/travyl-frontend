@@ -68,7 +68,7 @@ export function TripCard({ trip }: TripCardProps) {
           </div>
 
           {/* Shared Indicator - Top Left */}
-          {trip.is_shared && (
+          {trip.visibility !== 'private' && (
             <div className="absolute top-3 left-3 p-1.5 rounded-full bg-white/90 backdrop-blur-sm" title="Shared trip">
               <Users2 size={12} className="text-[#1e3a5f]" />
             </div>

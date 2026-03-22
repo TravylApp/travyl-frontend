@@ -4,6 +4,41 @@ Active log of work per branch. Add an entry when a branch starts, update as work
 
 ---
 
+## `feature/tra-217` — Calendar UX fixes
+**Linear:** [TRA-217](https://linear.app/travyl/issue/TRA-217/ux-remove-accidental-click-to-create-and-improve-activity-focus)
+**Status:** Complete ✅
+**PR:** —
+
+### Goal
+Remove accidental click-to-create from the trip calendar and improve the selected-activity focus indicator.
+
+### Completed
+- Task 1 ✅ — `EventBlock.tsx`: upgraded selected ring (`ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg`), added `transform` to transition list, suppressed hover lift when selected
+- Task 2 ✅ — Removed `onCreateActivity` prop chain (DayColumn/WeekView/DayView/CalendarDashboard). Added `onDeselect` prop. Background click now deselects (with `e.target === e.currentTarget` guard to prevent bubbling from EventBlock).
+
+---
+
+## `feature/tra-204` — Trip sharing & post-it notes
+**Linear:** [TRA-204](https://linear.app/travyl/issue/TRA-204/trip-sharing-and-post-it-notes)
+**Status:** In Progress
+**PR:** —
+
+### Goal
+Add Google Docs-style trip sharing (private/link/public visibility, per-collaborator roles, email invite flow) and free-floating post-it notes on the calendar canvas via Shift+Click.
+
+### Design & Plan
+- Spec: `docs/superpowers/specs/2026-03-17-trip-sharing-design.md`
+- Plan: `docs/superpowers/plans/2026-03-17-trip-sharing.md` (20 tasks)
+
+### Completed
+- Task 1 ✅ — Schema migration: `visibility`/`link_permission` on `trips`, extended `trip_collaborators`, new `trip_notes` table with RLS
+- Task 2 ✅ — Updated `Trip` type, added `TripNote`/`TripCollaborator`/`CollaboratorRole`/`TripVisibility`/`LinkPermission` to shared types
+
+### In Progress
+- Task 3: `pickColor` utility (next up — Tasks 3–20 remaining)
+
+---
+
 ## `feature/tra-200` — Connect calendar to Supabase with Yjs real-time collaboration
 **Linear:** [TRA-200](https://linear.app/travyl/issue/TRA-200/connect-calendar-view-to-supabase-with-yjs-real-time-collaboration)
 **Status:** Complete ✅
@@ -33,6 +68,35 @@ Replace all mock data in the calendar view with live Supabase data. Full CRUD on
 - Mock flight/hotel data still hardcoded in `CalendarDashboard` (`MOCK_FLIGHTS`, `MOCK_HOTELS`)
 - `MockTripCard` type still used for real trip data in trips page (misleading name, deferred)
 - Trip cover images are all the same Unsplash fallback
+
+---
+
+## `feature/tra-205` — Overlap column sharing (Outlook-style)
+**Linear:** [TRA-205](https://linear.app/travyl/issue/TRA-205/overlap-column-sharing-outlook-style-side-by-side-blocks)
+**Status:** Design spec written, not yet implemented
+
+### Goal
+When activities overlap in time on the trip calendar, split the day column into equal-width sub-columns so all activities are visible side-by-side — like Outlook and Google Calendar.
+
+### Design decisions
+- Smart columns: blocks split only where they overlap, expand back to full width otherwise
+- Equal width, 4px gap between sub-columns
+- Max 3 visible side-by-side; 4th+ shows "+N more" badge
+- Images always shown in split blocks
+- Live drag preview: columns split as user hovers over occupied time slots
+- Pure client-side layout — no schema/migration/Yjs changes
+
+### Spec
+- `docs/superpowers/specs/2026-03-17-overlap-columns-design.md`
+
+### Files to change
+- `apps/web/components/calendar/utils.ts` — add `computeOverlapLayout()` algorithm
+- `apps/web/components/calendar/EventBlock.tsx` — accept `column`, `totalColumns` props
+- `apps/web/components/calendar/DayColumn.tsx` — run layout, pass results, render overflow badge
+- `apps/web/hooks/useCalendarDnd.ts` — compute `pendingActivity` for drag preview
+
+### Completed
+- (none yet — spec only)
 
 ---
 

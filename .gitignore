@@ -9,6 +9,9 @@ build/
 out/
 *.tsbuildinfo
 
+# SST
+.sst/
+
 # Environment
 .env
 .env.*
@@ -44,4 +47,5 @@ supabase/.temp/
 .superpowers/
 .sst/
 sst-env.d.ts
+.worktrees/
 .worktrees/

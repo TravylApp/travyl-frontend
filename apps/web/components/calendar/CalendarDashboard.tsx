@@ -337,13 +337,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripDays={TRIP_DAYS}
         />
 
-        {/* All-day row: flight + hotel banners */}
-        <AllDayRow
-          days={visibleDays}
-          flights={FLIGHT_BANNERS}
-          hotels={HOTEL_BANNERS}
-        />
-
         {/* Grid area */}
         {activeNav === 'calendar' ? (
         <DndContext
@@ -354,55 +347,64 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           onDragCancel={handleDragCancel}
         >
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Scrollable grid */}
-            <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
-              <AnimatePresence mode="wait" initial={false}>
-                {viewMode === 'week' ? (
-                  <motion.div
-                    key="week"
-                    className="flex flex-1 min-w-0"
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 12 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <WeekView
-                      days={TRIP_DAYS}
-                      activities={activities}
-                      viewers={collaborators}
-                      selectedEventId={selectedEventId}
-                      timeRange={timeRange}
-                      tripStartDate={parsedStartDate}
-                      onSelectEvent={handleSelectEvent}
-                      onClickDayHeader={handleClickDayHeader}
-                      onCreateActivity={handleCreateActivity}
-                      pendingDrop={pendingDrop}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={`day-${selectedDayIndex}`}
-                    className="flex flex-1 min-w-0"
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <DayView
-                      dayIndex={selectedDayIndex}
-                      label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
-                      activities={activities}
-                      viewers={collaborators}
-                      selectedEventId={selectedEventId}
-                      timeRange={timeRange}
-                      tripStartDate={parsedStartDate}
-                      onSelectEvent={handleSelectEvent}
-                      onCreateActivity={handleCreateActivity}
-                      pendingDrop={pendingDrop}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            {/* Calendar grid column (AllDayRow + scrollable time grid) */}
+            <div className="flex flex-col flex-1 min-w-0">
+              {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
+              <AllDayRow
+                days={visibleDays}
+                flights={FLIGHT_BANNERS}
+                hotels={HOTEL_BANNERS}
+              />
+              {/* Scrollable time grid */}
+              <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
+                <AnimatePresence mode="wait" initial={false}>
+                  {viewMode === 'week' ? (
+                    <motion.div
+                      key="week"
+                      className="flex flex-1 min-w-0"
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <WeekView
+                        days={TRIP_DAYS}
+                        activities={activities}
+                        viewers={collaborators}
+                        selectedEventId={selectedEventId}
+                        timeRange={timeRange}
+                        tripStartDate={parsedStartDate}
+                        onSelectEvent={handleSelectEvent}
+                        onClickDayHeader={handleClickDayHeader}
+                        onDeselect={() => selectEvent(null)}
+                        pendingDrop={pendingDrop}
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key={`day-${selectedDayIndex}`}
+                      className="flex flex-1 min-w-0"
+                      initial={{ opacity: 0, x: 12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -12 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <DayView
+                        dayIndex={selectedDayIndex}
+                        label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
+                        activities={activities}
+                        viewers={collaborators}
+                        selectedEventId={selectedEventId}
+                        timeRange={timeRange}
+                        tripStartDate={parsedStartDate}
+                        onSelectEvent={handleSelectEvent}
+                        onDeselect={() => selectEvent(null)}
+                        pendingDrop={pendingDrop}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Right column: For You panel or Detail panel */}
