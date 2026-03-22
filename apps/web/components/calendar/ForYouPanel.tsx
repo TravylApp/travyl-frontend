@@ -2,12 +2,11 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Search } from 'iconoir-react'
-import { FOR_YOU_PANEL_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
+import { SuggestionSection } from './SuggestionSection'
 import { CardPopover } from './CardPopover'
 import { formatDuration } from './utils'
 import { useSuggestions } from './hooks/useSuggestions'
-import type { FilterCategory } from './hooks/useSuggestions'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import type { SuggestionCard as SuggestionCardType } from './types'
 
@@ -15,14 +14,19 @@ interface ForYouPanelProps {
   destination: string
   tripId: string
   scheduledActivityIds?: string[]
+  width: number
+  columnCount: number
 }
 
 export function ForYouPanel({
   destination,
   tripId,
   scheduledActivityIds,
+  width,
+  columnCount,
 }: ForYouPanelProps) {
   const {
+    sections,
     suggestions,
     isLoading,
     isFetchingNextPage,
@@ -31,15 +35,11 @@ export function ForYouPanel({
     error,
     searchQuery,
     setSearchQuery,
-    activeFilter,
-    setActiveFilter,
-    filterCategories,
     refetch,
   } = useSuggestions({ destination, scheduledActivityIds })
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  // Prefetch next page as soon as the current page lands
   useEffect(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage()
@@ -47,7 +47,6 @@ export function ForYouPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasNextPage])
 
-  // Also trigger on scroll — 400px before sentinel becomes visible
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
@@ -84,14 +83,31 @@ export function ForYouPanel({
     setPopoverAnchor(null)
   }, [])
 
+  const handleSave = useCallback((suggestion: SuggestionCardType) => {
+    // TODO: wire to useFavoritePlaces hook when available
+    console.log('[ForYou] save:', suggestion.id)
+  }, [])
+
+  const handleSchedule = useCallback((suggestion: SuggestionCardType) => {
+    // TODO: wire to createActivity mutation for quick-schedule
+    console.log('[ForYou] schedule:', suggestion.id)
+  }, [])
+
+  const handleCardVisible = useCallback((id: string, category: string) => {
+    trackEvent(id, 'impression', category)
+  }, [trackEvent])
+
   const formatPrice = (price: number | null, currency: string) => {
     if (price === null || price === 0) return 'Free'
-    return `€${price}`
+    return `\u20AC${price}`
   }
+
+  const isSearching = searchQuery.trim().length > 0
+  const totalSuggestions = sections.reduce((sum, s) => sum + s.suggestions.length, 0)
 
   return (
     <aside
-      style={{ width: FOR_YOU_PANEL_WIDTH }}
+      style={{ width }}
       className="flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
@@ -118,57 +134,30 @@ export function ForYouPanel({
         </div>
       </div>
 
-      {/* Filter chips */}
-      <div className="flex gap-1.5 px-3.5 pt-2.5 pb-0 overflow-x-auto">
-        {filterCategories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveFilter(cat as FilterCategory)}
-            className={[
-              'text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap transition-all border',
-              activeFilter === cat
-                ? 'bg-[#003594] border-[#003594] text-white'
-                : 'border-[var(--cal-border)] text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]',
-            ].join(' ')}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Section label */}
-      <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5">
-        {searchQuery.trim()
-          ? `Results for '${searchQuery}'`
-          : `Recommended for ${destination}`}
-      </div>
-
       {/* Content area */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3 pt-2">
         {isLoading ? (
-          /* Skeleton loading */
-          <div className="flex gap-2">
-            <div className="flex-1 flex flex-col gap-2">
-              {[0, 2].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-[10px] bg-[var(--cal-border)] animate-pulse"
-                  style={{ height: 120 + i * 20 }}
-                />
-              ))}
-            </div>
-            <div className="flex-1 flex flex-col gap-2">
-              {[1, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-[10px] bg-[var(--cal-border)] animate-pulse"
-                  style={{ height: 120 + i * 20 }}
-                />
-              ))}
-            </div>
-          </div>
+          <>
+            {[0, 1].map((sectionIdx) => (
+              <div key={sectionIdx} className="mb-3">
+                <div className="rounded-lg bg-[var(--cal-border)] animate-pulse h-10 mb-2" />
+                <div className="flex gap-2">
+                  {Array.from({ length: columnCount }).map((_, colIdx) => (
+                    <div key={colIdx} className="flex-1 flex flex-col gap-2">
+                      {[0, 1].map((i) => (
+                        <div
+                          key={i}
+                          className="rounded-[10px] bg-[var(--cal-border)] animate-pulse"
+                          style={{ height: 120 + ((sectionIdx * 2 + colIdx + i) % 4) * 15 }}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
         ) : error ? (
-          /* Error state */
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <p className="text-sm text-[var(--cal-text-secondary)]">
               Couldn&apos;t load suggestions
@@ -177,47 +166,59 @@ export function ForYouPanel({
               Tap to retry
             </button>
           </div>
-        ) : suggestions.length === 0 ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center py-12 gap-1">
-            <p className="text-sm text-[var(--cal-text-secondary)]">
-              {searchQuery.trim()
-                ? `No results for '${searchQuery}'`
-                : 'No suggestions available'}
-            </p>
-            {searchQuery.trim() && (
+        ) : isSearching ? (
+          suggestions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-1">
+              <p className="text-sm text-[var(--cal-text-secondary)]">
+                No results for &lsquo;{searchQuery}&rsquo;
+              </p>
               <p className="text-xs text-[var(--cal-text-tertiary)]">
                 Try broader terms
               </p>
-            )}
+            </div>
+          ) : (
+            <>
+              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--cal-text-secondary)] px-1.5 pb-2">
+                {suggestions.length} results for &lsquo;{searchQuery}&rsquo;
+              </div>
+              <div className="flex gap-2">
+                {Array.from({ length: columnCount }).map((_, colIdx) => (
+                  <div key={colIdx} className="flex-1 flex flex-col gap-2">
+                    {suggestions.filter((_, i) => i % columnCount === colIdx).map((suggestion) => (
+                      <SuggestionCard
+                        key={suggestion.id}
+                        suggestion={suggestion}
+                        onVisible={() => handleCardVisible(suggestion.id, suggestion.category)}
+                        onClick={handleCardClick}
+                        onSave={handleSave}
+                        onSchedule={handleSchedule}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
+          )
+        ) : totalSuggestions === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-1">
+            <p className="text-sm text-[var(--cal-text-secondary)]">
+              No suggestions available
+            </p>
           </div>
         ) : (
-          /* Masonry grid — two explicit flex columns avoid the css columns/overflow-y clipping bug */
-          <div className="flex gap-2">
-            <div className="flex-1 flex flex-col gap-2">
-              {suggestions.filter((_, i) => i % 2 === 0).map((suggestion) => (
-                <SuggestionCard
-                  key={suggestion.id}
-                  suggestion={suggestion}
-                  onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
-                  onClick={handleCardClick}
-                />
-              ))}
-            </div>
-            <div className="flex-1 flex flex-col gap-2">
-              {suggestions.filter((_, i) => i % 2 === 1).map((suggestion) => (
-                <SuggestionCard
-                  key={suggestion.id}
-                  suggestion={suggestion}
-                  onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
-                  onClick={handleCardClick}
-                />
-              ))}
-            </div>
-          </div>
+          sections.map((section) => (
+            <SuggestionSection
+              key={section.sectionTitle}
+              section={section}
+              columnCount={columnCount}
+              onCardVisible={handleCardVisible}
+              onCardClick={handleCardClick}
+              onSave={handleSave}
+              onSchedule={handleSchedule}
+            />
+          ))
         )}
 
-        {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} className="h-4" />
 
         {isFetchingNextPage && (
@@ -227,8 +228,7 @@ export function ForYouPanel({
         )}
       </div>
 
-      {/* Footer hint */}
-      {suggestions.length > 0 && (
+      {totalSuggestions > 0 && (
         <div className="text-center text-[11px] text-[var(--cal-text-tertiary)] py-2.5 border-t border-[var(--cal-border-light)]">
           Drag any card onto the calendar to schedule it
         </div>
