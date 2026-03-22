@@ -162,13 +162,9 @@ function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
         return (
           <div key={rowIdx} className="flex gap-3" style={{ height }}>
             {row.map((item, j) => (
-              <TripCard
-                key={item.trip.id}
-                trip={item.trip}
-                index={startIdx + j}
-                className="h-full"
-                style={{ flex: item.weight }}
-              />
+              <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
+                <TripCard trip={item.trip} />
+              </div>
             ))}
           </div>
         );
@@ -199,15 +195,19 @@ function TripsContent() {
 
   if (isLoading && !isError) {
     return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        <OceanWave />
+        <Footer />
       </div>
     );
   }

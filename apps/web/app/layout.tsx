@@ -29,6 +29,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.svg",
   },
+  other: {
+    "developed-by": "JPB Developments — https://www.jpbdevelopments.com",
+  },
 };
 
 export default function RootLayout({
@@ -39,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="author" content="JPB Developments — https://www.jpbdevelopments.com" />
         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
       </head>
@@ -49,6 +53,11 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `console.log("%cFront-end developed by JPB Developments%c\\nhttps://www.jpbdevelopments.com","font-size:14px;font-weight:bold;color:#1e3a5f;","font-size:12px;color:#666;");`,
+          }}
+        />
       </body>
     </html>
   );

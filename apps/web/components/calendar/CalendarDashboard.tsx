@@ -4,7 +4,6 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
-import { MOCK_FLIGHTS, MOCK_HOTELS } from '@travyl/shared/src/config/mockItineraryData'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
@@ -98,7 +97,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackEvent(suggestionId, 'drag')
+    trackEvent(suggestionId, 'drag', activity.type)
   }, [addActivity, selectEvent, trackEvent])
 
   // useCalendarDnd is called below after marquee selection hook is instantiated
@@ -180,59 +179,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   })
 
   // ─── Derive flight banners ────────────────────────────────────
-  const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
-    if (!trip) return []
-    const months: Record<string, number> = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
-    }
-    return MOCK_FLIGHTS.map((flight, idx) => {
-      const isArrival = flight.destIata !== flight.originIata && idx === 0
-      const direction: 'arrival' | 'departure' = isArrival ? 'arrival' : 'departure'
-
-      const displayParts = (flight.departureDisplay ?? '').split(',')
-      let dayIndex = 0
-      if (displayParts.length >= 2) {
-        const datePart = displayParts[1].trim()
-        const [monthStr, dayStr] = datePart.split(' ')
-        const month = months[monthStr]
-        const day = parseInt(dayStr, 10)
-        if (month !== undefined && !isNaN(day)) {
-          const year = new Date(parsedStartMs).getUTCFullYear()
-          const flightDate = new Date(Date.UTC(year, month, day))
-          const offset = Math.round((flightDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24))
-          dayIndex = Math.max(0, Math.min(tripTotalDays - 1, offset))
-        }
-      }
-
-      return {
-        id: flight.id,
-        label: `${flight.flightNumber} ${flight.route}`,
-        dayIndex,
-        direction,
-      }
-    })
-  }, [trip, parsedStartMs, tripTotalDays])
+  const FLIGHT_BANNERS: FlightBanner[] = []
 
   // ─── Derive hotel banners ─────────────────────────────────────
-  const HOTEL_BANNERS: HotelBanner[] = useMemo(() => {
-    if (!trip) return []
-    return MOCK_HOTELS.map((hotel) => {
-      const checkInDate = new Date(hotel.checkIn + 'T00:00:00Z')
-      const checkOutDate = new Date(hotel.checkOut + 'T00:00:00Z')
-      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)))
-      const endDayIndex = Math.max(
-        startDayIndex,
-        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)) - 1),
-      )
-      return {
-        id: hotel.id,
-        label: hotel.name,
-        startDayIndex,
-        endDayIndex,
-      }
-    })
-  }, [trip, parsedStartMs, tripTotalDays])
+  const HOTEL_BANNERS: HotelBanner[] = []
 
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
@@ -301,6 +251,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     isPaletteOpen,
     () => setIsPaletteOpen(false),
     () => selectEvent(null),
+    marqueeSelectedIds.size > 0,
+    clearMarqueeSelection,
   )
 
   // Early returns for loading / error states (must come after all hooks)
@@ -381,13 +333,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
-        tripStartDate={parsedStartDate}
-        tripDays={tripTotalDays}
-        currentDay={selectedDayIndex}
-        onSelectDay={(dayIndex) => {
-          selectDay(dayIndex)
-          if (viewMode === 'day') goToDayView(dayIndex)
-        }}
         onNavChange={setActiveNav}
       />
 
@@ -398,7 +343,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           commands={commands}
-          onOpenPalette={() => setIsPaletteOpen(true)}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
@@ -452,7 +396,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         tripStartDate={parsedStartDate}
                         onSelectEvent={handleSelectEvent}
                         onClickDayHeader={handleClickDayHeader}
-                        onCreateActivity={handleCreateActivity}
+                        onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
                         marqueeSelectedIds={marqueeSelectedIds}
                         gridRef={weekGridRef}
@@ -478,7 +422,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         timeRange={timeRange}
                         tripStartDate={parsedStartDate}
                         onSelectEvent={handleSelectEvent}
-                        onCreateActivity={handleCreateActivity}
+                        onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
                       />
                     </motion.div>

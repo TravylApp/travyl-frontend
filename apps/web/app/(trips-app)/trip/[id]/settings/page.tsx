@@ -697,8 +697,8 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   // Sync trip sharing state with loaded trip
   useEffect(() => {
     if (trip) {
-      setIsPublic(trip.is_public ?? false);
-      setIsShared(trip.is_shared ?? false);
+      setIsPublic(trip.visibility === 'public');
+      setIsShared(trip.visibility !== 'private');
     }
   }, [trip]);
 
@@ -706,7 +706,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   const handleTogglePublic = async () => {
     if (!trip || !isOwner) return;
     try {
-      await updateTripVisibility(trip.id, !isPublic);
+      await updateTripVisibility(trip.id, isPublic ? 'private' : 'public');
       setIsPublic(!isPublic);
       refetch();
     } catch (error) {

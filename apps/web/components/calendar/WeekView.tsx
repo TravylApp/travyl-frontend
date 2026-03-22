@@ -12,7 +12,7 @@ interface WeekViewProps {
   tripStartDate: Date
   onSelectEvent: (id: string) => void
   onClickDayHeader?: (dayIndex: number) => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
+  onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
   marqueeSelectedIds?: Set<string>
   gridRef?: React.RefObject<HTMLDivElement | null>
@@ -29,7 +29,7 @@ export function WeekView({
   tripStartDate,
   onSelectEvent,
   onClickDayHeader,
-  onCreateActivity,
+  onDeselect,
   pendingDrop = null,
   marqueeSelectedIds,
   gridRef,
@@ -62,7 +62,7 @@ export function WeekView({
               onClickDayHeader={
                 onClickDayHeader ? () => onClickDayHeader(dayIndex) : undefined
               }
-              onCreateActivity={onCreateActivity}
+              onDeselect={onDeselect}
               pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
               marqueeSelectedIds={marqueeSelectedIds}
               onShiftClickEvent={onShiftClickEvent}

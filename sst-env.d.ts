@@ -23,17 +23,9 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Dynamo"
     }
-    "SerpApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "SupabaseSecretKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "SupabaseUrl": {
-      "type": "sst.sst.Secret"
-      "value": string
+    "UserInteractions": {
+      "name": string
+      "type": "sst.aws.Dynamo"
     }
   }
 }

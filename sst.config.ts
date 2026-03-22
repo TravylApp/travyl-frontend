@@ -14,6 +14,7 @@ export default $config({
     const storage = await import('./infra/storage')
     const events = await import('./infra/events')
     const api = await import('./infra/api')
+    await import('./infra/web')
 
     return {
       apiUrl: api.api.url,
