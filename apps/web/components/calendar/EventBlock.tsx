@@ -142,11 +142,15 @@ export function EventBlock({
   // Document-level listener bypasses dnd-kit/React event system entirely
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      console.log('[EventBlock] contextmenu fired on:', e.target)
       const el = (e.target as HTMLElement).closest('[data-event-block-id]')
+      console.log('[EventBlock] closest el:', el, 'activity.id:', activity.id)
       if (!el) return
       const id = el.getAttribute('data-event-block-id')
+      console.log('[EventBlock] id from attr:', id, 'match:', id === activity.id)
       if (id === activity.id) {
         e.preventDefault()
+        e.stopPropagation()
         setContextMenu({ x: e.clientX, y: e.clientY, activityId: id })
       }
     }
