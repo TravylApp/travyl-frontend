@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, memo } from 'react';
 import {
   View,
+  Text,
   Pressable,
   ScrollView,
   Modal,
@@ -14,6 +15,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import MapView, { Marker } from 'react-native-maps';
 import { Navy, type PlaceItem, useSimilarPlaces } from '@travyl/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import FlipCard from './FlipCard';
 import CardFront from './CardFront';
@@ -49,31 +51,22 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
   renderFooter,
 }: PlaceDetailModalProps) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const [isFlipped, setIsFlipped] = useState(false);
   const [deckIndex, setDeckIndex] = useState(0);
   const [imageIndex, setImageIndex] = useState(0);
-  const [sheetTop, setSheetTop] = useState(0);
-  const sheetTopRef = useRef(0);
-
   const SCREEN_H = Dimensions.get('window').height;
-  const MAP_H_DEFAULT = Math.round(SCREEN_H * 0.35);
-  const MIN_SHEET_TOP = -MAP_H_DEFAULT + 80;
-  const MAX_SHEET_TOP = SCREEN_H * 0.35;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const sheetPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gs) => {
-        const newTop = sheetTopRef.current + gs.dy;
-        const clamped = Math.max(MIN_SHEET_TOP, Math.min(MAX_SHEET_TOP, newTop));
-        setSheetTop(clamped);
-      },
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
       onPanResponderRelease: (_, gs) => {
-        const newTop = sheetTopRef.current + gs.dy;
-        const clamped = Math.max(MIN_SHEET_TOP, Math.min(MAX_SHEET_TOP, newTop));
-        sheetTopRef.current = clamped;
-        setSheetTop(clamped);
+        if (gs.dy > 100 || (gs.dy > 30 && gs.vy > 0.5)) {
+          onCloseRef.current();
+        }
       },
     }),
   ).current;
@@ -134,8 +127,6 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
     setIsFlipped(false);
     setDeckIndex(0);
     setImageIndex(0);
-    setSheetTop(0);
-    sheetTopRef.current = 0;
     mapSlide.setValue(-250);
     contentSlide.setValue(600);
     fadeAnim.setValue(0);
@@ -163,8 +154,34 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
   if (!place) return null;
 
   const hasLocation = currentPlace?.latitude != null && currentPlace?.longitude != null;
-  const mapH = MAP_H_DEFAULT + sheetTop;
   const cardW = SCREEN_WIDTH - 32;
+  const [showMap, setShowMap] = useState(false);
+  const mapPanelSlide = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+
+  const toggleMap = useCallback(() => {
+    const opening = !showMap;
+    setShowMap(opening);
+    Animated.spring(mapPanelSlide, {
+      toValue: opening ? 0 : SCREEN_WIDTH,
+      tension: 65, friction: 11, useNativeDriver: true,
+    }).start();
+    if (opening && currentPlace?.latitude != null && currentPlace?.longitude != null) {
+      setTimeout(() => {
+        mapRef.current?.animateToRegion({
+          latitude: currentPlace.latitude!,
+          longitude: currentPlace.longitude!,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        }, 400);
+      }, 300);
+    }
+  }, [showMap, currentPlace]);
+
+  // Reset map panel when place changes
+  useEffect(() => {
+    setShowMap(false);
+    mapPanelSlide.setValue(SCREEN_WIDTH);
+  }, [place?.id]);
 
   return (
     <Modal visible animationType="none" transparent onRequestClose={handleClose}>
@@ -172,12 +189,12 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
         {/* Backdrop */}
         <Pressable onPress={handleClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
 
-        {/* ── Map — full-width, slides in from the top ── */}
+        {/* ── Map panel — slides in from the right ── */}
         {hasLocation && (
           <Animated.View style={{
-            position: 'absolute', top: 0, left: 0, right: 0,
-            height: Math.max(mapH, 120),
-            transform: [{ translateY: mapSlide }],
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            transform: [{ translateX: mapPanelSlide }],
+            zIndex: 15,
           }}>
             <MapView
               ref={mapRef}
@@ -198,20 +215,20 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
                 title={currentPlace.name}
               />
             </MapView>
-            {/* Close button */}
+            {/* Close map button */}
             <Pressable
-              onPress={handleClose}
+              onPress={toggleMap}
               style={{
-                position: 'absolute', top: 52, right: 16,
-                width: 32, height: 32, borderRadius: 16,
+                position: 'absolute', top: insets.top + 8, right: 16,
+                width: 36, height: 36, borderRadius: 18,
                 backgroundColor: 'rgba(255,255,255,0.9)',
                 alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 3,
+                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
               }}
             >
-              <FontAwesome name="times" size={14} color="#333" />
+              <FontAwesome name="times" size={15} color="#333" />
             </Pressable>
-            {/* Recenter button */}
+            {/* Recenter */}
             <Pressable
               onPress={() => {
                 if (currentPlace?.latitude != null && currentPlace?.longitude != null) {
@@ -224,39 +241,72 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
                 }
               }}
               style={{
-                position: 'absolute', top: 52, left: 16,
-                width: 32, height: 32, borderRadius: 16,
+                position: 'absolute', top: insets.top + 8, left: 16,
+                width: 36, height: 36, borderRadius: 18,
                 backgroundColor: 'rgba(255,255,255,0.9)',
                 alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 3,
+                shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
               }}
             >
-              <FontAwesome name="crosshairs" size={14} color="#333" />
+              <FontAwesome name="crosshairs" size={15} color="#333" />
             </Pressable>
+            {/* Place name pill at bottom */}
+            <View style={{
+              position: 'absolute', bottom: insets.bottom + 16, left: 16, right: 16,
+              backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 14,
+              paddingHorizontal: 16, paddingVertical: 12,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
+            }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#333' }}>{currentPlace.name}</Text>
+              {currentPlace.tagline ? <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{currentPlace.tagline}</Text> : null}
+            </View>
           </Animated.View>
         )}
 
-        {/* ── Card sheet — slides up from the bottom ── */}
+        {/* ── Card sheet — slides up from bottom ── */}
         <Animated.View style={{
-          position: 'absolute', left: 0, right: 0,
-          top: hasLocation ? Math.max(mapH, 120) - 24 : undefined,
-          bottom: hasLocation ? undefined : 0,
-          height: hasLocation ? SCREEN_H - Math.max(mapH, 120) + 24 : undefined,
-          maxHeight: hasLocation ? undefined : '90%',
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          maxHeight: SCREEN_H - insets.top - 20,
           backgroundColor: colors.cardBackground,
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           transform: [{ translateY: contentSlide }],
           overflow: 'hidden',
         }}>
-          {/* Drag handle */}
-          <View
-            {...sheetPanResponder.panHandlers}
-            style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}
-          >
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          {/* Drag handle + map button row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16 }}>
+            <View style={{ flex: 1 }} />
+            <View
+              {...sheetPanResponder.panHandlers}
+              style={{ paddingHorizontal: 20, paddingVertical: 4 }}
+            >
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+              {hasLocation && (
+                <Pressable onPress={toggleMap} hitSlop={8} style={{
+                  width: 32, height: 32, borderRadius: 16,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1, borderColor: colors.border,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <FontAwesome name="map" size={13} color={Navy.DEFAULT} />
+                </Pressable>
+              )}
+            </View>
           </View>
+          {/* Close button */}
+          <Pressable onPress={handleClose} style={{
+            position: 'absolute', top: 10, left: 16, zIndex: 10,
+            width: 32, height: 32, borderRadius: 16,
+            backgroundColor: colors.surface,
+            borderWidth: 1, borderColor: colors.border,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <FontAwesome name="times" size={13} color={colors.textSecondary} />
+          </Pressable>
 
-          <ScrollView bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false} nestedScrollEnabled
+            contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
             {/* ── Swipeable Flip Card Deck ── */}
             <View style={{ marginHorizontal: 16 }}>
               <SwipeableDeck
@@ -272,6 +322,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
                         isFav={favorites.includes(p.id)}
                         onToggleFav={() => onToggleFav(p.id)}
                         onFlip={flipCard}
+                        onMapPress={hasLocation ? toggleMap : undefined}
                         width={cardW}
                         height={CARD_H_FRONT}
                         imageIndex={p.id === currentPlace?.id ? imageIndex : 0}
