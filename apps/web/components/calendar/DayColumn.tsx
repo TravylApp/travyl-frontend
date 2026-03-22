@@ -30,6 +30,8 @@ interface DayColumnProps {
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
   onResize?: (id: string, newStartHour: number, newDuration: number) => void
+  marqueeSelectedIds?: Set<string>
+  onShiftClickEvent?: (id: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -90,6 +92,8 @@ export function DayColumn({
   onUpdateNote,
   onDeleteNote,
   onResize,
+  marqueeSelectedIds,
+  onShiftClickEvent,
 }: DayColumnProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -258,7 +262,9 @@ export function DayColumn({
               activity={activity}
               viewers={viewers}
               isSelected={selectedEventId === activity.id}
+              isMultiSelected={marqueeSelectedIds?.has(activity.id)}
               onClickEvent={onClickEvent}
+              onShiftClick={onShiftClickEvent}
               timeRangeStartHour={timeRange.startHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
