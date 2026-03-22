@@ -10,14 +10,15 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, groupPlacesByCollection, type PlaceItem } from '@travyl/shared';
-import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
+import { Navy, groupPlacesByCollection, TextStyles, FontSize, FontFamily, type PlaceItem } from '@travyl/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PLACES: PlaceItem[] = [];
 const PAD = 16;
 const GAP = 8;
 const STACK_CARD_W = SCREEN_WIDTH * 0.72;
@@ -143,17 +144,17 @@ const GridPlaceCard = memo(function GridPlaceCard({
         <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
             <FontAwesome name="map-marker" size={9} color={colors.textTertiary} style={{ marginRight: 4 }} />
-            <Text style={{ fontSize: 10, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 }} numberOfLines={1}>{place.name}</Text>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>{place.name}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}>
               <FontAwesome name="star" size={10} color="#fbbf24" style={{ marginRight: 2 }} />
-              <Text style={{ fontSize: 10, fontWeight: '500', color: colors.textSecondary }}>{place.rating}</Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{place.rating}</Text>
             </View>
           </View>
           {place.description && (
-            <Text style={{ fontSize: 10, color: colors.textSecondary, lineHeight: 14 }} numberOfLines={2}>{place.description}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textSecondary }} numberOfLines={2}>{place.description}</Text>
           )}
           {place.tags && place.tags.length > 0 && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
@@ -162,7 +163,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
                   paddingHorizontal: 6, paddingVertical: 2,
                   backgroundColor: colors.surface, borderRadius: 10,
                 }}>
-                  <Text style={{ fontSize: 9, color: colors.textTertiary }}>{tag}</Text>
+                  <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -178,6 +179,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
 
 export default function FavoritesScreen() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -195,13 +197,13 @@ export default function FavoritesScreen() {
 
   // Prefetch images so they're cached when the tab loads
   useEffect(() => {
-    Image.prefetch(MOCK_PLACES.map((p) => p.image));
+    Image.prefetch(PLACES.map((p) => p.image));
   }, []);
 
   const tabFiltered = useMemo(() => {
-    if (activeTab === 'all') return MOCK_PLACES;
-    if (activeTab === 'favorites') return MOCK_PLACES.filter((p) => favorites.includes(p.id));
-    return MOCK_PLACES.filter((p) => p.type === activeTab);
+    if (activeTab === 'all') return PLACES;
+    if (activeTab === 'favorites') return PLACES.filter((p) => favorites.includes(p.id));
+    return PLACES.filter((p) => p.type === activeTab);
   }, [activeTab, favorites]);
 
   const subcategories = useMemo(() => {
@@ -247,16 +249,16 @@ export default function FavoritesScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
-        <View style={{ paddingHorizontal: PAD, paddingTop: 12, paddingBottom: 4 }}>
+        <View style={{ paddingHorizontal: PAD, paddingTop: insets.top + 8, paddingBottom: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>Places</Text>
+              <Text style={{ ...TextStyles.headline, color: colors.text }}>Places</Text>
               <View style={{
                 backgroundColor: colors.cardBackground, borderRadius: 10,
                 paddingHorizontal: 8, paddingVertical: 2,
                 borderWidth: 1, borderColor: colors.border,
               }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary }}>
+                <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>
                   {filteredPlaces.length}
                 </Text>
               </View>
@@ -318,8 +320,7 @@ export default function FavoritesScreen() {
                   style={{ marginRight: 5 }}
                 />
                 <Text style={{
-                  fontSize: 12,
-                  fontWeight: isActive ? '600' : '500',
+                  ...(isActive ? TextStyles.bodyEm : TextStyles.body),
                   color: isActive ? Navy.DEFAULT : colors.textTertiary,
                 }}>
                   {tab.label}
@@ -346,7 +347,7 @@ export default function FavoritesScreen() {
               }}
             >
               <Text style={{
-                fontSize: 11, fontWeight: '600',
+                ...TextStyles.captionEm,
                 color: !activeSubcategory ? '#fff' : colors.textSecondary,
               }}>All</Text>
             </Pressable>
@@ -362,7 +363,7 @@ export default function FavoritesScreen() {
                   }}
                 >
                   <Text style={{
-                    fontSize: 11, fontWeight: '600',
+                    ...TextStyles.captionEm,
                     color: isActive ? '#fff' : colors.textSecondary,
                   }}>{cat}</Text>
                 </Pressable>
@@ -387,7 +388,7 @@ export default function FavoritesScreen() {
               }}
             >
               <FontAwesome name="sort" size={11} color={colors.textTertiary} style={{ marginRight: 6 }} />
-              <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary }}>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>
                 {SORT_OPTIONS.find((o) => o.key === sortBy)?.label}
               </Text>
             </Pressable>
@@ -403,7 +404,7 @@ export default function FavoritesScreen() {
                 onChangeText={setSearchQuery}
                 placeholder="Search places..."
                 placeholderTextColor={colors.textTertiary}
-                style={{ flex: 1, fontSize: 12, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+                style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
               />
               {searchQuery.length > 0 && (
                 <Pressable onPress={() => setSearchQuery('')}>
@@ -420,7 +421,7 @@ export default function FavoritesScreen() {
             {filteredPlaces.length === 0 && (
               <View style={{ alignItems: 'center', paddingTop: 60 }}>
                 <FontAwesome name="search" size={36} color={colors.textTertiary} />
-                <Text style={{ fontSize: 15, color: colors.textTertiary, marginTop: 12 }}>
+                <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>
                   {activeTab === 'favorites' ? 'No favorites yet' : 'No places match your search'}
                 </Text>
               </View>
@@ -435,10 +436,10 @@ export default function FavoritesScreen() {
                     borderTopWidth: 1, borderTopColor: colors.border,
                     paddingTop: 16, paddingBottom: 12, marginTop: 8,
                   }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e3a5f' }}>
+                    <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>
                       {collection.label}
                     </Text>
-                    <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+                    <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
                       {sectionPlaces.length} places
                     </Text>
                   </View>
@@ -469,7 +470,7 @@ export default function FavoritesScreen() {
             {filteredPlaces.length === 0 ? (
               <View style={{ alignItems: 'center', paddingTop: 60 }}>
                 <FontAwesome name="search" size={36} color={colors.textTertiary} />
-                <Text style={{ fontSize: 15, color: colors.textTertiary, marginTop: 12 }}>
+                <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>
                   {activeTab === 'favorites' ? 'No favorites yet' : 'No places match your search'}
                 </Text>
               </View>
@@ -505,7 +506,7 @@ export default function FavoritesScreen() {
       {selectedPlace && (
         <PlaceDetailModal
           place={selectedPlace}
-          allPlaces={MOCK_PLACES}
+          allPlaces={PLACES}
           onClose={closeModal}
           favorites={favorites}
           onToggleFav={toggleFavorite}

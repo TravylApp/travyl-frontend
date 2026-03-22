@@ -11,8 +11,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme } from '@travyl/shared';
-import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
+import { useItineraryScreen, formatDateRange, resolveTheme, TextStyles, FontFamily } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -283,7 +282,7 @@ function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
               width: 320,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text, marginBottom: 8 }}>
               Trip Theme
             </Text>
             <ThemePicker
@@ -372,12 +371,12 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       {/* Hero text overlay */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 }}>
         {/* Country + City + Toggle */}
-        <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
+        <Text style={{ ...TextStyles.xs, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
           {countryName || 'Your Trip Guide'}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <Text style={{
-            fontSize: 28, fontWeight: '800', fontFamily: 'Lustria-Regular', color: '#fff',
+            ...TextStyles.display, color: '#fff',
             textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12,
           }}>
             {cityName.toUpperCase()}
@@ -390,7 +389,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>
+            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
               {essentialsOpen ? 'Hide Info' : 'Trip Info'}
             </Text>
             <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={8} color="rgba(255,255,255,0.6)" />
@@ -402,11 +401,11 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           <View>
             {/* Date + travelers */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
                 {formatDateRange(trip.start_date, trip.end_date)}
               </Text>
               <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
                 {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
               </Text>
             </View>
@@ -417,7 +416,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
                 {[qf.currency, qf.language, qf.timezone, qf.power].filter(Boolean).map((f, i) => {
                   const [label, ...rest] = (f as string).split(' · ');
                   return (
-                    <Text key={i} style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>
+                    <Text key={i} style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }}>
                       <Text style={{ fontWeight: '700', color: '#fff' }}>{label}</Text>
                       {rest.length > 0 ? ` · ${rest.join(' · ')}` : ''}
                     </Text>
@@ -431,15 +430,15 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <FontAwesome name="cloud" size={12} color="#c8a96a" />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#c8a96a' }}>{weather.high}° / {weather.low}°</Text>
-                  <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>Now</Text>
+                  <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a' }}>{weather.high}° / {weather.low}°</Text>
+                  <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)' }}>Now</Text>
                 </View>
                 {forecast.length > 0 && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>|</Text>}
                 {forecast.slice(0, 4).map((d) => (
                   <View key={d.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>{d.day}</Text>
-                    <Text style={{ fontSize: 12 }}>{d.icon}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{d.high}°</Text>
+                    <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.6)' }}>{d.day}</Text>
+                    <Text style={{ ...TextStyles.body }}>{d.icon}</Text>
+                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff' }}>{d.high}°</Text>
                   </View>
                 ))}
               </View>
@@ -766,10 +765,10 @@ function TabPickerModal() {
           paddingBottom: 40,
         }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.sansBold, color: colors.text, marginBottom: 4 }}>
             Manage Tabs
           </Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 16 }}>
+          <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 16 }}>
             Add or remove tabs from your trip
           </Text>
           {ADDABLE_TABS.map((tab) => {
@@ -802,8 +801,8 @@ function TabPickerModal() {
                   />
                 </View>
                 <Text style={{
+                  ...TextStyles.subhead,
                   flex: 1,
-                  fontSize: 15,
                   fontWeight: '500',
                   color: colors.text,
                 }}>

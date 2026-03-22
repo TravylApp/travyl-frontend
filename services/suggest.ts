@@ -19,7 +19,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // Check cache first
     const cached = await getCachedSuggestions(destination, category)
     if (cached) {
-      console.log('[suggest] cache hit, returning', cached.length, 'suggestions')
       const response: SuggestResponse = { suggestions: cached, source: 'cache' }
       return { statusCode: 200, body: JSON.stringify(response) }
     }
@@ -33,7 +32,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     // Cache results (30min default TTL)
     if (suggestions.length > 0) {
-      await setCachedSuggestions(destination, category, suggestions)
+      await setCachedSuggestions(userId, destination, suggestions)
     }
 
     const response: SuggestResponse = { suggestions, source: 'fresh' }

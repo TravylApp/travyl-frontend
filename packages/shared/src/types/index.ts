@@ -741,3 +741,102 @@ export interface EffectivePermission {
   canInvite: boolean
   canCreateNotes: boolean
 }
+
+// ─── Trip Card / Member Types ──────────────────────────────
+
+export interface TripMember {
+  id: string;
+  name: string;
+  avatar?: string;
+  role: 'owner' | 'editor' | 'viewer';
+}
+
+export interface MockTripCard extends Trip {
+  image: string;
+  images?: string[];
+  route?: TripRoute;
+  members?: TripMember[];
+}
+
+// ─── Flight / Hotel Detail Types ────────────────────────────
+
+export interface MockFlightDetail {
+  id: string;
+  type: 'arrival' | 'return';
+  airline: string;
+  flightNumber: string;
+  originIata: string;
+  originName: string;
+  destIata: string;
+  destName: string;
+  departureTime: string;
+  arrivalTime: string;
+  departureTerminal: string;
+  arrivalTerminal: string;
+  gate: string;
+  boardingTime: string;
+  duration: string;
+  aircraft: string;
+  cabinClass: string;
+  seats: string;
+  baggage: string;
+  meal: string;
+  wifi: boolean;
+  confirmation: string;
+  status: 'On Time' | 'Delayed' | 'Boarding';
+  pricePerTraveler: number;
+  totalPrice: number;
+  currency: string;
+  isBooked: boolean;
+}
+
+export interface MockHotelRoom {
+  id: string;
+  name: string;
+  image: string;
+  images?: string[];
+  amenities: string[];
+  pricePerNight: number;
+  size?: string;
+  beds?: string;
+  maxGuests?: number;
+  isSelected: boolean;
+}
+
+export interface MockHotelGuestRatings {
+  overall: number;
+  label: string;
+  cleanliness: number;
+  staff: number;
+  location: number;
+  comfort: number;
+  value: number;
+  totalRatings: number;
+}
+
+export interface MockHotelDetail {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  starRating: number;
+  checkInTime: string;
+  checkOutTime: string;
+  checkInDate: string;
+  checkOutDate: string;
+  amenities: string[];
+  images: string[];
+  rooms: MockHotelRoom[];
+  isBooked: boolean;
+  totalPrice: number;
+  currency: string;
+  guestRatings: MockHotelGuestRatings;
+  taxesAndFees: { cityTax: number; serviceFee: number; vat: number };
+  phone: string;
+  email: string;
+  website: string;
+  neighborhood: string;
+  confirmationNumber: string;
+}

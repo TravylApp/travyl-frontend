@@ -39,17 +39,9 @@ export * from './homeData';
 
 export { EASE_OUT_EXPO } from './animation';
 
-export { USE_MOCK_DATA } from './featureFlags';
-
 export { PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from './logo';
 
 export * from './itineraryData';
-
-export * from './mockLoginData';
-
-export * from './mockProfileData';
-
-export * from './mockTravelBoardsData';
 
 export * from './activityDetails';
 
@@ -59,6 +51,12 @@ export * from './placeCardSizes';
 
 export * from './placeCollections';
 
-export * from './mockSuggestions';
 
 export * from './packingCatalog';
+
+export * from './typography';
+
+// UI content data (login, profile, travel boards)
+export * from './mockLoginData';
+export * from './mockProfileData';
+export * from './mockTravelBoardsData';

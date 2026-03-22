@@ -5,7 +5,9 @@ import { AnimatePresence, motion, type PanInfo } from "motion/react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
 import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
-import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
+import type { PlaceItem as PlaceItemType } from '@travyl/shared';
+
+const MOCK_PLACES: PlaceItemType[] = [];
 import type { PlaceItem } from "@travyl/shared";
 
 const INSPIRED_PLACES = MOCK_PLACES.slice(0, 8);
@@ -208,6 +210,8 @@ export function GetInspired() {
   const [direction, setDirection] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const cards = INSPIRED_PLACES;
+
+  if (cards.length === 0) return null;
 
   // Reset flip when card changes
   useEffect(() => {

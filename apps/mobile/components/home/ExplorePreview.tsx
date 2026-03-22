@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useExploreRows, Gray, getCyclicGradient } from '@travyl/shared';
-import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
 import type { PlaceItem } from '@travyl/shared';
 import { ExploreRow } from './ExploreRow';
 
@@ -34,10 +33,8 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
   const contextRows = useMemo(() => {
     if (!contextPlace) return null;
     const nearbyIds = contextPlace.nearbyPlaces ?? [];
-    const nearbyItems = MOCK_PLACES.filter((p) => nearbyIds.includes(p.id));
-    const similarItems = MOCK_PLACES.filter(
-      (p) => p.id !== contextPlace.id && p.type === contextPlace.type,
-    ).slice(0, 6);
+    const nearbyItems: PlaceItem[] = [];
+    const similarItems: PlaceItem[] = [];
 
     return [
       ...(nearbyItems.length > 0

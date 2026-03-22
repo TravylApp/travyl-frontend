@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, type RefObject } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   Pressable,
   ActivityIndicator,
   useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -27,6 +29,9 @@ import {
   Blue,
   hexToRgba,
   MOCK_PLACES,
+  TextStyles,
+  FontSize,
+  FontFamily,
 } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -127,7 +132,7 @@ function AnimatedCounter({
   }, [trigger, value, suffix, decimals]);
 
   return (
-    <Text style={{ fontSize: 28, fontWeight: '700', fontFamily: 'Lustria-Regular', color: '#2a1f17', marginBottom: 2 }}>
+    <Text style={{ ...TextStyles.display, color: '#2a1f17', marginBottom: 2 }}>
       {display}
     </Text>
   );
@@ -202,8 +207,7 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
             />
             <Text
               style={{
-                fontSize: 8,
-                fontWeight: '700',
+                ...TextStyles.micro,
                 color: '#5c4a3a',
                 letterSpacing: 1.5,
                 marginBottom: 6,
@@ -211,7 +215,7 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
             >
               {item.label}
             </Text>
-            <Text style={{ fontSize: 11, color: '#3d2f23', textAlign: 'center', lineHeight: 16 }}>
+            <Text style={{ ...TextStyles.caption, color: '#3d2f23', textAlign: 'center' }}>
               {item.desc}
             </Text>
           </Animated.View>
@@ -219,6 +223,56 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
       </View>
     </View>
   );
+}
+
+// ─── Conversational follow-up questions ─────────────────────
+const TRIP_QUESTIONS = [
+  { key: 'destination', placeholder: 'Where do you want to go?' },
+  { key: 'duration', placeholder: 'How many days?' },
+  { key: 'companions', placeholder: "Who's coming along?" },
+  { key: 'vibe', placeholder: 'What\'s the vibe? (foodie, adventure, relaxing...)' },
+  { key: 'budget', placeholder: 'Any budget range? (budget, mid-range, luxury)' },
+] as const;
+
+type TripAnswers = Record<string, string>;
+
+function buildChainSentence(answers: TripAnswers): string {
+  const parts: string[] = [];
+  if (answers.duration) parts.push(answers.duration);
+  if (answers.destination) parts.push(`in ${answers.destination}`);
+  if (answers.companions) parts.push(`with ${answers.companions}`);
+  if (answers.vibe) parts.push(answers.vibe);
+  if (answers.budget) parts.push(answers.budget.toLowerCase().includes('budget') ? answers.budget : `${answers.budget} budget`);
+  return parts.join(' · ') || '';
+}
+
+function parseInitialInput(val: string): TripAnswers {
+  const parsed: TripAnswers = {};
+  const lower = val.toLowerCase();
+  const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]+)/i);
+  if (destMatch) {
+    parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
+  } else {
+    const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore)\s*/i, '').trim();
+    parsed.destination = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  const durMatch = lower.match(/(\d+)\s*(?:day|night|week)s?/);
+  if (durMatch) {
+    const num = parseInt(durMatch[1]);
+    const unit = durMatch[0].match(/day|night|week/)![0];
+    parsed.duration = `${num} ${unit}${num !== 1 ? 's' : ''}`;
+  } else if (lower.includes('weekend')) parsed.duration = 'weekend';
+  if (lower.match(/family|kids|children/)) parsed.companions = 'family';
+  else if (lower.match(/partner|couple|wife|husband/)) parsed.companions = 'partner';
+  else if (lower.match(/friends|group|squad/)) parsed.companions = 'friends';
+  else if (lower.match(/solo|alone|myself/)) parsed.companions = 'solo';
+  if (lower.match(/food|foodie|culinary/)) parsed.vibe = 'foodie';
+  else if (lower.match(/adventure|hiking|trek/)) parsed.vibe = 'adventure';
+  else if (lower.match(/relax|chill|spa|beach/)) parsed.vibe = 'relaxing';
+  else if (lower.match(/culture|museum|art|history/)) parsed.vibe = 'culture';
+  if (lower.match(/budget|cheap|backpack/)) parsed.budget = 'budget';
+  else if (lower.match(/luxury|premium|high.end/)) parsed.budget = 'luxury';
+  return parsed;
 }
 
 export default function HomeScreen() {
@@ -292,6 +346,14 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  // Conversational flow state
+  const [convStep, setConvStep] = useState(-1);
+  const [answers, setAnswers] = useState<TripAnswers>({});
+  const isConversing = convStep >= 0 && convStep < TRIP_QUESTIONS.length;
+  const isComplete = convStep >= TRIP_QUESTIONS.length;
+  const chainSentence = buildChainSentence(answers);
+  const inputRef = useRef<TextInput>(null);
+
   const sendButtonRef = useRef<View>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const buttonLayoutRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -315,9 +377,79 @@ export default function HomeScreen() {
     },
   });
 
+  const launchTakeoff = useCallback((query: string) => {
+    setTripQuery(query);
+    setButtonLayout(buttonLayoutRef.current);
+    setShowTakeoff(true);
+  }, [setTripQuery]);
+
+  const handleConvReset = useCallback(() => {
+    setConvStep(-1);
+    setAnswers({});
+    setTripQuery('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [setTripQuery]);
+
+  const handleSkipToLaunch = useCallback(() => {
+    const fullQuery = buildChainSentence(answers);
+    if (!fullQuery.trim()) return;
+    setConvStep(TRIP_QUESTIONS.length);
+    setTripQuery(fullQuery);
+    setTimeout(() => launchTakeoff(fullQuery), 1500);
+  }, [answers, setTripQuery, launchTakeoff]);
+
   const onSearch = () => {
+    const val = tripQuery.trim();
+    if (!val) return;
+
+    // Not conversing yet — parse input and start flow
+    if (convStep === -1) {
+      const parsed = parseInitialInput(val);
+      setAnswers(parsed);
+      const firstUnanswered = TRIP_QUESTIONS.findIndex((q) => !parsed[q.key]);
+      if (firstUnanswered === -1) {
+        const fullQuery = buildChainSentence(parsed);
+        setConvStep(TRIP_QUESTIONS.length);
+        setTripQuery(fullQuery);
+        setTimeout(() => launchTakeoff(fullQuery), 1500);
+      } else {
+        setConvStep(firstUnanswered);
+        setTripQuery('');
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+      return;
+    }
+
+    // In conversation — save answer and advance
+    if (isConversing) {
+      const currentQ = TRIP_QUESTIONS[convStep];
+      let normalized = val;
+      if (currentQ.key === 'duration') {
+        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} days`;
+        else if (!/day|night|week/i.test(val)) normalized = `${val.trim()} days`;
+      } else if (currentQ.key === 'companions') {
+        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} people`;
+      } else if (currentQ.key === 'destination') {
+        normalized = val.trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+      }
+      const newAnswers = { ...answers, [currentQ.key]: normalized };
+      setAnswers(newAnswers);
+      setTripQuery('');
+      const nextUnanswered = TRIP_QUESTIONS.findIndex((q, i) => i > convStep && !newAnswers[q.key]);
+      if (nextUnanswered === -1) {
+        setConvStep(TRIP_QUESTIONS.length);
+        const fullQuery = buildChainSentence(newAnswers);
+        setTripQuery(fullQuery);
+        setTimeout(() => launchTakeoff(fullQuery), 1500);
+      } else {
+        setConvStep(nextUnanswered);
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+      return;
+    }
+
+    // Fallback
     if (handleSearch()) {
-      // Use the pre-captured layout from onLayout (always available)
       setButtonLayout(buttonLayoutRef.current);
       setShowTakeoff(true);
     }
@@ -325,6 +457,7 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <Animated.ScrollView
       onScroll={scrollHandler}
       scrollEventThrottle={16}
@@ -333,6 +466,7 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
       bounces
       nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
     >
       {/* ─── Hero Section ──────────────────────────────────────── */}
       <View
@@ -363,9 +497,7 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInUp.duration(600)}>
           <Text
             style={{
-              fontSize: 30,
-              fontWeight: '800',
-              fontFamily: 'Lustria-Regular',
+              ...TextStyles.display,
               color: '#fff',
               textAlign: 'center',
               marginBottom: 8,
@@ -380,7 +512,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Cycling subtitle */}
-        <View style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', marginBottom: 32, width: '100%' }}>
+        <View style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', marginBottom: isConversing || isComplete ? 16 : 32, width: '100%' }}>
           <Animated.Text
             key={heroConfig?.subtitle ? 'static' : `sub-${subtitleIndex}`}
             entering={FadeIn.duration(500)}
@@ -389,7 +521,7 @@ export default function HomeScreen() {
               position: 'absolute',
               left: 0,
               right: 0,
-              fontSize: 16,
+              ...TextStyles.subhead,
               color: 'rgba(255,255,255,0.85)',
               textAlign: 'center',
               paddingHorizontal: 16,
@@ -401,6 +533,71 @@ export default function HomeScreen() {
             {heroConfig?.subtitle ?? SUBTITLE_PHRASES[subtitleIndex]}
           </Animated.Text>
         </View>
+
+        {/* Chain pill — shows trip so far during conversation */}
+        {isConversing && chainSentence ? (
+          <Animated.View
+            entering={FadeInUp.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={{
+              width: '100%',
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              borderRadius: 24,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              marginBottom: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.15)',
+            }}
+          >
+            <Text style={{ ...TextStyles.bodyLgEm, flex: 1, color: '#fff', marginRight: 8 }} numberOfLines={1}>
+              {chainSentence}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              {TRIP_QUESTIONS.map((_, i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: i < convStep ? 'rgba(255,255,255,0.4)' : i === convStep ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.12)',
+                  }}
+                />
+              ))}
+              <Pressable onPress={handleConvReset} style={{ marginLeft: 4, padding: 4 }}>
+                <FontAwesome name="refresh" size={10} color="rgba(255,255,255,0.5)" />
+              </Pressable>
+            </View>
+          </Animated.View>
+        ) : null}
+
+        {/* Final summary pill before takeoff */}
+        {isComplete && !showTakeoff && chainSentence ? (
+          <Animated.View
+            entering={FadeInUp.duration(400)}
+            style={{
+              width: '100%',
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              borderRadius: 24,
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              marginBottom: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.15)',
+            }}
+          >
+            <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{chainSentence}</Text>
+            <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
+          </Animated.View>
+        ) : null}
 
         {/* Search Bar */}
         <Animated.View
@@ -417,6 +614,21 @@ export default function HomeScreen() {
             elevation: 8,
           }}
         >
+          {/* Question label when conversing */}
+          {isConversing && (
+            <Animated.View
+              entering={FadeIn.duration(200)}
+              style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 0, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <FontAwesome name="magic" size={10} color={colors.tint} />
+              <Text style={{ ...TextStyles.captionEm, color: colors.tint, flex: 1 }}>
+                {TRIP_QUESTIONS[convStep].placeholder}
+              </Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
+                {convStep + 1}/{TRIP_QUESTIONS.length}
+              </Text>
+            </Animated.View>
+          )}
           <View
             style={{
               flexDirection: 'row',
@@ -428,13 +640,14 @@ export default function HomeScreen() {
           >
             <FontAwesome name="search" size={16} color={colors.textTertiary} />
             <TextInput
+              ref={inputRef}
               value={tripQuery}
               onChangeText={setTripQuery}
               onSubmitEditing={onSearch}
-              placeholder={heroConfig?.search_placeholder ?? '7 days in Paris with my partner...'}
+              placeholder={isConversing ? TRIP_QUESTIONS[convStep].placeholder : (heroConfig?.search_placeholder ?? '7 days in Paris with my partner...')}
               placeholderTextColor={colors.textTertiary}
               returnKeyType="search"
-              style={{ flex: 1, fontSize: 14, color: colors.text, paddingVertical: 8 }}
+              style={{ flex: 1, fontSize: FontSize.bodyXl, color: colors.text, paddingVertical: 8 }}
             />
             <Pressable
               ref={sendButtonRef}
@@ -456,42 +669,44 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Cycling Suggestion Pills */}
-        <View style={{ height: 40, justifyContent: 'center', alignItems: 'center', marginTop: 16, width: '100%' }}>
-          <Animated.View
-            key={pillGroup}
-            entering={FadeIn.duration(400)}
-            exiting={FadeOut.duration(300)}
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            {visiblePills.map((s) => (
-              <Pressable
-                key={s.id}
-                onPress={() => setTripQuery(s.short_label ?? s.label)}
-                style={{
-                  borderRadius: 20,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.4)',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>
-                  {s.short_label ?? s.label}
-                </Text>
-              </Pressable>
-            ))}
-          </Animated.View>
-        </View>
+        {/* Cycling Suggestion Pills — only before conversation */}
+        {!isComplete && (
+          <View style={{ height: 40, justifyContent: 'center', alignItems: 'center', marginTop: 16, width: '100%' }}>
+            <Animated.View
+              key={pillGroup}
+              entering={FadeIn.duration(400)}
+              exiting={FadeOut.duration(300)}
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              {visiblePills.map((s) => (
+                <Pressable
+                  key={s.id}
+                  onPress={() => setTripQuery(s.short_label ?? s.label)}
+                  style={{
+                    borderRadius: 20,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)' }}>
+                    {s.short_label ?? s.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </Animated.View>
+          </View>
+        )}
       </View>
 
       {/* ─── Trip Statistics ─────────────────────────────────────── */}
@@ -509,14 +724,14 @@ export default function HomeScreen() {
                 marginBottom: 16,
               }}
             >
-              <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'Lustria-Regular', color: colors.text }}>
+              <Text style={{ ...TextStyles.title, color: colors.text }}>
                 Your Recent Trips
               </Text>
               <Pressable
                 onPress={() => router.push('/(tabs)/trips')}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: '500', color: Blue[600] }}>
+                <Text style={{ ...TextStyles.bodyXl, color: Blue[600] }}>
                   View all
                 </Text>
                 <FontAwesome name="arrow-right" size={12} color={Blue[600]} />
@@ -537,12 +752,12 @@ export default function HomeScreen() {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={{ fontWeight: '600', fontSize: 16, fontFamily: 'Lustria-Regular', color: colors.text }}>
+                    <Text style={{ ...TextStyles.subhead, color: colors.text }}>
                       {trip.title}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                       <FontAwesome name="map-marker" size={13} color={colors.textSecondary} />
-                      <Text style={{ fontSize: 14, color: colors.textSecondary }}>{trip.destination}</Text>
+                      <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>{trip.destination}</Text>
                     </View>
                   </View>
                   <View
@@ -553,7 +768,7 @@ export default function HomeScreen() {
                       backgroundColor: trip.status.bgColor,
                     }}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '500', color: trip.status.textColor }}>
+                    <Text style={{ ...TextStyles.body, color: trip.status.textColor }}>
                       {trip.status.label}
                     </Text>
                   </View>
@@ -562,11 +777,11 @@ export default function HomeScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <FontAwesome name="calendar" size={11} color={colors.textTertiary} />
-                    <Text style={{ fontSize: 12, color: colors.textTertiary }}>{trip.dateRange.short}</Text>
+                    <Text style={{ ...TextStyles.body, color: colors.textTertiary }}>{trip.dateRange.short}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <FontAwesome name="users" size={11} color={colors.textTertiary} />
-                    <Text style={{ fontSize: 12, color: colors.textTertiary }}>{trip.travelersLabel}</Text>
+                    <Text style={{ ...TextStyles.body, color: colors.textTertiary }}>{trip.travelersLabel}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -623,7 +838,7 @@ export default function HomeScreen() {
             >
               <PaperPlane size={32} color={Blue[600]} style={{ transform: [{ rotate: '-12deg' }] }} />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'Lustria-Regular', color: colors.text, marginBottom: 8, textAlign: 'center' }}>
+            <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 8, textAlign: 'center' }}>
               No trips yet
             </Text>
             <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: 24, paddingHorizontal: 16 }}>
@@ -643,7 +858,7 @@ export default function HomeScreen() {
               }}
             >
               <PaperPlane size={18} color="#fff" />
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+              <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>
                 Plan your first trip
               </Text>
             </Pressable>
@@ -674,10 +889,9 @@ export default function HomeScreen() {
             entering={FadeIn.duration(800)}
             exiting={FadeOut.duration(500)}
             style={{
+              ...TextStyles.title,
               color: '#fff',
-              fontSize: 20,
               fontStyle: 'italic',
-              fontWeight: '300',
               textAlign: 'center',
               textShadowColor: 'rgba(0,0,0,0.3)',
               textShadowOffset: { width: 0, height: 2 },
@@ -696,7 +910,7 @@ export default function HomeScreen() {
       </FadeInOnScroll>
 
       <FadeInOnScroll scrollY={scrollY}>
-        <ExplorePreview onPlacePress={setSelectedPlace} />
+        <ExplorePreview />
       </FadeInOnScroll>
 
       {/* ─── Ocean Wave + Footer ──────────────────────────────── */}
@@ -704,6 +918,7 @@ export default function HomeScreen() {
       <Footer />
 
     </Animated.ScrollView>
+    </KeyboardAvoidingView>
 
     {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
     <TakeoffTransition

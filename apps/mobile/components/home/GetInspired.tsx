@@ -1,11 +1,10 @@
 import { useState, useCallback } from 'react';
 import { View, Text, Dimensions } from 'react-native';
-import { Gray } from '@travyl/shared';
-import { MOCK_PLACES } from '@travyl/shared/src/config/mockPlacesData';
+import { Gray, type PlaceItem } from '@travyl/shared';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const INSPIRED_PLACES = MOCK_PLACES.slice(0, 8);
+const INSPIRED_PLACES: PlaceItem[] = [];
 const CARD_W = SCREEN_WIDTH * 0.62;
 const CARD_H = CARD_W * 1.35;
 

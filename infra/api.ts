@@ -1,6 +1,6 @@
 import { cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey } from './secrets'
 
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
@@ -52,13 +52,13 @@ api.route('POST /interact', {
   link: [bus, supabaseSecretKey, supabaseUrl],
 })
 
-api.route('POST /index', {
-  handler: 'services/index-trip.handler',
+api.route('POST /packing-suggest', {
+  handler: 'services/packing-suggest.handler',
   link: [supabaseSecretKey, supabaseUrl],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],
-      resources: ['arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
     },
   ],
 })

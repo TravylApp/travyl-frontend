@@ -9,9 +9,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
   formatDateRange,
+  TextStyles, FontFamily,
 } from '@travyl/shared';
-import { MOCK_WEATHER_FORECAST, MOCK_WEATHER, MOCK_NEWS, MOCK_EXPLORE_ITEMS, NEWS_GRADIENTS } from '@travyl/shared/src/config/mockItineraryData';
-import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition } from './_layout';
 
@@ -28,11 +27,11 @@ function SectionHeader({ accent, title }: {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <View>
           <Text style={{
-            fontSize: 9, fontWeight: '700', letterSpacing: 3,
+            ...TextStyles.xs, fontWeight: '700', letterSpacing: 3,
             textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 4,
           }}>{accent}</Text>
           <Text style={{
-            fontSize: 22, fontWeight: '700', fontFamily: 'Lustria-Regular',
+            ...TextStyles.headline, fontSize: 22,
             color: colors.text,
           }}>{title}</Text>
         </View>
@@ -167,14 +166,14 @@ export default function OverviewScreen() {
       {/* ─── Hero text over bleed ─────────────────────────── */}
       <View style={{ paddingHorizontal: 20, paddingTop: 90, paddingBottom: 8 }}>
         <Text style={{
-          fontSize: 9, fontWeight: '700', letterSpacing: 3,
+          ...TextStyles.xs, fontWeight: '700', letterSpacing: 3,
           textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
         }}>
           {countryName || 'Your Trip Guide'}
         </Text>
         <Text style={{
-          fontSize: 32, fontWeight: '800', fontFamily: 'Lustria-Regular',
-          color: '#fff', lineHeight: 36, marginBottom: 8,
+          ...TextStyles.display, lineHeight: 36, marginBottom: 8,
+          color: '#fff',
           textShadowColor: 'rgba(0,0,0,0.5)',
           textShadowOffset: { width: 0, height: 2 },
           textShadowRadius: 16,
@@ -184,13 +183,13 @@ export default function OverviewScreen() {
 
         {/* Date + travelers + weather inline */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-          {dateStr && <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{dateStr}</Text>}
+          {dateStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{dateStr}</Text>}
           {dateStr && travelersStr && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
-          {travelersStr && <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{travelersStr}</Text>}
+          {travelersStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{travelersStr}</Text>}
           {(dateStr || travelersStr) && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <FontAwesome name={weatherIcon(weather.conditions) as any} size={13} color="rgba(255,255,255,0.5)" />
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{weather.high}° / {weather.low}°</Text>
+            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)' }}>{weather.high}° / {weather.low}°</Text>
           </View>
         </View>
       </View>
@@ -198,7 +197,7 @@ export default function OverviewScreen() {
       {/* ─── Lede + Essentials ────────────────────────────── */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
         <Text style={{
-          fontSize: 13, lineHeight: 20, fontFamily: 'Lustria-Regular',
+          ...TextStyles.bodyLg, lineHeight: 20, fontFamily: FontFamily.serif,
           color: isDark ? '#e0d8cc' : '#4a3f35', marginBottom: 12,
           textShadowColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)',
           textShadowOffset: { width: 0, height: 1 },
@@ -211,7 +210,7 @@ export default function OverviewScreen() {
         {/* Quick facts — inline text, matches web */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
           {QUICK_FACTS.map((f) => (
-            <Text key={f.bold} style={{ fontSize: 11, color: isDark ? '#9e9689' : '#7a6e63' }}>
+            <Text key={f.bold} style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63' }}>
               <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text> · {f.text}
             </Text>
           ))}
@@ -229,18 +228,18 @@ export default function OverviewScreen() {
               size={14}
               color={ACCENT_COLOR}
             />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT_COLOR }}>
+            <Text style={{ ...TextStyles.bodyLgEm, fontWeight: '700', color: ACCENT_COLOR }}>
               {weather.high}° / {weather.low}°
             </Text>
-            <Text style={{ fontSize: 9, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
+            <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
           </View>
           <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
             {forecast.slice(0, 5).map((day) => (
               <View key={day.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
-                <Text style={{ fontSize: 13 }}>{day.icon}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
+                <Text style={{ ...TextStyles.bodyLg }}>{day.icon}</Text>
+                <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
               </View>
             ))}
           </ScrollView>
@@ -278,17 +277,16 @@ export default function OverviewScreen() {
                 paddingHorizontal: 10, paddingVertical: 4,
               }}>
                 <Text style={{
-                  fontSize: 9, fontWeight: '700', letterSpacing: 0.5,
+                  ...TextStyles.xs, fontWeight: '700', letterSpacing: 0.5,
                   textTransform: 'uppercase', color: ACCENT_COLOR,
                 }}>{item.category}</Text>
               </View>
               {/* Bottom text */}
               <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
                 <Text style={{
-                  fontSize: 17, fontWeight: '700', color: '#fff',
-                  fontFamily: 'Lustria-Regular', marginBottom: 4,
+                  ...TextStyles.title, fontSize: 17, color: '#fff', marginBottom: 4,
                 }}>{item.title}</Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 16 }} numberOfLines={2}>
+                <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.6)', lineHeight: 16 }} numberOfLines={2}>
                   {item.description}
                 </Text>
               </View>
@@ -300,7 +298,8 @@ export default function OverviewScreen() {
       {/* ─── Quote Divider ────────────────────────────────── */}
       <View style={{ paddingHorizontal: 32, paddingVertical: 24, alignItems: 'center' }}>
         <Text style={{
-          fontSize: 15, fontStyle: 'italic', fontFamily: 'Lustria-Regular',
+          ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
+          fontStyle: 'italic',
           textAlign: 'center', color: isDark ? 'rgba(200,192,182,0.5)' : 'rgba(80,65,50,0.5)',
           lineHeight: 22,
         }}>
@@ -338,18 +337,19 @@ export default function OverviewScreen() {
                     backgroundColor: 'rgba(200,169,106,0.3)',
                   }} />
                   <Text style={{
-                    fontSize: 9, fontWeight: '700', letterSpacing: 1.5,
+                    ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
                     textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
                   }}>
                     {item.category}
                     {item.source ? <Text style={{ opacity: 0.5 }}> · {item.source}</Text> : null}
                   </Text>
                   <Text style={{
-                    fontSize: 15, fontWeight: '700', fontFamily: 'Lustria-Regular',
+                    ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
+                    fontWeight: '700',
                     color: 'rgba(255,255,255,0.9)', lineHeight: 20, marginBottom: 6,
                   }} numberOfLines={2}>{item.title}</Text>
                   <Text style={{
-                    fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 16,
+                    ...TextStyles.caption, color: 'rgba(255,255,255,0.5)', lineHeight: 16,
                   }} numberOfLines={2}>{item.snippet}</Text>
                 </LinearGradient>
               </Pressable>
@@ -364,28 +364,28 @@ export default function OverviewScreen() {
         borderTopWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
       }}>
         <Text style={{
-          fontSize: 20, fontWeight: '700', fontFamily: 'Lustria-Regular',
+          ...TextStyles.title,
           color: colors.text, marginBottom: 16,
         }}>Before You Go</Text>
 
         {/* Getting Around */}
         <Text style={{
-          fontSize: 9, fontWeight: '700', letterSpacing: 1.5,
+          ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
           textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 10,
         }}>Getting Around</Text>
         {TRANSPORT_INFO.map((t) => (
-          <Text key={t.name} style={{ fontSize: 12, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
+          <Text key={t.name} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
             <Text style={{ fontWeight: '600', color: colors.text }}>{t.name}</Text> — {t.text}
           </Text>
         ))}
 
         {/* Good to Know */}
         <Text style={{
-          fontSize: 9, fontWeight: '700', letterSpacing: 1.5,
+          ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
           textTransform: 'uppercase', color: ACCENT_COLOR, marginTop: 18, marginBottom: 10,
         }}>Good to Know</Text>
         {GOOD_TO_KNOW.map((tip, i) => (
-          <Text key={i} style={{ fontSize: 12, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
+          <Text key={i} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
             {tip}
           </Text>
         ))}
@@ -397,7 +397,7 @@ export default function OverviewScreen() {
           borderTopWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
         }}>
           <Text style={{
-            fontSize: 9, fontWeight: '700', letterSpacing: 1,
+            ...TextStyles.xs, fontWeight: '700', letterSpacing: 1,
             textTransform: 'uppercase', color: isDark ? '#9e9689' : '#7a6e63',
           }}>Emergency</Text>
           {EMERGENCY_INFO.map((e) => (
@@ -406,8 +406,8 @@ export default function OverviewScreen() {
               onPress={() => Linking.openURL(`tel:${e.number}`)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(239,68,68,0.7)' }}>{e.number}</Text>
-              <Text style={{ fontSize: 9, color: isDark ? '#7a7268' : '#a39688' }}>{e.label}</Text>
+              <Text style={{ ...TextStyles.subhead, fontSize: 15, fontWeight: '700', color: 'rgba(239,68,68,0.7)' }}>{e.number}</Text>
+              <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688' }}>{e.label}</Text>
             </Pressable>
           ))}
         </View>

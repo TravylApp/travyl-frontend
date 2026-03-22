@@ -3,8 +3,9 @@
 import { use, useState } from 'react';
 import { Luggage, Sun, Plus, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MOCK_PACKING_LIST, MOCK_TRIP, useItineraryScreen } from '@travyl/shared';
-import type { PackingList } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
+
+type PackingList = Record<string, { item: string; packed: boolean }[]>;
 
 import { Skeleton } from '@/components/ui';
 
@@ -45,15 +46,15 @@ function SkeletonPacking() {
 export default function Packing({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
-  const [packingList, setPackingList] = useState<PackingList>({ ...MOCK_PACKING_LIST });
+  const [packingList, setPackingList] = useState<PackingList>({});
   const [newItemInputs, setNewItemInputs] = useState<Record<string, string>>({});
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');
 
   const { trip: liveTrip } = useItineraryScreen(id);
-  const trip = liveTrip ?? MOCK_TRIP;
-  const destination = trip.destination ?? '';
-  const currentWeather = trip.trip_context?.weather?.current;
+  const trip = liveTrip;
+  const destination = trip?.destination ?? '';
+  const currentWeather = trip?.trip_context?.weather?.current;
 
   /* derived counts */
   const allItems = Object.values(packingList).flat();

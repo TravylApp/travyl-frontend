@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen } from '@travyl/shared';
-import { MOCK_BUDGET_ITEMS } from '@travyl/shared/src/config/mockItineraryData';
+import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -67,7 +66,7 @@ function BudgetSkeleton() {
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
         {['Total Budget', 'Total Spent', 'Remaining'].map((label) => (
           <View key={label} style={{ flex: 1, backgroundColor: colors.cardBackground, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
-            <Text style={{ fontSize: 10, color: colors.textSecondary, textTransform: 'uppercase' }}>{label}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase' }}>{label}</Text>
             <SkeletonBlock width="80%" height={22} style={{ marginTop: 4 }} />
           </View>
         ))}
@@ -307,8 +306,8 @@ export default function BudgetScreen() {
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
           <FontAwesome name="pie-chart" size={24} color={ACCENT} />
         </View>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>No expenses yet</Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+        <Text style={{ ...TextStyles.title, fontSize: 17, color: colors.text, marginBottom: 6 }}>No expenses yet</Text>
+        <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
           Your budget breakdown will appear as you add flights, hotels, and activities to your trip.
         </Text>
         <Pressable
@@ -316,7 +315,7 @@ export default function BudgetScreen() {
           style={{ backgroundColor: ACCENT, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
           <FontAwesome name="plus" size={12} color="#fff" />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Set Budget</Text>
+          <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Set Budget</Text>
         </Pressable>
       </View>
       </PageTransition>
@@ -349,7 +348,7 @@ export default function BudgetScreen() {
                 }}
               >
                 <FontAwesome name={alert.icon as any} size={16} color={s.icon} />
-                <Text style={{ fontSize: 12, fontWeight: '500', color: s.text, flex: 1 }}>
+                <Text style={{ ...TextStyles.body, fontWeight: '500', color: s.text, flex: 1 }}>
                   {alert.message}
                 </Text>
               </View>
@@ -364,7 +363,7 @@ export default function BudgetScreen() {
         {/* Total Budget (editable) */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-            <Text style={{ fontSize: 10, color: colors.textSecondary, textTransform: 'uppercase' }}>Total Budget</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase' }}>Total Budget</Text>
             {!isEditingTotal ? (
               <Pressable
                 onPress={() => { setIsEditingTotal(true); setTempTotal(totalBudgeted.toString()); }}
@@ -384,7 +383,7 @@ export default function BudgetScreen() {
             )}
           </View>
           {!isEditingTotal ? (
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 2 }}>
+            <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text, marginTop: 2 }}>
               ${totalBudgeted.toLocaleString()}
             </Text>
           ) : (
@@ -394,7 +393,7 @@ export default function BudgetScreen() {
               keyboardType="numeric"
               autoFocus
               style={{
-                fontSize: 16, fontWeight: '700', color: colors.text,
+                fontSize: FontSize.subhead, fontWeight: '700', color: colors.text,
                 borderWidth: 1, borderColor: colors.border, borderRadius: 6,
                 paddingHorizontal: 8, paddingVertical: 4, marginTop: 2,
               }}
@@ -404,16 +403,16 @@ export default function BudgetScreen() {
 
         {/* Total Spent */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border }}>
-          <Text style={{ fontSize: 10, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Total Spent</Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 2 }}>
+          <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Total Spent</Text>
+          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text, marginTop: 2 }}>
             ${totalActual.toLocaleString()}
           </Text>
         </View>
 
         {/* Remaining */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? '#10b98130' : '#ef444430' }}>
-          <Text style={{ fontSize: 10, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
+          <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
+          <Text style={{ ...TextStyles.title, fontSize: 18, color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
             ${Math.abs(remaining).toLocaleString()}
           </Text>
         </View>
@@ -422,8 +421,8 @@ export default function BudgetScreen() {
       {/* ===== Overall Progress Bar ===== */}
       <View style={{ backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border, marginBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Budget Progress</Text>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{pctUsed.toFixed(1)}%</Text>
+          <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Budget Progress</Text>
+          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{pctUsed.toFixed(1)}%</Text>
         </View>
         <View style={{ backgroundColor: colors.borderLight, borderRadius: 6, height: 10, overflow: 'hidden' }}>
           <View
@@ -440,10 +439,10 @@ export default function BudgetScreen() {
       {/* ===== Daily Spending Chart ===== */}
       <View style={{ backgroundColor: colors.cardBackground, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Daily Spending</Text>
+          <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Daily Spending</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 11, color: colors.textSecondary }}>Avg:</Text>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>${avgDailySpend}</Text>
+            <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Avg:</Text>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>${avgDailySpend}</Text>
           </View>
         </View>
 
@@ -455,7 +454,7 @@ export default function BudgetScreen() {
             return (
               <View key={idx} style={{ alignItems: 'center', flex: 1, gap: 4 }}>
                 {/* Amount label */}
-                <Text style={{ fontSize: 9, fontWeight: '500', color: isHighest ? '#ef4444' : colors.textSecondary }}>
+                <Text style={{ ...TextStyles.xs, fontWeight: '500', color: isHighest ? '#ef4444' : colors.textSecondary }}>
                   ${d.amount}
                 </Text>
                 {/* Bar */}
@@ -469,7 +468,7 @@ export default function BudgetScreen() {
                   }}
                 />
                 {/* Day label */}
-                <Text style={{ fontSize: 10, color: colors.textSecondary, position: 'absolute', bottom: -18 }}>
+                <Text style={{ ...TextStyles.sm, color: colors.textSecondary, position: 'absolute', bottom: -18 }}>
                   {d.day}
                 </Text>
               </View>
@@ -480,11 +479,11 @@ export default function BudgetScreen() {
         {/* Average line indicator */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
           <View style={{ width: 12, height: 2, backgroundColor: '#f59e0b', borderRadius: 1, marginRight: 6 }} />
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+          <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
             Daily average: ${avgDailySpend}/day
           </Text>
           <View style={{ flex: 1 }} />
-          <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+          <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
             Total: ${DAILY_SPENDING.reduce((s, d) => s + d.amount, 0).toLocaleString()}
           </Text>
         </View>
@@ -492,8 +491,8 @@ export default function BudgetScreen() {
 
       {/* ===== Category Breakdown ===== */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Category Breakdown</Text>
-        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{budgetData.length} categories</Text>
+        <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Category Breakdown</Text>
+        <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{budgetData.length} categories</Text>
       </View>
 
       <View style={{ gap: 10 }}>
@@ -533,16 +532,16 @@ export default function BudgetScreen() {
                     <FontAwesome name={cfg.icon as any} size={16} color={cfg.color} />
                   </View>
                   <View>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{item.category}</Text>
+                    <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>{item.category}</Text>
                     {!isExpanded && (
-                      <Text style={{ fontSize: 12, color: colors.textSecondary }}>${item.actual.toLocaleString()}</Text>
+                      <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>${item.actual.toLocaleString()}</Text>
                     )}
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   {!isExpanded && (
                     <View style={{ backgroundColor: itemPct >= 100 ? '#fef2f2' : itemPct >= 80 ? '#fffbeb' : '#f0fdf4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: itemPct >= 100 ? '#dc2626' : itemPct >= 80 ? '#d97706' : '#16a34a' }}>
+                      <Text style={{ ...TextStyles.smEm, color: itemPct >= 100 ? '#dc2626' : itemPct >= 80 ? '#d97706' : '#16a34a' }}>
                         {itemPct.toFixed(0)}%
                       </Text>
                     </View>
@@ -574,14 +573,14 @@ export default function BudgetScreen() {
                       {/* Budgeted / Actual row */}
                       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}>Budgeted</Text>
-                          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>
+                          <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 4 }}>Budgeted</Text>
+                          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text }}>
                             ${item.budgeted.toLocaleString()}
                           </Text>
                         </View>
                         <View style={{ flex: 1 }}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 11, color: colors.textSecondary }}>Actual</Text>
+                            <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Actual</Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
                               <Pressable onPress={() => handleStartEdit(item)} hitSlop={8}>
                                 <FontAwesome name="pencil" size={12} color="#9ca3af" />
@@ -593,7 +592,7 @@ export default function BudgetScreen() {
                               )}
                             </View>
                           </View>
-                          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>
+                          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text }}>
                             ${item.actual.toLocaleString()}
                           </Text>
                         </View>
@@ -613,17 +612,17 @@ export default function BudgetScreen() {
 
                       {/* % used + under/over label */}
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>{itemPct.toFixed(0)}% used</Text>
+                        <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{itemPct.toFixed(0)}% used</Text>
                         {itemDiff > 0 ? (
-                          <Text style={{ fontSize: 11, fontWeight: '500', color: '#10b981' }}>
+                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: '#10b981' }}>
                             ${itemDiff.toLocaleString()} under
                           </Text>
                         ) : itemDiff < 0 ? (
-                          <Text style={{ fontSize: 11, fontWeight: '500', color: '#ef4444' }}>
+                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: '#ef4444' }}>
                             ${Math.abs(itemDiff).toLocaleString()} over
                           </Text>
                         ) : (
-                          <Text style={{ fontSize: 11, color: colors.textSecondary }}>On track</Text>
+                          <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>On track</Text>
                         )}
                       </View>
 
@@ -643,7 +642,7 @@ export default function BudgetScreen() {
                                 marginBottom: 6,
                               }}
                             >
-                              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              <Text style={{ ...TextStyles.captionEm, color: colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                 {item.expenses.length} {item.expenses.length === 1 ? 'Expense' : 'Expenses'}
                               </Text>
                               <FontAwesome
@@ -670,11 +669,11 @@ export default function BudgetScreen() {
                                       borderColor: colors.border,
                                     }}
                                   >
-                                    <Text style={{ fontSize: 12, color: colors.text, flex: 1, marginRight: 8 }} numberOfLines={1}>
+                                    <Text style={{ ...TextStyles.body, color: colors.text, flex: 1, marginRight: 8 }} numberOfLines={1}>
                                       {expense.description}
                                     </Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
+                                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
                                         ${expense.amount.toLocaleString()}
                                       </Text>
                                       <Pressable
@@ -695,7 +694,7 @@ export default function BudgetScreen() {
                         {/* Add Expense button / inline form */}
                         {addingExpenseFor === item.id ? (
                           <View style={{ backgroundColor: colors.cardBackground, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
-                            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Description</Text>
+                            <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Description</Text>
                             <TextInput
                               value={newExpenseDesc}
                               onChangeText={setNewExpenseDesc}
@@ -705,11 +704,11 @@ export default function BudgetScreen() {
                               style={{
                                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
                                 paddingHorizontal: 12, paddingVertical: 8,
-                                fontSize: 13, color: colors.text, backgroundColor: colors.inputBackground,
+                                fontSize: FontSize.bodyLg, color: colors.text, backgroundColor: colors.inputBackground,
                                 marginBottom: 10,
                               }}
                             />
-                            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Amount</Text>
+                            <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Amount</Text>
                             <TextInput
                               value={newExpenseAmount}
                               onChangeText={setNewExpenseAmount}
@@ -719,7 +718,7 @@ export default function BudgetScreen() {
                               style={{
                                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
                                 paddingHorizontal: 12, paddingVertical: 8,
-                                fontSize: 13, color: colors.text, backgroundColor: colors.inputBackground,
+                                fontSize: FontSize.bodyLg, color: colors.text, backgroundColor: colors.inputBackground,
                                 marginBottom: 12,
                               }}
                             />
@@ -731,7 +730,7 @@ export default function BudgetScreen() {
                                   paddingVertical: 10, alignItems: 'center',
                                 }}
                               >
-                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Add Expense</Text>
+                                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add Expense</Text>
                               </Pressable>
                               <Pressable
                                 onPress={() => { setAddingExpenseFor(null); setNewExpenseDesc(''); setNewExpenseAmount(''); }}
@@ -740,7 +739,7 @@ export default function BudgetScreen() {
                                   paddingVertical: 10, alignItems: 'center',
                                 }}
                               >
-                                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Cancel</Text>
+                                <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Cancel</Text>
                               </Pressable>
                             </View>
                           </View>
@@ -760,7 +759,7 @@ export default function BudgetScreen() {
                             }}
                           >
                             <FontAwesome name="plus" size={12} color="#374151" />
-                            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>Add Expense</Text>
+                            <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Add Expense</Text>
                           </Pressable>
                         )}
                       </View>
@@ -768,7 +767,7 @@ export default function BudgetScreen() {
                   ) : (
                     /* ── Editing budgeted amount inline ── */
                     <View>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 6 }}>Budgeted</Text>
+                      <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 6 }}>Budgeted</Text>
                       <TextInput
                         value={tempBudgeted}
                         onChangeText={setTempBudgeted}
@@ -779,7 +778,7 @@ export default function BudgetScreen() {
                         style={{
                           borderWidth: 1, borderColor: colors.border, borderRadius: 8,
                           paddingHorizontal: 12, paddingVertical: 8,
-                          fontSize: 14, color: colors.text, backgroundColor: colors.inputBackground,
+                          fontSize: FontSize.bodyXl, color: colors.text, backgroundColor: colors.inputBackground,
                           marginBottom: 12,
                         }}
                       />
@@ -791,7 +790,7 @@ export default function BudgetScreen() {
                             paddingVertical: 10, alignItems: 'center',
                           }}
                         >
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Save</Text>
+                          <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Save</Text>
                         </Pressable>
                         <Pressable
                           onPress={handleCancelEdit}
@@ -800,7 +799,7 @@ export default function BudgetScreen() {
                             paddingVertical: 10, alignItems: 'center',
                           }}
                         >
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Cancel</Text>
+                          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Cancel</Text>
                         </Pressable>
                       </View>
                     </View>
@@ -827,11 +826,11 @@ export default function BudgetScreen() {
             }}
           >
             <FontAwesome name="plus" size={22} color="#9ca3af" />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary }}>Add Category</Text>
+            <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.textSecondary }}>Add Category</Text>
           </Pressable>
         ) : (
           <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, borderWidth: 2, borderColor: '#6ee7b7', padding: 16 }}>
-            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Category Name</Text>
+            <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Category Name</Text>
             <TextInput
               value={newCategory}
               onChangeText={setNewCategory}
@@ -841,11 +840,11 @@ export default function BudgetScreen() {
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
                 paddingHorizontal: 12, paddingVertical: 8,
-                fontSize: 13, color: colors.text, backgroundColor: colors.inputBackground,
+                fontSize: FontSize.bodyLg, color: colors.text, backgroundColor: colors.inputBackground,
                 marginBottom: 10,
               }}
             />
-            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Budgeted Amount</Text>
+            <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Budgeted Amount</Text>
             <TextInput
               value={newBudgeted}
               onChangeText={setNewBudgeted}
@@ -855,11 +854,11 @@ export default function BudgetScreen() {
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
                 paddingHorizontal: 12, paddingVertical: 8,
-                fontSize: 13, color: colors.text, backgroundColor: colors.inputBackground,
+                fontSize: FontSize.bodyLg, color: colors.text, backgroundColor: colors.inputBackground,
                 marginBottom: 10,
               }}
             />
-            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Actual Spent</Text>
+            <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Actual Spent</Text>
             <TextInput
               value={newActual}
               onChangeText={setNewActual}
@@ -869,7 +868,7 @@ export default function BudgetScreen() {
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
                 paddingHorizontal: 12, paddingVertical: 8,
-                fontSize: 13, color: colors.text, backgroundColor: colors.inputBackground,
+                fontSize: FontSize.bodyLg, color: colors.text, backgroundColor: colors.inputBackground,
                 marginBottom: 14,
               }}
             />
@@ -881,7 +880,7 @@ export default function BudgetScreen() {
                   paddingVertical: 10, alignItems: 'center',
                 }}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Add</Text>
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add</Text>
               </Pressable>
               <Pressable
                 onPress={() => { setShowAddCategory(false); setNewCategory(''); setNewBudgeted(''); setNewActual(''); }}
@@ -890,7 +889,7 @@ export default function BudgetScreen() {
                   paddingVertical: 10, alignItems: 'center',
                 }}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Cancel</Text>
+                <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Cancel</Text>
               </Pressable>
             </View>
           </View>
