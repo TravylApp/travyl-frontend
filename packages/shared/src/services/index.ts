@@ -24,5 +24,8 @@ export {
   updateBudgetExpense,
   addBudgetExpense,
   updateTripSettings,
+  updateTripDetails,
+  deleteTrip,
+  leaveTrip,
   inviteCollaborator,
 } from './api';
