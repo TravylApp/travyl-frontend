@@ -3,7 +3,6 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { supabase } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
@@ -64,6 +63,7 @@ async function fetchSuggestions(
   // Try authenticated /recommend endpoint first
   if (API_URL) {
     try {
+      const { supabase } = await import('@travyl/shared')
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
 
