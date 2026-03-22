@@ -17,7 +17,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useTrips,
-  MOCK_TRIPS,
   Navy,
   formatDateRange,
   type MockTripCard,
@@ -382,10 +381,10 @@ export default function TripsScreen() {
       ? trips.map((t) => ({
           ...t,
           image:
-            MOCK_TRIPS.find((m) => m.id === t.id)?.image ??
+            t.trip_context?.hero_image_url ??
             'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
         }))
-      : MOCK_TRIPS;
+      : [];
 
   const filteredTrips = useMemo(() => {
     let result = displayTrips;

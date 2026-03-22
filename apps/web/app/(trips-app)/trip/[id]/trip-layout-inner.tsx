@@ -7,17 +7,13 @@ import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X } from 'lucide-r
 import { usePathname } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import type { SpinePosition } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, MOCK_DESTINATION_COORDS, useAuthStore, isTripOwner, MOCK_TRIPS } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
 import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
-const CalendarView = dynamic(
-  () => import('@/components/itinerary/CalendarView').then((m) => m.CalendarView),
-  { ssr: false },
-);
 
 // ─── Trip Hero Banner ───────────────────────────────────────
 
@@ -50,7 +46,7 @@ function TripHero({
     { icon: Share2, label: 'Share', onClick: handleShare },
   ];
 
-  const tripImage = trip ? MOCK_TRIPS.find(t => t.id === trip.id)?.image : undefined;
+  const tripImage = trip?.trip_context?.hero_image_url;
 
   return (
     <div className="relative h-[200px] sm:h-[240px] overflow-hidden">
@@ -105,12 +101,10 @@ function TripHero({
 
 // ─── Content Header Bar (per-tab) ───────────────────────────
 
-function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCalendar }: {
+function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   tripId: string;
   mapOpen: boolean;
   onToggleMap: () => void;
-  calendarOpen: boolean;
-  onToggleCalendar: () => void;
 }) {
   const pathname = usePathname();
   const basePath = `/trip/${tripId}`;
@@ -124,11 +118,17 @@ function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCal
   const Icon = tab.icon;
   const isOverview = segment === '';
 
-  // Overview + Itinerary: clean magazine look — no header bar
+  // Overview + Itinerary: clean magazine look — no header bar (itinerary has its own controls)
   if (isOverview || segment === 'itinerary') return null;
 
+  const isItineraryTab = segment === 'itinerary';
+
   return (
-    <div className="shrink-0 bg-white dark:bg-[var(--background)] border-b border-gray-100 dark:border-white/[0.06] px-5 pt-4 pb-3 sticky top-0 z-20">
+    <div className={`shrink-0 border-b px-5 pt-4 pb-3 sticky top-0 z-20 ${
+      isItineraryTab
+        ? 'bg-black/40 backdrop-blur-xl border-white/10'
+        : 'bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06]'
+    }`}>
       <div className="flex items-center gap-3">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
@@ -139,32 +139,33 @@ function ContentHeader({ tripId, mapOpen, onToggleMap, calendarOpen, onToggleCal
         <div className="flex-1">
           <h2
             className="text-[17px] tracking-tight"
-            style={{ color: 'var(--trip-base)', fontWeight: 700 }}
+            style={{ color: isItineraryTab ? '#fff' : 'var(--trip-base)', fontWeight: 700 }}
           >
             {tab.label}
           </h2>
-          <p className="text-[12px] text-gray-400 dark:text-gray-500">{tab.subtitle}</p>
+          <p className={`text-[12px] ${isItineraryTab ? 'text-white/60' : 'text-gray-400 dark:text-gray-500'}`}>{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={onToggleCalendar}
+          <a
+            href={`/trip/${tripId}/calendar`}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
-              calendarOpen
-                ? 'text-white shadow-md scale-[1.02]'
+              isItineraryTab
+                ? 'border-white/20 hover:bg-white/10 text-white/80'
                 : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
             }`}
-            style={calendarOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
-            title={calendarOpen ? 'List view' : 'Calendar view'}
+            title="Calendar view"
           >
             <Calendar size={13} />
             <span className="text-[12px] font-medium">Calendar</span>
-          </button>
+          </a>
           <button
             onClick={onToggleMap}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${
               mapOpen
                 ? 'text-white shadow-md scale-[1.02]'
-                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
+                : isItineraryTab
+                  ? 'border-white/20 hover:bg-white/10 text-white/80'
+                  : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600 dark:border-white/10 dark:hover:bg-white/10 dark:hover:border-white/20 dark:text-gray-400'
             }`}
             style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined}
             title={mapOpen ? 'Hide map' : 'Show map'}
@@ -210,7 +211,6 @@ function TripLayoutContent({
 }) {
   const [spinePosition, setSpinePosition] = useState<SpinePosition>("left");
   const [mapOpen, setMapOpen] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const { trip } = useItineraryScreen(tripId);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
   const isTopMode = spinePosition === "top";
@@ -284,48 +284,6 @@ function TripLayoutContent({
         exit: { opacity: 0, x: dir > 0 ? -12 : 12 },
       };
 
-  if (calendarOpen) {
-    return (
-      <div className="bg-white dark:bg-[var(--background)] min-h-screen flex flex-col">
-        {/* Compact header with calendar toggle */}
-        <div className="shrink-0 bg-white dark:bg-[var(--background)] border-b border-gray-100 dark:border-white/[0.06] px-5 pt-3 pb-2.5 sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
-              style={{ backgroundColor: 'var(--trip-base)' }}
-            >
-              <Calendar size={15} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-[17px] tracking-tight" style={{ color: 'var(--trip-base)', fontWeight: 700 }}>
-                Itinerary
-              </h2>
-              <p className="text-[12px] text-gray-400">{trip?.destination || 'Your trip'} · Calendar View</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setCalendarOpen(false)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-white shadow-md scale-[1.02]"
-                style={{ borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' }}
-              >
-                <Calendar size={13} />
-                <span className="text-[12px] font-medium">Calendar</span>
-              </button>
-            </div>
-          </div>
-          <div
-            className="mt-2.5 h-[2px] rounded-full opacity-80"
-            style={{ background: `linear-gradient(90deg, var(--trip-base), var(--trip-base)40, transparent)` }}
-          />
-        </div>
-        {/* Calendar fills remaining space */}
-        <div className="flex-1 min-h-0">
-          <CalendarView />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={`${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16' : 'bg-white dark:bg-[var(--background)]'}`}
@@ -369,15 +327,7 @@ function TripLayoutContent({
             <ContentHeader
               tripId={tripId}
               mapOpen={mapOpen}
-              onToggleMap={() => {
-                setMapOpen((v) => !v);
-                if (!mapOpen) setCalendarOpen(false);
-              }}
-              calendarOpen={calendarOpen}
-              onToggleCalendar={() => {
-                setCalendarOpen((v) => !v);
-                if (!calendarOpen) setMapOpen(false);
-              }}
+              onToggleMap={() => setMapOpen((v) => !v)}
             />
 
             {/* Content body */}
@@ -444,9 +394,9 @@ function TripLayoutContent({
                           />
                         ) : (
                           <LeafletMap
-                            lat={MOCK_DESTINATION_COORDS.lat}
-                            lng={MOCK_DESTINATION_COORDS.lng}
-                            label={trip?.destination || 'Paris, France'}
+                            lat={trip?.trip_context?.lat ?? 0}
+                            lng={trip?.trip_context?.lng ?? 0}
+                            label={trip?.destination || ''}
                             zoom={13}
                             height="100%"
                             className="!rounded-none !border-0"

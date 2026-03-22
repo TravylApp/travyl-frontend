@@ -316,10 +316,6 @@ export const MOCK_TRIP: Trip = {
   updated_at: '2026-03-01T00:00:00Z',
 };
 
-// ─── Mock Destination Coordinates ────────────────────────────
-
-export const MOCK_DESTINATION_COORDS = { lat: 48.8566, lng: 2.3522 }; // Paris, France
-
 // ─── Mock Budget ────────────────────────────────────────────
 
 export const MOCK_BUDGET: BudgetSummary = {
@@ -463,13 +459,6 @@ export const MOCK_PACKING_LIST: PackingList = {
   ],
 };
 
-export const MOCK_WEATHER: WeatherInfo = {
-  destination: 'Paris',
-  high: 12,
-  low: 4,
-  unit: '°C',
-  conditions: 'Partly cloudy with occasional showers. Pack layers.',
-};
 
 // ─── Mock Discover Activities ───────────────────────────────
 
@@ -1159,62 +1148,7 @@ export const MOCK_COLLABORATORS: UserAwareness[] = [
   { userId: 'user-3', name: 'Alex', avatarInitial: 'A', color: '#2ecc71', isOnline: false, selectedEventId: null, currentView: 'week' },
 ];
 
-// ─── Weather Forecast ─────────────────────────────────────
 
-export const MOCK_WEATHER_FORECAST: WeatherForecast[] = [
-  { day: 'Mon', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
-  { day: 'Tue', high: 14, low: 6, icon: '☀️', condition: 'Sunny' },
-  { day: 'Wed', high: 11, low: 5, icon: '🌧️', condition: 'Light Rain' },
-  { day: 'Thu', high: 13, low: 5, icon: '⛅', condition: 'Partly Cloudy' },
-  { day: 'Fri', high: 15, low: 7, icon: '☀️', condition: 'Sunny' },
-  { day: 'Sat', high: 10, low: 3, icon: '🌧️', condition: 'Showers' },
-  { day: 'Sun', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
-];
-
-// ─── News & Events ───────────────────────────────────────────
-
-export const MOCK_NEWS: import('../types').NewsItem[] = [
-  {
-    id: 'news-1',
-    title: 'Nuit Blanche Arts Festival This Weekend',
-    snippet: 'Paris transforms into an open-air gallery with free installations, performances, and exhibits across the city from dusk till dawn.',
-    category: 'event',
-    source: 'Paris Tourism',
-    date: '2026-03-14',
-  },
-  {
-    id: 'news-2',
-    title: 'Metro Line 14 Extension Now Open',
-    snippet: 'The new southern extension adds 7 stations connecting Orly Airport directly to central Paris — no more bus transfers.',
-    category: 'news',
-    source: 'RATP',
-    date: '2026-03-10',
-  },
-  {
-    id: 'news-3',
-    title: 'Strikes Expected on Regional Trains March 15-16',
-    snippet: 'SNCF workers have announced a 48-hour walkout. Eurostar and metro services are expected to run normally.',
-    category: 'advisory',
-    source: 'France 24',
-    date: '2026-03-12',
-  },
-  {
-    id: 'news-4',
-    title: 'Skip the Line: Book Louvre Tickets 2 Weeks Ahead',
-    snippet: 'Spring crowds are picking up. Pre-booking online saves up to 45 minutes of waiting at the pyramid entrance.',
-    category: 'tip',
-    source: 'Travyl',
-    date: '2026-03-09',
-  },
-  {
-    id: 'news-5',
-    title: 'Cherry Blossoms Arriving Early at Jardin des Plantes',
-    snippet: 'Warmer-than-usual temperatures mean peak bloom is expected around March 18 — a week ahead of schedule.',
-    category: 'event',
-    source: 'Le Parisien',
-    date: '2026-03-11',
-  },
-];
 
 // ─── Glance Hero Images (shared by web + mobile) ─────────────
 
@@ -1226,52 +1160,10 @@ export const GLANCE_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
 ];
 
-// ─── Explore Items (Things to Do cards) ──────────────────────
-
-export const MOCK_EXPLORE_ITEMS = [
-  {
-    id: 'ex1', title: 'Musée d\'Orsay', subtitle: 'Impressionism\'s spiritual home', category: 'Art & Culture',
-    image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=80',
-    description: 'Van Gogh, Monet, and Renoir under a stunning Beaux-Arts glass ceiling. Go on a Thursday evening when the crowds thin.',
-  },
-  {
-    id: 'ex2', title: 'Le Marais', subtitle: 'The heart of old Paris', category: 'Neighborhood',
-    image: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1200&q=80',
-    description: 'Medieval streets lined with concept stores, falafel joints, and hidden courtyards. Get lost on purpose.',
-  },
-  {
-    id: 'ex3', title: 'Café de Flore', subtitle: 'Where Sartre drank his espresso', category: 'Café',
-    image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1200&q=80',
-    description: 'The hot chocolate is legendary. Sit on the terrace, order a croque-monsieur, and watch the boulevard unfold.',
-  },
-  {
-    id: 'ex4', title: 'Montmartre at Dawn', subtitle: 'Before the tourists arrive', category: 'Experience',
-    image: 'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1200&q=80',
-    description: 'Climb the steps of Sacré-Cœur at first light. The city spreads below you in a pastel haze — pure cinema.',
-  },
-  {
-    id: 'ex5', title: 'Seine River Cruise', subtitle: 'Golden hour on the water', category: 'Experience',
-    image: 'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1200&q=80',
-    description: 'Board a Bateaux Mouches at sunset. The bridges, the light, the reflections — it never gets old.',
-  },
-  {
-    id: 'ex6', title: 'Versailles', subtitle: 'A day trip worth the journey', category: 'Day Trip',
-    image: 'https://images.unsplash.com/photo-1551410224-699683e15636?w=1200&q=80',
-    description: 'Skip the château crowds — head straight for the gardens. Marie Antoinette\'s hamlet feels like stepping into a painting.',
-  },
-  {
-    id: 'ex7', title: 'Saint-Germain Markets', subtitle: 'Shop like a local', category: 'Food & Market',
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038024a?w=1200&q=80',
-    description: 'Wednesdays and Saturdays on Rue de Buci. Artisanal cheese, fresh oysters, and the best croissants you\'ll ever taste.',
-  },
-];
-
-// ─── News Gradients (shared by web + mobile) ─────────────────
-
-export const NEWS_GRADIENTS: [string, string][] = [
+// ─── UI Constants (not mock data — used by both web and mobile) ──
+export const NEWS_COLORS: [string, string][] = [
   ['#1a1a2e', '#16213e'],
   ['#0f3460', '#1a1a2e'],
-  ['#1b2838', '#0d1b2a'],
-  ['#162447', '#1f4068'],
-  ['#1a1a2e', '#0f3460'],
+  ['#533483', '#0f3460'],
 ];
+
