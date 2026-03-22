@@ -24,6 +24,7 @@ interface SerpLocalResult {
   description?: string
   address?: string
   gps_coordinates?: { latitude: number; longitude: number }
+  images?: string[]
 }
 
 interface SerpLocalResponse {
@@ -40,12 +41,20 @@ function mapPrice(price: string | undefined): number | null {
   return map[price] ?? null
 }
 
+/**
+ * Upscales a Googleusercontent image URL to a higher resolution.
+ * Transforms e.g. =w288-h288-n-k-no → =w1024-h1024-n-k-no
+ */
+function upscaleImage(url: string): string {
+  return url.replace(/w\d+-h\d+/, 'w1024-h1024')
+}
+
 function toSuggestionCard(place: SerpLocalResult, category: string, index: number): SuggestionCard {
   return {
     id: `serp-${place.place_id ?? index}`,
     name: place.title,
     category,
-    imageUrl: place.thumbnail ?? '',
+    imageUrl: upscaleImage(place.images?.[0] ?? place.thumbnail ?? ''),
     duration: 2,
     price: mapPrice(place.price),
     currency: 'USD',
