@@ -1,21 +1,6 @@
 import type { ItineraryDayViewModel, TimeGroup, ActivityViewModel, FlightViewModel, HotelViewModel } from '../viewmodels/itineraryViewModel';
-import type { Trip, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
-
-export interface MockBudgetSummary {
-  total: number;
-  totalFormatted: string;
-  categories: Array<{ label: string; amount: number; formatted: string }>;
-  currency: string;
-}
-
-interface MockBudgetItem {
-  id: string;
-  category: string;
-  budgeted: number;
-  actual: number;
-  fixed: boolean;
-  expenses?: Array<{ id: string; description: string; amount: number }>;
-}
+import type { BudgetSummary } from '../viewmodels/budgetViewModel';
+import type { Trip, BudgetItem, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
 
 // ─── Mock Activities ────────────────────────────────────────
 
@@ -331,13 +316,9 @@ export const MOCK_TRIP: Trip = {
   updated_at: '2026-03-01T00:00:00Z',
 };
 
-// ─── Mock Destination Coordinates ────────────────────────────
-
-export const MOCK_DESTINATION_COORDS = { lat: 48.8566, lng: 2.3522 }; // Paris, France
-
 // ─── Mock Budget ────────────────────────────────────────────
 
-export const MOCK_BUDGET: MockBudgetSummary = {
+export const MOCK_BUDGET: BudgetSummary = {
   total: 2085,
   totalFormatted: '$2,085',
   categories: [
@@ -350,7 +331,7 @@ export const MOCK_BUDGET: MockBudgetSummary = {
 
 // ─── Mock Budget Items (Interactive) ────────────────────────
 
-export const MOCK_BUDGET_ITEMS: MockBudgetItem[] = [
+export const MOCK_BUDGET_ITEMS: BudgetItem[] = [
   {
     id: 'flights',
     category: 'Flights',
@@ -431,13 +412,53 @@ export const MOCK_BUDGET_ITEMS: MockBudgetItem[] = [
   },
 ];
 
-export const MOCK_WEATHER: WeatherInfo = {
-  destination: 'Paris',
-  high: 12,
-  low: 4,
-  unit: '°C',
-  conditions: 'Partly cloudy with occasional showers. Pack layers.',
+// ─── Mock Packing List ──────────────────────────────────────
+
+export const MOCK_PACKING_LIST: PackingList = {
+  'Clothing': [
+    { item: 'Shirts (7)', packed: false },
+    { item: 'Pants/Shorts (4)', packed: false },
+    { item: 'Underwear (7)', packed: false },
+    { item: 'Socks (7 pairs)', packed: false },
+    { item: 'Jacket/Sweater', packed: false },
+    { item: 'Comfortable shoes', packed: false },
+    { item: 'Sandals', packed: false },
+    { item: 'Sleepwear', packed: false },
+  ],
+  'Toiletries': [
+    { item: 'Toothbrush & toothpaste', packed: false },
+    { item: 'Shampoo & conditioner', packed: false },
+    { item: 'Body wash/soap', packed: false },
+    { item: 'Deodorant', packed: false },
+    { item: 'Sunscreen SPF 30+', packed: false },
+    { item: 'Medications', packed: false },
+    { item: 'First aid kit', packed: false },
+  ],
+  'Electronics': [
+    { item: 'Phone & charger', packed: false },
+    { item: 'Camera & charger', packed: false },
+    { item: 'Power adapter (EU plug)', packed: false },
+    { item: 'Headphones', packed: false },
+    { item: 'Portable battery', packed: false },
+  ],
+  'Documents': [
+    { item: 'Passport', packed: false },
+    { item: 'Flight tickets', packed: false },
+    { item: 'Hotel confirmations', packed: false },
+    { item: 'Travel insurance', packed: false },
+    { item: 'Credit cards & cash', packed: false },
+    { item: 'Driver\'s license', packed: false },
+  ],
+  'Miscellaneous': [
+    { item: 'Reusable water bottle', packed: false },
+    { item: 'Umbrella', packed: false },
+    { item: 'Sunglasses', packed: false },
+    { item: 'Day backpack', packed: false },
+    { item: 'Travel pillow', packed: false },
+    { item: 'Book/Entertainment', packed: false },
+  ],
 };
+
 
 // ─── Mock Discover Activities ───────────────────────────────
 
@@ -1127,59 +1148,22 @@ export const MOCK_COLLABORATORS: UserAwareness[] = [
   { userId: 'user-3', name: 'Alex', avatarInitial: 'A', color: '#2ecc71', isOnline: false, selectedEventId: null, currentView: 'week' },
 ];
 
-// ─── Weather Forecast ─────────────────────────────────────
 
-export const MOCK_WEATHER_FORECAST: WeatherForecast[] = [
-  { day: 'Mon', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
-  { day: 'Tue', high: 14, low: 6, icon: '☀️', condition: 'Sunny' },
-  { day: 'Wed', high: 11, low: 5, icon: '🌧️', condition: 'Light Rain' },
-  { day: 'Thu', high: 13, low: 5, icon: '⛅', condition: 'Partly Cloudy' },
-  { day: 'Fri', high: 15, low: 7, icon: '☀️', condition: 'Sunny' },
-  { day: 'Sat', high: 10, low: 3, icon: '🌧️', condition: 'Showers' },
-  { day: 'Sun', high: 12, low: 4, icon: '⛅', condition: 'Partly Cloudy' },
+
+// ─── Glance Hero Images (shared by web + mobile) ─────────────
+
+export const GLANCE_HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
+  'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&q=85',
+  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1400&q=85',
+  'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1400&q=85',
+  'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
 ];
 
-// ─── News & Events ───────────────────────────────────────────
-
-export const MOCK_NEWS: import('../types').NewsItem[] = [
-  {
-    id: 'news-1',
-    title: 'Nuit Blanche Arts Festival This Weekend',
-    snippet: 'Paris transforms into an open-air gallery with free installations, performances, and exhibits across the city from dusk till dawn.',
-    category: 'event',
-    source: 'Paris Tourism',
-    date: '2026-03-14',
-  },
-  {
-    id: 'news-2',
-    title: 'Metro Line 14 Extension Now Open',
-    snippet: 'The new southern extension adds 7 stations connecting Orly Airport directly to central Paris — no more bus transfers.',
-    category: 'news',
-    source: 'RATP',
-    date: '2026-03-10',
-  },
-  {
-    id: 'news-3',
-    title: 'Strikes Expected on Regional Trains March 15-16',
-    snippet: 'SNCF workers have announced a 48-hour walkout. Eurostar and metro services are expected to run normally.',
-    category: 'advisory',
-    source: 'France 24',
-    date: '2026-03-12',
-  },
-  {
-    id: 'news-4',
-    title: 'Skip the Line: Book Louvre Tickets 2 Weeks Ahead',
-    snippet: 'Spring crowds are picking up. Pre-booking online saves up to 45 minutes of waiting at the pyramid entrance.',
-    category: 'tip',
-    source: 'Travyl',
-    date: '2026-03-09',
-  },
-  {
-    id: 'news-5',
-    title: 'Cherry Blossoms Arriving Early at Jardin des Plantes',
-    snippet: 'Warmer-than-usual temperatures mean peak bloom is expected around March 18 — a week ahead of schedule.',
-    category: 'event',
-    source: 'Le Parisien',
-    date: '2026-03-11',
-  },
+// ─── UI Constants (not mock data — used by both web and mobile) ──
+export const NEWS_COLORS: [string, string][] = [
+  ['#1a1a2e', '#16213e'],
+  ['#0f3460', '#1a1a2e'],
+  ['#533483', '#0f3460'],
 ];
+

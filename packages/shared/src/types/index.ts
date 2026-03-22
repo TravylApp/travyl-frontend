@@ -14,6 +14,48 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface TripContextData {
+  hero_image_url?: string;
+  hero_images?: string[];
+  lat?: number;
+  lng?: number;
+  lede_text?: string;
+  quick_facts?: {
+    currency?: string;
+    language?: string;
+    timezone?: string;
+    power?: string;
+    transport?: string;
+    taxi?: string;
+    tipping?: string;
+    water?: string;
+    emergency?: string;
+  };
+  weather?: {
+    current?: { high: number; low: number; condition: string };
+    forecast?: { day: string; high: number; low: number; icon: string; condition: string }[];
+  };
+  explore_items?: {
+    id: string;
+    title: string;
+    subtitle?: string;
+    category: string;
+    description: string;
+    image?: string;
+    tags?: string[];
+  }[];
+  news?: {
+    id: string;
+    title: string;
+    snippet: string;
+    category: 'event' | 'advisory' | 'news' | 'tip';
+    source: string;
+    date: string;
+    url?: string;
+    image?: string;
+  }[];
+}
+
 export interface Trip {
   id: string;
   user_id: string;
@@ -25,7 +67,7 @@ export interface Trip {
   currency: string;
   travelers: number;
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
-  trip_context: Record<string, unknown>;
+  trip_context: TripContextData;
   is_generated: boolean;
   visibility: Visibility;
   link_permission: LinkPermission;
