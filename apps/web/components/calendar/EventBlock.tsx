@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import {
@@ -137,13 +137,22 @@ export function EventBlock({
     }
   }
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; activityId: string } | null>(null)
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setContextMenu({ x: e.clientX, y: e.clientY })
-  }, [])
+  // Document-level listener bypasses dnd-kit/React event system entirely
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement).closest('[data-event-block-id]')
+      if (!el) return
+      const id = el.getAttribute('data-event-block-id')
+      if (id === activity.id) {
+        e.preventDefault()
+        setContextMenu({ x: e.clientX, y: e.clientY, activityId: id })
+      }
+    }
+    document.addEventListener('contextmenu', handler)
+    return () => document.removeEventListener('contextmenu', handler)
+  }, [activity.id])
 
   const contextMenuActions = useMemo((): ContextMenuAction[] => {
     const hasPoll = poll && poll.status === 'active'
@@ -195,11 +204,11 @@ export function EventBlock({
       ref={setNodeRef}
       style={style}
       {...attributes}
+      data-event-block-id={activity.id}
       role="gridcell"
       tabIndex={0}
       aria-label={`${activity.title}, ${formatTimeRange(displayActivity)}`}
       aria-selected={isSelected}
-      onContextMenu={handleContextMenu}
       className={[
         'group rounded-md overflow-hidden select-none relative flex flex-col',
         'text-white text-xs',
