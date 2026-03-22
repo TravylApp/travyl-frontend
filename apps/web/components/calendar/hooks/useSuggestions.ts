@@ -3,33 +3,9 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import type { SuggestionCard } from '../types'
+import type { SuggestionCard, RecommendationSection } from '../types'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
-
-const FILTER_CATEGORIES = [
-  'All',
-  'Sightseeing',
-  'Dining',
-  'Tours',
-  'Culture',
-  'Shopping',
-  'Nightlife',
-  'Outdoor',
-] as const
-
-const FILTER_TO_CATEGORY: Record<string, string> = {
-  All: 'all',
-  Sightseeing: 'sightseeing',
-  Dining: 'dining',
-  Tours: 'tour',
-  Culture: 'cultural',
-  Shopping: 'shopping',
-  Nightlife: 'nightlife',
-  Outdoor: 'outdoor',
-}
-
-export type FilterCategory = (typeof FILTER_CATEGORIES)[number]
 
 interface UseSuggestionsOptions {
   destination: string
@@ -37,6 +13,7 @@ interface UseSuggestionsOptions {
 }
 
 interface UseSuggestionsReturn {
+  sections: RecommendationSection[]
   suggestions: SuggestionCard[]
   isLoading: boolean
   isFetchingNextPage: boolean
@@ -45,9 +22,6 @@ interface UseSuggestionsReturn {
   error: string | null
   searchQuery: string
   setSearchQuery: (query: string) => void
-  activeFilter: FilterCategory
-  setActiveFilter: (filter: FilterCategory) => void
-  filterCategories: readonly FilterCategory[]
   removeSuggestion: (id: string) => void
   restoreSuggestion: (id: string) => void
   refetch: () => void
@@ -110,15 +84,60 @@ async function fetchSuggestions(
   return data.suggestions ?? []
 }
 
+const CATEGORY_TITLES: Record<string, string> = {
+  sightseeing: 'Must-See Sights',
+  dining: 'Top Dining Spots',
+  tour: 'Guided Tours',
+  cultural: 'Arts & Culture',
+  shopping: 'Shopping',
+  nightlife: 'Nightlife',
+  outdoor: 'Outdoor Activities',
+  other: 'More to Explore',
+}
+
+function groupIntoSections(suggestions: SuggestionCard[], destination: string): RecommendationSection[] {
+  const topRated = [...suggestions]
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    .slice(0, 6)
+  const topRatedIds = new Set(topRated.map((s) => s.id))
+
+  const sections: RecommendationSection[] = []
+
+  if (topRated.length > 0) {
+    sections.push({
+      sectionType: 'destination',
+      sectionTitle: destination ? `Popular in ${destination}` : 'Popular Nearby',
+      suggestions: topRated,
+    })
+  }
+
+  const remaining = suggestions.filter((s) => !topRatedIds.has(s.id))
+  const byCategory = new Map<string, SuggestionCard[]>()
+  for (const s of remaining) {
+    const cat = s.category || 'other'
+    if (!byCategory.has(cat)) byCategory.set(cat, [])
+    byCategory.get(cat)!.push(s)
+  }
+
+  for (const [cat, items] of byCategory) {
+    if (items.length === 0) continue
+    sections.push({
+      sectionType: 'category',
+      sectionTitle: CATEGORY_TITLES[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1),
+      sectionSubtitle: `${items.length} places`,
+      suggestions: items,
+    })
+  }
+
+  return sections
+}
+
 export function useSuggestions({
   destination,
   scheduledActivityIds = [],
 }: UseSuggestionsOptions): UseSuggestionsReturn {
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<FilterCategory>('All')
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
-
-  const category = FILTER_TO_CATEGORY[activeFilter] ?? 'all'
 
   const {
     data,
@@ -129,8 +148,8 @@ export function useSuggestions({
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['suggestions', destination, activeFilter],
-    queryFn: ({ pageParam }) => fetchSuggestions(destination, category, pageParam as number),
+    queryKey: ['suggestions', destination],
+    queryFn: ({ pageParam }) => fetchSuggestions(destination, 'all', pageParam as number),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < 20) return undefined
@@ -159,24 +178,29 @@ export function useSuggestions({
 
   const scheduledSet = useMemo(() => new Set(scheduledActivityIds), [scheduledActivityIds])
 
-  const suggestions = useMemo(() => {
-    let filtered = allSuggestions.filter(
+  const filteredSuggestions = useMemo(() => {
+    return allSuggestions.filter(
       (s) => !removedIds.has(s.id) && !scheduledSet.has(s.id),
     )
+  }, [allSuggestions, removedIds, scheduledSet])
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      filtered = filtered.filter((s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.location.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q),
-      )
-    }
+  const sections = useMemo(
+    () => groupIntoSections(filteredSuggestions, destination),
+    [filteredSuggestions, destination],
+  )
 
-    return filtered
-  }, [allSuggestions, searchQuery, removedIds, scheduledSet])
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim()) return filteredSuggestions
+    const q = searchQuery.toLowerCase()
+    return filteredSuggestions.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      s.location.toLowerCase().includes(q) ||
+      s.description.toLowerCase().includes(q),
+    )
+  }, [filteredSuggestions, searchQuery])
 
   return {
+    sections,
     suggestions,
     isLoading,
     isFetchingNextPage,
@@ -185,9 +209,6 @@ export function useSuggestions({
     error: error ? (error as Error).message : null,
     searchQuery,
     setSearchQuery,
-    activeFilter,
-    setActiveFilter,
-    filterCategories: FILTER_CATEGORIES,
     removeSuggestion,
     restoreSuggestion,
     refetch,
