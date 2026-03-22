@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Navy, ITINERARY_COLORS } from '@travyl/shared';
 import type { FlightViewModel } from '@travyl/shared';
-import type { MockFlightDetail } from '@travyl/shared';
+import type { MockFlightDetail } from '@travyl/shared/src/config/mockItineraryData';
 
 interface FlightCardProps {
   flight: FlightViewModel;

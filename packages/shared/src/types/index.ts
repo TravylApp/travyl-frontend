@@ -14,6 +14,48 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface TripContextData {
+  hero_image_url?: string;
+  hero_images?: string[];
+  lat?: number;
+  lng?: number;
+  lede_text?: string;
+  quick_facts?: {
+    currency?: string;
+    language?: string;
+    timezone?: string;
+    power?: string;
+    transport?: string;
+    taxi?: string;
+    tipping?: string;
+    water?: string;
+    emergency?: string;
+  };
+  weather?: {
+    current?: { high: number; low: number; condition: string };
+    forecast?: { day: string; high: number; low: number; icon: string; condition: string }[];
+  };
+  explore_items?: {
+    id: string;
+    title: string;
+    subtitle?: string;
+    category: string;
+    description: string;
+    image?: string;
+    tags?: string[];
+  }[];
+  news?: {
+    id: string;
+    title: string;
+    snippet: string;
+    category: 'event' | 'advisory' | 'news' | 'tip';
+    source: string;
+    date: string;
+    url?: string;
+    image?: string;
+  }[];
+}
+
 export interface Trip {
   id: string;
   user_id: string;
@@ -25,7 +67,7 @@ export interface Trip {
   currency: string;
   travelers: number;
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
-  trip_context: Record<string, unknown>;
+  trip_context: TripContextData;
   is_generated: boolean;
   visibility: Visibility;
   link_permission: LinkPermission;
@@ -282,13 +324,41 @@ export interface BudgetCategoryData {
 
 // ─── Packing Types ──────────────────────────────────────────
 
-export interface PackingItem {
-  item: string;
-  packed: boolean;
+export const PACKING_CATEGORIES = ['clothing', 'toiletries', 'electronics', 'documents', 'accessories', 'essentials'] as const
+export type PackingCategory = (typeof PACKING_CATEGORIES)[number]
+
+export interface DbPackingItem {
+  id: string
+  trip_id: string
+  user_id: string
+  name: string
+  category: PackingCategory
+  is_packed: boolean
+  packed_by: string | null
+  packed_at: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+  user_display_name?: string
+  user_avatar_url?: string
 }
 
-export interface PackingList {
-  [category: string]: PackingItem[];
+export interface PackingAuditEntry {
+  id: string
+  trip_id: string
+  user_id: string
+  item_id: string | null
+  action: 'added' | 'packed' | 'unpacked' | 'removed'
+  item_name: string
+  created_at: string
+  user_display_name?: string
+  user_avatar_url?: string
+}
+
+export interface CatalogItem {
+  name: string
+  category: PackingCategory
+  tags: string[]
 }
 
 export interface WeatherInfo {
@@ -344,6 +414,7 @@ export interface ActivityData {
   check_in?: string
   check_out?: string
   booking_ref?: string
+  pollResult?: 'remove'
 }
 
 export interface CalendarActivity {
@@ -376,6 +447,16 @@ export interface CalendarActivity {
   longitude?: number;
   /** DB sort_order */
   sortOrder?: number;
+  pollResult?: 'remove'
+}
+
+export interface Poll {
+  activityId: string
+  startedBy: string
+  startedAt: string
+  status: 'active' | 'resolved'
+  result: 'keep' | 'remove' | ''
+  votes: Record<string, 'yes' | 'no'>
 }
 
 // ─── Suggestion / For You Panel ─────────────────────────────

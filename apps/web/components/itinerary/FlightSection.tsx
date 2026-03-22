@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plane, ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import type { MockFlightDetail } from '@travyl/shared';
 
 interface FlightSectionProps {
@@ -40,7 +41,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
       >
         <div className="flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
-            <Plane size={18} />
+            <PaperPlane size={18} />
             <div className="text-left">
               <div className="flex items-center gap-2">
                 <p className="text-sm">{label}</p>
@@ -88,7 +89,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
                 <div className="relative w-full">
                   <div className="border-t border-dashed border-gray-300 w-full" />
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full p-1" style={{ backgroundColor: 'var(--trip-base)' }}>
-                    <Plane size={12} className="text-white" />
+                    <PaperPlane size={12} className="text-white" />
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">{flight.duration}</p>
@@ -180,7 +181,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
                   </>
                 ) : (
                   <>
-                    <Plane size={14} />
+                    <PaperPlane size={14} />
                     Book Flight
                   </>
                 )}

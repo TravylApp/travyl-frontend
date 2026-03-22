@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Archive, LogOut } from 'lucide-react'
+import { Trash2, Archive, LogOut, AlertTriangle } from 'lucide-react'
 import { deleteTrip, leaveTrip, updateTripDetails } from '@travyl/shared'
 import type { Trip } from '@travyl/shared'
-import { SectionHeading, SectionDescription, ConfirmDialog, Input } from './shared'
+import { SectionHeading, ConfirmDialog, Input } from './shared'
 
 interface DangerZoneSectionProps {
   trip: Trip
@@ -66,19 +66,19 @@ export function DangerZoneSection({ trip, userId, isOwner }: DangerZoneSectionPr
   return (
     <div>
       <SectionHeading>Danger Zone</SectionHeading>
-      <SectionDescription>Irreversible actions for this trip.</SectionDescription>
       <div className="space-y-4">
         {/* Archive Trip — owner only */}
         {isOwner && (
-          <div className="flex items-center justify-between py-2">
+          <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4">
             <div>
-              <p className="text-sm font-medium text-gray-900">Archive Trip</p>
-              <p className="text-xs text-gray-500 mt-0.5">Mark as completed and archive</p>
+              <p className="text-sm font-semibold text-gray-900">Archive Trip</p>
+              <p className="text-xs text-gray-600 mt-0.5">Mark this trip as completed and archive it</p>
             </div>
             <button
               onClick={() => setArchiveOpen(true)}
-              className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+              className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-100 transition"
             >
+              <Archive size={14} />
               Archive
             </button>
           </div>
@@ -86,47 +86,54 @@ export function DangerZoneSection({ trip, userId, isOwner }: DangerZoneSectionPr
 
         {/* Delete Trip — owner only */}
         {isOwner && (
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="text-sm font-medium text-red-600">Delete Trip</p>
-              <p className="text-xs text-gray-500 mt-0.5">Permanently delete this trip and all data</p>
+          <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle size={16} className="text-red-600" />
+              <p className="text-sm font-bold text-red-700">Delete Trip</p>
             </div>
+            <p className="text-xs text-red-600 mb-3">
+              Permanently delete this trip and all associated data. This action cannot be undone.
+            </p>
             <button
               onClick={() => setDeleteOpen(true)}
-              className="text-sm font-medium px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
             >
-              Delete
+              <Trash2 size={14} />
+              Delete Trip
             </button>
           </div>
         )}
 
         {/* Leave Trip — collaborator only */}
         {!isOwner && (
-          <div className="flex items-center justify-between py-2">
+          <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
             <div>
-              <p className="text-sm font-medium text-gray-900">Leave Trip</p>
-              <p className="text-xs text-gray-500 mt-0.5">Remove yourself from this trip</p>
+              <p className="text-sm font-semibold text-gray-900">Leave Trip</p>
+              <p className="text-xs text-gray-600 mt-0.5">Remove yourself from this trip</p>
             </div>
             <button
               onClick={() => setLeaveOpen(true)}
-              className="text-sm font-medium px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
+              className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition"
             >
+              <LogOut size={14} />
               Leave
             </button>
           </div>
         )}
       </div>
 
+      {/* Archive Confirmation */}
       <ConfirmDialog
         open={archiveOpen}
         title="Archive Trip"
         description="Are you sure you want to archive this trip? It will be marked as completed."
         confirmLabel={loading ? 'Archiving...' : 'Archive Trip'}
-        confirmColor="bg-gray-900 hover:bg-gray-800"
+        confirmColor="bg-amber-600 hover:bg-amber-700"
         onConfirm={handleArchive}
         onCancel={() => setArchiveOpen(false)}
       />
 
+      {/* Delete Confirmation */}
       <ConfirmDialog
         open={deleteOpen}
         title="Delete Trip"
@@ -141,14 +148,15 @@ export function DangerZoneSection({ trip, userId, isOwner }: DangerZoneSectionPr
           placeholder={trip.title}
         />
         {deleteConfirmText.length > 0 && !deleteMatch && (
-          <p className="text-xs text-red-500 mt-1">Trip name doesn&apos;t match</p>
+          <p className="text-xs text-red-500 mt-1">Trip name doesn't match</p>
         )}
       </ConfirmDialog>
 
+      {/* Leave Confirmation */}
       <ConfirmDialog
         open={leaveOpen}
         title="Leave Trip"
-        description="Are you sure you want to leave this trip? You&apos;ll lose access unless invited again."
+        description="Are you sure you want to leave this trip? You'll lose access unless invited again."
         confirmLabel={loading ? 'Leaving...' : 'Leave Trip'}
         onConfirm={handleLeave}
         onCancel={() => setLeaveOpen(false)}

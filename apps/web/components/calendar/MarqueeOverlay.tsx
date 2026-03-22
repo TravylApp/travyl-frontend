@@ -3,6 +3,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import type { MarqueeRect } from './hooks/useMarqueeSelection'
 
 interface MarqueeOverlayProps {
+  /** Ref to the scrollable grid container (the flex wrapper around day columns) */
   gridRef: React.RefObject<HTMLDivElement | null>
   onStartMarquee: (x: number, y: number, containerRect: DOMRect) => void
   onUpdateMarquee: (x: number, y: number) => void
@@ -23,6 +24,7 @@ export function MarqueeOverlay({
   const anchorScreen = useRef<{ x: number; y: number } | null>(null)
   const [shiftHeld, setShiftHeld] = useState(false)
 
+  // Track Shift key for cursor feedback
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') setShiftHeld(true)
@@ -41,6 +43,7 @@ export function MarqueeOverlay({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (!e.shiftKey) return
+      // Only start on empty grid space (not on activity blocks)
       const target = e.target as HTMLElement
       if (target !== e.currentTarget) return
 
@@ -62,6 +65,7 @@ export function MarqueeOverlay({
 
       if (!isDragging.current) {
         if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return
+        // Passed threshold — start marquee
         isDragging.current = true
         const gridRect = grid.getBoundingClientRect()
         const scrollLeft = grid.scrollLeft
@@ -71,6 +75,7 @@ export function MarqueeOverlay({
         onStartMarquee(startX, startY, gridRect)
       }
 
+      // Update marquee endpoint
       const gridRect = grid.getBoundingClientRect()
       const scrollLeft = grid.scrollLeft
       const scrollTop = grid.scrollTop
@@ -89,6 +94,7 @@ export function MarqueeOverlay({
     anchorScreen.current = null
   }, [onEndMarquee])
 
+  // Render the visible selection rectangle
   const rectStyle = marqueeRect
     ? {
         left: Math.min(marqueeRect.startX, marqueeRect.endX),
@@ -100,6 +106,7 @@ export function MarqueeOverlay({
 
   return (
     <>
+      {/* Invisible event capture layer — covers the entire grid */}
       <div
         className={[
           'absolute inset-0 z-20',
@@ -111,6 +118,7 @@ export function MarqueeOverlay({
         onMouseUp={handleMouseUp}
       />
 
+      {/* Visible selection rectangle */}
       {rectStyle && (
         <div
           className="absolute border border-blue-500/50 bg-blue-500/10 pointer-events-none z-30 rounded-sm"

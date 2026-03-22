@@ -18,20 +18,18 @@ const FLIP_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
 interface MagazineCurtainProps {
   place: PlaceItem;
-  totalCount: number;
-  placeIndex: number;
   isFav: boolean;
   onToggleFav: () => void;
+  onMapPress?: () => void;
   width: number;
   height: number;
 }
 
 export function MagazineCurtain({
   place,
-  totalCount,
-  placeIndex,
   isFav,
   onToggleFav,
+  onMapPress,
   width,
   height,
 }: MagazineCurtainProps) {
@@ -39,10 +37,9 @@ export function MagazineCurtain({
   const [isFlipped, setIsFlipped] = useState(false);
   const images = place.images?.length ? place.images : [place.image];
 
-  // Reset on place change
   useEffect(() => {
-    setImgIdx(0);
-    setIsFlipped(false);
+    setImgIdx((prev) => prev === 0 ? prev : 0);
+    setIsFlipped((prev) => prev === false ? prev : false);
   }, [place.id]);
 
   // Auto-cycle images every 4s when not flipped
@@ -120,36 +117,38 @@ export function MagazineCurtain({
             </>
           )}
 
-          {/* Counter — top right */}
-          <View style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
-              {String(placeIndex + 1).padStart(2, '0')}
-            </Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginHorizontal: 5 }}>/</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-              {String(totalCount).padStart(2, '0')}
-            </Text>
-          </View>
-
           {/* Flip hint — top left */}
           <View style={{ position: 'absolute', top: 14, left: 14, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <FontAwesome name="repeat" size={10} color="rgba(255,255,255,0.4)" />
             <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Tap to flip</Text>
           </View>
 
-          {/* Favorite button */}
-          <Pressable
-            onPress={(e) => { e.stopPropagation?.(); onToggleFav(); }}
-            style={{
-              position: 'absolute', top: 14, right: 56, zIndex: 20,
-              width: 32, height: 32, borderRadius: 16,
-              backgroundColor: isFav ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.9)',
-              borderWidth: isFav ? 1 : 0, borderColor: 'rgba(239,68,68,0.5)',
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={14} color={isFav ? '#ef4444' : '#9ca3af'} />
-          </Pressable>
+          {/* Top-right buttons: map then heart */}
+          <View style={{ position: 'absolute', top: 14, right: 14, zIndex: 20, flexDirection: 'row', gap: 8 }}>
+            {onMapPress && (
+              <Pressable
+                onPress={(e) => { e.stopPropagation?.(); onMapPress(); }}
+                style={{
+                  width: 34, height: 34, borderRadius: 17,
+                  backgroundColor: 'rgba(255,255,255,0.9)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <FontAwesome name="map" size={14} color="#1e3a5f" />
+              </Pressable>
+            )}
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onToggleFav(); }}
+              style={{
+                width: 34, height: 34, borderRadius: 17,
+                backgroundColor: isFav ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.9)',
+                borderWidth: isFav ? 1 : 0, borderColor: 'rgba(239,68,68,0.5)',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={14} color={isFav ? '#ef4444' : '#9ca3af'} />
+            </Pressable>
+          </View>
 
           {/* Editorial content — bottom */}
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }} pointerEvents="box-none">

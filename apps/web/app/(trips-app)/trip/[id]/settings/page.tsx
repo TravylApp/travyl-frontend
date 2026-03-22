@@ -697,8 +697,8 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   // Sync trip sharing state with loaded trip
   useEffect(() => {
     if (trip) {
-      setIsPublic(trip.visibility === 'public');
-      setIsShared(trip.visibility !== 'private');
+      setIsPublic(trip.is_public ?? false);
+      setIsShared(trip.is_shared ?? false);
     }
   }, [trip]);
 
@@ -706,7 +706,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   const handleTogglePublic = async () => {
     if (!trip || !isOwner) return;
     try {
-      await updateTripVisibility(trip.id, isPublic ? 'private' : 'public');
+      await updateTripVisibility(trip.id, !isPublic);
       setIsPublic(!isPublic);
       refetch();
     } catch (error) {
@@ -916,16 +916,19 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
                   className={`flex items-center gap-2.5 w-full whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150 ${
                     isActive
                       ? 'shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'hover:bg-white/10'
                   }`}
-                  style={isActive ? { backgroundColor: theme.base, color: theme.textOnBase } : undefined}
+                  style={isActive
+                    ? { backgroundColor: theme.base, color: theme.textOnBase }
+                    : { color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }
+                  }
                 >
-                  <Icon size={16} style={isActive ? { color: theme.textOnBase } : undefined} className={isActive ? '' : 'text-gray-400'} />
+                  <Icon size={16} style={isActive ? { color: theme.textOnBase } : { color: 'rgba(255,255,255,0.7)' }} />
                   <span className="flex-1 text-left">{label}</span>
                   <ChevronRight
                     size={14}
-                    style={isActive ? { color: theme.textOnBase, opacity: 0.7 } : undefined}
-                    className={`hidden md:block ${isActive ? '' : 'text-gray-300'}`}
+                    style={isActive ? { color: theme.textOnBase, opacity: 0.7 } : { color: 'rgba(255,255,255,0.4)' }}
+                    className="hidden md:block"
                   />
                 </button>
               </li>

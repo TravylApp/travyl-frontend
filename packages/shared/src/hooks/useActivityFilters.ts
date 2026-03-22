@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MOCK_DISCOVER_ACTIVITIES } from '../config';
+import { MOCK_DISCOVER_ACTIVITIES } from '../config/mockItineraryData';
 import type { DiscoverItem } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 
