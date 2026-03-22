@@ -245,8 +245,8 @@ const SAFETY_TIPS = [
 
 export default function InfoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
-  const trip = MOCK_TRIP;
+  const { isLoading, trip: liveTrip } = useItineraryScreen(id);
+  const trip = liveTrip ?? MOCK_TRIP;
 
   const startDate = new Date(trip.start_date + 'T00:00:00');
   const endDate = new Date(trip.end_date + 'T00:00:00');

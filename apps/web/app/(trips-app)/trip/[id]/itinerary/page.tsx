@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useItineraryScreen } from '@travyl/shared';
-import { MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DISCOVER_ACTIVITIES, GLANCE_HERO_IMAGES } from '@travyl/shared/src/config/mockItineraryData';
+import { useItineraryScreen, MOCK_FLIGHT_DETAILS, MOCK_HOTEL_DETAIL, MOCK_DISCOVER_ACTIVITIES, GLANCE_HERO_IMAGES, MOCK_PLACES, TOD_START_HOURS, QUICK_FILL_CATEGORIES, pickRandomActivity } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {
@@ -11,16 +10,35 @@ import {
 } from '@/components/itinerary';
 import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
-import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import {
-  ChevronDown, X, Search, Compass, LayoutList, Map, Plus, Calendar,
+  ChevronDown, X, Search, Compass, LayoutList, Map, Calendar, RefreshCw,
+  Landmark, UtensilsCrossed, Footprints, TreePine, Theater, ShoppingBag,
+  Moon, MapPin, Bus, Heart, GripVertical,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  sightseeing: Landmark,
+  landmark: Landmark,
+  museum: Theater,
+  dining: UtensilsCrossed,
+  food: UtensilsCrossed,
+  tour: Footprints,
+  outdoor: TreePine,
+  cultural: Theater,
+  shopping: ShoppingBag,
+  nightlife: Moon,
+  wellness: Heart,
+  transport: Bus,
+  default: MapPin,
+};
 import { TIME_OF_DAY_CONFIG, getActivityTypeColor } from '@travyl/shared';
 import { PaperPlane } from '@/components/ui';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 
 // ─── Mock activity coordinates (keyed by activity id) ────────────
 const MOCK_ACTIVITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  // Legacy IDs
   'mock-a1': { lat: 48.8584, lng: 2.2945 },
   'mock-a2': { lat: 48.8590, lng: 2.2930 },
   'mock-a3': { lat: 48.8510, lng: 2.3360 },
@@ -30,6 +48,19 @@ const MOCK_ACTIVITY_COORDS: Record<string, { lat: number; lng: number }> = {
   'mock-a7': { lat: 48.8049, lng: 2.1204 },
   'mock-a8': { lat: 48.8048, lng: 2.1172 },
   'mock-a9': { lat: 48.8698, lng: 2.3075 },
+  // Calendar activity IDs
+  'cal-1':  { lat: 48.8584, lng: 2.2945 },  // Eiffel Tower
+  'cal-2':  { lat: 48.8566, lng: 2.3622 },  // Le Marais
+  'cal-3':  { lat: 48.8606, lng: 2.3376 },  // Louvre Museum
+  'cal-4':  { lat: 48.8867, lng: 2.3431 },  // Montmartre
+  'cal-5':  { lat: 48.8530, lng: 2.3499 },  // Le Foodist (cooking class)
+  'cal-6':  { lat: 48.8510, lng: 2.3360 },  // Le Comptoir, Saint-Germain
+  'cal-7':  { lat: 48.8049, lng: 2.1204 },  // Versailles
+  'cal-8':  { lat: 48.8566, lng: 2.3425 },  // Seine River Cruise, Pont Neuf
+  'cal-9':  { lat: 48.8600, lng: 2.3266 },  // Musée d'Orsay
+  'cal-10': { lat: 48.8462, lng: 2.3372 },  // Luxembourg Gardens
+  'cal-11': { lat: 48.8510, lng: 2.3230 },  // Le Bon Marché
+  'cal-12': { lat: 48.8584, lng: 2.2945 },  // Le Jules Verne (Eiffel Tower)
 };
 
 
@@ -67,7 +98,54 @@ function SkeletonItinerary() {
   );
 }
 
+// ─── Glance Search Input ────────────────────────────────────────
+
+function GlanceSearchInput({ query, onChange, onClose, onSelect }: {
+  query: string;
+  onChange: (q: string) => void;
+  onClose: () => void;
+  onSelect: (place: import('@travyl/shared').PlaceItem) => void;
+}) {
+  const results = query.length > 1
+    ? MOCK_PLACES.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())).slice(0, 3)
+    : [];
+  return (
+    <div className="mt-1">
+      <div className="relative">
+        <Search size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
+        <input
+          autoFocus
+          type="text"
+          placeholder="Search places..."
+          value={query}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+          className="w-full pl-6 pr-6 py-1 text-[10px] bg-white/10 border border-white/15 rounded-md text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+        />
+        <button onClick={onClose} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
+          <X size={8} />
+        </button>
+      </div>
+      {results.length > 0 && (
+        <div className="mt-1 max-h-[80px] overflow-y-auto scrollbar-hide">
+          {results.map((place) => (
+            <button key={place.id} onClick={() => onSelect(place)}
+              className="w-full text-left flex items-center gap-2 py-1 px-1 rounded hover:bg-white/10 transition-colors">
+              <MapPin size={8} className="shrink-0 text-white/30" />
+              <span className="text-[10px] text-white/70 truncate">{place.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {query.length > 1 && results.length === 0 && (
+        <p className="text-[9px] text-white/20 italic py-1 px-1">No results</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Glance View ────────────────────────────────────────────────
+
 
 
 function GlanceView({
@@ -77,6 +155,10 @@ function GlanceView({
   arrivalFlight,
   returnFlight,
   onActivityClick,
+  addActivity,
+  removeActivity,
+  updateActivity,
+  moveActivityBefore,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -84,8 +166,19 @@ function GlanceView({
   arrivalFlight?: typeof MOCK_FLIGHT_DETAILS[number];
   returnFlight?: typeof MOCK_FLIGHT_DETAILS[number];
   onActivityClick?: (activityId: string) => void;
+  addActivity?: (activity: import('@travyl/shared').CalendarActivity) => void;
+  removeActivity?: (id: string) => void;
+  updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
+  moveActivityBefore?: (dragId: string, targetId: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const [searchSlot, setSearchSlot] = useState<{ day: number; tod: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dragOverTarget, setDragOverTarget] = useState<{ id: string; position: 'above' | 'below' } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const scrollTo = (idx: number) => {
     const el = scrollRef.current;
@@ -94,22 +187,46 @@ function GlanceView({
     if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
   };
 
+  const onMouseDown = (e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    dragStartX.current = e.pageX - el.offsetLeft;
+    dragScrollLeft.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    el.scrollLeft = dragScrollLeft.current - (e.pageX - el.offsetLeft - dragStartX.current);
+  };
+  const onMouseUp = () => {
+    isDragging.current = false;
+    if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
+  };
+
   return (
-    <div className="w-full">
-      {/* Horizontal scroll cards — same pattern as Things to Do */}
+    <div className="w-full" data-no-page-swipe>
+      {/* Horizontal scroll cards — draggable */}
       <div ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+        className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
         onScroll={(e) => {
           const el = e.currentTarget;
           const idx = Math.round(el.scrollLeft / ((el.firstElementChild as HTMLElement)?.offsetWidth || 1));
           onSelectDay(Math.min(idx, days.length - 1));
-        }}>
+        }}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}>
         {days.map((day, i) => {
           const heroImg = GLANCE_HERO_IMAGES[i % GLANCE_HERO_IMAGES.length];
           const isFirst = i === 0;
           const isLast = i === days.length - 1;
           return (
-            <div key={day.id} className="flex-shrink-0 w-full rounded-xl overflow-hidden snap-start flex" style={{ height: 280 }}>
+            <div key={day.id} className="flex-shrink-0 w-full rounded-xl overflow-hidden snap-start flex" style={{ minHeight: 280, height: searchSlot?.day === i ? 'auto' : 280 }}>
               {/* Left — activity list */}
               <div className="w-[40%] shrink-0 bg-[#1a1a2e] p-4 flex flex-col">
                 {/* Day header */}
@@ -136,30 +253,215 @@ function GlanceView({
                     </div>
                   )}
 
-                  {day.timeGroups.map((group) => {
-                    const config = TIME_OF_DAY_CONFIG[group.timeOfDay as keyof typeof TIME_OF_DAY_CONFIG];
+                  {(['morning', 'afternoon', 'evening', 'latenight'] as const).map((tod) => {
+                    const config = TIME_OF_DAY_CONFIG[tod];
+                    const group = day.timeGroups.find((g) => g.timeOfDay === tod);
                     return (
-                      <div key={group.timeOfDay} className="mb-1.5 last:mb-0">
+                      <div key={tod}
+                        className="mb-1 last:mb-0 rounded-lg transition-colors px-1 -mx-1"
+                        onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-white/10'); }}
+                        onDragLeave={(e) => { e.currentTarget.classList.remove('bg-white/10'); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('bg-white/10');
+                          try {
+                            const item = JSON.parse(e.dataTransfer.getData('application/json'));
+                            if (!item) return;
+                            if (item._isMove && updateActivity) {
+                              // Move existing activity to this time slot
+                              updateActivity(item.id, {
+                                day: i,
+                                startHour: TOD_START_HOURS[tod] || 9,
+                              });
+                            } else if (addActivity) {
+                              // Add new activity from explore/search
+                              addActivity({
+                                id: `drop-${Date.now()}`,
+                                title: item.title || item.name,
+                                type: item.category || 'activity',
+                                day: i,
+                                startHour: TOD_START_HOURS[tod] || 9,
+                                duration: 2,
+                                location: item.location || '',
+                                image: item.image,
+                                onCalendar: true,
+                              });
+                            }
+                          } catch {}
+                        }}
+                      >
                         <p className="text-[7px] font-bold tracking-[0.2em] uppercase mb-0.5"
                           style={{ color: 'var(--magazine-accent, #c8a96a)', opacity: 0.7 }}>
                           {config.label}
                         </p>
-                        {group.activities.map((activity) => {
+                        {group?.activities.map((activity) => {
                           const catColor = getActivityTypeColor(activity.category);
+                          const CatIcon = CATEGORY_ICON[activity.category] || CATEGORY_ICON.default;
+                          const isBeingDragged = draggingId === activity.id;
+                          const isDropAbove = dragOverTarget?.id === activity.id && dragOverTarget.position === 'above';
+                          const isDropBelow = dragOverTarget?.id === activity.id && dragOverTarget.position === 'below';
                           return (
-                            <div key={activity.id}
-                              onClick={() => onActivityClick?.(activity.id)}
-                              className="flex items-center gap-2 py-[2px] cursor-pointer group/row">
-                              <span className="text-[9px] w-[44px] shrink-0 tabular-nums text-white/40">
-                                {activity.startTime || '—'}
-                              </span>
-                              <div className="w-[4px] h-[4px] rounded-full shrink-0" style={{ backgroundColor: catColor.primary }} />
-                              <span className="text-[11px] flex-1 truncate font-medium text-white/80 group-hover/row:text-white transition-colors">
+                            <div key={activity.id} className="relative">
+                              {/* Drop indicator line — above */}
+                              <div className={`absolute -top-[1px] left-0 right-0 h-[2px] rounded-full transition-all duration-150 ${isDropAbove ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`}
+                                style={{ backgroundColor: 'var(--magazine-accent, #c8a96a)' }} />
+                            <div
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                setDraggingId(activity.id);
+                                e.dataTransfer.setData('application/json', JSON.stringify({
+                                  id: activity.id,
+                                  name: activity.name,
+                                  title: activity.name,
+                                  category: activity.category,
+                                  location: activity.locationName || '',
+                                  image: '',
+                                  _isMove: true,
+                                }));
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onDragEnd={() => { setDraggingId(null); setDragOverTarget(null); }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const pos = e.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
+                                setDragOverTarget({ id: activity.id, position: pos });
+                              }}
+                              onDragLeave={() => {
+                                setDragOverTarget((prev) => prev?.id === activity.id ? null : prev);
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverTarget(null);
+                                try {
+                                  const item = JSON.parse(e.dataTransfer.getData('application/json'));
+                                  if (item?._isMove && item.id !== activity.id && moveActivityBefore) {
+                                    if (updateActivity) {
+                                      updateActivity(item.id, { day: i, startHour: TOD_START_HOURS[tod] || 9 });
+                                    }
+                                    moveActivityBefore(item.id, activity.id);
+                                  }
+                                } catch {}
+                              }}
+                              className={`flex items-center gap-1 py-[3px] group/row rounded -mx-1 px-1 transition-all duration-150 ${
+                                isBeingDragged ? 'opacity-30 scale-95' : 'hover:bg-white/5'
+                              }`}>
+                              {/* Drag handle */}
+                              <GripVertical size={8} className="shrink-0 text-white/15 group-hover/row:text-white/35 cursor-grab active:cursor-grabbing transition-colors" />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeActivity?.(activity.id); }}
+                                className="shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/20 transition-all opacity-0 group-hover/row:opacity-100"
+                                title="Remove"
+                              >
+                                <X size={7} />
+                              </button>
+                              <CatIcon size={9} className="shrink-0" style={{ color: catColor.primary }} />
+                              <span
+                                onClick={() => onActivityClick?.(activity.id)}
+                                className="text-[11px] flex-1 truncate font-medium text-white/80 hover:text-white transition-colors cursor-pointer">
                                 {activity.name}
                               </span>
+                              {activity.timeDisplay && (
+                                <span className="text-[8px] text-white/30 shrink-0 tabular-nums">{activity.timeDisplay}</span>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const existingIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
+                                  const replacement = pickRandomActivity(activity.category, existingIds);
+                                  if (replacement && removeActivity && addActivity) {
+                                    removeActivity(activity.id);
+                                    addActivity({
+                                      id: `regen-${Date.now()}`,
+                                      title: replacement.name,
+                                      type: replacement.category || activity.category,
+                                      day: i,
+                                      startHour: TOD_START_HOURS[tod] || 9,
+                                      duration: 2,
+                                      location: replacement.location || '',
+                                      image: replacement.images?.[0],
+                                      onCalendar: true,
+                                    });
+                                  }
+                                }}
+                                className="shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-white/20 hover:text-amber-400 hover:bg-amber-500/20 transition-all opacity-0 group-hover/row:opacity-100"
+                                title="Regenerate — replace with similar activity"
+                              >
+                                <RefreshCw size={7} />
+                              </button>
+                            </div>
+                              {/* Drop indicator line — below */}
+                              <div className={`absolute -bottom-[1px] left-0 right-0 h-[2px] rounded-full transition-all duration-150 ${isDropBelow ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`}
+                                style={{ backgroundColor: 'var(--magazine-accent, #c8a96a)' }} />
                             </div>
                           );
                         })}
+                        {searchSlot?.day === i && searchSlot?.tod === tod ? (
+                          <GlanceSearchInput
+                            query={searchQuery}
+                            onChange={setSearchQuery}
+                            onClose={() => { setSearchSlot(null); setSearchQuery(''); }}
+                            onSelect={(place) => {
+                              addActivity?.({
+                                id: `search-${Date.now()}`,
+                                title: place.name,
+                                type: place.type,
+                                day: i,
+                                startHour: TOD_START_HOURS[tod] || 9,
+                                duration: 2,
+                                location: place.tagline,
+                                image: place.image,
+                                onCalendar: true,
+                              });
+                              setSearchSlot(null);
+                              setSearchQuery('');
+                            }}
+                          />
+                        ) : (
+                          <div className="mt-1 space-y-1">
+                            {/* Quick-fill pills */}
+                            <div className="flex flex-wrap gap-1">
+                              {QUICK_FILL_CATEGORIES.slice(0, 4).map((cat) => (
+                                <button
+                                  key={cat.label}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const existingIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
+                                    const item = pickRandomActivity(cat.filter, existingIds);
+                                    if (item && addActivity) {
+                                      addActivity({
+                                        id: `quick-${Date.now()}`,
+                                        title: item.name,
+                                        type: item.category || 'activity',
+                                        day: i,
+                                        startHour: TOD_START_HOURS[tod] || 9,
+                                        duration: 2,
+                                        location: item.location || '',
+                                        image: item.images?.[0],
+                                        onCalendar: true,
+                                      });
+                                    }
+                                  }}
+                                  className="text-[8px] px-1.5 py-0.5 rounded-full border border-white/10 text-white/40 hover:text-white/70 hover:border-white/25 hover:bg-white/5 transition-all"
+                                  title={`Add ${cat.label.toLowerCase()} activity`}
+                                >
+                                  {cat.icon} {cat.label}
+                                </button>
+                              ))}
+                            </div>
+                            {/* Search link */}
+                            <button
+                              onClick={() => { setSearchSlot({ day: i, tod }); setSearchQuery(''); }}
+                              className="flex items-center gap-1 text-white/20 hover:text-white/40 transition-colors cursor-pointer"
+                            >
+                              <Search size={7} />
+                              <span className="text-[8px] italic">Search</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -212,11 +514,11 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const { id } = use(params);
   const { trip, isLoading, isEmpty } = useItineraryScreen(id);
   const {
-    days, addActivity,
+    days, addActivity, removeActivity, updateActivity, moveActivityBefore,
     collapsedSections, setCollapsedSections,
     allCollapsedOverride, setAllCollapsedOverride,
     selectedDayIndex, setSelectedDayIndex,
-    setMapMarkers, setSelectedMarkerId, setRequestMapOpen,
+    setMapMarkers, setSelectedMarkerId, requestMapOpen, setRequestMapOpen,
   } = useItineraryContext();
   const selectedDay = days[selectedDayIndex] ?? null;
   const contentRef = useRef<HTMLDivElement>(null);
@@ -287,29 +589,35 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const isLastDay = selectedDayIndex === days.length - 1;
 
   const allActivities: DiscoverItem[] = useMemo(() => {
-    if (!selectedDay) return [];
     const items: DiscoverItem[] = [];
-    for (const group of selectedDay.timeGroups) {
-      for (const a of group.activities) {
-        items.push({
-          id: a.id,
-          name: a.name,
-          location: a.locationName || 'Paris, France',
-          description: a.notes || `${a.category} activity scheduled for ${a.timeDisplay || 'this day'}`,
-          images: [],
-          rating: 4.5,
-          tags: [a.category, group.timeOfDay, a.costDisplay || ''].filter(Boolean),
-          price: a.costDisplay || undefined,
-          category: a.category,
-          isBooked: true,
-          bookedDay: selectedDay.dayNumber,
-          bookedTime: a.startTime || undefined,
-          bookingUrl: a.bookingUrl || undefined,
-        });
+    for (const day of days) {
+      for (const group of day.timeGroups) {
+        for (const a of group.activities) {
+          // Try to find matching discover activity for richer data (images, etc.)
+          const discover = MOCK_DISCOVER_ACTIVITIES.find((d) =>
+            d.name.toLowerCase() === a.name.toLowerCase() ||
+            d.id === a.id,
+          );
+          items.push({
+            id: a.id,
+            name: a.name,
+            location: a.locationName || discover?.location || 'Paris, France',
+            description: a.notes || discover?.description || `${a.category} activity`,
+            images: discover?.images || [],
+            rating: discover?.rating || 4.5,
+            tags: [a.category, group.timeOfDay, a.costDisplay || ''].filter(Boolean),
+            price: a.costDisplay || discover?.price || undefined,
+            category: a.category,
+            isBooked: true,
+            bookedDay: day.dayNumber,
+            bookedTime: a.startTime || undefined,
+            bookingUrl: a.bookingUrl || discover?.bookingUrl || undefined,
+          });
+        }
       }
     }
     return items;
-  }, [selectedDay]);
+  }, [days]);
 
   const mapLocations: MapLocation[] = useMemo(() => {
     if (!selectedDay) return [];
@@ -328,10 +636,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   }, [selectedDay]);
 
   // Push markers to layout map
+  // Push markers to layout map (but don't auto-open — user toggles via button)
   useEffect(() => {
     if (mapLocations.length > 0) {
       setMapMarkers(mapLocations);
-      setRequestMapOpen(true);
     }
     return () => {
       setMapMarkers([]);
@@ -386,11 +694,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   if (isEmpty) return <ItineraryEmpty />;
 
   return (
-    <div className="relative">
-      {/* ── Shared hero — same component as overview ── */}
-      <TripMagazineHero tripId={id} trip={trip} />
-
-      <div className="relative z-10 px-6 sm:px-10">
+    <div className="relative overflow-hidden">
+      <div className="relative z-10 px-6 sm:px-10 pb-8">
 
         {/* ── Day selector ── */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 mb-4">
@@ -414,65 +719,58 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         <section>
           <div className="mb-4 flex items-end justify-between">
             <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
-                style={{ color: 'var(--magazine-accent, #c8a96a)' }}>Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif"
-                style={{ color: 'var(--magazine-heading, var(--foreground))' }}>At a Glance</h2>
+              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-white/70"
+                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>Your Itinerary</p>
+              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-white"
+                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] tabular-nums mr-1" style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md"
+              style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+              <span className="text-[11px] tabular-nums mr-1 text-white/70">
                 {selectedDayIndex + 1} / {days.length}
               </span>
               <button onClick={() => selectedDayIndex > 0 && setSelectedDayIndex(selectedDayIndex - 1)} disabled={selectedDayIndex === 0}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))' }}>
-                <ChevronDown size={14} className="rotate-90" style={{ color: 'var(--magazine-text, var(--muted-foreground))' }} />
+                style={{ border: '1px solid rgba(255,255,255,0.25)' }}>
+                <ChevronDown size={14} className="rotate-90 text-white/70" />
               </button>
               <button onClick={() => selectedDayIndex < days.length - 1 && setSelectedDayIndex(selectedDayIndex + 1)} disabled={selectedDayIndex === days.length - 1}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))' }}>
-                <ChevronDown size={14} className="-rotate-90" style={{ color: 'var(--magazine-text, var(--muted-foreground))' }} />
-              </button>
-              <button
-                onClick={() => {
-                  setGlanceMode(false);
-                  setAddingTo('morning');
-                  setAddCategory('All');
-                  setAddSearch('');
-                }}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all ml-1"
-                style={{ backgroundColor: 'rgba(200,169,106,0.15)', border: '1px solid rgba(200,169,106,0.25)' }}
-                title="Add activity"
-              >
-                <Plus size={13} style={{ color: 'var(--magazine-accent, #c8a96a)' }} />
+                style={{ border: '1px solid rgba(255,255,255,0.25)' }}>
+                <ChevronDown size={14} className="-rotate-90 text-white/70" />
               </button>
               <a
                 href={`/trip/${id}/calendar`}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))' }}
+                style={{ border: '1px solid rgba(255,255,255,0.25)' }}
                 title="Calendar view"
               >
-                <Calendar size={13} style={{ color: 'var(--magazine-text, var(--muted-foreground))' }} />
+                <Calendar size={13} className="text-white/70" />
               </a>
-              <button
-                onClick={() => setRequestMapOpen((v: boolean) => !v)}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))' }}
-                title="Toggle map"
-              >
-                <Map size={13} style={{ color: 'var(--magazine-text, var(--muted-foreground))' }} />
-              </button>
               <button
                 onClick={() => setGlanceMode((v) => !v)}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
                 style={{
-                  border: '1px solid var(--magazine-border, rgba(0,0,0,0.15))',
-                  backgroundColor: glanceMode ? 'var(--magazine-accent, #c8a96a)' : 'transparent',
-                  color: glanceMode ? 'white' : 'var(--magazine-text, var(--muted-foreground))',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  backgroundColor: glanceMode ? 'rgba(255,255,255,0.2)' : 'transparent',
+                  color: glanceMode ? 'white' : 'rgba(255,255,255,0.7)',
                 }}
                 title={glanceMode ? 'Detailed view' : 'At a glance'}
               >
                 <LayoutList size={13} />
+              </button>
+              <div className="w-px h-4 mx-1 bg-white/20" />
+              <button
+                onClick={() => setRequestMapOpen((v: boolean) => !v)}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                style={{
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  backgroundColor: requestMapOpen ? 'rgba(255,255,255,0.2)' : 'transparent',
+                  color: requestMapOpen ? 'white' : 'rgba(255,255,255,0.7)',
+                }}
+                title="Toggle map"
+              >
+                <Map size={13} />
               </button>
             </div>
           </div>
@@ -486,6 +784,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           arrivalFlight={arrivalFlight}
           returnFlight={returnFlight}
           onActivityClick={handleActivityClick}
+          addActivity={addActivity}
+          removeActivity={removeActivity}
+          updateActivity={updateActivity}
+          moveActivityBefore={moveActivityBefore}
         />
       )}
 

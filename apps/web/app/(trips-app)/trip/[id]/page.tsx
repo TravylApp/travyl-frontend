@@ -4,13 +4,13 @@ import { use, useState, useEffect, useRef } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useItineraryScreen, NEWS_COLORS } from '@travyl/shared';
 import type { TripContextData } from '@travyl/shared';
-import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 
 // ── Hooks ─────────────────────────────────────────────────────
 
-function useRevealOnScroll() {
+function useRevealOnScroll(ready: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (!ready) return;
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -27,7 +27,7 @@ function useRevealOnScroll() {
     const children = el.querySelectorAll('.reveal-on-scroll, .reveal-scale');
     children.forEach((child) => observer.observe(child));
     return () => observer.disconnect();
-  }, []);
+  }, [ready]);
   return ref;
 }
 
@@ -37,7 +37,7 @@ function useRevealOnScroll() {
 function AddToTripButton({ isAdded, onToggle }: { isAdded: boolean; onToggle: () => void }) {
   return (
     <button onClick={onToggle}
-      className="flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-300 backdrop-blur-sm"
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-300 backdrop-blur-sm w-fit"
       style={{
         color: isAdded ? 'var(--magazine-success)' : 'var(--magazine-accent)',
         border: `1px solid ${isAdded ? 'rgba(52,211,153,0.25)' : 'rgba(200,169,106,0.25)'}`,
@@ -70,24 +70,25 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd }: {
       <div className="w-[85%] sm:w-[60%]">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
-              style={{ color: 'var(--magazine-accent)' }}>Explore</p>
+            <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
+              style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Explore</span>
             <h2 className="text-2xl sm:text-3xl font-bold font-serif"
               style={{ color: 'var(--magazine-heading)' }}>Things to Do</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] tabular-nums mr-1" style={{ color: 'var(--magazine-text)' }}>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
+            style={{ backgroundColor: 'var(--magazine-bg, rgba(245,240,235,0.85))' }}>
+            <span className="text-[11px] tabular-nums mr-1" style={{ color: 'var(--magazine-heading)' }}>
               {activeIdx + 1} / {items.length}
             </span>
             <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
               className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
               style={{ border: '1px solid var(--magazine-border)' }}>
-              <ChevronLeft size={14} style={{ color: 'var(--magazine-text)' }} />
+              <ChevronLeft size={14} style={{ color: 'var(--magazine-heading)' }} />
             </button>
             <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
               className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
               style={{ border: '1px solid var(--magazine-border)' }}>
-              <ChevronRight size={14} style={{ color: 'var(--magazine-text)' }} />
+              <ChevronRight size={14} style={{ color: 'var(--magazine-heading)' }} />
             </button>
           </div>
         </div>
@@ -138,7 +139,6 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd }: {
   );
 }
 
-
 function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
   addedItems: Set<string>;
   onToggleAdd: (id: string) => void;
@@ -146,6 +146,9 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
 
   const scrollTo = (idx: number) => {
     const el = scrollRef.current;
@@ -154,47 +157,73 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
     if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
   };
 
+  const onMouseDown = (e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    startX.current = e.pageX - el.offsetLeft;
+    scrollLeft.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    el.scrollLeft = scrollLeft.current - (x - startX.current);
+  };
+  const onMouseUp = () => {
+    isDragging.current = false;
+    if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
+  };
+
   return (
-    <section>
-      <div>
+    <section className="h-full flex flex-col">
+      <div className="flex flex-col h-full">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
-              style={{ color: 'var(--magazine-accent)' }}>What&apos;s Happening</p>
+            <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
+              style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>What&apos;s Happening</span>
             <h2 className="text-2xl sm:text-3xl font-bold font-serif"
               style={{ color: 'var(--magazine-heading)' }}>What&apos;s Going On</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] tabular-nums mr-1" style={{ color: 'var(--magazine-text)' }}>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
+            style={{ backgroundColor: 'var(--magazine-bg, rgba(245,240,235,0.85))' }}>
+            <span className="text-[11px] tabular-nums mr-1" style={{ color: 'var(--magazine-heading)' }}>
               {activeIdx + 1} / {news.length}
             </span>
             <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
               className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
               style={{ border: '1px solid var(--magazine-border)' }}>
-              <ChevronLeft size={14} style={{ color: 'var(--magazine-text)' }} />
+              <ChevronLeft size={14} style={{ color: 'var(--magazine-heading)' }} />
             </button>
             <button onClick={() => { const i = Math.min(news.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === news.length - 1}
               className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
               style={{ border: '1px solid var(--magazine-border)' }}>
-              <ChevronRight size={14} style={{ color: 'var(--magazine-text)' }} />
+              <ChevronRight size={14} style={{ color: 'var(--magazine-heading)' }} />
             </button>
           </div>
         </div>
 
         <div ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+          className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory flex-1 cursor-grab select-none"
           onScroll={(e) => {
             const el = e.currentTarget;
             const cardWidth = (el.firstElementChild as HTMLElement)?.offsetWidth || 1;
             const idx = Math.round(el.scrollLeft / (cardWidth + 12));
             setActiveIdx(Math.min(idx, news.length - 1));
-          }}>
+          }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}>
           {news.map((item, i) => {
             const addable = item.category === 'event' || item.category === 'tip';
             return (
               <div key={item.id}
                 className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start"
-                style={{ height: 280, background: `linear-gradient(135deg, ${NEWS_COLORS[i % NEWS_COLORS.length][0]}, ${NEWS_COLORS[i % NEWS_COLORS.length][1]})` }}>
+                style={{ minHeight: 180, background: `linear-gradient(135deg, ${NEWS_COLORS[i % NEWS_COLORS.length][0]}, ${NEWS_COLORS[i % NEWS_COLORS.length][1]})` }}>
                 <div className="absolute top-0 left-0 right-0 h-[1px]"
                   style={{ background: 'linear-gradient(90deg, transparent, rgba(200,169,106,0.3), transparent)' }} />
                 <div className="flex flex-col justify-end h-full p-5">
@@ -203,10 +232,10 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
                     {item.category}
                     {item.source && <span className="ml-2 opacity-50">· {item.source}</span>}
                   </span>
-                  <h3 className="text-base font-bold leading-tight mb-2 font-serif text-white/90">
+                  <h3 className="text-base font-bold leading-tight mb-2 font-serif text-white">
                     {item.title}
                   </h3>
-                  <p className="text-[12px] text-white/70 leading-relaxed line-clamp-2 mb-3">{item.snippet}</p>
+                  <p className="text-[12px] text-white/80 leading-relaxed line-clamp-2 mb-3">{item.snippet}</p>
                   {addable && (
                     <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
                   )}
@@ -232,7 +261,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
   );
 }
 
-function TripMosaic({ photos }: { photos: string[] }) {
+function TripMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -245,13 +274,13 @@ function TripMosaic({ photos }: { photos: string[] }) {
   }, [photos]);
 
   return (
-    <div className="-mx-5 -mt-72 relative overflow-hidden" style={{ height: 600 }}>
+    <div className="-mx-5 -mt-48 relative overflow-hidden" style={{ height: 600 }}>
       {photos.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={i}
           src={src}
-          alt="Paris"
+          alt={destination || 'Trip photo'}
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
           style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
         />
@@ -277,9 +306,9 @@ function TripMosaic({ photos }: { photos: string[] }) {
 
 export default function TripOverview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { trip } = useItineraryScreen(id);
+  const { trip, isLoading } = useItineraryScreen(id);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
-  const revealRef = useRevealOnScroll();
+  const revealRef = useRevealOnScroll(!!trip);
 
   const news = trip?.trip_context?.news ?? [];
 
@@ -292,10 +321,16 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-pulse text-sm text-gray-400">Loading trip...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
-      {/* ── Shared hero — same component as itinerary ── */}
-      <TripMagazineHero tripId={id} trip={trip} />
 
       {/* ── Content over the bleed ── */}
       <div className="relative z-10">
@@ -320,11 +355,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           {/* ── NEWS (left) + WHAT'S GOING ON (right) ── */}
           {news.length > 0 && (
             <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-8 relative z-10">
-              <div className="flex flex-col sm:flex-row gap-6 items-start">
+              <div className="flex flex-col sm:flex-row gap-10 items-end">
                 {/* News column — left */}
-                <div className="w-full sm:w-[38%] shrink-0">
-                  <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
-                    style={{ color: 'var(--magazine-accent)' }}>Latest</p>
+                <div className="w-full sm:w-[30%] shrink-0 rounded-2xl px-5 py-4 backdrop-blur-md bg-white/20 border border-white/40 shadow-sm">
+                  <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
+                    style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Latest</span>
                   <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4"
                     style={{ color: 'var(--magazine-heading)' }}>News</h2>
                   <div className="flex flex-col gap-3">
@@ -337,15 +372,15 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                         </span>
                         <h3 className="text-[14px] font-bold leading-tight mt-1 font-serif"
                           style={{ color: 'var(--magazine-heading)' }}>{item.title}</h3>
-                        <p className="text-[11px] leading-relaxed mt-1 line-clamp-2"
-                          style={{ color: 'var(--magazine-text)' }}>{item.snippet}</p>
+                        <p className="text-[12px] leading-relaxed mt-1 line-clamp-2"
+                          style={{ color: 'var(--foreground)', opacity: 0.7 }}>{item.snippet}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* What's Going On — right */}
-                <div className="w-full sm:w-[60%]">
+                <div className="w-full sm:flex-1 min-w-0">
                   <WhatsGoingOnSection addedItems={addedItems} onToggleAdd={toggleAdd} news={news.filter(n => n.category === 'event' || n.category === 'tip')} />
                 </div>
               </div>
@@ -355,7 +390,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Rotating photo — bleeds up behind news section ── */}
           {trip?.trip_context?.hero_images && trip.trip_context.hero_images.length > 0 && (
-            <TripMosaic photos={trip.trip_context.hero_images} />
+            <TripMosaic photos={trip.trip_context.hero_images} destination={trip.destination} />
           )}
 
         </div>

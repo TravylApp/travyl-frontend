@@ -1,38 +1,63 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { Cloud, Droplets, Sun } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { Cloud, Droplets, Sun, ChevronDown } from 'lucide-react';
 import { formatDateRange } from '@travyl/shared';
-import { MOCK_WEATHER, MOCK_WEATHER_FORECAST } from '@travyl/shared/src/config/mockItineraryData';
-import { MOCK_TRIPS } from '@travyl/shared/src/config/mockTripsData';
 import type { Trip } from '@travyl/shared';
 
-export function TripMagazineHero({ tripId, trip }: { tripId: string; trip?: Trip | null }) {
+function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
+  const valid = facts.filter(Boolean) as string[];
+  if (!valid.length) return null;
+  return (
+    <div className={`flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] ${className ?? ''}`}
+      style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
+      {valid.map((fact, i) => {
+        const [label, ...rest] = fact.split(' · ');
+        return (
+          <span key={i} className="text-white/80">
+            <span className="font-semibold text-white">{label}</span>
+            {rest.length > 0 && ` · ${rest.join(' · ')}`}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+export function TripMagazineHero({ tripId, trip, overrideImage }: { tripId?: string; trip?: Trip | null; overrideImage?: string }) {
   const bgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const el = bgRef.current;
     if (!el) return;
+    let rafId: number;
     const handleScroll = () => {
-      el.style.transform = `translateY(${window.scrollY * 0.15}px)`;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        el.style.transform = `translateY(${window.scrollY * 0.15}px)`;
+      });
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
-  const weather = MOCK_WEATHER;
-  const forecast = MOCK_WEATHER_FORECAST;
-  const tripData = MOCK_TRIPS.find((t) => t.id === (trip?.id ?? tripId));
-  const coverImage = (trip as any)?.image?.replace(/\?w=\d+/, '?w=1600&q=80')
-    || tripData?.image?.replace(/\?w=\d+/, '?w=1600&q=80');
-  const destination = trip?.destination || tripData?.destination || 'Paris, France';
+  const [essentialsOpen, setEssentialsOpen] = useState(true);
+  const weather = trip?.trip_context?.weather?.current;
+  const forecast = trip?.trip_context?.weather?.forecast;
+  const coverImage = overrideImage || trip?.trip_context?.hero_image_url;
+  const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
   const countryName = destination.split(',').slice(1).join(',').trim();
   const dateStr = trip ? formatDateRange(trip.start_date, trip.end_date) : null;
   const travelersStr = trip ? `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}` : null;
 
-  const conditions = weather.conditions.toLowerCase();
+  const conditions = weather?.condition?.toLowerCase() ?? '';
   const WeatherIcon = conditions.includes('cloud') ? Cloud : conditions.includes('rain') ? Droplets : Sun;
+
+  const hasEssentials = !!(trip?.trip_context?.quick_facts || weather);
 
   return (
     <>
@@ -43,7 +68,7 @@ export function TripMagazineHero({ tripId, trip }: { tripId: string; trip?: Trip
           <img ref={bgRef} src={coverImage} alt="" className="w-full h-full object-cover"
             style={{ objectPosition: 'center 30%', willChange: 'transform' }} />
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.5) 60%, var(--magazine-bg, var(--background)) 85%, var(--magazine-bg, var(--background)) 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.45) 60%, var(--magazine-bg, var(--background)) 85%, var(--magazine-bg, var(--background)) 100%)' }} />
         </div>
       )}
 
@@ -52,52 +77,79 @@ export function TripMagazineHero({ tripId, trip }: { tripId: string; trip?: Trip
         <p className="text-[10px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
           {countryName || 'Your Trip Guide'}
         </p>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[0.95] font-serif mb-3"
-          style={{ letterSpacing: '0.02em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
-          {cityName.toUpperCase()}
-        </h1>
-        <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/70 font-medium">
-          {dateStr && <span>{dateStr}</span>}
-          {dateStr && travelersStr && <span className="text-white/20">·</span>}
-          {travelersStr && <span>{travelersStr}</span>}
+        <div className="flex items-center gap-4">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[0.95] font-serif"
+            style={{ letterSpacing: '0.02em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
+            {cityName.toUpperCase()}
+          </h1>
+          {hasEssentials && (
+            <button
+              onClick={() => setEssentialsOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all shrink-0"
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              <span>{essentialsOpen ? 'Hide Info' : 'Trip Info'}</span>
+              <ChevronDown size={10} className={`transition-transform ${essentialsOpen ? 'rotate-180' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Essentials + forecast */}
-      <div className="relative z-10 px-6 sm:px-10 mb-6">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] mb-3"
-          style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
-          <span className="text-white/80"><span className="font-semibold text-white">EUR €</span> · €1 ≈ $1.08</span>
-          <span className="text-white/80"><span className="font-semibold text-white">French</span> · English widely spoken</span>
-          <span className="text-white/80"><span className="font-semibold text-white">CET +1</span> · 6h ahead of EST</span>
-          <span className="text-white/80"><span className="font-semibold text-white">Type C/E</span> · 230V adapter</span>
-        </div>
+      {/* Dates, essentials, forecast — collapsible */}
+      {hasEssentials && (
+        <div className={`relative z-10 px-6 sm:px-10 transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-0'}`}>
+          <div className={`transition-all duration-300 overflow-hidden ${essentialsOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+            style={{ textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>
+          <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-4">
+            {dateStr && <span>{dateStr}</span>}
+            {dateStr && travelersStr && <span className="text-white/30">·</span>}
+            {travelersStr && <span>{travelersStr}</span>}
+          </div>
+          {trip?.trip_context?.quick_facts && (() => {
+            const qf = trip.trip_context.quick_facts!;
+            return (
+              <>
+                <QuickFactRow facts={[qf.currency, qf.language, qf.timezone, qf.power]} className="mb-3" />
+                <QuickFactRow facts={[qf.transport, qf.taxi, qf.tipping, qf.water]} className="mb-5" />
+                {qf.emergency && (
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] mb-5" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
+                    <span className="text-white/60"><span className="font-semibold text-red-400">{qf.emergency}</span> Emergency</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] mb-5"
-          style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
-          <span className="text-white/80"><span className="font-semibold text-white">Métro</span> · Lines 1, 4 & 7</span>
-          <span className="text-white/80"><span className="font-semibold text-white">Taxi</span> · Airport €50–70</span>
-          <span className="text-white/80"><span className="font-semibold text-white">Tip</span> · Included, round up</span>
-          <span className="text-white/80"><span className="font-semibold text-white">Water</span> · Tap is safe</span>
-          <span className="text-white/60"><span className="font-semibold text-red-400">112</span> Emergency</span>
+          <div className="flex items-center gap-5 sm:gap-7 text-[12px] tracking-wider uppercase overflow-x-auto scrollbar-hide">
+            {weather && (
+              <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+                <WeatherIcon size={16} />
+                <span className="font-bold">{weather.high}° / {weather.low}°</span>
+                <span className="text-[10px]" style={{ opacity: 0.7 }}>Now</span>
+              </span>
+            )}
+            {weather && forecast && forecast.length > 0 && (
+              <span className="text-white/40">|</span>
+            )}
+            {forecast && forecast.length > 0 && (
+              forecast.slice(0, 5).map((d) => (
+                <span key={d.day} className="flex items-center gap-1.5 shrink-0">
+                  <span className="font-semibold text-white/70">{d.day}</span>
+                  <span className="text-[14px]">{d.icon}</span>
+                  <span className="font-bold text-white">{d.high}°</span>
+                </span>
+              ))
+            )}
+          </div>
+          </div>{/* end collapsible */}
         </div>
-
-        <div className="flex items-center gap-5 sm:gap-7 text-[12px] tracking-wider uppercase overflow-x-auto scrollbar-hide">
-          <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
-            <WeatherIcon size={16} />
-            <span className="font-bold">{weather.high}° / {weather.low}°</span>
-            <span className="text-[10px]" style={{ opacity: 0.7 }}>Now</span>
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
-          {forecast.slice(0, 5).map((d) => (
-            <span key={d.day} className="flex items-center gap-1.5 shrink-0">
-              <span className="font-semibold" style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}>{d.day}</span>
-              <span className="text-[14px]">{d.icon}</span>
-              <span className="font-bold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>{d.high}°</span>
-            </span>
-          ))}
-        </div>
-      </div>
+      )}
     </>
   );
 }
