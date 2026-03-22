@@ -37,6 +37,9 @@ import { formatDuration, formatTimeRange } from './utils'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import { useMarqueeSelection } from './hooks/useMarqueeSelection'
+import { usePollMutations } from './hooks/usePollMutations'
+import { usePollObserver } from './hooks/usePollObserver'
+import { usePollSync } from './hooks/usePollSync'
 import { MarqueeOverlay } from './MarqueeOverlay'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
@@ -44,12 +47,13 @@ import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { ShareModal } from './sharing/ShareModal'
 import { ForkAttribution } from '../trip/ForkAttribution'
-import { inviteCollaborator, isTripOwner, canEditTrip } from '@travyl/shared'
+import { inviteCollaborator, isTripOwner, canEditTrip, supabase } from '@travyl/shared'
 import type { CollaboratorRole } from '@travyl/shared'
 import { TripSettingsLayout } from '../trip/settings/TripSettingsLayout'
 import { TripThemeProvider } from '../trip/TripThemeContext'
 import { BudgetPanel } from '../budget/BudgetPanel'
 import { PackingPanel } from '@/components/packing/PackingPanel'
+import { useQuery } from '@tanstack/react-query'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -101,6 +105,39 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   } = useCalendarNavigation()
 
   const { trackEvent } = useInteractionTracking(tripId)
+
+  // Poll infrastructure
+  const { startPoll, vote, closePoll, restoreActivity: restorePollActivity } = usePollMutations()
+
+  const { data: editors } = useQuery({
+    queryKey: ['trip-editors', tripId],
+    queryFn: async () => {
+      const { data: collabs } = await supabase
+        .from('trip_collaborators')
+        .select('user_id')
+        .eq('trip_id', tripId)
+        .eq('role_type', 'editor')
+
+      const { data: tripRow } = await supabase
+        .from('trips')
+        .select('user_id')
+        .eq('id', tripId)
+        .single()
+
+      const editorIds = (collabs ?? []).map((c: { user_id: string }) => c.user_id)
+      if (tripRow?.user_id && !editorIds.includes(tripRow.user_id)) {
+        editorIds.push(tripRow.user_id)
+      }
+      return editorIds
+    },
+    staleTime: 5 * 60_000,
+  })
+
+  const editorIds = editors ?? [userId]
+  const editorCount = editorIds.length
+
+  const { polls } = usePollObserver({ editorCount, editorIds })
+  usePollSync(tripId)
 
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
@@ -348,6 +385,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   if (isLoading) return <CalendarSkeleton />
   if (error) return <CalendarError message={error} />
 
+  const tripOwnerId = trip?.user_id ?? ''
+
   // Event handlers
   const handleClickEvent = (id: string, anchorEl: HTMLElement) => {
     if (marqueeSelectedIds.size > 0) {
@@ -505,6 +544,15 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         />
                       }
                       onShiftClickEvent={toggleActivityInSelection}
+                      polls={polls}
+                      pollUserId={userId}
+                      pollCollaborators={collaborators}
+                      tripOwnerId={tripOwnerId}
+                      onVote={(activityId, v) => vote(activityId, userId, v)}
+                      onStartPoll={(activityId) => startPoll(activityId, userId)}
+                      onClosePoll={(activityId) => closePoll(activityId)}
+                      onRestoreActivity={(activityId) => restorePollActivity(activityId)}
+                      onRemoveActivity={(activityId) => handleRemoveActivity(activityId)}
                     />
                   </motion.div>
                 ) : (
@@ -528,6 +576,15 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       onCreateActivity={handleCreateActivity}
                       pendingDrop={pendingDrop}
                       onResize={handleResize}
+                      polls={polls}
+                      pollUserId={userId}
+                      pollCollaborators={collaborators}
+                      tripOwnerId={tripOwnerId}
+                      onVote={(activityId, v) => vote(activityId, userId, v)}
+                      onStartPoll={(activityId) => startPoll(activityId, userId)}
+                      onClosePoll={(activityId) => closePoll(activityId)}
+                      onRestoreActivity={(activityId) => restorePollActivity(activityId)}
+                      onRemoveActivity={(activityId) => handleRemoveActivity(activityId)}
                     />
                   </motion.div>
                 )}

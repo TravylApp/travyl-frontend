@@ -2,6 +2,7 @@
 import { TimeGutter } from './TimeGutter'
 import { DayColumn } from './DayColumn'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import type { Poll } from '@travyl/shared'
 
 interface WeekViewProps {
   days: { dayIndex: number; label: string }[]
@@ -19,6 +20,15 @@ interface WeekViewProps {
   gridRef?: React.RefObject<HTMLDivElement | null>
   marqueeOverlay?: React.ReactNode
   onShiftClickEvent?: (id: string) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  pollCollaborators?: UserAwareness[]
+  tripOwnerId?: string
+  onVote?: (activityId: string, vote: 'yes' | 'no') => void
+  onStartPoll?: (activityId: string) => void
+  onClosePoll?: (activityId: string) => void
+  onRestoreActivity?: (activityId: string) => void
+  onRemoveActivity?: (activityId: string) => void
 }
 
 export function WeekView({
@@ -37,6 +47,15 @@ export function WeekView({
   gridRef,
   marqueeOverlay,
   onShiftClickEvent,
+  polls,
+  pollUserId,
+  pollCollaborators,
+  tripOwnerId,
+  onVote,
+  onStartPoll,
+  onClosePoll,
+  onRestoreActivity,
+  onRemoveActivity,
 }: WeekViewProps) {
   return (
     <div role="grid" className="flex flex-1 min-w-0">
@@ -63,6 +82,15 @@ export function WeekView({
               onResize={onResize}
               marqueeSelectedIds={marqueeSelectedIds}
               onShiftClickEvent={onShiftClickEvent}
+              polls={polls}
+              pollUserId={pollUserId}
+              pollCollaborators={pollCollaborators}
+              tripOwnerId={tripOwnerId}
+              onVote={onVote}
+              onStartPoll={onStartPoll}
+              onClosePoll={onClosePoll}
+              onRestoreActivity={onRestoreActivity}
+              onRemoveActivity={onRemoveActivity}
             />
           )
         })}
