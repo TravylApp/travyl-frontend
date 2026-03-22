@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, Dimensions } from 'react-native';
-import { MOCK_PLACES, Gray } from '@travyl/shared';
+import { MOCK_PLACES } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -9,6 +10,7 @@ const CARD_W = SCREEN_WIDTH * 0.62;
 const CARD_H = CARD_W * 1.35;
 
 export function GetInspired() {
+  const colors = useThemeColors();
   const [favorites, setFavorites] = useState<string[]>([]);
 
   const toggleFavorite = useCallback((id: string) => {
@@ -21,11 +23,11 @@ export function GetInspired() {
     <View style={{ paddingVertical: 40 }}>
       {/* Title */}
       <View style={{ alignItems: 'center', marginBottom: 24 }}>
-        <Text style={{ fontSize: 24, color: Gray[900], marginBottom: 4 }}>
+        <Text style={{ fontSize: 24, color: colors.text, marginBottom: 4 }}>
           <Text style={{ fontWeight: '800' }}>Get</Text>{' '}
           <Text style={{ fontStyle: 'italic' }}>Inspired</Text>
         </Text>
-        <Text style={{ fontSize: 14, color: Gray[500], textAlign: 'center' }}>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
           Explore popular destinations and start travyling.
         </Text>
       </View>
@@ -36,7 +38,7 @@ export function GetInspired() {
         onToggleFav={toggleFavorite}
         cardWidth={CARD_W}
         cardHeight={CARD_H}
-        navColor={Gray[500]}
+        navColor={colors.textTertiary}
       />
     </View>
   );

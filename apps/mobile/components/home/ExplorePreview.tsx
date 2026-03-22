@@ -1,12 +1,13 @@
 import { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Gray, getCyclicGradient, MOCK_PLACES } from '@travyl/shared';
+import { useExploreRows, getCyclicGradient, MOCK_PLACES } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExploreRow } from './ExploreRow';
 
 /** Double-chevron icon to match web's ChevronsUpDown / ChevronsDownUp */
-function DoubleChevron({ collapsed, size = 10, color = Gray[500] }: { collapsed: boolean; size?: number; color?: string }) {
+function DoubleChevron({ collapsed, size = 10, color = '#9ca3af' }: { collapsed: boolean; size?: number; color?: string }) {
   const half = size * 0.55;
   return (
     <View style={{ height: size, justifyContent: 'center', alignItems: 'center' }}>
@@ -26,7 +27,7 @@ function DoubleChevron({ collapsed, size = 10, color = Gray[500] }: { collapsed:
   );
 }
 
-export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = {}) {
+export function ExplorePreview({ contextPlace, onPlacePress }: { contextPlace?: PlaceItem; onPlacePress?: (place: PlaceItem) => void } = {}) {
   const { rows: hookRows, toggleRow: hookToggle, collapseAll: hookCollapseAll, expandAll: hookExpandAll, allExpanded: hookAllExpanded } = useExploreRows();
 
   // Build contextual rows when a place is selected
@@ -71,6 +72,8 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
     ? Object.values(localExpanded).every(Boolean)
     : hookAllExpanded;
 
+  const colors = useThemeColors();
+
   return (
     <View style={{ paddingVertical: 40 }}>
       {/* Header */}
@@ -79,7 +82,7 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
           style={{
             fontSize: 20,
             fontWeight: '700',
-            color: Gray[900],
+            color: colors.text,
             textAlign: 'left',
             marginBottom: 8,
           }}
@@ -89,7 +92,7 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
         <Text
           style={{
             fontSize: 14,
-            color: Gray[500],
+            color: colors.textSecondary,
             textAlign: 'left',
             marginBottom: 16,
           }}
@@ -111,14 +114,14 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
             paddingHorizontal: 14,
             borderRadius: 20,
             borderWidth: 1,
-            borderColor: Gray[300],
-            backgroundColor: '#fff',
+            borderColor: colors.border,
+            backgroundColor: colors.cardBackground,
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: '600', color: Gray[800] }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
             {allExpanded ? 'Collapse All' : 'Expand All'}
           </Text>
-          <DoubleChevron collapsed={allExpanded} size={12} color={Gray[500]} />
+          <DoubleChevron collapsed={allExpanded} size={12} color={colors.textTertiary} />
         </Pressable>
       </View>
 
@@ -129,6 +132,7 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
             row={row}
             rowIndex={rowIndex}
             onToggle={() => toggleRow(rowIndex)}
+            onPlacePress={onPlacePress}
           />
         ))}
       </View>

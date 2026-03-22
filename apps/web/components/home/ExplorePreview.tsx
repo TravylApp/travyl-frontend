@@ -21,7 +21,7 @@ function SectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border bg-white dark:bg-white/[0.04] border-gray-100 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border bg-white dark:bg-[var(--muted)] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.08] shadow-sm"
       style={{ color: 'var(--magazine-heading, var(--foreground))' }}
     >
       <span className="tracking-wide">{title}</span>
@@ -102,14 +102,29 @@ function ExploreContainer({
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {items.map((item) => (
-          <PlaceCard
+          <div
             key={item.id}
-            place={item}
-            size="compact"
-            isFav={false}
-            onToggleFav={() => {}}
-            onClick={() => onItemClick?.(item)}
-          />
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/json', JSON.stringify({
+                id: item.id,
+                name: item.name,
+                title: item.name,
+                category: item.type,
+                location: item.tagline || '',
+                image: item.images?.[0] || item.image || '',
+              }));
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
+          >
+            <PlaceCard
+              place={item}
+              size="compact"
+              isFav={false}
+              onToggleFav={() => {}}
+              onClick={() => onItemClick?.(item)}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -146,7 +161,7 @@ function ExploreSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
             <div className="pt-1 pb-2">
@@ -177,9 +192,9 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
 
   return (
     <section className="py-6 px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
         {/* Collapse/Expand All toggle */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between px-4 pt-4 pb-3">
           <h2 className="text-xl font-extrabold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>Explore</h2>
           <button
             onClick={allExpanded ? collapseAll : expandAll}
@@ -191,7 +206,7 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
         </div>
 
         {/* Sections */}
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 px-4 pb-4">
           {rows.map((row, i) => (
             <ExploreSection
               key={row.title}
