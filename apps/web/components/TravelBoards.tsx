@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, Plane, Clock, MapPin, Sparkles, Compass, Star, Triangle } from "lucide-react";
+import { Plus, Clock, MapPin, Sparkles, Compass, Star, Triangle } from "lucide-react";
+import { PaperPlane } from '@/components/ui';
 import { motion } from "motion/react";
 import { TRAVEL_BOARDS, TRAVEL_DNA, JOURNEY_NUMBERS } from "@travyl/shared";
 import type { TravelBoard } from "@travyl/shared";
@@ -19,7 +20,7 @@ function BoardIcon({ icon, color }: { icon: string; color: string }) {
 function JourneyIcon({ icon, color }: { icon: string; color: string }) {
   const size = 18;
   switch (icon) {
-    case "plane": return <Plane size={size} style={{ color }} />;
+    case "plane": return <PaperPlane size={size} style={{ color }} />;
     case "clock": return <Clock size={size} style={{ color }} />;
     case "map-pin": return <MapPin size={size} style={{ color }} />;
     case "sparkles": return <Sparkles size={size} style={{ color }} />;

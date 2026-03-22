@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, Plane, MapPin } from 'lucide-react'
+import { X, MapPin } from 'lucide-react'
+import { PaperPlane } from '@/components/ui'
 import { useAuthStore } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
 
@@ -179,7 +180,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#1e3a5f] flex items-center justify-center">
-              <Plane size={14} className="text-white -rotate-12" />
+              <PaperPlane size={14} className="text-white -rotate-12" />
             </div>
             <h2 id="create-trip-title" className="text-lg font-bold text-[#1e3a5f]">Plan a Trip</h2>
           </div>

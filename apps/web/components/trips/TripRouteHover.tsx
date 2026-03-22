@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Plane, MapPin, Building2 } from 'lucide-react';
+import { MapPin, Building2 } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import type { MockTripCard, RouteLocation } from '@travyl/shared';
 import { RouteMap } from './RouteMap';
 
@@ -79,7 +80,7 @@ function FlightConnector() {
     <div className="flex items-center gap-1 px-2 py-1.5 ml-1">
       <div className="w-0.5 h-4 bg-slate-700" />
       <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-800/80 rounded-full border border-slate-700/50">
-        <Plane size={10} className="text-blue-400 rotate-90" />
+        <PaperPlane size={10} className="text-blue-400 rotate-90" />
         <span className="text-[10px] text-slate-300 font-medium">flight</span>
       </div>
       <div className="flex-1 h-px bg-gradient-to-r from-slate-600 to-transparent" />
@@ -139,7 +140,7 @@ export function TripRouteHover({ trip }: TripRouteHoverProps) {
       {/* Route Header */}
       <div className="mb-3 pb-2 border-b border-gray-100">
         <div className="flex items-center gap-2 mb-1.5">
-          <Plane size={14} className="text-[#1e3a5f]" />
+          <PaperPlane size={14} className="text-[#1e3a5f]" />
           <span className="text-sm font-semibold text-gray-800">Trip Route</span>
         </div>
 
