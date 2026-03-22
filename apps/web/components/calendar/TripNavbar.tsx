@@ -114,7 +114,6 @@ export interface TripNavbarProps {
   tripName: string
   dateRange: string
   commands: Command[]
-  onOpenPalette: () => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onAddEvent: () => void

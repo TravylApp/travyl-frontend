@@ -19,9 +19,10 @@ import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
 import { TripNavbar } from './TripNavbar'
-import { CommandPalette } from './CommandPalette'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
+import { useIndexTrip } from '@/hooks/useIndexTrip'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -72,7 +73,6 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
-  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const router = useRouter()
 
   // Hooks
@@ -304,7 +304,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const commands = useCalendarCommands({
     selectedActivity,
-    isPaletteOpen,
     moveActivity,
     removeActivity,
     updateActivity,
@@ -314,16 +313,25 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripDays: TRIP_DAYS,
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
-    onOpenPalette: () => setIsPaletteOpen(true),
     marqueeSelectedIds,
     onBulkDelete: handleBulkDelete,
     onBulkDuplicate: handleBulkDuplicate,
   })
 
+  // Publish commands to Zustand store for GlobalCommandPalette
+  const setStoreCommands = useCalendarCommandsStore((s) => s.setCommands)
+  const clearStoreCommands = useCalendarCommandsStore((s) => s.clearCommands)
+  useEffect(() => { setStoreCommands(commands) }, [commands, setStoreCommands])
+  useEffect(() => { return () => clearStoreCommands() }, [clearStoreCommands])
+
+  // Index trip for semantic search
+  const { indexTrip } = useIndexTrip()
+  useEffect(() => {
+    if (tripId && activities.length > 0) { indexTrip(tripId) }
+  }, [tripId, activities.length, indexTrip])
+
   useKeyboardShortcuts(
     commands,
-    isPaletteOpen,
-    () => setIsPaletteOpen(false),
     () => selectEvent(null),
     marqueeSelectedIds.size > 0,
     clearMarqueeSelection,
@@ -412,7 +420,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           commands={commands}
-          onOpenPalette={() => setIsPaletteOpen(true)}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
@@ -630,11 +637,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       </div>
     </div>
     </div>
-    <CommandPalette
-      isOpen={isPaletteOpen}
-      onClose={() => setIsPaletteOpen(false)}
-      commands={commands}
-    />
     </CalendarThemeContext.Provider>
   )
 }
