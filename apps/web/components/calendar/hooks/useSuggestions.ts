@@ -62,27 +62,33 @@ async function fetchSuggestions(
   const params = new URLSearchParams({ destination, category, start: String(start) })
 
   // Try authenticated /recommend endpoint first
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
+  if (API_URL) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
 
-  if (token && API_URL) {
-    const url = `${API_URL}/recommend?${params}`
-    console.log('[ForYou] fetching (recommend):', url)
+      if (token) {
+        const url = `${API_URL}/recommend?${params}`
+        console.log('[ForYou] fetching (recommend):', url)
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    })
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+          },
+        })
 
-    if (res.ok) {
-      const data = await res.json()
-      console.log('[ForYou] got', data.suggestions?.length ?? 0, 'personalized suggestions')
-      return data.suggestions ?? []
+        if (res.ok) {
+          const data = await res.json()
+          console.log('[ForYou] got', data.suggestions?.length ?? 0, 'personalized suggestions')
+          return data.suggestions ?? []
+        }
+
+        console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
+      }
+    } catch (err) {
+      console.warn('[ForYou] /recommend auth error, falling back to /api/suggest', err)
     }
-
-    console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
   }
 
   // Fallback: unauthenticated Next.js proxy
