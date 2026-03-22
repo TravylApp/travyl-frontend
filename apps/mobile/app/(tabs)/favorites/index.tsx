@@ -10,17 +10,19 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { MOCK_PLACES, Navy, groupPlacesByCollection, type PlaceItem } from '@travyl/shared';
+import { MOCK_PLACES, groupPlacesByCollection, type PlaceItem } from '@travyl/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAD = 16;
 const GAP = 8;
-const STACK_CARD_W = SCREEN_WIDTH * 0.72;
-const STACK_CARD_H = STACK_CARD_W * 1.3;
+const STACK_CARD_W = SCREEN_WIDTH - 32;
+// Fill available space: screen minus header/filters/search (~260), nav row (~70), tab bar (~95)
+const STACK_CARD_H = SCREEN_HEIGHT - 425;
 
 function hashCode(str: string): number {
   let hash = 0;
@@ -177,6 +179,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
 
 export default function FavoritesScreen() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -185,6 +188,7 @@ export default function FavoritesScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
+  const [renderLimit, setRenderLimit] = useState(12); // progressive grid loading
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) =>
@@ -192,9 +196,12 @@ export default function FavoritesScreen() {
     );
   }, []);
 
-  // Prefetch images so they're cached when the tab loads
+  // Prefetch images in background — don't block initial render
   useEffect(() => {
-    Image.prefetch(MOCK_PLACES.map((p) => p.image));
+    const timer = setTimeout(() => {
+      Image.prefetch(MOCK_PLACES.map((p) => p.image));
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   const tabFiltered = useMemo(() => {
@@ -231,7 +238,11 @@ export default function FavoritesScreen() {
     return result;
   }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
 
-  const themedSections = useMemo(() => groupPlacesByCollection(filteredPlaces), [filteredPlaces]);
+  // Reset progressive loading when filters change
+  useEffect(() => { setRenderLimit(12); }, [activeTab, activeSubcategory, searchQuery, sortBy]);
+
+  const visiblePlaces = useMemo(() => filteredPlaces.slice(0, renderLimit), [filteredPlaces, renderLimit]);
+  const themedSections = useMemo(() => groupPlacesByCollection(visiblePlaces), [visiblePlaces]);
 
   const openShowcase = useCallback((placeId: string) => {
     const idx = filteredPlaces.findIndex((p) => p.id === placeId);
@@ -244,9 +255,18 @@ export default function FavoritesScreen() {
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        onMomentumScrollEnd={(e) => {
+          const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+          if (contentOffset.y + layoutMeasurement.height > contentSize.height - 400) {
+            setRenderLimit((prev) => Math.min(prev + 12, filteredPlaces.length));
+          }
+        }}
+      >
         {/* Header */}
-        <View style={{ paddingHorizontal: PAD, paddingTop: 12, paddingBottom: 4 }}>
+        <View style={{ paddingHorizontal: PAD, paddingTop: insets.top + 8, paddingBottom: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>Places</Text>
@@ -283,7 +303,7 @@ export default function FavoritesScreen() {
                   <FontAwesome
                     name={mode === 'grid' ? 'th-large' : 'clone'}
                     size={14}
-                    color={viewMode === mode ? Navy.DEFAULT : colors.textTertiary}
+                    color={viewMode === mode ? colors.tint : colors.textTertiary}
                   />
                 </Pressable>
               ))}
@@ -307,19 +327,19 @@ export default function FavoritesScreen() {
                   flexDirection: 'row', alignItems: 'center',
                   paddingHorizontal: 10, paddingVertical: 8, marginRight: 4,
                   borderBottomWidth: 2,
-                  borderBottomColor: isActive ? Navy.DEFAULT : 'transparent',
+                  borderBottomColor: isActive ? colors.tint : 'transparent',
                 }}
               >
                 <FontAwesome
                   name={tab.icon as any}
                   size={12}
-                  color={isActive ? Navy.DEFAULT : colors.textTertiary}
+                  color={isActive ? colors.tint : colors.textTertiary}
                   style={{ marginRight: 5 }}
                 />
                 <Text style={{
                   fontSize: 12,
                   fontWeight: isActive ? '600' : '500',
-                  color: isActive ? Navy.DEFAULT : colors.textTertiary,
+                  color: isActive ? colors.tint : colors.textTertiary,
                 }}>
                   {tab.label}
                 </Text>
@@ -341,7 +361,7 @@ export default function FavoritesScreen() {
               onPress={() => setActiveSubcategory('')}
               style={{
                 paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, marginRight: 6,
-                backgroundColor: !activeSubcategory ? Navy.DEFAULT : colors.cardBackground,
+                backgroundColor: !activeSubcategory ? colors.tint : colors.cardBackground,
               }}
             >
               <Text style={{
@@ -357,7 +377,7 @@ export default function FavoritesScreen() {
                   onPress={() => setActiveSubcategory(isActive ? '' : cat)}
                   style={{
                     paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, marginRight: 6,
-                    backgroundColor: isActive ? Navy.DEFAULT : colors.cardBackground,
+                    backgroundColor: isActive ? colors.tint : colors.cardBackground,
                   }}
                 >
                   <Text style={{
@@ -434,7 +454,7 @@ export default function FavoritesScreen() {
                     borderTopWidth: 1, borderTopColor: colors.border,
                     paddingTop: 16, paddingBottom: 12, marginTop: 8,
                   }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e3a5f' }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
                       {collection.label}
                     </Text>
                     <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
@@ -479,8 +499,6 @@ export default function FavoritesScreen() {
                 onToggleFav={toggleFavorite}
                 cardWidth={STACK_CARD_W}
                 cardHeight={STACK_CARD_H}
-                enableMagazine
-                onCardPress={(_place, idx) => setShowcaseIdx(idx)}
               />
             )}
           </View>
@@ -495,7 +513,6 @@ export default function FavoritesScreen() {
           favorites={favorites}
           onToggleFav={toggleFavorite}
           overlay
-          enableMagazine
           onClose={() => setShowcaseIdx(-1)}
         />
       )}
