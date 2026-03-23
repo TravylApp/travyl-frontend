@@ -101,9 +101,12 @@ export function useRescope(
         }
         // 1. Write trip first
         await updateTripDetails(tripId, tripUpdate)
-        // 2. Invalidate so tripStartDate refreshes before activity mutations
+        // 2. Invalidate trip query — CalendarDashboard will re-render with updated dates
+        //    after the current execution completes. The activity mutations below use the
+        //    tripStartDate captured when useRescope mounted; since the popover was open
+        //    before the trip write, this value correctly reflects the old start date.
         await queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
-        // 3. Activity mutations use updated tripStartDate via useYjsSync ref
+        // 3. Write activity mutations immediately after the trip date is committed
         const newTotalDays = computeNewTotalDays(pendingPatch.startDate, pendingPatch.endDate)
         for (const act of conflicts) {
           if (resolution === 'moveToLastDay') {

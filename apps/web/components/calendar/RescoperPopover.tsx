@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { Trip } from '@travyl/shared'
+import { computeNewTotalDays } from '@travyl/shared'
 import type { CalendarActivity } from './types'
 import { useRescope } from './hooks/useRescope'
 import { RescoperConflictModal } from './RescoperConflictModal'
@@ -49,8 +50,8 @@ export function RescoperPopover({
 
   const popoverRef = useRef<HTMLDivElement>(null)
 
-  const oldStartDate = new Date(trip.start_date + 'T00:00:00Z')
-  const oldEndDate   = new Date(trip.end_date   + 'T00:00:00Z')
+  const oldStartRef = useRef(new Date(trip.start_date + 'T00:00:00Z'))
+  const oldEndRef   = useRef(new Date(trip.end_date   + 'T00:00:00Z'))
 
   const { status, conflicts, rescope, confirmRescope, cancelRescope } = useRescope(
     trip.id,
@@ -91,12 +92,12 @@ export function RescoperPopover({
     prevStatusRef.current = status
   }, [status, onClose])
 
-  const nights = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+  const nights = computeNewTotalDays(startDate, endDate)
   const isInvalid = nights <= 0
   const isLoading = status === 'loading'
 
   function handleApply() {
-    rescope({ destination, startDate, endDate }, oldStartDate, oldEndDate)
+    rescope({ destination, startDate, endDate }, oldStartRef.current, oldEndRef.current)
   }
 
   return (
@@ -199,8 +200,8 @@ export function RescoperPopover({
       {status === 'pending-conflict' && (
         <RescoperConflictModal
           conflictingActivities={conflicts}
-          onMoveToLastDay={() => confirmRescope('moveToLastDay').then(onClose)}
-          onKeepUnscheduled={() => confirmRescope('unscheduled').then(onClose)}
+          onMoveToLastDay={() => { void confirmRescope('moveToLastDay') }}
+          onKeepUnscheduled={() => { void confirmRescope('unscheduled') }}
           onCancel={cancelRescope}
         />
       )}

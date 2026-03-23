@@ -198,8 +198,6 @@ export function TripNavbar({
   const { canEdit } = useEffectivePermission()
   const [rescoperOpen, setRescoperOpen] = useState(false)
   const [unscheduledOpen, setUnscheduledOpen] = useState(false)
-  const rescoperAnchorRef = useRef<HTMLDivElement>(null)
-  const unscheduledAnchorRef = useRef<HTMLDivElement>(null)
 
   const avatarUrl = user?.user_metadata?.avatar_url
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name
@@ -260,7 +258,6 @@ export function TripNavbar({
 
         {/* Trip info */}
         <div
-          ref={rescoperAnchorRef}
           className="relative flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0"
         >
           <span className="truncate text-[13px] font-serif font-normal tracking-wide text-[#1e3a5f] dark:text-[#f5efe8] leading-tight">
@@ -323,7 +320,7 @@ export function TripNavbar({
 
           {/* Unscheduled activities pill */}
           {unscheduledActivities.length > 0 && (
-            <div ref={unscheduledAnchorRef} className="relative">
+            <div className="relative">
               <button
                 onClick={() => setUnscheduledOpen((v) => !v)}
                 className="flex items-center gap-1.5 rounded-full border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors shrink-0"

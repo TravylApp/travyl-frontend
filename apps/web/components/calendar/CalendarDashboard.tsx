@@ -331,6 +331,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
   if (error) return <CalendarError message={error} />
+  if (!trip) return <CalendarSkeleton />
 
   // Event handlers
   const handleSelectEvent = (id: string, anchorEl?: HTMLElement) => {
