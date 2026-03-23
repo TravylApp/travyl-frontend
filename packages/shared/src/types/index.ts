@@ -431,6 +431,7 @@ export interface ActivityData {
   check_out?: string
   booking_ref?: string
   pollResult?: 'remove'
+  unscheduled?: boolean
 }
 
 export interface CalendarActivity {
@@ -464,6 +465,8 @@ export interface CalendarActivity {
   /** DB sort_order */
   sortOrder?: number;
   pollResult?: 'remove'
+  /** True when removed from calendar by a rescope but not deleted. */
+  unscheduled?: boolean
   /** Flight number for flight/transport activities */
   flightNumber?: string
   /** Airline name for flight/transport activities */
