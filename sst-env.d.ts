@@ -6,6 +6,18 @@
 
 declare module "sst" {
   export interface Resource {
+    "SerpApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SupabaseSecretKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SupabaseUrl": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
   }
 }
 /// <reference path="sst-env.d.ts" />

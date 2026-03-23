@@ -11,6 +11,8 @@ import { formatTimeRange } from './utils'
 import { useCalendarThemeContext } from './CalendarThemeContext'
 import { useResizeHandles } from './hooks/useResizeHandles'
 import type { CalendarActivity, UserAwareness } from './types'
+import type { Poll } from '@travyl/shared'
+import { PollBar } from './PollBar'
 
 interface EventBlockProps {
   activity: CalendarActivity
@@ -21,6 +23,12 @@ interface EventBlockProps {
   onShiftClick?: (id: string) => void
   onResize?: (id: string, newStartHour: number, newDuration: number) => void
   onContextMenu?: (id: string, x: number, y: number) => void
+  poll?: Poll
+  userId?: string
+  onVote?: (activityId: string, vote: 'yes' | 'no') => void
+  onRestorePoll?: (activityId: string) => void
+  onRemovePollActivity?: (activityId: string) => void
+  canManagePoll?: boolean
   timeRangeStartHour: number
   timeRangeEndHour?: number
   column?: number
@@ -37,6 +45,12 @@ export function EventBlock({
   onShiftClick,
   onResize,
   onContextMenu,
+  poll,
+  userId,
+  onVote,
+  onRestorePoll,
+  onRemovePollActivity,
+  canManagePoll = false,
   timeRangeStartHour,
   timeRangeEndHour = 24,
   column = 0,
@@ -210,6 +224,23 @@ export function EventBlock({
       {hiddenCount > 0 && (
         <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-auto">
           +{hiddenCount} more
+        </div>
+      )}
+
+      {/* Poll bar — pinned to bottom of card */}
+      {poll && userId && onVote && onRestorePoll && onRemovePollActivity && (
+        <div className="absolute bottom-0 left-0 right-0 z-10">
+          <PollBar
+            poll={poll}
+            userId={userId}
+            onVote={(v) => onVote(activity.id, v)}
+            collaborators={viewers}
+            compact={displayDuration < 0.67}
+            isResolved={poll.status === 'resolved'}
+            canManage={canManagePoll}
+            onRestore={() => onRestorePoll(activity.id)}
+            onRemove={() => onRemovePollActivity(activity.id)}
+          />
         </div>
       )}
 

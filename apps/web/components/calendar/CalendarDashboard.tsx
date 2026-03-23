@@ -15,7 +15,6 @@ import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
-import { TripSidebar } from './TripSidebar'
 import { TripNavbar } from './TripNavbar'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
@@ -39,6 +38,9 @@ import { ShareModal } from './sharing/ShareModal'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
+import { usePollMutations } from './hooks/usePollMutations'
+import { usePollObserver } from './hooks/usePollObserver'
+import { usePollSync } from './hooks/usePollSync'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -74,7 +76,6 @@ interface CalendarDashboardProps {
 
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [activeNav, setActiveNav] = useState('calendar')
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
@@ -102,6 +103,21 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     queryFn: () => fetchCollaborators(tripId),
     enabled: !!tripId,
   })
+
+  // Poll hooks
+  const { startPoll, vote, closePoll, restoreActivity } = usePollMutations()
+  const editorCollaborators = useMemo(
+    () => tripCollaborators.filter((c) => c.role_type === 'editor' && c.invite_status === 'accepted'),
+    [tripCollaborators],
+  )
+  const editorIds = useMemo(() => {
+    const ids = editorCollaborators.map((c) => c.user_id).filter(Boolean) as string[]
+    // Include trip owner
+    if (trip?.user_id && !ids.includes(trip.user_id)) ids.push(trip.user_id)
+    return ids
+  }, [editorCollaborators, trip?.user_id])
+  const { polls } = usePollObserver({ editorCount: editorIds.length, editorIds })
+  usePollSync(tripId)
 
   const scheduledActivities = useMemo(
     () => activities.filter((a) => !a.unscheduled),
@@ -370,6 +386,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       if (act) duplicateActivity(act)
     } else if (actionId === 'delete') {
       handleRemoveActivity(activityId)
+    } else if (actionId === 'start-poll') {
+      startPoll(activityId, userId)
+    } else if (actionId === 'close-poll') {
+      closePoll(activityId)
     }
   }
 
@@ -444,14 +464,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <TripPermissionProvider trip={trip!} collaborators={tripCollaborators}>
     <div className={theme === 'dark' ? 'dark' : ''}>
-    <div className={`flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
-      {/* Sidebar */}
-      <TripSidebar
-        tripId={tripId}
-        activeNav={activeNav}
-        onNavChange={setActiveNav}
-      />
-
+    <div className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
@@ -482,7 +495,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         />
 
         {/* Grid area */}
-        {activeNav === 'calendar' ? (
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
@@ -528,6 +540,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         onShiftClickEvent={toggleActivityInSelection}
                         onResizeEvent={handleResizeEvent}
                         onContextMenu={handleContextMenu}
+                        polls={polls}
+                        pollUserId={userId}
+                        tripOwnerId={trip?.user_id}
+                        onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        onRestorePoll={restoreActivity}
+                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   ) : (
@@ -552,6 +570,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         pendingDrop={pendingDrop}
                         onResizeEvent={handleResizeEvent}
                         onContextMenu={handleContextMenu}
+                        polls={polls}
+                        pollUserId={userId}
+                        tripOwnerId={trip?.user_id}
+                        onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        onRestorePoll={restoreActivity}
+                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   )}
@@ -648,13 +672,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           )}
         </DndContext>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-gray-400 text-sm capitalize">{activeNav} — coming soon</p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
     </div>
@@ -693,20 +710,29 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         onSettingsChange={refetchTrip}
       />
     )}
-    {contextMenu && (
-      <ActivityContextMenu
-        x={contextMenu.x}
-        y={contextMenu.y}
-        actions={[
-          { id: 'edit', label: 'Edit' },
-          { id: 'duplicate', label: 'Duplicate' },
-          { id: 'separator', label: '', separator: true },
-          { id: 'delete', label: 'Delete', danger: true },
-        ]}
-        onAction={handleContextMenuAction}
-        onClose={() => setContextMenu(null)}
-      />
-    )}
+    {contextMenu && (() => {
+      const poll = polls.get(contextMenu.activityId)
+      const hasActivePoll = poll?.status === 'active'
+      const canClosePoll = hasActivePoll && (poll.startedBy === userId || trip?.user_id === userId)
+      return (
+        <ActivityContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          actions={[
+            { id: 'edit', label: 'Edit' },
+            { id: 'duplicate', label: 'Duplicate' },
+            { id: 'separator', label: '', separator: true },
+            hasActivePoll
+              ? { id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }
+              : { id: 'start-poll', label: 'Start Poll' },
+            { id: 'separator2', label: '', separator: true },
+            { id: 'delete', label: 'Delete', danger: true },
+          ]}
+          onAction={handleContextMenuAction}
+          onClose={() => setContextMenu(null)}
+        />
+      )
+    })()}
     {editingActivityId && (() => {
       const editActivity = activities.find((a) => a.id === editingActivityId)
       if (!editActivity) return null
