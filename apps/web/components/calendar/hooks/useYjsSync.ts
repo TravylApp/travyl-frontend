@@ -33,6 +33,11 @@ const CALENDAR_ACTIVITY_KEYS: (keyof CalendarActivity)[] = [
   'longitude',
   'sortOrder',
   'pollResult',
+  'flightNumber',
+  'airline',
+  'checkIn',
+  'checkOut',
+  'bookingRef',
 ]
 
 function yMapToCalendarActivity(

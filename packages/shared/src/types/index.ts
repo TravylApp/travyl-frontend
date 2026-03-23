@@ -464,6 +464,16 @@ export interface CalendarActivity {
   /** DB sort_order */
   sortOrder?: number;
   pollResult?: 'remove'
+  /** Flight number for flight/transport activities */
+  flightNumber?: string
+  /** Airline name for flight/transport activities */
+  airline?: string
+  /** Check-in date/time for hotel activities */
+  checkIn?: string
+  /** Check-out date/time for hotel activities */
+  checkOut?: string
+  /** Booking confirmation reference */
+  bookingRef?: string
 }
 
 export interface Poll {
