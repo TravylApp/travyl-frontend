@@ -198,6 +198,7 @@ export default function Home() {
   const launchTakeoff = useCallback(async (query: string) => {
     setTripQuery(query);
     setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+    sessionStorage.removeItem('pendingTripId'); // Clear stale ID from previous trip
     setShowTakeoff(true);
 
     try {
@@ -265,7 +266,7 @@ export default function Home() {
         budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
         currency: 'USD',
         trip_context: {
-          hero_image_url: heroImageUrl || plan.destination_photo_url,
+          hero_image_url: heroImageUrl || plan.destination_photo_url || exploreItems[0]?.image,
           lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
           explore_items: exploreItems.length > 0 ? exploreItems : undefined,
           hero_images: heroImageUrl ? [heroImageUrl] : undefined,

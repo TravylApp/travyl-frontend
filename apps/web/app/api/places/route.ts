@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     const places = data.map((p) => ({
       id: p.id,
       name: p.name,
-      image: upscaleGoogleImage(p.photo_url) ?? `https://source.unsplash.com/400x300/?${encodeURIComponent(p.name)},travel`,
+      image: upscaleGoogleImage(p.photo_url) ?? `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&fit=crop&q=80`,
       type: mapType(p.category),
       rating: p.rating ?? 0,
       tagline: p.description ?? p.category,
