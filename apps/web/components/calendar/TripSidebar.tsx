@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
 import { Map, Calendar, PageEdit, Wallet, Settings, Suitcase } from 'iconoir-react'
 import {
@@ -12,6 +13,8 @@ interface NavItem {
   id: string
   label: string
   icon: React.ReactNode
+  /** If set, clicking navigates to this trip sub-route instead of switching activeNav */
+  segment?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -19,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'overview',
     label: 'Overview',
     icon: <Map width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+    segment: '',
   },
   {
     id: 'calendar',
@@ -26,36 +30,43 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Calendar width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
   },
   {
-    id: 'info',
-    label: 'Info',
+    id: 'itinerary',
+    label: 'Itinerary',
     icon: <PageEdit width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+    segment: 'itinerary',
   },
   {
     id: 'budget',
     label: 'Budget',
     icon: <Wallet width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+    segment: 'budget',
   },
   {
     id: 'packing',
     label: 'Packing',
     icon: <Suitcase width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+    segment: 'packing',
   },
   {
     id: 'settings',
     label: 'Settings',
     icon: <Settings width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
+    segment: 'settings',
   },
 ]
 
 interface TripSidebarProps {
+  tripId?: string
   activeNav?: string
   onNavChange?: (id: string) => void
 }
 
 export function TripSidebar({
+  tripId,
   activeNav = 'calendar',
   onNavChange,
 }: TripSidebarProps) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -89,7 +100,13 @@ export function TripSidebar({
           return (
             <li key={item.id}>
               <button
-                onClick={() => onNavChange?.(item.id)}
+                onClick={() => {
+                  if (item.segment !== undefined && tripId) {
+                    router.push(`/trip/${tripId}/${item.segment}`)
+                  } else {
+                    onNavChange?.(item.id)
+                  }
+                }}
                 aria-current={isActive ? 'page' : undefined}
                 className={[
                   'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors',

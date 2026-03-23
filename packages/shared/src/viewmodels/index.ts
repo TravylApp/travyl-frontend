@@ -20,3 +20,9 @@ export {
   type FlightViewModel,
   type HotelViewModel,
 } from './itineraryViewModel';
+
+export {
+  buildBudgetSummary,
+  type BudgetCategory,
+  type BudgetSummary,
+} from './budgetViewModel';

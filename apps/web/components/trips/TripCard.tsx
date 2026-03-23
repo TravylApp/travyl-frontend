@@ -23,9 +23,12 @@ function formatCurrency(amount: number, currency: string): string {
 
 interface TripCardProps {
   trip: MockTripCard;
+  index?: number;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function TripCard({ trip }: TripCardProps) {
+export function TripCard({ trip, className, style }: TripCardProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
@@ -44,7 +47,8 @@ export function TripCard({ trip }: TripCardProps) {
   return (
     <div
       ref={cardRef}
-      className="relative"
+      className={`relative ${className ?? ''}`}
+      style={style}
       onMouseEnter={() => setShowHover(true)}
       onMouseLeave={() => setShowHover(false)}
     >
