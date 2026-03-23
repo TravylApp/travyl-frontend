@@ -213,19 +213,43 @@ export default function Home() {
       const extracted = plan.extracted;
       if (!extracted?.destination) return;
 
-      // Create the trip in Supabase
+      // Create trip ID immediately so onComplete can navigate
+      const tempId = `local-${Date.now()}`;
+      const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
+      const durationDays = extracted.duration_days ?? 5;
+
+      // Save a basic trip right away (enrichment fills in later)
+      const basicTrip = {
+        id: tempId,
+        title: `${extracted.destination.city} Trip`,
+        destination: dest,
+        start_date: extracted.dates?.start,
+        end_date: extracted.dates?.end,
+        status: 'planning',
+        user_id: null,
+        travelers: extracted.travelers?.count ?? 1,
+        budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
+        currency: 'USD',
+        trip_context: {
+          lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
+        },
+      };
+      sessionStorage.setItem(`trip-${tempId}`, JSON.stringify(basicTrip));
+      sessionStorage.setItem('pendingTripId', tempId);
+
+      // Now enrich with all API data in the background
       const { supabase } = await import('@travyl/shared');
       const { data: { session } } = await supabase.auth.getSession();
 
       // Fetch explore items for the destination (multiple categories)
       let exploreItems: { id: string; title: string; description: string; category: string; image: string }[] = [];
+      const eLat = extracted.destination.lat;
+      const eLng = extracted.destination.lng;
       try {
         const cats = ['sightseeing', 'restaurant', 'museum'];
-        const lat = extracted.destination.lat;
-        const lng = extracted.destination.lng;
         const results = await Promise.all(
           cats.map(async (cat) => {
-            const r = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=4`);
+            const r = await fetch(`/api/places?lat=${eLat}&lng=${eLng}&category=${cat}&limit=4`);
             return r.ok ? r.json() : [];
           })
         );
@@ -244,8 +268,6 @@ export default function Home() {
       } catch {}
 
       // Fetch hero image, weather, hotels, news, and landmark photos in parallel
-      const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
-      const durationDays = extracted.duration_days ?? 5;
       const lat = extracted.destination.lat;
       const lng = extracted.destination.lng;
       const city = extracted.destination.city;
@@ -322,25 +344,24 @@ export default function Home() {
         },
       };
 
-      // Try to save to Supabase
-      let tripId: string | null = null;
+      // Update the sessionStorage trip with enriched data
+      sessionStorage.setItem(`trip-${tempId}`, JSON.stringify({ id: tempId, ...tripData }));
+
+      // Also try Supabase (may fail due to RLS — that's OK, local trip works)
       try {
-        const { data: trip } = await supabase
+        const { data: supaTrip } = await supabase
           .from('trips')
-          .insert(tripData)
+          .insert({ ...tripData, user_id: session?.user?.id ?? null })
           .select()
           .single();
-        if (trip) tripId = trip.id;
+        if (supaTrip) {
+          // Supabase succeeded — update pendingTripId to use the real ID
+          sessionStorage.setItem('pendingTripId', supaTrip.id);
+          sessionStorage.removeItem(`trip-${tempId}`);
+        }
       } catch {
-        // Supabase RLS or network error — fall through to local storage
+        // Supabase failed — local trip is fine
       }
-
-      if (!tripId) {
-        // Store locally so trip page can render it
-        tripId = `local-${Date.now()}`;
-        sessionStorage.setItem(`trip-${tripId}`, JSON.stringify({ id: tripId, ...tripData }));
-      }
-      sessionStorage.setItem('pendingTripId', tripId);
     } catch {
       // API call failed — still navigate to trips page
     }
