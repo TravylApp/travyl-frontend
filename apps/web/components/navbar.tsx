@@ -44,14 +44,25 @@ export default function Navbar() {
     return pathname.startsWith(href);
   }
 
-  // Track scroll position for navbar shrink
+  // On the home page, the hero is dark — use light text until user scrolls past it
+  const isHomePage = pathname === "/";
+  // When on home and not scrolled, use light (white) nav. Otherwise dark nav.
+  const useLightNav = isHomePage && !scrolled;
+
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 40);
+        ticking = false;
+      });
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Initialize theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -59,7 +70,6 @@ export default function Navbar() {
     document.documentElement.classList.toggle("dark", prefersDark);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -86,7 +96,9 @@ export default function Navbar() {
     const sizeClasses = size === "sm" ? "h-8 w-8 text-xs" : "h-8 w-8 text-sm";
     return (
       <div
-        className={`${sizeClasses} flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium`}
+        className={`${sizeClasses} flex items-center justify-center rounded-full overflow-hidden ${
+          useLightNav ? "bg-white/20 text-white" : "bg-[#1e3a5f] text-white"
+        } font-medium`}
       >
         {avatarUrl ? (
           <img src={avatarUrl} alt={displayName || "User"} className="h-full w-full object-cover" />
@@ -97,12 +109,23 @@ export default function Navbar() {
     );
   };
 
+  // Color tokens based on background
+  const textColor = useLightNav ? "text-white" : "text-[#1e3a5f]";
+  const borderColor = useLightNav ? "border-white/25" : "border-[#1e3a5f]/25";
+  const hoverBg = useLightNav ? "hover:bg-white/10 hover:border-white/40" : "hover:bg-[#1e3a5f]/5 hover:border-[#1e3a5f]/50";
+  const activeBg = useLightNav ? "bg-white/20 text-white border-white/40 font-semibold" : "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold shadow-sm";
+  const navBg = scrolled
+    ? (useLightNav ? "bg-black/20" : "bg-white/80")
+    : (useLightNav ? "bg-white/10" : "bg-white/30");
+
   return (
     <nav
-      className={`fixed left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/20 backdrop-blur-xl shadow-lg shadow-black/[0.06] transition-all duration-500 ease-out ${
+      className={`fixed left-1/2 -translate-x-1/2 z-50 rounded-full border backdrop-blur-xl shadow-lg shadow-black/[0.06] transition-all duration-500 ease-out ${
+        useLightNav ? "border-white/15" : "border-white/20"
+      } ${
         scrolled
-          ? "top-5 w-[calc(100%-3rem)] max-w-6xl bg-white/20"
-          : "top-3 w-[calc(100%-2rem)] max-w-5xl bg-white/30"
+          ? `top-5 w-[calc(100%-3rem)] max-w-6xl ${navBg}`
+          : `top-3 w-[calc(100%-2rem)] max-w-5xl ${navBg}`
       }`}
     >
       <div
@@ -113,7 +136,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className={`flex items-center gap-0.5 sm:gap-1 text-[#1e3a5f] tracking-[1px] sm:tracking-[2px] transition-all duration-500 shrink-0 ${
+          className={`flex items-center gap-0.5 sm:gap-1 ${textColor} tracking-[1px] sm:tracking-[2px] transition-all duration-500 shrink-0 ${
             scrolled ? "text-lg sm:text-2xl" : "text-base sm:text-xl"
           }`}
           style={{ fontFamily: 'var(--font-brand)', fontWeight: 800 }}
@@ -122,7 +145,7 @@ export default function Navbar() {
           <PaperPlane size={scrolled ? 28 : 24} className="transition-all duration-500" />
         </Link>
 
-        {/* Center nav — always visible, compact on small screens */}
+        {/* Center nav */}
         <div className="flex-1 flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 min-w-0 overflow-hidden">
           {navLinks.map(({ href, label, icon: Icon }) => (
             <Link
@@ -134,8 +157,8 @@ export default function Navbar() {
                   : "px-2 sm:px-3 md:px-4 py-1.5 sm:py-1.5 text-xs md:text-sm gap-0 sm:gap-1.5"
               } ${
                 isActive(href)
-                  ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold shadow-sm"
-                  : "text-[#1e3a5f] border-[#1e3a5f]/25 hover:bg-[#1e3a5f]/5 hover:border-[#1e3a5f]/50"
+                  ? activeBg
+                  : `${textColor} ${borderColor} ${hoverBg}`
               }`}
             >
               <Icon size={scrolled ? 16 : 14} className="shrink-0" />
@@ -144,23 +167,21 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Right side: avatar dropdown (logged in) or Login button */}
+        {/* Right side */}
         {loading ? (
-          <div className="w-8 h-8 rounded-full bg-[#1e3a5f]/10 animate-pulse shrink-0" />
+          <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse shrink-0" />
         ) : user ? (
           <div className="flex items-center shrink-0">
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 rounded-full hover:ring-2 hover:ring-[#1e3a5f]/20 transition-all"
+                className="flex items-center gap-2 rounded-full hover:ring-2 hover:ring-white/20 transition-all"
               >
                 <Avatar />
               </button>
 
-              {/* Dropdown menu */}
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50">
-                  {/* User info header */}
                   <div className="px-3 py-2 border-b border-gray-100">
                     <div className="flex items-center gap-2.5">
                       <Avatar size="sm" />
@@ -172,8 +193,6 @@ export default function Navbar() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Menu items */}
                   <div className="py-0.5">
                     <Link
                       href="/profile"
@@ -192,8 +211,6 @@ export default function Navbar() {
                       Settings
                     </Link>
                   </div>
-
-                  {/* Theme toggle */}
                   <div className="border-t border-gray-100 py-1">
                     <button
                       onClick={toggleTheme}
@@ -222,7 +239,6 @@ export default function Navbar() {
                       </div>
                     </button>
                   </div>
-
                   <div className="border-t border-gray-100 py-0.5">
                     <button
                       onClick={handleSignOut}
@@ -239,12 +255,15 @@ export default function Navbar() {
         ) : (
           <Link
             href="/login"
-            className="flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm border border-[#1e3a5f]/25 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all shrink-0"
+            className={`flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm border transition-all shrink-0 ${
+              useLightNav
+                ? "border-white/30 text-white hover:bg-white hover:text-[#1e3a5f]"
+                : "border-[#1e3a5f]/25 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white"
+            }`}
           >
             Log In
           </Link>
         )}
-
       </div>
     </nav>
   );

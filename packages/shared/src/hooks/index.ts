@@ -26,3 +26,6 @@ export { useExchangeRates } from './useExchangeRates';
 export { useTripBudget } from './useTripBudget';
 export { usePackingList } from './usePackingList';
 export { usePackingSuggestions } from './usePackingSuggestions';
+export { usePlaceImage, usePlaceImages } from './usePlaceImage';
+export { useTripPlanner } from './useTripPlanner';
+export type { FollowUpQuestion, PlanResponse, DayPlan, DaySlot, TripExtraction } from './useTripPlanner';

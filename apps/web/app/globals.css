@@ -81,6 +81,16 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* Shared lightweight animations — CSS only, no JS */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
