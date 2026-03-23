@@ -317,7 +317,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const revealRef = useRevealOnScroll(!!trip);
 
-  const news = trip?.trip_context?.news ?? [];
+  const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news ?? [];
 
   const toggleAdd = (itemId: string) => {
     setAddedItems((prev) => {
