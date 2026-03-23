@@ -102,6 +102,12 @@ export function toCalendarActivity(row: ActivityRow, tripStartDate: string): Cal
     longitude: row.longitude,
     sortOrder: row.sort_order,
     pollResult: row.activity_data?.pollResult,
+    unscheduled: row.activity_data?.unscheduled ?? false,
+    flightNumber: row.activity_data?.flight_number,
+    airline: row.activity_data?.airline,
+    checkIn: row.activity_data?.check_in,
+    checkOut: row.activity_data?.check_out,
+    bookingRef: row.activity_data?.booking_ref,
   }
 }
 
@@ -130,6 +136,12 @@ export function toActivityRow(
       image_url: cal.image,
       rating: cal.rating,
       pollResult: cal.pollResult,
+      flight_number: cal.flightNumber,
+      airline: cal.airline,
+      check_in: cal.checkIn,
+      check_out: cal.checkOut,
+      booking_ref: cal.bookingRef,
+      ...(cal.unscheduled !== undefined && { unscheduled: cal.unscheduled }),
     },
   }
 }

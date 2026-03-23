@@ -2,9 +2,11 @@
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
+import { fetchCollaborators } from '@travyl/shared'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
 import { useTripActivities } from './hooks/useTripActivities'
@@ -15,15 +17,16 @@ import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
 import { TripNavbar } from './TripNavbar'
-import { CommandPalette } from './CommandPalette'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
+import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMarqueeSelection } from './hooks/useMarqueeSelection'
+import { useResizablePanel } from './hooks/useResizablePanel'
 import { MarqueeOverlay } from './MarqueeOverlay'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
-import { DetailPanel } from './DetailPanel'
+import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
@@ -31,7 +34,11 @@ import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
+import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
+import { ActivityContextMenu } from './ActivityContextMenu'
+import { ActivityEditModal } from './ActivityEditModal'
+import { useUndoRedo } from './hooks/useUndoRedo'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -51,6 +58,12 @@ function getCategoryIcon(category: string): string {
   return CATEGORY_ICONS[category.toLowerCase()] ?? CATEGORY_ICONS.default
 }
 
+function formatDurationLabel(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours % 1 === 0) return `${hours}h`
+  return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m`
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 interface CalendarDashboardProps {
@@ -62,17 +75,42 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
-  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
+  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
   const router = useRouter()
 
   // Hooks
   const { trip, tripStartDate, loading: tripLoading, error: tripError, refetchTrip } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
-  const { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity } = useActivityMutations(tripId, tripStartDate, userId)
+  const rawMutations = useActivityMutations(tripId, tripStartDate, userId)
+  const {
+    addActivity, updateActivity, moveActivity, removeActivity, removeActivities, duplicateActivity,
+    undo, redo, canUndo, canRedo,
+  } = useUndoRedo({
+    ...rawMutations,
+    getActivity: (id) => activities.find((a) => a.id === id),
+  })
   const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
+
+  const { data: tripCollaborators = [] } = useQuery({
+    queryKey: ['collaborators', tripId],
+    queryFn: () => fetchCollaborators(tripId),
+    enabled: !!tripId,
+  })
+
+  const scheduledActivities = useMemo(
+    () => activities.filter((a) => !a.unscheduled),
+    [activities],
+  )
+  const unscheduledActivities = useMemo(
+    () => activities.filter((a) => a.unscheduled),
+    [activities],
+  )
 
   const {
     viewMode,
@@ -105,6 +143,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // useCalendarDnd is called below after marquee selection hook is instantiated
 
   const { theme, toggleTheme } = useCalendarTheme()
+  const {
+    width: forYouWidth,
+    isDragging: isResizingPanel,
+    handleDragStart: handlePanelDragStart,
+    handleDrag: handlePanelDrag,
+    handleDragEnd: handlePanelDragEnd,
+  } = useResizablePanel()
 
   // Sync view mode to presence
   useEffect(() => {
@@ -145,13 +190,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     clearSelection: clearMarqueeSelection,
     setSelectedIds: setMarqueeSelectedIds,
   } = useMarqueeSelection({
-    activities,
+    activities: scheduledActivities,
     timeRangeStartHour: timeRange.startHour,
     dayCount: TRIP_DAYS.length,
   })
 
   const handleGroupMove = useCallback((dayDelta: number, hourDelta: number) => {
-    const selected = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    const selected = scheduledActivities.filter((a) => marqueeSelectedIds.has(a.id))
     if (selected.length === 0) return
 
     // Clamp delta so ALL activities stay in bounds
@@ -169,7 +214,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     for (const act of selected) {
       moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
     }
-  }, [activities, marqueeSelectedIds, moveActivity, tripTotalDays])
+  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays])
 
   const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
@@ -187,8 +232,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const HOTEL_BANNERS: HotelBanner[] = []
 
   const selectedActivity = useMemo(
-    () => activities.find((a) => a.id === selectedEventId) ?? null,
-    [activities, selectedEventId],
+    () => scheduledActivities.find((a) => a.id === selectedEventId) ?? null,
+    [scheduledActivities, selectedEventId],
   )
 
   // Auto-scroll to first event on mount
@@ -219,16 +264,16 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(marqueeSelectedIds)
     clearMarqueeSelection()
-    await Promise.all(ids.map((id) => removeActivity(id)))
-  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivity])
+    await removeActivities(ids)
+  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivities])
 
   const handleBulkDuplicate = useCallback(async () => {
-    const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    const toDuplicate = scheduledActivities.filter((a) => marqueeSelectedIds.has(a.id))
     clearMarqueeSelection()
     for (const act of toDuplicate) {
       await duplicateActivity(act)
     }
-  }, [marqueeSelectedIds, clearMarqueeSelection, activities, duplicateActivity])
+  }, [marqueeSelectedIds, clearMarqueeSelection, scheduledActivities, duplicateActivity])
 
   const commands = useCalendarCommands({
     selectedActivity,
@@ -242,40 +287,103 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripDays: TRIP_DAYS,
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
-    onOpenPalette: () => setIsPaletteOpen(true),
+    onOpenPalette: () => {},  // Global palette handles Ctrl+K
     marqueeSelectedIds,
     onBulkDelete: handleBulkDelete,
     onBulkDuplicate: handleBulkDuplicate,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   })
+
+  // Publish commands to global store so GlobalCommandPalette can show them
+  const setCommands = useCalendarCommandsStore((s) => s.setCommands)
+  const clearCommands = useCalendarCommandsStore((s) => s.clearCommands)
+  useEffect(() => {
+    setCommands(commands)
+    return () => clearCommands()
+  }, [commands, setCommands, clearCommands])
 
   useKeyboardShortcuts(
     commands,
     isPaletteOpen,
-    () => setIsPaletteOpen(false),
+    () => {},  // Global palette handles its own close
     () => selectEvent(null),
     marqueeSelectedIds.size > 0,
     clearMarqueeSelection,
   )
 
+  const handleEditSave = useCallback((id: string, patch: Partial<CalendarActivity>) => {
+    if (patch.day !== undefined) {
+      const startHour = patch.startHour ?? 0
+      moveActivity(id, patch.day, startHour)
+      const { day: _day, startHour: _sh, ...rest } = patch
+      if (Object.keys(rest).length > 0) {
+        updateActivity(id, rest)
+      }
+    } else {
+      updateActivity(id, patch)
+    }
+    setEditingActivityId(null)
+  }, [moveActivity, updateActivity])
+
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
   if (error) return <CalendarError message={error} />
+  if (!trip) return <CalendarSkeleton />
 
   // Event handlers
-  const handleSelectEvent = (id: string) => {
+  const handleSelectEvent = (id: string, anchorEl?: HTMLElement) => {
     // If marquee selection is active, clear it on click without Shift
     if (marqueeSelectedIds.size > 0) {
       clearMarqueeSelection()
       return // consume the click
     }
-    selectEvent(selectedEventId === id ? null : id)
+    // Close context menu when selecting via click
+    setContextMenu(null)
+    if (selectedEventId === id) {
+      selectEvent(null)
+      setPopoverAnchor(null)
+    } else {
+      selectEvent(id)
+      setPopoverAnchor(anchorEl ?? null)
+    }
   }
 
-  const handleCloseDetail = () => selectEvent(null)
+  const handleContextMenu = (activityId: string, x: number, y: number) => {
+    // Close popover when opening context menu (overlay exclusivity)
+    selectEvent(null)
+    setPopoverAnchor(null)
+    setContextMenu({ activityId, x, y })
+  }
+
+  const handleContextMenuAction = (actionId: string) => {
+    if (!contextMenu) return
+    const { activityId } = contextMenu
+    setContextMenu(null)
+
+    if (actionId === 'edit') {
+      setEditingActivityId(activityId)
+    } else if (actionId === 'duplicate') {
+      const act = activities.find((a) => a.id === activityId)
+      if (act) duplicateActivity(act)
+    } else if (actionId === 'delete') {
+      handleRemoveActivity(activityId)
+    }
+  }
+
+  const handleClosePopover = () => {
+    selectEvent(null)
+    setPopoverAnchor(null)
+  }
 
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
-    if (selectedEventId === id) selectEvent(null)
+    if (selectedEventId === id) {
+      selectEvent(null)
+      setPopoverAnchor(null)
+    }
     // Restore the suggestion card in the ForYou panel
     const suggestionId = activityToSuggestion.get(id)
     if (suggestionId) {
@@ -298,6 +406,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const handleClickDayHeader = (dayIndex: number) => {
     goToDayView(dayIndex)
+  }
+
+  const handleResizeEvent = (id: string, newStartHour: number, newDuration: number) => {
+    updateActivity(id, { startHour: newStartHour, duration: newDuration })
   }
 
   /** Format a date range string like "Mar 10 - Mar 16, 2026". */
@@ -330,8 +442,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
+    <TripPermissionProvider trip={trip!} collaborators={tripCollaborators}>
     <div className={theme === 'dark' ? 'dark' : ''}>
-    <div className="flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]">
+    <div className={`flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Sidebar */}
       <TripSidebar
         tripId={tripId}
@@ -358,6 +471,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           theme={theme}
           onToggleTheme={toggleTheme}
           tripDays={TRIP_DAYS}
+          trip={trip ?? null}
+          scheduledActivities={scheduledActivities}
+          unscheduledActivities={unscheduledActivities}
+          userId={userId}
+          onAssignUnscheduled={(id, dayOffset) =>
+            updateActivity(id, { day: dayOffset, endDay: dayOffset, unscheduled: false })
+          }
+          onDeleteUnscheduled={removeActivity}
         />
 
         {/* Grid area */}
@@ -392,7 +513,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                     >
                       <WeekView
                         days={TRIP_DAYS}
-                        activities={activities}
+                        activities={scheduledActivities}
                         viewers={collaborators}
                         selectedEventId={selectedEventId}
                         timeRange={timeRange}
@@ -405,6 +526,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         gridRef={weekGridRef}
                         marqueeOverlay={marqueeOverlayElement}
                         onShiftClickEvent={toggleActivityInSelection}
+                        onResizeEvent={handleResizeEvent}
+                        onContextMenu={handleContextMenu}
                       />
                     </motion.div>
                   ) : (
@@ -419,7 +542,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       <DayView
                         dayIndex={selectedDayIndex}
                         label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
-                        activities={activities}
+                        activities={scheduledActivities}
                         viewers={collaborators}
                         selectedEventId={selectedEventId}
                         timeRange={timeRange}
@@ -427,6 +550,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         onSelectEvent={handleSelectEvent}
                         onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
+                        onResizeEvent={handleResizeEvent}
+                        onContextMenu={handleContextMenu}
                       />
                     </motion.div>
                   )}
@@ -434,22 +559,37 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
               </div>
             </div>
 
-            {/* Right column: For You panel or Detail panel */}
-            {selectedEventId ? (
-              <DetailPanel
-                activity={selectedActivity}
-                viewers={collaborators}
-                onClose={handleCloseDetail}
-                onRemove={handleRemoveActivity}
-                onUpdateActivity={updateActivity}
-              />
-            ) : (
-              <ForYouPanel
-                destination={trip?.destination ?? ''}
-                tripId={trip?.id ?? ''}
-                scheduledActivityIds={droppedSuggestionIds}
-              />
-            )}
+            {/* Resize handle */}
+            <div
+              className="shrink-0 w-1 cursor-col-resize hover:bg-[var(--cal-accent)]/30 active:bg-[var(--cal-accent)]/50 transition-colors relative group"
+              onPointerDown={(e) => {
+                e.preventDefault()
+                handlePanelDragStart()
+                let lastX = e.clientX
+                const onMove = (ev: PointerEvent) => {
+                  handlePanelDrag(ev.clientX - lastX)
+                  lastX = ev.clientX
+                }
+                const onUp = () => {
+                  handlePanelDragEnd()
+                  window.removeEventListener('pointermove', onMove)
+                  window.removeEventListener('pointerup', onUp)
+                }
+                window.addEventListener('pointermove', onMove)
+                window.addEventListener('pointerup', onUp)
+              }}
+            >
+              <div className="absolute inset-y-0 -left-1 -right-1" />
+              <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
+            </div>
+
+            {/* Right column: For You panel (always visible) */}
+            <ForYouPanel
+              destination={trip?.destination ?? ''}
+              tripId={trip?.id ?? ''}
+              scheduledActivityIds={droppedSuggestionIds}
+              width={forYouWidth}
+            />
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -518,10 +658,32 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       </div>
     </div>
     </div>
-    <CommandPalette
-      isOpen={isPaletteOpen}
-      onClose={() => setIsPaletteOpen(false)}
-      commands={commands}
+    <CardPopover
+      anchorEl={popoverAnchor}
+      isOpen={!!selectedActivity && !!popoverAnchor}
+      onClose={handleClosePopover}
+      position="right"
+      image={selectedActivity?.image}
+      title={selectedActivity?.title ?? ''}
+      category={selectedActivity?.type ?? ''}
+      rating={selectedActivity?.rating ?? undefined}
+      price={selectedActivity?.price ?? undefined}
+      duration={selectedActivity ? formatDurationLabel(selectedActivity.duration) : undefined}
+      actions={selectedActivity ? [
+        {
+          label: 'Edit',
+          onClick: () => {
+            setEditingActivityId(selectedActivity.id)
+            handleClosePopover()
+          },
+          variant: 'ghost' as const,
+        },
+        {
+          label: 'Delete',
+          onClick: () => handleRemoveActivity(selectedActivity.id),
+          variant: 'danger' as const,
+        },
+      ] : []}
     />
     {trip && (
       <ShareModal
@@ -531,6 +693,33 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         onSettingsChange={refetchTrip}
       />
     )}
+    {contextMenu && (
+      <ActivityContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        actions={[
+          { id: 'edit', label: 'Edit' },
+          { id: 'duplicate', label: 'Duplicate' },
+          { id: 'separator', label: '', separator: true },
+          { id: 'delete', label: 'Delete', danger: true },
+        ]}
+        onAction={handleContextMenuAction}
+        onClose={() => setContextMenu(null)}
+      />
+    )}
+    {editingActivityId && (() => {
+      const editActivity = activities.find((a) => a.id === editingActivityId)
+      if (!editActivity) return null
+      return (
+        <ActivityEditModal
+          activity={editActivity}
+          tripDays={TRIP_DAYS}
+          onSave={handleEditSave}
+          onClose={() => setEditingActivityId(null)}
+        />
+      )
+    })()}
+    </TripPermissionProvider>
     </CalendarThemeContext.Provider>
   )
 }

@@ -6,40 +6,6 @@
 
 declare module "sst" {
   export interface Resource {
-    "ActivityAssets": {
-      "name": string
-      "type": "sst.aws.Bucket"
-    }
-    "FoursquareApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "InteractionBus": {
-      "arn": string
-      "name": string
-      "type": "sst.aws.Bus"
-    }
-    "RecommendationApi": {
-      "type": "sst.aws.ApiGatewayV2"
-      "url": string
-    }
-    "RecommendationCache": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
-    "UserInteractions": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
-    "TravylEmail": {
-      "configSet": string
-      "sender": string
-      "type": "sst.aws.Email"
-    }
-    "UserInteractions": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
   }
 }
 /// <reference path="sst-env.d.ts" />

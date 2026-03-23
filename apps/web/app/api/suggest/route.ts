@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   const suggestions = results.map((place: any, i: number) => ({
     id: `serp-${place.place_id ?? i}`,
     name: place.title,
-    category,
+    category: inferCategory(place.type, category),
     imageUrl: place.thumbnail ?? '',
     duration: 2,
     price: mapPrice(place.price),
@@ -74,6 +74,20 @@ export async function GET(req: NextRequest) {
   }))
 
   return NextResponse.json({ suggestions, source: 'fresh' })
+}
+
+/** Map SerpAPI place type to a category slug that matches the filter chips */
+function inferCategory(placeType: string | undefined, fallback: string): string {
+  if (!placeType) return fallback === 'all' ? 'sightseeing' : fallback
+  const t = placeType.toLowerCase()
+  if (t.includes('restaurant') || t.includes('cafe') || t.includes('bakery') || t.includes('food') || t.includes('bar')) return 'dining'
+  if (t.includes('museum') || t.includes('gallery') || t.includes('theater') || t.includes('theatre') || t.includes('library')) return 'cultural'
+  if (t.includes('park') || t.includes('garden') || t.includes('beach') || t.includes('trail') || t.includes('nature')) return 'outdoor'
+  if (t.includes('shop') || t.includes('store') || t.includes('mall') || t.includes('market')) return 'shopping'
+  if (t.includes('club') || t.includes('lounge') || t.includes('nightlife')) return 'nightlife'
+  if (t.includes('tour') || t.includes('agency')) return 'tour'
+  if (t.includes('church') || t.includes('temple') || t.includes('monument') || t.includes('landmark') || t.includes('attraction')) return 'sightseeing'
+  return fallback === 'all' ? 'sightseeing' : fallback
 }
 
 function mapPrice(price: string | undefined): number | null {

@@ -400,12 +400,18 @@ export async function addBudgetExpense(tripId: string, category: string, amount:
   if (error) throw error;
 }
 
-export async function updateTripSettings(tripId: string, settings: Record<string, unknown>) {
-  const { error } = await supabase
-    .from('trips')
-    .update({ settings })
-    .eq('id', tripId);
-  if (error) throw error;
+export async function updateTripThemeSettings(
+  tripId: string,
+  updates: {
+    theme?: string
+    custom_theme_color?: string | null
+    tab_color_overrides?: Record<string, string>
+    itinerary_color_overrides?: Record<string, string>
+    hidden_tabs?: Record<string, boolean>
+  }
+): Promise<void> {
+  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  if (error) throw error
 }
 
 // ── Collaborators ──────────────────────────────────────

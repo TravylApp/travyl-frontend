@@ -181,8 +181,10 @@ export default function TripLayoutInner({
   tripId: string;
   children: React.ReactNode;
 }) {
+  const { trip } = useItineraryScreen(tripId);
+
   return (
-    <TripThemeProvider tripId={tripId}>
+    <TripThemeProvider trip={trip}>
       <ItineraryProvider>
         <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
       </ItineraryProvider>
