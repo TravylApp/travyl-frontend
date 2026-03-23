@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Blue,
@@ -37,7 +37,8 @@ export function TakeoffTransition({
   const [phase, setPhase] = useState<"fly" | "loading">("fly");
   const [msgIndex, setMsgIndex] = useState(0);
 
-  const stableOnComplete = useCallback(() => onComplete(), [onComplete]);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   // Reset phase when visibility changes
   useEffect(() => {
@@ -47,16 +48,16 @@ export function TakeoffTransition({
     }
   }, [visible]);
 
-  // Phase timers
+  // Phase timers — use ref to avoid resetting on callback changes
   useEffect(() => {
     if (!visible) return;
     const t1 = setTimeout(() => setPhase("loading"), LOADING_START);
-    const t2 = setTimeout(() => stableOnComplete(), ANIMATION_END);
+    const t2 = setTimeout(() => onCompleteRef.current(), ANIMATION_END);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [visible, stableOnComplete]);
+  }, [visible]);
 
   // Loading message rotation
   useEffect(() => {

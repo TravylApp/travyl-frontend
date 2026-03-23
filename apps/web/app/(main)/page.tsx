@@ -242,34 +242,41 @@ export default function Home() {
         }
       } catch {}
 
+      const tripData = {
+        title: `${extracted.destination.city} Trip`,
+        destination: `${extracted.destination.city}, ${extracted.destination.country}`,
+        start_date: extracted.dates?.start,
+        end_date: extracted.dates?.end,
+        status: 'planning',
+        user_id: session?.user?.id ?? null,
+        travelers: extracted.travelers?.count ?? 1,
+        budget: extracted.daily_estimate_usd ? extracted.daily_estimate_usd * (extracted.duration_days ?? 5) : null,
+        currency: 'USD',
+        trip_context: {
+          hero_image_url: heroImageUrl || plan.destination_photo_url,
+          lede_text: `A ${extracted.duration_days ?? 5}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
+          explore_items: exploreItems.length > 0 ? exploreItems : undefined,
+          hero_images: heroImageUrl ? [heroImageUrl] : undefined,
+        },
+      };
+
+      // Try to save to Supabase
       const { data: trip } = await supabase
         .from('trips')
-        .insert({
-          title: `${extracted.destination.city} Trip`,
-          destination: `${extracted.destination.city}, ${extracted.destination.country}`,
-          start_date: extracted.dates?.start,
-          end_date: extracted.dates?.end,
-          status: 'planning',
-          user_id: session?.user?.id ?? null,
-          travelers: extracted.travelers?.count ?? 1,
-          budget: extracted.daily_estimate_usd ? extracted.daily_estimate_usd * (extracted.duration_days ?? 5) : null,
-          currency: 'USD',
-          trip_context: {
-            hero_image_url: heroImageUrl || plan.destination_photo_url,
-            lede_text: `A ${extracted.duration_days ?? 5}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
-            explore_items: exploreItems.length > 0 ? exploreItems : undefined,
-            hero_images: heroImageUrl ? [heroImageUrl] : undefined,
-          },
-        })
+        .insert(tripData)
         .select()
         .single();
 
-      // Store trip ID so takeoff completion navigates to it
       if (trip) {
         sessionStorage.setItem('pendingTripId', trip.id);
+      } else {
+        // Supabase insert failed (RLS) — store plan locally so trip page can show it
+        const tempId = `local-${Date.now()}`;
+        sessionStorage.setItem('pendingTripId', tempId);
+        sessionStorage.setItem(`trip-${tempId}`, JSON.stringify({ id: tempId, ...tripData }));
       }
     } catch {
-      // Silently fail — the trip just won't be created
+      // API call failed — still navigate to trips page
     }
   }, [setTripQuery]);
 
@@ -289,14 +296,15 @@ export default function Home() {
       const parsed: TripAnswers = {};
       const lower = val.toLowerCase();
 
-      // Extract destination (after "in" or "to")
-      const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]+)/i);
+      // Extract destination (after "in" or "to", stop at boundary words)
+      const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]*?)(?:\s+(?:for|with|on|during|budget|cheap|luxury|moderate|\d)|\s*$)/i);
       if (destMatch) {
         parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
       } else {
-        // Strip common prefixes and use the rest as destination
-        const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore)\s*/i, '').trim();
-        parsed.destination = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+        // Strip common prefixes and stop at boundary words
+        const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore|plan)\s*/i, '').trim();
+        const destOnly = cleaned.match(/^([a-zA-Z][a-zA-Z\s]*?)(?:\s+(?:for|with|on|during|\d)|\s*$)/i);
+        parsed.destination = (destOnly?.[1] ?? cleaned).trim().replace(/\b\w/g, (c) => c.toUpperCase());
       }
 
       // Extract duration
@@ -308,8 +316,10 @@ export default function Home() {
       } else if (lower.includes("weekend")) parsed.duration = "weekend";
 
       // Extract companions
-      if (lower.match(/family|kids|children/)) parsed.companions = "family";
-      else if (lower.match(/partner|couple|wife|husband|girlfriend|boyfriend/)) parsed.companions = "partner";
+      const companionMatch = lower.match(/(?:for\s+)?(\d+)\s*(?:people|person|travelers?|friends?)/);
+      if (companionMatch) parsed.companions = `${companionMatch[1]} people`;
+      else if (lower.match(/family|kids|children/)) parsed.companions = "family";
+      else if (lower.match(/partner|couple|wife|husband|girlfriend|boyfriend|romantic/)) parsed.companions = "partner";
       else if (lower.match(/friends|group|squad/)) parsed.companions = "friends";
       else if (lower.match(/solo|alone|myself/)) parsed.companions = "solo";
 
@@ -318,26 +328,36 @@ export default function Home() {
       else if (lower.match(/adventure|hiking|trek/)) parsed.vibe = "adventure";
       else if (lower.match(/relax|chill|spa|beach/)) parsed.vibe = "relaxing";
       else if (lower.match(/culture|museum|art|history/)) parsed.vibe = "culture";
-      else if (lower.match(/romantic|honeymoon/)) parsed.vibe = "romantic";
+      else if (lower.match(/romantic|honeymoon|anniversary/)) parsed.vibe = "romantic";
+      else if (lower.match(/nightlife|party|club/)) parsed.vibe = "nightlife";
+      else if (lower.match(/nature|outdoor|scenic/)) parsed.vibe = "nature";
 
       // Extract budget
       if (lower.match(/budget|cheap|backpack/)) parsed.budget = "budget";
-      else if (lower.match(/luxury|premium|high.end/)) parsed.budget = "luxury";
+      else if (lower.match(/luxury|premium|high.end|splurge/)) parsed.budget = "luxury";
+      else if (lower.match(/moderate|mid.range|middle/)) parsed.budget = "moderate";
 
       setAnswers(parsed);
 
-      // Find the first unanswered question
-      const firstUnanswered = TRIP_QUESTIONS.findIndex((q) => !parsed[q.key]);
-      if (firstUnanswered === -1) {
-        // All answered from input — show summary then launch
-        const fullQuery = buildChainSentence(parsed);
+      // Count how many fields were extracted
+      const answeredCount = Object.keys(parsed).length;
+      const hasDestination = !!parsed.destination;
+
+      // If descriptive enough (destination + 2 others, or all 5), skip questions and launch
+      if (hasDestination && answeredCount >= 3) {
+        const displayQuery = buildChainSentence(parsed);
         setConvStep(TRIP_QUESTIONS.length);
-        setTripQuery(fullQuery);
-        setTimeout(() => launchTakeoff(fullQuery), 1500);
+        setTripQuery(displayQuery);
+        // Send the original natural language input — backend NLP handles it better
+        setTimeout(() => launchTakeoff(val), 1500);
       } else {
-        setConvStep(firstUnanswered);
-        setTripQuery("");
-        setTimeout(() => inputRef.current?.focus(), 50);
+        // Not enough info — start conversational flow from first missing field
+        const firstUnanswered = TRIP_QUESTIONS.findIndex((q) => !parsed[q.key]);
+        setConvStep(firstUnanswered === -1 ? TRIP_QUESTIONS.length : firstUnanswered);
+        if (firstUnanswered !== -1) {
+          setTripQuery("");
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }
       }
       return;
     }
