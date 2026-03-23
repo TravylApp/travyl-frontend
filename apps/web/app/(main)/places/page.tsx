@@ -20,10 +20,15 @@ import {
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
 import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
-import type { PlaceItem as PlaceItemType } from '@travyl/shared';
+import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 
-const MOCK_PLACES: PlaceItemType[] = [];
-import type { PlaceItem } from '@travyl/shared';
+async function fetchPlaces(): Promise<PlaceItemType[]> {
+  // Default to Paris coords — will be dynamic later
+  const res = await fetch('/api/places?lat=48.8566&lng=2.3522&limit=20')
+  if (!res.ok) return []
+  return res.json()
+}
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 
@@ -54,6 +59,11 @@ type TabKey = (typeof TABS)[number]['key'];
 const ITEMS_PER_PAGE = 16;
 
 export default function PlacesPage() {
+  const { data: places = [] } = useQuery({
+    queryKey: ['places'],
+    queryFn: fetchPlaces,
+    staleTime: 5 * 60 * 1000,
+  });
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -92,9 +102,9 @@ export default function PlacesPage() {
 
   // Filter by tab
   const tabFiltered = useMemo(() => {
-    if (activeTab === 'all') return MOCK_PLACES;
-    if (activeTab === 'favorites') return MOCK_PLACES.filter((p) => favorites.includes(p.id));
-    return MOCK_PLACES.filter((p) => p.type === activeTab);
+    if (activeTab === 'all') return places;
+    if (activeTab === 'favorites') return places.filter((p) => favorites.includes(p.id));
+    return places.filter((p) => p.type === activeTab);
   }, [activeTab, favorites]);
 
   // Compute subcategories from current tab
@@ -1055,7 +1065,7 @@ function CardStack({
   const images = place?.images?.length ? place.images : [place?.image];
   const isFav = place ? favorites.includes(place.id) : false;
 
-  const similarPlaces = useSimilarPlaces(place, MOCK_PLACES, 10);
+  const similarPlaces = useSimilarPlaces(place, items, 10);
 
   // Reset when items change (filter/tab switch)
   useEffect(() => {
