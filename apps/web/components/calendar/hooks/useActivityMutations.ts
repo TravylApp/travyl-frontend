@@ -22,6 +22,7 @@ const CALENDAR_ACTIVITY_KEYS = [
   'longitude',
   'sortOrder',
   'pollResult',
+  'unscheduled',
   'flightNumber',
   'airline',
   'checkIn',

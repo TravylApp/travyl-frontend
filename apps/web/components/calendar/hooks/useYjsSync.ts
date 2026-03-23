@@ -33,6 +33,7 @@ const CALENDAR_ACTIVITY_KEYS: (keyof CalendarActivity)[] = [
   'longitude',
   'sortOrder',
   'pollResult',
+  'unscheduled',
   'flightNumber',
   'airline',
   'checkIn',
