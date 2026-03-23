@@ -2,6 +2,31 @@
 # API Test Commands for Travyl
 # Run these to verify each service is working
 
+# ══════════════════════════════════════════════════════════
+# Build & Dev Commands
+# ══════════════════════════════════════════════════════════
+
+# npm run web                                    # Start Next.js dev server
+# npm run mobile                                 # Start Expo dev server
+# npm run typecheck                              # TypeScript check all workspaces
+# npm run lint                                   # Lint all workspaces
+# npx tsc --noEmit -p apps/web/tsconfig.json     # TypeScript check web only
+# npx tsc --noEmit -p packages/shared/tsconfig.json  # TypeScript check shared
+# npm -w @travyl/web run build                   # Production build (web)
+# npx sst deploy --stage dev                     # Deploy SST backend
+
+# ══════════════════════════════════════════════════════════
+# Git Commands (push to RB24-7 only, NOT origin/TravylApp)
+# ══════════════════════════════════════════════════════════
+
+# git push personal develop                      # Push to RB24-7/travyl-web
+# git fetch origin develop                       # Fetch from TravylApp org
+# git remote -v                                  # Check remotes
+
+# ══════════════════════════════════════════════════════════
+# API Route Tests (requires dev server on localhost:3000)
+# ══════════════════════════════════════════════════════════
+
 echo "=== Places API (Python backend via proxy) ==="
 curl -s 'http://localhost:3000/api/places?lat=48.8566&lng=2.3522&category=sightseeing&limit=3' | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d),'results'); [print(f'  {p[\"name\"]}') for p in d]"
 
