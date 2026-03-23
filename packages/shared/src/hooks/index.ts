@@ -28,4 +28,4 @@ export { usePackingList } from './usePackingList';
 export { usePackingSuggestions } from './usePackingSuggestions';
 export { usePlaceImage, usePlaceImages } from './usePlaceImage';
 export { useTripPlanner } from './useTripPlanner';
-export type { FollowUpQuestion, PlanResponse, DayPlan, DaySlot, TripExtraction, HotelOption, FlightOption } from './useTripPlanner';
+export type { FollowUpQuestion, PlanResponse, DayPlan, DaySlot, TripExtraction } from './useTripPlanner';

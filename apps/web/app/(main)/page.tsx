@@ -128,7 +128,7 @@ export default function Home() {
   const isClarifying = planner.state.phase === 'clarifying';
   const isExtracting = planner.state.phase === 'extracting';
   const isPlanning = planner.state.phase === 'planning';
-  const questions: FollowUpQuestion[] = isClarifying ? planner.state.questions : [];
+  const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : [];
   const currentQuestion = questions[currentQIdx];
 
   // Cycling placeholders live in isolated memo components above
