@@ -23,12 +23,34 @@ import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
 import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 
-async function fetchPlaces(query: string): Promise<PlaceItemType[]> {
-  if (!query) return []
-  const params = new URLSearchParams({ q: query, limit: '20' })
-  const res = await fetch(`/api/places?${params}`)
-  if (!res.ok) return []
-  return res.json()
+const BROWSE_CITIES = [
+  { name: 'Paris', lat: '48.8566', lng: '2.3522' },
+  { name: 'Tokyo', lat: '35.6762', lng: '139.6503' },
+  { name: 'New York', lat: '40.7128', lng: '-74.0060' },
+  { name: 'Rome', lat: '41.9028', lng: '12.4964' },
+  { name: 'Barcelona', lat: '41.3874', lng: '2.1686' },
+  { name: 'London', lat: '51.5074', lng: '-0.1278' },
+  { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
+  { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
+]
+
+async function fetchPlaces(query?: string): Promise<PlaceItemType[]> {
+  if (query) {
+    const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&limit=20`)
+    if (!res.ok) return []
+    return res.json()
+  }
+
+  // No search — fetch from random popular cities for browsing
+  const shuffled = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 4)
+  const results = await Promise.all(
+    shuffled.map(async (city) => {
+      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&limit=5`)
+      if (!res.ok) return []
+      return res.json()
+    })
+  )
+  return results.flat()
 }
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
@@ -63,8 +85,7 @@ export default function PlacesPage() {
   const [searchCity, setSearchCity] = useState('');
   const { data: places = [], isLoading: placesLoading } = useQuery({
     queryKey: ['places', searchCity],
-    queryFn: () => fetchPlaces(searchCity),
-    enabled: !!searchCity,
+    queryFn: () => fetchPlaces(searchCity || undefined),
     staleTime: 5 * 60 * 1000,
   });
   const [activeTab, setActiveTab] = useState<TabKey>('all');
