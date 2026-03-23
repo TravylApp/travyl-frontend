@@ -4,6 +4,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { createClient } from '@supabase/supabase-js'
 import { validateAuth } from './lib/auth'
 import { generateEmbedding } from './lib/embeddings'
+import { fetchPexelsImage } from './lib/pexels'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
@@ -63,10 +64,28 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // Generate embedding
     const embedding = await generateEmbedding(textContent)
 
-    // Upsert to trip_embeddings
+    // Enrich with Pexels image if none exists
     interface TripContextJson { hero_images?: string[] }
     const tripContext = trip.trip_context as TripContextJson | null
+    let heroImages = tripContext?.hero_images ?? []
 
+    if (heroImages.length === 0 && trip.destination) {
+      const pexelsUrl = await fetchPexelsImage(trip.destination)
+      if (pexelsUrl) {
+        heroImages = [pexelsUrl]
+        await supabase
+          .from('trips')
+          .update({
+            trip_context: {
+              ...((trip.trip_context as object) ?? {}),
+              hero_images: heroImages,
+            },
+          })
+          .eq('id', tripId)
+      }
+    }
+
+    // Upsert to trip_embeddings
     const metadata = {
       title: trip.title,
       destination: trip.destination,
@@ -74,7 +93,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       startDate: trip.start_date,
       endDate: trip.end_date,
       activityCount: activities?.length ?? 0,
-      imageUrl: tripContext?.hero_images?.[0] ?? null,
+      imageUrl: heroImages[0] ?? null,
     }
 
     const { error: upsertError } = await supabase
