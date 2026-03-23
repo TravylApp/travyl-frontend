@@ -30,7 +30,7 @@ export function useIndexTrip() {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ tripId }),
+            body: JSON.stringify({ prompt: tripId }),
           }).catch(() => {}) // swallow errors
         })
       }, 5000),
