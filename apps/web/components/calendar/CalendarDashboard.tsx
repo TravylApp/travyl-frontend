@@ -470,6 +470,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           theme={theme}
           onToggleTheme={toggleTheme}
           tripDays={TRIP_DAYS}
+          trip={trip ?? null}
+          scheduledActivities={scheduledActivities}
+          unscheduledActivities={unscheduledActivities}
+          userId={userId}
+          onAssignUnscheduled={(id, dayOffset) =>
+            updateActivity(id, { day: dayOffset, endDay: dayOffset, unscheduled: false })
+          }
+          onDeleteUnscheduled={removeActivity}
         />
 
         {/* Grid area */}
