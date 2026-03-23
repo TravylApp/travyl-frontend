@@ -183,7 +183,7 @@ export default function TripLayoutInner({
 }) {
   return (
     <TripThemeProvider tripId={tripId}>
-      <ItineraryProvider>
+      <ItineraryProvider tripId={tripId}>
         <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
       </ItineraryProvider>
     </TripThemeProvider>

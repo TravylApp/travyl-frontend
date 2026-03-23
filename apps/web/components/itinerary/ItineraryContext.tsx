@@ -3,9 +3,10 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [];
-const MOCK_DAYS: { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string }[] = [];
+import { useItineraryScreen } from '@travyl/shared';
 import type { MapLocation } from '@/components/leaflet-map';
+
+type BaseDayData = { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string };
 
 // ─── Conversion: CalendarActivity[] → ItineraryDayViewModel[] ─────
 
@@ -37,7 +38,7 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
 
 function calendarActivitiesToDayViewModels(
   activities: CalendarActivity[],
-  baseDays: typeof MOCK_DAYS,
+  baseDays: BaseDayData[],
 ): ItineraryDayViewModel[] {
   // Group on-calendar, non-child activities by day
   const onCalendar = activities.filter((a) => a.onCalendar && !a.parentId);
@@ -115,8 +116,87 @@ interface ItineraryContextValue {
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
 
-export function ItineraryProvider({ children }: { children: React.ReactNode }) {
-  const [activities, setActivities] = useState<CalendarActivity[]>(MOCK_CALENDAR_ACTIVITIES);
+// Generate itinerary from trip_context explore_items
+function generateFromTripContext(
+  trip: { travelers?: number; start_date?: string; trip_context?: { explore_items?: { id: string; title: string; description: string; category: string; image?: string }[] } } | null,
+  durationDays: number,
+): { days: BaseDayData[]; activities: CalendarActivity[] } {
+  if (!trip?.trip_context?.explore_items?.length) return { days: [], activities: [] };
+
+  const items = trip.trip_context.explore_items;
+  const startDate = trip.start_date ? new Date(trip.start_date + 'T00:00:00') : new Date();
+
+  const days: BaseDayData[] = [];
+  const activities: CalendarActivity[] = [];
+
+  const themes = ['Explore & Discover', 'Culture & History', 'Food & Relaxation', 'Adventure', 'Local Life'];
+
+  for (let d = 0; d < durationDays; d++) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + d);
+    const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    days.push({
+      id: `day-${d}`,
+      dayNumber: d + 1,
+      dayLabel: `Day ${d + 1}`,
+      dateLabel: dateStr,
+      theme: themes[d % themes.length],
+    });
+
+    // Distribute items across days: ~3 per day across morning/afternoon/evening
+    const dayItems = items.filter((_, i) => i % durationDays === d);
+    const timeSlots = [
+      { hour: 9, tod: 'morning', label: '9:00 AM', end: '10:30 AM' },
+      { hour: 12, tod: 'afternoon', label: '12:00 PM', end: '1:30 PM' },
+      { hour: 15, tod: 'afternoon', label: '3:00 PM', end: '4:30 PM' },
+      { hour: 19, tod: 'evening', label: '7:00 PM', end: '8:30 PM' },
+    ];
+
+    dayItems.forEach((item, slotIdx) => {
+      const slot = timeSlots[slotIdx % timeSlots.length];
+      activities.push({
+        id: `cal-${d}-${slotIdx}-${item.id}`,
+        title: item.title,
+        type: item.category?.toLowerCase() ?? 'sightseeing',
+        day: d,
+        startHour: slot.hour,
+        duration: 1.5,
+        startTime: slot.label,
+        endTime: slot.end,
+        location: item.title,
+        image: item.image,
+        color: 'var(--trip-base)',
+        onCalendar: true,
+      });
+    });
+  }
+
+  return { days, activities };
+}
+
+export function ItineraryProvider({ children, tripId }: { children: React.ReactNode; tripId?: string }) {
+  const { trip } = useItineraryScreen(tripId);
+
+  // Generate initial data from trip context
+  const generated = useMemo(() => {
+    if (!trip) return null;
+    const duration = trip.trip_context?.weather?.forecast?.length ?? 5;
+    return generateFromTripContext(trip, duration);
+  }, [trip]);
+
+  const [activities, setActivities] = useState<CalendarActivity[]>([]);
+  const [baseDays, setBaseDays] = useState<BaseDayData[]>([]);
+
+  // Seed activities from trip context when trip loads (only once)
+  const [seeded, setSeeded] = useState(false);
+  useEffect(() => {
+    if (generated && !seeded && generated.days.length > 0) {
+      setBaseDays(generated.days);
+      setActivities(generated.activities);
+      setSeeded(true);
+    }
+  }, [generated, seeded]);
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);
@@ -155,8 +235,8 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
   }, [collapsedSections, allCollapsedOverride, selectedDayIndex]);
 
   const days = useMemo(
-    () => calendarActivitiesToDayViewModels(activities, MOCK_DAYS),
-    [activities],
+    () => calendarActivitiesToDayViewModels(activities, baseDays),
+    [activities, baseDays],
   );
 
   const addActivity = useCallback((activity: CalendarActivity) => {
