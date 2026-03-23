@@ -370,7 +370,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <div className={theme === 'dark' ? 'dark' : ''}>
-    <div className="flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]">
+    <div className={`flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Sidebar */}
       <TripSidebar
         tripId={tripId}

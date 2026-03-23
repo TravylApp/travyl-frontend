@@ -76,6 +76,9 @@ export interface Trip {
   fork_count: number;
   theme: string;
   custom_theme_color: string | null;
+  tab_color_overrides?: Record<string, string>;
+  itinerary_color_overrides?: Record<string, string>;
+  hidden_tabs?: Record<string, boolean>;
   is_public?: boolean;
   is_shared?: boolean;
   created_at: string;

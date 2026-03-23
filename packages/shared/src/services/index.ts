@@ -23,7 +23,7 @@ export {
   toggleFavorite,
   updateBudgetExpense,
   addBudgetExpense,
-  updateTripSettings,
+  updateTripThemeSettings,
   updateTripDetails,
   deleteTrip,
   leaveTrip,
