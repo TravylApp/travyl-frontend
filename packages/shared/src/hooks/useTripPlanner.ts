@@ -119,7 +119,7 @@ export function useTripPlanner() {
       });
 
       if (!res.ok) throw new Error(`Extract failed: ${res.status}`);
-      const data = await res.json();
+      const data = await res.json() as PlanResponse;
 
       if (data.status === 'needs_clarification' && data.questions?.length) {
         setState({
@@ -157,7 +157,7 @@ export function useTripPlanner() {
       });
 
       if (!res.ok) throw new Error(`Plan failed: ${res.status}`);
-      const data: PlanResponse = await res.json();
+      const data = await res.json() as PlanResponse;
 
       if (data.status === 'needs_clarification' && data.questions?.length) {
         setState({
