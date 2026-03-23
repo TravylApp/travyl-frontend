@@ -18,6 +18,10 @@ interface UseCalendarCommandsInput {
   marqueeSelectedIds?: Set<string>
   onBulkDelete?: () => void
   onBulkDuplicate?: () => void
+  undo?: () => void
+  redo?: () => void
+  canUndo?: boolean
+  canRedo?: boolean
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -40,6 +44,10 @@ export function useCalendarCommands({
   marqueeSelectedIds,
   onBulkDelete,
   onBulkDuplicate,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
 }: UseCalendarCommandsInput): Command[] {
   return useMemo<Command[]>(() => {
     const hasSelection = selectedActivity !== null
@@ -55,16 +63,16 @@ export function useCalendarCommands({
         label: 'Undo',
         group: 'edit',
         shortcut: { key: 'z', meta: true, display: 'Ctrl Z' },
-        isEnabled: false, // TODO: implement undo stack
-        execute: () => { /* TODO: implement undo stack */ },
+        isEnabled: canUndo ?? false,
+        execute: () => { if (undo) undo() },
       },
       {
         id: 'redo',
         label: 'Redo',
         group: 'edit',
         shortcut: { key: 'y', meta: true, display: 'Ctrl Y' },
-        isEnabled: false, // TODO: implement undo stack
-        execute: () => { /* TODO: implement undo stack */ },
+        isEnabled: canRedo ?? false,
+        execute: () => { if (redo) redo() },
       },
       {
         id: 'delete',
@@ -222,5 +230,6 @@ export function useCalendarCommands({
     onViewModeChange, selectDay, tripDays, tripStartDate,
     onAddEvent, onOpenPalette,
     marqueeSelectedIds, onBulkDelete, onBulkDuplicate,
+    undo, redo, canUndo, canRedo,
   ])
 }

@@ -35,6 +35,7 @@ import { CalendarThemeContext } from './CalendarThemeContext'
 import { ShareModal } from './sharing/ShareModal'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
+import { useUndoRedo } from './hooks/useUndoRedo'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -81,7 +82,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Hooks
   const { trip, tripStartDate, loading: tripLoading, error: tripError, refetchTrip } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
-  const { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity } = useActivityMutations(tripId, tripStartDate, userId)
+  const rawMutations = useActivityMutations(tripId, tripStartDate, userId)
+  const {
+    addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity,
+    undo, redo, canUndo, canRedo,
+  } = useUndoRedo({
+    ...rawMutations,
+    getActivity: (id) => activities.find((a) => a.id === id),
+  })
   const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
@@ -265,6 +273,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     marqueeSelectedIds,
     onBulkDelete: handleBulkDelete,
     onBulkDuplicate: handleBulkDuplicate,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   })
 
   // Publish commands to global store so GlobalCommandPalette can show them
