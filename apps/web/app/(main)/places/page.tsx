@@ -21,7 +21,7 @@ import {
 import type { PanInfo } from 'motion/react';
 import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
 import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
 const BROWSE_CITIES = [
   { name: 'Paris', lat: '48.8566', lng: '2.3522' },
@@ -32,25 +32,62 @@ const BROWSE_CITIES = [
   { name: 'London', lat: '51.5074', lng: '-0.1278' },
   { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
   { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
+  { name: 'Sydney', lat: '-33.8688', lng: '151.2093' },
+  { name: 'Istanbul', lat: '41.0082', lng: '28.9784' },
+  { name: 'Bangkok', lat: '13.7563', lng: '100.5018' },
+  { name: 'Marrakech', lat: '31.6295', lng: '-7.9811' },
+  { name: 'Rio de Janeiro', lat: '-22.9068', lng: '-43.1729' },
+  { name: 'Cape Town', lat: '-33.9249', lng: '18.4241' },
+  { name: 'Lisbon', lat: '38.7223', lng: '-9.1393' },
+  { name: 'Prague', lat: '50.0755', lng: '14.4378' },
 ]
 
-async function fetchPlaces(query?: string): Promise<PlaceItemType[]> {
-  if (query) {
-    const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&limit=20`)
-    if (!res.ok) return []
-    return res.json()
+const BROWSE_CATEGORIES = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'nightlife', 'beach']
+
+async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
+  // Each page fetches 2 cities × 3 categories = up to 30 places
+  const citiesPerPage = 2
+  const catsPerPage = 3
+  const startCity = (pageParam * citiesPerPage) % BROWSE_CITIES.length
+  const startCat = (pageParam * catsPerPage) % BROWSE_CATEGORIES.length
+
+  const cities: typeof BROWSE_CITIES = []
+  for (let i = 0; i < citiesPerPage; i++) {
+    cities.push(BROWSE_CITIES[(startCity + i) % BROWSE_CITIES.length])
+  }
+  const cats: string[] = []
+  for (let i = 0; i < catsPerPage; i++) {
+    cats.push(BROWSE_CATEGORIES[(startCat + i) % BROWSE_CATEGORIES.length])
   }
 
-  // No search — fetch from random popular cities for browsing
-  const shuffled = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 4)
   const results = await Promise.all(
-    shuffled.map(async (city) => {
-      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&limit=5`)
-      if (!res.ok) return []
-      return res.json()
-    })
+    cities.flatMap((city) =>
+      cats.map(async (cat) => {
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=5`)
+        if (!res.ok) return []
+        return res.json() as Promise<PlaceItemType[]>
+      })
+    )
   )
   return results.flat()
+}
+
+async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
+  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe']
+  const results = await Promise.all(
+    categories.map(async (cat) => {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=10`)
+      if (!res.ok) return []
+      return res.json() as Promise<PlaceItemType[]>
+    })
+  )
+  // Deduplicate by id
+  const seen = new Set<string>()
+  return results.flat().filter((p) => {
+    if (seen.has(p.id)) return false
+    seen.add(p.id)
+    return true
+  })
 }
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
@@ -79,22 +116,71 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
-const ITEMS_PER_PAGE = 16;
-
 export default function PlacesPage() {
   const [searchCity, setSearchCity] = useState('');
-  const { data: places = [], isLoading: placesLoading } = useQuery({
-    queryKey: ['places', searchCity],
-    queryFn: () => fetchPlaces(searchCity || undefined),
-    staleTime: 5 * 60 * 1000,
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Browse mode: infinite scroll through cities × categories
+  const {
+    data: browseData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: browseLoading,
+  } = useInfiniteQuery({
+    queryKey: ['places-browse'],
+    queryFn: ({ pageParam }) => fetchBrowsePage(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (_lastPage, _allPages, lastPageParam) =>
+      lastPageParam < 15 ? lastPageParam + 1 : undefined, // max ~16 pages
+    staleTime: 10 * 60 * 1000,
+    enabled: !searchCity,
   });
+
+  // Search mode: single query across categories
+  const { data: searchData = [], isLoading: searchLoading } = useQuery({
+    queryKey: ['places-search', searchCity],
+    queryFn: () => fetchSearchPlaces(searchCity),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!searchCity,
+  });
+
+  // Merge browse pages, deduplicate
+  const places = useMemo(() => {
+    if (searchCity) return searchData;
+    if (!browseData?.pages) return [];
+    const seen = new Set<string>();
+    return browseData.pages.flat().filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [searchCity, searchData, browseData]);
+
+  const placesLoading = searchCity ? searchLoading : browseLoading;
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    if (searchCity || !hasNextPage) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [searchCity, hasNextPage, isFetchingNextPage, fetchNextPage]);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [selectedPlace, _setSelectedPlace] = useState<PlaceItem | null>(null);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [viewMode, setViewMode] = useState<'grid' | 'stack'>('grid');
   const [columnCount, setColumnCount] = useState(4);
   const [showFilters, setShowFilters] = useState(false);
@@ -118,11 +204,6 @@ export default function PlacesPage() {
     else if (w < 900) setColumnCount(2);
     else if (w < 1200) setColumnCount(3);
   }, []);
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setVisibleCount(ITEMS_PER_PAGE);
-  }, [activeTab, activeSubcategory, searchQuery, sortBy]);
 
   // Filter by tab
   const tabFiltered = useMemo(() => {
@@ -169,9 +250,6 @@ export default function PlacesPage() {
     return items;
   }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
 
-  const visibleItems = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
-
   // Reset showcase when filters/view change
   useEffect(() => {
     setGridShowcase(false);
@@ -215,24 +293,6 @@ export default function PlacesPage() {
     if (gridTimerRef.current) clearTimeout(gridTimerRef.current);
   }, []);
 
-  // Height-balanced column distribution for a given set of items
-  const balanceIntoCols = useCallback((items: PlaceItem[], maxCols?: number) => {
-    const colCount = maxCols ?? columnCount;
-    if (colCount <= 0) return null;
-    const cols: PlaceItem[][] = Array.from({ length: colCount }, () => []);
-    const heights = new Array(colCount).fill(0);
-    for (const item of items) {
-      const hash = (() => { let h = 0; for (let i = 0; i < (item.id + 'ar').length; i++) h = ((h << 5) - h + (item.id + 'ar').charCodeAt(i)) | 0; return Math.abs(h); })();
-      const ar = 0.95 + (hash % 20) / 100;
-      const imgH = 1 / ar;
-      const contentH = 0.3;
-      const h = imgH + contentH;
-      const shortest = heights.indexOf(Math.min(...heights));
-      cols[shortest].push(item);
-      heights[shortest] += h;
-    }
-    return cols;
-  }, [columnCount]);
 
   const distributeRoundRobin = useCallback((items: PlaceItem[], maxCols?: number) => {
     const colCount = Math.min(maxCols ?? columnCount, items.length);
@@ -241,8 +301,6 @@ export default function PlacesPage() {
     items.forEach((item, i) => cols[i % colCount].push(item));
     return cols;
   }, [columnCount]);
-
-  const balancedCols = useMemo(() => balanceIntoCols(visibleItems), [visibleItems, balanceIntoCols]);
 
   const themedSections = useMemo(() => groupPlacesByCollection(filtered), [filtered]);
 
@@ -491,7 +549,19 @@ export default function PlacesPage() {
       </div>
 
       {/* Content: Grid or Stack */}
-      {viewMode === 'grid' ? (
+      {placesLoading && places.length === 0 ? (
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 xl:px-14 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="bg-gray-200 dark:bg-white/10 rounded-2xl" style={{ height: 200 + (i % 3) * 40 }} />
+                <div className="mt-2 h-4 bg-gray-200 dark:bg-white/10 rounded w-3/4" />
+                <div className="mt-1 h-3 bg-gray-100 dark:bg-white/5 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : viewMode === 'grid' ? (
         <div
           className={`mx-auto px-6 lg:px-10 xl:px-14 py-4 transition-all duration-300 ${
             columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : ''
@@ -794,6 +864,17 @@ export default function PlacesPage() {
           showPostcard={showPostcard}
           setShowPostcard={setShowPostcard}
         />
+      )}
+      {/* Infinite scroll sentinel */}
+      {!searchCity && hasNextPage && (
+        <div ref={loadMoreRef} className="flex justify-center py-8">
+          {isFetchingNextPage && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-[#1e3a5f] rounded-full animate-spin" />
+              Loading more places...
+            </div>
+          )}
+        </div>
       )}
       </div>
       <OceanWave />

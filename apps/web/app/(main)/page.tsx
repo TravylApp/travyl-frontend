@@ -216,6 +216,32 @@ export default function Home() {
       const { supabase } = await import('@travyl/shared');
       const { data: { session } } = await supabase.auth.getSession();
 
+      // Fetch explore items for the destination
+      let exploreItems: { id: string; title: string; description: string; category: string; image: string }[] = [];
+      try {
+        const placesRes = await fetch(`/api/places?lat=${extracted.destination.lat}&lng=${extracted.destination.lng}&limit=10`);
+        if (placesRes.ok) {
+          const places = await placesRes.json();
+          exploreItems = places.map((p: any) => ({
+            id: p.id,
+            title: p.name,
+            description: p.description || p.tagline || p.category,
+            category: p.category,
+            image: p.image,
+          }));
+        }
+      } catch {}
+
+      // Fetch a hero image for the destination
+      let heroImageUrl: string | undefined;
+      try {
+        const imgRes = await fetch(`/api/images?q=${encodeURIComponent(extracted.destination.city)}`);
+        if (imgRes.ok) {
+          const imgData = await imgRes.json();
+          heroImageUrl = imgData.url;
+        }
+      } catch {}
+
       const { data: trip } = await supabase
         .from('trips')
         .insert({
@@ -228,6 +254,12 @@ export default function Home() {
           travelers: extracted.travelers?.count ?? 1,
           budget: extracted.daily_estimate_usd ? extracted.daily_estimate_usd * (extracted.duration_days ?? 5) : null,
           currency: 'USD',
+          trip_context: {
+            hero_image_url: heroImageUrl || plan.destination_photo_url,
+            lede_text: `A ${extracted.duration_days ?? 5}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
+            explore_items: exploreItems.length > 0 ? exploreItems : undefined,
+            hero_images: heroImageUrl ? [heroImageUrl] : undefined,
+          },
         })
         .select()
         .single();
