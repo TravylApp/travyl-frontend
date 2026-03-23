@@ -24,7 +24,7 @@ export function useIndexTrip() {
           const token = session?.access_token
           if (!token) return
 
-          fetch(`${API_URL}/index`, {
+          fetch(`${API_URL}/api/trips/extract`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
