@@ -10,10 +10,6 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
-    "FoursquareApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "InteractionBus": {
       "arn": string
       "name": string
@@ -26,15 +22,6 @@ declare module "sst" {
     "RecommendationCache": {
       "name": string
       "type": "sst.aws.Dynamo"
-    }
-    "UserInteractions": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
-    "TravylEmail": {
-      "configSet": string
-      "sender": string
-      "type": "sst.aws.Email"
     }
     "UserInteractions": {
       "name": string
