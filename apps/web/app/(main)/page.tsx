@@ -268,10 +268,13 @@ export default function Home() {
         budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
         currency: 'USD',
         trip_context: {
-          hero_image_url: heroImageUrl || plan.destination_photo_url || exploreItems[0]?.image,
+          hero_image_url: exploreItems[0]?.image || heroImageUrl || plan.destination_photo_url,
           lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
           explore_items: exploreItems.length > 0 ? exploreItems : undefined,
-          hero_images: heroImageUrl ? [heroImageUrl] : undefined,
+          // Use explore item images for the mosaic (real Google Places photos)
+          hero_images: exploreItems.length > 0
+            ? exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6)
+            : heroImageUrl ? [heroImageUrl] : undefined,
           weather: weatherData ? {
             current: weatherData.current,
             forecast: weatherData.forecast,
