@@ -12,6 +12,7 @@ import {
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -61,119 +62,104 @@ interface HotelData {
 /*  Mock Data                                                          */
 /* ------------------------------------------------------------------ */
 
-const MOCK_HOTELS: HotelData[] = [
-  {
-    id: 'h1',
-    name: 'Hotel Le Marais',
-    stars: 4,
-    rating: 8.9,
-    reviews: 1247,
-    price: 189,
-    address: '16 Rue du Temple, 75004 Paris',
-    neighborhood: 'Le Marais',
-    lat: 48.8588,
-    lng: 2.3540,
-    images: [
-      'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
-      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
-      'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast', 'Spa', 'Parking'],
-    roomTypes: [
-      { type: 'Classic Double', beds: '1 Queen Bed', guests: 2, size: '22m²', price: 189, image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400', amenities: ['WiFi', 'AC', 'Minibar'] },
-      { type: 'Superior Suite', beds: '1 King Bed', guests: 2, size: '35m²', price: 259, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Balcony'] },
-    ],
-    checkIn: '3:00 PM',
-    checkOut: '11:00 AM',
-    cancellation: 'Free cancellation until Mar 18',
-    phone: '+33-1-42-72-34-12',
-    email: 'reservations@hotelmarais.fr',
-    guestRatings: { overall: 8.9, label: 'Excellent', cleanliness: 9.1, staff: 9.0, location: 9.4, comfort: 8.7, value: 8.5 },
-  },
-  {
-    id: 'h2',
-    name: 'Grand Hotel du Palais Royal',
-    stars: 5,
-    rating: 9.2,
-    reviews: 863,
-    price: 350,
-    address: '4 Rue de Valois, 75001 Paris',
-    neighborhood: 'Near Louvre',
-    lat: 48.8634,
-    lng: 2.3370,
-    images: [
-      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800',
-      'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast', 'Pool', 'Spa', 'Gym', 'Parking'],
-    roomTypes: [
-      { type: 'Deluxe Room', beds: '1 King Bed', guests: 2, size: '30m²', price: 350, image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Safe'] },
-      { type: 'Prestige Suite', beds: '1 King Bed + Sofa', guests: 3, size: '55m²', price: 520, image: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Lounge', 'Balcony'] },
-    ],
-    checkIn: '2:00 PM',
-    checkOut: '12:00 PM',
-    cancellation: 'Free cancellation until Mar 15',
-    phone: '+33-1-42-96-15-35',
-    email: 'booking@grandhotelpalaisroyal.com',
-    guestRatings: { overall: 9.2, label: 'Superb', cleanliness: 9.5, staff: 9.3, location: 9.6, comfort: 9.1, value: 8.8 },
-  },
-  {
-    id: 'h3',
-    name: 'Hotel des Arts Montmartre',
-    stars: 3,
-    rating: 8.1,
-    reviews: 2034,
-    price: 120,
-    address: '5 Rue Tholoze, 75018 Paris',
-    neighborhood: 'Montmartre',
-    lat: 48.8847,
-    lng: 2.3346,
-    images: [
-      'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800',
-      'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast'],
-    roomTypes: [
-      { type: 'Standard Room', beds: '1 Double Bed', guests: 2, size: '18m²', price: 120, image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400', amenities: ['WiFi', 'AC'] },
-      { type: 'Triple Room', beds: '1 Double + 1 Single', guests: 3, size: '24m²', price: 155, image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=400', amenities: ['WiFi', 'AC', 'Desk'] },
-    ],
-    checkIn: '2:00 PM',
-    checkOut: '10:00 AM',
-    cancellation: 'Free cancellation until Mar 20',
-    phone: '+33-1-46-06-30-52',
-    email: 'info@hoteldesartsmontmartre.fr',
-    guestRatings: { overall: 8.1, label: 'Very Good', cleanliness: 8.3, staff: 8.5, location: 8.8, comfort: 7.9, value: 8.6 },
-  },
-  {
-    id: 'h4',
-    name: 'Pullman Paris Tour Eiffel',
-    stars: 4,
-    rating: 8.6,
-    reviews: 1589,
-    price: 275,
-    address: '18 Avenue de Suffren, 75015 Paris',
-    neighborhood: 'Trocadero',
-    lat: 48.8554,
-    lng: 2.2923,
-    images: [
-      'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800',
-      'https://images.unsplash.com/photo-1586611292717-f828b167408c?w=800',
-      'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast', 'Pool', 'Gym', 'Parking'],
-    roomTypes: [
-      { type: 'Executive Room', beds: '1 King Bed', guests: 2, size: '28m²', price: 275, image: 'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Safe'] },
-      { type: 'Panoramic Suite', beds: '1 King Bed', guests: 2, size: '45m²', price: 420, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Eiffel View'] },
-    ],
-    checkIn: '3:00 PM',
-    checkOut: '12:00 PM',
-    cancellation: 'Free cancellation until Mar 17',
-    phone: '+33-1-44-38-56-00',
-    email: 'h3714-re@accor.com',
-    guestRatings: { overall: 8.6, label: 'Excellent', cleanliness: 8.9, staff: 8.7, location: 9.2, comfort: 8.5, value: 8.0 },
-  },
+// Hotel images from Unsplash (reliable hotel room/exterior photos)
+const HOTEL_IMAGES = [
+  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800',
+  'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800',
+  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
 ];
+const ROOM_IMAGES = [
+  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400',
+  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400',
+  'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400',
+];
+
+function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {
+  return hotels.map((h: any, i: number) => {
+    const stars = h.price ? Math.min(h.price + 2, 5) : 3 + (i % 3);
+    const basePrice = stars === 5 ? 300 + i * 50 : stars === 4 ? 180 + i * 30 : 100 + i * 20;
+    const ratingBase = stars === 5 ? 9.0 : stars === 4 ? 8.4 : 7.8;
+    const rating = Math.round((ratingBase + (i % 5) * 0.15) * 10) / 10;
+    const idx = i + idx_offset;
+    return {
+      id: h.id ?? `hotel-${idx}`,
+      name: h.name,
+      stars,
+      rating,
+      reviews: 200 + idx * 317,
+      price: basePrice,
+      address: h.address ?? '',
+      neighborhood: h.category ?? 'City Center',
+      lat: h.lat ?? 0,
+      lng: h.lng ?? 0,
+      images: [
+        h.image ?? HOTEL_IMAGES[idx % HOTEL_IMAGES.length],
+        HOTEL_IMAGES[(idx + 1) % HOTEL_IMAGES.length],
+        HOTEL_IMAGES[(idx + 2) % HOTEL_IMAGES.length],
+      ],
+      amenities: ['WiFi', 'Breakfast', ...(stars >= 4 ? ['Spa', 'Gym'] : []), ...(stars >= 5 ? ['Pool', 'Parking'] : [])],
+      roomTypes: [
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: basePrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
+        { type: stars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: stars >= 4 ? '35m²' : '26m²', price: Math.round(basePrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+      ],
+      checkIn: '3:00 PM',
+      checkOut: '11:00 AM',
+      cancellation: 'Free cancellation until 48h before',
+      phone: '',
+      email: '',
+      guestRatings: {
+        overall: rating,
+        label: rating >= 9 ? 'Superb' : rating >= 8.5 ? 'Excellent' : rating >= 8 ? 'Very Good' : 'Good',
+        cleanliness: Math.round((rating + 0.2) * 10) / 10,
+        staff: Math.round((rating + 0.1) * 10) / 10,
+        location: Math.round((rating + 0.3) * 10) / 10,
+        comfort: Math.round((rating - 0.1) * 10) / 10,
+        value: Math.round((rating - 0.2) * 10) / 10,
+      },
+    };
+  });
+}
+
+function useHotels(tripId: string) {
+  const { trip } = useItineraryScreen(tripId);
+  const destination = trip?.destination;
+  const contextHotels = trip?.trip_context?.hotels;
+
+  // If trip_context has hotels, use those
+  const fromContext = useMemo(
+    () => contextHotels?.length ? convertFoursquareToHotelData(contextHotels) : [],
+    [contextHotels],
+  );
+
+  // Also fetch more from Foursquare if we have coordinates
+  const lat = (contextHotels?.[0] as any)?.lat;
+  const lng = (contextHotels?.[0] as any)?.lng;
+  const { data: fetchedHotels = [] } = useQuery({
+    queryKey: ['hotels-foursquare', destination],
+    queryFn: async () => {
+      if (!lat || !lng) return [];
+      const res = await fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=hotel&limit=8`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return convertFoursquareToHotelData(data, fromContext.length);
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!destination && fromContext.length < 4,
+  });
+
+  // Combine and deduplicate by name
+  return useMemo(() => {
+    const seen = new Set<string>();
+    return [...fromContext, ...fetchedHotels].filter((h) => {
+      const key = h.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [fromContext, fetchedHotels]);
+}
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,
@@ -1571,10 +1557,11 @@ function BookedHotelCard({
 export default function Hotels({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   useItineraryScreen(id);
+  const hotels = useHotels(id);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [browsingOpen, setBrowsingOpen] = useState(true);
-  const [bookedHotel, setBookedHotel] = useState<HotelData | null>(MOCK_HOTELS[0]);
+  const [bookedHotel, setBookedHotel] = useState<HotelData | null>(null);
   const [justSelected, setJustSelected] = useState(false);
   const bookedRef = useRef<HTMLDivElement>(null);
 
@@ -1601,7 +1588,7 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
 
       {/* Section 2: Browsing Hotels */}
       <BrowsingHotelsSection
-        hotels={MOCK_HOTELS}
+        hotels={hotels}
         isOpen={browsingOpen}
         onToggle={() => setBrowsingOpen(!browsingOpen)}
         onSelect={handleSelect}
