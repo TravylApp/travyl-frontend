@@ -26,7 +26,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // Fetch trip
     const { data: trip, error: tripError } = await supabase
       .from('trips')
-      .select('id, title, destination, status, start_date, end_date, user_id')
+      .select('id, title, destination, status, start_date, end_date, user_id, trip_context')
       .eq('id', tripId)
       .single()
 
@@ -64,6 +64,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const embedding = await generateEmbedding(textContent)
 
     // Upsert to trip_embeddings
+    interface TripContextJson { hero_image_url?: string }
+    const tripContext = trip.trip_context as TripContextJson | null
+
     const metadata = {
       title: trip.title,
       destination: trip.destination,
@@ -71,6 +74,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       startDate: trip.start_date,
       endDate: trip.end_date,
       activityCount: activities?.length ?? 0,
+      imageUrl: tripContext?.hero_image_url ?? null,
     }
 
     const { error: upsertError } = await supabase
