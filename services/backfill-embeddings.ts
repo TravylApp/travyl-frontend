@@ -20,7 +20,7 @@ export async function backfill() {
 
   console.log(`Backfilling ${trips.length} trips...`)
 
-  interface TripContextJson { hero_image_url?: string }
+  interface TripContextJson { hero_images?: string[] }
 
   for (const trip of trips) {
     try {
@@ -53,7 +53,7 @@ export async function backfill() {
         startDate: trip.start_date,
         endDate: trip.end_date,
         activityCount: activities?.length ?? 0,
-        imageUrl: tripContext?.hero_image_url ?? null,
+        imageUrl: tripContext?.hero_images?.[0] ?? null,
       }
 
       const { error: upsertError } = await supabase
