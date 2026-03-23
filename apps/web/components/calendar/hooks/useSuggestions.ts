@@ -53,51 +53,25 @@ interface UseSuggestionsReturn {
 async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
   const params = new URLSearchParams({ destination }).toString()
 
-  // Try authenticated /recommend endpoint first
-  if (API_URL) {
-    try {
-      const { supabase } = await import('@travyl/shared')
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+  if (!API_URL) return []
 
-      if (token) {
-        const url = `${API_URL}/recommend?${params}`
-        console.log('[ForYou] fetching (recommend):', url)
+  try {
+    const { supabase } = await import('@travyl/shared')
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
 
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-          },
-        })
+    const url = `${API_URL}/api/places/nearby?${params}`
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (token) headers.Authorization = `Bearer ${token}`
 
-        if (res.ok) {
-          const data = await res.json()
-          const items = data.suggestions ?? []
-          console.log('[ForYou] got', items.length, 'personalized suggestions')
-          if (items.length > 0) return items
-          console.warn('[ForYou] /recommend returned 0 results, falling back to /api/suggest')
-        } else {
-          console.warn(`[ForYou] /recommend failed (${res.status}), falling back to /api/suggest`)
-        }
-      }
-    } catch (err) {
-      console.warn('[ForYou] /recommend auth error, falling back to /api/suggest', err)
-    }
+    const res = await fetch(url, { headers })
+    if (!res.ok) return []
+
+    const data = await res.json()
+    return Array.isArray(data) ? data : data.suggestions ?? data.places ?? []
+  } catch {
+    return []
   }
-
-  // Fallback: unauthenticated Next.js proxy
-  const url = `/api/suggest?${params}`
-  console.log('[ForYou] fetching (fallback):', url)
-
-  const res = await fetch(url)
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch suggestions (${res.status})`)
-  }
-
-  const data = await res.json()
-  return data.suggestions
 }
 
 export function useSuggestions({

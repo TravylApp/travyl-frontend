@@ -1,7 +1,7 @@
 'use client'
 
 import { Search } from 'iconoir-react'
-import { FOR_YOU_PANEL_WIDTH } from './constants'
+import { FOR_YOU_PANEL_DEFAULT_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
 import { useSuggestions } from './hooks/useSuggestions'
 import type { FilterCategory } from './hooks/useSuggestions'
@@ -34,7 +34,7 @@ export function ForYouPanel({
 
   return (
     <aside
-      style={{ width: FOR_YOU_PANEL_WIDTH }}
+      style={{ width: FOR_YOU_PANEL_DEFAULT_WIDTH }}
       className="flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
@@ -130,7 +130,7 @@ export function ForYouPanel({
               <SuggestionCard
                 key={suggestion.id}
                 suggestion={suggestion}
-                onVisible={() => trackEvent(suggestion.id, 'impression')}
+                onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
               />
             ))}
           </div>
