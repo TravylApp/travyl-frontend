@@ -53,7 +53,7 @@ cp .next/required-server-files.json .amplify-hosting/compute/default/.next/requi
 cp .next/package.json .amplify-hosting/compute/default/.next/package.json 2>/dev/null || true
 
 # Generate deploy-manifest.json
-NEXT_VERSION=$(node -e "console.log(require('./node_modules/next/package.json').version)")
+NEXT_VERSION=$(node -e "console.log(require('next/package.json').version)")
 
 cat > .amplify-hosting/deploy-manifest.json << MANIFEST
 {
