@@ -200,12 +200,8 @@ export default function Home() {
     setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
     setShowTakeoff(true);
 
-    // Call the backend to plan the trip
-    const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
-    if (!API_URL) return;
-
     try {
-      const res = await fetch(`${API_URL}/api/trips/plan`, {
+      const res = await fetch(`/api/trips/plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: query }),
