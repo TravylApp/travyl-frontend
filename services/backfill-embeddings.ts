@@ -11,7 +11,7 @@ export async function backfill() {
 
   const { data: trips, error } = await supabase
     .from('trips')
-    .select('id, title, destination, status, start_date, end_date, user_id')
+    .select('id, title, destination, status, start_date, end_date, user_id, trip_context')
 
   if (error || !trips) {
     console.error('Failed to fetch trips:', error)
@@ -19,6 +19,8 @@ export async function backfill() {
   }
 
   console.log(`Backfilling ${trips.length} trips...`)
+
+  interface TripContextJson { hero_image_url?: string }
 
   for (const trip of trips) {
     try {
@@ -43,6 +45,7 @@ export async function backfill() {
 
       const embedding = await generateEmbedding(textContent)
 
+      const tripContext = trip.trip_context as TripContextJson | null
       const metadata = {
         title: trip.title,
         destination: trip.destination,
@@ -50,6 +53,7 @@ export async function backfill() {
         startDate: trip.start_date,
         endDate: trip.end_date,
         activityCount: activities?.length ?? 0,
+        imageUrl: tripContext?.hero_image_url ?? null,
       }
 
       const { error: upsertError } = await supabase
@@ -78,3 +82,5 @@ export async function backfill() {
 
   console.log('Backfill complete.')
 }
+
+await backfill()
