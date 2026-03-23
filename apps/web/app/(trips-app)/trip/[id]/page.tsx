@@ -426,6 +426,35 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
             </div>
           )}
 
+          {/* ── Local Cuisine ── */}
+          {trip?.trip_context?.cuisine && trip.trip_context.cuisine.length > 0 && (
+            <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-6 relative z-10">
+              <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Local Cuisine</span>
+              <h3 className="text-lg font-bold font-serif mb-3" style={{ color: 'var(--magazine-heading)' }}>Must-Try Dishes</h3>
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                {trip.trip_context.cuisine.map((dish: { id: string; name: string; image: string }) => (
+                  <div key={dish.id} className="shrink-0 w-[140px] rounded-xl overflow-hidden shadow-sm border border-white/20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={dish.image} alt={dish.name} className="w-full h-[100px] object-cover" />
+                    <p className="text-[11px] font-semibold px-2 py-1.5 truncate" style={{ color: 'var(--magazine-heading)' }}>{dish.name}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Sunrise/Sunset ── */}
+          {trip?.trip_context?.sunrise && (
+            <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-4 relative z-10">
+              <div className="flex items-center gap-4 text-[11px] opacity-70" style={{ color: 'var(--magazine-text)' }}>
+                <span>🌅 Sunrise {new Date(trip.trip_context.sunrise.sunrise).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                <span>🌇 Sunset {new Date(trip.trip_context.sunrise.sunset).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                <span>📸 Golden Hour {new Date(trip.trip_context.sunrise.golden_hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+              </div>
+            </div>
+          )}
+
           {/* ── THINGS TO DO — full width ── */}
           {trip?.trip_context?.explore_items && trip.trip_context.explore_items.length > 0 && (
             <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-8 relative z-10">

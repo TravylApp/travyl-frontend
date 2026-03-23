@@ -250,7 +250,17 @@ export default function Home() {
       const lng = extracted.destination.lng;
       const city = extracted.destination.city;
       const country = extracted.destination.country;
-      const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays] = await Promise.all([
+      // Map country to cuisine area for TheMealDB
+      const COUNTRY_CUISINE: Record<string, string> = {
+        France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
+        Mexico: 'Mexican', India: 'Indian', China: 'Chinese', Thailand: 'Thai',
+        Morocco: 'Moroccan', Turkey: 'Turkish', Greece: 'Greek', Vietnam: 'Vietnamese',
+        UK: 'British', USA: 'American', Canada: 'Canadian', Ireland: 'Irish',
+        Portugal: 'Portuguese', Brazil: 'Brazilian', Egypt: 'Egyptian', Poland: 'Polish',
+      };
+      const cuisineArea = COUNTRY_CUISINE[country] ?? '';
+
+      const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData] = await Promise.all([
         fetch(`/api/images?q=${encodeURIComponent(city)}`)
           .then(r => r.ok ? r.json().then((d: any) => d.url as string) : undefined).catch(() => undefined),
         fetch(`/api/weather?location=${encodeURIComponent(dest)}&days=${durationDays}`)
@@ -267,6 +277,10 @@ export default function Home() {
           .then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`/api/holidays?country=${encodeURIComponent(extracted.destination.region?.substring(0, 2) ?? country.substring(0, 2))}&year=${new Date().getFullYear()}`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
+        cuisineArea ? fetch(`/api/cuisine?area=${encodeURIComponent(cuisineArea)}`)
+          .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+        fetch(`/api/sunrise?lat=${lat}&lng=${lng}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
 
       const tripData = {
@@ -297,6 +311,8 @@ export default function Home() {
           country: countryInfo ?? undefined,
           wiki: wikiData ?? undefined,
           holidays: holidays.length > 0 ? holidays.slice(0, 10) : undefined,
+          cuisine: cuisineData.length > 0 ? cuisineData.slice(0, 6) : undefined,
+          sunrise: sunriseData ?? undefined,
           quick_facts: countryInfo ? {
             currency: `${countryInfo.currency?.code} (${countryInfo.currency?.symbol})`,
             language: countryInfo.language,

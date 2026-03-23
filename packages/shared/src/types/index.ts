@@ -84,6 +84,9 @@ export interface TripContextData {
     description?: string;
   };
   holidays?: { date: string; name: string; localName?: string }[];
+  cuisine?: { id: string; name: string; image: string }[];
+  sunrise?: { sunrise: string; sunset: string; golden_hour: string; day_length: string };
+  phrases?: Record<string, string>;
 }
 
 export interface Trip {
