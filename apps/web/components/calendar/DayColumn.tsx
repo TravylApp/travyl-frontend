@@ -16,7 +16,7 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
+  onSelectEvent: (id: string, anchorEl?: HTMLElement) => void
   onClickDayHeader?: () => void
   onDeselect: () => void
   pendingActivity?: CalendarActivity | null
@@ -28,6 +28,7 @@ interface DayColumnProps {
   onDeleteNote?: (noteId: string) => void
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
+  onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
 }
 
 function CurrentTimeIndicator({
@@ -87,6 +88,7 @@ export function DayColumn({
   onDeleteNote,
   marqueeSelectedIds,
   onShiftClickEvent,
+  onResizeEvent,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
@@ -232,7 +234,9 @@ export function DayColumn({
               isMultiSelected={marqueeSelectedIds?.has(activity.id)}
               onSelect={onSelectEvent}
               onShiftClick={onShiftClickEvent}
+              onResize={onResizeEvent}
               timeRangeStartHour={timeRange.startHour}
+              timeRangeEndHour={timeRange.endHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}

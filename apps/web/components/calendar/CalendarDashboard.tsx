@@ -15,15 +15,16 @@ import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { TripSidebar } from './TripSidebar'
 import { TripNavbar } from './TripNavbar'
-import { CommandPalette } from './CommandPalette'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
+import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMarqueeSelection } from './hooks/useMarqueeSelection'
+import { useResizablePanel } from './hooks/useResizablePanel'
 import { MarqueeOverlay } from './MarqueeOverlay'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
-import { DetailPanel } from './DetailPanel'
+import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
@@ -51,6 +52,12 @@ function getCategoryIcon(category: string): string {
   return CATEGORY_ICONS[category.toLowerCase()] ?? CATEGORY_ICONS.default
 }
 
+function formatDurationLabel(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours % 1 === 0) return `${hours}h`
+  return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m`
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 interface CalendarDashboardProps {
@@ -62,8 +69,9 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
-  const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
+  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const router = useRouter()
 
   // Hooks
@@ -105,6 +113,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // useCalendarDnd is called below after marquee selection hook is instantiated
 
   const { theme, toggleTheme } = useCalendarTheme()
+  const {
+    width: forYouWidth,
+    isDragging: isResizingPanel,
+    handleDragStart: handlePanelDragStart,
+    handleDrag: handlePanelDrag,
+    handleDragEnd: handlePanelDragEnd,
+  } = useResizablePanel()
 
   // Sync view mode to presence
   useEffect(() => {
@@ -242,16 +257,24 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripDays: TRIP_DAYS,
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
-    onOpenPalette: () => setIsPaletteOpen(true),
+    onOpenPalette: () => {},  // Global palette handles Ctrl+K
     marqueeSelectedIds,
     onBulkDelete: handleBulkDelete,
     onBulkDuplicate: handleBulkDuplicate,
   })
 
+  // Publish commands to global store so GlobalCommandPalette can show them
+  const setCommands = useCalendarCommandsStore((s) => s.setCommands)
+  const clearCommands = useCalendarCommandsStore((s) => s.clearCommands)
+  useEffect(() => {
+    setCommands(commands)
+    return () => clearCommands()
+  }, [commands, setCommands, clearCommands])
+
   useKeyboardShortcuts(
     commands,
     isPaletteOpen,
-    () => setIsPaletteOpen(false),
+    () => {},  // Global palette handles its own close
     () => selectEvent(null),
     marqueeSelectedIds.size > 0,
     clearMarqueeSelection,
@@ -262,20 +285,32 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   if (error) return <CalendarError message={error} />
 
   // Event handlers
-  const handleSelectEvent = (id: string) => {
+  const handleSelectEvent = (id: string, anchorEl?: HTMLElement) => {
     // If marquee selection is active, clear it on click without Shift
     if (marqueeSelectedIds.size > 0) {
       clearMarqueeSelection()
       return // consume the click
     }
-    selectEvent(selectedEventId === id ? null : id)
+    if (selectedEventId === id) {
+      selectEvent(null)
+      setPopoverAnchor(null)
+    } else {
+      selectEvent(id)
+      setPopoverAnchor(anchorEl ?? null)
+    }
   }
 
-  const handleCloseDetail = () => selectEvent(null)
+  const handleClosePopover = () => {
+    selectEvent(null)
+    setPopoverAnchor(null)
+  }
 
   const handleRemoveActivity = (id: string) => {
     removeActivity(id)
-    if (selectedEventId === id) selectEvent(null)
+    if (selectedEventId === id) {
+      selectEvent(null)
+      setPopoverAnchor(null)
+    }
     // Restore the suggestion card in the ForYou panel
     const suggestionId = activityToSuggestion.get(id)
     if (suggestionId) {
@@ -298,6 +333,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const handleClickDayHeader = (dayIndex: number) => {
     goToDayView(dayIndex)
+  }
+
+  const handleResizeEvent = (id: string, newStartHour: number, newDuration: number) => {
+    updateActivity(id, { startHour: newStartHour, duration: newDuration })
   }
 
   /** Format a date range string like "Mar 10 - Mar 16, 2026". */
@@ -405,6 +444,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         gridRef={weekGridRef}
                         marqueeOverlay={marqueeOverlayElement}
                         onShiftClickEvent={toggleActivityInSelection}
+                        onResizeEvent={handleResizeEvent}
                       />
                     </motion.div>
                   ) : (
@@ -427,6 +467,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         onSelectEvent={handleSelectEvent}
                         onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
+                        onResizeEvent={handleResizeEvent}
                       />
                     </motion.div>
                   )}
@@ -434,22 +475,37 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
               </div>
             </div>
 
-            {/* Right column: For You panel or Detail panel */}
-            {selectedEventId ? (
-              <DetailPanel
-                activity={selectedActivity}
-                viewers={collaborators}
-                onClose={handleCloseDetail}
-                onRemove={handleRemoveActivity}
-                onUpdateActivity={updateActivity}
-              />
-            ) : (
-              <ForYouPanel
-                destination={trip?.destination ?? ''}
-                tripId={trip?.id ?? ''}
-                scheduledActivityIds={droppedSuggestionIds}
-              />
-            )}
+            {/* Resize handle */}
+            <div
+              className="shrink-0 w-1 cursor-col-resize hover:bg-[var(--cal-accent)]/30 active:bg-[var(--cal-accent)]/50 transition-colors relative group"
+              onPointerDown={(e) => {
+                e.preventDefault()
+                handlePanelDragStart()
+                let lastX = e.clientX
+                const onMove = (ev: PointerEvent) => {
+                  handlePanelDrag(ev.clientX - lastX)
+                  lastX = ev.clientX
+                }
+                const onUp = () => {
+                  handlePanelDragEnd()
+                  window.removeEventListener('pointermove', onMove)
+                  window.removeEventListener('pointerup', onUp)
+                }
+                window.addEventListener('pointermove', onMove)
+                window.addEventListener('pointerup', onUp)
+              }}
+            >
+              <div className="absolute inset-y-0 -left-1 -right-1" />
+              <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
+            </div>
+
+            {/* Right column: For You panel (always visible) */}
+            <ForYouPanel
+              destination={trip?.destination ?? ''}
+              tripId={trip?.id ?? ''}
+              scheduledActivityIds={droppedSuggestionIds}
+              width={forYouWidth}
+            />
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -518,10 +574,24 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       </div>
     </div>
     </div>
-    <CommandPalette
-      isOpen={isPaletteOpen}
-      onClose={() => setIsPaletteOpen(false)}
-      commands={commands}
+    <CardPopover
+      anchorEl={popoverAnchor}
+      isOpen={!!selectedActivity && !!popoverAnchor}
+      onClose={handleClosePopover}
+      position="right"
+      image={selectedActivity?.image}
+      title={selectedActivity?.title ?? ''}
+      category={selectedActivity?.type ?? ''}
+      rating={selectedActivity?.rating ?? undefined}
+      price={selectedActivity?.price ?? undefined}
+      duration={selectedActivity ? formatDurationLabel(selectedActivity.duration) : undefined}
+      actions={selectedActivity ? [
+        {
+          label: 'Delete',
+          onClick: () => handleRemoveActivity(selectedActivity.id),
+          variant: 'danger' as const,
+        },
+      ] : []}
     />
     {trip && (
       <ShareModal

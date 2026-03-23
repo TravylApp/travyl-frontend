@@ -11,12 +11,14 @@ interface ForYouPanelProps {
   destination: string
   tripId: string
   scheduledActivityIds?: string[]
+  width?: number
 }
 
 export function ForYouPanel({
   destination,
   tripId,
   scheduledActivityIds,
+  width,
 }: ForYouPanelProps) {
   const {
     suggestions,
@@ -34,7 +36,7 @@ export function ForYouPanel({
 
   return (
     <aside
-      style={{ width: FOR_YOU_PANEL_DEFAULT_WIDTH }}
+      style={{ width: width ?? FOR_YOU_PANEL_DEFAULT_WIDTH }}
       className="flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
