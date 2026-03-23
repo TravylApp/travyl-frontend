@@ -23,9 +23,11 @@ import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
 import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 
-async function fetchPlaces(): Promise<PlaceItemType[]> {
-  // Default to Paris coords — will be dynamic later
-  const res = await fetch('/api/places?lat=48.8566&lng=2.3522&limit=20')
+async function fetchPlaces(query?: string): Promise<PlaceItemType[]> {
+  const params = new URLSearchParams({ limit: '20' })
+  if (query) params.set('q', query)
+  else { params.set('lat', '48.8566'); params.set('lng', '2.3522') }
+  const res = await fetch(`/api/places?${params}`)
   if (!res.ok) return []
   return res.json()
 }
@@ -59,9 +61,10 @@ type TabKey = (typeof TABS)[number]['key'];
 const ITEMS_PER_PAGE = 16;
 
 export default function PlacesPage() {
-  const { data: places = [] } = useQuery({
-    queryKey: ['places'],
-    queryFn: fetchPlaces,
+  const [searchCity, setSearchCity] = useState('');
+  const { data: places = [], isLoading: placesLoading } = useQuery({
+    queryKey: ['places', searchCity],
+    queryFn: () => fetchPlaces(searchCity || undefined),
     staleTime: 5 * 60 * 1000,
   });
   const [activeTab, setActiveTab] = useState<TabKey>('all');
@@ -252,14 +255,15 @@ export default function PlacesPage() {
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search places..."
+                placeholder="Search a city or destination..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && searchQuery.trim()) setSearchCity(searchQuery.trim()) }}
                 className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => { setSearchQuery(''); setSearchCity('') }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X size={12} />

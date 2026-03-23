@@ -24,14 +24,32 @@ export async function GET(req: NextRequest) {
   const lng = req.nextUrl.searchParams.get('lng') ?? '2.3522'
   const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
   const limit = req.nextUrl.searchParams.get('limit') ?? '20'
+  const q = req.nextUrl.searchParams.get('q')
 
   if (!API_URL) {
     return NextResponse.json([])
   }
 
   try {
+    // If search query provided, geocode it first to get coordinates
+    let searchLat = lat
+    let searchLng = lng
+    if (q) {
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        )
+        const geoData = await geoRes.json()
+        if (geoData.length > 0) {
+          searchLat = geoData[0].lat
+          searchLng = geoData[0].lon
+        }
+      } catch {}
+    }
+
     const res = await fetch(
-      `${API_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${category}&limit=${limit}`,
+      `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
       { headers: { Accept: 'application/json' } }
     )
     if (!res.ok) return NextResponse.json([])
@@ -42,7 +60,7 @@ export async function GET(req: NextRequest) {
     const places = data.map((p) => ({
       id: p.id,
       name: p.name,
-      image: p.photo_url ?? `https://source.unsplash.com/400x300/?${encodeURIComponent(p.name)},travel`,
+      image: upscaleGoogleImage(p.photo_url) ?? `https://source.unsplash.com/400x300/?${encodeURIComponent(p.name)},travel`,
       type: mapType(p.category),
       rating: p.rating ?? 0,
       tagline: p.description ?? p.category,
@@ -61,6 +79,12 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json([])
   }
+}
+
+function upscaleGoogleImage(url: string | null | undefined): string | null {
+  if (!url) return null
+  // Google Places thumbnails use =wNNN-hNNN format — upscale to 800x600
+  return url.replace(/=w\d+-h\d+/, '=w800-h600')
 }
 
 function mapType(cat: string): string {
