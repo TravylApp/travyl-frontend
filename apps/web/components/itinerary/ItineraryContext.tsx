@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-import { MOCK_CALENDAR_ACTIVITIES, MOCK_DAYS } from '@travyl/shared';
+const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [];
+const MOCK_DAYS: { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string }[] = [];
 import type { MapLocation } from '@/components/leaflet-map';
 
 // ─── Conversion: CalendarActivity[] → ItineraryDayViewModel[] ─────
@@ -25,7 +26,7 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
     locationName: a.location ?? null,
     startTime: a.startTime ?? null,
     endTime: a.endTime ?? null,
-    timeDisplay: `${a.startTime} – ${a.endTime}`,
+    timeDisplay: a.startTime && a.endTime ? `${a.startTime} – ${a.endTime}` : a.startTime ?? null,
     costDisplay: a.price ?? null,
     bookingUrl: null,
     notes: null,
@@ -78,8 +79,8 @@ function calendarActivitiesToDayViewModels(
       dayNumber: baseDay.dayNumber,
       dayLabel: baseDay.dayLabel,
       dateLabel: baseDay.dateLabel,
-      theme: baseDay.theme,
-      notes: baseDay.notes,
+      theme: baseDay.theme ?? null,
+      notes: baseDay.notes ?? null,
       timeGroups,
       activityCount: allVMs.length,
     };
@@ -95,6 +96,7 @@ interface ItineraryContextValue {
   addActivity: (activity: CalendarActivity) => void;
   removeActivity: (id: string) => void;
   updateActivity: (id: string, updates: Partial<CalendarActivity>) => void;
+  moveActivityBefore: (dragId: string, targetId: string) => void;
   // Map control — any page can push markers and request map open/close
   mapMarkers: MapLocation[];
   setMapMarkers: React.Dispatch<React.SetStateAction<MapLocation[]>>;
@@ -175,16 +177,29 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const moveActivityBefore = useCallback((dragId: string, targetId: string) => {
+    setActivities((prev) => {
+      const dragIdx = prev.findIndex((a) => a.id === dragId);
+      if (dragIdx < 0) return prev;
+      const item = prev[dragIdx];
+      const without = [...prev.slice(0, dragIdx), ...prev.slice(dragIdx + 1)];
+      const targetIdx = without.findIndex((a) => a.id === targetId);
+      if (targetIdx < 0) return prev;
+      without.splice(targetIdx, 0, item);
+      return without;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
-      activities, setActivities, days, addActivity, removeActivity, updateActivity,
+      activities, setActivities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
       mapMarkers, setMapMarkers, selectedMarkerId, setSelectedMarkerId,
       requestMapOpen, setRequestMapOpen,
       collapsedSections, setCollapsedSections,
       allCollapsedOverride, setAllCollapsedOverride,
       selectedDayIndex, setSelectedDayIndex,
     }),
-    [activities, days, addActivity, removeActivity, updateActivity,
+    [activities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
      mapMarkers, selectedMarkerId, requestMapOpen,
      collapsedSections, allCollapsedOverride, selectedDayIndex],
   );

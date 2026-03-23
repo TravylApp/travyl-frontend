@@ -22,3 +22,10 @@ export const placeIndex = new aws.location.PlaceIndex('TravylPlaceIndex', {
     intendedUse: 'Storage',
   },
 })
+
+// User interaction events + affinity aggregates for personalized recommendations
+export const userInteractions = new sst.aws.Dynamo('UserInteractions', {
+  fields: { pk: 'string', sk: 'string' },
+  primaryIndex: { hashKey: 'pk', rangeKey: 'sk' },
+  ttl: 'expiresAt',
+})

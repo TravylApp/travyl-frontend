@@ -181,6 +181,37 @@ function ImageCarousel({ images, name }: { images: string[]; name: string }) {
 
 // ─── Tab Content ────────────────────────────────────────────────
 
+function InlineMap({ item }: { item: DiscoverItem }) {
+  const [showMap, setShowMap] = useState(false);
+  const mapQuery = item.lat && item.lng
+    ? `${item.lat},${item.lng}`
+    : encodeURIComponent(item.location);
+
+  return (
+    <div>
+      <button
+        onClick={() => setShowMap((v) => !v)}
+        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        <MapPin size={13} className="text-gray-400" />
+        <span>{item.location}</span>
+        <ChevronDown size={12} className={`text-gray-400 transition-transform ${showMap ? 'rotate-180' : ''}`} />
+      </button>
+      {showMap && (
+        <div className="mt-2 h-32 rounded-lg overflow-hidden border border-gray-200">
+          <iframe
+            title="Map"
+            className="w-full h-full border-0"
+            src={`https://maps.google.com/maps?q=${mapQuery}&z=15&output=embed`}
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OverviewTab({ item, accentColor }: { item: DiscoverItem; accentColor: string }) {
   return (
     <div className="space-y-4">
@@ -188,10 +219,7 @@ function OverviewTab({ item, accentColor }: { item: DiscoverItem; accentColor: s
 
       <div>
         <h2 className="text-xl font-bold text-gray-900">{item.name}</h2>
-        <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500">
-          <MapPin size={13} className="text-gray-400" />
-          <span>{item.location}</span>
-        </div>
+        <InlineMap item={item} />
       </div>
 
       {/* Rating + Info row */}
@@ -532,31 +560,6 @@ function ExploreCard({ item, accentColor, onSelect, showTrending }: { item: Disc
   );
 }
 
-// ─── Map Panel ──────────────────────────────────────────────────
-
-function MapPanel({ item }: { item: DiscoverItem }) {
-  const mapQuery = item.lat && item.lng
-    ? `${item.lat},${item.lng}`
-    : encodeURIComponent(item.location);
-
-  return (
-    <div className="relative w-full h-full rounded-xl overflow-hidden bg-gray-100">
-      <iframe
-        title="Map"
-        className="w-full h-full border-0"
-        src={`https://maps.google.com/maps?q=${mapQuery}&z=15&output=embed`}
-        allowFullScreen
-        loading="lazy"
-      />
-      <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md max-w-[200px]">
-        <div className="flex items-center gap-1.5">
-          <MapPin size={12} className="text-gray-500 shrink-0" />
-          <span className="text-xs text-gray-700 line-clamp-2">{item.location}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main Component ─────────────────────────────────────────────
 
@@ -778,15 +781,6 @@ export function SplitScreenModal({
           </div>
         </motion.div>
 
-        {/* ── Right Panel: Map (desktop only) ── */}
-        <motion.div
-          initial={{ opacity: 0, x: 120, rotate: 2 }}
-          animate={{ opacity: 1, x: 0, rotate: 0 }}
-          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="hidden md:block w-[380px] shrink-0 border-l border-gray-200 p-3"
-        >
-          <MapPanel item={currentItem} />
-        </motion.div>
       </div>
     </div>
   );

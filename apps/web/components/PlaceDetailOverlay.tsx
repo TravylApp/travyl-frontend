@@ -11,8 +11,10 @@ import {
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { Footer } from '@/components/home/Footer';
 import { OceanWave } from '@/components/home/OceanWave';
-import { useSimilarPlaces, MOCK_PLACES, Navy } from '@travyl/shared';
+import { useSimilarPlaces, Navy } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
+
+const MOCK_PLACES: PlaceItem[] = [];
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 

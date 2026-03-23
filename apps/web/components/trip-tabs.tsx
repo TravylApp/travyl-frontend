@@ -4,8 +4,8 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
-  Luggage, PieChart, Heart, Car,
+  Home, Calendar, CalendarDays, Plane, Building2, UtensilsCrossed, Compass,
+  Luggage, PieChart, Heart, Car, Settings,
   GripVertical, GripHorizontal,
   SlidersHorizontal, Check, X,
   type LucideIcon,
@@ -27,6 +27,7 @@ const DEFAULT_COLOR = '#1e3a5f';
 const ALL_TABS: TabDef[] = [
   { segment: "",             label: "Overview",      subtitle: "Trip overview & info",               icon: Home,              color: DEFAULT_COLOR },
   { segment: "itinerary",   label: "Itinerary",     subtitle: "Your day-by-day travel plan",        icon: Calendar,          color: DEFAULT_COLOR },
+  { segment: "calendar",    label: "Calendar",      subtitle: "Visual calendar & For You",          icon: CalendarDays,      color: DEFAULT_COLOR },
   { segment: "hotels",      label: "Hotels",        subtitle: "Accommodation & stays",              icon: Building2,         color: DEFAULT_COLOR },
   { segment: "flights",     label: "Flights",       subtitle: "Flight bookings & details",          icon: Plane,             color: DEFAULT_COLOR },
   { segment: "restaurants", label: "Restaurants",    subtitle: "Dining reservations & discoveries",  icon: UtensilsCrossed,   color: DEFAULT_COLOR },
@@ -35,6 +36,7 @@ const ALL_TABS: TabDef[] = [
   { segment: "budget",      label: "Budget",        subtitle: "Trip expenses & spending",            icon: PieChart,          color: DEFAULT_COLOR },
   { segment: "cars",        label: "Car Rental",    subtitle: "Vehicle rentals & transport",         icon: Car,               color: DEFAULT_COLOR },
   { segment: "favorites",   label: "Favorites",     subtitle: "Saved places & activities",           icon: Heart,             color: DEFAULT_COLOR },
+  { segment: "settings",   label: "Settings",      subtitle: "Trip preferences & theme",            icon: Settings,          color: DEFAULT_COLOR },
 ];
 
 // ─── Spine Position ─────────────────────────────────────────
@@ -320,7 +322,7 @@ export default function TripTabs({
                 backgroundColor: active
                   ? tabColor
                   : dark
-                    ? tabColor + '40'
+                    ? tabColor + '55'
                     : tabColor + '18',
                 height: 44,
                 ...(active ? { boxShadow: `0 0 8px ${tabColor}40` } : {}),
@@ -332,7 +334,7 @@ export default function TripTabs({
                   color: active
                     ? textOnBase
                     : dark
-                      ? 'rgba(255,255,255,0.5)'
+                      ? 'rgba(255,255,255,0.75)'
                       : tabColor,
                 }}
                 className="group-hover:opacity-100 transition-opacity"

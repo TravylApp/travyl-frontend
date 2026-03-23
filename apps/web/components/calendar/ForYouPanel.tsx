@@ -1,15 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
 import { Search } from 'iconoir-react'
-import { FOR_YOU_PANEL_WIDTH } from './constants'
+import { FOR_YOU_PANEL_DEFAULT_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
-import { CardPopover } from './CardPopover'
-import { formatDuration } from './utils'
 import { useSuggestions } from './hooks/useSuggestions'
 import type { FilterCategory } from './hooks/useSuggestions'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
-import type { SuggestionCard as SuggestionCardType } from './types'
 
 interface ForYouPanelProps {
   destination: string
@@ -36,32 +32,9 @@ export function ForYouPanel({
 
   const { trackEvent } = useInteractionTracking(tripId)
 
-  const [popoverSuggestion, setPopoverSuggestion] = useState<SuggestionCardType | null>(null)
-  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
-
-  const handleCardClick = useCallback((suggestion: SuggestionCardType, anchorEl: HTMLElement) => {
-    if (popoverSuggestion?.id === suggestion.id) {
-      setPopoverSuggestion(null)
-      setPopoverAnchor(null)
-    } else {
-      setPopoverSuggestion(suggestion)
-      setPopoverAnchor(anchorEl)
-    }
-  }, [popoverSuggestion?.id])
-
-  const handlePopoverClose = useCallback(() => {
-    setPopoverSuggestion(null)
-    setPopoverAnchor(null)
-  }, [])
-
-  const formatPrice = (price: number | null, currency: string) => {
-    if (price === null || price === 0) return 'Free'
-    return `€${price}`
-  }
-
   return (
     <aside
-      style={{ width: FOR_YOU_PANEL_WIDTH }}
+      style={{ width: FOR_YOU_PANEL_DEFAULT_WIDTH }}
       className="flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
@@ -157,8 +130,7 @@ export function ForYouPanel({
               <SuggestionCard
                 key={suggestion.id}
                 suggestion={suggestion}
-                onVisible={() => trackEvent(suggestion.id, 'impression')}
-                onClick={handleCardClick}
+                onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
               />
             ))}
           </div>
@@ -171,29 +143,6 @@ export function ForYouPanel({
           Drag any card onto the calendar to schedule it
         </div>
       )}
-
-      <CardPopover
-        anchorEl={popoverAnchor}
-        isOpen={!!popoverSuggestion}
-        onClose={handlePopoverClose}
-        position="left"
-        image={popoverSuggestion?.imageUrl}
-        title={popoverSuggestion?.name ?? ''}
-        category={popoverSuggestion?.category ?? ''}
-        rating={popoverSuggestion?.rating ?? undefined}
-        price={popoverSuggestion ? formatPrice(popoverSuggestion.price, popoverSuggestion.currency) : undefined}
-        duration={popoverSuggestion ? formatDuration(popoverSuggestion.duration) : undefined}
-        description={popoverSuggestion?.description}
-        actions={popoverSuggestion ? [
-          {
-            label: 'Add to calendar',
-            onClick: () => {
-              handlePopoverClose()
-            },
-            variant: 'primary' as const,
-          },
-        ] : []}
-      />
     </aside>
   )
 }

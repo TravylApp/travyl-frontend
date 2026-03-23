@@ -78,3 +78,10 @@ export type { ActivityRow } from './activityMapper'
 
 export { computeOverlapLayout } from './overlapLayout'
 export type { OverlapLayoutItem } from './overlapLayout'
+
+// Budget utilities
+export { mapActivityToBudgetCategory } from './budgetMapping'
+export { convertToTripCurrency, formatBudgetAmount } from './currency'
+
+// Poll utilities
+export { isVoteKey, userIdFromVoteKey, parseVotesFromYMap, resolveVotes } from './pollHelpers'

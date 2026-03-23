@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
-import { Plus, Plane } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import { Footer, OceanWave } from '@/components/home';
 import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
 
@@ -161,13 +162,9 @@ function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
         return (
           <div key={rowIdx} className="flex gap-3" style={{ height }}>
             {row.map((item, j) => (
-              <TripCard
-                key={item.trip.id}
-                trip={item.trip}
-                index={startIdx + j}
-                className="h-full"
-                style={{ flex: item.weight }}
-              />
+              <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
+                <TripCard trip={item.trip} />
+              </div>
             ))}
           </div>
         );
@@ -198,15 +195,19 @@ function TripsContent() {
 
   if (isLoading && !isError) {
     return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        <OceanWave />
+        <Footer />
       </div>
     );
   }
@@ -327,7 +328,7 @@ function TripsContent() {
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Plane size={32} className="text-gray-400" />
+              <PaperPlane size={32} className="text-gray-400" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800 mb-1">No trips yet</h2>
             <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>

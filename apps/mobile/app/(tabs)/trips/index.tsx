@@ -17,12 +17,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useTrips,
-  MOCK_TRIPS,
   Navy,
   formatDateRange,
-  type MockTripCard,
+  TextStyles,
+  FontSize,
+  FontFamily,
 } from '@travyl/shared';
+import type { MockTripCard } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CreateTripModal } from '@/components/trips/CreateTripModal';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -161,7 +165,7 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
             <View style={{
               backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12,
             }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{duration} days</Text>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{duration} days</Text>
             </View>
             {visibleMembers.length > 0 && (
               <View style={{ flexDirection: 'row' }}>
@@ -174,7 +178,7 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
                     {m.avatar ? (
                       <Image source={{ uri: m.avatar }} style={{ width: 20, height: 20, borderRadius: 10 }} />
                     ) : (
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>{m.name.charAt(0)}</Text>
+                      <Text style={{ ...TextStyles.xs, color: '#fff' }}>{m.name.charAt(0)}</Text>
                     )}
                   </View>
                 ))}
@@ -184,7 +188,7 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
                     backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center',
                     marginLeft: -8,
                   }}>
-                    <Text style={{ fontSize: 9, fontWeight: '600', color: '#fff' }}>+{extraCount}</Text>
+                    <Text style={{ ...TextStyles.xs, color: '#fff' }}>+{extraCount}</Text>
                   </View>
                 )}
               </View>
@@ -199,11 +203,11 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
               alignSelf: 'flex-start', backgroundColor: badge.bg,
               paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginBottom: 6,
             }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{badge.label}</Text>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{badge.label}</Text>
             </View>
           )}
           <Text style={{
-            color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Lustria-Regular',
+            ...TextStyles.subhead, color: '#fff',
             textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
           }} numberOfLines={1}>
             {trip.title}
@@ -211,27 +215,27 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
             <FontAwesome name="map-marker" size={11} color="rgba(255,255,255,0.7)" />
             <Text style={{
-              color: 'rgba(255,255,255,0.9)', fontSize: 12,
+              ...TextStyles.body, color: 'rgba(255,255,255,0.9)',
               textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
             }} numberOfLines={1}>
               {trip.destination}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <FontAwesome name="calendar" size={10} color="rgba(255,255,255,0.6)" />
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap', overflow: 'hidden', maxHeight: 18 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="calendar" size={9} color="rgba(255,255,255,0.6)" />
+              <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.85)' }} numberOfLines={1}>
                 {formatDateRange(trip.start_date, trip.end_date)}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <FontAwesome name="users" size={10} color="rgba(255,255,255,0.6)" />
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{trip.travelers}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="users" size={9} color="rgba(255,255,255,0.6)" />
+              <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.85)' }}>{trip.travelers}</Text>
             </View>
             {trip.budget ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <FontAwesome name="pie-chart" size={10} color="rgba(255,255,255,0.6)" />
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{fmtBudget(trip.budget, trip.currency)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <FontAwesome name="pie-chart" size={9} color="rgba(255,255,255,0.6)" />
+                <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.85)' }} numberOfLines={1}>{fmtBudget(trip.budget, trip.currency)}</Text>
               </View>
             ) : null}
           </View>
@@ -264,7 +268,7 @@ function FeedCard({ item, onPress }: { item: MockTripCard; onPress: () => void }
           {/* Top: duration pill */}
           <View style={{ position: 'absolute', top: 12, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>{duration} days</Text>
+              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{duration} days</Text>
             </View>
           </View>
           {/* Bottom content */}
@@ -274,31 +278,31 @@ function FeedCard({ item, onPress }: { item: MockTripCard; onPress: () => void }
                 alignSelf: 'flex-start', backgroundColor: badge.bg,
                 paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginBottom: 6,
               }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{badge.label}</Text>
+                <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{badge.label}</Text>
               </View>
             )}
-            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Lustria-Regular', marginBottom: 3 }}>
+            <Text style={{ ...TextStyles.title, color: '#fff', marginBottom: 3 }} numberOfLines={1}>
               {item.title}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
               <FontAwesome name="map-marker" size={12} color="rgba(255,255,255,0.7)" />
-              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13 }}>{item.destination}</Text>
+              <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.9)' }}>{item.destination}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome name="calendar" size={11} color="rgba(255,255,255,0.6)" />
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)' }}>
                   {formatDateRange(item.start_date, item.end_date)}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome name="users" size={11} color="rgba(255,255,255,0.6)" />
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>{item.travelers}</Text>
+                <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)' }}>{item.travelers}</Text>
               </View>
               {budget ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <FontAwesome name="pie-chart" size={11} color="rgba(255,255,255,0.6)" />
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>{budget}</Text>
+                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)' }}>{budget}</Text>
                 </View>
               ) : null}
             </View>
@@ -316,8 +320,8 @@ function EmptyState({ onPlan }: { onPlan: () => void }) {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
       <FontAwesome name="plane" size={48} color={colors.textTertiary} />
-      <Text style={{ fontSize: 20, fontWeight: '700', marginTop: 16, color: colors.text }}>No trips yet</Text>
-      <Text style={{ fontSize: 14, marginTop: 6, marginBottom: 24, textAlign: 'center', color: colors.textSecondary }}>
+      <Text style={{ ...TextStyles.title, marginTop: 16, color: colors.text }}>No trips yet</Text>
+      <Text style={{ ...TextStyles.bodyXl, marginTop: 6, marginBottom: 24, textAlign: 'center', color: colors.textSecondary }}>
         Start planning your next adventure!
       </Text>
       <Pressable onPress={onPlan} style={({ pressed }) => ({
@@ -325,7 +329,7 @@ function EmptyState({ onPlan }: { onPlan: () => void }) {
         paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, opacity: pressed ? 0.85 : 1,
       })}>
         <FontAwesome name="plus" size={14} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Plan a Trip</Text>
+        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Plan a Trip</Text>
       </Pressable>
     </View>
   );
@@ -371,6 +375,7 @@ function TripMasonryGrid({ trips, screenWidth }: { trips: MockTripCard[]; screen
 export default function TripsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { data: trips, isLoading } = useTrips();
   const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
@@ -382,10 +387,10 @@ export default function TripsScreen() {
       ? trips.map((t) => ({
           ...t,
           image:
-            MOCK_TRIPS.find((m) => m.id === t.id)?.image ??
+            t.trip_context?.hero_image_url ??
             'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
         }))
-      : MOCK_TRIPS;
+      : [];
 
   const filteredTrips = useMemo(() => {
     let result = displayTrips;
@@ -421,7 +426,8 @@ export default function TripsScreen() {
     return [];
   }, [filteredTrips, statusFilter]);
 
-  const handlePlan = () => router.push('/trip/new' as never);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const handlePlan = () => setPlanModalOpen(true);
 
   const toggleViewMode = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -432,11 +438,11 @@ export default function TripsScreen() {
 
   /* ── Header ── */
   const titleRow = (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, paddingBottom: 10 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: Math.max(insets.top, 16), paddingBottom: 10 }}>
       <View>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text, fontFamily: 'Lustria-Regular' }}>My Trips</Text>
+        <Text style={{ ...TextStyles.headline, color: colors.text }}>My Trips</Text>
         {tripCount > 0 && (
-          <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary, marginTop: 2 }}>
             {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
           </Text>
         )}
@@ -446,7 +452,7 @@ export default function TripsScreen() {
         paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, opacity: pressed ? 0.85 : 1,
       })}>
         <FontAwesome name="plus" size={13} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Plan a Trip</Text>
+        <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Plan a Trip</Text>
       </Pressable>
     </View>
   );
@@ -475,7 +481,7 @@ export default function TripsScreen() {
             }}
           >
             <Text style={{
-              fontSize: 13, fontWeight: '600',
+              ...TextStyles.bodyLgEm,
               color: isActive ? '#fff' : colors.text,
             }}>
               {label}
@@ -501,7 +507,7 @@ export default function TripsScreen() {
           onChangeText={setSearchQuery}
           placeholder="Search trips..."
           placeholderTextColor={colors.textTertiary}
-          style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          style={{ flex: 1, fontSize: FontSize.bodyXl, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
         />
         {searchQuery.length > 0 && (
           <Pressable onPress={() => setSearchQuery('')}>
@@ -526,8 +532,12 @@ export default function TripsScreen() {
   if (!displayTrips.length && !isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ paddingHorizontal: PAD }}>{titleRow}</View>
+        <View style={{ paddingHorizontal: PAD }}>
+          {titleRow}
+          {statusTabs}
+        </View>
         <EmptyState onPlan={handlePlan} />
+        <CreateTripModal visible={planModalOpen} onClose={() => setPlanModalOpen(false)} />
       </View>
     );
   }
@@ -550,7 +560,7 @@ export default function TripsScreen() {
           {pastTrips.length > 0 && (
             <View style={{ marginTop: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textTertiary }}>Past Trips</Text>
+                <Text style={{ ...TextStyles.subhead, color: colors.textTertiary }}>Past Trips</Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
               </View>
               <View style={{ opacity: 0.7 }}>
@@ -563,10 +573,11 @@ export default function TripsScreen() {
           {filteredTrips.length === 0 && (
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
               <FontAwesome name="search" size={36} color={colors.textTertiary} />
-              <Text style={{ fontSize: 15, color: colors.textTertiary, marginTop: 12 }}>No trips match your search</Text>
+              <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>No trips match your search</Text>
             </View>
           )}
         </ScrollView>
+        <CreateTripModal visible={planModalOpen} onClose={() => setPlanModalOpen(false)} />
       </View>
     );
   }
@@ -587,10 +598,11 @@ export default function TripsScreen() {
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
             <FontAwesome name="search" size={36} color={colors.textTertiary} />
-            <Text style={{ fontSize: 15, color: colors.textTertiary, marginTop: 12 }}>No trips match your search</Text>
+            <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>No trips match your search</Text>
           </View>
         }
       />
+      <CreateTripModal visible={planModalOpen} onClose={() => setPlanModalOpen(false)} />
     </View>
   );
 }

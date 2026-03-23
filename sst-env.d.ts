@@ -10,10 +10,6 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
-    "GooglePlacesApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "InteractionBus": {
       "arn": string
       "name": string
@@ -27,13 +23,9 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Dynamo"
     }
-    "SupabaseSecretKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "SupabaseUrl": {
-      "type": "sst.sst.Secret"
-      "value": string
+    "UserInteractions": {
+      "name": string
+      "type": "sst.aws.Dynamo"
     }
   }
 }

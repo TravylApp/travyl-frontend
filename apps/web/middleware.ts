@@ -36,11 +36,13 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // /trip/[id]/* — require authentication
+  // /trip/[id]/* — require authentication (skip in dev if no Supabase configured)
   if (pathname.startsWith('/trip/') && !session) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+    if (process.env.NODE_ENV !== 'development') {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
   }
 
   return res

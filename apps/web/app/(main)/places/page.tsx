@@ -19,7 +19,10 @@ import {
   LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { MOCK_PLACES, groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
+import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
+import type { PlaceItem as PlaceItemType } from '@travyl/shared';
+
+const MOCK_PLACES: PlaceItemType[] = [];
 import type { PlaceItem } from '@travyl/shared';
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
@@ -213,7 +216,7 @@ export default function PlacesPage() {
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       <div className="flex-1">
       {/* Sticky Header */}
-      <div className="sticky top-11 z-40 bg-white/95 backdrop-blur-md">
+      <div className="sticky top-11 z-40 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-md">
         {/* Row 1: Tabs + Search */}
         <div className="max-w-7xl mx-auto px-4 pt-2 pb-0">
           <div className="flex items-center gap-2">
@@ -225,8 +228,8 @@ export default function PlacesPage() {
                     onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
                     className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
                       activeTab === key
-                        ? 'border-[#1e3a5f] text-[#1e3a5f] font-semibold'
-                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                        ? 'border-[#1e3a5f] text-[#1e3a5f] dark:border-[#60a5fa] dark:text-[#60a5fa] font-semibold'
+                        : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                     }`}
                   >
                     <Icon size={13} />
@@ -242,7 +245,7 @@ export default function PlacesPage() {
                 placeholder="Search places..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-[11px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
+                className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
               />
               {searchQuery && (
                 <button
@@ -256,7 +259,7 @@ export default function PlacesPage() {
           </div>
         </div>
 
-        <div className="h-px bg-gray-100" />
+        <div className="h-px bg-gray-100 dark:bg-white/10" />
 
         {/* Row 2: Controls */}
         <div className="max-w-7xl mx-auto px-4 py-1.5">
@@ -269,7 +272,7 @@ export default function PlacesPage() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all shrink-0 ${
                     showFilters || activeSubcategory
                       ? 'bg-[#1e3a5f] text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/15'
                   }`}
                 >
                   <span>Filters</span>
@@ -304,7 +307,7 @@ export default function PlacesPage() {
                       className={`px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap transition-colors shrink-0 ${
                         !activeSubcategory
                           ? 'bg-[#1e3a5f] text-white font-medium'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
                       }`}
                     >
                       All
@@ -320,7 +323,7 @@ export default function PlacesPage() {
                         className={`px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap transition-colors shrink-0 ${
                           activeSubcategory === label
                             ? 'bg-[#1e3a5f] text-white font-medium'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
                         }`}
                       >
                         {label}
@@ -359,7 +362,7 @@ export default function PlacesPage() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortKey)}
-                    className="appearance-none pl-6 pr-5 py-1.5 bg-gray-100 rounded-full text-[10px] text-gray-600 focus:outline-none cursor-pointer hover:bg-gray-200 transition-colors"
+                    className="appearance-none pl-6 pr-5 py-1.5 bg-gray-100 dark:bg-white/10 rounded-full text-[10px] text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                   >
                     {SORT_OPTIONS.map((o) => (
                       <option key={o.key} value={o.key}>{o.label}</option>
@@ -381,7 +384,7 @@ export default function PlacesPage() {
                   className={`shrink-0 p-1.5 rounded-full transition-colors overflow-hidden ${
                     showPostcard
                       ? 'bg-[#1e3a5f]/10 text-[#1e3a5f]'
-                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
                   }`}
                   title={showPostcard ? 'Card view' : 'Expanded view'}
                 >
@@ -398,7 +401,7 @@ export default function PlacesPage() {
                   animate={{ width: 'auto', opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="hidden md:flex items-center bg-gray-100 rounded-full p-0.5 shrink-0 overflow-hidden"
+                  className="hidden md:flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-0.5 shrink-0 overflow-hidden"
                 >
                   {[2, 3, 4].map((n) => (
                     <button
@@ -409,7 +412,7 @@ export default function PlacesPage() {
                       {columnCount === n && (
                         <motion.div
                           layoutId="colToggle"
-                          className="absolute inset-0 bg-white rounded-full shadow-sm"
+                          className="absolute inset-0 bg-white dark:bg-white/20 rounded-full shadow-sm"
                           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                         />
                       )}
@@ -423,7 +426,7 @@ export default function PlacesPage() {
             </AnimatePresence>
 
             {/* View mode toggle */}
-            <div className="flex items-center bg-gray-100 rounded-full p-0.5 shrink-0">
+            <div className="flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-0.5 shrink-0">
               {(['grid', 'stack'] as const).map((mode) => (
                 <button
                   key={mode}
@@ -434,7 +437,7 @@ export default function PlacesPage() {
                   {viewMode === mode && (
                     <motion.div
                       layoutId="viewToggle"
-                      className="absolute inset-0 bg-white rounded-full shadow-sm"
+                      className="absolute inset-0 bg-white dark:bg-white/20 rounded-full shadow-sm"
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     />
                   )}

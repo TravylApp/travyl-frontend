@@ -56,7 +56,7 @@ export function MiniCalendar({
   return (
     <div className="p-2 text-xs select-none">
       {/* Month label */}
-      <div className="text-center text-[var(--cal-text-secondary)] font-medium mb-1.5">
+      <div className="text-center text-[var(--cal-text-secondary)] font-serif font-normal tracking-wide mb-1.5">
         {MONTH_NAMES[month]} {year}
       </div>
 

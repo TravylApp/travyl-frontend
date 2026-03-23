@@ -9,7 +9,7 @@ import {
   Utensils, Camera,
   Phone, ShieldAlert, Ambulance,
 } from 'lucide-react';
-import { useItineraryScreen, MOCK_TRIP } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
 
 // ─── Collapsible Section ────────────────────────────────────────
 
@@ -244,17 +244,13 @@ const SAFETY_TIPS = [
 
 export default function InfoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
-  const trip = MOCK_TRIP;
-
-  const startDate = new Date(trip.start_date + 'T00:00:00');
-  const endDate = new Date(trip.end_date + 'T00:00:00');
-  const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const { isLoading, trip: liveTrip } = useItineraryScreen(id);
+  const trip = liveTrip;
 
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
-  if (isLoading) {
+  if (isLoading || !trip) {
     return (
       <div className="space-y-4">
         <div className="h-32 rounded-xl bg-gray-200 animate-pulse" />
@@ -263,6 +259,10 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
       </div>
     );
   }
+
+  const startDate = new Date(trip.start_date + 'T00:00:00');
+  const endDate = new Date(trip.end_date + 'T00:00:00');
+  const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
   return (
     <div className="space-y-3">

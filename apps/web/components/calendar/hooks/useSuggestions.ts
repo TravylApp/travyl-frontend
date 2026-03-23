@@ -3,7 +3,6 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@travyl/shared'
 import type { SuggestionCard } from '../types'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
@@ -52,20 +51,27 @@ interface UseSuggestionsReturn {
 }
 
 async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
-  if (!token) throw new Error('Not authenticated')
+  const params = new URLSearchParams({ destination }).toString()
 
-  const res = await fetch(`${API_URL}/suggest?destination=${encodeURIComponent(destination)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  if (!API_URL) return []
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch suggestions (${res.status})`)
+  try {
+    const { supabase } = await import('@travyl/shared')
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+
+    const url = `${API_URL}/api/places/nearby?${params}`
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    const res = await fetch(url, { headers })
+    if (!res.ok) return []
+
+    const data = await res.json()
+    return Array.isArray(data) ? data : data.suggestions ?? data.places ?? []
+  } catch {
+    return []
   }
-
-  const data = await res.json()
-  return data.suggestions
 }
 
 export function useSuggestions({

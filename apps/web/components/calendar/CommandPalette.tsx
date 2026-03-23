@@ -169,7 +169,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
                 if (!cmds?.length) return null
                 return (
                   <div key={group}>
-                    <div className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-[#4a7ab5] uppercase tracking-wider">
+                    <div className="px-3 py-1.5 text-[11px] font-medium text-gray-400 dark:text-[#4a7ab5] uppercase tracking-[0.08em]">
                       {GROUP_LABELS[group]}
                     </div>
                     {cmds.map((cmd) => {

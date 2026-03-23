@@ -10,10 +10,14 @@ interface WeekViewProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onClickEvent: (id: string, anchorEl: HTMLElement) => void
+  onSelectEvent: (id: string) => void
   onClickDayHeader?: (dayIndex: number) => void
   onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
+  marqueeSelectedIds?: Set<string>
+  gridRef?: React.RefObject<HTMLDivElement | null>
+  marqueeOverlay?: React.ReactNode
+  onShiftClickEvent?: (id: string) => void
 }
 
 export function WeekView({
@@ -23,15 +27,25 @@ export function WeekView({
   selectedEventId = null,
   timeRange,
   tripStartDate,
-  onClickEvent,
+  onSelectEvent,
   onClickDayHeader,
   onDeselect,
   pendingDrop = null,
+  marqueeSelectedIds,
+  gridRef,
+  marqueeOverlay,
+  onShiftClickEvent,
 }: WeekViewProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      onSelectEvent('')
+    }
+  }
+
   return (
-    <div role="grid" className="flex flex-1 min-w-0">
+    <div role="grid" className="flex flex-1 min-w-0" onKeyDown={handleKeyDown}>
       <TimeGutter timeRange={timeRange} />
-      <div className="flex flex-1 min-w-0">
+      <div ref={gridRef} className="flex flex-1 min-w-0 relative">
         {days.map(({ dayIndex, label }) => {
           const dayActivities = activities.filter((a) => a.day === dayIndex)
           return (
@@ -44,15 +58,18 @@ export function WeekView({
               selectedEventId={selectedEventId}
               timeRange={timeRange}
               tripStartDate={tripStartDate}
-              onClickEvent={onClickEvent}
+              onSelectEvent={onSelectEvent}
               onClickDayHeader={
                 onClickDayHeader ? () => onClickDayHeader(dayIndex) : undefined
               }
               onDeselect={onDeselect}
               pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+              marqueeSelectedIds={marqueeSelectedIds}
+              onShiftClickEvent={onShiftClickEvent}
             />
           )
         })}
+        {marqueeOverlay}
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }
 
     const body: InteractRequest = JSON.parse(event.body)
-    const { suggestionId, action, tripId } = body
+    const { suggestionId, action, tripId, category } = body
 
     if (!suggestionId || !action || !tripId) {
       return { statusCode: 400, body: JSON.stringify({ error: 'suggestionId, action, tripId required' }) }
@@ -32,6 +32,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
               userId,
               suggestionId,
               action,
+              category,
               tripId,
               timestamp: new Date().toISOString(),
             }),

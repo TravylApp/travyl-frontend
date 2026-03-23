@@ -25,6 +25,8 @@ interface UseCalendarDndOptions {
   onMoveActivity: (id: string, newDay: number, newStartHour: number) => void
   onAddFromSuggestion: (activity: CalendarActivity, suggestionId: string) => void
   onMoveNote?: (noteId: string, day: number, hour: number) => void
+  onGroupMove?: (dayDelta: number, hourDelta: number) => void
+  marqueeSelectedIds?: Set<string>
   /** Ref to the scrollable grid container — used to compute absolute drop position for suggestions */
   scrollRef: React.RefObject<HTMLDivElement | null>
   /** Start hour of the visible time range (e.g., 7 for 7 AM) */
@@ -35,6 +37,8 @@ export function useCalendarDnd({
   onMoveActivity,
   onAddFromSuggestion,
   onMoveNote,
+  onGroupMove,
+  marqueeSelectedIds,
   scrollRef,
   timeRangeStartHour,
 }: UseCalendarDndOptions) {
@@ -159,7 +163,17 @@ export function useCalendarDnd({
         const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
         const currentStartHour = dragData.activity.startHour ?? 0
         const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
-        onMoveActivity(String(active.id), newDay, newStartHour)
+
+        if (marqueeSelectedIds && marqueeSelectedIds.has(String(active.id)) && marqueeSelectedIds.size > 1) {
+          // Group move — compute delta and apply to all selected
+          const dayDelta = newDay - dragData.activity.day
+          const hourDelta = newStartHour - currentStartHour
+          if (onGroupMove) {
+            onGroupMove(dayDelta, hourDelta)
+          }
+        } else {
+          onMoveActivity(String(active.id), newDay, newStartHour)
+        }
       } else if (dragData.type === 'suggestion') {
         // New activity from suggestion — compute absolute drop position on grid
         const overRect = over.rect
@@ -189,7 +203,7 @@ export function useCalendarDnd({
         onMoveNote(dragData.note.id, newDay, targetHour)
       }
     },
-    [onMoveActivity, onAddFromSuggestion, onMoveNote, scrollRef, timeRangeStartHour],
+    [onMoveActivity, onAddFromSuggestion, onMoveNote, onGroupMove, marqueeSelectedIds, scrollRef, timeRangeStartHour],
   )
 
   return {

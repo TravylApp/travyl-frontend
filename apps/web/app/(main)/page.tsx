@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
-import { Search, ArrowRight, MapPin, Calendar, Users } from "lucide-react";
+import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, EASE_OUT_EXPO } from "@travyl/shared";
 import type { PlaceItem } from "@travyl/shared";
 import { PaperPlane } from "@/components/icons/PaperPlane";
@@ -23,6 +23,79 @@ import {
   ParallaxQuoteDivider,
 } from "@/components/home";
 import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
+import { memo } from "react";
+
+const PLACEHOLDER_PHRASES = [
+  "7 days in Paris with my partner...",
+  "A week in Tokyo exploring street food...",
+  "Family beach vacation in Bali...",
+  "Weekend getaway to the Swiss Alps...",
+  "Solo backpacking through Southeast Asia...",
+];
+
+const SUBTITLE_PHRASES = [
+  "Type your dream trip and let us plan it for you",
+  "Discover hidden gems around the world",
+  "Your next adventure starts with a single search",
+  "From idea to itinerary in seconds",
+  "Tell us where you want to go",
+];
+
+const CyclingSubtitle = memo(function CyclingSubtitle() {
+  const text = useCyclingPlaceholder(SUBTITLE_PHRASES, 40, 2500, 25);
+  return <>{text}<span className="animate-pulse">|</span></>;
+});
+
+const HeroSearchInput = memo(function HeroSearchInput({
+  tripQuery,
+  setTripQuery,
+  onSearch,
+  staticPlaceholder,
+  inputRef,
+}: {
+  tripQuery: string;
+  setTripQuery: (v: string) => void;
+  onSearch: () => void;
+  staticPlaceholder?: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  return (
+    <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
+      <Search className="text-gray-400 shrink-0" size={18} />
+      <input
+        ref={inputRef}
+        type="text"
+        value={tripQuery}
+        onChange={(e) => setTripQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onSearch()}
+        placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
+        className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
+      />
+    </div>
+  );
+});
+
+// ─── Conversational follow-up questions ─────────────────────
+const TRIP_QUESTIONS = [
+  { key: "destination", placeholder: "Where do you want to go?" },
+  { key: "duration", placeholder: "How many days?" },
+  { key: "companions", placeholder: "Who's coming along?" },
+  { key: "vibe", placeholder: "What's the vibe? (foodie, adventure, relaxing...)" },
+  { key: "budget", placeholder: "Any budget range? (budget, mid-range, luxury)" },
+] as const;
+
+type TripAnswers = Record<string, string>;
+
+function buildChainSentence(answers: TripAnswers): string {
+  const parts: string[] = [];
+  if (answers.duration) parts.push(answers.duration);
+  if (answers.destination) parts.push(`in ${answers.destination}`);
+  if (answers.companions) parts.push(`with ${answers.companions}`);
+  if (answers.vibe) parts.push(answers.vibe);
+  if (answers.budget) parts.push(answers.budget.toLowerCase().includes("budget") ? answers.budget : `${answers.budget} budget`);
+  return parts.join(" · ") || "";
+}
 
 export default function Home() {
   const router = useRouter();
@@ -43,25 +116,17 @@ export default function Home() {
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const PLACEHOLDER_PHRASES = [
-    "7 days in Paris with my partner...",
-    "A week in Tokyo exploring street food...",
-    "Family beach vacation in Bali...",
-    "Weekend getaway to the Swiss Alps...",
-    "Solo backpacking through Southeast Asia...",
-  ];
-  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  // Conversational flow state
+  const [convStep, setConvStep] = useState(-1); // -1 = not started, 0-4 = questions
+  const [answers, setAnswers] = useState<TripAnswers>({});
+  const isConversing = convStep >= 0 && convStep < TRIP_QUESTIONS.length;
+  const isComplete = convStep >= TRIP_QUESTIONS.length && !showTakeoff;
+  const chainSentence = buildChainSentence(answers);
 
-  // Cycling subtitle phrases
-  const SUBTITLE_PHRASES = [
-    "Type your dream trip and let us plan it for you",
-    "Discover hidden gems around the world",
-    "Your next adventure starts with a single search",
-    "From idea to itinerary in seconds",
-    "Tell us where you want to go",
-  ];
-  const cyclingSubtitle = useCyclingPlaceholder(SUBTITLE_PHRASES, 40, 2500, 25);
+  // Cycling placeholders live in isolated memo components above
+  // to avoid re-rendering the entire page every ~25ms
 
   // Cycling suggestion pills
   const allSuggestions = heroConfig?.suggestions?.length
@@ -130,11 +195,127 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
+  const launchTakeoff = useCallback((query: string) => {
+    setTripQuery(query);
+    setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+    setShowTakeoff(true);
+  }, [setTripQuery]);
+
+  const handleConvReset = useCallback(() => {
+    setConvStep(-1);
+    setAnswers({});
+    setTripQuery("");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [setTripQuery]);
+
   const onSearch = () => {
+    const val = tripQuery.trim();
+    if (!val) return;
+
+    // Not conversing yet — parse the input and skip already-answered questions
+    if (convStep === -1) {
+      const parsed: TripAnswers = {};
+      const lower = val.toLowerCase();
+
+      // Extract destination (after "in" or "to")
+      const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]+)/i);
+      if (destMatch) {
+        parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
+      } else {
+        // Strip common prefixes and use the rest as destination
+        const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore)\s*/i, '').trim();
+        parsed.destination = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+
+      // Extract duration
+      const durMatch = lower.match(/(\d+)\s*(?:day|night|week)s?/);
+      if (durMatch) {
+        const num = parseInt(durMatch[1]);
+        const unit = durMatch[0].match(/day|night|week/)![0];
+        parsed.duration = `${num} ${unit}${num !== 1 ? 's' : ''}`;
+      } else if (lower.includes("weekend")) parsed.duration = "weekend";
+
+      // Extract companions
+      if (lower.match(/family|kids|children/)) parsed.companions = "family";
+      else if (lower.match(/partner|couple|wife|husband|girlfriend|boyfriend/)) parsed.companions = "partner";
+      else if (lower.match(/friends|group|squad/)) parsed.companions = "friends";
+      else if (lower.match(/solo|alone|myself/)) parsed.companions = "solo";
+
+      // Extract vibe
+      if (lower.match(/food|foodie|culinary/)) parsed.vibe = "foodie";
+      else if (lower.match(/adventure|hiking|trek/)) parsed.vibe = "adventure";
+      else if (lower.match(/relax|chill|spa|beach/)) parsed.vibe = "relaxing";
+      else if (lower.match(/culture|museum|art|history/)) parsed.vibe = "culture";
+      else if (lower.match(/romantic|honeymoon/)) parsed.vibe = "romantic";
+
+      // Extract budget
+      if (lower.match(/budget|cheap|backpack/)) parsed.budget = "budget";
+      else if (lower.match(/luxury|premium|high.end/)) parsed.budget = "luxury";
+
+      setAnswers(parsed);
+
+      // Find the first unanswered question
+      const firstUnanswered = TRIP_QUESTIONS.findIndex((q) => !parsed[q.key]);
+      if (firstUnanswered === -1) {
+        // All answered from input — show summary then launch
+        const fullQuery = buildChainSentence(parsed);
+        setConvStep(TRIP_QUESTIONS.length);
+        setTripQuery(fullQuery);
+        setTimeout(() => launchTakeoff(fullQuery), 1500);
+      } else {
+        setConvStep(firstUnanswered);
+        setTripQuery("");
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+      return;
+    }
+
+    // In conversation — normalize and save answer, then advance
+    if (isConversing) {
+      const currentQ = TRIP_QUESTIONS[convStep];
+      let normalized = val;
+      if (currentQ.key === "duration") {
+        // "5" → "5 days", "2" → "2 days", but leave "weekend" / "1 week" as-is
+        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} days`;
+        else if (!/day|night|week/i.test(val)) normalized = `${val.trim()} days`;
+      } else if (currentQ.key === "companions") {
+        // "2" → "2 people", but leave "family" / "partner" as-is
+        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} people`;
+      } else if (currentQ.key === "destination") {
+        normalized = val.trim().replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+      const newAnswers = { ...answers, [currentQ.key]: normalized };
+      setAnswers(newAnswers);
+      setTripQuery("");
+
+      // Find next unanswered question
+      const nextUnanswered = TRIP_QUESTIONS.findIndex((q, i) => i > convStep && !newAnswers[q.key]);
+      if (nextUnanswered === -1) {
+        // All answered — show summary, then launch after a moment
+        setConvStep(TRIP_QUESTIONS.length);
+        const fullQuery = buildChainSentence(newAnswers);
+        setTripQuery(fullQuery);
+        setTimeout(() => launchTakeoff(fullQuery), 1500);
+      } else {
+        setConvStep(nextUnanswered);
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+      return;
+    }
+
+    // Conversation complete or fallback — just launch
     if (handleSearch()) {
       setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
     }
+  };
+
+  const handleSkipToLaunch = () => {
+    const fullQuery = buildChainSentence(answers);
+    if (!fullQuery.trim()) return;
+    setConvStep(TRIP_QUESTIONS.length);
+    setTripQuery(fullQuery);
+    setTimeout(() => launchTakeoff(fullQuery), 1500);
   };
 
   return (
@@ -175,7 +356,7 @@ export default function Home() {
             {heroConfig?.subtitle ? (
               <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
             ) : (
-              <>{cyclingSubtitle}<span className="animate-pulse">|</span></>
+              <CyclingSubtitle />
             )}
           </motion.p>
 
@@ -186,19 +367,106 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.6, ease: EASE_OUT_EXPO }}
             className="max-w-2xl mx-auto"
           >
+            {/* Chain sentence — builds above input as user answers questions */}
+            <AnimatePresence>
+              {isConversing && chainSentence && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: "auto" }}
+                  exit={{ opacity: 0, y: -4, height: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="mb-3 overflow-hidden"
+                >
+                  <div className="bg-black/30 backdrop-blur-md rounded-full px-5 py-2.5 border border-white/15 flex items-center justify-between gap-3 shadow-lg">
+                    <p className="text-sm text-white truncate font-semibold drop-shadow-sm">{chainSentence}</p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Step dots */}
+                      {TRIP_QUESTIONS.map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                          style={{
+                            background: i < convStep ? "rgba(255,255,255,0.7)" : i === convStep ? "white" : "rgba(255,255,255,0.2)",
+                          }}
+                        />
+                      ))}
+                      <button
+                        onClick={handleSkipToLaunch}
+                        className="ml-1.5 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold transition-colors"
+                      >
+                        Plan it
+                      </button>
+                      <button
+                        onClick={handleConvReset}
+                        className="p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white/80 transition-colors"
+                        title="Start over"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Final summary before takeoff */}
+            <AnimatePresence>
+              {isComplete && chainSentence && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.05 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="mb-3"
+                >
+                  <div className="bg-black/30 backdrop-blur-md rounded-full px-6 py-3 border border-white/15 flex items-center justify-center gap-3 shadow-lg">
+                    <p className="text-white text-sm font-bold drop-shadow-sm">{chainSentence}</p>
+                    <div className="flex gap-1 shrink-0">
+                      {[0, 1, 2].map((i) => (
+                        <motion.div
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-white/60"
+                          animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.3, 1] }}
+                          transition={{ duration: 0.8, delay: i * 0.2, repeat: Infinity }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              {/* Current question label when conversing */}
+              <AnimatePresence>
+                {isConversing && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pt-2.5 pb-0 flex items-center gap-2">
+                      <Sparkles size={12} className="text-[#1e3a5f]" />
+                      <span className="text-[11px] text-[#1e3a5f] font-semibold">
+                        {TRIP_QUESTIONS[convStep].placeholder}
+                      </span>
+                      <span className="ml-auto text-[10px] text-gray-400 font-medium">
+                        {convStep + 1}/{TRIP_QUESTIONS.length}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="flex items-center p-1.5 gap-2">
-                <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
-                  <Search className="text-gray-400 shrink-0" size={18} />
-                  <input
-                    type="text"
-                    value={tripQuery}
-                    onChange={(e) => setTripQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && onSearch()}
-                    placeholder={tripQuery ? "" : (heroConfig?.search_placeholder ?? typingPlaceholder)}
-                    className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
-                  />
-                </div>
+                <HeroSearchInput
+                  tripQuery={tripQuery}
+                  setTripQuery={setTripQuery}
+                  onSearch={onSearch}
+                  staticPlaceholder={isConversing ? TRIP_QUESTIONS[convStep].placeholder : heroConfig?.search_placeholder}
+                  inputRef={inputRef}
+                />
                 <button
                   ref={sendButtonRef}
                   onClick={onSearch}
@@ -209,29 +477,31 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Suggestion Pills — cycling groups */}
-            <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={pillGroup}
-                  className="flex justify-center gap-1.5 sm:gap-2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  {visiblePills.map((s) => (
-                    <motion.button
-                      key={s.id}
-                      onClick={() => setTripQuery(s.label)}
-                      className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"
-                    >
-                      {s.label}
-                    </motion.button>
-                  ))}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+            {/* Suggestion Pills — only show before conversation starts */}
+            {convStep === -1 && (
+              <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={pillGroup}
+                    className="flex justify-center gap-1.5 sm:gap-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    {visiblePills.map((s) => (
+                      <motion.button
+                        key={s.id}
+                        onClick={() => setTripQuery(s.label)}
+                        className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"
+                      >
+                        {s.label}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       </section>

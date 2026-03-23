@@ -1,17 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
 import { getCyclicGradient } from '../config/homeData';
 import { useExploreData } from './useExploreData';
-import { MOCK_PLACES } from '../config/mockPlacesData';
 import type { PlaceItem } from '../types';
 
-// Group MOCK_PLACES by type for fallback rows
-const FALLBACK_ROWS = [
-  { title: 'Popular Destinations', items: MOCK_PLACES.filter(p => p.type === 'destination').slice(0, 8) },
-  { title: 'Famous Attractions', items: MOCK_PLACES.filter(p => p.type === 'attraction').slice(0, 8) },
-  { title: 'Top Restaurants', items: MOCK_PLACES.filter(p => p.type === 'restaurant').slice(0, 8) },
-  { title: 'Hot Experiences', items: MOCK_PLACES.filter(p => p.type === 'experience').slice(0, 8) },
-  { title: 'Upcoming Events', items: MOCK_PLACES.filter(p => p.type === 'event').slice(0, 8) },
-];
+const FALLBACK_ROWS: { title: string; items: PlaceItem[] }[] = [];
 
 export function useExploreRows() {
   const { data: rawRows, isLoading } = useExploreData();

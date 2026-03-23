@@ -1,4 +1,7 @@
+import { userInteractions } from './storage'
+
 export const bus = new sst.aws.Bus('InteractionBus')
 
-// Subscriber: store interaction events (wired up later)
-// bus.subscribe('services/handle-interaction.handler')
+bus.subscribe('services/processInteraction.handler', {
+  link: [userInteractions],
+})

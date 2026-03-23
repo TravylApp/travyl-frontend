@@ -119,21 +119,21 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
   if (isLoading) return <ActivitiesSkeleton />;
 
   return (
-    <div className="space-y-3">
+    <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
       {/* View Mode Toggle */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-gray-200 dark:border-white/[0.08] px-4 pt-3">
         <button
           onClick={() => setViewMode('booked')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-medium transition-all border-b-2 ${
             viewMode === 'booked'
               ? 'border-current'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
           style={viewMode === 'booked' ? { color: ACCENT } : undefined}
         >
           <CalendarCheck size={14} />
           Booked
-          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: viewMode === 'booked' ? ACCENT_BG_08 : '#f3f4f6', color: viewMode === 'booked' ? ACCENT : '#6b7280' }}>
+          <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${!viewMode || viewMode !== 'booked' ? 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400' : ''}`} style={viewMode === 'booked' ? { backgroundColor: ACCENT_BG_08, color: ACCENT } : undefined}>
             {bookedItems.length}
           </span>
         </button>
@@ -142,20 +142,20 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-medium transition-all border-b-2 ${
             viewMode === 'discover'
               ? 'border-current'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
           style={viewMode === 'discover' ? { color: ACCENT } : undefined}
         >
           <Search size={14} />
           Discover
-          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: viewMode === 'discover' ? ACCENT_BG_08 : '#f3f4f6', color: viewMode === 'discover' ? ACCENT : '#6b7280' }}>
+          <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${viewMode !== 'discover' ? 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400' : ''}`} style={viewMode === 'discover' ? { backgroundColor: ACCENT_BG_08, color: ACCENT } : undefined}>
             {discoverItems.length}
           </span>
         </button>
       </div>
 
       {/* Search Bar -- always visible */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-4">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -163,7 +163,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
+            className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent"
             style={{ '--tw-ring-color': ACCENT_RING } as React.CSSProperties}
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -196,7 +196,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4 shadow-sm">
+        <div className="mx-4 bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
           <div>
             <div className="text-[11px] text-gray-500 uppercase tracking-wider mb-2">Minimum Rating</div>
             <div className="flex gap-2">
@@ -224,8 +224,8 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
       )}
 
       {/* Category Tabs (underline style) */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm">
-      <div className="flex gap-0.5 overflow-x-auto pb-0 -mx-1 px-1 scrollbar-hide border-b border-gray-100">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-sm px-4">
+      <div className="flex gap-0.5 overflow-x-auto pb-0 scrollbar-hide border-b border-gray-100 dark:border-white/[0.06]">
         {ACTIVITY_CATEGORIES.map((f) => {
           const count = sourceItems.filter((i) => f === 'All' || i.category === f).length;
           if (count === 0 && f !== 'All') return null;
@@ -236,13 +236,13 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
               className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all ${
                 categoryFilter === f
                   ? 'font-semibold border-current'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-200'
               }`}
               style={categoryFilter === f ? { color: ACCENT } : undefined}
             >
               {categoryIcons[f]}
               <span>{f}</span>
-              <span className={`text-[10px] ${categoryFilter === f ? 'opacity-60' : 'text-gray-400'}`}>
+              <span className={`text-[10px] ${categoryFilter === f ? 'opacity-60' : 'text-gray-400 dark:text-gray-500'}`}>
                 {f === 'All' ? sourceItems.length : count}
               </span>
             </button>
@@ -279,6 +279,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
       )}
 
       {/* Masonry Grid */}
+      <div className="px-4 pb-4">
       <div
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l40 40M40 0L0 40' stroke='%23000' stroke-width='0.3' opacity='0.03'/%3E%3C/svg%3E")`,
@@ -287,10 +288,10 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
         <AnimatePresence mode="wait">
           <motion.div
             key={`${viewMode}-${categoryFilter}-${activitySubFilter}-${searchQuery}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
             {displayItems.length > 0 ? (
               <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 520: 2, 900: 3 }}>
@@ -321,6 +322,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
             )}
           </motion.div>
         </AnimatePresence>
+      </div>
       </div>
 
       {selectedIndex !== null && (

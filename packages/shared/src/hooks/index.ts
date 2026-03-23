@@ -22,3 +22,7 @@ export { useTripActions } from './useTripActions';
 export { useSimilarPlaces, getSimilarPlaces } from './useSimilarPlaces';
 export { useCollaborators } from './useCollaborators';
 export { useTripNotes } from './useTripNotes';
+export { useExchangeRates } from './useExchangeRates';
+export { useTripBudget } from './useTripBudget';
+export { usePackingList } from './usePackingList';
+export { usePackingSuggestions } from './usePackingSuggestions';

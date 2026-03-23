@@ -10,16 +10,19 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Gray, Navy } from '@travyl/shared';
+import { useExploreRows, Navy } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { PlaceCard } from '@/components/PlaceCard';
 
 interface ExploreRowProps {
   row: ReturnType<typeof useExploreRows>['rows'][number];
   rowIndex: number;
   onToggle: () => void;
+  onPlacePress?: (place: import('@travyl/shared').PlaceItem) => void;
 }
 
-export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
+export function ExploreRow({ row, rowIndex, onToggle, onPlacePress }: ExploreRowProps) {
+  const colors = useThemeColors();
   const chevronRotation = useSharedValue(row.isExpanded ? 180 : 0);
   const pressed = useSharedValue(0);
 
@@ -100,9 +103,9 @@ export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
             style={{
               marginTop: 8,
               borderRadius: 14,
-              backgroundColor: '#fff',
+              backgroundColor: colors.cardBackground,
               borderWidth: 1,
-              borderColor: Gray[100],
+              borderColor: colors.border,
               padding: 10,
             }}
           >
@@ -119,7 +122,7 @@ export function ExploreRow({ row, rowIndex, onToggle }: ExploreRowProps) {
                   size="compact"
                   isFav={false}
                   onToggleFav={() => {}}
-                  onPress={() => {}}
+                  onPress={() => onPlacePress?.(item)}
                 />
               ))}
             </ScrollView>

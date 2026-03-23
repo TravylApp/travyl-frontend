@@ -8,8 +8,8 @@ import {
   useMosaicTiles,
   TILE_CATEGORY_GRADIENTS,
   TILE_CATEGORY_COLORS,
-  Gray,
 } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import type { MosaicTile, TileCategory } from '@travyl/shared';
 import { TileFadeIn } from './TileFadeIn';
 import { MosaicTile as Tile } from './MosaicTile';
@@ -39,6 +39,7 @@ interface MosaicProps {
 }
 
 export function TravelMosaic({ scrollY }: MosaicProps) {
+  const colors = useThemeColors();
   const { width, height: screenH } = useWindowDimensions();
   const contentWidth = width - PADDING * 2;
   const containerY = useSharedValue(99999);
@@ -74,7 +75,7 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
         style={{
           fontSize: 20,
           fontWeight: '700',
-          color: Gray[900],
+          color: colors.text,
           textAlign: 'center',
           marginBottom: 24,
         }}

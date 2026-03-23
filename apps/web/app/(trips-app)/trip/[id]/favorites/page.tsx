@@ -5,7 +5,11 @@ import {
   Heart, MapPin, Star, Camera, UtensilsCrossed, Building2, Compass,
   Image as ImageIcon,
 } from 'lucide-react';
-import { useItineraryScreen, MOCK_DISCOVER_ACTIVITIES, MOCK_DISCOVER_RESTAURANTS } from '@travyl/shared';
+import { useItineraryScreen } from '@travyl/shared';
+import type { DiscoverItem as DiscoverItemType } from '@travyl/shared';
+
+const MOCK_DISCOVER_ACTIVITIES: DiscoverItemType[] = [];
+const MOCK_DISCOVER_RESTAURANTS: DiscoverItemType[] = [];
 import type { DiscoverItem } from '@travyl/shared';
 import { SplitScreenModal } from '@/components/itinerary';
 

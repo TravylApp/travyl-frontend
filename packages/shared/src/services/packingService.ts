@@ -1,0 +1,62 @@
+import { supabase } from './supabase'
+import type { DbPackingItem, PackingAuditEntry, PackingCategory, PackingSuggestion } from '../types'
+
+export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
+  const { data, error } = await supabase
+    .from('packing_items')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('category')
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
+  const { data, error } = await supabase
+    .from('packing_audit_log')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function insertPackingItem(tripId: string, userId: string, name: string, category: PackingCategory, sortOrder: number): Promise<DbPackingItem> {
+  const { data, error } = await supabase.from('packing_items').insert({ trip_id: tripId, user_id: userId, name, category, sort_order: sortOrder }).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updatePackingItemPacked(itemId: string, isPacked: boolean, packedBy: string | null): Promise<void> {
+  const { error } = await supabase.from('packing_items').update({ is_packed: isPacked, packed_by: isPacked ? packedBy : null, packed_at: isPacked ? new Date().toISOString() : null }).eq('id', itemId)
+  if (error) throw error
+}
+
+export async function deletePackingItem(itemId: string): Promise<void> {
+  const { error } = await supabase.from('packing_items').delete().eq('id', itemId)
+  if (error) throw error
+}
+
+export async function fetchPackingSuggestions(tripId: string): Promise<PackingSuggestion[]> {
+  const { data, error } = await supabase
+    .from('packing_suggestions')
+    .select('*')
+    .eq('trip_id', tripId)
+    .eq('status', 'pending')
+    .order('category')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function updateSuggestionStatus(suggestionId: string, status: 'accepted' | 'dismissed'): Promise<void> {
+  const { error } = await supabase.from('packing_suggestions').update({ status }).eq('id', suggestionId)
+  if (error) throw error
+}
+
+export async function dismissAllSuggestions(tripId: string): Promise<void> {
+  const { error } = await supabase.from('packing_suggestions').update({ status: 'dismissed' }).eq('trip_id', tripId).eq('status', 'pending')
+  if (error) throw error
+}

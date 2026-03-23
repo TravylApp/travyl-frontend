@@ -4,10 +4,6 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
-import {
-  MOCK_FLIGHTS,
-  MOCK_HOTELS,
-} from '@travyl/shared/config/mockItineraryData'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
@@ -22,6 +18,8 @@ import { TripNavbar } from './TripNavbar'
 import { CommandPalette } from './CommandPalette'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useMarqueeSelection } from './hooks/useMarqueeSelection'
+import { MarqueeOverlay } from './MarqueeOverlay'
 import { AllDayRow } from './AllDayRow'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -86,6 +84,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   const { trackEvent } = useInteractionTracking(tripId)
 
+  const weekGridRef = useRef<HTMLDivElement>(null)
+
   // Computed (moved up so useCalendarDnd can reference timeRange)
   const timeRange = useMemo(() => computeTimeRange(activities), [activities])
 
@@ -97,15 +97,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(activity.id)
     setDroppedSuggestionIds((prev) => [...prev, suggestionId])
     setActivityToSuggestion((prev) => new Map(prev).set(activity.id, suggestionId))
-    trackEvent(suggestionId, 'drag')
+    trackEvent(suggestionId, 'drag', activity.type)
   }, [addActivity, selectEvent, trackEvent])
 
-  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
-    onAddFromSuggestion: handleAddFromSuggestion,
-    scrollRef,
-    timeRangeStartHour: timeRange.startHour,
-  })
+  // useCalendarDnd is called below after marquee selection hook is instantiated
 
   const { theme, toggleTheme } = useCalendarTheme()
 
@@ -138,60 +133,56 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     }
   }), [tripTotalDays, parsedStartMs])
 
-  // ─── Derive flight banners ────────────────────────────────────
-  const FLIGHT_BANNERS: FlightBanner[] = useMemo(() => {
-    if (!trip) return []
-    const months: Record<string, number> = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+  const {
+    selectedIds: marqueeSelectedIds,
+    marqueeRect,
+    startMarquee,
+    updateMarquee,
+    endMarquee,
+    toggleActivityInSelection,
+    clearSelection: clearMarqueeSelection,
+    setSelectedIds: setMarqueeSelectedIds,
+  } = useMarqueeSelection({
+    activities,
+    timeRangeStartHour: timeRange.startHour,
+    dayCount: TRIP_DAYS.length,
+  })
+
+  const handleGroupMove = useCallback((dayDelta: number, hourDelta: number) => {
+    const selected = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    if (selected.length === 0) return
+
+    // Clamp delta so ALL activities stay in bounds
+    let clampedDayDelta = dayDelta
+    let clampedHourDelta = hourDelta
+    for (const act of selected) {
+      const newDay = act.day + clampedDayDelta
+      const newHour = act.startHour + clampedHourDelta
+      if (newDay < 0) clampedDayDelta = Math.max(clampedDayDelta, -act.day)
+      if (newDay >= tripTotalDays) clampedDayDelta = Math.min(clampedDayDelta, tripTotalDays - 1 - act.day)
+      if (newHour < 0) clampedHourDelta = Math.max(clampedHourDelta, -act.startHour)
+      if (newHour + act.duration > 24) clampedHourDelta = Math.min(clampedHourDelta, 24 - act.duration - act.startHour)
     }
-    return MOCK_FLIGHTS.map((flight, idx) => {
-      const isArrival = flight.destIata !== flight.originIata && idx === 0
-      const direction: 'arrival' | 'departure' = isArrival ? 'arrival' : 'departure'
 
-      const displayParts = (flight.departureDisplay ?? '').split(',')
-      let dayIndex = 0
-      if (displayParts.length >= 2) {
-        const datePart = displayParts[1].trim()
-        const [monthStr, dayStr] = datePart.split(' ')
-        const month = months[monthStr]
-        const day = parseInt(dayStr, 10)
-        if (month !== undefined && !isNaN(day)) {
-          const year = new Date(parsedStartMs).getUTCFullYear()
-          const flightDate = new Date(Date.UTC(year, month, day))
-          const offset = Math.round((flightDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24))
-          dayIndex = Math.max(0, Math.min(tripTotalDays - 1, offset))
-        }
-      }
+    for (const act of selected) {
+      moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
+    }
+  }, [activities, marqueeSelectedIds, moveActivity, tripTotalDays])
 
-      return {
-        id: flight.id,
-        label: `${flight.flightNumber} ${flight.route}`,
-        dayIndex,
-        direction,
-      }
-    })
-  }, [trip, parsedStartMs, tripTotalDays])
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+    onMoveActivity: moveActivity,
+    onAddFromSuggestion: handleAddFromSuggestion,
+    onGroupMove: handleGroupMove,
+    marqueeSelectedIds,
+    scrollRef,
+    timeRangeStartHour: timeRange.startHour,
+  })
+
+  // ─── Derive flight banners ────────────────────────────────────
+  const FLIGHT_BANNERS: FlightBanner[] = []
 
   // ─── Derive hotel banners ─────────────────────────────────────
-  const HOTEL_BANNERS: HotelBanner[] = useMemo(() => {
-    if (!trip) return []
-    return MOCK_HOTELS.map((hotel) => {
-      const checkInDate = new Date(hotel.checkIn + 'T00:00:00Z')
-      const checkOutDate = new Date(hotel.checkOut + 'T00:00:00Z')
-      const startDayIndex = Math.max(0, Math.round((checkInDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)))
-      const endDayIndex = Math.max(
-        startDayIndex,
-        Math.min(tripTotalDays - 1, Math.round((checkOutDate.getTime() - parsedStartMs) / (1000 * 60 * 60 * 24)) - 1),
-      )
-      return {
-        id: hotel.id,
-        label: hotel.name,
-        startDayIndex,
-        endDayIndex,
-      }
-    })
-  }, [trip, parsedStartMs, tripTotalDays])
+  const HOTEL_BANNERS: HotelBanner[] = []
 
   const selectedActivity = useMemo(
     () => activities.find((a) => a.id === selectedEventId) ?? null,
@@ -223,6 +214,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     selectEvent(newActivity.id)
   }, [addActivity, selectEvent])
 
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(marqueeSelectedIds)
+    clearMarqueeSelection()
+    await Promise.all(ids.map((id) => removeActivity(id)))
+  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivity])
+
+  const handleBulkDuplicate = useCallback(async () => {
+    const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    clearMarqueeSelection()
+    for (const act of toDuplicate) {
+      await duplicateActivity(act)
+    }
+  }, [marqueeSelectedIds, clearMarqueeSelection, activities, duplicateActivity])
+
   const commands = useCalendarCommands({
     selectedActivity,
     isPaletteOpen,
@@ -236,6 +241,9 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     tripStartDate: parsedStartDate,
     onAddEvent: () => handleCreateActivity(selectedDayIndex ?? 0, 12),
     onOpenPalette: () => setIsPaletteOpen(true),
+    marqueeSelectedIds,
+    onBulkDelete: handleBulkDelete,
+    onBulkDuplicate: handleBulkDuplicate,
   })
 
   useKeyboardShortcuts(
@@ -243,6 +251,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     isPaletteOpen,
     () => setIsPaletteOpen(false),
     () => selectEvent(null),
+    marqueeSelectedIds.size > 0,
+    clearMarqueeSelection,
   )
 
   // Early returns for loading / error states (must come after all hooks)
@@ -251,6 +261,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   // Event handlers
   const handleSelectEvent = (id: string) => {
+    // If marquee selection is active, clear it on click without Shift
+    if (marqueeSelectedIds.size > 0) {
+      clearMarqueeSelection()
+      return // consume the click
+    }
     selectEvent(selectedEventId === id ? null : id)
   }
 
@@ -298,6 +313,19 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   // Days to show (for DayView we pass a single day)
   const visibleDays = viewMode === 'week' ? TRIP_DAYS : [TRIP_DAYS[selectedDayIndex]]
 
+  const marqueeOverlayElement = (
+    <MarqueeOverlay
+      gridRef={weekGridRef}
+      onStartMarquee={(x, y, rect) => {
+        selectEvent(null) // clear single-select
+        startMarquee(x, y, rect)
+      }}
+      onUpdateMarquee={updateMarquee}
+      onEndMarquee={endMarquee}
+      marqueeRect={marqueeRect}
+    />
+  )
+
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <div className={theme === 'dark' ? 'dark' : ''}>
@@ -305,13 +333,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       {/* Sidebar */}
       <TripSidebar
         activeNav={activeNav}
-        tripStartDate={parsedStartDate}
-        tripDays={tripTotalDays}
-        currentDay={selectedDayIndex}
-        onSelectDay={(dayIndex) => {
-          selectDay(dayIndex)
-          if (viewMode === 'day') goToDayView(dayIndex)
-        }}
         onNavChange={setActiveNav}
       />
 
@@ -322,7 +343,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           commands={commands}
-          onOpenPalette={() => setIsPaletteOpen(true)}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
@@ -378,6 +398,10 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         onClickDayHeader={handleClickDayHeader}
                         onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
+                        marqueeSelectedIds={marqueeSelectedIds}
+                        gridRef={weekGridRef}
+                        marqueeOverlay={marqueeOverlayElement}
+                        onShiftClickEvent={toggleActivityInSelection}
                       />
                     </motion.div>
                   ) : (

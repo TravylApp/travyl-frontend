@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, ITINERARY_COLORS } from '@travyl/shared';
+import { Navy, ITINERARY_COLORS, TextStyles, FontFamily } from '@travyl/shared';
 import type { FlightViewModel } from '@travyl/shared';
 import type { MockFlightDetail } from '@travyl/shared';
 
@@ -75,10 +75,10 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
             style={isReturn ? { transform: [{ rotate: '180deg' }] } : undefined}
           />
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+            <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
               {isReturn ? 'Return Flight' : 'Outbound Flight'}
             </Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+            <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.8)' }}>
               {flight.airline}{flight.flightNumber ? ` · ${flight.flightNumber}` : ''}
             </Text>
           </View>
@@ -89,10 +89,10 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
             backgroundColor: '#10b981',
             paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
           }}>
-            <Text style={{ fontSize: 10, fontWeight: '500', color: '#fff' }}>Confirmed</Text>
+            <Text style={{ ...TextStyles.sm, fontWeight: '500', color: '#fff' }}>Confirmed</Text>
           </View>
           {flight.priceDisplay && (
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>
+            <Text style={{ ...TextStyles.subhead, fontWeight: '700', color: '#fff' }}>
               {flight.priceDisplay}
             </Text>
           )}
@@ -104,10 +104,10 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Departure */}
           <View style={{ alignItems: 'center', flex: 1 }}>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: Navy.DEFAULT }}>{flight.originIata}</Text>
-            <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Departure</Text>
+            <Text style={{ ...TextStyles.headline, fontFamily: FontFamily.sansBold, color: Navy.DEFAULT }}>{flight.originIata}</Text>
+            <Text style={{ ...TextStyles.sm, color: '#9ca3af', marginTop: 2 }}>Departure</Text>
             {flight.departureDisplay && (
-              <Text style={{ fontSize: 12, fontWeight: '500', color: '#374151', marginTop: 2 }}>{flight.departureDisplay}</Text>
+              <Text style={{ ...TextStyles.body, fontWeight: '500', color: '#374151', marginTop: 2 }}>{flight.departureDisplay}</Text>
             )}
           </View>
 
@@ -124,17 +124,17 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               </View>
               <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: '#d1d5db' }} />
             </View>
-            <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+            <Text style={{ ...TextStyles.caption, color: '#9ca3af', marginTop: 4 }}>
               {detail ? detail.duration : 'Direct'}
             </Text>
           </View>
 
           {/* Arrival */}
           <View style={{ alignItems: 'center', flex: 1 }}>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: Navy.DEFAULT }}>{flight.destIata}</Text>
-            <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Arrival</Text>
+            <Text style={{ ...TextStyles.headline, fontFamily: FontFamily.sansBold, color: Navy.DEFAULT }}>{flight.destIata}</Text>
+            <Text style={{ ...TextStyles.sm, color: '#9ca3af', marginTop: 2 }}>Arrival</Text>
             {flight.arrivalDisplay && (
-              <Text style={{ fontSize: 12, fontWeight: '500', color: '#374151', marginTop: 2 }}>{flight.arrivalDisplay}</Text>
+              <Text style={{ ...TextStyles.body, fontWeight: '500', color: '#374151', marginTop: 2 }}>{flight.arrivalDisplay}</Text>
             )}
           </View>
         </View>
@@ -150,7 +150,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               backgroundColor: statusColor(detail.status).bg,
               paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
             }}>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: statusColor(detail.status).text }}>
+              <Text style={{ ...TextStyles.caption, fontWeight: '500', color: statusColor(detail.status).text }}>
                 {detail.status}
               </Text>
             </View>
@@ -159,7 +159,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               backgroundColor: ITINERARY_COLORS.primary + '15',
               paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
             }}>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: ITINERARY_COLORS.primary }}>On Time</Text>
+              <Text style={{ ...TextStyles.caption, fontWeight: '500', color: ITINERARY_COLORS.primary }}>On Time</Text>
             </View>
           )}
           {(detail?.cabinClass ?? flight.cabinClass) && (
@@ -167,7 +167,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               backgroundColor: Navy.DEFAULT + '15',
               paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
             }}>
-              <Text style={{ fontSize: 10, fontWeight: '500', color: Navy.DEFAULT }}>
+              <Text style={{ ...TextStyles.sm, fontWeight: '500', color: Navy.DEFAULT }}>
                 {detail?.cabinClass ?? flight.cabinClass}
               </Text>
             </View>
@@ -189,7 +189,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               gap: 6,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '500', color: ITINERARY_COLORS.primary }}>
+            <Text style={{ ...TextStyles.body, fontWeight: '500', color: ITINERARY_COLORS.primary }}>
               {expanded ? 'Hide Details' : 'View Details'}
             </Text>
             <FontAwesome
@@ -207,7 +207,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
 
           {/* Details grid (2-column) */}
           <View style={{ backgroundColor: '#f9fafb', padding: 14 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: Navy.DEFAULT, marginBottom: 10 }}>
+            <Text style={{ ...TextStyles.bodyEm, color: Navy.DEFAULT, marginBottom: 10 }}>
               Flight Details
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -255,10 +255,10 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               marginBottom: 10,
             }}>
               <View>
-                <Text style={{ fontSize: 10, color: '#6b7280', marginBottom: 2 }}>Confirmation</Text>
+                <Text style={{ ...TextStyles.sm, color: '#6b7280', marginBottom: 2 }}>Confirmation</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={{
-                    fontSize: 15,
+                    ...TextStyles.subhead,
                     fontWeight: '700',
                     color: detail.isBooked ? '#059669' : Navy.DEFAULT,
                     letterSpacing: 1,
@@ -275,7 +275,7 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
                 paddingVertical: 4,
                 borderRadius: 10,
               }}>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>
+                <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
                   {detail.isBooked ? 'Booked' : 'Pending'}
                 </Text>
               </View>
@@ -288,14 +288,14 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
               paddingTop: 10,
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ fontSize: 12, color: '#6b7280' }}>Per traveler</Text>
-                <Text style={{ fontSize: 12, color: '#374151' }}>
+                <Text style={{ ...TextStyles.body, color: '#6b7280' }}>Per traveler</Text>
+                <Text style={{ ...TextStyles.body, color: '#374151' }}>
                   {formatCurrency(detail.pricePerTraveler, detail.currency)}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ fontSize: 12, color: '#6b7280' }}>Travelers</Text>
-                <Text style={{ fontSize: 12, color: '#374151' }}>
+                <Text style={{ ...TextStyles.body, color: '#6b7280' }}>Travelers</Text>
+                <Text style={{ ...TextStyles.body, color: '#374151' }}>
                   x {Math.round(detail.totalPrice / detail.pricePerTraveler)}
                 </Text>
               </View>
@@ -307,8 +307,8 @@ export function FlightCard({ flight, detail, variant = 'outbound' }: FlightCardP
                 borderTopWidth: 1,
                 borderTopColor: detail.isBooked ? '#bbf7d0' : '#e5e7eb',
               }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: Navy.DEFAULT }}>Total</Text>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: Navy.DEFAULT }}>
+                <Text style={{ ...TextStyles.bodyLgEm, color: Navy.DEFAULT }}>Total</Text>
+                <Text style={{ ...TextStyles.subhead, fontWeight: '700', color: Navy.DEFAULT }}>
                   {formatCurrency(detail.totalPrice, detail.currency)}
                 </Text>
               </View>
@@ -335,9 +335,9 @@ function DetailCell({
     <View style={{ width: '50%', marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <FontAwesome name={icon} size={11} color={ITINERARY_COLORS.primary} />
-        <Text style={{ fontSize: 10, color: '#9ca3af' }}>{label}</Text>
+        <Text style={{ ...TextStyles.sm, color: '#9ca3af' }}>{label}</Text>
       </View>
-      <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151', marginTop: 2, marginLeft: 17 }}>
+      <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: '#374151', marginTop: 2, marginLeft: 17 }}>
         {value}
       </Text>
     </View>
@@ -369,7 +369,7 @@ function AmenityChip({
         color={active ? ITINERARY_COLORS.primary : '#9ca3af'}
       />
       <Text style={{
-        fontSize: 11,
+        ...TextStyles.caption,
         fontWeight: '500',
         color: active ? Navy.DEFAULT : '#9ca3af',
       }}>

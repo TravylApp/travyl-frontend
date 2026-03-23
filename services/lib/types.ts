@@ -15,4 +15,5 @@ export interface InteractRequest {
   suggestionId: string
   action: 'impression' | 'click' | 'drag' | 'dismiss'
   tripId: string
+  category?: string
 }

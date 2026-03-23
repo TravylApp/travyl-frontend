@@ -1,4 +1,4 @@
-import { cacheTable, placeIndex } from './storage'
+import { cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
 import { supabaseServiceRoleKey, supabaseUrl, serpApiKey } from './secrets'
 
@@ -59,4 +59,31 @@ api.route('GET /search', {
 api.route('POST /interact', {
   handler: 'services/interact.handler',
   link: [bus, supabaseServiceRoleKey, supabaseUrl],
+})
+
+api.route('POST /index', {
+  handler: 'services/index-trip.handler',
+  link: [supabaseServiceRoleKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0'],
+    },
+  ],
+})
+
+api.route('GET /context-search', {
+  handler: 'services/context-search.handler',
+  link: [supabaseServiceRoleKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0'],
+    },
+  ],
+})
+
+api.route('GET /recommend', {
+  handler: 'services/recommend.handler',
+  link: [cacheTable, userInteractions, supabaseServiceRoleKey, supabaseUrl, serpApiKey],
 })

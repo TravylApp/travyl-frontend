@@ -32,7 +32,7 @@ export function ForkButton({ trip, variant = 'default', onSuccess }: ForkButtonP
             onSuccess(newTrip.id);
           } else {
             // Default behavior: navigate to the new trip
-            router.push(`/trip/${newTrip.id}`);
+            router.push('/trips');
           }
         },
       }

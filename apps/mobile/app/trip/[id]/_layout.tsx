@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal, Image,
-  Platform, PanResponder, Animated, Easing, useWindowDimensions,
+  View, Text, Pressable, Share, Modal,
+  Platform, PanResponder, Animated, useWindowDimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { withLayoutContext, useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,7 +11,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, MOCK_TRIPS } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, resolveTheme, TextStyles, FontFamily } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -69,6 +70,10 @@ const TabCtx = createContext<{
   removeTab: (name: string) => void;
   showTabPicker: boolean;
   setShowTabPicker: (show: boolean) => void;
+  essentialsOpen: boolean;
+  setEssentialsOpen: (open: boolean) => void;
+  heroImageOverride: string | null;
+  setHeroImageOverride: (url: string | null) => void;
 }>({
   spinePosition: 'top',
   setSpinePosition: () => {},
@@ -92,6 +97,10 @@ const TabCtx = createContext<{
   removeTab: () => {},
   showTabPicker: false,
   setShowTabPicker: () => {},
+  essentialsOpen: true,
+  setEssentialsOpen: () => {},
+  heroImageOverride: null,
+  setHeroImageOverride: () => {},
 });
 
 export { TabCtx };
@@ -112,80 +121,7 @@ export function useThemeBase() {
 // ─── Page Transition Wrapper ─────────────────────────────
 // Horizontal slide for top/bottom spine, vertical wheel rotation for left/right.
 export function PageTransition({ children }: { children: React.ReactNode }) {
-  const isFocused = useIsFocused();
-  const { spinePosition, navDirection } = useContext(TabCtx);
-  const { width: screenW, height: screenH } = useWindowDimensions();
-  const anim = useRef(new Animated.Value(0)).current;
-  const dirRef = useRef(navDirection);
-  const spineRef = useRef(spinePosition);
-  if (isFocused) {
-    dirRef.current = navDirection;
-    spineRef.current = spinePosition;
-  }
-
-  useEffect(() => {
-    if (isFocused) {
-      anim.setValue(0);
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isFocused]);
-
-  const spine = spineRef.current;
-  const dir = dirRef.current;
-
-  const opacity = anim.interpolate({
-    inputRange: [0, 0.3, 1],
-    outputRange: [0.1, 0.7, 1],
-  });
-
-  if (spine === 'left' || spine === 'right') {
-    // Tabs on left/right: pages cycle vertically (rotate around X-axis)
-    const rotateX = anim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [dir > 0 ? '-45deg' : '45deg', '0deg'],
-    });
-
-    return (
-      <Animated.View
-        style={{
-          flex: 1,
-          opacity,
-          transform: [
-            { perspective: 1000 },
-            { rotateX },
-          ],
-        }}
-      >
-        {children}
-      </Animated.View>
-    );
-  }
-
-  // Tabs on top/bottom: pages cycle horizontally (rotate around Y-axis)
-  const rotateY = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [dir > 0 ? '45deg' : '-45deg', '0deg'],
-  });
-
-  return (
-    <Animated.View
-      style={{
-        flex: 1,
-        opacity,
-        transform: [
-          { perspective: 1000 },
-          { rotateY },
-        ],
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
+  return <View style={{ flex: 1 }}>{children}</View>;
 }
 
 // ─── Drag Handle — drag or tap to reposition spine ──────
@@ -346,7 +282,7 @@ function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
               width: 320,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text, marginBottom: 8 }}>
               Trip Theme
             </Text>
             <ThemePicker
@@ -375,47 +311,35 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: s
 
 // ─── Trip Hero ───────────────────────────────────────────
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
-  const { theme, calendarOpen, setCalendarOpen, mapOpen, setMapOpen } = useContext(TabCtx);
+  const { theme, essentialsOpen, setEssentialsOpen, heroImageOverride } = useContext(TabCtx);
   const router = useRouter();
-  const tripImage = trip ? MOCK_TRIPS.find(t => t.id === trip.id)?.image : undefined;
-
-  const handleShare = async () => {
-    if (!trip) return;
-    try {
-      await Share.share({
-        message: `Check out my trip to ${trip.destination}! ${trip.start_date} – ${trip.end_date}`,
-        title: trip.title ?? `Trip to ${trip.destination}`,
-      });
-    } catch (_) {}
-  };
-
-  const handleCalendar = () => {
-    const next = !calendarOpen;
-    setCalendarOpen(next);
-    if (next) {
-      setMapOpen(false);
-      tabNavRef.current?.navigate('itinerary');
-    }
-  };
-
-  const handleMap = () => {
-    const next = !mapOpen;
-    setMapOpen(next);
-    if (next) {
-      setCalendarOpen(false);
-      tabNavRef.current?.navigate('itinerary');
-    }
-  };
-
-  const btns = [
-    { icon: 'calendar', onPress: handleCalendar },
-    { icon: 'map', onPress: handleMap },
-    { icon: 'refresh', onPress: refetch },
-    { icon: 'share', onPress: handleShare },
-  ];
+  const coverImage = heroImageOverride || trip?.trip_context?.hero_image_url;
+  const destination = trip?.destination || 'Destination';
+  const cityName = destination.split(',')[0].trim();
+  const countryName = destination.split(',').slice(1).join(',').trim();
+  const weather = trip?.trip_context?.weather?.current;
+  const forecast = trip?.trip_context?.weather?.forecast ?? [];
+  const qf = trip?.trip_context?.quick_facts;
 
   return (
-    <View style={{ height: 180, backgroundColor: '#cbd5e1', position: 'relative' }}>
+    <View style={{ position: 'relative' }}>
+      {/* Background image — crossfades when override changes */}
+      <View style={{ height: essentialsOpen ? 340 : 200 }}>
+        {coverImage ? (
+          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: theme.base, alignItems: 'center', justifyContent: 'center' }}>
+            <FontAwesome name="picture-o" size={32} color="rgba(255,255,255,0.3)" />
+          </View>
+        )}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)']}
+          locations={[0, 0.4, 1]}
+          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+          pointerEvents="none"
+        />
+      </View>
+
       {/* Back button */}
       <Pressable
         onPress={() => router.back()}
@@ -427,56 +351,101 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       >
         <FontAwesome name="chevron-left" size={14} color="#fff" />
       </Pressable>
-      {tripImage ? (
-        <Image source={{ uri: tripImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-      ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <FontAwesome name="picture-o" size={32} color="#94a3b8" />
-        </View>
-      )}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.55)']}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, justifyContent: 'flex-end', padding: 14 }}
+
+      {/* Share button */}
+      <Pressable
+        onPress={async () => {
+          if (!trip) return;
+          try { await Share.share({ message: `Check out my trip to ${trip.destination}!`, title: trip.title ?? `Trip to ${trip.destination}` }); } catch {}
+        }}
+        style={{
+          position: 'absolute', top: 50, right: 14, zIndex: 10,
+          width: 34, height: 34, borderRadius: 17,
+          backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+          alignItems: 'center', justifyContent: 'center',
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <FontAwesome name="map-marker" size={14} color="rgba(255,255,255,0.6)" />
-          {trip ? (
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{trip.destination}</Text>
-          ) : (
-            <SkeletonBlock width="55%" height={20} style={{ backgroundColor: 'rgba(255,255,255,0.25)' }} />
-          )}
-        </View>
-        {trip ? (
-          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
-            {formatDateRange(trip.start_date, trip.end_date)} · {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
+        <FontAwesome name="share" size={13} color="#fff" />
+      </Pressable>
+
+      {/* Hero text overlay */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 }}>
+        {/* Country + City + Toggle */}
+        <Text style={{ ...TextStyles.xs, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
+          {countryName || 'Your Trip Guide'}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <Text style={{
+            ...TextStyles.display, color: '#fff',
+            textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12,
+          }}>
+            {cityName.toUpperCase()}
           </Text>
-        ) : (
-          <SkeletonBlock width="45%" height={12} style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
-        )}
-      </LinearGradient>
-      <View style={{ position: 'absolute', bottom: 14, right: 10, flexDirection: 'row', gap: 6 }}>
-        {btns.map((b) => (
           <Pressable
-            key={b.icon}
-            onPress={b.onPress}
+            onPress={() => setEssentialsOpen(!essentialsOpen)}
             style={{
-              backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-              borderRadius: 10, width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
             }}
           >
-            <FontAwesome name={b.icon as any} size={13} color="#fff" />
+            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
+              {essentialsOpen ? 'Hide Info' : 'Trip Info'}
+            </Text>
+            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={8} color="rgba(255,255,255,0.6)" />
           </Pressable>
-        ))}
+        </View>
+
+        {/* Collapsible essentials */}
+        {essentialsOpen && trip && (
+          <View>
+            {/* Date + travelers */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
+                {formatDateRange(trip.start_date, trip.end_date)}
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
+                {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
+              </Text>
+            </View>
+
+            {/* Quick facts */}
+            {qf && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 }}>
+                {[qf.currency, qf.language, qf.timezone, qf.power].filter(Boolean).map((f, i) => {
+                  const [label, ...rest] = (f as string).split(' · ');
+                  return (
+                    <Text key={i} style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }}>
+                      <Text style={{ fontWeight: '700', color: '#fff' }}>{label}</Text>
+                      {rest.length > 0 ? ` · ${rest.join(' · ')}` : ''}
+                    </Text>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Weather + forecast */}
+            {weather && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <FontAwesome name="cloud" size={12} color="#c8a96a" />
+                  <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a' }}>{weather.high}° / {weather.low}°</Text>
+                  <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)' }}>Now</Text>
+                </View>
+                {forecast.length > 0 && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>|</Text>}
+                {forecast.slice(0, 4).map((d) => (
+                  <View key={d.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.6)' }}>{d.day}</Text>
+                    <Text style={{ ...TextStyles.body }}>{d.icon}</Text>
+                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff' }}>{d.high}°</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </View>
-      {/* Bottom edge line */}
-      <View style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 4,
-        backgroundColor: theme.base,
-      }} />
     </View>
   );
 }
@@ -796,10 +765,10 @@ function TabPickerModal() {
           paddingBottom: 40,
         }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.sansBold, color: colors.text, marginBottom: 4 }}>
             Manage Tabs
           </Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 16 }}>
+          <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 16 }}>
             Add or remove tabs from your trip
           </Text>
           {ADDABLE_TABS.map((tab) => {
@@ -832,8 +801,8 @@ function TabPickerModal() {
                   />
                 </View>
                 <Text style={{
+                  ...TextStyles.subhead,
                   flex: 1,
-                  fontSize: 15,
                   fontWeight: '500',
                   color: colors.text,
                 }}>
@@ -912,6 +881,8 @@ export default function TripLayout() {
 
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [essentialsOpen, setEssentialsOpen] = useState(true);
+  const [heroImageOverride, setHeroImageOverride] = useState<string | null>(null);
 
   // Load persisted theme state from AsyncStorage
   useEffect(() => {
@@ -926,6 +897,7 @@ export default function TripLayout() {
           if (saved.tabColorOverrides) setTabColorOverrides(saved.tabColorOverrides);
           if (saved.itineraryColorOverrides) setItineraryColorOverrides(saved.itineraryColorOverrides);
           if (saved.enabledTabs) setEnabledTabs(saved.enabledTabs);
+          if (saved.essentialsOpen !== undefined) setEssentialsOpen(saved.essentialsOpen);
         }
       } catch {}
       setHydrated(true);
@@ -941,8 +913,9 @@ export default function TripLayout() {
       tabColorOverrides,
       itineraryColorOverrides,
       enabledTabs,
+      essentialsOpen,
     })).catch(() => {});
-  }, [hydrated, id, tripThemeId, tripCustomColor, tabColorOverrides, itineraryColorOverrides, enabledTabs]);
+  }, [hydrated, id, tripThemeId, tripCustomColor, tabColorOverrides, itineraryColorOverrides, enabledTabs, essentialsOpen]);
 
   // Only use trip data as initial default when there's NO persisted state
   useEffect(() => {
@@ -953,23 +926,21 @@ export default function TripLayout() {
 
   return (
     <TabCtx.Provider
-      value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker }}
+      value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker, essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride }}
     >
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        {activeTab !== 'index' && (
-          <>
-            <TripHero trip={trip} refetch={refetch} />
-            <View style={{ height: 1, backgroundColor: colors.border }} />
-          </>
-        )}
+        <TripHero trip={trip} refetch={refetch} />
 
         <View style={{ flex: 1, position: 'relative' }}>
           <TopTabs
             tabBar={(props) => <CustomTabBar {...props} />}
             screenOptions={{
               lazy: true,
-              swipeEnabled: false,
-              animationEnabled: false,
+              lazyPlaceholder: () => (
+                <View style={{ flex: 1, backgroundColor: colors.cardBackground }} />
+              ),
+              swipeEnabled: true,
+              animationEnabled: true,
               sceneStyle: {
                 paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
                 paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
