@@ -268,6 +268,13 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
   );
 }
 
+function upscalePhoto(url: string): string {
+  if (url.includes('googleusercontent.com')) {
+    return url.replace(/=w\d+-h\d+/, '=w1600-h900');
+  }
+  return url;
+}
+
 function TripMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
   const [current, setCurrent] = useState(0);
 
@@ -286,7 +293,7 @@ function TripMosaic({ photos, destination }: { photos: string[]; destination?: s
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={i}
-          src={src}
+          src={upscalePhoto(src)}
           alt={destination || 'Trip photo'}
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
           style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
@@ -352,77 +359,47 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
             </div>
           )}
 
-          {/* ── Quick Facts + About ── */}
-          {(trip?.trip_context?.country || trip?.trip_context?.wiki || trip?.trip_context?.weather) && (
-            <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-6 relative z-10">
-              <div className="flex flex-col sm:flex-row gap-6">
-                {/* About — Wikipedia excerpt */}
-                {trip.trip_context.wiki?.extract && (
-                  <div className="flex-1 min-w-0">
-                    <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-                      style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>About</span>
-                    <p className="text-[13px] leading-[1.8] font-serif mt-2 line-clamp-4"
-                      style={{ color: 'var(--magazine-text, var(--foreground))' }}>
-                      {trip.trip_context.wiki.extract}
-                    </p>
+          {/* ── Quick Facts — horizontal strip under hero ── */}
+          {trip?.trip_context?.country && (
+            <div className="px-6 sm:px-10 mt-4 relative z-10">
+              <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide py-1">
+                {trip.trip_context.country.flag && (
+                  <span className="text-2xl shrink-0">{trip.trip_context.country.flag}</span>
+                )}
+                <div className="flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 bg-white/10 border border-white/15 backdrop-blur-sm">
+                  <span className="text-[10px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.currency?.symbol} {trip.trip_context.country.currency?.code}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 bg-white/10 border border-white/15 backdrop-blur-sm">
+                  <span className="text-[10px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.language}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 bg-white/10 border border-white/15 backdrop-blur-sm">
+                  <span className="text-[10px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.timezone}</span>
+                </div>
+                {trip.trip_context.weather?.current && (
+                  <div className="flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 bg-white/10 border border-white/15 backdrop-blur-sm">
+                    <span className="text-[10px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.weather.current.temp}°C {trip.trip_context.weather.current.conditions}</span>
                   </div>
                 )}
-                {/* Quick Facts cards */}
-                <div className="shrink-0 w-full sm:w-[280px]">
-                  <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-                    style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Quick Facts</span>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {trip.trip_context.country && (
-                      <>
-                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
-                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Currency</span>
-                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.currency?.symbol} {trip.trip_context.country.currency?.code}</p>
-                        </div>
-                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
-                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Language</span>
-                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.language}</p>
-                        </div>
-                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
-                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Timezone</span>
-                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.timezone}</p>
-                        </div>
-                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
-                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Emergency</span>
-                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>112</p>
-                        </div>
-                      </>
-                    )}
-                    {trip.trip_context.weather?.current && (
-                      <div className="col-span-2 rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
-                        <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Weather Now</span>
-                        <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>
-                          {trip.trip_context.weather.current.temp}°C · {trip.trip_context.weather.current.conditions}
-                        </p>
-                        {trip.trip_context.weather.forecast && (
-                          <div className="flex gap-2 mt-1.5 overflow-x-auto scrollbar-hide">
-                            {trip.trip_context.weather.forecast.slice(0, 5).map((d: { date: string; high: number; low: number }) => (
-                              <span key={d.date} className="text-[10px] shrink-0 opacity-70" style={{ color: 'var(--magazine-text)' }}>
-                                {d.date.slice(5)} {d.high}°/{d.low}°
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {/* Upcoming holidays */}
-                  {trip.trip_context.holidays && trip.trip_context.holidays.length > 0 && (
-                    <div className="mt-3 rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
-                      <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Upcoming Holidays</span>
-                      {trip.trip_context.holidays.slice(0, 3).map((h: { date: string; name: string }) => (
-                        <p key={h.date} className="text-[11px] mt-1" style={{ color: 'var(--magazine-heading)' }}>
-                          <span className="font-bold">{h.date.slice(5)}</span> · {h.name}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+                <div className="flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 bg-white/10 border border-white/15 backdrop-blur-sm">
+                  <span className="text-[10px] font-bold" style={{ color: 'var(--magazine-heading)' }}>Emergency: 112</span>
                 </div>
+                {trip.trip_context.weather?.forecast && trip.trip_context.weather.forecast.slice(0, 4).map((d: { date: string; high: number; low: number }) => (
+                  <div key={d.date} className="flex items-center gap-1 shrink-0 rounded-full px-2.5 py-1.5 bg-white/5 border border-white/10">
+                    <span className="text-[9px] opacity-60" style={{ color: 'var(--magazine-text)' }}>{d.date.slice(5)}</span>
+                    <span className="text-[9px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{d.high}°/{d.low}°</span>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+
+          {/* ── About — Wikipedia excerpt ── */}
+          {trip?.trip_context?.wiki?.extract && (
+            <div className="px-6 sm:px-10 mt-4 relative z-10">
+              <p className="text-[13px] leading-[1.8] font-serif line-clamp-3 max-w-2xl"
+                style={{ color: 'var(--magazine-text, var(--foreground))' }}>
+                {trip.trip_context.wiki.extract}
+              </p>
             </div>
           )}
 
@@ -462,37 +439,41 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
             </div>
           )}
 
-          {/* ── NEWS (left) + WHAT'S GOING ON (right) ── */}
+          {/* ── NEWS — scrollable, 2 visible at a time ── */}
           {news.length > 0 && (
             <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-8 relative z-10">
-              <div className="flex flex-col sm:flex-row gap-10 items-end">
-                {/* News column — left */}
-                <div className="w-full sm:w-[30%] shrink-0 rounded-2xl px-5 py-4 backdrop-blur-md bg-white/20 border border-white/40 shadow-sm">
-                  <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 px-2.5 py-1 rounded-full"
                     style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Latest</span>
-                  <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4"
-                    style={{ color: 'var(--magazine-heading)' }}>News</h2>
-                  <div className="flex flex-col gap-3">
-                    {news.filter(n => n.category === 'news' || n.category === 'advisory').map((item) => (
-                      <div key={item.id} className="pb-3" style={{ borderBottom: '1px solid var(--magazine-border)' }}>
-                        <span className="text-[9px] uppercase tracking-[0.15em] font-semibold"
-                          style={{ color: 'var(--magazine-accent)' }}>
-                          {item.category}
-                          {item.source && <span className="ml-1.5 opacity-50">· {item.source}</span>}
-                        </span>
-                        <h3 className="text-[14px] font-bold leading-tight mt-1 font-serif"
-                          style={{ color: 'var(--magazine-heading)' }}>{item.title}</h3>
-                        <p className="text-[12px] leading-relaxed mt-1 line-clamp-2"
-                          style={{ color: 'var(--foreground)', opacity: 0.7 }}>{item.snippet}</p>
-                      </div>
-                    ))}
-                  </div>
+                  <h2 className="text-xl font-bold font-serif" style={{ color: 'var(--magazine-heading)' }}>What&apos;s Going On</h2>
                 </div>
-
-                {/* What's Going On — right */}
-                <div className="w-full sm:flex-1 min-w-0">
-                  <WhatsGoingOnSection addedItems={addedItems} onToggleAdd={toggleAdd} news={news.filter(n => n.category === 'event' || n.category === 'tip')} />
-                </div>
+                <span className="text-[10px] opacity-50" style={{ color: 'var(--magazine-text)' }}>{news.length} stories</span>
+              </div>
+              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory">
+                {news.map((item) => (
+                  <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
+                    className="shrink-0 w-[280px] sm:w-[320px] snap-start rounded-xl overflow-hidden border border-white/15 backdrop-blur-md bg-white/5 hover:bg-white/10 transition-colors group">
+                    {/* News image — use first explore item image as placeholder */}
+                    <div className="h-[120px] bg-gradient-to-br from-[#1e3a5f] to-[#2563eb] relative overflow-hidden">
+                      {trip?.trip_context?.hero_images?.[news.indexOf(item) % (trip.trip_context.hero_images.length || 1)] && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={trip.trip_context.hero_images[news.indexOf(item) % trip.trip_context.hero_images.length]}
+                          alt=""
+                          className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <span className="absolute top-2 left-2 text-[8px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white">
+                        {item.category} · {item.source}
+                      </span>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="text-[12px] font-bold leading-snug line-clamp-2" style={{ color: 'var(--magazine-heading)' }}>{item.title}</h3>
+                    </div>
+                  </a>
+                ))}
               </div>
             </div>
           )}
