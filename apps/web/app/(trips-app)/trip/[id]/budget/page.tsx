@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import {
   Plane, Building2, UtensilsCrossed, Compass, Car, ShoppingBag,
   MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
@@ -214,12 +214,38 @@ function categoryHealthBg(pct: number): { className: string; style?: React.CSSPr
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+function generateBudgetFromTrip(trip: any): BudgetItem[] {
+  if (!trip) return INITIAL_BUDGET;
+  const totalBudget = trip.budget ?? 2000;
+  const duration = trip.trip_context?.weather?.forecast?.length ?? 5;
+  const travelers = trip.travelers ?? 1;
+  // Distribute budget across categories proportionally
+  return [
+    { id: 'flights', category: 'Flights', budgeted: Math.round(totalBudget * 0.30), actual: 0, fixed: true, expenses: [] },
+    { id: 'hotels', category: 'Hotels', budgeted: Math.round(totalBudget * 0.30), actual: 0, fixed: true, expenses: [] },
+    { id: 'food', category: 'Food & Dining', budgeted: Math.round(totalBudget * 0.15), actual: 0, fixed: true, expenses: [
+      { id: 'fd1', description: `Daily meals (~$${Math.round((totalBudget * 0.15) / duration / travelers)}/person/day)`, amount: 0 },
+    ] },
+    { id: 'activities', category: 'Activities', budgeted: Math.round(totalBudget * 0.12), actual: 0, fixed: true, expenses: [] },
+    { id: 'transportation', category: 'Transportation', budgeted: Math.round(totalBudget * 0.07), actual: 0, fixed: true, expenses: [] },
+    { id: 'shopping', category: 'Shopping', budgeted: Math.round(totalBudget * 0.04), actual: 0, fixed: false, expenses: [] },
+    { id: 'other', category: 'Other', budgeted: Math.round(totalBudget * 0.02), actual: 0, fixed: false, expenses: [] },
+  ];
+}
+
 export default function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
+  const { isLoading, trip } = useItineraryScreen(id);
 
   /* ---- state ---- */
-  const [budgetData, setBudgetData] = useState<BudgetItem[]>(INITIAL_BUDGET);
+  const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (trip && !seeded.current) {
+      setBudgetData(generateBudgetFromTrip(trip));
+      seeded.current = true;
+    }
+  }, [trip]);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotal, setTempTotal] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);

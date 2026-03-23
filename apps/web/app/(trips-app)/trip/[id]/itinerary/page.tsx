@@ -75,13 +75,25 @@ function SkeletonItinerary() {
 
 // ─── Glance Search Input ────────────────────────────────────────
 
-function GlanceSearchInput({ query, onChange, onClose, onSelect }: {
+function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: {
   query: string;
   onChange: (q: string) => void;
   onClose: () => void;
   onSelect: (place: import('@travyl/shared').PlaceItem) => void;
+  destination?: string;
 }) {
-  const results: import('@travyl/shared').PlaceItem[] = []; // TODO: wire up real place search API
+  const [results, setResults] = useState<import('@travyl/shared').PlaceItem[]>([]);
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    const timeout = setTimeout(async () => {
+      try {
+        const q = destination ? `${query} ${destination}` : query;
+        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6`);
+        if (res.ok) setResults(await res.json());
+      } catch { /* ignore */ }
+    }, 300); // debounce
+    return () => clearTimeout(timeout);
+  }, [query, destination]);
   return (
     <div className="mt-1">
       <div className="relative">
@@ -132,6 +144,7 @@ function GlanceView({
   removeActivity,
   updateActivity,
   moveActivityBefore,
+  destination,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -143,6 +156,7 @@ function GlanceView({
   removeActivity?: (id: string) => void;
   updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
   moveActivityBefore?: (dragId: string, targetId: string) => void;
+  destination?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -377,6 +391,7 @@ function GlanceView({
                             query={searchQuery}
                             onChange={setSearchQuery}
                             onClose={() => { setSearchSlot(null); setSearchQuery(''); }}
+                            destination={destination}
                             onSelect={(place) => {
                               addActivity?.({
                                 id: `search-${Date.now()}`,
@@ -745,6 +760,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           removeActivity={removeActivity}
           updateActivity={updateActivity}
           moveActivityBefore={moveActivityBefore}
+          destination={trip?.destination?.split(',')[0]?.trim()}
         />
       )}
 

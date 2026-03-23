@@ -110,17 +110,41 @@ VISUAL_CROSSING_API_KEY=...
 FOURSQUARE_CLIENT_ID=...
 FOURSQUARE_CLIENT_SECRET=...
 GRAPHHOPPER_API_KEY=...
+DUFFEL_API_TOKEN=...
+AVIATIONSTACK_API_KEY=...
 UNSPLASH_ACCESS_KEY=...  (optional — falls back to Google Places photos)
 ```
 
 ---
 
-## What's Still Mock / TODO
+## Full Tab Audit (March 23, 2026)
 
-- **Hotels page** — has hardcoded `MOCK_HOTELS` array (needs Foursquare/Booking API)
-- **Flights page** — needs Amadeus or similar flight search API
-- **Restaurants page** — needs wiring to Foursquare restaurant data
-- **Calendar view** — needs itinerary day data (partially done via ItineraryContext)
-- **Budget tab** — needs currency exchange API
-- **Packing list** — currently empty, could auto-generate based on destination weather
-- **Supabase RLS** — INSERT policy needs to allow anonymous users or auth required
+| Tab | Status | Data Source | Notes |
+|-----|--------|-------------|-------|
+| Overview | DONE | trip_context (weather, explore, news, hotels, hero images) | All dynamic |
+| Itinerary | DONE | Generated from trip_context.explore_items + Places API search | Glance + compact views |
+| Calendar | Working | Yjs collaborative | Active development by teammate |
+| Hotels | DONE | Foursquare v2 API + trip_context.hotels | Real hotel names/locations |
+| Flights | DONE | Duffel API (113+ real offers with prices) | Auto-searches from JFK |
+| Restaurants | Working | useRestaurantFilters hook | Data from trip context |
+| Activities | Working | useActivityFilters hook | Data from trip context |
+| Packing | Working | Local state + weather from trip_context | User creates lists |
+| Budget | DONE | Generated from trip.budget, distributed across categories | Seeds from trip data |
+| Cars | Placeholder | Empty state | Low priority |
+| Favorites | DONE | Wired to trip_context.explore_items | User adds via other tabs |
+| Settings | Working | Local state | Theme picker, tab visibility |
+| Share | Working | fetchTripByShareToken | Fork trip functionality |
+| Info | DONE | Dynamic per destination (Foursquare restaurants, country emergency numbers) | Was hardcoded Paris |
+
+---
+
+## What's Still TODO
+
+- **Cars page** — empty placeholder, needs rental car API
+- **Calendar** — being developed by teammate, needs itinerary sync
+- **Supabase RLS** — INSERT policy needs to allow anonymous users
+- **Packing auto-generate** — could auto-suggest items based on destination weather
+- **Currency exchange** — Open Exchange Rates API for budget tab
+- **Rest Countries** — for destination info (currency, language, timezone)
+- **Wikipedia API** — destination descriptions for itinerary cards
+- **Public holidays** — Nager.Date API to avoid planning on closed days
