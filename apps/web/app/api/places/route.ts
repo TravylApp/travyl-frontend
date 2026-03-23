@@ -17,6 +17,7 @@ interface BackendPlace {
   website?: string | null
   address?: string | null
   opening_hours?: Record<string, string>
+  tags?: string[]
 }
 
 export async function GET(req: NextRequest) {
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     const data: BackendPlace[] = await res.json()
 
-    // Map to PlaceItem format
+    // Map to PlaceItem format (categories must match PLACE_COLLECTIONS in shared)
     const places = data.map((p) => ({
       id: p.id,
       name: p.name,
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
       type: mapType(p.category),
       rating: p.rating ?? 0,
       tagline: p.description ?? p.category,
-      category: p.subcategory ?? p.category,
+      category: mapCategory(p.category, p.subcategory),
       description: p.description ?? '',
       latitude: p.lat,
       longitude: p.lng,
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
       website: p.website,
       priceLevel: mapPrice(p.price_level),
       hours: p.opening_hours ? Object.values(p.opening_hours)[0] : undefined,
+      tags: mapTags(p.category, p.tags),
     }))
 
     return NextResponse.json(places)
@@ -93,6 +95,33 @@ function mapType(cat: string): string {
   if (['park', 'garden', 'outdoor', 'beach'].includes(cat)) return 'experience'
   if (['event', 'festival', 'concert'].includes(cat)) return 'event'
   return 'destination'
+}
+
+// Map backend categories to PLACE_COLLECTIONS-compatible categories
+function mapCategory(cat: string, sub?: string): string {
+  const c = (sub ?? cat).toLowerCase()
+  if (['restaurant', 'dining'].includes(c)) return 'Culinary'
+  if (c === 'cafe') return 'Culinary'
+  if (c === 'bar' || c === 'nightlife') return 'Music Festival'
+  if (c === 'museum') return 'Historical'
+  if (['attraction', 'landmark', 'monument', 'sightseeing'].includes(c)) return 'Landmark'
+  if (['park', 'garden'].includes(c)) return 'Nature'
+  if (c === 'beach') return 'Coastal'
+  if (c === 'shopping') return 'Market'
+  return 'Cultural'
+}
+
+// Generate tags that match PLACE_COLLECTIONS match criteria
+function mapTags(cat: string, backendTags?: string[]): string[] {
+  const tags: string[] = backendTags ?? []
+  const c = cat.toLowerCase()
+  if (c === 'restaurant' || c === 'cafe' || c === 'dining') tags.push('Food')
+  if (c === 'museum' || c === 'attraction' || c === 'sightseeing') tags.push('Culture', 'Landmark')
+  if (c === 'park' || c === 'garden') tags.push('Nature')
+  if (c === 'bar' || c === 'nightlife') tags.push('Nightlife', 'Bar')
+  if (c === 'beach') tags.push('Beach', 'Coast')
+  if (c === 'shopping') tags.push('Markets')
+  return [...new Set(tags)]
 }
 
 function mapPrice(level: string | null | undefined): 1 | 2 | 3 | 4 | undefined {

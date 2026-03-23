@@ -201,8 +201,8 @@ export default function PlacesPage() {
   useEffect(() => {
     const w = window.innerWidth;
     if (w < 550) setColumnCount(1);
-    else if (w < 900) setColumnCount(2);
-    else if (w < 1200) setColumnCount(3);
+    else if (w < 768) setColumnCount(2);
+    else if (w < 900) setColumnCount(3);
   }, []);
 
   // Filter by tab
@@ -564,7 +564,7 @@ export default function PlacesPage() {
       ) : viewMode === 'grid' ? (
         <div
           className={`mx-auto px-6 lg:px-10 xl:px-14 py-4 transition-all duration-300 ${
-            columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : ''
+            columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : 'max-w-7xl'
           }`}
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l40 40M40 0L0 40' stroke='%23000' stroke-width='0.3' opacity='0.03'/%3E%3C/svg%3E")`,
@@ -796,51 +796,42 @@ export default function PlacesPage() {
                     </p>
                   </div>
 
-                  {themedSections.sections.map(({ collection, places: sectionPlaces }) => {
-                    const cols = distributeRoundRobin(sectionPlaces);
-                    const gapClass = columnCount === 2 ? 'gap-5' : columnCount === 3 ? 'gap-4' : 'gap-5';
-                    return (
-                      <div key={collection.key} className="mb-6">
-                        <div className="border-t border-gray-100 pt-5 pb-4 mt-2">
-                          <h3 className="text-lg font-extrabold text-[#1e3a5f]">{collection.label}</h3>
-                          <p className="text-xs text-gray-400 mt-0.5">{sectionPlaces.length} places</p>
-                        </div>
-                        {cols ? (
-                          <div className={`flex ${gapClass}`}>
-                            {cols.map((col, colIdx) => (
-                              <div key={colIdx} className={`flex-1 flex flex-col ${gapClass}`}>
-                                {col.map((item, i) => (
-                                  <PinCard
-                                    key={item.id}
-                                    item={item}
-                                    index={i}
-                                    isFavorited={favorites.includes(item.id)}
-                                    onFavorite={toggleFavorite}
-                                    onClick={(id) => openGridShowcase(id)}
-                                  />
-                                ))}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 550: 2, 900: 3, 1400: 4 }}>
-                            <Masonry gutter="20px">
-                              {sectionPlaces.map((item, i) => (
-                                <PinCard
-                                  key={item.id}
-                                  item={item}
-                                  index={i}
-                                  isFavorited={favorites.includes(item.id)}
-                                  onFavorite={toggleFavorite}
-                                  onClick={(id) => openGridShowcase(id)}
-                                />
-                              ))}
-                            </Masonry>
-                          </ResponsiveMasonry>
-                        )}
+                  {themedSections.sections.map(({ collection, places: sectionPlaces }) => (
+                    <div key={collection.key} className="mb-6">
+                      <div className="border-t border-gray-100 pt-5 pb-4 mt-2">
+                        <h3 className="text-lg font-extrabold text-[#1e3a5f]">{collection.label}</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">{sectionPlaces.length} places</p>
                       </div>
-                    );
-                  })}
+                      <div className="grid gap-5" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
+                        {sectionPlaces.map((item, i) => (
+                          <PinCard
+                            key={item.id}
+                            item={item}
+                            index={i}
+                            isFavorited={favorites.includes(item.id)}
+                            onFavorite={toggleFavorite}
+                            onClick={(id) => openGridShowcase(id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Places that didn't match a themed collection */}
+                  {themedSections.remaining.length > 0 && (
+                    <div className="grid gap-5" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
+                      {themedSections.remaining.map((item, i) => (
+                        <PinCard
+                          key={item.id}
+                          item={item}
+                          index={i}
+                          isFavorited={favorites.includes(item.id)}
+                          onFavorite={toggleFavorite}
+                          onClick={(id) => openGridShowcase(id)}
+                        />
+                      ))}
+                    </div>
+                  )}
 
                 </>
               ) : (

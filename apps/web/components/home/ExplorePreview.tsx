@@ -3,9 +3,48 @@
 import { useState, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useExploreRows } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 import { PlaceCard } from '@/components/PlaceCard';
+
+const EXPLORE_SECTIONS = [
+  { title: 'Top Attractions', category: 'sightseeing', lat: '40.7128', lng: '-74.0060' },
+  { title: 'Best Restaurants', category: 'restaurant', lat: '48.8566', lng: '2.3522' },
+  { title: 'Museums & Culture', category: 'museum', lat: '41.9028', lng: '12.4964' },
+  { title: 'Parks & Nature', category: 'park', lat: '51.5074', lng: '-0.1278' },
+];
+
+async function fetchExploreSections() {
+  const results = await Promise.all(
+    EXPLORE_SECTIONS.map(async (section) => {
+      const res = await fetch(`/api/places?lat=${section.lat}&lng=${section.lng}&category=${section.category}&limit=8`);
+      if (!res.ok) return { ...section, items: [] as PlaceItem[] };
+      const items = await res.json() as PlaceItem[];
+      return { ...section, items };
+    })
+  );
+  return results.filter((s) => s.items.length > 0);
+}
+
+function useExploreSections() {
+  const { data: sections = [], isLoading } = useQuery({
+    queryKey: ['explore-sections'],
+    queryFn: fetchExploreSections,
+    staleTime: 10 * 60 * 1000,
+  });
+  const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set([0]));
+  const toggleRow = (i: number) => setExpandedSet((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  const expandAll = () => setExpandedSet(new Set(sections.map((_, i) => i)));
+  const collapseAll = () => setExpandedSet(new Set());
+  const allExpanded = sections.length > 0 && expandedSet.size === sections.length;
+  const rows = sections.map((s, i) => ({
+    title: s.title,
+    gradient: { from: '#1e3a5f', to: '#2563eb' },
+    items: s.items,
+    isExpanded: expandedSet.has(i),
+  }));
+  return { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading };
+}
 
 // ─── Section Header ──────────────────────────────────────────
 function SectionHeader({
@@ -176,7 +215,7 @@ function ExploreSection({
 
 // ─── Main Component ──────────────────────────────────────────
 export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem) => void } = {}) {
-  const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading } = useExploreRows();
+  const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading } = useExploreSections();
 
   if (isLoading) {
     return (

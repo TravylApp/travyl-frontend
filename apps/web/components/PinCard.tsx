@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { Heart, MapPin, Star } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -17,7 +17,7 @@ function hashCode(str: string): number {
 }
 
 function getAspectRatio(id: string): number {
-  return 0.95 + (hashCode(id + 'ar') % 20) / 100; // 0.95–1.14 (tighter range for balanced masonry)
+  return 1.4 + (hashCode(id + 'ar') % 20) / 100; // 1.4–1.59 (landscape cards for compact grid)
 }
 
 function getRotation(_id: string): number {
@@ -38,21 +38,26 @@ export interface PinCardProps {
 
 export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCardProps) {
   const [imgError, setImgError] = useState(false);
+  const hasAnimated = useRef(false);
   const aspectRatio = getAspectRatio(item.id);
   const rotation = getRotation(item.id);
   const showTape = hasTape(item.id);
 
+  const shouldAnimate = !hasAnimated.current;
+  if (shouldAnimate) hasAnimated.current = true;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 28, scale: 0.93 }}
+      initial={shouldAnimate ? { opacity: 0, y: 28, scale: 0.93 } : false}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
         duration: 0.5,
-        delay: Math.min(index * 0.06, 0.8),
+        delay: shouldAnimate ? Math.min(index * 0.06, 0.8) : 0,
         ease: [0.22, 1, 0.36, 1],
       }}
+      layout
       style={{ rotate: rotation ? `${rotation}deg` : undefined }}
-      className="break-inside-avoid"
+      className="break-inside-avoid min-w-0"
     >
       <div
         className="group relative bg-white border border-gray-100 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 shadow-sm"

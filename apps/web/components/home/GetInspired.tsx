@@ -5,12 +5,27 @@ import { AnimatePresence, motion, type PanInfo } from "motion/react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
 import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
-import type { PlaceItem as PlaceItemType } from '@travyl/shared';
-
-const MOCK_PLACES: PlaceItemType[] = [];
 import type { PlaceItem } from "@travyl/shared";
+import { useQuery } from "@tanstack/react-query";
 
-const INSPIRED_PLACES = MOCK_PLACES.slice(0, 8);
+const INSPIRE_CITIES = [
+  { lat: '48.8566', lng: '2.3522' },   // Paris
+  { lat: '35.6762', lng: '139.6503' }, // Tokyo
+  { lat: '41.9028', lng: '12.4964' },  // Rome
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+];
+
+async function fetchInspiredPlaces(): Promise<PlaceItem[]> {
+  const results = await Promise.all(
+    INSPIRE_CITIES.map(async (city) => {
+      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=sightseeing&limit=2`);
+      if (!res.ok) return [];
+      return res.json() as Promise<PlaceItem[]>;
+    })
+  );
+  return results.flat();
+}
+
 const SWIPE_THRESHOLD = 80;
 
 function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolean }) {
@@ -209,9 +224,11 @@ export function GetInspired() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const cards = INSPIRED_PLACES;
-
-  if (cards.length === 0) return null;
+  const { data: cards = [] } = useQuery({
+    queryKey: ['inspired-places'],
+    queryFn: fetchInspiredPlaces,
+    staleTime: 10 * 60 * 1000,
+  });
 
   // Reset flip when card changes
   useEffect(() => {
@@ -242,6 +259,8 @@ export function GetInspired() {
     if (info.offset.x < -SWIPE_THRESHOLD) goNext();
     else if (info.offset.x > SWIPE_THRESHOLD) goPrev();
   };
+
+  if (cards.length === 0) return null;
 
   const prevIdx = currentIdx === 0 ? cards.length - 1 : currentIdx - 1;
   const nextIdx = (currentIdx + 1) % cards.length;
