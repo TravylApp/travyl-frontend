@@ -1,6 +1,6 @@
 import { cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -68,7 +68,7 @@ api.route('POST /interact', {
 
 api.route('POST /index', {
   handler: 'services/index-trip.handler',
-  link: [supabaseSecretKey, supabaseUrl],
+  link: [supabaseSecretKey, supabaseUrl, pexels],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],

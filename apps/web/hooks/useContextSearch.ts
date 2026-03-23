@@ -14,6 +14,7 @@ export interface ContextSearchResult {
   endDate: string
   status: string
   activityCount: number
+  imageUrl: string | null
   score: number
 }
 

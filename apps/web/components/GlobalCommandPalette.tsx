@@ -49,16 +49,6 @@ const NAV_ITEMS: NavItem[] = [
   { type: 'navigation', id: 'settings', label: 'Settings', path: '/settings' },
 ]
 
-// ─── Status badge colors ─────────────────────────────────────
-
-const STATUS_COLORS: Record<string, string> = {
-  planning: 'bg-gray-400',
-  booked: 'bg-amber-500',
-  active: 'bg-emerald-500',
-  completed: 'bg-[#003594]',
-  abandoned: 'bg-red-500',
-}
-
 // ─── Date formatting ─────────────────────────────────────────
 
 function formatTripDates(startDate: string, endDate: string): string {
@@ -76,8 +66,6 @@ export function GlobalCommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
-  const [hoveredTrip, setHoveredTrip] = useState<ContextSearchResult | null>(null)
-  const [hoverAnchor, setHoverAnchor] = useState<HTMLElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -107,8 +95,6 @@ export function GlobalCommandPalette() {
     if (isOpen) {
       setQuery('')
       setHighlightedIndex(0)
-      setHoveredTrip(null)
-      setHoverAnchor(null)
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }, [isOpen])
@@ -168,17 +154,6 @@ export function GlobalCommandPalette() {
     setHighlightedIndex(0)
   }, [flatItems.length])
 
-  // ─── Show preview for keyboard-highlighted trip ──────────
-  useEffect(() => {
-    const item = flatItems[highlightedIndex]
-    if (item?.type === 'trip') {
-      setHoveredTrip(item.data)
-    } else {
-      setHoveredTrip(null)
-      setHoverAnchor(null)
-    }
-  }, [highlightedIndex, flatItems])
-
   // ─── Execute item ────────────────────────────────────────
 
   function executeItem(item: PaletteItem) {
@@ -229,21 +204,6 @@ export function GlobalCommandPalette() {
       setIsOpen(false)
     }
   }
-
-  // ─── Hover preview position ──────────────────────────────
-
-  const previewStyle = useMemo(() => {
-    if (!hoveredTrip) return { display: 'none' as const }
-    if (!hoverAnchor) {
-      return { top: '15vh', left: 'calc(50% + 280px)', display: 'block' as const }
-    }
-    const rect = hoverAnchor.getBoundingClientRect()
-    const spaceRight = window.innerWidth - rect.right
-    if (spaceRight > 260) {
-      return { top: rect.top, left: rect.right + 8, display: 'block' as const }
-    }
-    return { top: rect.top, right: window.innerWidth - rect.left + 8, display: 'block' as const }
-  }, [hoverAnchor, hoveredTrip])
 
   // ─── Render ──────────────────────────────────────────────
 
@@ -320,18 +280,8 @@ export function GlobalCommandPalette() {
                         onClick={() => {
                           if (!disabled) executeItem(item)
                         }}
-                        onMouseEnter={(e) => {
+                        onMouseEnter={() => {
                           if (!disabled) setHighlightedIndex(index)
-                          if (item.type === 'trip') {
-                            setHoveredTrip(item.data)
-                            setHoverAnchor(e.currentTarget)
-                          }
-                        }}
-                        onMouseLeave={() => {
-                          if (item.type === 'trip') {
-                            setHoveredTrip(null)
-                            setHoverAnchor(null)
-                          }
                         }}
                         className={[
                           'w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors',
@@ -342,13 +292,22 @@ export function GlobalCommandPalette() {
                               : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
                         ].join(' ')}
                       >
-                        <span className="flex items-center gap-2">
-                          {item.type === 'trip' && (
-                            <span className="text-xs text-gray-400 dark:text-[#4a7ab5]">
-                              {item.data.destination}
-                            </span>
+                        <span className="flex items-center gap-2.5">
+                          {item.type === 'trip' && item.data.imageUrl && (
+                            <img
+                              src={item.data.imageUrl}
+                              alt={item.data.destination}
+                              className="w-[46px] h-[36px] rounded object-cover shrink-0"
+                            />
                           )}
-                          <span>{item.label}</span>
+                          <span className="flex flex-col min-w-0">
+                            <span>{item.label}</span>
+                            {item.type === 'trip' && (item.data.startDate && item.data.endDate) && (
+                              <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5] truncate">
+                                {item.data.destination} · {formatTripDates(item.data.startDate, item.data.endDate)}
+                              </span>
+                            )}
+                          </span>
                         </span>
                         {item.type === 'command' && item.command.shortcut && (
                           <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded ml-4 shrink-0">
@@ -362,32 +321,6 @@ export function GlobalCommandPalette() {
               ))}
             </div>
           </motion.div>
-
-          {hoveredTrip && (
-            <div
-              className="fixed z-[60] w-[240px] bg-white dark:bg-[#0f1a28] rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 shadow-xl p-3 pointer-events-none"
-              style={previewStyle}
-            >
-              <div className="font-medium text-sm text-gray-900 dark:text-[#f5efe8]">
-                {hoveredTrip.title}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-[#4a7ab5] mt-0.5">
-                {hoveredTrip.destination}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-[#4a7ab5] mt-1">
-                {formatTripDates(hoveredTrip.startDate, hoveredTrip.endDate)}
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`inline-block w-2 h-2 rounded-full ${STATUS_COLORS[hoveredTrip.status] ?? STATUS_COLORS.planning}`} />
-                <span className="text-xs text-gray-500 dark:text-[#4a7ab5] capitalize">
-                  {hoveredTrip.status}
-                </span>
-                <span className="text-xs text-gray-400 dark:text-[#484f58] ml-auto">
-                  {hoveredTrip.activityCount} activities
-                </span>
-              </div>
-            </div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>
