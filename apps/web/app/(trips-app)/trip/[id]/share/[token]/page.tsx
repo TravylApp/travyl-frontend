@@ -114,6 +114,24 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
     )
   }
 
+  if (error === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
+            style={{ backgroundColor: BRAND }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (error === 'invalid' || !trip) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -132,24 +150,6 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
           >
             Explore Trips
           </Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (error === 'error') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
-          <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
-            style={{ backgroundColor: BRAND }}
-          >
-            Retry
-          </button>
         </div>
       </div>
     )
