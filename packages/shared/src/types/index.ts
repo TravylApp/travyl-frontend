@@ -81,9 +81,9 @@ export interface Trip {
   hidden_tabs?: Record<string, boolean>;
   is_public?: boolean;
   is_shared?: boolean;
+  cover_image_url?: string | null;
   created_at: string;
   updated_at: string;
-  cover_image_url?: string | null;
 }
 
 // ─── Route / Map Types ─────────────────────────────────────
