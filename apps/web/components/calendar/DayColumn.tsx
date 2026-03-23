@@ -29,6 +29,7 @@ interface DayColumnProps {
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
   onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
 }
 
 function CurrentTimeIndicator({
@@ -89,6 +90,7 @@ export function DayColumn({
   marqueeSelectedIds,
   onShiftClickEvent,
   onResizeEvent,
+  onContextMenu,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
@@ -235,6 +237,7 @@ export function DayColumn({
               onSelect={onSelectEvent}
               onShiftClick={onShiftClickEvent}
               onResize={onResizeEvent}
+              onContextMenu={onContextMenu}
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}

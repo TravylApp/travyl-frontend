@@ -15,6 +15,7 @@ export interface DayViewProps {
   onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
   onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
 }
 
 export function DayView({
@@ -29,6 +30,7 @@ export function DayView({
   onDeselect,
   pendingDrop = null,
   onResizeEvent,
+  onContextMenu,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -49,6 +51,7 @@ export function DayView({
           onDeselect={onDeselect}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
           onResizeEvent={onResizeEvent}
+          onContextMenu={onContextMenu}
         />
       </div>
     </div>

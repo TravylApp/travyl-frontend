@@ -23,6 +23,7 @@ interface WeekViewProps {
   marqueeOverlay?: React.ReactNode
   onShiftClickEvent?: (id: string) => void
   onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
 }
 
 export function WeekView({
@@ -41,6 +42,7 @@ export function WeekView({
   marqueeOverlay,
   onShiftClickEvent,
   onResizeEvent,
+  onContextMenu,
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [columnWidths, setColumnWidths] = useState<number[]>([])
@@ -107,6 +109,7 @@ export function WeekView({
                   marqueeSelectedIds={marqueeSelectedIds}
                   onShiftClickEvent={onShiftClickEvent}
                   onResizeEvent={onResizeEvent}
+                  onContextMenu={onContextMenu}
                 />
               </div>
               {i < days.length - 1 && (

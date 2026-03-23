@@ -33,6 +33,8 @@ import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { ShareModal } from './sharing/ShareModal'
+import { ActivityContextMenu } from './ActivityContextMenu'
+import { ActivityEditModal } from './ActivityEditModal'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -72,6 +74,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
   const router = useRouter()
 
   // Hooks
@@ -291,6 +295,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       clearMarqueeSelection()
       return // consume the click
     }
+    // Close context menu when selecting via click
+    setContextMenu(null)
     if (selectedEventId === id) {
       selectEvent(null)
       setPopoverAnchor(null)
@@ -299,6 +305,42 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       setPopoverAnchor(anchorEl ?? null)
     }
   }
+
+  const handleContextMenu = (activityId: string, x: number, y: number) => {
+    // Close popover when opening context menu (overlay exclusivity)
+    selectEvent(null)
+    setPopoverAnchor(null)
+    setContextMenu({ activityId, x, y })
+  }
+
+  const handleContextMenuAction = (actionId: string) => {
+    if (!contextMenu) return
+    const { activityId } = contextMenu
+    setContextMenu(null)
+
+    if (actionId === 'edit') {
+      setEditingActivityId(activityId)
+    } else if (actionId === 'duplicate') {
+      const act = activities.find((a) => a.id === activityId)
+      if (act) duplicateActivity(act)
+    } else if (actionId === 'delete') {
+      handleRemoveActivity(activityId)
+    }
+  }
+
+  const handleEditSave = useCallback((id: string, patch: Partial<CalendarActivity>) => {
+    if (patch.day !== undefined) {
+      const startHour = patch.startHour ?? 0
+      moveActivity(id, patch.day, startHour)
+      const { day: _day, startHour: _sh, ...rest } = patch
+      if (Object.keys(rest).length > 0) {
+        updateActivity(id, rest)
+      }
+    } else {
+      updateActivity(id, patch)
+    }
+    setEditingActivityId(null)
+  }, [moveActivity, updateActivity])
 
   const handleClosePopover = () => {
     selectEvent(null)
@@ -445,6 +487,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         marqueeOverlay={marqueeOverlayElement}
                         onShiftClickEvent={toggleActivityInSelection}
                         onResizeEvent={handleResizeEvent}
+                        onContextMenu={handleContextMenu}
                       />
                     </motion.div>
                   ) : (
@@ -468,6 +511,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                         onDeselect={() => selectEvent(null)}
                         pendingDrop={pendingDrop}
                         onResizeEvent={handleResizeEvent}
+                        onContextMenu={handleContextMenu}
                       />
                     </motion.div>
                   )}
@@ -587,6 +631,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       duration={selectedActivity ? formatDurationLabel(selectedActivity.duration) : undefined}
       actions={selectedActivity ? [
         {
+          label: 'Edit',
+          onClick: () => {
+            setEditingActivityId(selectedActivity.id)
+            handleClosePopover()
+          },
+          variant: 'ghost' as const,
+        },
+        {
           label: 'Delete',
           onClick: () => handleRemoveActivity(selectedActivity.id),
           variant: 'danger' as const,
@@ -601,6 +653,32 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         onSettingsChange={refetchTrip}
       />
     )}
+    {contextMenu && (
+      <ActivityContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        actions={[
+          { id: 'edit', label: 'Edit' },
+          { id: 'duplicate', label: 'Duplicate' },
+          { id: 'separator', label: '', separator: true },
+          { id: 'delete', label: 'Delete', danger: true },
+        ]}
+        onAction={handleContextMenuAction}
+        onClose={() => setContextMenu(null)}
+      />
+    )}
+    {editingActivityId && (() => {
+      const editActivity = activities.find((a) => a.id === editingActivityId)
+      if (!editActivity) return null
+      return (
+        <ActivityEditModal
+          activity={editActivity}
+          tripDays={TRIP_DAYS}
+          onSave={handleEditSave}
+          onClose={() => setEditingActivityId(null)}
+        />
+      )
+    })()}
     </CalendarThemeContext.Provider>
   )
 }

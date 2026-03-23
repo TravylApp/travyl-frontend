@@ -20,6 +20,7 @@ interface EventBlockProps {
   onSelect: (id: string, anchorEl: HTMLElement) => void
   onShiftClick?: (id: string) => void
   onResize?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
   timeRangeStartHour: number
   timeRangeEndHour?: number
   column?: number
@@ -35,6 +36,7 @@ export function EventBlock({
   onSelect,
   onShiftClick,
   onResize,
+  onContextMenu,
   timeRangeStartHour,
   timeRangeEndHour = 24,
   column = 0,
@@ -135,6 +137,13 @@ export function EventBlock({
           return
         }
         onSelect(activity.id, e.currentTarget)
+      }}
+      onContextMenu={(e: React.MouseEvent<HTMLDivElement>) => {
+        if (onContextMenu) {
+          e.preventDefault()
+          e.stopPropagation()
+          onContextMenu(activity.id, e.clientX, e.clientY)
+        }
       }}
       onKeyDown={handleKeyDown}
     >
