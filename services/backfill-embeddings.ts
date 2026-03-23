@@ -83,4 +83,4 @@ export async function backfill() {
   console.log('Backfill complete.')
 }
 
-await backfill()
+backfill().catch((err) => { console.error(err); process.exit(1) })
