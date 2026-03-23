@@ -284,6 +284,20 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     clearMarqueeSelection,
   )
 
+  const handleEditSave = useCallback((id: string, patch: Partial<CalendarActivity>) => {
+    if (patch.day !== undefined) {
+      const startHour = patch.startHour ?? 0
+      moveActivity(id, patch.day, startHour)
+      const { day: _day, startHour: _sh, ...rest } = patch
+      if (Object.keys(rest).length > 0) {
+        updateActivity(id, rest)
+      }
+    } else {
+      updateActivity(id, patch)
+    }
+    setEditingActivityId(null)
+  }, [moveActivity, updateActivity])
+
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
   if (error) return <CalendarError message={error} />
@@ -327,20 +341,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       handleRemoveActivity(activityId)
     }
   }
-
-  const handleEditSave = useCallback((id: string, patch: Partial<CalendarActivity>) => {
-    if (patch.day !== undefined) {
-      const startHour = patch.startHour ?? 0
-      moveActivity(id, patch.day, startHour)
-      const { day: _day, startHour: _sh, ...rest } = patch
-      if (Object.keys(rest).length > 0) {
-        updateActivity(id, rest)
-      }
-    } else {
-      updateActivity(id, patch)
-    }
-    setEditingActivityId(null)
-  }, [moveActivity, updateActivity])
 
   const handleClosePopover = () => {
     selectEvent(null)
