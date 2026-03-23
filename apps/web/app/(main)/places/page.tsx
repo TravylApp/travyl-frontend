@@ -23,10 +23,9 @@ import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
 import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 
-async function fetchPlaces(query?: string): Promise<PlaceItemType[]> {
-  const params = new URLSearchParams({ limit: '20' })
-  if (query) params.set('q', query)
-  else { params.set('lat', '48.8566'); params.set('lng', '2.3522') }
+async function fetchPlaces(query: string): Promise<PlaceItemType[]> {
+  if (!query) return []
+  const params = new URLSearchParams({ q: query, limit: '20' })
   const res = await fetch(`/api/places?${params}`)
   if (!res.ok) return []
   return res.json()
@@ -64,7 +63,8 @@ export default function PlacesPage() {
   const [searchCity, setSearchCity] = useState('');
   const { data: places = [], isLoading: placesLoading } = useQuery({
     queryKey: ['places', searchCity],
-    queryFn: () => fetchPlaces(searchCity || undefined),
+    queryFn: () => fetchPlaces(searchCity),
+    enabled: !!searchCity,
     staleTime: 5 * 60 * 1000,
   });
   const [activeTab, setActiveTab] = useState<TabKey>('all');
