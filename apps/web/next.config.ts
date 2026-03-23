@@ -13,6 +13,10 @@ transpilePackages: ["@travyl/shared"],
         protocol: "https",
         hostname: "i.pravatar.cc",
       },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
   },
 };
