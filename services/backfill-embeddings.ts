@@ -6,7 +6,7 @@ import { generateEmbedding } from './lib/embeddings'
 export async function backfill() {
   const supabase = createClient(
     Resource.SupabaseUrl.value,
-    Resource.SupabaseSecretKey.value,
+    Resource.SupabaseServiceRoleKey.value,
   )
 
   const { data: trips, error } = await supabase

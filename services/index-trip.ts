@@ -20,7 +20,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const supabase = createClient(
       Resource.SupabaseUrl.value,
-      Resource.SupabaseSecretKey.value,
+      Resource.SupabaseServiceRoleKey.value,
     )
 
     // Fetch trip
