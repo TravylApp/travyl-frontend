@@ -84,7 +84,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
   const rawMutations = useActivityMutations(tripId, tripStartDate, userId)
   const {
-    addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity,
+    addActivity, updateActivity, moveActivity, removeActivity, removeActivities, duplicateActivity,
     undo, redo, canUndo, canRedo,
   } = useUndoRedo({
     ...rawMutations,
@@ -246,8 +246,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(marqueeSelectedIds)
     clearMarqueeSelection()
-    await Promise.all(ids.map((id) => removeActivity(id)))
-  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivity])
+    await removeActivities(ids)
+  }, [marqueeSelectedIds, clearMarqueeSelection, removeActivities])
 
   const handleBulkDuplicate = useCallback(async () => {
     const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))

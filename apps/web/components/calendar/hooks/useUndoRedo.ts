@@ -25,6 +25,8 @@ interface UseUndoRedoReturn {
   updateActivity: (id: string, patch: Partial<CalendarActivity>) => void
   moveActivity: (id: string, newDay: number, newStartHour: number) => void
   removeActivity: (id: string) => Promise<void>
+  /** Batch remove — single undo entry restores all */
+  removeActivities: (ids: string[]) => Promise<void>
   duplicateActivity: (source: CalendarActivity) => Promise<void>
   undo: () => void
   redo: () => void
@@ -123,6 +125,28 @@ export function useUndoRedo({
     [rawRemove, rawAdd, getActivity, push],
   )
 
+  const removeActivities = useCallback(
+    async (ids: string[]) => {
+      // Snapshot all activities before deleting
+      const snapshots: CalendarActivity[] = []
+      for (const id of ids) {
+        const act = getActivity(id)
+        if (act) snapshots.push({ ...act })
+      }
+      await Promise.all(ids.map((id) => rawRemove(id)))
+      if (snapshots.length > 0) {
+        push({
+          label: `Delete ${snapshots.length} activities`,
+          undo: async () => {
+            for (const snap of snapshots) await rawAdd(snap)
+          },
+          redo: () => Promise.all(ids.map((id) => rawRemove(id))) as unknown as Promise<void>,
+        })
+      }
+    },
+    [rawRemove, rawAdd, getActivity, push],
+  )
+
   const duplicateActivity = useCallback(
     async (source: CalendarActivity) => {
       // We need to capture the ID of the created duplicate.
@@ -163,6 +187,7 @@ export function useUndoRedo({
     updateActivity,
     moveActivity,
     removeActivity,
+    removeActivities,
     duplicateActivity,
     undo,
     redo,
