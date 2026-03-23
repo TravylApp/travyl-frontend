@@ -243,17 +243,22 @@ export default function Home() {
         }));
       } catch {}
 
-      // Fetch hero image, weather, and hotels in parallel
+      // Fetch hero image, weather, hotels, news, and landmark photos in parallel
       const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
       const durationDays = extracted.duration_days ?? 5;
-      const [heroImageUrl, weatherData, hotelData, newsData] = await Promise.all([
+      const lat = extracted.destination.lat;
+      const lng = extracted.destination.lng;
+      const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos] = await Promise.all([
         fetch(`/api/images?q=${encodeURIComponent(extracted.destination.city)}`)
           .then(r => r.ok ? r.json().then((d: any) => d.url as string) : undefined).catch(() => undefined),
         fetch(`/api/weather?location=${encodeURIComponent(dest)}&days=${durationDays}`)
           .then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/foursquare?lat=${extracted.destination.lat}&lng=${extracted.destination.lng}&category=hotel&limit=5`)
+        fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
         fetch(`/api/news?destination=${encodeURIComponent(extracted.destination.city)}&limit=8`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+        // Fetch landmark/attraction photos specifically for the hero mosaic
+        fetch(`/api/places?lat=${lat}&lng=${lng}&category=sightseeing&limit=8`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
 
@@ -268,13 +273,14 @@ export default function Home() {
         budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
         currency: 'USD',
         trip_context: {
-          hero_image_url: exploreItems[0]?.image || heroImageUrl || plan.destination_photo_url,
+          // Prefer landmark photos for cover (scenic location images)
+          hero_image_url: landmarkPhotos[0]?.image || exploreItems[0]?.image || heroImageUrl || plan.destination_photo_url,
           lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
           explore_items: exploreItems.length > 0 ? exploreItems : undefined,
-          // Use explore item images for the mosaic (real Google Places photos)
-          hero_images: exploreItems.length > 0
-            ? exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6)
-            : heroImageUrl ? [heroImageUrl] : undefined,
+          // Landmark photos for the bottom mosaic (real location images)
+          hero_images: landmarkPhotos.length > 0
+            ? landmarkPhotos.filter((p: any) => p.image).map((p: any) => p.image).slice(0, 8)
+            : exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6),
           weather: weatherData ? {
             current: weatherData.current,
             forecast: weatherData.forecast,
