@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { PaperPlane } from '@/components/ui'
 import { useAuthStore } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
+import { useIndexTrip } from '@/hooks/useIndexTrip'
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
 
@@ -35,6 +36,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
+  const { indexTrip } = useIndexTrip()
 
   const [title, setTitle] = useState('')
   const [destination, setDestination] = useState('')
@@ -194,7 +196,23 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         return
       }
 
+      // Fetch and store a destination cover image (non-fatal if it fails)
+      const shortDest = destination.split(',')[0].trim()
+      try {
+        const imgRes = await fetch(`/api/destination-image?destination=${encodeURIComponent(shortDest)}`)
+        const { url } = await imgRes.json() as { url: string | null }
+        if (url) {
+          await supabase
+            .from('trips')
+            .update({ cover_image_url: url })
+            .eq('id', data.id)
+        }
+      } catch {
+        // Non-fatal: trip was created, it will show the fallback image
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['trips'] })
+      indexTrip(data.id)
       onClose()
       router.push(`/trip/${data.id}`)
     } finally {
