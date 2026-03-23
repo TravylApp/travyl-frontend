@@ -195,10 +195,54 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
-  const launchTakeoff = useCallback((query: string) => {
+  const launchTakeoff = useCallback(async (query: string) => {
     setTripQuery(query);
     setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
     setShowTakeoff(true);
+
+    // Call the backend to plan the trip
+    const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
+    if (!API_URL) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/trips/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query }),
+      });
+      if (!res.ok) return;
+
+      const plan = await res.json();
+      const extracted = plan.extracted;
+      if (!extracted?.destination) return;
+
+      // Create the trip in Supabase
+      const { supabase } = await import('@travyl/shared');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const { data: trip } = await supabase
+        .from('trips')
+        .insert({
+          title: `${extracted.destination.city} Trip`,
+          destination: `${extracted.destination.city}, ${extracted.destination.country}`,
+          start_date: extracted.dates?.start,
+          end_date: extracted.dates?.end,
+          status: 'planning',
+          user_id: session?.user?.id ?? null,
+          travelers: extracted.travelers?.count ?? 1,
+          budget: extracted.daily_estimate_usd ? extracted.daily_estimate_usd * (extracted.duration_days ?? 5) : null,
+          currency: 'USD',
+        })
+        .select()
+        .single();
+
+      // Store trip ID so takeoff completion navigates to it
+      if (trip) {
+        sessionStorage.setItem('pendingTripId', trip.id);
+      }
+    } catch {
+      // Silently fail — the trip just won't be created
+    }
   }, [setTripQuery]);
 
   const handleConvReset = useCallback(() => {
@@ -680,7 +724,9 @@ export default function Home() {
         buttonRect={buttonRect}
         onComplete={() => {
           setShowTakeoff(false);
-          router.push("/trips");
+          const pendingId = sessionStorage.getItem('pendingTripId');
+          sessionStorage.removeItem('pendingTripId');
+          router.push(pendingId ? `/trip/${pendingId}` : "/trips");
         }}
       />
     </div>
