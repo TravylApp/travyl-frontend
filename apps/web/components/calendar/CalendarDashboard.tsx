@@ -2,9 +2,11 @@
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
+import { fetchCollaborators } from '@travyl/shared'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
 import { useTripActivities } from './hooks/useTripActivities'
@@ -32,6 +34,7 @@ import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
+import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
@@ -93,6 +96,21 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
+
+  const { data: tripCollaborators = [] } = useQuery({
+    queryKey: ['collaborators', tripId],
+    queryFn: () => fetchCollaborators(tripId),
+    enabled: !!tripId,
+  })
+
+  const scheduledActivities = useMemo(
+    () => activities.filter((a) => !a.unscheduled),
+    [activities],
+  )
+  const unscheduledActivities = useMemo(
+    () => activities.filter((a) => a.unscheduled),
+    [activities],
+  )
 
   const {
     viewMode,
@@ -172,13 +190,13 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     clearSelection: clearMarqueeSelection,
     setSelectedIds: setMarqueeSelectedIds,
   } = useMarqueeSelection({
-    activities,
+    activities: scheduledActivities,
     timeRangeStartHour: timeRange.startHour,
     dayCount: TRIP_DAYS.length,
   })
 
   const handleGroupMove = useCallback((dayDelta: number, hourDelta: number) => {
-    const selected = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    const selected = scheduledActivities.filter((a) => marqueeSelectedIds.has(a.id))
     if (selected.length === 0) return
 
     // Clamp delta so ALL activities stay in bounds
@@ -196,7 +214,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     for (const act of selected) {
       moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
     }
-  }, [activities, marqueeSelectedIds, moveActivity, tripTotalDays])
+  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays])
 
   const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: moveActivity,
@@ -214,8 +232,8 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const HOTEL_BANNERS: HotelBanner[] = []
 
   const selectedActivity = useMemo(
-    () => activities.find((a) => a.id === selectedEventId) ?? null,
-    [activities, selectedEventId],
+    () => scheduledActivities.find((a) => a.id === selectedEventId) ?? null,
+    [scheduledActivities, selectedEventId],
   )
 
   // Auto-scroll to first event on mount
@@ -250,12 +268,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }, [marqueeSelectedIds, clearMarqueeSelection, removeActivities])
 
   const handleBulkDuplicate = useCallback(async () => {
-    const toDuplicate = activities.filter((a) => marqueeSelectedIds.has(a.id))
+    const toDuplicate = scheduledActivities.filter((a) => marqueeSelectedIds.has(a.id))
     clearMarqueeSelection()
     for (const act of toDuplicate) {
       await duplicateActivity(act)
     }
-  }, [marqueeSelectedIds, clearMarqueeSelection, activities, duplicateActivity])
+  }, [marqueeSelectedIds, clearMarqueeSelection, scheduledActivities, duplicateActivity])
 
   const commands = useCalendarCommands({
     selectedActivity,
@@ -423,6 +441,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
+    <TripPermissionProvider trip={trip!} collaborators={tripCollaborators}>
     <div className={theme === 'dark' ? 'dark' : ''}>
     <div className={`flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Sidebar */}
@@ -485,7 +504,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                     >
                       <WeekView
                         days={TRIP_DAYS}
-                        activities={activities}
+                        activities={scheduledActivities}
                         viewers={collaborators}
                         selectedEventId={selectedEventId}
                         timeRange={timeRange}
@@ -514,7 +533,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
                       <DayView
                         dayIndex={selectedDayIndex}
                         label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
-                        activities={activities}
+                        activities={scheduledActivities}
                         viewers={collaborators}
                         selectedEventId={selectedEventId}
                         timeRange={timeRange}
@@ -691,6 +710,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         />
       )
     })()}
+    </TripPermissionProvider>
     </CalendarThemeContext.Provider>
   )
 }

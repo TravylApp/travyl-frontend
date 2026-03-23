@@ -28,6 +28,7 @@ export {
   deleteTrip,
   leaveTrip,
   inviteCollaborator,
+  fetchCollaborators,
 } from './api';
 export {
   fetchBudgetCategories,
