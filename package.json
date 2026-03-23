@@ -26,6 +26,7 @@
     "@aws-sdk/client-dynamodb": "^3.1011.0",
     "@aws-sdk/client-eventbridge": "^3.1011.0",
     "@aws-sdk/client-location": "^3.1011.0",
+    "@aws-sdk/client-sesv2": "^3.1014.0",
     "@aws-sdk/lib-dynamodb": "^3.1011.0"
   }
 }

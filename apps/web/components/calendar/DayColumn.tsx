@@ -21,11 +21,9 @@ interface DayColumnProps {
   onDeselect: () => void
   pendingActivity?: CalendarActivity | null
   notes?: TripNote[]
-  canCreateNotes?: boolean
   canEditNotes?: boolean
   userId?: string
   isOwner?: boolean
-  onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
   marqueeSelectedIds?: Set<string>
@@ -82,11 +80,9 @@ export function DayColumn({
   onDeselect,
   pendingActivity = null,
   notes,
-  canCreateNotes,
   canEditNotes,
   userId,
   isOwner,
-  onCreateNote,
   onUpdateNote,
   onDeleteNote,
   marqueeSelectedIds,
@@ -97,15 +93,7 @@ export function DayColumn({
   )
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return  // ignore bubbled clicks from EventBlock/PostItNote
-    const rect = e.currentTarget.getBoundingClientRect()
-    const offsetY = e.clientY - rect.top
-    const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-    const snappedHour = Math.round(rawHour * 2) / 2
-    if (e.shiftKey && canCreateNotes && onCreateNote) {
-      onCreateNote(dayIndex, snappedHour)
-      return
-    }
+    if (e.target !== e.currentTarget) return
     onDeselect()
   }
 

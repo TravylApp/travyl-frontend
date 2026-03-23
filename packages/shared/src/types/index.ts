@@ -76,6 +76,8 @@ export interface Trip {
   fork_count: number;
   theme: string;
   custom_theme_color: string | null;
+  is_public?: boolean;
+  is_shared?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -839,4 +841,30 @@ export interface MockHotelDetail {
   website: string;
   neighborhood: string;
   confirmationNumber: string;
+}
+
+// ─── Packing ────────────────────────────────────────────────
+
+export interface PackingItem {
+  item: string;
+  packed: boolean;
+}
+
+export type PackingList = Record<string, PackingItem[]>;
+
+// ─── Budget ─────────────────────────────────────────────────
+
+export interface BudgetExpense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface BudgetItem {
+  id: string;
+  category: string;
+  budgeted: number;
+  actual: number;
+  fixed: boolean;
+  expenses: BudgetExpense[];
 }

@@ -2,6 +2,11 @@ import { cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
 import { supabaseServiceRoleKey, supabaseUrl, serpApiKey } from './secrets'
 
+export const email = new sst.aws.Email('TravylEmail', {
+  sender: 'gotravyl.com',
+  dns: false,
+})
+
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
     allowOrigins: ['*'],
@@ -86,4 +91,9 @@ api.route('GET /context-search', {
 api.route('GET /recommend', {
   handler: 'services/recommend.handler',
   link: [cacheTable, userInteractions, supabaseServiceRoleKey, supabaseUrl, serpApiKey],
+})
+
+api.route('POST /invite', {
+  handler: 'services/invite.handler',
+  link: [supabaseServiceRoleKey, supabaseUrl, email],
 })

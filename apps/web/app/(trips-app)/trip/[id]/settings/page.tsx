@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useCallback } from 'react';
 import {
   User, FileText, Phone, CreditCard, Settings, Bell, Shield,
-  Save, Trash2, Download, Share2, AlertTriangle, ChevronRight,
+  Save, Trash2, Download, Share2, AlertTriangle,
   Check, X, Plus, Palette, LayoutGrid, Globe, GitFork, Copy,
   Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
   Luggage, PieChart, Heart, Car, Settings2,
@@ -12,27 +12,6 @@ import type { LucideIcon } from 'lucide-react';
 import { ThemePicker } from '@/components/trip/ThemePicker';
 import { useTripTheme } from '@/components/trip/TripThemeContext';
 import { useItineraryScreen, useAuthStore, isTripOwner, updateTripVisibility } from '@travyl/shared';
-
-// ─── Sub-tab definitions ──────────────────────────────────────
-
-interface SubTab {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-}
-
-const SUB_TABS: SubTab[] = [
-  { id: 'appearance',       label: 'Theme & Colors',    icon: Palette },
-  { id: 'tabs',             label: 'Tabs',              icon: LayoutGrid },
-  { id: 'profile',          label: 'Profile',           icon: User },
-  { id: 'travel-documents', label: 'Travel Documents',  icon: FileText },
-  { id: 'emergency',        label: 'Emergency Contact', icon: Phone },
-  { id: 'payment',          label: 'Payment',           icon: CreditCard },
-  { id: 'preferences',      label: 'Preferences',       icon: Settings },
-  { id: 'notifications',    label: 'Notifications',     icon: Bell },
-  { id: 'sharing',          label: 'Sharing',           icon: Share2 },
-  { id: 'privacy',          label: 'Privacy',           icon: Shield },
-];
 
 // Tab definitions for the Tabs settings section
 const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon; alwaysOn?: boolean }[] = [
@@ -54,7 +33,7 @@ const FALLBACK_BRAND = '#1e3a5f';
 // ─── Reusable small components ────────────────────────────────
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-lg font-bold text-gray-900 mb-4">{children}</h2>;
+  return <h2 className="text-xl font-serif font-bold text-gray-900 mb-4">{children}</h2>;
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -678,7 +657,6 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   const user = useAuthStore((s) => s.user);
   const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
 
-  const [activeTab, setActiveTab] = useState('appearance');
   const [dirty, setDirty] = useState(false);
 
   // ── Appearance — driven by shared TripThemeContext ───
@@ -794,90 +772,60 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     markDirty();
   };
 
-  // ── Content router ──
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'appearance':
-        return (
-          <div>
-            <SectionHeading>Theme & Colors</SectionHeading>
-            <ThemePicker
-              currentTheme={themeId}
-              customColor={customColor}
-              onSelectTheme={(tid, color) => { setTripTheme(tid, color); markDirty(); }}
-              tabColors={theme.tabColors}
-              tabColorOverrides={tabColorOverrides}
-              onTabColorChange={(name, color) => { setTabColor(name, color); markDirty(); }}
-              onResetTabColors={() => { resetTabColors(); markDirty(); }}
-              itineraryColors={theme.itineraryColors}
-              itineraryColorOverrides={itineraryColorOverrides}
-              onItineraryColorChange={(section, color) => { setItineraryColor(section, color); markDirty(); }}
-              onResetItineraryColors={() => { resetItineraryColors(); markDirty(); }}
-            />
-          </div>
-        );
-      case 'tabs':
-        return (
-          <div>
-            <SectionHeading>Manage Tabs</SectionHeading>
-            <p className="text-sm text-gray-500 mb-4">Choose which tabs appear in your trip navigation.</p>
-            <div className="space-y-1">
-              {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
-                const isEnabled = !hiddenTabs[segment];
-                const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
-                return (
-                  <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 transition">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: isEnabled ? tabColor : '#d1d5db' }}>
-                        <Icon size={14} style={{ color: theme.textOnBase }} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{label}</p>
-                        {alwaysOn && <p className="text-[11px] text-gray-400">Always visible</p>}
-                      </div>
-                    </div>
-                    {alwaysOn ? (
-                      <div className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">Required</div>
-                    ) : (
-                      <Toggle enabled={isEnabled} onToggle={() => setTabHidden(segment, isEnabled)} color={theme.base} />
-                    )}
+  return (
+    <div className="max-w-2xl mx-auto pb-24 divide-y divide-gray-200">
+      {/* Theme & Colors */}
+      <section className="py-8 first:pt-0">
+        <SectionHeading>Theme & Colors</SectionHeading>
+        <ThemePicker
+          currentTheme={themeId}
+          customColor={customColor}
+          onSelectTheme={(tid, color) => { setTripTheme(tid, color); markDirty(); }}
+          tabColors={theme.tabColors}
+          tabColorOverrides={tabColorOverrides}
+          onTabColorChange={(name, color) => { setTabColor(name, color); markDirty(); }}
+          onResetTabColors={() => { resetTabColors(); markDirty(); }}
+          itineraryColors={theme.itineraryColors}
+          itineraryColorOverrides={itineraryColorOverrides}
+          onItineraryColorChange={(section, color) => { setItineraryColor(section, color); markDirty(); }}
+          onResetItineraryColors={() => { resetItineraryColors(); markDirty(); }}
+        />
+      </section>
+
+      {/* Manage Tabs */}
+      <section className="py-8">
+        <SectionHeading>Manage Tabs</SectionHeading>
+        <p className="text-sm text-gray-500 mb-4">Choose which tabs appear in your trip navigation.</p>
+        <div className="space-y-1">
+          {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
+            const isEnabled = !hiddenTabs[segment];
+            const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
+            return (
+              <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 transition">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: isEnabled ? tabColor : '#d1d5db' }}>
+                    <Icon size={14} style={{ color: theme.textOnBase }} />
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      case 'profile':
-        return <ProfileSection data={profile} onChange={updateProfile} />;
-      case 'travel-documents':
-        return <TravelDocumentsSection data={documents} onChange={updateDocuments} />;
-      case 'emergency':
-        return <EmergencyContactSection data={emergency} onChange={updateEmergency} />;
-      case 'payment':
-        return (
-          <PaymentSection
-            cards={cards}
-            onSetDefault={setDefaultCard}
-            onDelete={deleteCard}
-            onAdd={addCard}
-          />
-        );
-      case 'preferences':
-        return <PreferencesSection data={preferences} onChange={updatePreferences} />;
-      case 'notifications':
-        return <NotificationsSection data={notifications} onToggle={toggleNotification} />;
-      case 'sharing':
-        // Only show sharing section to trip owner
-        if (!isOwner) {
-          return (
-            <div className="text-center py-8">
-              <Shield size={32} className="text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Only the trip owner can manage sharing settings.</p>
-            </div>
-          );
-        }
-        return (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{label}</p>
+                    {alwaysOn && <p className="text-[11px] text-gray-400">Always visible</p>}
+                  </div>
+                </div>
+                {alwaysOn ? (
+                  <div className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">Required</div>
+                ) : (
+                  <Toggle enabled={isEnabled} onToggle={() => setTabHidden(segment, isEnabled)} color={theme.base} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Trip Sharing */}
+      {isOwner && (
+        <section className="py-8">
           <TripSharingSection
             tripId={id}
             isPublic={isPublic}
@@ -887,64 +835,55 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
             onTogglePublic={handleTogglePublic}
             onToggleShared={handleToggleShared}
           />
-        );
-      case 'privacy':
-        return (
-          <PrivacySection
-            shareTripLink={`https://travyl.app/trip/${id}/share`}
-            onDownloadData={() => alert('Downloading your data...')}
-            onClearHistory={() => alert('Search history cleared.')}
-            onDeleteAccount={() => alert('Account deletion requested.')}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+        </section>
+      )}
 
-  return (
-    <div className="flex flex-col md:flex-row gap-6 min-h-[480px]">
-      {/* ── Left sidebar: sub-tab list ── */}
-      <nav className="shrink-0 md:w-56">
-        <ul className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
-          {SUB_TABS.map(({ id: tabId, label, icon: Icon }) => {
-            const isActive = activeTab === tabId;
-            return (
-              <li key={tabId}>
-                <button
-                  onClick={() => setActiveTab(tabId)}
-                  className={`flex items-center gap-2.5 w-full whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? 'shadow-sm'
-                      : 'hover:bg-white/10'
-                  }`}
-                  style={isActive
-                    ? { backgroundColor: theme.base, color: theme.textOnBase }
-                    : { color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }
-                  }
-                >
-                  <Icon size={16} style={isActive ? { color: theme.textOnBase } : { color: 'rgba(255,255,255,0.7)' }} />
-                  <span className="flex-1 text-left">{label}</span>
-                  <ChevronRight
-                    size={14}
-                    style={isActive ? { color: theme.textOnBase, opacity: 0.7 } : { color: 'rgba(255,255,255,0.4)' }}
-                    className="hidden md:block"
-                  />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* Profile */}
+      <section className="py-8">
+        <ProfileSection data={profile} onChange={updateProfile} />
+      </section>
 
-      {/* ── Right content area ── */}
-      <div className="flex-1 min-w-0">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          {renderContent()}
-        </div>
-      </div>
+      {/* Travel Documents */}
+      <section className="py-8">
+        <TravelDocumentsSection data={documents} onChange={updateDocuments} />
+      </section>
 
-      {/* ── Floating save bar ── */}
+      {/* Emergency Contact */}
+      <section className="py-8">
+        <EmergencyContactSection data={emergency} onChange={updateEmergency} />
+      </section>
+
+      {/* Payment */}
+      <section className="py-8">
+        <PaymentSection
+          cards={cards}
+          onSetDefault={setDefaultCard}
+          onDelete={deleteCard}
+          onAdd={addCard}
+        />
+      </section>
+
+      {/* Preferences */}
+      <section className="py-8">
+        <PreferencesSection data={preferences} onChange={updatePreferences} />
+      </section>
+
+      {/* Notifications */}
+      <section className="py-8">
+        <NotificationsSection data={notifications} onToggle={toggleNotification} />
+      </section>
+
+      {/* Privacy */}
+      <section className="py-8">
+        <PrivacySection
+          shareTripLink={`https://travyl.app/trip/${id}/share`}
+          onDownloadData={() => alert('Downloading your data...')}
+          onClearHistory={() => alert('Search history cleared.')}
+          onDeleteAccount={() => alert('Account deletion requested.')}
+        />
+      </section>
+
+      {/* Floating save bar */}
       {dirty && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-3 shadow-xl">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700">

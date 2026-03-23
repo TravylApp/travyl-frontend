@@ -31,6 +31,7 @@ import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
+import { ShareModal } from './sharing/ShareModal'
 
 // ─── Category icon mapping ─────────────────────────────────────
 
@@ -62,10 +63,11 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeNav, setActiveNav] = useState('calendar')
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const router = useRouter()
 
   // Hooks
-  const { trip, tripStartDate, loading: tripLoading, error: tripError } = useTripActivities(tripId)
+  const { trip, tripStartDate, loading: tripLoading, error: tripError, refetchTrip } = useTripActivities(tripId)
   const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
   const { addActivity, updateActivity, moveActivity, removeActivity, duplicateActivity } = useActivityMutations(tripId, tripStartDate, userId)
   const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
@@ -332,6 +334,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     <div className="flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]">
       {/* Sidebar */}
       <TripSidebar
+        tripId={tripId}
         activeNav={activeNav}
         onNavChange={setActiveNav}
       />
@@ -349,7 +352,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
           onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
-          onShare={() => {}}
+          onShare={() => setIsShareModalOpen(true)}
           selectedActivity={selectedActivity}
           onDeselect={() => selectEvent(null)}
           theme={theme}
@@ -520,6 +523,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       onClose={() => setIsPaletteOpen(false)}
       commands={commands}
     />
+    {trip && (
+      <ShareModal
+        trip={trip}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        onSettingsChange={refetchTrip}
+      />
+    )}
     </CalendarThemeContext.Provider>
   )
 }
