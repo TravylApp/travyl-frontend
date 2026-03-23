@@ -216,20 +216,30 @@ export default function Home() {
       const { supabase } = await import('@travyl/shared');
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Fetch explore items for the destination
+      // Fetch explore items for the destination (multiple categories)
       let exploreItems: { id: string; title: string; description: string; category: string; image: string }[] = [];
       try {
-        const placesRes = await fetch(`/api/places?lat=${extracted.destination.lat}&lng=${extracted.destination.lng}&limit=10`);
-        if (placesRes.ok) {
-          const places = await placesRes.json();
-          exploreItems = places.map((p: any) => ({
-            id: p.id,
-            title: p.name,
-            description: p.description || p.tagline || p.category,
-            category: p.category,
-            image: p.image,
-          }));
-        }
+        const cats = ['sightseeing', 'restaurant', 'museum'];
+        const lat = extracted.destination.lat;
+        const lng = extracted.destination.lng;
+        const results = await Promise.all(
+          cats.map(async (cat) => {
+            const r = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=4`);
+            return r.ok ? r.json() : [];
+          })
+        );
+        const seen = new Set<string>();
+        exploreItems = results.flat().filter((p: any) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        }).map((p: any) => ({
+          id: p.id,
+          title: p.name,
+          description: p.description || p.tagline || p.category,
+          category: p.category,
+          image: p.image,
+        }));
       } catch {}
 
       // Fetch a hero image for the destination
@@ -261,20 +271,24 @@ export default function Home() {
       };
 
       // Try to save to Supabase
-      const { data: trip } = await supabase
-        .from('trips')
-        .insert(tripData)
-        .select()
-        .single();
-
-      if (trip) {
-        sessionStorage.setItem('pendingTripId', trip.id);
-      } else {
-        // Supabase insert failed (RLS) — store plan locally so trip page can show it
-        const tempId = `local-${Date.now()}`;
-        sessionStorage.setItem('pendingTripId', tempId);
-        sessionStorage.setItem(`trip-${tempId}`, JSON.stringify({ id: tempId, ...tripData }));
+      let tripId: string | null = null;
+      try {
+        const { data: trip } = await supabase
+          .from('trips')
+          .insert(tripData)
+          .select()
+          .single();
+        if (trip) tripId = trip.id;
+      } catch {
+        // Supabase RLS or network error — fall through to local storage
       }
+
+      if (!tripId) {
+        // Store locally so trip page can render it
+        tripId = `local-${Date.now()}`;
+        sessionStorage.setItem(`trip-${tripId}`, JSON.stringify({ id: tripId, ...tripData }));
+      }
+      sessionStorage.setItem('pendingTripId', tripId);
     } catch {
       // API call failed — still navigate to trips page
     }
@@ -297,7 +311,7 @@ export default function Home() {
       const lower = val.toLowerCase();
 
       // Extract destination (after "in" or "to", stop at boundary words)
-      const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]*?)(?:\s+(?:for|with|on|during|budget|cheap|luxury|moderate|\d)|\s*$)/i);
+      const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]*?)(?:\s+(?:for|with|on|during|budget|cheap|luxury|moderate|solo|alone|family|friends|partner|couple|\d)|\s*$)/i);
       if (destMatch) {
         parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
       } else {
