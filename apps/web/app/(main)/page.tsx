@@ -79,6 +79,7 @@ const HeroSearchInput = memo(function HeroSearchInput({
 // ─── Conversational follow-up questions ─────────────────────
 const TRIP_QUESTIONS = [
   { key: "destination", placeholder: "Where do you want to go?" },
+  { key: "dates", placeholder: "When are you going? (e.g. March 15-20, next week)" },
   { key: "duration", placeholder: "How many days?" },
   { key: "companions", placeholder: "Who's coming along?" },
   { key: "vibe", placeholder: "What's the vibe? (foodie, adventure, relaxing...)" },
@@ -91,6 +92,7 @@ function buildChainSentence(answers: TripAnswers): string {
   const parts: string[] = [];
   if (answers.duration) parts.push(answers.duration);
   if (answers.destination) parts.push(`in ${answers.destination}`);
+  if (answers.dates) parts.push(answers.dates);
   if (answers.companions) parts.push(`with ${answers.companions}`);
   if (answers.vibe) parts.push(answers.vibe);
   if (answers.budget) parts.push(answers.budget.toLowerCase().includes("budget") ? answers.budget : `${answers.budget} budget`);
@@ -218,13 +220,25 @@ export default function Home() {
       const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
       const durationDays = extracted.duration_days ?? 5;
 
+      // Default dates: if not provided, start next week for durationDays
+      let startDate = extracted.dates?.start;
+      let endDate = extracted.dates?.end;
+      if (!startDate || !endDate) {
+        const start = new Date();
+        start.setDate(start.getDate() + 7); // start next week
+        const end = new Date(start);
+        end.setDate(end.getDate() + durationDays - 1);
+        startDate = start.toISOString().split('T')[0];
+        endDate = end.toISOString().split('T')[0];
+      }
+
       // Save a basic trip right away (enrichment fills in later)
       const basicTrip = {
         id: tempId,
         title: `${extracted.destination.city} Trip`,
         destination: dest,
-        start_date: extracted.dates?.start,
-        end_date: extracted.dates?.end,
+        start_date: startDate,
+        end_date: endDate,
         status: 'planning',
         user_id: null,
         travelers: extracted.travelers?.count ?? 1,
@@ -308,8 +322,8 @@ export default function Home() {
       const tripData = {
         title: `${extracted.destination.city} Trip`,
         destination: dest,
-        start_date: extracted.dates?.start,
-        end_date: extracted.dates?.end,
+        start_date: startDate,
+        end_date: endDate,
         status: 'planning',
         user_id: session?.user?.id ?? null,
         travelers: extracted.travelers?.count ?? 1,
@@ -401,6 +415,14 @@ export default function Home() {
         const unit = durMatch[0].match(/day|night|week/)![0];
         parsed.duration = `${num} ${unit}${num !== 1 ? 's' : ''}`;
       } else if (lower.includes("weekend")) parsed.duration = "weekend";
+
+      // Extract dates (e.g. "march 15", "march 15-20", "next week", "in april")
+      const dateMatch = lower.match(/(?:on|from|starting|departing)?\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2}(?:\s*[-–to]+\s*\d{1,2})?(?:\s*,?\s*\d{4})?/i);
+      if (dateMatch) {
+        parsed.dates = dateMatch[0].trim().replace(/^(?:on|from|starting|departing)\s*/i, '');
+      } else if (lower.match(/next\s+(?:week|month|weekend)/)) {
+        parsed.dates = lower.match(/next\s+(?:week|month|weekend)/)![0];
+      }
 
       // Extract companions
       const companionMatch = lower.match(/(?:for\s+)?(\d+)\s*(?:people|person|travelers?|friends?)/);

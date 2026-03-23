@@ -42,9 +42,8 @@ export function useItineraryScreen(tripId: string | undefined) {
     [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency],
   );
 
-  const isLoading =
-    (tripQuery.isLoading && !tripQuery.error) ||
-    (daysQuery.isLoading && !daysQuery.error);
+  // Only block on trip loading — don't let itinerary_days/flights/hotels 404s keep the page in loading state
+  const isLoading = tripQuery.isLoading && !tripQuery.error;
 
   const trip = tripQuery.data ?? null;
   const isEmpty = !isLoading && days.length === 0 && flights.length === 0 && hotels.length === 0;

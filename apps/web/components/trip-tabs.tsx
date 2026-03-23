@@ -381,10 +381,16 @@ export default function TripTabs({
 
   const horizontalSpine = (isMobile: boolean) => (
     <div
-      className={`overflow-x-auto scrollbar-hide relative ${isMobile ? "md:hidden" : "hidden md:block"}`}
+      className={`overflow-x-auto scrollbar-hide relative ${
+        isMobile
+          ? "md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 backdrop-blur-xl"
+          : "hidden md:block"
+      }`}
       style={{
         order: isMobile ? undefined : -1,
-        ...(dark ? { backgroundColor: 'rgba(255,255,255,0.03)' } : {}),
+        ...(isMobile
+          ? { backgroundColor: dark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)', WebkitBackdropFilter: 'blur(20px)', backdropFilter: 'blur(20px)' }
+          : dark ? { backgroundColor: 'rgba(255,255,255,0.03)' } : {}),
       }}
     >
       <div className="flex items-end gap-[2px] p-[2px]">

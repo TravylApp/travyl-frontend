@@ -12,6 +12,7 @@ import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
+import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 
@@ -49,44 +50,103 @@ function TripHero({
   // Upscale Google Places hero image for full-width banner
   const rawImage = trip?.trip_context?.hero_image_url;
   const tripImage = rawImage?.includes('googleusercontent.com')
-    ? rawImage.replace(/=w\d+-h\d+[^&]*/, '=w1600-h600-k-no')
+    ? rawImage.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no')
     : rawImage;
 
+  const city = trip?.destination?.split(',')[0]?.trim() ?? '';
+  const country = trip?.destination?.split(',')[1]?.trim() ?? '';
+  const ctx = trip?.trip_context;
+  const weather = ctx?.weather?.current;
+  const forecast = ctx?.weather?.forecast;
+  const countryData = ctx?.country;
+
   return (
-    <div className="relative h-[240px] sm:h-[300px] overflow-hidden">
+    <div className="relative min-h-[85vh] overflow-hidden">
+      {/* Background image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       {tripImage ? (
-        <img src={tripImage} alt={trip?.destination ?? 'Trip'} className="w-full h-full object-cover" />
+        <img src={tripImage} alt={trip?.destination ?? 'Trip'} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
-        <div className="flex h-full items-center justify-center bg-slate-300">
-          <ImageIcon size={32} className="text-slate-400" />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1e3a5f] to-[#0f1d2e]" />
       )}
-      <div
-        className="absolute inset-x-0 bottom-0 h-1/2"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)' }}
-      />
-      <div className="absolute bottom-0 left-0 right-0 max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <MapPin size={14} className="text-white/60" />
+      {/* Gradient overlay */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.75) 100%)' }} />
+
+      {/* Magazine-style content overlay */}
+      <div className="absolute inset-0 flex flex-col justify-between px-6 sm:px-10 pt-20 pb-6 sm:pb-10 max-w-7xl mx-auto">
+        {/* ── Top: Title + Trip info ── */}
+        <div>
+          {country && (
+            <span className="text-[11px] sm:text-[13px] tracking-[0.3em] uppercase font-semibold text-[#c8a96a] mb-1 block">{country}</span>
+          )}
           {trip && !isLoading ? (
-            <span className="text-lg font-bold text-white">{trip.destination}</span>
+            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black text-white font-serif leading-[0.9] tracking-tight uppercase">
+              {city}
+            </h1>
           ) : (
-            <div className="h-5 w-[55%] rounded-md bg-white/25" />
+            <div className="h-20 w-[60%] rounded-md bg-white/20" />
+          )}
+          {trip && !isLoading && (
+            <div className="flex items-center gap-2 text-[13px] text-white/70 mt-3 flex-wrap">
+              {trip.start_date && trip.end_date && (
+                <>
+                  <span>{formatDateRange(trip.start_date, trip.end_date)}</span>
+                  <span className="text-white/30">·</span>
+                </>
+              )}
+              <span>{trip.travelers ?? 1} {(trip.travelers ?? 1) === 1 ? 'traveler' : 'travelers'}</span>
+              {weather && (
+                <>
+                  <span className="text-white/30">·</span>
+                  <span>{weather.temp}° / {weather.conditions}</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Wikipedia excerpt */}
+          {ctx?.wiki?.extract && (
+            <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/60 font-serif max-w-lg mt-4 line-clamp-4">
+              {ctx.wiki.extract}
+            </p>
           )}
         </div>
-        {trip && !isLoading ? (
-          <span className="text-xs text-white/80">
-            {formatDateRange(trip.start_date, trip.end_date)} · {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
-          </span>
-        ) : (
-          <div className="h-3 w-[45%] rounded-md bg-white/[0.18]" />
+
+        {/* ── Bottom: Quick facts + Weather ── */}
+        <div>
+          {countryData && (
+            <div className="flex items-center gap-4 flex-wrap text-[11px] sm:text-[12px] text-white/90 mb-3">
+              <span className="font-bold">{countryData.currency?.code} {countryData.currency?.symbol}</span>
+              <span className="font-bold">{countryData.language}</span>
+              <span className="font-bold">{countryData.timezone}</span>
+              <span className="text-red-400 font-bold">112</span>
+              <span className="text-white/50">Emergency</span>
+            </div>
+          )}
+
+        {/* Weather forecast row */}
+        {weather && forecast && (
+          <div className="flex items-center gap-3 text-[11px] text-white/80 flex-wrap">
+            <span className="font-bold text-white">{weather.temp}°</span>
+            <span className="text-white/50 uppercase text-[10px]">Now</span>
+            <span className="text-white/20">|</span>
+            {forecast.slice(0, 5).map((d: { date: string; high: number; low: number; conditions: string }) => {
+              const day = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+              return (
+                <span key={d.date} className="flex items-center gap-1">
+                  <span className="text-white/50 font-semibold">{day}</span>
+                  <span className="font-bold text-white">{d.high}°</span>
+                </span>
+              );
+            })}
+          </div>
         )}
+        </div>{/* end bottom section */}
       </div>
-      {/* Action buttons — bottom right */}
-      <div className="absolute bottom-3 right-4 sm:right-6 flex gap-1.5">
-        {/* Fork button - shown for non-owners */}
+
+      {/* Action buttons — top right */}
+      <div className="absolute top-4 right-4 sm:right-6 flex gap-1.5">
         {trip && !isOwner && <ForkButton trip={trip} variant="compact" />}
-        {/* Owner buttons */}
         {isOwner && ownerButtons.map(({ icon: Icon, label, onClick }, i) => (
           <button
             key={i}
@@ -284,13 +344,18 @@ function TripLayoutContent({
 
   return (
     <div
-      className={`${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16' : 'bg-white dark:bg-[var(--background)]'}`}
+      className={`pb-14 md:pb-0 ${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
       style={{ transition: 'background-color 0.5s ease' }}
     >
+      {/* Hero banner */}
+      {isOverview ? (
+        /* Magazine hero — image bleeds behind content below */
+        <TripMagazineHero trip={trip} />
+      ) : (
+        currentSegment !== 'itinerary' && <TripHero tripId={tripId} />
+      )}
+
       <div className="mx-auto max-w-7xl">
-        {/* Hero banner — hidden on overview (the cover replaces it) */}
-        {!isOverview && currentSegment !== 'itinerary' && <TripHero tripId={tripId} />}
-        {!isOverview && currentSegment !== 'itinerary' && <div className="h-2" />}
 
         {/* Suitcase card */}
         <div

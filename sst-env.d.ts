@@ -10,6 +10,10 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
+    "FoursquareApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "InteractionBus": {
       "arn": string
       "name": string
@@ -22,6 +26,18 @@ declare module "sst" {
     "RecommendationCache": {
       "name": string
       "type": "sst.aws.Dynamo"
+    }
+    "SerpApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SupabaseServiceRoleKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SupabaseUrl": {
+      "type": "sst.sst.Secret"
+      "value": string
     }
     "UserInteractions": {
       "name": string

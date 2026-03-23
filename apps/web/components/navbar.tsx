@@ -44,12 +44,21 @@ export default function Navbar() {
     return pathname.startsWith(href);
   }
 
-  // Track scroll position for navbar shrink
+  // Trip pages have a dark hero — navbar needs lighter styling until user scrolls past it
+  const isTripPage = pathname.startsWith("/trip/");
+  const [pastHero, setPastHero] = useState(false);
+  const tripDark = isTripPage && !pastHero;
+
+  // Track scroll position for navbar shrink + trip hero detection
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 40);
+      if (isTripPage) setPastHero(y > 300);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isTripPage]);
 
   // Initialize theme from localStorage
   useEffect(() => {
@@ -99,10 +108,14 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/20 backdrop-blur-xl shadow-lg shadow-black/[0.06] transition-all duration-500 ease-out ${
+      className={`fixed left-1/2 -translate-x-1/2 z-50 rounded-full border backdrop-blur-xl shadow-lg transition-all duration-500 ease-out ${
+        tripDark
+          ? "border-white/15 shadow-black/20 bg-black/30"
+          : "border-white/20 shadow-black/[0.06]"
+      } ${
         scrolled
-          ? "top-5 w-[calc(100%-3rem)] max-w-6xl bg-white/20"
-          : "top-3 w-[calc(100%-2rem)] max-w-5xl bg-white/30"
+          ? `top-5 w-[calc(100%-3rem)] max-w-6xl ${tripDark ? "" : "bg-white/20"}`
+          : `top-3 w-[calc(100%-2rem)] max-w-5xl ${tripDark ? "" : "bg-white/30"}`
       }`}
     >
       <div
@@ -113,7 +126,9 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className={`flex items-center gap-0.5 sm:gap-1 text-[#1e3a5f] tracking-[1px] sm:tracking-[2px] transition-all duration-500 shrink-0 ${
+          className={`flex items-center gap-0.5 sm:gap-1 tracking-[1px] sm:tracking-[2px] transition-all duration-500 shrink-0 ${
+            tripDark ? "text-white" : "text-[#1e3a5f]"
+          } ${
             scrolled ? "text-lg sm:text-2xl" : "text-base sm:text-xl"
           }`}
           style={{ fontFamily: 'var(--font-brand)', fontWeight: 800 }}
@@ -134,8 +149,12 @@ export default function Navbar() {
                   : "px-2 sm:px-3 md:px-4 py-1.5 sm:py-1.5 text-xs md:text-sm gap-0 sm:gap-1.5"
               } ${
                 isActive(href)
-                  ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold shadow-sm"
-                  : "text-[#1e3a5f] border-[#1e3a5f]/25 hover:bg-[#1e3a5f]/5 hover:border-[#1e3a5f]/50"
+                  ? tripDark
+                    ? "bg-white/20 text-white border-white/30 font-semibold shadow-sm"
+                    : "bg-[#1e3a5f] text-white border-[#1e3a5f] font-semibold shadow-sm"
+                  : tripDark
+                    ? "text-white/80 border-white/15 hover:bg-white/10 hover:border-white/30"
+                    : "text-[#1e3a5f] border-[#1e3a5f]/25 hover:bg-[#1e3a5f]/5 hover:border-[#1e3a5f]/50"
               }`}
             >
               <Icon size={scrolled ? 16 : 14} className="shrink-0" />
@@ -239,7 +258,11 @@ export default function Navbar() {
         ) : (
           <Link
             href="/login"
-            className="flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm border border-[#1e3a5f]/25 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white transition-all shrink-0"
+            className={`flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm border transition-all shrink-0 ${
+              tripDark
+                ? "border-white/25 text-white hover:bg-white/15"
+                : "border-[#1e3a5f]/25 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white"
+            }`}
           >
             Log In
           </Link>
