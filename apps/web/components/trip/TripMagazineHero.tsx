@@ -54,7 +54,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage }: { tripId?: str
   const dateStr = trip ? formatDateRange(trip.start_date, trip.end_date) : null;
   const travelersStr = trip ? `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}` : null;
 
-  const conditions = weather?.condition?.toLowerCase() ?? '';
+  const conditions = weather?.conditions?.toLowerCase() ?? '';
   const WeatherIcon = conditions.includes('cloud') ? Cloud : conditions.includes('rain') ? Droplets : Sun;
 
   const hasEssentials = !!(trip?.trip_context?.quick_facts || weather);
@@ -130,8 +130,8 @@ export function TripMagazineHero({ tripId, trip, overrideImage }: { tripId?: str
             {weather && (
               <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
                 <WeatherIcon size={16} />
-                <span className="font-bold">{weather.high}° / {weather.low}°</span>
-                <span className="text-[10px]" style={{ opacity: 0.7 }}>Now</span>
+                <span className="font-bold">{weather.temp}°</span>
+                <span className="text-[10px]" style={{ opacity: 0.7 }}>{weather.conditions}</span>
               </span>
             )}
             {weather && forecast && forecast.length > 0 && (
@@ -139,8 +139,8 @@ export function TripMagazineHero({ tripId, trip, overrideImage }: { tripId?: str
             )}
             {forecast && forecast.length > 0 && (
               forecast.slice(0, 5).map((d) => (
-                <span key={d.day} className="flex items-center gap-1.5 shrink-0">
-                  <span className="font-semibold text-white/70">{d.day}</span>
+                <span key={d.date} className="flex items-center gap-1.5 shrink-0">
+                  <span className="font-semibold text-white/70">{d.date.slice(5)}</span>
                   <span className="text-[14px]">{d.icon}</span>
                   <span className="font-bold text-white">{d.high}°</span>
                 </span>

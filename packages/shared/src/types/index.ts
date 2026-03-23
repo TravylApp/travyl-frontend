@@ -32,9 +32,21 @@ export interface TripContextData {
     emergency?: string;
   };
   weather?: {
-    current?: { high: number; low: number; condition: string };
-    forecast?: { day: string; high: number; low: number; icon: string; condition: string }[];
+    current?: { temp: number; feelslike?: number; conditions: string; icon?: string; humidity?: number; windspeed?: number };
+    forecast?: { date: string; high: number; low: number; conditions: string; icon?: string; description?: string; precipprob?: number }[];
   };
+  hotels?: {
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    address?: string;
+    category?: string;
+    rating?: number;
+    price?: number;
+    image?: string | null;
+    tip?: string;
+  }[];
   explore_items?: {
     id: string;
     title: string;

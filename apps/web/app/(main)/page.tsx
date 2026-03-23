@@ -242,31 +242,38 @@ export default function Home() {
         }));
       } catch {}
 
-      // Fetch a hero image for the destination
-      let heroImageUrl: string | undefined;
-      try {
-        const imgRes = await fetch(`/api/images?q=${encodeURIComponent(extracted.destination.city)}`);
-        if (imgRes.ok) {
-          const imgData = await imgRes.json();
-          heroImageUrl = imgData.url;
-        }
-      } catch {}
+      // Fetch hero image, weather, and hotels in parallel
+      const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
+      const durationDays = extracted.duration_days ?? 5;
+      const [heroImageUrl, weatherData, hotelData] = await Promise.all([
+        fetch(`/api/images?q=${encodeURIComponent(extracted.destination.city)}`)
+          .then(r => r.ok ? r.json().then((d: any) => d.url as string) : undefined).catch(() => undefined),
+        fetch(`/api/weather?location=${encodeURIComponent(dest)}&days=${durationDays}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/foursquare?lat=${extracted.destination.lat}&lng=${extracted.destination.lng}&category=hotel&limit=5`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+      ]);
 
       const tripData = {
         title: `${extracted.destination.city} Trip`,
-        destination: `${extracted.destination.city}, ${extracted.destination.country}`,
+        destination: dest,
         start_date: extracted.dates?.start,
         end_date: extracted.dates?.end,
         status: 'planning',
         user_id: session?.user?.id ?? null,
         travelers: extracted.travelers?.count ?? 1,
-        budget: extracted.daily_estimate_usd ? extracted.daily_estimate_usd * (extracted.duration_days ?? 5) : null,
+        budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
         currency: 'USD',
         trip_context: {
           hero_image_url: heroImageUrl || plan.destination_photo_url,
-          lede_text: `A ${extracted.duration_days ?? 5}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
+          lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
           explore_items: exploreItems.length > 0 ? exploreItems : undefined,
           hero_images: heroImageUrl ? [heroImageUrl] : undefined,
+          weather: weatherData ? {
+            current: weatherData.current,
+            forecast: weatherData.forecast,
+          } : undefined,
+          hotels: hotelData.length > 0 ? hotelData : undefined,
         },
       };
 
