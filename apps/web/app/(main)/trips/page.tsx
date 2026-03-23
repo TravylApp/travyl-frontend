@@ -20,6 +20,8 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'past', label: 'Past' },
 ];
 
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800';
+
 function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past' {
   const now = new Date();
   const startDate = new Date(trip.start_date + 'T00:00:00');
@@ -186,7 +188,7 @@ function TripsContent() {
 
   const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
     ...t,
-    image: `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
+    image: t.cover_image_url ?? FALLBACK_IMAGE,
   }))
 
   // Apply filters
