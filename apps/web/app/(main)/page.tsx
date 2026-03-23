@@ -246,12 +246,14 @@ export default function Home() {
       // Fetch hero image, weather, and hotels in parallel
       const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
       const durationDays = extracted.duration_days ?? 5;
-      const [heroImageUrl, weatherData, hotelData] = await Promise.all([
+      const [heroImageUrl, weatherData, hotelData, newsData] = await Promise.all([
         fetch(`/api/images?q=${encodeURIComponent(extracted.destination.city)}`)
           .then(r => r.ok ? r.json().then((d: any) => d.url as string) : undefined).catch(() => undefined),
         fetch(`/api/weather?location=${encodeURIComponent(dest)}&days=${durationDays}`)
           .then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`/api/foursquare?lat=${extracted.destination.lat}&lng=${extracted.destination.lng}&category=hotel&limit=5`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/news?destination=${encodeURIComponent(extracted.destination.city)}&limit=8`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
 
@@ -275,6 +277,7 @@ export default function Home() {
             forecast: weatherData.forecast,
           } : undefined,
           hotels: hotelData.length > 0 ? hotelData : undefined,
+          news: newsData.length > 0 ? newsData : undefined,
         },
       };
 
