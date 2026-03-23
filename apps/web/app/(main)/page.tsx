@@ -860,10 +860,8 @@ export default function Home() {
         onComplete={() => {
           const pendingId = sessionStorage.getItem('pendingTripId');
           sessionStorage.removeItem('pendingTripId');
-          const target = pendingId ? `/trip/${pendingId}` : "/trips";
-          // Navigate BEFORE hiding overlay to prevent re-render redirect
-          router.push(target);
-          setTimeout(() => setShowTakeoff(false), 500);
+          // Use window.location for reliable navigation (router.push races with overlay unmount)
+          window.location.href = pendingId ? `/trip/${pendingId}` : "/trips";
         }}
       />
     </div>
