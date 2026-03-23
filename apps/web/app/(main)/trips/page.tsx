@@ -13,14 +13,14 @@ import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/component
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
 
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
+
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'active', label: 'Active' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Past' },
 ];
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800';
 
 function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past' {
   const now = new Date();
