@@ -129,7 +129,7 @@ export default function PlacesPage() {
     if (activeTab === 'all') return places;
     if (activeTab === 'favorites') return places.filter((p) => favorites.includes(p.id));
     return places.filter((p) => p.type === activeTab);
-  }, [activeTab, favorites]);
+  }, [activeTab, favorites, places]);
 
   // Compute subcategories from current tab
   const subcategories = useMemo(() => {
