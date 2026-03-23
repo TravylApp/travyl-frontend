@@ -16,7 +16,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const supabase = createClient(
       Resource.SupabaseUrl.value,
-      Resource.SupabaseServiceRoleKey.value,
+      Resource.SupabaseSecretKey.value,
     )
 
     // Embed the query
