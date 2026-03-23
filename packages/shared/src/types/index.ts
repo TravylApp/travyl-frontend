@@ -83,6 +83,7 @@ export interface Trip {
   is_shared?: boolean;
   created_at: string;
   updated_at: string;
+  cover_image_url?: string | null;
 }
 
 // ─── Route / Map Types ─────────────────────────────────────
