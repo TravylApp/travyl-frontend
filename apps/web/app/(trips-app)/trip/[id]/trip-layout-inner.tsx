@@ -46,10 +46,10 @@ function TripHero({
     { icon: Share2, label: 'Share', onClick: handleShare },
   ];
 
-  // Upscale Google Places hero image for banner quality
+  // Upscale Google Places hero image for full-width banner
   const rawImage = trip?.trip_context?.hero_image_url;
   const tripImage = rawImage?.includes('googleusercontent.com')
-    ? rawImage.replace(/=w\d+-h\d+/, '=w1600-h600').replace(/gps-cs-s/, 'gps-cs-s') + (rawImage.includes('=w') ? '' : '=w1600-h600')
+    ? rawImage.replace(/=w\d+-h\d+[^&]*/, '=w1600-h600-k-no')
     : rawImage;
 
   return (
