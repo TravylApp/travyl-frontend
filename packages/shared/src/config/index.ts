@@ -56,8 +56,7 @@ export * from './packingCatalog';
 
 export * from './typography';
 
-// UI content data (login, profile, travel boards)
-export * from './mockLoginData';
+// UI content data (profile, travel boards)
 export * from './mockProfileData';
 export * from './mockTravelBoardsData';
 
