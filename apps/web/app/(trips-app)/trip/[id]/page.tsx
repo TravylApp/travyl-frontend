@@ -352,6 +352,80 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
             </div>
           )}
 
+          {/* ── Quick Facts + About ── */}
+          {(trip?.trip_context?.country || trip?.trip_context?.wiki || trip?.trip_context?.weather) && (
+            <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-6 relative z-10">
+              <div className="flex flex-col sm:flex-row gap-6">
+                {/* About — Wikipedia excerpt */}
+                {trip.trip_context.wiki?.extract && (
+                  <div className="flex-1 min-w-0">
+                    <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
+                      style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>About</span>
+                    <p className="text-[13px] leading-[1.8] font-serif mt-2 line-clamp-4"
+                      style={{ color: 'var(--magazine-text, var(--foreground))' }}>
+                      {trip.trip_context.wiki.extract}
+                    </p>
+                  </div>
+                )}
+                {/* Quick Facts cards */}
+                <div className="shrink-0 w-full sm:w-[280px]">
+                  <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Quick Facts</span>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {trip.trip_context.country && (
+                      <>
+                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
+                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Currency</span>
+                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.currency?.symbol} {trip.trip_context.country.currency?.code}</p>
+                        </div>
+                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
+                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Language</span>
+                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.language}</p>
+                        </div>
+                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
+                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Timezone</span>
+                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>{trip.trip_context.country.timezone}</p>
+                        </div>
+                        <div className="rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
+                          <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Emergency</span>
+                          <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>112</p>
+                        </div>
+                      </>
+                    )}
+                    {trip.trip_context.weather?.current && (
+                      <div className="col-span-2 rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
+                        <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Weather Now</span>
+                        <p className="text-[13px] font-bold mt-0.5" style={{ color: 'var(--magazine-heading)' }}>
+                          {trip.trip_context.weather.current.temp}°C · {trip.trip_context.weather.current.conditions}
+                        </p>
+                        {trip.trip_context.weather.forecast && (
+                          <div className="flex gap-2 mt-1.5 overflow-x-auto scrollbar-hide">
+                            {trip.trip_context.weather.forecast.slice(0, 5).map((d: { date: string; high: number; low: number }) => (
+                              <span key={d.date} className="text-[10px] shrink-0 opacity-70" style={{ color: 'var(--magazine-text)' }}>
+                                {d.date.slice(5)} {d.high}°/{d.low}°
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Upcoming holidays */}
+                  {trip.trip_context.holidays && trip.trip_context.holidays.length > 0 && (
+                    <div className="mt-3 rounded-xl px-3 py-2.5 backdrop-blur-md bg-white/10 border border-white/20">
+                      <span className="text-[9px] uppercase tracking-wider opacity-60" style={{ color: 'var(--magazine-text)' }}>Upcoming Holidays</span>
+                      {trip.trip_context.holidays.slice(0, 3).map((h: { date: string; name: string }) => (
+                        <p key={h.date} className="text-[11px] mt-1" style={{ color: 'var(--magazine-heading)' }}>
+                          <span className="font-bold">{h.date.slice(5)}</span> · {h.name}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── THINGS TO DO — full width ── */}
           {trip?.trip_context?.explore_items && trip.trip_context.explore_items.length > 0 && (
             <div className="reveal-on-scroll revealed px-6 sm:px-10 mt-8 relative z-10">

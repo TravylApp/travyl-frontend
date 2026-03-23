@@ -66,6 +66,24 @@ export interface TripContextData {
     url?: string;
     image?: string;
   }[];
+  country?: {
+    name: string;
+    currency: { code: string; symbol: string; name: string };
+    language: string;
+    timezone: string;
+    callingCode: string;
+    flag: string;
+    capital: string;
+    region: string;
+    population: number;
+  };
+  wiki?: {
+    title: string;
+    extract: string;
+    thumbnail?: string;
+    description?: string;
+  };
+  holidays?: { date: string; name: string; localName?: string }[];
 }
 
 export interface Trip {

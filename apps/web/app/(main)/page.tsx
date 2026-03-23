@@ -248,17 +248,24 @@ export default function Home() {
       const durationDays = extracted.duration_days ?? 5;
       const lat = extracted.destination.lat;
       const lng = extracted.destination.lng;
-      const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos] = await Promise.all([
-        fetch(`/api/images?q=${encodeURIComponent(extracted.destination.city)}`)
+      const city = extracted.destination.city;
+      const country = extracted.destination.country;
+      const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays] = await Promise.all([
+        fetch(`/api/images?q=${encodeURIComponent(city)}`)
           .then(r => r.ok ? r.json().then((d: any) => d.url as string) : undefined).catch(() => undefined),
         fetch(`/api/weather?location=${encodeURIComponent(dest)}&days=${durationDays}`)
           .then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`/api/news?destination=${encodeURIComponent(extracted.destination.city)}&limit=8`)
+        fetch(`/api/news?destination=${encodeURIComponent(city)}&limit=8`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
-        // Fetch landmark/attraction photos specifically for the hero mosaic
         fetch(`/api/places?lat=${lat}&lng=${lng}&category=sightseeing&limit=8`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/country?name=${encodeURIComponent(country)}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/wiki?q=${encodeURIComponent(city)}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/holidays?country=${encodeURIComponent(extracted.destination.region?.substring(0, 2) ?? country.substring(0, 2))}&year=${new Date().getFullYear()}`)
           .then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
 
@@ -287,6 +294,15 @@ export default function Home() {
           } : undefined,
           hotels: hotelData.length > 0 ? hotelData : undefined,
           news: newsData.length > 0 ? newsData : undefined,
+          country: countryInfo ?? undefined,
+          wiki: wikiData ?? undefined,
+          holidays: holidays.length > 0 ? holidays.slice(0, 10) : undefined,
+          quick_facts: countryInfo ? {
+            currency: `${countryInfo.currency?.code} (${countryInfo.currency?.symbol})`,
+            language: countryInfo.language,
+            timezone: countryInfo.timezone,
+            emergency: '112',
+          } : undefined,
         },
       };
 
