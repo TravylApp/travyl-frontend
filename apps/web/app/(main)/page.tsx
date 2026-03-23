@@ -858,10 +858,12 @@ export default function Home() {
         visible={showTakeoff}
         buttonRect={buttonRect}
         onComplete={() => {
-          setShowTakeoff(false);
           const pendingId = sessionStorage.getItem('pendingTripId');
           sessionStorage.removeItem('pendingTripId');
-          router.push(pendingId ? `/trip/${pendingId}` : "/trips");
+          const target = pendingId ? `/trip/${pendingId}` : "/trips";
+          // Navigate BEFORE hiding overlay to prevent re-render redirect
+          router.push(target);
+          setTimeout(() => setShowTakeoff(false), 500);
         }}
       />
     </div>

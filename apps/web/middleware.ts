@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
@@ -36,9 +36,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // /trip/[id]/* — require authentication (skip in dev if no Supabase configured)
+  // /trip/[id]/* — allow local trips (local-*) without auth, require auth for real trips in production
   if (pathname.startsWith('/trip/') && !session) {
-    if (process.env.NODE_ENV !== 'development') {
+    // Allow local trips without auth (stored in sessionStorage)
+    const tripSegment = pathname.split('/')[2] ?? ''
+    if (!tripSegment.startsWith('local-') && process.env.NODE_ENV !== 'development') {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
