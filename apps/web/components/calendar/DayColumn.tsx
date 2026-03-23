@@ -16,20 +16,20 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
+  onSelectEvent: (id: string, anchorEl?: HTMLElement) => void
   onClickDayHeader?: () => void
   onDeselect: () => void
   pendingActivity?: CalendarActivity | null
   notes?: TripNote[]
-  canCreateNotes?: boolean
   canEditNotes?: boolean
   userId?: string
   isOwner?: boolean
-  onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
+  onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
 }
 
 function CurrentTimeIndicator({
@@ -82,30 +82,22 @@ export function DayColumn({
   onDeselect,
   pendingActivity = null,
   notes,
-  canCreateNotes,
   canEditNotes,
   userId,
   isOwner,
-  onCreateNote,
   onUpdateNote,
   onDeleteNote,
   marqueeSelectedIds,
   onShiftClickEvent,
+  onResizeEvent,
+  onContextMenu,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return  // ignore bubbled clicks from EventBlock/PostItNote
-    const rect = e.currentTarget.getBoundingClientRect()
-    const offsetY = e.clientY - rect.top
-    const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-    const snappedHour = Math.round(rawHour * 2) / 2
-    if (e.shiftKey && canCreateNotes && onCreateNote) {
-      onCreateNote(dayIndex, snappedHour)
-      return
-    }
+    if (e.target !== e.currentTarget) return
     onDeselect()
   }
 
@@ -244,7 +236,10 @@ export function DayColumn({
               isMultiSelected={marqueeSelectedIds?.has(activity.id)}
               onSelect={onSelectEvent}
               onShiftClick={onShiftClickEvent}
+              onResize={onResizeEvent}
+              onContextMenu={onContextMenu}
               timeRangeStartHour={timeRange.startHour}
+              timeRangeEndHour={timeRange.endHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}

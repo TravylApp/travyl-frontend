@@ -40,7 +40,7 @@ export function useKeyboardShortcuts(
         // delete command also fires on Backspace
         const keyMatch =
           e.key === cmd.shortcut.key ||
-          (cmd.id === 'delete' && e.key === 'Backspace')
+          ((cmd.id === 'delete' || cmd.id === 'bulk-delete') && e.key === 'Backspace')
         const metaMatch = !!cmd.shortcut.meta === (e.ctrlKey || e.metaKey)
         const shiftMatch = !!cmd.shortcut.shift === e.shiftKey
         return keyMatch && metaMatch && shiftMatch

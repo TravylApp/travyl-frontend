@@ -11,9 +11,8 @@ applications:
           commands:
             - cd apps/web
             - npm run build
-            - bash scripts/amplify-postbuild.sh
       artifacts:
-        baseDirectory: .amplify-hosting
+        baseDirectory: .next
         files:
           - '**/*'
       cache:

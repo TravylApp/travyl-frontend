@@ -22,6 +22,11 @@ const CALENDAR_ACTIVITY_KEYS = [
   'longitude',
   'sortOrder',
   'pollResult',
+  'flightNumber',
+  'airline',
+  'checkIn',
+  'checkOut',
+  'bookingRef',
 ] as const
 
 interface UseActivityMutationsReturn {

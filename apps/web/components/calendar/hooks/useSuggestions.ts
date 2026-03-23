@@ -5,8 +5,6 @@ import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { SuggestionCard } from '../types'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
-
 const FILTER_CATEGORIES = [
   'All',
   'Sightseeing',
@@ -51,24 +49,15 @@ interface UseSuggestionsReturn {
 }
 
 async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
-  const params = new URLSearchParams({ destination }).toString()
-
-  if (!API_URL) return []
+  if (!destination) return []
 
   try {
-    const { supabase } = await import('@travyl/shared')
-    const { data: { session } } = await supabase.auth.getSession()
-    const token = session?.access_token
-
-    const url = `${API_URL}/api/places/nearby?${params}`
-    const headers: Record<string, string> = { Accept: 'application/json' }
-    if (token) headers.Authorization = `Bearer ${token}`
-
-    const res = await fetch(url, { headers })
+    const params = new URLSearchParams({ destination })
+    const res = await fetch(`/api/suggest?${params}`)
     if (!res.ok) return []
 
     const data = await res.json()
-    return Array.isArray(data) ? data : data.suggestions ?? data.places ?? []
+    return data.suggestions ?? []
   } catch {
     return []
   }

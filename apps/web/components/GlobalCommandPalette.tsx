@@ -70,11 +70,6 @@ function formatTripDates(startDate: string, endDate: string): string {
   return `${startStr} - ${endStr}`
 }
 
-// ─── Exported open state for external coordination ───────────
-
-let globalPaletteOpen = false
-export function isGlobalPaletteOpen() { return globalPaletteOpen }
-
 // ─── Component ───────────────────────────────────────────────
 
 export function GlobalCommandPalette() {
@@ -86,10 +81,11 @@ export function GlobalCommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  // Sync exported flag
-  useEffect(() => { globalPaletteOpen = isOpen }, [isOpen])
-
   const calendarCommands = useCalendarCommandsStore((s) => s.commands)
+  const setPaletteOpen = useCalendarCommandsStore((s) => s.setPaletteOpen)
+
+  // Sync palette open state to store so calendar commands can check it
+  useEffect(() => { setPaletteOpen(isOpen) }, [isOpen, setPaletteOpen])
   const { results: tripResults, isLoading: tripSearchLoading } = useContextSearch(query)
 
   // ─── Global Ctrl+K listener (capture phase) ──────────────

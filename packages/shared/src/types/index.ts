@@ -76,6 +76,11 @@ export interface Trip {
   fork_count: number;
   theme: string;
   custom_theme_color: string | null;
+  tab_color_overrides?: Record<string, string>;
+  itinerary_color_overrides?: Record<string, string>;
+  hidden_tabs?: Record<string, boolean>;
+  is_public?: boolean;
+  is_shared?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -459,6 +464,16 @@ export interface CalendarActivity {
   /** DB sort_order */
   sortOrder?: number;
   pollResult?: 'remove'
+  /** Flight number for flight/transport activities */
+  flightNumber?: string
+  /** Airline name for flight/transport activities */
+  airline?: string
+  /** Check-in date/time for hotel activities */
+  checkIn?: string
+  /** Check-out date/time for hotel activities */
+  checkOut?: string
+  /** Booking confirmation reference */
+  bookingRef?: string
 }
 
 export interface Poll {
@@ -839,4 +854,30 @@ export interface MockHotelDetail {
   website: string;
   neighborhood: string;
   confirmationNumber: string;
+}
+
+// ─── Packing ────────────────────────────────────────────────
+
+export interface PackingItem {
+  item: string;
+  packed: boolean;
+}
+
+export type PackingList = Record<string, PackingItem[]>;
+
+// ─── Budget ─────────────────────────────────────────────────
+
+export interface BudgetExpense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface BudgetItem {
+  id: string;
+  category: string;
+  budgeted: number;
+  actual: number;
+  fixed: boolean;
+  expenses: BudgetExpense[];
 }

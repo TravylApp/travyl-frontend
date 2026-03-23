@@ -9,7 +9,7 @@ export async function validateAuth(authHeader: string | undefined) {
   const token = authHeader.slice(7)
   const supabase = createClient(
     Resource.SupabaseUrl.value,
-    Resource.SupabaseSecretKey.value,
+    Resource.SupabaseServiceRoleKey.value,
   )
 
   const { data, error } = await supabase.auth.getUser(token)

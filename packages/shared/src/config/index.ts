@@ -60,3 +60,4 @@ export * from './typography';
 export * from './mockLoginData';
 export * from './mockProfileData';
 export * from './mockTravelBoardsData';
+

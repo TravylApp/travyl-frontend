@@ -50,10 +50,11 @@ cp .next/app-build-manifest.json .amplify-hosting/compute/default/.next/app-buil
 cp .next/app-path-routes-manifest.json .amplify-hosting/compute/default/.next/app-path-routes-manifest.json 2>/dev/null || true
 cp .next/react-loadable-manifest.json .amplify-hosting/compute/default/.next/react-loadable-manifest.json 2>/dev/null || true
 cp .next/required-server-files.json .amplify-hosting/compute/default/.next/required-server-files.json 2>/dev/null || true
+cp .next/required-server-files.json .amplify-hosting/compute/default/required-server-files.json 2>/dev/null || true
 cp .next/package.json .amplify-hosting/compute/default/.next/package.json 2>/dev/null || true
 
 # Generate deploy-manifest.json
-NEXT_VERSION=$(node -e "console.log(require('./node_modules/next/package.json').version)")
+NEXT_VERSION=$(node -e "console.log(require('next/package.json').version)")
 
 cat > .amplify-hosting/deploy-manifest.json << MANIFEST
 {
