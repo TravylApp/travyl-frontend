@@ -176,25 +176,32 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
           const venues = await r.json()
           if (venues.error) return []
           // Map Foursquare venues to PlaceItem shape
-          return (venues as any[]).map((v: any) => ({
-            id: `fs_${v.id}`,
-            name: v.name,
-            image: v.image || '',
-            images: v.images?.length ? v.images : undefined,
-            type: mapFoursquareType(cat),
-            rating: v.rating ? v.rating / 2 : 0, // FS rates 0-10, normalize to 0-5
-            tagline: v.address || v.category || cat,
-            category: v.category || cat,
-            description: v.tip || '',
-            latitude: v.lat,
-            longitude: v.lng,
-            address: v.address,
-            website: v.url,
-            priceLevel: v.price && v.price >= 1 && v.price <= 4 ? v.price : undefined,
-            hours: v.hours,
-            reviewCount: v.ratingCount,
-            tags: [cat],
-          })) as PlaceItemType[]
+          return (venues as any[])
+            // Filter out venues that only have generic category icons (not real photos)
+            .filter((v: any) => v.image && !v.image.includes('categories_v2') && !v.image.includes('_bg_'))
+            .map((v: any) => {
+              // Filter out icon URLs from images array too
+              const realImages = (v.images || []).filter((img: string) => !img.includes('categories_v2') && !img.includes('_bg_'))
+              return {
+                id: `fs_${v.id}`,
+                name: v.name,
+                image: realImages[0] || v.image,
+                images: realImages.length > 1 ? realImages : undefined,
+                type: mapFoursquareType(cat),
+                rating: v.rating ? v.rating / 2 : 0,
+                tagline: v.address || v.category || cat,
+                category: v.category || toTitleCase(cat),
+                description: v.tip || '',
+                latitude: v.lat,
+                longitude: v.lng,
+                address: v.address,
+                website: v.url,
+                priceLevel: v.price && v.price >= 1 && v.price <= 4 ? v.price : undefined,
+                hours: v.hours,
+                reviewCount: v.ratingCount,
+                tags: [toTitleCase(cat)],
+              }
+            }) as PlaceItemType[]
         })
         .catch(() => [])
     )
@@ -212,15 +219,15 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
           return (places as any[]).filter((p: any) => p.name && p.image).map((p: any) => ({
             id: `otm_${p.id}`,
             name: p.name,
-            image: p.image || '',
-            type: cat === 'nature' ? 'experience' : 'attraction' as any,
+            image: p.image,
+            type: (cat === 'nature' ? 'experience' : 'attraction') as any,
             rating: p.rating ? Math.min(p.rating, 5) : 0,
-            tagline: p.description?.split('.')[0] || p.category || cat,
-            category: p.category || cat,
+            tagline: p.description?.split('.')[0] || p.category || toTitleCase(cat),
+            category: p.category || toTitleCase(cat),
             description: p.description || '',
             latitude: p.lat,
             longitude: p.lng,
-            tags: [cat],
+            tags: [toTitleCase(cat)],
           })) as PlaceItemType[]
         })
         .catch(() => [])
@@ -237,10 +244,10 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
         return events.filter((e: any) => e.title).map((e: any) => ({
           id: `ev_${e.id}`,
           name: e.title,
-          image: e.image || '',
+          image: e.image || getEventFallbackImage(e.category),
           type: 'event' as const,
           rating: 0,
-          tagline: e.venue || e.category || 'Event',
+          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || e.category || 'Event',
           category: e.category || 'Event',
           description: e.description || '',
           latitude: parseFloat(lat as any),
@@ -287,6 +294,27 @@ function mapFoursquareType(cat: string): 'destination' | 'attraction' | 'restaur
   if (['museum', 'attraction'].includes(cat)) return 'attraction'
   if (['park'].includes(cat)) return 'experience'
   return 'destination'
+}
+
+function toTitleCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
+
+const EVENT_FALLBACK_IMAGES: Record<string, string> = {
+  'Concert': 'photo-1470229722913-7c0e2dbbafd3',
+  'Music': 'photo-1470229722913-7c0e2dbbafd3',
+  'Festival': 'photo-1533174072545-7a4b6ad7a6c3',
+  'Performance': 'photo-1507676184212-d03ab07a01bf',
+  'Sports': 'photo-1461896836934-bd45ba2a0907',
+  'Food & Drink': 'photo-1555939594-58d7cb561ad1',
+  'Exhibition': 'photo-1531058020387-3be344556be6',
+  'Community': 'photo-1511795409834-ef04bbd61622',
+  'Conference': 'photo-1540575467063-178a50c2df87',
+}
+
+function getEventFallbackImage(category?: string): string {
+  const id = EVENT_FALLBACK_IMAGES[category || ''] || 'photo-1492684223f0-e3b763ece0e4'
+  return `https://images.unsplash.com/${id}?w=500&fit=crop&q=75`
 }
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';

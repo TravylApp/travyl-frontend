@@ -287,8 +287,12 @@ function mapCategory(cat: string, sub?: string): string {
 }
 
 // Generate tags that match PLACE_COLLECTIONS match criteria
+function titleCase(s: string): string {
+  return s.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+}
+
 function mapTags(cat: string, backendTags?: string[], cuisine?: string | null): string[] {
-  const tags: string[] = backendTags ?? []
+  const tags: string[] = (backendTags ?? []).map(titleCase)
   const c = cat.toLowerCase()
   if (c === 'restaurant' || c === 'cafe' || c === 'dining') tags.push('Food')
   if (c === 'museum' || c === 'attraction' || c === 'sightseeing') tags.push('Culture', 'Landmark')
@@ -296,7 +300,7 @@ function mapTags(cat: string, backendTags?: string[], cuisine?: string | null): 
   if (c === 'bar' || c === 'nightlife') tags.push('Nightlife', 'Bar')
   if (c === 'beach') tags.push('Beach', 'Coast')
   if (c === 'shopping') tags.push('Markets')
-  if (cuisine) tags.push(cuisine)
+  if (cuisine) tags.push(titleCase(cuisine))
   return [...new Set(tags)]
 }
 
