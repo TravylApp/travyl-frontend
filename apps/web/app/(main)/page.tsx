@@ -343,15 +343,17 @@ export default function Home() {
       const parsed: TripAnswers = {};
       const lower = val.toLowerCase();
 
-      // Extract destination (after "in" or "to", stop at boundary words)
-      const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]*?)(?:\s+(?:for|with|on|during|budget|cheap|luxury|moderate|solo|alone|family|friends|partner|couple|\d)|\s*$)/i);
+      // Extract destination — supports "City, Country" with commas
+      // Try "in/to [destination] for/with/..." first (word boundary prevents matching "in" inside "Spain")
+      const destMatch = val.match(/\b(?:in|to)\s+([A-Z][a-zA-Z\s,]*?)(?:\s+(?:for|with|on|during|budget|cheap|luxury|moderate|solo|alone|family|friends|partner|couple)\s|\s+\d|\s*$)/i);
       if (destMatch) {
-        parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
+        parsed.destination = destMatch[1].trim().replace(/,\s*/g, ', ').replace(/\b\w/g, (c) => c.toUpperCase());
       } else {
-        // Strip common prefixes and stop at boundary words
+        // No "in/to" prefix — destination is at the start, stop at "for N", "with", etc.
         const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore|plan)\s*/i, '').trim();
-        const destOnly = cleaned.match(/^([a-zA-Z][a-zA-Z\s]*?)(?:\s+(?:for|with|on|during|\d)|\s*$)/i);
-        parsed.destination = (destOnly?.[1] ?? cleaned).trim().replace(/\b\w/g, (c) => c.toUpperCase());
+        // Match up to the first "for N/a/week", "with", "on", "during", or standalone number
+        const destOnly = cleaned.match(/^([a-zA-Z][a-zA-Z\s,]*?)(?:\s+for\s+(?:\d|a\s|the\s)|\s+(?:with|on|during)\s|\s+(?:budget|cheap|luxury|moderate|solo|alone|family|friends|partner|couple)\s|\s*$)/i);
+        parsed.destination = (destOnly?.[1] ?? cleaned.split(/\s+for\s+/i)[0]).trim().replace(/,\s*/g, ', ').replace(/\b\w/g, (c) => c.toUpperCase());
       }
 
       // Extract duration
