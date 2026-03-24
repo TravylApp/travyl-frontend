@@ -247,24 +247,27 @@ function TripExploreSection({ trip }: { trip: Trip | null }) {
   const ctx = trip?.trip_context as any;
   const categories: { key: string; label: string; items: any[] }[] = [];
 
-  // Top Places (from explore_items — landmarks/sightseeing)
+  // Famous Attractions (from explore_items — landmarks/sightseeing)
   if (ctx?.explore_items?.length > 0) {
-    categories.push({ key: 'attractions', label: `Top Places in ${city}`, items: ctx.explore_items });
+    categories.push({ key: 'attractions', label: 'Famous Attractions', items: ctx.explore_items });
   }
 
-  // Restaurants & Food (from foursquare_venues filtered by category, or all if mixed)
-  const restaurants = (ctx?.foursquare_venues || []).filter((v: any) =>
-    /restaurant|food|café|cafe|dining|pizza|bistro|trattoria/i.test(v.category || '')
+  // Top Restaurants (from foursquare_venues filtered by food categories)
+  const allVenues = ctx?.foursquare_venues || [];
+  const restaurants = allVenues.filter((v: any) =>
+    /restaurant|food|café|cafe|dining|pizza|bistro|trattoria|culinary/i.test(v.category || '')
   );
-  const otherVenues = (ctx?.foursquare_venues || []).filter((v: any) =>
-    !/restaurant|food|café|cafe|dining|pizza|bistro|trattoria/i.test(v.category || '')
+  const experiences = allVenues.filter((v: any) =>
+    !/restaurant|food|café|cafe|dining|pizza|bistro|trattoria|culinary/i.test(v.category || '')
   );
 
   if (restaurants.length > 0) {
-    categories.push({ key: 'restaurants', label: `Restaurants in ${city}`, items: restaurants });
+    categories.push({ key: 'restaurants', label: 'Top Restaurants', items: restaurants });
   }
-  if (otherVenues.length > 0) {
-    categories.push({ key: 'venues', label: `Popular Spots in ${city}`, items: otherVenues });
+
+  // Hot Experiences (non-food venues — museums, nightlife, parks, etc.)
+  if (experiences.length > 0) {
+    categories.push({ key: 'experiences', label: 'Hot Experiences', items: experiences });
   }
 
   // Hotels
