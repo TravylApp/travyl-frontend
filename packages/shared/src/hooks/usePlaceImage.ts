@@ -37,7 +37,7 @@ async function fetchPlaceImage(name: string, city?: string): Promise<PlaceImageR
     if (city) params.set('city', city);
     const res = await fetch(`${API_URL}/api/trips/places/image?${params}`);
     if (!res.ok) return null;
-    return await res.json();
+    return await res.json() as PlaceImageResult;
   } finally {
     inFlight--;
     dequeue();

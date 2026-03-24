@@ -13,6 +13,8 @@ import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/component
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
 
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
+
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'active', label: 'Active' },
@@ -186,7 +188,7 @@ function TripsContent() {
 
   const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
     ...t,
-    image: `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
+    image: t.cover_image_url ?? FALLBACK_IMAGE,
   }))
 
   // Apply filters

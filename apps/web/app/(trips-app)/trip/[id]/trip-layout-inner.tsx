@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import type { SpinePosition } from '@/components/trip-tabs';
+import { TripSidebar } from '@/components/calendar/TripSidebar';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
 import { ExplorePreview, OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
@@ -199,12 +199,9 @@ function TripLayoutContent({
   tripId: string;
   children: React.ReactNode;
 }) {
-  const [spinePosition, setSpinePosition] = useState<SpinePosition>("left");
   const [mapOpen, setMapOpen] = useState(false);
   const { trip } = useItineraryScreen(tripId);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
-  const isTopMode = spinePosition === "top";
-  const isVerticalSpine = spinePosition === "left" || spinePosition === "right";
 
   // Sync map open with context requests
   useEffect(() => {
@@ -263,21 +260,20 @@ function TripLayoutContent({
 
   // Page transition — rolodex flip for side spine, horizontal slide for top
   const dir = directionRef.current;
-  const pageVariants = isVerticalSpine
-    ? {
-        initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
-        animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
-        exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
-      }
-    : {
-        initial: { opacity: 0, x: dir > 0 ? 24 : -24 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: dir > 0 ? -12 : 12 },
-      };
+  const pageVariants = {
+    initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
+    animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
+    exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
+  };
 
-  // Calendar is a full-screen component with its own sidebar/navbar — bypass all layout chrome
+  // Calendar: full-screen layout with shared sidebar, no hero/card chrome
   if (isCalendar) {
-    return <>{children}</>;
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <TripSidebar tripId={tripId} />
+        {children}
+      </div>
+    );
   }
 
   return (
@@ -306,20 +302,12 @@ function TripLayoutContent({
                 }
           }
         >
-        <div className={`flex ${isTopMode ? 'flex-col' : 'flex-col md:flex-row'}`}>
-          {/* Spine */}
-          <TripTabs
-            tripId={tripId}
-            position={spinePosition}
-            onPositionChange={setSpinePosition}
-            dark={isOverview}
-          />
+        <div className="flex flex-col md:flex-row">
+          {/* Sidebar */}
+          <TripSidebar tripId={tripId} />
 
           {/* Content area */}
-          <div
-            className="flex-1 flex flex-col min-w-0"
-            style={{ order: spinePosition === "right" ? 0 : 1 }}
-          >
+          <div className="flex-1 flex flex-col min-w-0">
             <ContentHeader
               tripId={tripId}
               mapOpen={mapOpen}
@@ -342,7 +330,7 @@ function TripLayoutContent({
                     animate={pageVariants.animate}
                     exit={pageVariants.exit}
                     transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    style={isVerticalSpine ? { transformOrigin: 'center top' } : undefined}
+                    style={{ transformOrigin: 'center top' }}
                   >
                     {children}
                   </motion.div>

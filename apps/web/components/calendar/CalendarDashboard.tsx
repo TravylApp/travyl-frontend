@@ -15,7 +15,6 @@ import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
-import { TripSidebar } from './TripSidebar'
 import { TripNavbar } from './TripNavbar'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
@@ -74,7 +73,6 @@ interface CalendarDashboardProps {
 
 export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [activeNav, setActiveNav] = useState('calendar')
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
@@ -443,17 +441,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <TripPermissionProvider trip={trip!} collaborators={tripCollaborators}>
-    <div className={theme === 'dark' ? 'dark' : ''}>
-    <div className={`flex h-screen overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
-      {/* Sidebar */}
-      <TripSidebar
-        tripId={tripId}
-        activeNav={activeNav}
-        onNavChange={setActiveNav}
-      />
-
-      {/* Main column */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+    <div className={`${theme === 'dark' ? 'dark' : ''} flex flex-col flex-1 min-w-0 overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
         {/* Header */}
         <TripNavbar
           tripName={trip?.title ?? 'Loading...'}
@@ -482,7 +470,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         />
 
         {/* Grid area */}
-        {activeNav === 'calendar' ? (
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
@@ -648,16 +635,6 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             </div>
           )}
         </DndContext>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-gray-400 text-sm capitalize">{activeNav} — coming soon</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-    </div>
     <CardPopover
       anchorEl={popoverAnchor}
       isOpen={!!selectedActivity && !!popoverAnchor}
@@ -719,6 +696,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         />
       )
     })()}
+    </div>
     </TripPermissionProvider>
     </CalendarThemeContext.Provider>
   )
