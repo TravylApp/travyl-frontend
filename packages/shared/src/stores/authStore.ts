@@ -61,6 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signInWithOAuth: async (provider) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     await supabase.auth.signInWithOAuth({ provider });
   },
 
