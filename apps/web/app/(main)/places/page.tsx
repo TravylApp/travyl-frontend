@@ -83,9 +83,9 @@ const BROWSE_CATEGORIES = [
 ]
 
 async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
-  // Each page fetches 3 cities × 4 categories = up to 60 places
+  // Each page fetches 3 cities × 5 categories, limit 20 each
   const citiesPerPage = 3
-  const catsPerPage = 4
+  const catsPerPage = 5
   const startCity = (pageParam * citiesPerPage) % BROWSE_CITIES.length
   const startCat = (pageParam * catsPerPage) % BROWSE_CATEGORIES.length
 
@@ -101,7 +101,7 @@ async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
   const results = await Promise.all(
     cities.flatMap((city) =>
       cats.map(async (cat) => {
-        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`)
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=20`)
         if (!res.ok) return []
         return res.json() as Promise<PlaceItemType[]>
       })
@@ -115,15 +115,14 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   const geoProbe = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=sightseeing&limit=1`)
   if (!geoProbe.ok) return []
   const probeData = await geoProbe.json() as PlaceItemType[]
-  // Extract lat/lng from the first result so we can skip geocoding on remaining calls
   const lat = probeData[0]?.latitude
   const lng = probeData[0]?.longitude
   if (lat == null || lng == null) {
-    // Fallback: just use q param for all (slower but works)
+    // Fallback: use q param for all
     const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
     const results = await Promise.all(
       categories.map(async (cat) => {
-        const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=10`)
+        const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
         if (!res.ok) return []
         return res.json() as Promise<PlaceItemType[]>
       })
@@ -132,15 +131,43 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
     return results.flat().filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
   }
 
-  // Step 2: fetch all categories using lat/lng directly (no redundant geocoding)
+  // Step 2: fetch across multiple neighborhoods + categories for maximum coverage
+  // Offset coordinates by ~0.02-0.03 degrees (~2-3km) to cover different areas of the city
+  const neighborhoods = [
+    { lat, lng },                                  // city center
+    { lat: lat + 0.025, lng: lng + 0.015 },        // northeast
+    { lat: lat - 0.02,  lng: lng - 0.02 },         // southwest
+    { lat: lat + 0.015, lng: lng - 0.025 },        // northwest
+  ]
   const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark', 'nightlife', 'garden', 'market']
-  const results = await Promise.all(
-    categories.map(async (cat) => {
-      const res = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=10`)
-      if (!res.ok) return []
-      return res.json() as Promise<PlaceItemType[]>
-    })
-  )
+
+  // Fetch: center gets all categories, neighborhoods get key categories
+  const centerCats = categories
+  const neighborhoodCats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'shopping']
+
+  const fetches: Promise<PlaceItemType[]>[] = []
+
+  // Center: all categories, limit 20
+  for (const cat of centerCats) {
+    fetches.push(
+      fetch(`/api/places?lat=${neighborhoods[0].lat}&lng=${neighborhoods[0].lng}&category=${cat}&limit=20`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+        .catch(() => [])
+    )
+  }
+  // Neighborhoods: key categories, limit 15
+  for (let i = 1; i < neighborhoods.length; i++) {
+    for (const cat of neighborhoodCats) {
+      fetches.push(
+        fetch(`/api/places?lat=${neighborhoods[i].lat}&lng=${neighborhoods[i].lng}&category=${cat}&limit=15`)
+          .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+          .catch(() => [])
+      )
+    }
+  }
+
+  const results = await Promise.all(fetches)
+
   // Deduplicate by id
   const seen = new Set<string>()
   return results.flat().filter((p) => {
