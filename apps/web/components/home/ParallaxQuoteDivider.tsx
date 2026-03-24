@@ -4,28 +4,30 @@ import { useState, useEffect, forwardRef } from "react";
 import { motion, AnimatePresence, type MotionValue } from "motion/react";
 import { TypeWriter } from "@/components/TypeWriter";
 
-const PARALLAX_SLIDES = [
-  {
-    image: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1600&fit=crop",
-    quote: "The journey of a thousand miles begins with a single step.",
-    author: "Lao Tzu",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1600&fit=crop",
-    quote: "Travel makes one modest. You see what a tiny place you occupy in the world.",
-    author: "Gustave Flaubert",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1600&fit=crop",
-    quote: "Life is short and the world is wide.",
-    author: null,
-  },
-  {
-    image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&fit=crop",
-    quote: "Adventure is worthwhile in itself.",
-    author: "Amelia Earhart",
-  },
+const ALL_SLIDES = [
+  { image: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1400&fit=crop&q=75", quote: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+  { image: "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1400&fit=crop&q=75", quote: "Travel makes one modest. You see what a tiny place you occupy in the world.", author: "Gustave Flaubert" },
+  { image: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1400&fit=crop&q=75", quote: "Life is short and the world is wide.", author: null },
+  { image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1400&fit=crop&q=75", quote: "Adventure is worthwhile in itself.", author: "Amelia Earhart" },
+  { image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1400&fit=crop&q=75", quote: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+  { image: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1400&fit=crop&q=75", quote: "To travel is to live.", author: "Hans Christian Andersen" },
+  { image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&fit=crop&q=75", quote: "The world is a book, and those who do not travel read only a page.", author: "Saint Augustine" },
+  { image: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1400&fit=crop&q=75", quote: "Travel far enough, you meet yourself.", author: "David Mitchell" },
+  { image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1400&fit=crop&q=75", quote: "Once a year, go someplace you've never been before.", author: "Dalai Lama" },
+  { image: "https://images.unsplash.com/photo-1528127269322-539801943592?w=1400&fit=crop&q=75", quote: "Travel is the only thing you buy that makes you richer.", author: null },
 ];
+
+// Pick 4 random slides on mount so it's different each visit
+function pickSlides() {
+  const shuffled = [...ALL_SLIDES];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, 4);
+}
+
+const PARALLAX_SLIDES = typeof window !== 'undefined' ? pickSlides() : ALL_SLIDES.slice(0, 4);
 
 export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, { bgY: MotionValue<number> }>(
   function ParallaxQuoteDivider({ bgY }, ref) {

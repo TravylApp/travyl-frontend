@@ -9,34 +9,75 @@ import {
 import type { TileCategory, MosaicTile } from "@travyl/shared";
 import { useQuery } from "@tanstack/react-query";
 
-const MOSAIC_CITIES = [
-  { lat: '48.8566', lng: '2.3522', cat: 'sightseeing' },
-  { lat: '35.6762', lng: '139.6503', cat: 'restaurant' },
-  { lat: '41.9028', lng: '12.4964', cat: 'museum' },
-  { lat: '-8.4095', lng: '115.1889', cat: 'park' },
-  { lat: '40.7128', lng: '-74.0060', cat: 'cafe' },
+const ALL_MOSAIC_CITIES = [
+  { lat: '48.8566', lng: '2.3522' },   // Paris
+  { lat: '35.6762', lng: '139.6503' }, // Tokyo
+  { lat: '41.9028', lng: '12.4964' },  // Rome
+  { lat: '-8.4095', lng: '115.1889' }, // Bali
+  { lat: '40.7128', lng: '-74.0060' }, // New York
+  { lat: '41.3874', lng: '2.1686' },   // Barcelona
+  { lat: '51.5074', lng: '-0.1278' },  // London
+  { lat: '25.2048', lng: '55.2708' },  // Dubai
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '37.9838', lng: '23.7275' },  // Athens
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '38.7223', lng: '-9.1393' },  // Lisbon
+  { lat: '-22.9068', lng: '-43.1729' }, // Rio
+  { lat: '52.3676', lng: '4.9041' },   // Amsterdam
+  { lat: '37.7749', lng: '-122.4194' }, // San Francisco
+  { lat: '31.6295', lng: '-7.9811' },  // Marrakech
+  { lat: '19.4326', lng: '-99.1332' }, // Mexico City
+  { lat: '1.3521', lng: '103.8198' },  // Singapore
 ];
 
+const MOSAIC_CATEGORIES = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'landmark', 'shopping'];
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 async function fetchMosaicTiles(): Promise<MosaicTile[]> {
+  // Pick 6 random cities × random categories
+  const cities = shuffle(ALL_MOSAIC_CITIES).slice(0, 6);
+  const cats = shuffle(MOSAIC_CATEGORIES);
+
   const results = await Promise.all(
-    MOSAIC_CITIES.map(async (c) => {
-      const res = await fetch(`/api/places?lat=${c.lat}&lng=${c.lng}&category=${c.cat}&limit=2`);
+    cities.map(async (city, i) => {
+      const cat = cats[i % cats.length];
+      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=3`);
       if (!res.ok) return [];
       return res.json();
     })
   );
+
   const typeMap: Record<string, TileCategory> = {
     destination: 'destination', attraction: 'attraction',
     restaurant: 'dining', experience: 'experience',
   };
-  return results.flat().map((p: any, i: number) => ({
-    id: p.id,
-    name: p.name,
-    category: typeMap[p.type] ?? 'destination',
-    tagline: p.tagline ?? '',
-    image_url: p.image,
-    gridSpan: [i < 2 ? 3 : 2, i < 2 ? 2 : 1] as [number, number],
-  }));
+
+  // Flatten, deduplicate, filter for images
+  const seen = new Set<string>();
+  const tiles = results.flat()
+    .filter((p: any) => {
+      if (!p.name || !p.image || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    })
+    .map((p: any, i: number) => ({
+      id: p.id,
+      name: p.name,
+      category: typeMap[p.type] ?? 'destination',
+      tagline: p.tagline ?? '',
+      image_url: p.image,
+      gridSpan: [i < 2 ? 3 : 2, i < 2 ? 2 : 1] as [number, number],
+    }));
+
+  return shuffle(tiles).slice(0, 12);
 }
 
 // Mobile: 7 tiles, hero + pairs
@@ -104,13 +145,17 @@ export function TravelMosaic() {
                   <img
                     src={tile.image_url}
                     alt={tile.name}
+                    loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 <div className="relative h-full flex flex-col justify-end p-3 sm:p-4">
-                  <h3 className="text-white font-bold text-sm sm:text-base leading-tight">{tile.name}</h3>
+                  <h3 className="text-white font-bold text-sm sm:text-base leading-tight drop-shadow-md">{tile.name}</h3>
+                  {tile.tagline && (
+                    <p className="text-white/60 text-xs mt-0.5 truncate">{tile.tagline}</p>
+                  )}
                 </div>
               </motion.div>
             );

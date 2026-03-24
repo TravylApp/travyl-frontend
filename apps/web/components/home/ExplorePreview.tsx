@@ -7,20 +7,48 @@ import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 import { PlaceCard } from '@/components/PlaceCard';
 
-const EXPLORE_SECTIONS = [
-  { title: 'Top Attractions', category: 'sightseeing', lat: '40.7128', lng: '-74.0060' },
-  { title: 'Best Restaurants', category: 'restaurant', lat: '48.8566', lng: '2.3522' },
-  { title: 'Museums & Culture', category: 'museum', lat: '41.9028', lng: '12.4964' },
-  { title: 'Parks & Nature', category: 'park', lat: '51.5074', lng: '-0.1278' },
+const EXPLORE_SECTION_DEFS = [
+  { title: 'Top Attractions', category: 'sightseeing' },
+  { title: 'Best Restaurants', category: 'restaurant' },
+  { title: 'Museums & Culture', category: 'museum' },
+  { title: 'Parks & Nature', category: 'park' },
+  { title: 'Cafes & Coffee', category: 'cafe' },
+  { title: 'Nightlife & Bars', category: 'bar' },
 ];
 
+const EXPLORE_CITIES = [
+  { lat: '40.7128', lng: '-74.0060' },  // New York
+  { lat: '48.8566', lng: '2.3522' },    // Paris
+  { lat: '41.9028', lng: '12.4964' },   // Rome
+  { lat: '51.5074', lng: '-0.1278' },   // London
+  { lat: '35.6762', lng: '139.6503' },  // Tokyo
+  { lat: '41.3874', lng: '2.1686' },    // Barcelona
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '37.7749', lng: '-122.4194' }, // San Francisco
+  { lat: '25.2048', lng: '55.2708' },   // Dubai
+];
+
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, n);
+}
+
 async function fetchExploreSections() {
+  // Pick random cities for each section
+  const cities = pickRandom(EXPLORE_CITIES, EXPLORE_SECTION_DEFS.length);
+
   const results = await Promise.all(
-    EXPLORE_SECTIONS.map(async (section) => {
-      const res = await fetch(`/api/places?lat=${section.lat}&lng=${section.lng}&category=${section.category}&limit=8`);
+    EXPLORE_SECTION_DEFS.map(async (section, i) => {
+      const city = cities[i % cities.length];
+      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${section.category}&limit=10`);
       if (!res.ok) return { ...section, items: [] as PlaceItem[] };
       const items = await res.json() as PlaceItem[];
-      return { ...section, items };
+      return { ...section, items: items.filter((p) => p.image) };
     })
   );
   return results.filter((s) => s.items.length > 0);
