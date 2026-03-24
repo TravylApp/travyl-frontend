@@ -8,8 +8,6 @@ import { AvatarUpload } from '@/components/AvatarUpload';
 import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
-import Navbar from '@/components/navbar';
-import { Footer, OceanWave } from '@/components/home';
 import { useAuthStore, supabase } from '@travyl/shared';
 import { fetchProfile } from '@travyl/shared';
 import type { Profile } from '@travyl/shared';
@@ -535,8 +533,7 @@ export default function ProfileSettings() {
 
   // ─── Render ────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <Navbar />
+    <div className="min-h-screen bg-white">
       <LoadingBar isLoading={isLoading || isTabLoading || isSaving} />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-12">
@@ -951,9 +948,6 @@ export default function ProfileSettings() {
         isSaving={isSaving}
         targetLabel={pendingTabChange ? tabLabels[pendingTabChange] : undefined}
       />
-
-      <OceanWave />
-      <Footer />
     </div>
   );
 }
