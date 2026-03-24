@@ -745,6 +745,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
         />
       )
     })()}
+    </div>
     </TripPermissionProvider>
     </CalendarThemeContext.Provider>
   )

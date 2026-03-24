@@ -2,6 +2,7 @@
 import { Resource } from 'sst'
 import { createClient } from '@supabase/supabase-js'
 import { generateEmbedding } from './lib/embeddings'
+import { fetchPexelsImage } from './lib/pexels'
 
 export async function backfill() {
   const supabase = createClient(
@@ -11,7 +12,7 @@ export async function backfill() {
 
   const { data: trips, error } = await supabase
     .from('trips')
-    .select('id, title, destination, status, start_date, end_date, user_id')
+    .select('id, title, destination, status, start_date, end_date, user_id, trip_context')
 
   if (error || !trips) {
     console.error('Failed to fetch trips:', error)
@@ -19,6 +20,8 @@ export async function backfill() {
   }
 
   console.log(`Backfilling ${trips.length} trips...`)
+
+  interface TripContextJson { hero_images?: string[] }
 
   for (const trip of trips) {
     try {
@@ -43,6 +46,25 @@ export async function backfill() {
 
       const embedding = await generateEmbedding(textContent)
 
+      const tripContext = trip.trip_context as TripContextJson | null
+      let heroImages = tripContext?.hero_images ?? []
+
+      if (heroImages.length === 0 && trip.destination) {
+        const pexelsUrl = await fetchPexelsImage(trip.destination)
+        if (pexelsUrl) {
+          heroImages = [pexelsUrl]
+          await supabase
+            .from('trips')
+            .update({
+              trip_context: {
+                ...((trip.trip_context as object) ?? {}),
+                hero_images: heroImages,
+              },
+            })
+            .eq('id', trip.id)
+        }
+      }
+
       const metadata = {
         title: trip.title,
         destination: trip.destination,
@@ -50,6 +72,7 @@ export async function backfill() {
         startDate: trip.start_date,
         endDate: trip.end_date,
         activityCount: activities?.length ?? 0,
+        imageUrl: heroImages[0] ?? null,
       }
 
       const { error: upsertError } = await supabase
@@ -78,3 +101,5 @@ export async function backfill() {
 
   console.log('Backfill complete.')
 }
+
+backfill().catch((err) => { console.error(err); process.exit(1) })

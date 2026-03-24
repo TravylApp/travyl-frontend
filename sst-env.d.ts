@@ -6,6 +6,27 @@
 
 declare module "sst" {
   export interface Resource {
+    "ActivityAssets": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
+    "InteractionBus": {
+      "arn": string
+      "name": string
+      "type": "sst.aws.Bus"
+    }
+    "Pexels": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "RecommendationApi": {
+      "type": "sst.aws.ApiGatewayV2"
+      "url": string
+    }
+    "RecommendationCache": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
     "SerpApiKey": {
       "type": "sst.sst.Secret"
       "value": string
@@ -17,6 +38,15 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "TravylEmail": {
+      "configSet": string
+      "sender": string
+      "type": "sst.aws.Email"
+    }
+    "UserInteractions": {
+      "name": string
+      "type": "sst.aws.Dynamo"
     }
   }
 }

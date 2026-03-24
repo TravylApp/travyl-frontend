@@ -57,7 +57,7 @@ function CardFrontInternal({
           src={currentImg}
           alt={place.name}
           fill
-          className="object-cover transition-opacity duration-700 group-hover:scale-105 transition-transform"
+          className="object-cover will-change-transform group-hover:scale-105 transition-transform duration-500 ease-out"
           sizes={width ? `${width}px` : '100vw'}
           onError={() => setImgError(true)}
         />
