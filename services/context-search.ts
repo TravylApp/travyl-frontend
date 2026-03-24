@@ -34,6 +34,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: 'Search failed' }) }
     }
 
+    const tripIds = (data ?? []).map((row: any) => row.trip_id)
+    const { data: tripRows } = tripIds.length
+      ? await supabase.from('trips').select('id, cover_image_url').in('id', tripIds)
+      : { data: [] }
+    const coverImages = Object.fromEntries((tripRows ?? []).map((t: any) => [t.id, t.cover_image_url]))
+
     const results = (data ?? []).map((row: any) => ({
       tripId: row.trip_id,
       title: row.metadata.title,
@@ -42,7 +48,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       endDate: row.metadata.endDate,
       status: row.metadata.status,
       activityCount: row.metadata.activityCount,
-      imageUrl: row.metadata.imageUrl ?? null,
+      imageUrl: coverImages[row.trip_id] ?? row.metadata.imageUrl ?? null,
       score: row.score,
     }))
 
