@@ -276,7 +276,7 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   }).map(p => {
     // Ensure every place has an image
     if (!p.image || p.image === '') {
-      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=800&fit=crop&q=80` }
+      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=500&fit=crop&q=75` }
     }
     return p
   })

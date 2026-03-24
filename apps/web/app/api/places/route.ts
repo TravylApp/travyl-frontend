@@ -204,8 +204,8 @@ export async function GET(req: NextRequest) {
 
 function upscaleGoogleImage(url: string | null | undefined): string | null {
   if (!url) return null
-  // Google Places thumbnails use =wNNN-hNNN or =wNNN-hNNN-k-no format — upscale to 1200x800
-  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w1200-h800-k-no')
+  // Google Places thumbnails use =wNNN-hNNN or =wNNN-hNNN-k-no format — 600x400 is plenty for cards
+  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no')
 }
 
 // Varied Unsplash fallbacks by category hash so each place gets a unique photo
@@ -224,7 +224,7 @@ function getFallbackImage(name: string, idx: number): string {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0
   const photoIdx = (Math.abs(hash) + idx) % FALLBACK_PHOTOS.length
-  return `https://images.unsplash.com/${FALLBACK_PHOTOS[photoIdx]}?w=800&fit=crop&q=80`
+  return `https://images.unsplash.com/${FALLBACK_PHOTOS[photoIdx]}?w=500&fit=crop&q=75`
 }
 
 function formatHours(hours?: Record<string, string>): string | undefined {
