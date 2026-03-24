@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X } from 'lucide-react';
+import { MapPin, Map, Calendar, RefreshCw, Share2, ImageIcon, X, ChevronDown } from 'lucide-react';
+import type { Trip } from '@travyl/shared';
 import { usePathname } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import type { SpinePosition } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
-import { ExplorePreview, OceanWave, Footer } from '@/components/home';
+import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
@@ -232,6 +233,95 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
         className="mt-3 h-[2px] rounded-full opacity-80"
         style={{ background: `linear-gradient(90deg, ${tab.color}, ${tab.color}40, transparent)` }}
       />
+    </div>
+  );
+}
+
+// ─── Trip Explore Section (destination-specific categories) ──
+
+function TripExploreSection({ trip }: { trip: Trip | null }) {
+  const [openCats, setOpenCats] = useState<Set<string>>(new Set(['attractions']));
+  const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
+
+  // Build categories from trip_context data
+  const ctx = trip?.trip_context as any;
+  const categories: { key: string; label: string; items: any[] }[] = [];
+
+  // Top Places (from explore_items — landmarks/sightseeing)
+  if (ctx?.explore_items?.length > 0) {
+    categories.push({ key: 'attractions', label: `Top Places in ${city}`, items: ctx.explore_items });
+  }
+
+  // Restaurants & Food (from foursquare_venues filtered by category, or all if mixed)
+  const restaurants = (ctx?.foursquare_venues || []).filter((v: any) =>
+    /restaurant|food|café|cafe|dining|pizza|bistro|trattoria/i.test(v.category || '')
+  );
+  const otherVenues = (ctx?.foursquare_venues || []).filter((v: any) =>
+    !/restaurant|food|café|cafe|dining|pizza|bistro|trattoria/i.test(v.category || '')
+  );
+
+  if (restaurants.length > 0) {
+    categories.push({ key: 'restaurants', label: `Restaurants in ${city}`, items: restaurants });
+  }
+  if (otherVenues.length > 0) {
+    categories.push({ key: 'venues', label: `Popular Spots in ${city}`, items: otherVenues });
+  }
+
+  // Hotels
+  if (ctx?.hotels?.length > 0) {
+    categories.push({ key: 'hotels', label: `Hotels in ${city}`, items: ctx.hotels.map((h: any) => ({ id: h.id, title: h.name, description: h.tip || h.category || '', category: h.category || 'Hotel', image: h.image })) });
+  }
+
+  if (categories.length === 0) return null;
+
+  const toggle = (key: string) => setOpenCats(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto px-3 py-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold" style={{ color: 'var(--magazine-heading)' }}>Explore {city}</h2>
+        <button onClick={() => setOpenCats(prev => prev.size === categories.length ? new Set() : new Set(categories.map(c => c.key)))}
+          className="text-[12px] font-semibold" style={{ color: 'var(--magazine-accent)' }}>
+          {openCats.size === categories.length ? 'Collapse All' : 'Expand All'}
+        </button>
+      </div>
+      <div className="space-y-2">
+        {categories.map(({ key, label, items }) => (
+          <div key={key} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--magazine-border, rgba(0,0,0,0.08))' }}>
+            <button onClick={() => toggle(key)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
+              style={{ backgroundColor: 'var(--trip-base, #1e3a5f)', color: '#fff' }}>
+              <span className="text-[14px] font-semibold">{label}</span>
+              <ChevronDown size={16} className={`transition-transform ${openCats.has(key) ? 'rotate-180' : ''}`} />
+            </button>
+            {openCats.has(key) && (
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide p-3" style={{ backgroundColor: 'var(--magazine-bg, #FAF8F5)' }}>
+                {items.map((item: any) => (
+                  <div key={item.id} className="relative flex-shrink-0 w-[200px] rounded-lg overflow-hidden" style={{ height: 160 }}>
+                    {item.image ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.image} alt={item.title || item.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                      </>
+                    ) : (
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #1a1a2e, #16213e)' }} />
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-white/60 mb-0.5">{item.category}</p>
+                      <p className="text-[13px] font-bold text-white leading-tight line-clamp-2">{item.title || item.name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -486,11 +576,9 @@ function TripLayoutContent({
 
       </div>{/* end max-w-7xl */}
 
-      {/* Explore + Footer */}
+      {/* Trip Explore + Footer */}
       <div className="w-full bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-        <div className="max-w-7xl mx-auto px-3 py-3">
-          <ExplorePreview />
-        </div>
+        <TripExploreSection trip={trip} />
         <OceanWave />
         <Footer />
       </div>

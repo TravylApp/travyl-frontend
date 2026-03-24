@@ -81,20 +81,21 @@ export async function enrichTripContext(params: EnrichParams): Promise<TripConte
     } catch {}
   }
 
-  // Fetch Foursquare venues for "What's Going On" section
-  let fsVenues: any[] = [];
+  // Fetch "What's Going On" venues — restaurants, parks, nightlife (distinct from explore_items)
+  let goingOnVenues: any[] = [];
   if (lat && lng) {
     try {
-      const fsCats = ['attraction', 'restaurant', 'nightlife'];
+      const goCats = ['restaurant', 'park', 'nightlife'];
       const results = await Promise.all(
-        fsCats.map(async (cat) => {
-          const r = await fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=4`);
+        goCats.map(async (cat) => {
+          const r = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=3`);
           return r.ok ? r.json() : [];
         })
       );
-      fsVenues = results.flat()
-        .filter((v: any) => v?.id && v?.name)
-        .map((v: any) => ({ id: v.id, title: v.name, description: v.tip || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
+      const seen2 = new Set<string>();
+      goingOnVenues = results.flat()
+        .filter((v: any) => { if (!v?.id || seen2.has(v.id)) return false; seen2.add(v.id); return true; })
+        .map((v: any) => ({ id: v.id, title: v.name, description: v.description || v.tagline || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
         .slice(0, 8);
     } catch {}
   }
@@ -136,7 +137,7 @@ export async function enrichTripContext(params: EnrichParams): Promise<TripConte
     lng,
     lede_text: `A ${durationDays}-day ${composition ?? ''} trip to ${city}. ${interestsStr}`.trim(),
     explore_items: exploreItems.length > 0 ? exploreItems : undefined,
-    ...( fsVenues.length > 0 ? { foursquare_venues: fsVenues } : {}),
+    ...( goingOnVenues.length > 0 ? { foursquare_venues: goingOnVenues } : {}),
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
     hotels: hotelData.length > 0 ? hotelData : undefined,
     news: newsData.length > 0 ? newsData : undefined,

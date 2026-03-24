@@ -115,19 +115,24 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/sunrise?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
-    // Foursquare venues for "What's Going On"
-    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=attraction&limit=6`)
+    // "What's Going On" — restaurants, parks, nightlife (distinct from explore_items which is sightseeing)
+    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=restaurant&limit=4`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=restaurant&limit=4`)
+    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=park&limit=3`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=nightlife&limit=4`)
+    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=nightlife&limit=3`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
   ])
 
-  // Build Foursquare "What's Going On" venues (distinct from explore_items)
-  const fsVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
-    .filter((v: any) => v?.id && v?.name)
-    .map((v: any) => ({ id: v.id, title: v.name, description: v.tip || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
+  // Build "What's Going On" venues from different categories (with real Google Places photos)
+  const seen2 = new Set<string>()
+  const goingOnVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
+    .filter((v: any) => {
+      if (!v?.id || !v?.name || seen2.has(v.id)) return false
+      seen2.add(v.id)
+      return true
+    })
+    .map((v: any) => ({ id: v.id, title: v.name, description: v.description || v.tagline || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
     .slice(0, 8)
 
   const fresh: Record<string, any> = {
@@ -138,7 +143,7 @@ export async function POST(req: NextRequest) {
     lat, lng,
     lede_text: `A ${durationDays}-day trip to ${city}.`,
     explore_items: exploreItems,
-    foursquare_venues: fsVenues.length > 0 ? fsVenues : undefined,
+    foursquare_venues: goingOnVenues.length > 0 ? goingOnVenues : undefined,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
     hotels: hotelData?.length > 0 ? hotelData : undefined,
     news: newsData?.length > 0 ? newsData : undefined,
