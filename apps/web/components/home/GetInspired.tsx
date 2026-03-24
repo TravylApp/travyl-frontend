@@ -7,22 +7,65 @@ import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
 import type { PlaceItem } from "@travyl/shared";
 import { useQuery } from "@tanstack/react-query";
 
-const INSPIRE_CITIES = [
+const ALL_INSPIRE_CITIES = [
   { lat: '48.8566', lng: '2.3522' },   // Paris
   { lat: '35.6762', lng: '139.6503' }, // Tokyo
   { lat: '41.9028', lng: '12.4964' },  // Rome
   { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '41.3874', lng: '2.1686' },   // Barcelona
+  { lat: '51.5074', lng: '-0.1278' },  // London
+  { lat: '40.7128', lng: '-74.0060' }, // New York
+  { lat: '25.2048', lng: '55.2708' },  // Dubai
+  { lat: '-8.4095', lng: '115.1889' }, // Bali
+  { lat: '37.9838', lng: '23.7275' },  // Athens
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '37.7749', lng: '-122.4194' }, // San Francisco
+  { lat: '-22.9068', lng: '-43.1729' }, // Rio
+  { lat: '38.7223', lng: '-9.1393' },  // Lisbon
+  { lat: '52.3676', lng: '4.9041' },   // Amsterdam
+  { lat: '55.6761', lng: '12.5683' },  // Copenhagen
+  { lat: '19.4326', lng: '-99.1332' }, // Mexico City
+  { lat: '1.3521', lng: '103.8198' },  // Singapore
+  { lat: '-33.9249', lng: '18.4241' }, // Cape Town
+  { lat: '31.6295', lng: '-7.9811' },  // Marrakech
 ];
 
+const INSPIRE_CATEGORIES = ['sightseeing', 'restaurant', 'museum', 'park', 'landmark', 'cafe'];
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 async function fetchInspiredPlaces(): Promise<PlaceItem[]> {
+  // Pick 6 random cities and 3 random categories each time
+  const cities = shuffle(ALL_INSPIRE_CITIES).slice(0, 6);
+  const cats = shuffle(INSPIRE_CATEGORIES).slice(0, 3);
+
   const results = await Promise.all(
-    INSPIRE_CITIES.map(async (city) => {
-      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=sightseeing&limit=2`);
-      if (!res.ok) return [];
-      return res.json() as Promise<PlaceItem[]>;
-    })
+    cities.flatMap((city) =>
+      cats.map(async (cat) => {
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=3`);
+        if (!res.ok) return [];
+        return res.json() as Promise<PlaceItem[]>;
+      })
+    )
   );
-  return results.flat();
+
+  // Deduplicate and filter out places with no image
+  const seen = new Set<string>();
+  const places = results.flat().filter((p) => {
+    if (!p.name || !p.image || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+
+  // Shuffle and return up to 20
+  return shuffle(places).slice(0, 20);
 }
 
 const SWIPE_THRESHOLD = 80;
