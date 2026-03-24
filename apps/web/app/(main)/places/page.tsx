@@ -111,10 +111,32 @@ async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
 }
 
 async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
-  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
+  // Step 1: geocode ONCE via a single API call (the route handles geocoding)
+  const geoProbe = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=sightseeing&limit=1`)
+  if (!geoProbe.ok) return []
+  const probeData = await geoProbe.json() as PlaceItemType[]
+  // Extract lat/lng from the first result so we can skip geocoding on remaining calls
+  const lat = probeData[0]?.latitude
+  const lng = probeData[0]?.longitude
+  if (lat == null || lng == null) {
+    // Fallback: just use q param for all (slower but works)
+    const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
+    const results = await Promise.all(
+      categories.map(async (cat) => {
+        const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=10`)
+        if (!res.ok) return []
+        return res.json() as Promise<PlaceItemType[]>
+      })
+    )
+    const seen = new Set<string>()
+    return results.flat().filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+  }
+
+  // Step 2: fetch all categories using lat/lng directly (no redundant geocoding)
+  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark', 'nightlife', 'garden', 'market']
   const results = await Promise.all(
     categories.map(async (cat) => {
-      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=12`)
+      const res = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=10`)
       if (!res.ok) return []
       return res.json() as Promise<PlaceItemType[]>
     })
@@ -1186,7 +1208,7 @@ function MagazineCurtain({
         className="flex-1 relative overflow-hidden rounded-2xl"
       >
         {place.latitude != null && place.longitude != null ? (
-          <LeafletMap lat={place.latitude} lng={place.longitude} label={place.name} zoom={11} height="100%" className="!rounded-2xl !border-0" />
+          <LeafletMap key={`map-${place.latitude}-${place.longitude}`} lat={place.latitude} lng={place.longitude} label={place.name} zoom={11} height="100%" className="!rounded-2xl !border-0" />
         ) : (
           <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center">
             <div className="text-center text-gray-400">
