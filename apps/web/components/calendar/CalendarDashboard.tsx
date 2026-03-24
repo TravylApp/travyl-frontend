@@ -38,6 +38,9 @@ import { ShareModal } from './sharing/ShareModal'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
+import { usePollMutations } from './hooks/usePollMutations'
+import { usePollObserver } from './hooks/usePollObserver'
+import { usePollSync } from './hooks/usePollSync'
 
 // ─── Module-level constants ────────────────────────────────────
 
@@ -106,6 +109,21 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     queryFn: () => fetchCollaborators(tripId),
     enabled: !!tripId && !isSharedView,
   })
+
+  // Poll hooks
+  const { startPoll, vote, closePoll, restoreActivity } = usePollMutations()
+  const editorCollaborators = useMemo(
+    () => tripCollaborators.filter((c) => c.role_type === 'editor' && c.invite_status === 'accepted'),
+    [tripCollaborators],
+  )
+  const editorIds = useMemo(() => {
+    const ids = editorCollaborators.map((c) => c.user_id).filter(Boolean) as string[]
+    // Include trip owner
+    if (trip?.user_id && !ids.includes(trip.user_id)) ids.push(trip.user_id)
+    return ids
+  }, [editorCollaborators, trip?.user_id])
+  const { polls } = usePollObserver({ editorCount: editorIds.length, editorIds })
+  usePollSync(tripId)
 
   const scheduledActivities = useMemo(
     () => activities.filter((a) => !a.unscheduled),
@@ -375,6 +393,10 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       if (act) duplicateActivity(act)
     } else if (actionId === 'delete') {
       handleRemoveActivity(activityId)
+    } else if (actionId === 'start-poll') {
+      startPoll(activityId, userId)
+    } else if (actionId === 'close-poll') {
+      closePoll(activityId)
     }
   }
 
@@ -448,7 +470,10 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <TripPermissionProvider trip={trip!} collaborators={tripCollaborators} isSharedView={isSharedView}>
-    <div className={`${theme === 'dark' ? 'dark' : ''} flex flex-col flex-1 min-w-0 overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
+    <div className={theme === 'dark' ? 'dark' : ''}>
+    <div className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
+      {/* Main column */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
         <TripNavbar
           tripName={trip?.title ?? 'Loading...'}
@@ -523,6 +548,12 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onShiftClickEvent={toggleActivityInSelection}
                         onResizeEvent={handleResizeEvent}
                         onContextMenu={handleContextMenu}
+                        polls={polls}
+                        pollUserId={userId}
+                        tripOwnerId={trip?.user_id}
+                        onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        onRestorePoll={restoreActivity}
+                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   ) : (
@@ -547,6 +578,12 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         pendingDrop={pendingDrop}
                         onResizeEvent={handleResizeEvent}
                         onContextMenu={handleContextMenu}
+                        polls={polls}
+                        pollUserId={userId}
+                        tripOwnerId={trip?.user_id}
+                        onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        onRestorePoll={restoreActivity}
+                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   )}
@@ -647,6 +684,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
             </div>
           )}
         </DndContext>
+      </div>
+    </div>
+    </div>
     <CardPopover
       anchorEl={popoverAnchor}
       isOpen={!!selectedActivity && !!popoverAnchor}
@@ -682,20 +722,29 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         onSettingsChange={refetchTrip}
       />
     )}
-    {contextMenu && (
-      <ActivityContextMenu
-        x={contextMenu.x}
-        y={contextMenu.y}
-        actions={[
-          { id: 'edit', label: 'Edit' },
-          { id: 'duplicate', label: 'Duplicate' },
-          { id: 'separator', label: '', separator: true },
-          { id: 'delete', label: 'Delete', danger: true },
-        ]}
-        onAction={handleContextMenuAction}
-        onClose={() => setContextMenu(null)}
-      />
-    )}
+    {contextMenu && (() => {
+      const poll = polls.get(contextMenu.activityId)
+      const hasActivePoll = poll?.status === 'active'
+      const canClosePoll = hasActivePoll && (poll.startedBy === userId || trip?.user_id === userId)
+      return (
+        <ActivityContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          actions={[
+            { id: 'edit', label: 'Edit' },
+            { id: 'duplicate', label: 'Duplicate' },
+            { id: 'separator', label: '', separator: true },
+            hasActivePoll
+              ? { id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }
+              : { id: 'start-poll', label: 'Start Poll' },
+            { id: 'separator2', label: '', separator: true },
+            { id: 'delete', label: 'Delete', danger: true },
+          ]}
+          onAction={handleContextMenuAction}
+          onClose={() => setContextMenu(null)}
+        />
+      )
+    })()}
     {editingActivityId && (() => {
       const editActivity = activities.find((a) => a.id === editingActivityId)
       if (!editActivity) return null
@@ -708,7 +757,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         />
       )
     })()}
-    </div>
     </TripPermissionProvider>
     </CalendarThemeContext.Provider>
   )

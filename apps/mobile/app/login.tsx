@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useAuthStore, Navy, TextStyles, FontSize, FontFamily } from '@travyl/shared';
+import * as Linking from 'expo-linking';
+import { useAuthStore, supabase, Navy, TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
 function SocialButton({ label, iconName, iconColor, onPress }: {
@@ -57,6 +58,15 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const redirectTo = Linking.createURL('login-callback');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+    if (error) Alert.alert('Sign in failed', error.message);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -89,7 +99,7 @@ export default function LoginScreen() {
 
           {/* Social login */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            <View style={{ flex: 1 }}><SocialButton label="Google" iconName="google" iconColor="#EA4335" onPress={() => {}} /></View>
+            <View style={{ flex: 1 }}><SocialButton label="Google" iconName="google" iconColor="#EA4335" onPress={handleGoogleSignIn} /></View>
             <View style={{ flex: 1 }}><SocialButton label="Apple" iconName="apple" iconColor="#000" onPress={() => {}} /></View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>

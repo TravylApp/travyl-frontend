@@ -37,6 +37,10 @@ cd packages/shared && npm test  # Run shared package tests
 
 This applies before invoking `/brainstorm`. No Linear issue = no new branch.
 
+**All PRs must target `develop`, never `main`.**
+
+**Never include Claude authorship attribution (e.g. "Generated with Claude Code") in PR descriptions, commit messages, or any project files.**
+
 ## Planning files
 
 Each Linear issue has a planning file at `planning/TRA-XXX.md`. When starting a new feature:

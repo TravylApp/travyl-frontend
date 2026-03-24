@@ -4,7 +4,7 @@ import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
 import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
-import type { TripNote } from '@travyl/shared'
+import type { TripNote, Poll } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
@@ -30,6 +30,12 @@ interface DayColumnProps {
   onShiftClickEvent?: (id: string) => void
   onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
   onContextMenu?: (id: string, x: number, y: number) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  tripOwnerId?: string
+  onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  onRestorePoll?: (activityId: string) => void
+  onRemovePollActivity?: (activityId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -91,6 +97,12 @@ export function DayColumn({
   onShiftClickEvent,
   onResizeEvent,
   onContextMenu,
+  polls,
+  pollUserId,
+  tripOwnerId,
+  onVotePoll,
+  onRestorePoll,
+  onRemovePollActivity,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
@@ -238,6 +250,16 @@ export function DayColumn({
               onShiftClick={onShiftClickEvent}
               onResize={onResizeEvent}
               onContextMenu={onContextMenu}
+              poll={polls?.get(activity.id)}
+              userId={pollUserId}
+              onVote={onVotePoll}
+              onRestorePoll={onRestorePoll}
+              onRemovePollActivity={onRemovePollActivity}
+              canManagePoll={
+                polls?.get(activity.id)
+                  ? polls.get(activity.id)!.startedBy === pollUserId || tripOwnerId === pollUserId
+                  : false
+              }
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}

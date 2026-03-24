@@ -9,6 +9,7 @@ interface AuthState {
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'apple' | 'facebook') => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -49,6 +50,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (data.user && !data.session) {
       throw new Error('Check your email and click the confirmation link before signing in.');
     }
+  },
+
+  signInWithOAuth: async (provider) => {
+    await supabase.auth.signInWithOAuth({ provider });
   },
 
   signOut: async () => {
