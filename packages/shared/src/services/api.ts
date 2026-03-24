@@ -301,13 +301,9 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
     .from('trips')
     .select('*')
     .eq('share_link_token', token)
-    .single();
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw error;
-  }
-  // Private trips are not accessible via share link regardless of token knowledge
-  if (data?.visibility === 'private') return null;
+    .maybeSingle();
+  if (error || !data) return null;
+  if (data.visibility === 'private') return null;
   return data;
 }
 
