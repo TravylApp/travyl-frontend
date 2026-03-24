@@ -156,14 +156,15 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
   // Get all available items from trip context
   const allItems: DiscoverItem[] = useMemo(() => {
     const explore = trip?.trip_context?.explore_items ?? [];
-    return explore.map((item: any) => ({
+    return explore.map((item) => ({
       id: item.id,
-      name: item.title ?? item.name,
+      name: item.title ?? '',
       description: item.description ?? '',
       category: item.category ?? 'attraction',
       location: item.title ?? '',
-      rating: item.rating,
+      rating: 0,
       images: item.image ? [item.image] : [],
+      tags: item.tags ?? [],
     }));
   }, [trip]);
 

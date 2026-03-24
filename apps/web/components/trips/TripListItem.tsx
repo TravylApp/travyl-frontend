@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2 } from 'lucide-react';
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
@@ -34,12 +33,12 @@ export function TripListItem({ trip }: TripListItemProps) {
     >
       {/* Thumbnail */}
       <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={trip.image}
           alt={trip.destination}
-          fill
-          className="object-cover"
-          sizes="80px"
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
 

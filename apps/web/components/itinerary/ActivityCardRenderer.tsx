@@ -23,7 +23,8 @@ const ACTIVITY_IMAGES: Record<string, string[]> = {
 };
 
 function activityToDiscoverItem(activity: ActivityViewModel, images: string[]): DiscoverItem {
-  const imgs = images.length > 0 ? images : (ACTIVITY_IMAGES[activity.id] || []);
+  const actImg = activity.image ? [activity.image] : [];
+  const imgs = images.length > 0 ? images : actImg.length > 0 ? actImg : (ACTIVITY_IMAGES[activity.id] || []);
   return {
     id: activity.id,
     name: activity.name,

@@ -29,8 +29,9 @@ export async function POST(req: NextRequest) {
 
   const existing = trip.trip_context ?? {}
 
-  // Skip if fully enriched (has all key fields including explore_items and foursquare_venues)
-  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0 && existing.foursquare_venues?.length > 0) {
+  // Skip if fully enriched (has all key fields including newer APIs)
+  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0 && existing.foursquare_venues?.length > 0
+    && existing.phrases && existing.nearby_cities && existing.cost_of_living && existing.safety && existing.timezone_info) {
     return NextResponse.json({ status: 'already_enriched' })
   }
 
@@ -45,7 +46,9 @@ export async function POST(req: NextRequest) {
   let lng = existing.lng ?? 0
   if (!lat && !lng) {
     try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trip.destination)}&format=json&limit=1`)
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trip.destination)}&format=json&limit=1`, {
+        headers: { 'User-Agent': 'Travyl/1.0 (travel planning app)' },
+      })
       const geoData = await geoRes.json()
       if (geoData[0]) { lat = parseFloat(geoData[0].lat); lng = parseFloat(geoData[0].lon) }
     } catch {}
@@ -74,7 +77,7 @@ export async function POST(req: NextRequest) {
       }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image }))
     } catch {}
 
-    // Fallback: Foursquare
+    // Fallback 1: Foursquare
     if (exploreItems.length === 0) {
       try {
         const fsCats = ['attraction', 'restaurant', 'museum']
@@ -90,13 +93,30 @@ export async function POST(req: NextRequest) {
         }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
       } catch {}
     }
+
+    // Fallback 2: OpenTripMap (free, no key, Wikipedia-enriched descriptions)
+    if (exploreItems.length === 0) {
+      try {
+        const otmCats = ['interesting_places', 'cultural~museums', 'architecture']
+        const results = await Promise.all(
+          otmCats.map(async (cat) => {
+            const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
+            return r.ok ? r.json() : []
+          })
+        )
+        const seen = new Set<string>()
+        exploreItems = results.flat().filter((p: any) => {
+          if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
+        }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: p.image }))
+      } catch {}
+    }
   }
 
   // Fetch all enrichment APIs in parallel
   const countryCode = country.substring(0, 2).toUpperCase()
   const startParam = trip.start_date || ''
   const endParam = trip.end_date || ''
-  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData] = await Promise.all([
+  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
     fetch(`${baseUrl}/api/images?q=${encodeURIComponent(city)}`)
       .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined),
     fetch(`${baseUrl}/api/weather?location=${encodeURIComponent(trip.destination)}&days=${durationDays}`)
@@ -127,7 +147,47 @@ export async function POST(req: NextRequest) {
     // Real events (Eventbrite + PredictHQ)
     lat ? fetch(`${baseUrl}/api/events?lat=${lat}&lng=${lng}&city=${encodeURIComponent(city)}&start=${startParam}&end=${endParam}&limit=8`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // Travel safety advisory
+    countryCode ? fetch(`${baseUrl}/api/safety?country=${encodeURIComponent(countryCode)}`)
+      .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+    // Nearby cities (Geonames) — "Also consider visiting..."
+    lat ? fetch(`${baseUrl}/api/geonames?lat=${lat}&lng=${lng}&mode=cities&radius=100&limit=5`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // Timezone data
+    lat ? fetch(`${baseUrl}/api/timezone?lat=${lat}&lng=${lng}`)
+      .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+    // Essential phrases translated to local language
+    country ? fetch(`${baseUrl}/api/translate?lang=${encodeURIComponent(country)}`)
+      .then(r => r.ok ? r.json().then((d: any) => d.phrases) : null).catch(() => null) : Promise.resolve(null),
+    // Air quality index
+    lat ? fetch(`${baseUrl}/api/aqi?lat=${lat}&lon=${lng}`)
+      .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+    // Cost of living estimates
+    fetch(`${baseUrl}/api/costliving?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}`)
+      .then(r => r.ok ? r.json() : null).catch(() => null),
+    // TripAdvisor restaurants — real photos + ratings
+    lat ? fetch(`${baseUrl}/api/tripadvisor?lat=${lat}&lng=${lng}&q=${encodeURIComponent(city + ' restaurants')}&category=restaurants&limit=6`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // TripAdvisor attractions — supplement explore items
+    lat ? fetch(`${baseUrl}/api/tripadvisor?lat=${lat}&lng=${lng}&q=${encodeURIComponent(city + ' attractions')}&category=attractions&limit=6`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
   ])
+
+  // Supplement explore_items with TripAdvisor attractions (better photos, more data)
+  if (taAttractions?.length > 0) {
+    const existingIds = new Set(exploreItems.map((e) => e.title?.toLowerCase()))
+    for (const ta of taAttractions) {
+      if (!ta.name || existingIds.has(ta.name.toLowerCase())) continue
+      existingIds.add(ta.name.toLowerCase())
+      exploreItems.push({
+        id: ta.id,
+        title: ta.name,
+        description: ta.tip || ta.category || 'Attraction',
+        category: ta.category || 'Attraction',
+        image: ta.image,
+      })
+    }
+  }
 
   // Build "What's Going On" venues from different categories (with real Google Places photos)
   const seen2 = new Set<string>()
@@ -158,12 +218,59 @@ export async function POST(req: NextRequest) {
     holidays: holidays?.length > 0 ? holidays.slice(0, 10) : undefined,
     cuisine: cuisineData?.length > 0 ? cuisineData.slice(0, 6) : undefined,
     sunrise: sunriseData ?? undefined,
+    safety: safetyData ?? undefined,
+    nearby_cities: nearbyCities?.length > 0
+      ? nearbyCities.filter((c: any) => c.name?.toLowerCase() !== city.toLowerCase()).slice(0, 4)
+      : undefined,
+    timezone_info: timezoneData ?? undefined,
+    restaurants: taRestaurants?.length > 0 ? taRestaurants : undefined,
+    phrases: phrasesData ?? undefined,
+    aqi: aqiData ?? undefined,
+    cost_of_living: costData ?? undefined,
     quick_facts: countryInfo ? {
       currency: `${countryInfo.currency?.code} (${countryInfo.currency?.symbol})`,
       language: countryInfo.language,
-      timezone: countryInfo.timezone,
-      emergency: '112',
+      timezone: timezoneData?.timezone || countryInfo.timezone,
+      emergency: countryInfo.emergency || '112',
     } : undefined,
+  }
+
+  // Supplement hero_images with Unsplash/Pexels for better mosaic quality
+  if (fresh.hero_images && fresh.hero_images.length < 6) {
+    try {
+      const imgRes = await fetch(`${baseUrl}/api/images?q=${encodeURIComponent(city + ' travel')}&type=hero`)
+      if (imgRes.ok) {
+        const imgData = await imgRes.json()
+        if (imgData.url && !fresh.hero_images.includes(imgData.url)) {
+          fresh.hero_images.push(imgData.url)
+        }
+      }
+    } catch {}
+  }
+
+  // Fill missing images for explore items and venues using Pexels/Unsplash
+  const itemsMissingImages = [
+    ...exploreItems.filter((e) => !e.image).map((e) => ({ ref: e, type: /restaurant|food|culinary|dining/i.test(e.category) ? 'restaurant' : 'activity' })),
+    ...goingOnVenues.filter((v: any) => !v.image).map((v: any) => ({ ref: v, type: /restaurant|food|culinary|dining/i.test(v.category) ? 'restaurant' : 'activity' })),
+  ].slice(0, 6) // Limit to 6 image fetches to avoid rate limits
+
+  if (itemsMissingImages.length > 0) {
+    const imageResults = await Promise.all(
+      itemsMissingImages.map(async ({ ref, type }) => {
+        try {
+          const name = ref.title || ref.name || ''
+          const r = await fetch(`${baseUrl}/api/images?q=${encodeURIComponent(name + ' ' + city)}&type=${type}`)
+          if (r.ok) {
+            const d = await r.json()
+            return { ref, url: d.url }
+          }
+        } catch {}
+        return { ref, url: null }
+      })
+    )
+    for (const { ref, url } of imageResults) {
+      if (url) ref.image = url
+    }
   }
 
   // Merge: fill missing fields, replace empty arrays, and fix zero lat/lng
@@ -171,10 +278,10 @@ export async function POST(req: NextRequest) {
   for (const [key, value] of Object.entries(fresh)) {
     if (value == null) continue
     const current = merged[key]
-    const isEmpty = current == null
-      || (Array.isArray(current) && current.length === 0 && Array.isArray(value) && value.length > 0)
+    const shouldOverwrite = current == null
+      || (Array.isArray(current) && current.length === 0)
       || ((key === 'lat' || key === 'lng') && current === 0 && value !== 0)
-    if (isEmpty) {
+    if (shouldOverwrite) {
       merged[key] = value
     }
   }

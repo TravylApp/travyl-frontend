@@ -76,14 +76,28 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     const items = data.response?.groups?.[0]?.items ?? []
 
-    const venues = items.map((item: { venue: FoursquareVenue; tips?: { text: string }[] }) => {
+    // Fetch venue photos in parallel for richer imagery
+    const venuePhotos = await Promise.all(
+      items.slice(0, 8).map(async (item: { venue: FoursquareVenue }) => {
+        try {
+          const photoRes = await fetch(
+            `https://api.foursquare.com/v2/venues/${item.venue.id}/photos?limit=3&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&v=${V}`,
+            { next: { revalidate: 86400 } }
+          )
+          if (!photoRes.ok) return []
+          const photoData = await photoRes.json()
+          return (photoData.response?.photos?.items ?? []).map((p: any) => `${p.prefix}600x400${p.suffix}`)
+        } catch { return [] }
+      })
+    )
+
+    const venues = items.map((item: { venue: FoursquareVenue; tips?: { text: string }[] }, idx: number) => {
       const v = item.venue
       const cat = v.categories?.[0]
-      const photo = v.bestPhoto
-        ? `${v.bestPhoto.prefix}300x200${v.bestPhoto.suffix}`
-        : cat?.icon
-          ? `${cat.icon.prefix}bg_88${cat.icon.suffix}`
-          : null
+      const photos = venuePhotos[idx] ?? []
+      const mainPhoto = photos[0]
+        || (v.bestPhoto ? `${v.bestPhoto.prefix}600x400${v.bestPhoto.suffix}` : null)
+        || (cat?.icon ? `${cat.icon.prefix}bg_88${cat.icon.suffix}` : null)
 
       return {
         id: v.id,
@@ -95,7 +109,8 @@ export async function GET(req: NextRequest) {
         rating: v.rating,
         ratingCount: v.ratingSignals,
         price: v.price?.tier,
-        image: photo,
+        image: mainPhoto,
+        images: photos.length > 0 ? photos : (mainPhoto ? [mainPhoto] : []),
         url: v.url,
         hours: v.hours?.status,
         tip: item.tips?.[0]?.text,

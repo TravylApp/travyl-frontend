@@ -4,50 +4,88 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 
-const ResponsiveMasonry = dynamic(
-  () => import('react-responsive-masonry').then((m) => m.ResponsiveMasonry),
-  { ssr: false },
-);
-const Masonry = dynamic(
-  () => import('react-responsive-masonry').then((m) => m.default),
-  { ssr: false },
-);
-import Image from 'next/image';
 import {
   Search, Globe, Landmark, UtensilsCrossed, Compass, CalendarDays, Heart,
   MapPin, ArrowUpDown, Star, X, ChevronLeft, ChevronRight,
   LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
+import { useSimilarPlaces } from '@travyl/shared';
 import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
 const BROWSE_CITIES = [
+  // Europe
   { name: 'Paris', lat: '48.8566', lng: '2.3522' },
-  { name: 'Tokyo', lat: '35.6762', lng: '139.6503' },
-  { name: 'New York', lat: '40.7128', lng: '-74.0060' },
+  { name: 'London', lat: '51.5074', lng: '-0.1278' },
   { name: 'Rome', lat: '41.9028', lng: '12.4964' },
   { name: 'Barcelona', lat: '41.3874', lng: '2.1686' },
-  { name: 'London', lat: '51.5074', lng: '-0.1278' },
-  { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
-  { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
-  { name: 'Sydney', lat: '-33.8688', lng: '151.2093' },
-  { name: 'Istanbul', lat: '41.0082', lng: '28.9784' },
-  { name: 'Bangkok', lat: '13.7563', lng: '100.5018' },
-  { name: 'Marrakech', lat: '31.6295', lng: '-7.9811' },
-  { name: 'Rio de Janeiro', lat: '-22.9068', lng: '-43.1729' },
-  { name: 'Cape Town', lat: '-33.9249', lng: '18.4241' },
-  { name: 'Lisbon', lat: '38.7223', lng: '-9.1393' },
+  { name: 'Amsterdam', lat: '52.3676', lng: '4.9041' },
   { name: 'Prague', lat: '50.0755', lng: '14.4378' },
+  { name: 'Lisbon', lat: '38.7223', lng: '-9.1393' },
+  { name: 'Istanbul', lat: '41.0082', lng: '28.9784' },
+  { name: 'Vienna', lat: '48.2082', lng: '16.3738' },
+  { name: 'Berlin', lat: '52.5200', lng: '13.4050' },
+  { name: 'Athens', lat: '37.9838', lng: '23.7275' },
+  { name: 'Budapest', lat: '47.4979', lng: '19.0402' },
+  { name: 'Dublin', lat: '53.3498', lng: '-6.2603' },
+  { name: 'Edinburgh', lat: '55.9533', lng: '-3.1883' },
+  { name: 'Florence', lat: '43.7696', lng: '11.2558' },
+  { name: 'Santorini', lat: '36.3932', lng: '25.4615' },
+  { name: 'Dubrovnik', lat: '42.6507', lng: '18.0944' },
+  { name: 'Copenhagen', lat: '55.6761', lng: '12.5683' },
+  { name: 'Stockholm', lat: '59.3293', lng: '18.0686' },
+  { name: 'Reykjavik', lat: '64.1466', lng: '-21.9426' },
+  // Asia
+  { name: 'Tokyo', lat: '35.6762', lng: '139.6503' },
+  { name: 'Bangkok', lat: '13.7563', lng: '100.5018' },
+  { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
+  { name: 'Singapore', lat: '1.3521', lng: '103.8198' },
+  { name: 'Seoul', lat: '37.5665', lng: '126.9780' },
+  { name: 'Kyoto', lat: '35.0116', lng: '135.7681' },
+  { name: 'Hong Kong', lat: '22.3193', lng: '114.1694' },
+  { name: 'Hanoi', lat: '21.0278', lng: '105.8342' },
+  { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
+  { name: 'Jaipur', lat: '26.9124', lng: '75.7873' },
+  { name: 'Petra', lat: '30.3285', lng: '35.4444' },
+  { name: 'Kuala Lumpur', lat: '3.1390', lng: '101.6869' },
+  { name: 'Taipei', lat: '25.0330', lng: '121.5654' },
+  { name: 'Siem Reap', lat: '13.3633', lng: '103.8564' },
+  // Americas
+  { name: 'New York', lat: '40.7128', lng: '-74.0060' },
+  { name: 'Rio de Janeiro', lat: '-22.9068', lng: '-43.1729' },
+  { name: 'Mexico City', lat: '19.4326', lng: '-99.1332' },
+  { name: 'Buenos Aires', lat: '-34.6037', lng: '-58.3816' },
+  { name: 'Havana', lat: '23.1136', lng: '-82.3666' },
+  { name: 'San Francisco', lat: '37.7749', lng: '-122.4194' },
+  { name: 'Cartagena', lat: '10.3910', lng: '-75.5364' },
+  { name: 'Cusco', lat: '-13.5319', lng: '-71.9675' },
+  { name: 'Los Angeles', lat: '34.0522', lng: '-118.2437' },
+  { name: 'Miami', lat: '25.7617', lng: '-80.1918' },
+  { name: 'Nashville', lat: '36.1627', lng: '-86.7816' },
+  { name: 'Tulum', lat: '20.2114', lng: '-87.4654' },
+  // Africa & Middle East
+  { name: 'Cape Town', lat: '-33.9249', lng: '18.4241' },
+  { name: 'Marrakech', lat: '31.6295', lng: '-7.9811' },
+  { name: 'Cairo', lat: '30.0444', lng: '31.2357' },
+  { name: 'Zanzibar', lat: '-6.1659', lng: '39.1989' },
+  { name: 'Nairobi', lat: '-1.2921', lng: '36.8219' },
+  // Oceania
+  { name: 'Sydney', lat: '-33.8688', lng: '151.2093' },
+  { name: 'Melbourne', lat: '-37.8136', lng: '144.9631' },
+  { name: 'Queenstown', lat: '-45.0312', lng: '168.6626' },
+  { name: 'Auckland', lat: '-36.8485', lng: '174.7633' },
 ]
 
-const BROWSE_CATEGORIES = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'nightlife', 'beach']
+const BROWSE_CATEGORIES = [
+  'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
+  'shopping', 'nightlife', 'beach', 'landmark', 'garden', 'market',
+]
 
 async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
-  // Each page fetches 2 cities × 3 categories = up to 30 places
-  const citiesPerPage = 2
-  const catsPerPage = 3
+  // Each page fetches 3 cities × 4 categories = up to 60 places
+  const citiesPerPage = 3
+  const catsPerPage = 4
   const startCity = (pageParam * citiesPerPage) % BROWSE_CITIES.length
   const startCat = (pageParam * catsPerPage) % BROWSE_CATEGORIES.length
 
@@ -63,7 +101,7 @@ async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
   const results = await Promise.all(
     cities.flatMap((city) =>
       cats.map(async (cat) => {
-        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=5`)
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`)
         if (!res.ok) return []
         return res.json() as Promise<PlaceItemType[]>
       })
@@ -73,10 +111,10 @@ async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
 }
 
 async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
-  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe']
+  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
   const results = await Promise.all(
     categories.map(async (cat) => {
-      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=10`)
+      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=12`)
       if (!res.ok) return []
       return res.json() as Promise<PlaceItemType[]>
     })
@@ -132,8 +170,9 @@ export default function PlacesPage() {
     queryFn: ({ pageParam }) => fetchBrowsePage(pageParam),
     initialPageParam: 0,
     getNextPageParam: (_lastPage, _allPages, lastPageParam) =>
-      lastPageParam < 15 ? lastPageParam + 1 : undefined, // max ~16 pages
-    staleTime: 10 * 60 * 1000,
+      lastPageParam < 99 ? lastPageParam + 1 : undefined, // endless scrolling — cycles through all cities
+    staleTime: 30 * 60 * 1000,  // Data stays fresh for 30 min
+    gcTime: 60 * 60 * 1000,     // Keep in cache for 1 hour
     enabled: !searchCity,
   });
 
@@ -141,7 +180,8 @@ export default function PlacesPage() {
   const { data: searchData = [], isLoading: searchLoading } = useQuery({
     queryKey: ['places-search', searchCity],
     queryFn: () => fetchSearchPlaces(searchCity),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     enabled: !!searchCity,
   });
 
@@ -170,7 +210,7 @@ export default function PlacesPage() {
           fetchNextPage();
         }
       },
-      { rootMargin: '400px' }
+      { rootMargin: '800px' }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -294,15 +334,7 @@ export default function PlacesPage() {
   }, []);
 
 
-  const distributeRoundRobin = useCallback((items: PlaceItem[], maxCols?: number) => {
-    const colCount = Math.min(maxCols ?? columnCount, items.length);
-    if (colCount <= 0) return null;
-    const cols: PlaceItem[][] = Array.from({ length: colCount }, () => []);
-    items.forEach((item, i) => cols[i % colCount].push(item));
-    return cols;
-  }, [columnCount]);
 
-  const themedSections = useMemo(() => groupPlacesByCollection(filtered), [filtered]);
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
@@ -618,7 +650,8 @@ export default function PlacesPage() {
                               onClick={gridGoPrev}
                             >
                               <div className="relative w-full h-full">
-                                <Image src={prevP.image} alt={prevP.name} fill className="object-cover" sizes="280px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={prevP.image} alt={prevP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{prevP.type}</p>
@@ -648,14 +681,16 @@ export default function PlacesPage() {
                                 className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none"
                                 style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                               >
-                                <Image src={nextNextP.image} alt="" fill className="object-cover" sizes="380px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={nextNextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Back card 1 */}
                               <div
                                 className="absolute inset-0 rounded-2xl overflow-hidden shadow-md pointer-events-none"
                                 style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                               >
-                                <Image src={nextP.image} alt="" fill className="object-cover" sizes="380px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={nextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Active card — shuffle animation */}
                               <AnimatePresence mode="popLayout" custom={gridDirection}>
@@ -671,7 +706,8 @@ export default function PlacesPage() {
                                   style={{ zIndex: 10 }}
                                 >
                                   <div className="relative w-full h-full bg-black">
-                                    <Image src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} fill className="object-cover" sizes="400px" priority />
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                                     {/* Favorite button */}
@@ -717,7 +753,8 @@ export default function PlacesPage() {
                               onClick={gridGoNext}
                             >
                               <div className="relative w-full h-full">
-                                <Image src={nextP.image} alt={nextP.name} fill className="object-cover" sizes="280px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={nextP.image} alt={nextP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{nextP.type}</p>
@@ -790,49 +827,28 @@ export default function PlacesPage() {
             >
               {filtered.length > 0 ? (
                 <>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-gray-400">
-                      {filtered.length} places
-                    </p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">Explore</h2>
+                      <p className="text-xs text-gray-400">
+                        {filtered.length} places from around the world
+                      </p>
+                    </div>
                   </div>
 
-                  {themedSections.sections.map(({ collection, places: sectionPlaces }) => (
-                    <div key={collection.key} className="mb-6">
-                      <div className="border-t border-gray-100 pt-5 pb-4 mt-2">
-                        <h3 className="text-lg font-extrabold text-[#1e3a5f]">{collection.label}</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">{sectionPlaces.length} places</p>
-                      </div>
-                      <div className="grid gap-5" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
-                        {sectionPlaces.map((item, i) => (
-                          <PinCard
-                            key={item.id}
-                            item={item}
-                            index={i}
-                            isFavorited={favorites.includes(item.id)}
-                            onFavorite={toggleFavorite}
-                            onClick={(id) => openGridShowcase(id)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Places that didn't match a themed collection */}
-                  {themedSections.remaining.length > 0 && (
-                    <div className="grid gap-5" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
-                      {themedSections.remaining.map((item, i) => (
+                  <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4" style={{ columnCount }}>
+                    {filtered.map((item, i) => (
+                      <div key={item.id} className="mb-4 break-inside-avoid">
                         <PinCard
-                          key={item.id}
                           item={item}
                           index={i}
                           isFavorited={favorites.includes(item.id)}
                           onFavorite={toggleFavorite}
                           onClick={(id) => openGridShowcase(id)}
                         />
-                      ))}
-                    </div>
-                  )}
-
+                      </div>
+                    ))}
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-20">
@@ -939,7 +955,8 @@ function MagazineCurtain({
             transition={{ duration: 0.3 }}
             className="absolute inset-0"
           >
-            <Image src={images[imgIdx]} alt={place.name} fill className="object-cover" sizes="65vw" priority />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={images[imgIdx]} alt={place.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
           </motion.div>
         </AnimatePresence>
 
@@ -1260,7 +1277,8 @@ function CardStack({
                 onClick={goPrev}
               >
                 <div className="relative w-full h-full">
-                  <Image src={items[prevIdx].image} alt={items[prevIdx].name} fill className="object-cover" sizes="280px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[prevIdx].image} alt={items[prevIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[prevIdx].type}</p>
@@ -1293,7 +1311,8 @@ function CardStack({
                 onClick={goNext}
               >
                 <div className="relative w-full h-full">
-                  <Image src={items[nextIdx].image} alt={items[nextIdx].name} fill className="object-cover" sizes="280px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[nextIdx].image} alt={items[nextIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[nextIdx].type}</p>
@@ -1326,7 +1345,8 @@ function CardStack({
                   className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none"
                   style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                 >
-                  <Image src={items[nextNextIdx].image} alt="" fill className="object-cover" sizes="(max-width: 640px) 85vw, 380px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[nextNextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Back card 1 */}
@@ -1334,7 +1354,8 @@ function CardStack({
                   className="absolute inset-0 rounded-2xl overflow-hidden shadow-md pointer-events-none"
                   style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                 >
-                  <Image src={items[nextIdx].image} alt="" fill className="object-cover" sizes="(max-width: 640px) 85vw, 380px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[nextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Active card */}
@@ -1363,13 +1384,12 @@ function CardStack({
                     >
                       {/* ── Front ── */}
                       <div className="absolute inset-0 rounded-2xl overflow-hidden bg-black" style={{ backfaceVisibility: 'hidden' }}>
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={images[imgIdx]}
                           alt={place.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 85vw, 380px"
-                          priority
+                          referrerPolicy="no-referrer"
+                          className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
@@ -1445,7 +1465,8 @@ function CardStack({
 
                       {/* ── Back ── */}
                       <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                        <Image src={images[0]} alt="" fill className="object-cover" sizes="(max-width: 640px) 85vw, 380px" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={images[0]} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <div className="relative h-full flex flex-col p-5 text-white overflow-y-auto">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300 mb-1 block">
@@ -1585,12 +1606,12 @@ function CardStack({
                   className="shrink-0 w-36 group text-left"
                 >
                   <div className="relative w-36 h-24 rounded-xl overflow-hidden mb-1.5">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={sp.images?.[0] || sp.image}
                       alt={sp.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="144px"
+                      referrerPolicy="no-referrer"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     {sp.rating != null && (

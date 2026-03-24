@@ -75,25 +75,38 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function useFlightSearch(tripId: string) {
+const CITY_AIRPORTS: Record<string, string> = {
+  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+  'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
+  'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
+  'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
+  'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
+};
+
+interface FlightSearchParams {
+  origin: string;
+  destination: string;
+  date: string;
+  passengers: number;
+  cabinClass: string;
+}
+
+function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination?.split(',')[0]?.trim();
 
-  // Find nearest airport for destination (simple mapping)
-  const CITY_AIRPORTS: Record<string, string> = {
-    'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-    'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-    'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-    'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT',
-  };
-  const destAirport = destination ? CITY_AIRPORTS[destination] : undefined;
-  const departDate = trip?.start_date ?? new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const destAirport = searchParams?.destination || (destination ? CITY_AIRPORTS[destination] : undefined);
+  const originAirport = searchParams?.origin || 'JFK';
+  const departDate = searchParams?.date || trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const passengers = searchParams?.passengers || trip?.travelers || 1;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['flights-search', destAirport, departDate],
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['flights-search', originAirport, destAirport, departDate, passengers],
     queryFn: async (): Promise<ComparisonFlight[]> => {
       if (!destAirport) return [];
-      const res = await fetch(`/api/flights/search?origin=JFK&destination=${destAirport}&date=${departDate}&passengers=1`);
+      const res = await fetch(`/api/flights/search?origin=${originAirport}&destination=${destAirport}&date=${departDate}&passengers=${passengers}`);
       if (!res.ok) return [];
       const json = await res.json();
       return (json.flights ?? []).map((f: any, i: number): ComparisonFlight | null => {
@@ -108,7 +121,7 @@ function useFlightSearch(tripId: string) {
           airline: ob.airline ?? 'Unknown',
           airlineLogo: ob.airlineCode ?? '??',
           flightNumber: ob.flightNumber ?? '',
-          departure: { time: depTime, airport: ob.origin ?? 'JFK' },
+          departure: { time: depTime, airport: ob.origin ?? originAirport },
           arrival: { time: arrTime, airport: ob.destination ?? destAirport, nextDay: arrDate !== depDate },
           duration: formatDuration(ob.duration ?? ''),
           stops: ob.stops ?? 0,
@@ -126,7 +139,7 @@ function useFlightSearch(tripId: string) {
     enabled: !!destAirport,
   });
 
-  return { flights: data ?? [], isLoading, destAirport, destination };
+  return { flights: data ?? [], isLoading, destAirport, destination, refetch };
 }
 
 const BOOKING_DETAILS = {
@@ -157,12 +170,15 @@ const collapseVariants = {
    FLIGHT SEARCH SECTION
    ================================================================ */
 
-function FlightSearchSection() {
+function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearch }: {
+  defaultFrom?: string; defaultTo?: string; defaultTravelers?: number;
+  onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => void;
+}) {
   const [collapsed, setCollapsed] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState('JFK');
-  const [to, setTo] = useState('CDG');
-  const [travelers, setTravelers] = useState(2);
+  const [from, setFrom] = useState(defaultFrom || 'JFK');
+  const [to, setTo] = useState(defaultTo || 'CDG');
+  const [travelers, setTravelers] = useState(defaultTravelers || 2);
   const [cabinClass, setCabinClass] = useState('economy');
   const [nonstopOnly, setNonstopOnly] = useState(false);
   const [maxLayover, setMaxLayover] = useState(12);
@@ -267,7 +283,10 @@ function FlightSearchSection() {
                 </div>
 
                 {/* Search button */}
-                <button className="px-5 py-2.5 text-xs text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors shrink-0 flex items-center gap-1.5 justify-center sm:rounded-r-xl font-medium">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSearch?.({ origin: from, destination: to, passengers: travelers, cabinClass }); }}
+                  className="px-5 py-2.5 text-xs text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors shrink-0 flex items-center gap-1.5 justify-center sm:rounded-r-xl font-medium"
+                >
                   <Search size={13} />
                   Search
                 </button>
@@ -746,8 +765,23 @@ function BookingDetailsSection() {
 
 export default function Flights({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { flights: flightVMs, isLoading } = useItineraryScreen(id);
-  const { flights: searchedFlights, isLoading: searchingFlights } = useFlightSearch(id);
+  const { trip, flights: flightVMs, isLoading } = useItineraryScreen(id);
+  const [searchParams, setSearchParams] = useState<FlightSearchParams | undefined>(undefined);
+  const { flights: searchedFlights, isLoading: searchingFlights, destAirport } = useFlightSearch(id, searchParams);
+
+  const destination = trip?.destination?.split(',')[0]?.trim();
+  const defaultTo = destination ? CITY_AIRPORTS[destination] : undefined;
+  const defaultTravelers = trip?.travelers || 1;
+
+  const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => {
+    setSearchParams({
+      origin: params.origin,
+      destination: params.destination,
+      date: trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+      passengers: params.passengers,
+      cabinClass: params.cabinClass,
+    });
+  };
 
   const outbound = BOOKED_FLIGHTS.filter(f => f.type === 'outbound');
   const returnFlights = BOOKED_FLIGHTS.filter(f => f.type === 'return');
@@ -778,7 +812,12 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   return (
     <div className="space-y-4">
       {/* 1. Flight Search Section */}
-      <FlightSearchSection />
+      <FlightSearchSection
+        defaultFrom="JFK"
+        defaultTo={defaultTo}
+        defaultTravelers={defaultTravelers}
+        onSearch={handleSearch}
+      />
 
       {/* 2. Booked Flight Cards — 2-column on lg */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

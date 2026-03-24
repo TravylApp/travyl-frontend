@@ -76,6 +76,14 @@ export interface TripContextData {
     capital: string;
     region: string;
     population: number;
+    cca2?: string;
+    emergency?: string;
+  };
+  safety?: {
+    score: number;
+    message: string;
+    source?: string;
+    updated?: string;
   };
   wiki?: {
     title: string;
@@ -83,10 +91,87 @@ export interface TripContextData {
     thumbnail?: string;
     description?: string;
   };
+  foursquare_venues?: {
+    id: string;
+    title?: string;
+    name?: string;
+    description?: string;
+    tagline?: string;
+    category?: string;
+    image?: string;
+    tip?: string;
+    rating?: number;
+    lat?: number;
+    lng?: number;
+  }[];
+  events?: {
+    id: string;
+    title: string;
+    description?: string;
+    category: string;
+    date?: string;
+    venue?: string;
+    image?: string;
+    url?: string;
+  }[];
   holidays?: { date: string; name: string; localName?: string }[];
   cuisine?: { id: string; name: string; image: string }[];
   sunrise?: { sunrise: string; sunset: string; golden_hour: string; day_length: string };
+  nearby_cities?: {
+    id: string;
+    name: string;
+    country: string;
+    countryCode: string;
+    population?: number;
+    lat: number;
+    lng: number;
+    distance: number; // km from destination
+  }[];
+  timezone_info?: {
+    timezone: string;
+    currentTime?: string;
+    utcOffset?: string;
+    abbreviation?: string;
+    hasDST?: boolean;
+  };
   phrases?: Record<string, string>;
+  restaurants?: {
+    id: string;
+    name: string;
+    lat?: number;
+    lng?: number;
+    address?: string;
+    category?: string;
+    cuisines?: string[];
+    rating?: number;
+    reviewCount?: number;
+    priceLevel?: string;
+    image?: string | null;
+    images?: string[];
+    tripAdvisorUrl?: string;
+    tip?: string;
+    source?: string;
+  }[];
+  aqi?: {
+    aqi: number;
+    level: string;
+    pm25?: number;
+    pm10?: number;
+  };
+  cost_of_living?: {
+    meal_cheap: number;
+    meal_mid: number;
+    coffee: number;
+    beer: number;
+    taxi_km: number;
+    public_transport: number;
+    water_bottle: number;
+    daily_budget_low: number;
+    daily_budget_mid: number;
+    daily_budget_high: number;
+    currency?: string;
+    source?: string;
+  };
 }
 
 export interface Trip {

@@ -166,10 +166,10 @@ export default function Packing({ params }: { params: Promise<{ id: string }> })
           {currentWeather ? (
             <>
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-gray-700 mb-1">
-                <div>High: {currentWeather.high}°</div>
-                <div>Low: {currentWeather.low}°</div>
+                <div>Temp: {currentWeather.temp}°</div>
+                {currentWeather.feelslike != null && <div>Feels: {currentWeather.feelslike}°</div>}
               </div>
-              <p className="text-xs text-gray-600">{currentWeather.condition}</p>
+              <p className="text-xs text-gray-600">{currentWeather.conditions}</p>
             </>
           ) : (
             <p className="text-xs text-gray-400">No weather data available</p>

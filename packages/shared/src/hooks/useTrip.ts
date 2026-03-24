@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import type { Trip } from '../types';
 import { fetchTripById } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const _g = globalThis as any;
 
-async function fetchTripWithFallback(tripId: string) {
+async function fetchTripWithFallback(tripId: string): Promise<Trip> {
   // Local trip (Supabase insert failed, stored in sessionStorage)
   if (tripId.startsWith('local-')) {
     const stored: string | null = _g.sessionStorage?.getItem(`trip-${tripId}`) ?? null;

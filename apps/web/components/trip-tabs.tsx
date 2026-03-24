@@ -277,12 +277,23 @@ export default function TripTabs({
 
     return (
       <div
-        className={`hidden md:flex flex-col self-stretch shrink-0 z-20 py-1.5 px-0.5 ${dark ? 'pt-[72px]' : ''}`}
+        className="hidden md:block shrink-0 z-20"
+        style={{ width: 56, order: isLeft ? 0 : 2 }}
+      >
+      <div
+        className="fixed flex flex-col py-1.5 px-0.5"
         style={{
           width: 56,
           gap: 4,
-          order: isLeft ? 0 : 2,
-          ...(dark ? { backgroundColor: 'rgba(255,255,255,0.03)' } : {}),
+          top: 80,
+          left: 18,
+          backgroundColor: dark ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderRadius: 14,
+          padding: '6px 3px',
+          zIndex: 30,
+          boxShadow: dark ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
         }}
       >
         {/* Drag handle */}
@@ -373,6 +384,7 @@ export default function TripTabs({
           onClose={closeCustomize}
           anchorSide={isLeft ? 'left' : 'right'}
         />
+      </div>
       </div>
     );
   };

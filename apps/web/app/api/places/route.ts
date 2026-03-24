@@ -17,6 +17,8 @@ interface BackendPlace {
   website?: string | null
   address?: string | null
   opening_hours?: Record<string, string>
+  visit_duration_min?: number | null
+  cuisine?: string | null
   tags?: string[]
 }
 
@@ -58,13 +60,13 @@ export async function GET(req: NextRequest) {
     const data: BackendPlace[] = await res.json()
 
     // Map to PlaceItem format (categories must match PLACE_COLLECTIONS in shared)
-    const places = data.map((p) => ({
+    const places = data.map((p, idx) => ({
       id: p.id,
       name: p.name,
-      image: upscaleGoogleImage(p.photo_url) ?? `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&fit=crop&q=80`,
+      image: upscaleGoogleImage(p.photo_url) ?? getFallbackImage(p.name, idx),
       type: mapType(p.category),
       rating: p.rating ?? 0,
-      tagline: p.description ?? p.category,
+      tagline: p.description?.split('.')[0] ?? p.category,
       category: mapCategory(p.category, p.subcategory),
       description: p.description ?? '',
       latitude: p.lat,
@@ -73,11 +75,15 @@ export async function GET(req: NextRequest) {
       address: p.address,
       website: p.website,
       priceLevel: mapPrice(p.price_level),
-      hours: p.opening_hours ? Object.values(p.opening_hours)[0] : undefined,
-      tags: mapTags(p.category, p.tags),
+      hours: formatHours(p.opening_hours),
+      duration: formatDuration(p.visit_duration_min),
+      tags: mapTags(p.category, p.tags, p.cuisine),
     }))
 
-    return NextResponse.json(places)
+    const res_out = NextResponse.json(places)
+    // Cache for 1 hour, revalidate in background for 24h
+    res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    return res_out
   } catch {
     return NextResponse.json([])
   }
@@ -85,8 +91,47 @@ export async function GET(req: NextRequest) {
 
 function upscaleGoogleImage(url: string | null | undefined): string | null {
   if (!url) return null
-  // Google Places thumbnails use =wNNN-hNNN format — upscale to 800x600
-  return url.replace(/=w\d+-h\d+/, '=w800-h600')
+  // Google Places thumbnails use =wNNN-hNNN or =wNNN-hNNN-k-no format — upscale to 1200x800
+  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w1200-h800-k-no')
+}
+
+// Varied Unsplash fallbacks by category hash so each place gets a unique photo
+const FALLBACK_PHOTOS = [
+  'photo-1488646953014-85cb44e25828', 'photo-1507525428034-b723cf961d3e',
+  'photo-1476514525535-07fb3b4ae5f1', 'photo-1469854523086-cc02fe5d8800',
+  'photo-1530789253388-582c481c54b0', 'photo-1502602898657-3e91760cbb34',
+  'photo-1493976040374-85c8e12f0c0e', 'photo-1504150558240-0b4fd8946624',
+  'photo-1528127269322-539801943592', 'photo-1558642452-9d2a7deb7f62',
+  'photo-1506929562872-bb421503ef21', 'photo-1501785888041-af3ef285b470',
+  'photo-1523906834658-6e24ef2386f9', 'photo-1504598318550-17eba1008a68',
+  'photo-1516483638261-f4dbaf036963', 'photo-1526129318478-62ed807ebdf9',
+]
+
+function getFallbackImage(name: string, idx: number): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0
+  const photoIdx = (Math.abs(hash) + idx) % FALLBACK_PHOTOS.length
+  return `https://images.unsplash.com/${FALLBACK_PHOTOS[photoIdx]}?w=800&fit=crop&q=80`
+}
+
+function formatHours(hours?: Record<string, string>): string | undefined {
+  if (!hours) return undefined
+  const days = Object.entries(hours)
+  if (days.length === 0) return undefined
+  // Find today's hours
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+  const today = dayNames[new Date().getDay()]
+  if (hours[today]) return `Today: ${hours[today]}`
+  // Fall back to first available
+  return days[0][1]
+}
+
+function formatDuration(minutes?: number | null): string | undefined {
+  if (!minutes) return undefined
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h} hour${h > 1 ? 's' : ''}`
 }
 
 function mapType(cat: string): string {
@@ -112,7 +157,7 @@ function mapCategory(cat: string, sub?: string): string {
 }
 
 // Generate tags that match PLACE_COLLECTIONS match criteria
-function mapTags(cat: string, backendTags?: string[]): string[] {
+function mapTags(cat: string, backendTags?: string[], cuisine?: string | null): string[] {
   const tags: string[] = backendTags ?? []
   const c = cat.toLowerCase()
   if (c === 'restaurant' || c === 'cafe' || c === 'dining') tags.push('Food')
@@ -121,6 +166,7 @@ function mapTags(cat: string, backendTags?: string[]): string[] {
   if (c === 'bar' || c === 'nightlife') tags.push('Nightlife', 'Bar')
   if (c === 'beach') tags.push('Beach', 'Coast')
   if (c === 'shopping') tags.push('Markets')
+  if (cuisine) tags.push(cuisine)
   return [...new Set(tags)]
 }
 

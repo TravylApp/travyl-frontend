@@ -6,11 +6,12 @@ import type { MockFlightDetail, PlaceItem } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {
-  ItineraryEmpty, TimeGroupSection, SplitScreenModal,
+  ItineraryEmpty, TimeGroupSection,
   FlightSection,
 } from '@/components/itinerary';
 import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
+import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import {
   ChevronDown, X, Search, Compass, LayoutList, Map, Calendar, RefreshCw,
   Landmark, UtensilsCrossed, Footprints, TreePine, Theater, ShoppingBag,
@@ -145,6 +146,7 @@ function GlanceView({
   updateActivity,
   moveActivityBefore,
   destination,
+  heroImages,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -157,6 +159,7 @@ function GlanceView({
   updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
   moveActivityBefore?: (dragId: string, targetId: string) => void;
   destination?: string;
+  heroImages?: string[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -209,13 +212,20 @@ function GlanceView({
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}>
         {days.map((day, i) => {
-          const heroImg = GLANCE_HERO_IMAGES[i % GLANCE_HERO_IMAGES.length];
+          // Use the first activity image for this day, then trip hero images, then fallback
+          const firstActivityImage = day.timeGroups
+            .flatMap(g => g.activities)
+            .map(a => a.image)
+            .find(Boolean);
+          const heroImg = firstActivityImage
+            || heroImages?.[i % (heroImages?.length || 1)]
+            || GLANCE_HERO_IMAGES[i % GLANCE_HERO_IMAGES.length];
           const isFirst = i === 0;
           const isLast = i === days.length - 1;
           return (
-            <div key={day.id} className="flex-shrink-0 w-full rounded-xl overflow-hidden snap-start flex" style={{ minHeight: 280, height: searchSlot?.day === i ? 'auto' : 280 }}>
+            <div key={day.id} className="flex-shrink-0 w-full rounded-xl overflow-hidden snap-start flex" style={{ height: 'auto' }}>
               {/* Left — activity list */}
-              <div className="w-[40%] shrink-0 bg-[#1a1a2e] p-4 flex flex-col">
+              <div className="w-[40%] shrink-0 bg-[#1a1a2e] px-4 py-3 flex flex-col">
                 {/* Day header */}
                 <div className="mb-2">
                   <p className="text-[9px] tracking-[0.3em] uppercase font-semibold mb-0.5"
@@ -464,11 +474,11 @@ function GlanceView({
                 </div>
               </div>
 
-              {/* Right — destination image 60% */}
-              <div className="flex-1 relative">
+              {/* Right — destination image fills full height */}
+              <div className="flex-1 relative min-h-[300px]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImg} alt={day.dayLabel} className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
+                <img src={heroImg} alt={day.dayLabel} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e]/40 to-transparent" />
                 {/* Day label overlay at bottom */}
                 <div className="absolute bottom-3 right-3">
                   <p className="text-sm font-bold text-white/60 font-serif" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
@@ -511,8 +521,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const selectedDay = days[selectedDayIndex] ?? null;
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [glanceMode, setGlanceMode] = useState(true);
+  const [compactOpen, setCompactOpen] = useState(false);
   const [selectedActivityIndex, setSelectedActivityIndex] = useState<number | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addCategory, setAddCategory] = useState('All');
   const [addSearch, setAddSearch] = useState('');
@@ -522,8 +533,35 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const arrivalFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
   const returnFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
 
+  // Build discover items from trip context (explore_items + foursquare_venues)
+  const discoverItems: DiscoverItem[] = useMemo(() => {
+    const explore = trip?.trip_context?.explore_items ?? [];
+    const venues = trip?.trip_context?.foursquare_venues ?? [];
+    const seen = new Set<string>();
+    const items: DiscoverItem[] = [];
+    for (const item of explore) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      items.push({
+        id: item.id, name: item.title, description: item.description,
+        category: item.category, location: item.title,
+        images: item.image ? [item.image] : [], rating: 0, tags: item.tags ?? [],
+      });
+    }
+    for (const v of venues) {
+      if (seen.has(v.id)) continue;
+      seen.add(v.id);
+      items.push({
+        id: v.id, name: v.title || v.name || '', description: v.description || v.category || '',
+        category: v.category || 'venue', location: v.title || v.name || '',
+        images: v.image ? [v.image] : [], rating: v.rating ?? 0, tags: [],
+      });
+    }
+    return items;
+  }, [trip]);
+
   const filteredDiscoverItems = useMemo(() => {
-    let items: DiscoverItem[] = []; // TODO: wire up real discover/suggestions API
+    let items = discoverItems;
     if (addSearch) {
       const q = addSearch.toLowerCase();
       items = items.filter((i) =>
@@ -536,7 +574,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       items = items.filter((i) => i.category?.toLowerCase().includes(addCategory.toLowerCase()) ?? false);
     }
     return items;
-  }, [addSearch, addCategory]);
+  }, [discoverItems, addSearch, addCategory]);
 
   const handleAddItem = useCallback((item: DiscoverItem, timeOfDay: string) => {
     const todStartHours: Record<string, number> = { morning: 9, afternoon: 13, evening: 19, latenight: 22 };
@@ -602,10 +640,31 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     return items;
   }, [days]);
 
+  // Build map markers from activities, offset from trip center
   const mapLocations: MapLocation[] = useMemo(() => {
-    // TODO: wire up real activity coordinates from API
-    return [];
-  }, [selectedDay]);
+    if (!selectedDay) return [];
+    const locations: MapLocation[] = [];
+    const tripLat = trip?.trip_context?.lat;
+    const tripLng = trip?.trip_context?.lng;
+
+    for (const group of selectedDay.timeGroups) {
+      for (const activity of group.activities) {
+        const catColor = getActivityTypeColor(activity.category);
+        if (tripLat && tripLng) {
+          const offset = locations.length;
+          locations.push({
+            id: activity.id,
+            name: activity.name,
+            lat: tripLat + (Math.sin(offset * 1.2) * 0.008),
+            lng: tripLng + (Math.cos(offset * 1.2) * 0.008),
+            color: catColor.primary,
+            category: activity.category,
+          });
+        }
+      }
+    }
+    return locations;
+  }, [selectedDay, trip]);
 
   // Push markers to layout map
   // Push markers to layout map (but don't auto-open — user toggles via button)
@@ -649,12 +708,35 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     return () => observer.disconnect();
   }, [mapLocations, setSelectedMarkerId]);
 
+  const toPlaceItem = useCallback((item: DiscoverItem): PlaceItem => ({
+    id: item.id,
+    name: item.name,
+    image: item.images?.[0] || '',
+    images: item.images,
+    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
+    rating: item.rating || 0,
+    tagline: item.description || item.category || '',
+    category: item.category || '',
+    description: item.description,
+    tags: item.tags,
+    latitude: trip?.trip_context?.lat,
+    longitude: trip?.trip_context?.lng,
+    address: item.location,
+    website: item.bookingUrl,
+  }), [trip]);
+
   const handleActivityClick = useCallback(
     (activityId: string) => {
-      const idx = allActivities.findIndex((a) => a.id === activityId);
-      if (idx >= 0) setSelectedActivityIndex(idx);
+      const item = allActivities.find((a) => a.id === activityId);
+      if (item) {
+        setSelectedPlace(toPlaceItem(item));
+        if (mapLocations.length > 0) {
+          setRequestMapOpen(true);
+          setSelectedMarkerId(activityId);
+        }
+      }
     },
-    [allActivities],
+    [allActivities, toPlaceItem, mapLocations.length],
   );
 
   const toggleSectionCollapse = useCallback((timeOfDay: string) => {
@@ -662,8 +744,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     setAllCollapsedOverride(null);
   }, []);
 
-  if (isLoading) return <SkeletonItinerary />;
-  if (isEmpty) return <ItineraryEmpty />;
+  if (isLoading && days.length === 0) return <SkeletonItinerary />;
+  if (!isLoading && days.length === 0) return <ItineraryEmpty />;
 
   return (
     <div className="relative overflow-hidden">
@@ -720,14 +802,14 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 <Calendar size={13} className="text-white/70" />
               </a>
               <button
-                onClick={() => setGlanceMode((v) => !v)}
+                onClick={() => setCompactOpen((v) => !v)}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
                 style={{
                   border: '1px solid rgba(255,255,255,0.25)',
-                  backgroundColor: glanceMode ? 'rgba(255,255,255,0.2)' : 'transparent',
-                  color: glanceMode ? 'white' : 'rgba(255,255,255,0.7)',
+                  backgroundColor: compactOpen ? 'rgba(255,255,255,0.2)' : 'transparent',
+                  color: compactOpen ? 'white' : 'rgba(255,255,255,0.7)',
                 }}
-                title={glanceMode ? 'Detailed view' : 'At a glance'}
+                title={compactOpen ? 'Hide day details' : 'Show day details'}
               >
                 <LayoutList size={13} />
               </button>
@@ -747,8 +829,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
 
-      {/* Glance View — swipe through days */}
-      {glanceMode && (
+      {/* Glance View — always visible, swipe through days */}
         <GlanceView
           days={days}
           selectedDayIndex={selectedDayIndex}
@@ -761,13 +842,24 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           updateActivity={updateActivity}
           moveActivityBefore={moveActivityBefore}
           destination={trip?.destination?.split(',')[0]?.trim()}
+          heroImages={trip?.trip_context?.hero_images}
         />
-      )}
 
       </section>
 
-      {/* Day Content (detailed view) */}
-      {!glanceMode && selectedDay && (
+      {/* ── COMPACT VIEW — detailed day breakdown ── */}
+      {compactOpen && selectedDay && (
+        <section className="mt-8">
+          <div className="mb-4">
+            <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
+              style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+              {selectedDay.dateLabel}
+            </p>
+            <h2 className="text-xl sm:text-2xl font-bold font-serif"
+              style={{ color: 'var(--magazine-heading, #1a1a2e)' }}>
+              {selectedDay.dayLabel} — {selectedDay.theme || 'Your Day'}
+            </h2>
+          </div>
         <div ref={contentRef}>
           {isFirstDay && arrivalFlight && (
             <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
@@ -854,7 +946,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                             accentColor="var(--trip-base)"
                             isFavorited={favorites.includes(item.id)}
                             onFavorite={toggleFavorite}
-                            onClick={() => setBrowseIndex(filteredDiscoverItems.indexOf(item))}
+                            onClick={() => setSelectedPlace(toPlaceItem(item))}
                             onAddToItinerary={() => handleAddItem(item, group.timeOfDay)}
                           />
                         ))}
@@ -887,29 +979,16 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           )}
         </div>
+        </section>
       )}
 
-      {/* Split Screen Modal — booked activities */}
-      {selectedActivityIndex !== null && allActivities.length > 0 && (
-        <SplitScreenModal
-          items={allActivities}
-          initialIndex={selectedActivityIndex}
-          accentColor="var(--trip-base)"
-          favorites={favorites}
-          onClose={() => setSelectedActivityIndex(null)}
-          onFavorite={toggleFavorite}
-        />
-      )}
-
-      {/* Split Screen Modal — browse/discover activities */}
-      {browseIndex !== null && filteredDiscoverItems.length > 0 && (
-        <SplitScreenModal
-          items={filteredDiscoverItems}
-          initialIndex={browseIndex}
-          accentColor="var(--trip-base)"
-          favorites={favorites}
-          onClose={() => setBrowseIndex(null)}
-          onFavorite={toggleFavorite}
+      {/* Detail overlay — same as places page */}
+      {selectedPlace && (
+        <PlaceDetailModal
+          place={selectedPlace}
+          isFavorited={favorites.includes(selectedPlace.id)}
+          onToggleFavorite={() => toggleFavorite(selectedPlace.id)}
+          onClose={() => { setSelectedPlace(null); setSelectedActivityIndex(null); setBrowseIndex(null); }}
         />
       )}
       </div>{/* end z-10 */}

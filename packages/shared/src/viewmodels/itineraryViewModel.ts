@@ -40,6 +40,7 @@ export interface ActivityViewModel {
   costDisplay: string | null;
   bookingUrl: string | null;
   notes: string | null;
+  image: string | null;
   source: Activity['source'];
   timeOfDay: TimeOfDay;
 }
@@ -64,6 +65,7 @@ function buildActivityViewModel(activity: Activity): ActivityViewModel {
       : null,
     bookingUrl: activity.booking_url,
     notes: activity.notes,
+    image: (activity as any).image ?? null,
     source: activity.source,
     timeOfDay: getTimeOfDay(activity.start_time),
   };

@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState, useMemo, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import type { MapLocation } from '@/components/leaflet-map';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
@@ -122,7 +121,7 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
   });
 }
 
-function useHotels(tripId: string) {
+function useHotels(tripId: string, searchQuery?: string) {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination;
   const contextHotels = trip?.trip_context?.hotels;
@@ -136,17 +135,25 @@ function useHotels(tripId: string) {
   // Also fetch more from Foursquare if we have coordinates
   const lat = (contextHotels?.[0] as any)?.lat;
   const lng = (contextHotels?.[0] as any)?.lng;
+  const trimmedQuery = searchQuery?.trim() || '';
   const { data: fetchedHotels = [] } = useQuery({
-    queryKey: ['hotels-foursquare', destination],
+    queryKey: ['hotels-foursquare', destination, trimmedQuery],
     queryFn: async () => {
       if (!lat || !lng) return [];
-      const res = await fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=hotel&limit=8`);
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lng: String(lng),
+        category: 'hotel',
+        limit: '8',
+      });
+      if (trimmedQuery) params.set('q', trimmedQuery);
+      const res = await fetch(`/api/foursquare?${params}`);
       if (!res.ok) return [];
       const data = await res.json();
       return convertFoursquareToHotelData(data, fromContext.length);
     },
     staleTime: 10 * 60 * 1000,
-    enabled: !!destination && fromContext.length < 4,
+    enabled: !!destination && (fromContext.length < 4 || !!trimmedQuery),
   });
 
   // Combine and deduplicate by name
@@ -203,12 +210,12 @@ function ImageCarousel({
 
   return (
     <div className={`relative w-full ${height} group`}>
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={images[idx]}
         alt={`${alt} ${idx + 1}`}
-        fill
-        className="object-cover"
-        sizes="(max-width:768px) 100vw, 50vw"
+        referrerPolicy="no-referrer"
+        className="absolute inset-0 w-full h-full object-cover"
       />
       {images.length > 1 && (
         <>
@@ -231,36 +238,71 @@ function ImageCarousel({
 /*  Section 1: Search / Filter Bar                                     */
 /* ------------------------------------------------------------------ */
 
+interface HotelFilters {
+  sortBy: string;
+  priceRange: [number, number];
+  starFilter: number[];
+  amenityFilter: string[];
+  brandFilter: string[];
+}
+
 function HotelSearchFilter({
   isOpen,
   onToggle,
+  filters,
+  onFiltersChange,
+  searchQuery,
+  onSearchQueryChange,
+  onSearch,
+  defaultCheckIn,
+  defaultCheckOut,
+  destination,
 }: {
   isOpen: boolean;
   onToggle: () => void;
+  filters: HotelFilters;
+  onFiltersChange: (filters: HotelFilters) => void;
+  searchQuery: string;
+  onSearchQueryChange: (q: string) => void;
+  onSearch: () => void;
+  defaultCheckIn: string;
+  defaultCheckOut: string;
+  destination: string;
 }) {
-  const [checkIn, setCheckIn] = useState('2026-03-22');
-  const [checkOut, setCheckOut] = useState('2026-03-27');
+  const [checkIn, setCheckIn] = useState(defaultCheckIn);
+  const [checkOut, setCheckOut] = useState(defaultCheckOut);
   const [guests, setGuests] = useState(2);
   const [rooms, setRooms] = useState(1);
-  const [sortBy, setSortBy] = useState('recommended');
-  const [priceRange, setPriceRange] = useState([0, 500]);
-  const [starFilter, setStarFilter] = useState<number[]>([]);
-  const [amenityFilter, setAmenityFilter] = useState<string[]>([]);
-  const [brandFilter, setBrandFilter] = useState<string[]>([]);
+  const { sortBy, priceRange, starFilter, amenityFilter, brandFilter } = filters;
+
+  const setSortBy = (v: string) => onFiltersChange({ ...filters, sortBy: v });
+  const setPriceRange = (v: [number, number]) => onFiltersChange({ ...filters, priceRange: v });
+  const setStarFilter = (v: number[]) => onFiltersChange({ ...filters, starFilter: v });
+  const setAmenityFilter = (v: string[]) => onFiltersChange({ ...filters, amenityFilter: v });
+  const setBrandFilter = (v: string[]) => onFiltersChange({ ...filters, brandFilter: v });
 
   const toggleStar = (s: number) =>
-    setStarFilter((prev) => (prev.includes(s) ? prev.filter((v) => v !== s) : [...prev, s]));
+    setStarFilter(starFilter.includes(s) ? starFilter.filter((v) => v !== s) : [...starFilter, s]);
   const toggleAmenity = (a: string) =>
-    setAmenityFilter((prev) => (prev.includes(a) ? prev.filter((v) => v !== a) : [...prev, a]));
+    setAmenityFilter(amenityFilter.includes(a) ? amenityFilter.filter((v) => v !== a) : [...amenityFilter, a]);
   const toggleBrand = (b: string) =>
-    setBrandFilter((prev) => (prev.includes(b) ? prev.filter((v) => v !== b) : [...prev, b]));
+    setBrandFilter(brandFilter.includes(b) ? brandFilter.filter((v) => v !== b) : [...brandFilter, b]);
   const resetFilters = () => {
-    setSortBy('recommended');
-    setPriceRange([0, 500]);
-    setStarFilter([]);
-    setAmenityFilter([]);
-    setBrandFilter([]);
+    onFiltersChange({
+      sortBy: 'recommended',
+      priceRange: [0, 500],
+      starFilter: [],
+      amenityFilter: [],
+      brandFilter: [],
+    });
   };
+
+  const nights = useMemo(() => {
+    const d1 = new Date(checkIn);
+    const d2 = new Date(checkOut);
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 1;
+  }, [checkIn, checkOut]);
 
   return (
     <div className="rounded-xl overflow-hidden bg-white dark:bg-[var(--background)] border border-gray-200 dark:border-white/[0.08] shadow-sm">
@@ -274,7 +316,7 @@ function HotelSearchFilter({
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Update Hotel</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">Paris, France &middot; 5 nights &middot; {guests} guests</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{destination || 'Search hotels'} &middot; {nights} nights &middot; {guests} guests</p>
           </div>
         </div>
         <ChevronDown size={18} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -292,6 +334,17 @@ function HotelSearchFilter({
             <div className="border-t border-gray-100 dark:border-white/[0.06] px-4 py-3 space-y-3">
               {/* Compact search strip */}
               <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[160px]">
+                  <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Search</label>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => onSearchQueryChange(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') onSearch(); }}
+                    placeholder="Hotel name or area..."
+                    className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                  />
+                </div>
                 <div className="flex-1 min-w-[120px]">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-in</label>
                   <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
@@ -316,7 +369,10 @@ function HotelSearchFilter({
                     <button onClick={() => setRooms(rooms + 1)} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Plus size={12} /></button>
                   </div>
                 </div>
-                <button className="flex items-center gap-1.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                <button
+                  onClick={onSearch}
+                  className="flex items-center gap-1.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
                   <Search size={13} /> Search
                 </button>
               </div>
@@ -338,6 +394,36 @@ function HotelSearchFilter({
                     <option value="rating">Guest Rating</option>
                     <option value="stars">Star Rating</option>
                   </select>
+                </div>
+
+                {/* Price range */}
+                <div>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">Price Range (per night)</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-400">&euro;</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={priceRange[0]}
+                        onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        placeholder="Min"
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400">&ndash;</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-400">&euro;</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={priceRange[1]}
+                        onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        placeholder="Max"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Star rating */}
@@ -533,7 +619,8 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   className="w-20 h-20 flex-shrink-0 relative group/thumb cursor-zoom-in"
                                   onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                                 >
-                                  <Image src={room.image} alt={room.type} fill className="object-cover" sizes="80px" />
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                   <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                     <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                   </div>
@@ -567,7 +654,8 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                   <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
-                                      <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={(e) => { e.stopPropagation(); setExpandedRoom(null); }} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -1236,7 +1324,8 @@ function BookedHotelCard({
               return (
                 <div className="rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                   <div className="relative h-40">
-                    <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <div className="flex items-end justify-between">
@@ -1358,7 +1447,8 @@ function BookedHotelCard({
                                 className="w-20 h-20 flex-shrink-0 relative group/thumb cursor-zoom-in"
                                 onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                               >
-                                <Image src={room.image} alt={room.type} fill className="object-cover" sizes="80px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                   <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                 </div>
@@ -1391,7 +1481,8 @@ function BookedHotelCard({
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                   <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
-                                      <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={() => setExpandedRoom(null)} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -1556,14 +1647,77 @@ function BookedHotelCard({
 
 export default function Hotels({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  useItineraryScreen(id);
-  const hotels = useHotels(id);
+  const { trip } = useItineraryScreen(id);
+
+  // Search query state — drives a new Foursquare fetch when submitted
+  const [searchInput, setSearchInput] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
+  const hotels = useHotels(id, activeSearchQuery);
+
+  // Filter state — lifted so filters actually apply
+  const [filters, setFilters] = useState<HotelFilters>({
+    sortBy: 'recommended',
+    priceRange: [0, 500],
+    starFilter: [],
+    amenityFilter: [],
+    brandFilter: [],
+  });
+
+  // Derive trip dates for default check-in/check-out
+  const defaultCheckIn = trip?.start_date ?? new Date().toISOString().slice(0, 10);
+  const defaultCheckOut = trip?.end_date ?? new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+
+  // Apply filters + sort via useMemo
+  const filteredHotels = useMemo(() => {
+    let result = [...hotels];
+
+    // Star filter
+    if (filters.starFilter.length > 0) {
+      result = result.filter((h) => filters.starFilter.includes(h.stars));
+    }
+
+    // Price range filter
+    const [minPrice, maxPrice] = filters.priceRange;
+    if (minPrice > 0 || maxPrice < 500) {
+      result = result.filter((h) => h.price >= minPrice && h.price <= maxPrice);
+    }
+
+    // Amenity filter — hotel must have ALL selected amenities
+    if (filters.amenityFilter.length > 0) {
+      result = result.filter((h) =>
+        filters.amenityFilter.every((a) => h.amenities.includes(a)),
+      );
+    }
+
+    // Sort
+    switch (filters.sortBy) {
+      case 'price_low':
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_high':
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        result.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'stars':
+        result.sort((a, b) => b.stars - a.stars);
+        break;
+      // 'recommended' = default order from API
+    }
+
+    return result;
+  }, [hotels, filters]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [browsingOpen, setBrowsingOpen] = useState(true);
   const [bookedHotel, setBookedHotel] = useState<HotelData | null>(null);
   const [justSelected, setJustSelected] = useState(false);
   const bookedRef = useRef<HTMLDivElement>(null);
+
+  const handleSearch = () => {
+    setActiveSearchQuery(searchInput);
+  };
 
   const handleSelect = (hotel: HotelData) => {
     setBookedHotel(hotel);
@@ -1584,11 +1738,22 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
   return (
     <div className="space-y-4">
       {/* Section 1: Search / Filter Bar */}
-      <HotelSearchFilter isOpen={searchOpen} onToggle={() => setSearchOpen(!searchOpen)} />
+      <HotelSearchFilter
+        isOpen={searchOpen}
+        onToggle={() => setSearchOpen(!searchOpen)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        searchQuery={searchInput}
+        onSearchQueryChange={setSearchInput}
+        onSearch={handleSearch}
+        defaultCheckIn={defaultCheckIn}
+        defaultCheckOut={defaultCheckOut}
+        destination={trip?.destination ?? ''}
+      />
 
       {/* Section 2: Browsing Hotels */}
       <BrowsingHotelsSection
-        hotels={hotels}
+        hotels={filteredHotels}
         isOpen={browsingOpen}
         onToggle={() => setBrowsingOpen(!browsingOpen)}
         onSelect={handleSelect}

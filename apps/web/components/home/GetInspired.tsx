@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion, type PanInfo } from "motion/react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
 import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
 import type { PlaceItem } from "@travyl/shared";
@@ -37,13 +36,12 @@ function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolea
 
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden bg-black relative group">
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={images[imgIdx]}
         alt={place.name}
-        fill
-        className="object-cover"
-        sizes="(max-width: 640px) 85vw, 380px"
-        priority={isFront}
+        referrerPolicy="no-referrer"
+        className="absolute inset-0 w-full h-full object-cover"
       />
 
       {/* Gradient */}

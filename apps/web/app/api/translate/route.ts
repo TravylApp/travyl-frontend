@@ -1,211 +1,261 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-/** Common travel phrases as fallback when LibreTranslate is unavailable */
-const PHRASES: Record<string, Record<string, string>> = {
-  es: {
-    greeting: 'Hola',
-    thanks: 'Gracias',
-    please: 'Por favor',
-    sorry: 'Lo siento',
-    yes: 'Si',
-    no: 'No',
-    help: 'Ayuda',
-    how_much: 'Cuanto cuesta?',
-    where_is: 'Donde esta?',
-    excuse_me: 'Disculpe',
+// Map country names / language names to ISO 639-1 codes for MyMemory API
+const LANG_MAP: Record<string, string> = {
+  japan: 'ja', japanese: 'ja', france: 'fr', french: 'fr', spain: 'es', spanish: 'es',
+  italy: 'it', italian: 'it', germany: 'de', german: 'de', portugal: 'pt', portuguese: 'pt',
+  brazil: 'pt', china: 'zh', chinese: 'zh', korea: 'ko', korean: 'ko',
+  thailand: 'th', thai: 'th', vietnam: 'vi', vietnamese: 'vi', indonesia: 'id', indonesian: 'id',
+  turkey: 'tr', turkish: 'tr', greece: 'el', greek: 'el', netherlands: 'nl', dutch: 'nl',
+  sweden: 'sv', swedish: 'sv', norway: 'no', norwegian: 'no', denmark: 'da', danish: 'da',
+  finland: 'fi', finnish: 'fi', poland: 'pl', polish: 'pl', czech: 'cs', romania: 'ro', romanian: 'ro',
+  hungary: 'hu', hungarian: 'hu', croatia: 'hr', croatian: 'hr', russia: 'ru', russian: 'ru',
+  ukraine: 'uk', arabic: 'ar', egypt: 'ar', morocco: 'ar', hindi: 'hi', india: 'hi',
+  mexico: 'es', argentina: 'es', colombia: 'es', peru: 'es', chile: 'es',
+  austria: 'de', switzerland: 'de', belgium: 'fr', canada: 'fr',
+  ireland: 'en', uk: 'en', australia: 'en', 'united states': 'en', 'united kingdom': 'en',
+}
+
+function resolveLanguageCode(input: string): string {
+  const lower = input.toLowerCase().trim()
+  // Direct ISO code (2 chars)
+  if (lower.length === 2) return lower
+  // Lookup by name
+  return LANG_MAP[lower] || lower
+}
+
+const ESSENTIAL_PHRASES = [
+  'Hello',
+  'Thank you',
+  'Excuse me',
+  'Yes',
+  'No',
+  'Please',
+  'Goodbye',
+  'How much?',
+  'Where is...?',
+  'Help!',
+  "I don't understand",
+  'Do you speak English?',
+]
+
+// Curated polite translations for major languages (MyMemory often returns informal/wrong)
+const CURATED_PHRASES: Record<string, Record<string, string>> = {
+  ja: {
+    'Hello': 'こんにちは',
+    'Thank you': 'ありがとうございます',
+    'Excuse me': 'すみません',
+    'Yes': 'はい',
+    'No': 'いいえ',
+    'Please': 'お願いします',
+    'Goodbye': 'さようなら',
+    'How much?': 'いくらですか？',
+    'Where is...?': '…はどこですか？',
+    'Help!': '助けてください！',
+    "I don't understand": 'わかりません',
+    'Do you speak English?': '英語を話せますか？',
   },
   fr: {
-    greeting: 'Bonjour',
-    thanks: 'Merci',
-    please: "S'il vous plait",
-    sorry: 'Desole',
-    yes: 'Oui',
-    no: 'Non',
-    help: 'Aidez-moi',
-    how_much: 'Combien ca coute?',
-    where_is: 'Ou est?',
-    excuse_me: 'Excusez-moi',
+    'Hello': 'Bonjour',
+    'Thank you': 'Merci',
+    'Excuse me': 'Excusez-moi',
+    'Yes': 'Oui',
+    'No': 'Non',
+    'Please': "S'il vous plaît",
+    'Goodbye': 'Au revoir',
+    'How much?': "Combien ça coûte ?",
+    'Where is...?': 'Où est... ?',
+    'Help!': 'Au secours !',
+    "I don't understand": 'Je ne comprends pas',
+    'Do you speak English?': 'Parlez-vous anglais ?',
+  },
+  es: {
+    'Hello': 'Hola',
+    'Thank you': 'Gracias',
+    'Excuse me': 'Disculpe',
+    'Yes': 'Sí',
+    'No': 'No',
+    'Please': 'Por favor',
+    'Goodbye': 'Adiós',
+    'How much?': '¿Cuánto cuesta?',
+    'Where is...?': '¿Dónde está...?',
+    'Help!': '¡Ayuda!',
+    "I don't understand": 'No entiendo',
+    'Do you speak English?': '¿Habla inglés?',
   },
   it: {
-    greeting: 'Ciao',
-    thanks: 'Grazie',
-    please: 'Per favore',
-    sorry: 'Mi dispiace',
-    yes: 'Si',
-    no: 'No',
-    help: 'Aiuto',
-    how_much: 'Quanto costa?',
-    where_is: "Dov'e?",
-    excuse_me: 'Mi scusi',
-  },
-  ja: {
-    greeting: 'Konnichiwa',
-    thanks: 'Arigatou gozaimasu',
-    please: 'Onegaishimasu',
-    sorry: 'Sumimasen',
-    yes: 'Hai',
-    no: 'Iie',
-    help: 'Tasukete',
-    how_much: 'Ikura desu ka?',
-    where_is: 'Doko desu ka?',
-    excuse_me: 'Sumimasen',
+    'Hello': 'Ciao',
+    'Thank you': 'Grazie',
+    'Excuse me': 'Mi scusi',
+    'Yes': 'Sì',
+    'No': 'No',
+    'Please': 'Per favore',
+    'Goodbye': 'Arrivederci',
+    'How much?': 'Quanto costa?',
+    'Where is...?': "Dov'è...?",
+    'Help!': 'Aiuto!',
+    "I don't understand": 'Non capisco',
+    'Do you speak English?': 'Parla inglese?',
   },
   de: {
-    greeting: 'Hallo',
-    thanks: 'Danke',
-    please: 'Bitte',
-    sorry: 'Entschuldigung',
-    yes: 'Ja',
-    no: 'Nein',
-    help: 'Hilfe',
-    how_much: 'Wie viel kostet das?',
-    where_is: 'Wo ist?',
-    excuse_me: 'Entschuldigen Sie',
+    'Hello': 'Hallo',
+    'Thank you': 'Danke',
+    'Excuse me': 'Entschuldigung',
+    'Yes': 'Ja',
+    'No': 'Nein',
+    'Please': 'Bitte',
+    'Goodbye': 'Auf Wiedersehen',
+    'How much?': 'Wie viel kostet das?',
+    'Where is...?': 'Wo ist...?',
+    'Help!': 'Hilfe!',
+    "I don't understand": 'Ich verstehe nicht',
+    'Do you speak English?': 'Sprechen Sie Englisch?',
   },
   pt: {
-    greeting: 'Ola',
-    thanks: 'Obrigado',
-    please: 'Por favor',
-    sorry: 'Desculpe',
-    yes: 'Sim',
-    no: 'Nao',
-    help: 'Socorro',
-    how_much: 'Quanto custa?',
-    where_is: 'Onde fica?',
-    excuse_me: 'Com licenca',
-  },
-  nl: {
-    greeting: 'Hallo',
-    thanks: 'Dank u',
-    please: 'Alstublieft',
-    sorry: 'Sorry',
-    yes: 'Ja',
-    no: 'Nee',
-    help: 'Help',
-    how_much: 'Hoeveel kost het?',
-    where_is: 'Waar is?',
-    excuse_me: 'Pardon',
+    'Hello': 'Olá',
+    'Thank you': 'Obrigado',
+    'Excuse me': 'Com licença',
+    'Yes': 'Sim',
+    'No': 'Não',
+    'Please': 'Por favor',
+    'Goodbye': 'Adeus',
+    'How much?': 'Quanto custa?',
+    'Where is...?': 'Onde fica...?',
+    'Help!': 'Socorro!',
+    "I don't understand": 'Não entendo',
+    'Do you speak English?': 'Fala inglês?',
   },
   ko: {
-    greeting: 'Annyeonghaseyo',
-    thanks: 'Gamsahamnida',
-    please: 'Juseyo',
-    sorry: 'Joesonghamnida',
-    yes: 'Ne',
-    no: 'Aniyo',
-    help: 'Dowajuseyo',
-    how_much: 'Eolmayeyo?',
-    where_is: 'Eodiyeyo?',
-    excuse_me: 'Sillyehamnida',
+    'Hello': '안녕하세요',
+    'Thank you': '감사합니다',
+    'Excuse me': '실례합니다',
+    'Yes': '네',
+    'No': '아니요',
+    'Please': '부탁합니다',
+    'Goodbye': '안녕히 가세요',
+    'How much?': '얼마예요?',
+    'Where is...?': '…은/는 어디에 있어요?',
+    'Help!': '도와주세요!',
+    "I don't understand": '이해하지 못해요',
+    'Do you speak English?': '영어 하세요?',
   },
   zh: {
-    greeting: 'Ni hao',
-    thanks: 'Xie xie',
-    please: 'Qing',
-    sorry: 'Dui bu qi',
-    yes: 'Shi',
-    no: 'Bu shi',
-    help: 'Jiu ming',
-    how_much: 'Duo shao qian?',
-    where_is: 'Zai na li?',
-    excuse_me: 'Qing wen',
-  },
-  ar: {
-    greeting: 'Marhaba',
-    thanks: 'Shukran',
-    please: 'Min fadlak',
-    sorry: 'Ana aasif',
-    yes: 'Na\'am',
-    no: 'La',
-    help: 'Musaada',
-    how_much: 'Bikam?',
-    where_is: 'Ayna?',
-    excuse_me: 'Afwan',
-  },
-  tr: {
-    greeting: 'Merhaba',
-    thanks: 'Tesekkur ederim',
-    please: 'Lutfen',
-    sorry: 'Ozur dilerim',
-    yes: 'Evet',
-    no: 'Hayir',
-    help: 'Yardim edin',
-    how_much: 'Ne kadar?',
-    where_is: 'Nerede?',
-    excuse_me: 'Bakar misiniz',
+    'Hello': '你好',
+    'Thank you': '谢谢',
+    'Excuse me': '请问',
+    'Yes': '是',
+    'No': '不是',
+    'Please': '请',
+    'Goodbye': '再见',
+    'How much?': '多少钱？',
+    'Where is...?': '…在哪里？',
+    'Help!': '救命！',
+    "I don't understand": '我不懂',
+    'Do you speak English?': '你会说英语吗？',
   },
   th: {
-    greeting: 'Sawasdee',
-    thanks: 'Khob khun',
-    please: 'Garunaa',
-    sorry: 'Kor thot',
-    yes: 'Chai',
-    no: 'Mai chai',
-    help: 'Chuay duay',
-    how_much: 'Tao rai?',
-    where_is: 'Yuu tee nai?',
-    excuse_me: 'Kor thot',
+    'Hello': 'สวัสดี',
+    'Thank you': 'ขอบคุณ',
+    'Excuse me': 'ขอโทษ',
+    'Yes': 'ใช่',
+    'No': 'ไม่',
+    'Please': 'กรุณา',
+    'Goodbye': 'ลาก่อน',
+    'How much?': 'ราคาเท่าไหร่?',
+    'Where is...?': '…อยู่ที่ไหน?',
+    'Help!': 'ช่วยด้วย!',
+    "I don't understand": 'ไม่เข้าใจ',
+    'Do you speak English?': 'คุณพูดภาษาอังกฤษได้ไหม?',
   },
-  id: {
-    greeting: 'Halo',
-    thanks: 'Terima kasih',
-    please: 'Tolong',
-    sorry: 'Maaf',
-    yes: 'Ya',
-    no: 'Tidak',
-    help: 'Tolong',
-    how_much: 'Berapa harganya?',
-    where_is: 'Di mana?',
-    excuse_me: 'Permisi',
+  ar: {
+    'Hello': 'مرحبا',
+    'Thank you': 'شكرا',
+    'Excuse me': 'عذرا',
+    'Yes': 'نعم',
+    'No': 'لا',
+    'Please': 'من فضلك',
+    'Goodbye': 'مع السلامة',
+    'How much?': 'بكم هذا؟',
+    'Where is...?': 'أين...؟',
+    'Help!': '!النجدة',
+    "I don't understand": 'لا أفهم',
+    'Do you speak English?': 'هل تتكلم الإنجليزية؟',
   },
 }
 
-export async function GET(req: NextRequest) {
-  const text = req.nextUrl.searchParams.get('text')
-  const from = req.nextUrl.searchParams.get('from') ?? 'en'
-  const to = req.nextUrl.searchParams.get('to')
+async function translatePhrase(
+  phrase: string,
+  targetLang: string
+): Promise<string | null> {
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(phrase)}&langpair=en|${encodeURIComponent(targetLang)}`
+    const res = await fetch(url, { next: { revalidate: 86400 } }) // Cache 24 hours
 
-  if (!text || !to) {
+    if (!res.ok) return null
+
+    const data = await res.json()
+
+    if (data.responseStatus !== 200 || !data.responseData?.translatedText) {
+      return null
+    }
+
+    return data.responseData.translatedText
+  } catch {
+    return null
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const lang = req.nextUrl.searchParams.get('lang')
+
+  if (!lang) {
     return NextResponse.json(
-      { error: 'Missing text or to parameter' },
+      { error: 'Missing lang parameter (e.g. ?lang=ja)' },
       { status: 400 }
     )
   }
 
   try {
-    const res = await fetch('https://libretranslate.com/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: text, source: from, target: to }),
-    })
-
-    if (!res.ok) {
-      throw new Error(`LibreTranslate returned ${res.status}`)
+    const langCode = resolveLanguageCode(lang)
+    // Skip English — no translation needed
+    if (langCode === 'en') {
+      return NextResponse.json({ phrases: {} })
     }
 
-    const data = await res.json()
+    // Use curated phrases if available (much more accurate than machine translation)
+    if (CURATED_PHRASES[langCode]) {
+      return NextResponse.json({ phrases: CURATED_PHRASES[langCode] })
+    }
 
-    return NextResponse.json({
-      translated: data.translatedText,
-      from,
-      to,
-    })
-  } catch {
-    // Fallback: return common travel phrases for the target language
-    const phrases = PHRASES[to]
-
-    if (phrases) {
-      return NextResponse.json({
-        translated: null,
-        from,
-        to,
-        fallback: true,
-        phrases,
+    // Fall back to MyMemory API for other languages
+    const results = await Promise.allSettled(
+      ESSENTIAL_PHRASES.map(async (phrase) => {
+        const translated = await translatePhrase(phrase, langCode)
+        return { phrase, translated }
       })
+    )
+
+    const phrases: Record<string, string> = {}
+    let successCount = 0
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.translated) {
+        phrases[result.value.phrase] = result.value.translated
+        successCount++
+      }
     }
 
+    if (successCount === 0) {
+      return NextResponse.json(
+        { error: `Translation failed for language: ${lang}` },
+        { status: 502 }
+      )
+    }
+
+    return NextResponse.json({ phrases })
+  } catch {
     return NextResponse.json(
-      { error: `Translation service unavailable and no fallback phrases for language: ${to}` },
+      { error: 'Translation service unavailable' },
       { status: 500 }
     )
   }

@@ -31,6 +31,7 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
     costDisplay: a.price ?? null,
     bookingUrl: null,
     notes: null,
+    image: a.image ?? null,
     source: 'user',
     timeOfDay: getTimeOfDay(a.startHour),
   };
@@ -116,20 +117,71 @@ interface ItineraryContextValue {
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
 
-// Generate itinerary from trip_context explore_items
+// Generate a full itinerary from all trip_context data sources
 function generateFromTripContext(
-  trip: { travelers?: number; start_date?: string; trip_context?: { explore_items?: { id: string; title: string; description: string; category: string; image?: string }[] } } | null,
+  trip: import('@travyl/shared').Trip | null,
   durationDays: number,
 ): { days: BaseDayData[]; activities: CalendarActivity[] } {
-  if (!trip?.trip_context?.explore_items?.length) return { days: [], activities: [] };
+  const ctx = trip?.trip_context;
+  if (!ctx) return { days: [], activities: [] };
 
-  const items = trip.trip_context.explore_items;
+  // Collect all available items from every data source
+  type Item = { id: string; title: string; category: string; image?: string; description?: string };
+  const allItems: Item[] = [];
+  const seen = new Set<string>();
+  const add = (item: Item) => { if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); } };
+
+  // 1. Explore items (sightseeing, landmarks, museums)
+  for (const e of ctx.explore_items ?? []) {
+    add({ id: e.id, title: e.title, category: e.category || 'sightseeing', image: e.image, description: e.description });
+  }
+
+  // 2. Foursquare venues (restaurants, nightlife, experiences)
+  for (const v of ctx.foursquare_venues ?? []) {
+    add({ id: v.id, title: v.title || v.name || '', category: v.category || 'venue', image: v.image });
+  }
+
+  // 3. Cuisine dishes → "Try local cuisine" activities
+  for (const c of ctx.cuisine ?? []) {
+    add({ id: `cuisine-${c.id}`, title: `Try ${c.name}`, category: 'dining', image: c.image });
+  }
+
+  // 4. Events (real events happening during travel dates)
+  for (const e of ctx.events ?? []) {
+    add({ id: e.id, title: e.title, category: e.category || 'event', image: e.image });
+  }
+
+  if (allItems.length === 0) return { days: [], activities: [] };
+
   const startDate = trip.start_date ? new Date(trip.start_date + 'T00:00:00') : new Date();
 
   const days: BaseDayData[] = [];
   const activities: CalendarActivity[] = [];
 
-  const themes = ['Explore & Discover', 'Culture & History', 'Food & Relaxation', 'Adventure', 'Local Life'];
+  // Day themes based on category mix
+  const themes = ['Explore & Discover', 'Culture & History', 'Food & Relaxation', 'Adventure', 'Local Life', 'Hidden Gems', 'Off the Beaten Path'];
+
+  // Time slots — fill 4 slots per day for a full itinerary
+  const timeSlots = [
+    { hour: 9,  label: '9:00 AM',  end: '11:00 AM',  duration: 2 },
+    { hour: 12, label: '12:00 PM', end: '1:30 PM',   duration: 1.5 },
+    { hour: 15, label: '3:00 PM',  end: '5:00 PM',   duration: 2 },
+    { hour: 19, label: '7:00 PM',  end: '9:00 PM',   duration: 2 },
+  ];
+
+  // Separate items by type for balanced scheduling
+  const sightseeing = allItems.filter(i => /sight|landmark|museum|monument|historic|architecture|attraction/i.test(i.category));
+  const dining = allItems.filter(i => /dining|restaurant|food|café|cafe|cuisine/i.test(i.category));
+  const nightlife = allItems.filter(i => /nightlife|bar|club|entertainment|event/i.test(i.category));
+  const other = allItems.filter(i => !sightseeing.includes(i) && !dining.includes(i) && !nightlife.includes(i));
+
+  // Round-robin indices for each pool
+  let sIdx = 0, dIdx = 0, nIdx = 0, oIdx = 0;
+
+  const pickFrom = (pool: Item[]): Item | null => {
+    if (pool.length === 0) return null;
+    return pool[pool.length > 0 ? 0 : 0]; // will be shifted below
+  };
 
   for (let d = 0; d < durationDays; d++) {
     const date = new Date(startDate);
@@ -144,24 +196,24 @@ function generateFromTripContext(
       theme: themes[d % themes.length],
     });
 
-    // Distribute items across days: ~3 per day across morning/afternoon/evening
-    const dayItems = items.filter((_, i) => i % durationDays === d);
-    const timeSlots = [
-      { hour: 9, tod: 'morning', label: '9:00 AM', end: '10:30 AM' },
-      { hour: 12, tod: 'afternoon', label: '12:00 PM', end: '1:30 PM' },
-      { hour: 15, tod: 'afternoon', label: '3:00 PM', end: '4:30 PM' },
-      { hour: 19, tod: 'evening', label: '7:00 PM', end: '8:30 PM' },
+    // Schedule: Morning=sightseeing, Lunch=dining, Afternoon=sightseeing/other, Evening=dining/nightlife
+    const schedule: (Item | null)[] = [
+      sightseeing[sIdx++ % sightseeing.length] ?? other[oIdx++ % Math.max(other.length, 1)] ?? null,
+      dining[dIdx++ % Math.max(dining.length, 1)] ?? null,
+      (other.length > 0 ? other[oIdx++ % other.length] : sightseeing[sIdx++ % Math.max(sightseeing.length, 1)]) ?? null,
+      nightlife[nIdx++ % Math.max(nightlife.length, 1)] ?? dining[dIdx++ % Math.max(dining.length, 1)] ?? null,
     ];
 
-    dayItems.forEach((item, slotIdx) => {
-      const slot = timeSlots[slotIdx % timeSlots.length];
+    schedule.forEach((item, slotIdx) => {
+      if (!item) return;
+      const slot = timeSlots[slotIdx];
       activities.push({
         id: `cal-${d}-${slotIdx}-${item.id}`,
         title: item.title,
         type: item.category?.toLowerCase() ?? 'sightseeing',
         day: d,
         startHour: slot.hour,
-        duration: 1.5,
+        duration: slot.duration,
         startTime: slot.label,
         endTime: slot.end,
         location: item.title,
@@ -181,7 +233,15 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
   // Generate initial data from trip context
   const generated = useMemo(() => {
     if (!trip) return null;
-    const duration = trip.trip_context?.weather?.forecast?.length ?? 5;
+    // Compute duration from actual dates, fallback to forecast length, then default to 5
+    let duration = 5;
+    if (trip.start_date && trip.end_date) {
+      duration = Math.max(1, Math.ceil(
+        (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
+      ));
+    } else if (trip.trip_context?.weather?.forecast?.length) {
+      duration = trip.trip_context.weather.forecast.length;
+    }
     return generateFromTripContext(trip, duration);
   }, [trip]);
 

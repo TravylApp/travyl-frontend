@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useTrips } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 import type { MockTripCard } from '@travyl/shared';
 import { Plus } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
@@ -182,9 +182,20 @@ function TripsContent() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [modalOpen, setModalOpen] = useState(false)
 
-  const { data: trips, isLoading, isError } = useTrips();
+  const { data: trips, isLoading, isError } = useQuery({
+    queryKey: ['trips'],
+    queryFn: async () => {
+      // Pass any locally-created trip IDs for anonymous users
+      const stored = sessionStorage.getItem('my-trip-ids');
+      const ids = stored ? JSON.parse(stored) as string[] : [];
+      const url = ids.length > 0 ? `/api/trips?ids=${ids.join(',')}` : '/api/trips';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch trips');
+      return res.json();
+    },
+  });
 
-  const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
+  const allTrips: MockTripCard[] = (trips ?? []).map((t: any) => ({
     ...t,
     image: t.trip_context?.hero_image_url
       || t.trip_context?.hero_images?.[0]

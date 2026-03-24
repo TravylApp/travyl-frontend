@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Heart, MapPin, Star, Clock, Repeat } from 'lucide-react';
 import { Navy, type PlaceItem, PLACE_CARD_SIZES, type PlaceCardSize } from '@travyl/shared';
@@ -53,12 +52,12 @@ function CardFrontInternal({
           <MapPin size={isCompact ? 20 : 32} className="text-white/30" />
         </div>
       ) : (
-        <Image
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
           src={currentImg}
           alt={place.name}
-          fill
-          className="object-cover transition-opacity duration-700 group-hover:scale-105 transition-transform"
-          sizes={width ? `${width}px` : '100vw'}
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 group-hover:scale-105 transition-transform"
           onError={() => setImgError(true)}
         />
       )}

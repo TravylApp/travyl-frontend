@@ -115,6 +115,7 @@ export default function Home() {
   const heroRef = useRef<HTMLElement>(null);
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
+  const resolvedTripIdRef = useRef<string | null>(null);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -201,6 +202,7 @@ export default function Home() {
     setTripQuery(query);
     setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
     sessionStorage.removeItem('pendingTripId'); // Clear stale ID from previous trip
+    resolvedTripIdRef.current = null;
     setShowTakeoff(true);
 
     try {
@@ -311,7 +313,15 @@ export default function Home() {
         if (res.ok) {
           const supaTrip = await res.json();
           sessionStorage.setItem('pendingTripId', supaTrip.id);
+          resolvedTripIdRef.current = supaTrip.id;
           sessionStorage.removeItem(`trip-${tempId}`);
+          // Track trip ID so anonymous users can see their trips
+          try {
+            const stored = sessionStorage.getItem('my-trip-ids');
+            const ids: string[] = stored ? JSON.parse(stored) : [];
+            if (!ids.includes(supaTrip.id)) ids.push(supaTrip.id);
+            sessionStorage.setItem('my-trip-ids', JSON.stringify(ids));
+          } catch {}
           // Enrich in background — auto-enrich on overview will also catch it
           fetch('/api/trips/enrich', {
             method: 'POST',
@@ -839,10 +849,23 @@ export default function Home() {
         visible={showTakeoff}
         buttonRect={buttonRect}
         onComplete={() => {
-          const pendingId = sessionStorage.getItem('pendingTripId');
-          sessionStorage.removeItem('pendingTripId');
-          // Use window.location for reliable navigation (router.push races with overlay unmount)
-          window.location.href = pendingId ? `/trip/${pendingId}` : "/trips";
+          // Wait for the real Supabase trip ID (API may still be in-flight)
+          let attempts = 0;
+          const navigate = () => {
+            const tripId = resolvedTripIdRef.current || sessionStorage.getItem('pendingTripId');
+            if (tripId && !tripId.startsWith('local-')) {
+              sessionStorage.removeItem('pendingTripId');
+              window.location.href = `/trip/${tripId}`;
+            } else if (attempts++ < 25) {
+              // Poll for up to ~5 seconds
+              setTimeout(navigate, 200);
+            } else {
+              // API failed — fall back to trips list
+              sessionStorage.removeItem('pendingTripId');
+              window.location.href = '/trips';
+            }
+          };
+          navigate();
         }}
       />
     </div>
