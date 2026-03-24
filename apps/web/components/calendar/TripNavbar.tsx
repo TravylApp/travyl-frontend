@@ -137,6 +137,8 @@ export interface TripNavbarProps {
   userId: string
   onAssignUnscheduled: (id: string, dayOffset: number) => void
   onDeleteUnscheduled: (id: string) => void
+  /** When true: read-only shared view — hides share, avatar dropdown, and new activity controls */
+  isSharedView?: boolean
 }
 
 function getInitials(name: string | undefined): string {
@@ -190,6 +192,7 @@ export function TripNavbar({
   userId,
   onAssignUnscheduled,
   onDeleteUnscheduled,
+  isSharedView = false,
 }: TripNavbarProps) {
   const user = useAuthStore((s) => s.user)
   const signOut = useAuthStore((s) => s.signOut)
@@ -366,6 +369,7 @@ export function TripNavbar({
           </div>
 
           {/* New Activity */}
+          {!isSharedView && (
           <button
             onClick={onAddEvent}
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-[#1e3a5f]/25 dark:hover:text-white transition-colors shrink-0"
@@ -376,6 +380,7 @@ export function TripNavbar({
               N
             </kbd>
           </button>
+          )}
 
           {/* Theme toggle - inline light/dark button */}
           <button
@@ -427,6 +432,7 @@ export function TripNavbar({
           )}
 
           {/* Share */}
+          {!isSharedView && (
           <button
             onClick={onShare}
             className="flex items-center gap-1.5 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#D97706] transition-colors shrink-0"
@@ -434,8 +440,14 @@ export function TripNavbar({
             <ShareAndroid width={12} height={12} />
             Share
           </button>
+          )}
 
           {/* Avatar dropdown */}
+          {isSharedView ? (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-100 dark:bg-[#1e3a5f]/20">
+              <span className="text-xs text-gray-500 dark:text-[#4a7ab5]">Viewing</span>
+            </div>
+          ) : (
           <div className="relative" ref={avatarRef}>
             <button
               onClick={() => setAvatarDropdownOpen((o) => !o)}
@@ -501,6 +513,7 @@ export function TripNavbar({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

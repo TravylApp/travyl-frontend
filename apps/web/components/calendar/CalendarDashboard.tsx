@@ -42,6 +42,10 @@ import { usePollMutations } from './hooks/usePollMutations'
 import { usePollObserver } from './hooks/usePollObserver'
 import { usePollSync } from './hooks/usePollSync'
 
+// ─── Module-level constants ────────────────────────────────────
+
+const EMPTY_COMMANDS: Parameters<typeof useKeyboardShortcuts>[0] = []
+
 // ─── Category icon mapping ─────────────────────────────────────
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -72,9 +76,11 @@ interface CalendarDashboardProps {
   tripId: string
   userId: string
   userName: string
+  /** When true: read-only shared view */
+  isSharedView?: boolean
 }
 
-export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboardProps) {
+export function CalendarDashboard({ tripId, userId, userName, isSharedView = false }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
@@ -94,14 +100,14 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
     ...rawMutations,
     getActivity: (id) => activities.find((a) => a.id === id),
   })
-  const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName })
+  const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, disabled: isSharedView })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
   const { data: tripCollaborators = [] } = useQuery({
     queryKey: ['collaborators', tripId],
     queryFn: () => fetchCollaborators(tripId),
-    enabled: !!tripId,
+    enabled: !!tripId && !isSharedView,
   })
 
   // Poll hooks
@@ -322,7 +328,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }, [commands, setCommands, clearCommands])
 
   useKeyboardShortcuts(
-    commands,
+    isSharedView ? EMPTY_COMMANDS : commands,
     isPaletteOpen,
     () => {},  // Global palette handles its own close
     () => selectEvent(null),
@@ -368,6 +374,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
   }
 
   const handleContextMenu = (activityId: string, x: number, y: number) => {
+    if (isSharedView) return
     // Close popover when opening context menu (overlay exclusivity)
     selectEvent(null)
     setPopoverAnchor(null)
@@ -462,7 +469,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
-    <TripPermissionProvider trip={trip!} collaborators={tripCollaborators}>
+    <TripPermissionProvider trip={trip!} collaborators={tripCollaborators} isSharedView={isSharedView}>
     <div className={theme === 'dark' ? 'dark' : ''}>
     <div className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Main column */}
@@ -492,11 +499,12 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
             updateActivity(id, { day: dayOffset, endDay: dayOffset, unscheduled: false })
           }
           onDeleteUnscheduled={removeActivity}
+          isSharedView={isSharedView}
         />
 
         {/* Grid area */}
         <DndContext
-          sensors={sensors}
+          sensors={isSharedView ? [] : sensors}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
@@ -583,37 +591,41 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
               </div>
             </div>
 
-            {/* Resize handle */}
-            <div
-              className="shrink-0 w-1 cursor-col-resize hover:bg-[var(--cal-accent)]/30 active:bg-[var(--cal-accent)]/50 transition-colors relative group"
-              onPointerDown={(e) => {
-                e.preventDefault()
-                handlePanelDragStart()
-                let lastX = e.clientX
-                const onMove = (ev: PointerEvent) => {
-                  handlePanelDrag(ev.clientX - lastX)
-                  lastX = ev.clientX
-                }
-                const onUp = () => {
-                  handlePanelDragEnd()
-                  window.removeEventListener('pointermove', onMove)
-                  window.removeEventListener('pointerup', onUp)
-                }
-                window.addEventListener('pointermove', onMove)
-                window.addEventListener('pointerup', onUp)
-              }}
-            >
-              <div className="absolute inset-y-0 -left-1 -right-1" />
-              <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
-            </div>
+            {!isSharedView && (
+              <>
+                {/* Resize handle */}
+                <div
+                  className="shrink-0 w-1 cursor-col-resize hover:bg-[var(--cal-accent)]/30 active:bg-[var(--cal-accent)]/50 transition-colors relative group"
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    handlePanelDragStart()
+                    let lastX = e.clientX
+                    const onMove = (ev: PointerEvent) => {
+                      handlePanelDrag(ev.clientX - lastX)
+                      lastX = ev.clientX
+                    }
+                    const onUp = () => {
+                      handlePanelDragEnd()
+                      window.removeEventListener('pointermove', onMove)
+                      window.removeEventListener('pointerup', onUp)
+                    }
+                    window.addEventListener('pointermove', onMove)
+                    window.addEventListener('pointerup', onUp)
+                  }}
+                >
+                  <div className="absolute inset-y-0 -left-1 -right-1" />
+                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
+                </div>
 
-            {/* Right column: For You panel (always visible) */}
-            <ForYouPanel
-              destination={trip?.destination ?? ''}
-              tripId={trip?.id ?? ''}
-              scheduledActivityIds={droppedSuggestionIds}
-              width={forYouWidth}
-            />
+                {/* Right column: For You panel */}
+                <ForYouPanel
+                  destination={trip?.destination ?? ''}
+                  tripId={trip?.id ?? ''}
+                  scheduledActivityIds={droppedSuggestionIds}
+                  width={forYouWidth}
+                />
+              </>
+            )}
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -686,7 +698,7 @@ export function CalendarDashboard({ tripId, userId, userName }: CalendarDashboar
       rating={selectedActivity?.rating ?? undefined}
       price={selectedActivity?.price ?? undefined}
       duration={selectedActivity ? formatDurationLabel(selectedActivity.duration) : undefined}
-      actions={selectedActivity ? [
+      actions={selectedActivity && !isSharedView ? [
         {
           label: 'Edit',
           onClick: () => {
