@@ -366,8 +366,8 @@ function TripMosaic({ photos, destination }: { photos: string[]; destination?: s
 /** Check if trip_context needs enrichment (missing key overview fields) */
 function needsEnrichment(ctx: TripContextData | undefined | null): boolean {
   if (!ctx) return true;
-  // If missing hero image AND wiki AND quick_facts, it's essentially empty
-  return !ctx.hero_image_url && !ctx.wiki && !ctx.quick_facts;
+  // Missing wiki OR quick_facts means it hasn't been fully enriched
+  return !ctx.wiki || !ctx.quick_facts;
 }
 
 export default function TripOverview({ params }: { params: Promise<{ id: string }> }) {

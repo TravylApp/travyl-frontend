@@ -251,25 +251,9 @@ export default function Home() {
       sessionStorage.setItem(`trip-${tempId}`, JSON.stringify(basicTrip));
       sessionStorage.setItem('pendingTripId', tempId);
 
-      // Now enrich with all API data
+      // Save trip immediately to Supabase (fast — no enrichment yet)
       const { supabase } = await import('@travyl/shared');
-      const { enrichTripContext } = await import('@/lib/enrichTrip');
       const { data: { session } } = await supabase.auth.getSession();
-
-      const tripContext = await enrichTripContext({
-        city: extracted.destination.city,
-        country: extracted.destination.country,
-        lat: extracted.destination.lat,
-        lng: extracted.destination.lng,
-        durationDays,
-        composition: extracted.travelers?.composition,
-        interests: extracted.interests,
-      });
-
-      // Use plan's fallback photo if enrichment didn't find one
-      if (!tripContext.hero_image_url && plan.destination_photo_url) {
-        tripContext.hero_image_url = plan.destination_photo_url;
-      }
 
       const tripData = {
         title: `${extracted.destination.city} Trip`,
@@ -281,13 +265,14 @@ export default function Home() {
         travelers: extracted.travelers?.count ?? 1,
         budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
         currency: 'USD',
-        trip_context: tripContext,
+        trip_context: {
+          hero_image_url: plan.destination_photo_url || undefined,
+          lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}.`,
+        },
       };
 
-      // Update the sessionStorage trip with enriched data
       sessionStorage.setItem(`trip-${tempId}`, JSON.stringify({ id: tempId, ...tripData }));
 
-      // Save to Supabase via server API (works with or without auth)
       try {
         const res = await fetch('/api/trips/create', {
           method: 'POST',
@@ -298,6 +283,12 @@ export default function Home() {
           const supaTrip = await res.json();
           sessionStorage.setItem('pendingTripId', supaTrip.id);
           sessionStorage.removeItem(`trip-${tempId}`);
+          // Enrich in background — auto-enrich on overview will also catch it
+          fetch('/api/trips/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: supaTrip.id }),
+          }).catch(() => {});
         }
       } catch {
         // Server failed — local trip still works
