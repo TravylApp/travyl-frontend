@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
 
   const existing = trip.trip_context ?? {}
 
-  // Skip if fully enriched (has all key fields including explore_items)
-  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0) {
+  // Skip if fully enriched (has all key fields including explore_items and foursquare_venues)
+  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0 && existing.foursquare_venues?.length > 0) {
     return NextResponse.json({ status: 'already_enriched' })
   }
 
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
   // Fetch all enrichment APIs in parallel
   const countryCode = country.substring(0, 2).toUpperCase()
-  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData] = await Promise.all([
+  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife] = await Promise.all([
     fetch(`${baseUrl}/api/images?q=${encodeURIComponent(city)}`)
       .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined),
     fetch(`${baseUrl}/api/weather?location=${encodeURIComponent(trip.destination)}&days=${durationDays}`)
@@ -115,7 +115,20 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/sunrise?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
+    // Foursquare venues for "What's Going On"
+    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=attraction&limit=6`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=restaurant&limit=4`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=nightlife&limit=4`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
   ])
+
+  // Build Foursquare "What's Going On" venues (distinct from explore_items)
+  const fsVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
+    .filter((v: any) => v?.id && v?.name)
+    .map((v: any) => ({ id: v.id, title: v.name, description: v.tip || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
+    .slice(0, 8)
 
   const fresh: Record<string, any> = {
     hero_image_url: landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl,
@@ -125,6 +138,7 @@ export async function POST(req: NextRequest) {
     lat, lng,
     lede_text: `A ${durationDays}-day trip to ${city}.`,
     explore_items: exploreItems,
+    foursquare_venues: fsVenues.length > 0 ? fsVenues : undefined,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
     hotels: hotelData?.length > 0 ? hotelData : undefined,
     news: newsData?.length > 0 ? newsData : undefined,

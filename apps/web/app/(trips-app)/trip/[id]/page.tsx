@@ -480,10 +480,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                   </div>
                 )}
 
-                {/* What's Going On — right column, Foursquare explore items */}
-                {hasExploreItems && (
+                {/* What's Going On — right column, Foursquare venues */}
+                {(trip?.trip_context as any)?.foursquare_venues?.length > 0 && (
                   <div className="flex-1 min-w-0">
-                    <WhatsGoingOnSection exploreItems={trip!.trip_context!.explore_items!} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
+                    <WhatsGoingOnSection exploreItems={(trip!.trip_context as any).foursquare_venues} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
                   </div>
                 )}
               </div>
