@@ -24,13 +24,13 @@ export function useIndexTrip() {
           const token = session?.access_token
           if (!token) return
 
-          fetch(`${API_URL}/api/trips/extract`, {
+          fetch(`${API_URL}/index`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt: tripId }),
+            body: JSON.stringify({ tripId }),
           }).catch(() => {}) // swallow errors
         })
       }, 5000),
