@@ -2,7 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useAuthStore } from '@travyl/shared';
+import { useAuthStore, configureSupabase } from '@travyl/shared';
+import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import { GlobalCommandPalette } from './GlobalCommandPalette';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -18,6 +20,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
   const initialize = useAuthStore((s) => s.initialize);
 
+  // Configure synchronously during render so child component effects see the
+  // cookie-based client. useEffect fires after child effects, which is too late.
+  configureSupabase(getSupabaseBrowser());
+
   useEffect(() => {
     const unsubscribe = initialize();
     return unsubscribe;
@@ -26,6 +32,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClientRef.current}>
       {children}
+      <GlobalCommandPalette />
     </QueryClientProvider>
   );
 }

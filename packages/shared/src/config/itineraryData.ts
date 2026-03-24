@@ -1,3 +1,5 @@
+import type { DiscoverItem } from '../types';
+
 // Navy and TAB_COLORS are now exported from colors.ts via config/index.ts
 
 export const ITINERARY_COLORS = {
@@ -69,3 +71,68 @@ export function getActivityTypeColor(slug: string) {
 // ─── Legacy aliases ─────────────────────────────────────────
 export const ACTIVITY_CATEGORY_COLORS = ACTIVITY_TYPE_COLORS;
 export const getActivityCategoryColor = getActivityTypeColor;
+
+// ─── Time-of-Day Hours (used by glance pager) ──────────────
+export const TOD_START_TIMES: Record<string, string> = {
+  morning: '9:00 AM', afternoon: '2:00 PM', evening: '7:00 PM', latenight: '10:00 PM',
+};
+
+export const TOD_START_HOURS: Record<string, number> = {
+  morning: 9, afternoon: 14, evening: 19, latenight: 22,
+};
+
+export const TOD_END_HOURS: Record<string, number> = {
+  morning: 13, afternoon: 18, evening: 21, latenight: 24,
+};
+
+// ─── Quick-Fill Categories ──────────────────────────────────
+export const QUICK_FILL_CATEGORIES = [
+  { label: 'Random', icon: '🎲', filter: null },
+  { label: 'Culture', icon: '🎨', filter: 'museum' },
+  { label: 'Food', icon: '🍽', filter: 'dining' },
+  { label: 'Sights', icon: '🏛', filter: 'sightseeing' },
+  { label: 'Tours', icon: '🗺', filter: 'tour' },
+  { label: 'Nature', icon: '🌿', filter: 'nature' },
+  { label: 'Events', icon: '🎉', filter: 'event' },
+] as const;
+
+// ─── Activity Type Icons (FontAwesome names) ────────────────
+export const ACTIVITY_TYPE_ICONS: Record<string, string> = {
+  sightseeing: 'university',
+  landmark: 'university',
+  museum: 'paint-brush',
+  dining: 'cutlery',
+  food: 'cutlery',
+  tour: 'binoculars',
+  outdoor: 'tree',
+  nature: 'leaf',
+  cultural: 'paint-brush',
+  shopping: 'shopping-bag',
+  nightlife: 'moon-o',
+  wellness: 'heart',
+  transport: 'bus',
+  default: 'map-marker',
+};
+
+// ─── Shared Utilities ───────────────────────────────────────
+export function formatHourToTime(hour: number): string {
+  const h = Math.floor(hour);
+  const m = Math.round((hour - h) * 60);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+export function pickRandomActivity(_category: string | null, _excludeIds: string[]): DiscoverItem | null {
+  // TODO: Replace with real activity data source
+  return null;
+}
+
+// ─── Glance Hero Images ────────────────────────────────────
+export const GLANCE_HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
+  'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&q=85',
+  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1400&q=85',
+  'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1400&q=85',
+  'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
+];

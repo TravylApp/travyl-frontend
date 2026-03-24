@@ -4,6 +4,12 @@ export const SIDEBAR_COLLAPSED_WIDTH = 48
 export const SIDEBAR_EXPANDED_WIDTH = 240
 export const DETAIL_PANEL_WIDTH = 300
 export const SIDEBAR_COLLAPSE_DELAY = 200
+export const FOR_YOU_PANEL_MIN_WIDTH = 280
+export const FOR_YOU_PANEL_MAX_WIDTH = 600
+export const FOR_YOU_PANEL_DEFAULT_WIDTH = 340
+export const FOR_YOU_PANEL_3COL_BREAKPOINT = 360
+export const COLUMN_GAP = 4
+export const COLUMN_OUTER_PAD = 4
 
 // Note: ACTIVITY_COLORS and DEFAULT_ACTIVITY_COLOR live only in
 // calendarViewModel.ts (single source of truth). Import getActivityColor()

@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { MOCK_DISCOVER_RESTAURANTS } from '../config';
 import type { DiscoverItem } from '../types';
 
 // ─── Constants (shared between web + mobile) ──────────────────
@@ -37,7 +36,7 @@ export const RESTAURANT_SORT_OPTIONS: { key: RestaurantSortOption; label: string
 
 // ─── Hook ─────────────────────────────────────────────────────
 export function useRestaurantFilters() {
-  const allDining = MOCK_DISCOVER_RESTAURANTS;
+  const allDining: DiscoverItem[] = [];
   const bookedItems = allDining.filter((d) => d.isBooked);
   const discoverItems = allDining.filter((d) => !d.isBooked);
 

@@ -10,25 +10,25 @@ import { PlaceCard } from '@/components/PlaceCard';
 // ─── Section Header ──────────────────────────────────────────
 function SectionHeader({
   title,
-  gradient,
   isExpanded,
   onToggle,
 }: {
   title: string;
-  gradient: { from: string; to: string };
+  gradient?: { from: string; to: string };
   isExpanded: boolean;
   onToggle: () => void;
 }) {
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
-      style={{ background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border bg-white dark:bg-[var(--muted)] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.08] shadow-sm"
+      style={{ color: 'var(--magazine-heading, var(--foreground))' }}
     >
       <span className="tracking-wide">{title}</span>
       <motion.div
         animate={{ rotate: isExpanded ? 180 : 0 }}
         transition={{ duration: 0.3 }}
+        style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}
       >
         <ChevronDown size={16} />
       </motion.div>
@@ -102,14 +102,29 @@ function ExploreContainer({
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {items.map((item) => (
-          <PlaceCard
+          <div
             key={item.id}
-            place={item}
-            size="compact"
-            isFav={false}
-            onToggleFav={() => {}}
-            onClick={() => onItemClick?.(item)}
-          />
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/json', JSON.stringify({
+                id: item.id,
+                name: item.name,
+                title: item.name,
+                category: item.type,
+                location: item.tagline || '',
+                image: item.images?.[0] || item.image || '',
+              }));
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
+          >
+            <PlaceCard
+              place={item}
+              size="compact"
+              isFav={false}
+              onToggleFav={() => {}}
+              onClick={() => onItemClick?.(item)}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -146,7 +161,7 @@ function ExploreSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
             <div className="pt-1 pb-2">
@@ -177,20 +192,21 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
 
   return (
     <section className="py-6 px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
         {/* Collapse/Expand All toggle */}
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-extrabold text-gray-900">Explore</h2>
+        <div className="flex items-center justify-between px-4 pt-4 pb-3">
+          <h2 className="text-xl font-extrabold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>Explore</h2>
           <button
             onClick={allExpanded ? collapseAll : expandAll}
-            className="text-xs font-medium text-gray-700 hover:text-gray-900 transition-colors px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50"
+            className="text-xs font-medium transition-colors px-3 py-1 rounded-lg border border-gray-200 dark:border-white/[0.1] hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+            style={{ color: 'var(--magazine-text, var(--muted-foreground))' }}
           >
             {allExpanded ? 'Collapse All' : 'Expand All'}
           </button>
         </div>
 
         {/* Sections */}
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 px-4 pb-4">
           {rows.map((row, i) => (
             <ExploreSection
               key={row.title}

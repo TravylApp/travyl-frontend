@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MOCK_PACKING_LIST, MOCK_WEATHER, MOCK_TRIP } from '@travyl/shared';
-import type { PackingList, PackingItem } from '@travyl/shared';
+import { useLocalSearchParams } from 'expo-router';
+import { MOCK_PACKING_LIST, useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
 
@@ -64,6 +65,9 @@ function ProgressBar({
 /* ------------------------------------------------------------------ */
 
 export default function PackingScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { trip } = useItineraryScreen(id);
+
   const [packingList, setPackingList] = useState<PackingList>({ ...MOCK_PACKING_LIST });
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(Object.keys(MOCK_PACKING_LIST)),
@@ -74,8 +78,7 @@ export default function PackingScreen() {
 
   const ACCENT = useTabAccent('packing');
   const colors = useThemeColors();
-  const trip = MOCK_TRIP;
-  const destination = trip.destination ?? MOCK_WEATHER.destination;
+  const destination = trip?.destination ?? '';
 
   /* ---- derived counts ---- */
   const allItems = Object.values(packingList).flat();
@@ -191,12 +194,12 @@ export default function PackingScreen() {
               marginBottom: 6,
             }}
           >
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>
+            <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>
               Packing Progress
             </Text>
             <FontAwesome name="suitcase" size={16} color="rgba(255,255,255,0.8)" />
           </View>
-          <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff', marginBottom: 8 }}>
+          <Text style={{ ...TextStyles.headline, color: '#fff', marginBottom: 8 }}>
             {packedCount} / {totalItems}
           </Text>
           <ProgressBar
@@ -205,16 +208,18 @@ export default function PackingScreen() {
             trackColor="rgba(255,255,255,0.2)"
             fillColor="#fff"
           />
-          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
+          <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
             {Math.round(progressPercent)}% packed
           </Text>
         </LinearGradient>
 
         {/* Weather Info */}
-        {(() => {
-          const weatherIcon = MOCK_WEATHER.conditions.toLowerCase().includes('sun') ? 'sun-o'
-            : MOCK_WEATHER.conditions.toLowerCase().includes('rain') ? 'umbrella'
-            : MOCK_WEATHER.conditions.toLowerCase().includes('cloud') ? 'cloud' : 'sun-o';
+        {trip?.trip_context?.weather?.current && (() => {
+          const currentWeather = trip.trip_context.weather!.current!;
+          const condition = currentWeather.condition ?? '';
+          const weatherIcon = condition.toLowerCase().includes('sun') ? 'sun-o'
+            : condition.toLowerCase().includes('rain') ? 'umbrella'
+            : condition.toLowerCase().includes('cloud') ? 'cloud' : 'sun-o';
           return (
             <View
               style={{
@@ -227,19 +232,19 @@ export default function PackingScreen() {
               }}
             >
               <FontAwesome name={weatherIcon} size={20} color={ACCENT} style={{ marginBottom: 6 }} />
-              <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500', marginBottom: 4 }}>
+              <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: 4 }}>
                 Weather
               </Text>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 2 }}>
-                {MOCK_WEATHER.high}{MOCK_WEATHER.unit}
+              <Text style={{ ...TextStyles.headline, fontSize: 22, color: colors.text, marginBottom: 2 }}>
+                {currentWeather.high}°
               </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
-                Low: {MOCK_WEATHER.low}{MOCK_WEATHER.unit}
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
+                Low: {currentWeather.low}°
               </Text>
-              <Text style={{ fontSize: 11, color: colors.text, marginBottom: 4 }}>
-                {MOCK_WEATHER.conditions}
+              <Text style={{ ...TextStyles.caption, color: colors.text, marginBottom: 4 }}>
+                {condition}
               </Text>
-              <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
                 {destination}
               </Text>
             </View>
@@ -259,12 +264,12 @@ export default function PackingScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <FontAwesome name="lightbulb-o" size={14} color="#d97706" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
               Packing Tips
             </Text>
           </View>
           {['Roll clothes to save space', 'Pack versatile layers', 'Keep essentials in carry-on'].map((tip, i) => (
-            <Text key={i} style={{ fontSize: 11, color: '#78350f', marginTop: 4 }}>- {tip}</Text>
+            <Text key={i} style={{ ...TextStyles.caption, color: '#78350f', marginTop: 4 }}>- {tip}</Text>
           ))}
         </View>
       </ScrollView>
@@ -304,7 +309,7 @@ export default function PackingScreen() {
                   onPress={() => toggleCategory(category)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: ACCENT }}>
+                  <Text style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT }}>
                     {category}
                   </Text>
                   <FontAwesome
@@ -323,7 +328,7 @@ export default function PackingScreen() {
                       borderRadius: 12,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>
+                    <Text style={{ ...TextStyles.captionEm, color: ACCENT }}>
                       {catPacked}/{items.length}
                     </Text>
                   </View>
@@ -378,8 +383,8 @@ export default function PackingScreen() {
                       {/* Item name */}
                       <Text
                         style={{
+                          ...TextStyles.bodyXl,
                           flex: 1,
-                          fontSize: 14,
                           color: item.packed ? colors.textTertiary : colors.text,
                           textDecorationLine: item.packed ? 'line-through' : 'none',
                         }}
@@ -412,7 +417,7 @@ export default function PackingScreen() {
                         flex: 1,
                         paddingHorizontal: 12,
                         paddingVertical: 10,
-                        fontSize: 13,
+                        fontSize: FontSize.bodyLg,
                         borderWidth: 1,
                         borderColor: ACCENT + '15',
                         borderRadius: 10,
@@ -430,7 +435,7 @@ export default function PackingScreen() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Add</Text>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -452,7 +457,7 @@ export default function PackingScreen() {
             }}
           >
             <Text
-              style={{ fontSize: 15, fontWeight: '600', color: ACCENT, marginBottom: 12 }}
+              style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT, marginBottom: 12 }}
             >
               Create New List
             </Text>
@@ -466,7 +471,7 @@ export default function PackingScreen() {
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 12,
-                fontSize: 14,
+                fontSize: FontSize.bodyXl,
                 borderWidth: 1,
                 borderColor: ACCENT,
                 borderRadius: 10,
@@ -486,7 +491,7 @@ export default function PackingScreen() {
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Create List</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Create List</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -502,7 +507,7 @@ export default function PackingScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Cancel</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Cancel</Text>
               </Pressable>
             </View>
           </View>
@@ -533,10 +538,10 @@ export default function PackingScreen() {
             >
               <FontAwesome name="plus" size={22} color={ACCENT} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>
+            <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>
               Create New List
             </Text>
-            <Text style={{ fontSize: 12, color: ACCENT }}>Add a custom packing list</Text>
+            <Text style={{ ...TextStyles.body, color: ACCENT }}>Add a custom packing list</Text>
           </Pressable>
         )}
       </View>

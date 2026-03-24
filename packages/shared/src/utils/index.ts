@@ -68,3 +68,24 @@ export function shuffle<T>(items: T[]): T[] {
 
 // Session tracker — re-export for public barrel
 export { getShownIds } from './sessionTracker';
+
+// Activity mapper
+export {
+  parseTime, hourToTime, clampTime, hoursBetween, daysBetween, addDays,
+  mapToDbType, toCalendarActivity, toActivityRow,
+} from './activityMapper'
+export type { ActivityRow } from './activityMapper'
+
+export { computeOverlapLayout } from './overlapLayout'
+export type { OverlapLayoutItem } from './overlapLayout'
+
+// Budget utilities
+export { mapActivityToBudgetCategory } from './budgetMapping'
+export { convertToTripCurrency, formatBudgetAmount } from './currency'
+
+// Poll utilities
+export { isVoteKey, userIdFromVoteKey, parseVotesFromYMap, resolveVotes } from './pollHelpers'
+
+// Rescoper utilities
+export { detectOperation, getConflictingActivities, computeNewTotalDays } from './rescoper'
+export type { RescoperOperation } from './rescoper'

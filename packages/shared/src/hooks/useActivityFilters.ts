@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { MOCK_DISCOVER_ACTIVITIES } from '../config';
 import type { DiscoverItem } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 
@@ -86,7 +85,7 @@ export function buildBookedActivities(days: ItineraryDayViewModel[]): DiscoverIt
 // ─── Hook ─────────────────────────────────────────────────────
 export function useActivityFilters(days: ItineraryDayViewModel[]) {
   const bookedItems = useMemo(() => buildBookedActivities(days), [days]);
-  const discoverItems = MOCK_DISCOVER_ACTIVITIES;
+  const discoverItems: DiscoverItem[] = [];
 
   const [viewMode, setViewMode] = useState<'booked' | 'discover'>('discover');
   const [searchQuery, setSearchQuery] = useState('');

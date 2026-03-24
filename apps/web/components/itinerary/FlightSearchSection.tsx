@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  Plane,
   Search,
   ChevronDown,
   ChevronUp,
@@ -13,6 +12,7 @@ import {
   Minus,
   RotateCcw,
 } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import type { PopularAirport } from '@travyl/shared';
 
 /* ── Constants ──────────────────────────────────────────────── */
@@ -291,7 +291,7 @@ export function FlightSearchSection() {
       >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Plane size={18} className="text-blue-600" />
+            <PaperPlane size={18} className="text-blue-600" />
           </div>
           <div className="text-left">
             <span className="block text-sm font-semibold text-gray-900">Search Flights</span>

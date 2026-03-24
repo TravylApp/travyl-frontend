@@ -18,3 +18,9 @@ export function formatHourGutter(hour: number): string {
   if (hour < 12) return `${hour} AM`
   return `${hour - 12} PM`
 }
+
+export function formatDuration(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours % 1 === 0) return `${hours}h`
+  return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
+}

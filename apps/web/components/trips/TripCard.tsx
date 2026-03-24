@@ -7,6 +7,7 @@ import { Calendar, Users, PieChart, MapPin, Users2 } from 'lucide-react';
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
+import { ForkCountBadge } from '../trip/ForkAttribution';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -22,9 +23,12 @@ function formatCurrency(amount: number, currency: string): string {
 
 interface TripCardProps {
   trip: MockTripCard;
+  index?: number;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function TripCard({ trip }: TripCardProps) {
+export function TripCard({ trip, className, style }: TripCardProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
@@ -43,7 +47,8 @@ export function TripCard({ trip }: TripCardProps) {
   return (
     <div
       ref={cardRef}
-      className="relative"
+      className={`relative ${className ?? ''}`}
+      style={style}
       onMouseEnter={() => setShowHover(true)}
       onMouseLeave={() => setShowHover(false)}
     >
@@ -68,7 +73,7 @@ export function TripCard({ trip }: TripCardProps) {
           </div>
 
           {/* Shared Indicator - Top Left */}
-          {trip.is_shared && (
+          {trip.visibility !== 'private' && (
             <div className="absolute top-3 left-3 p-1.5 rounded-full bg-white/90 backdrop-blur-sm" title="Shared trip">
               <Users2 size={12} className="text-[#1e3a5f]" />
             </div>
@@ -77,6 +82,11 @@ export function TripCard({ trip }: TripCardProps) {
 
         {/* Card Body - White background with trip name prominent */}
         <div className="px-4 py-3">
+          {/* Fork badge */}
+          {trip.fork_count > 0 && (
+            <ForkCountBadge count={trip.fork_count} />
+          )}
+
           {/* Trip Title - PRIMARY (large, bold) */}
           <h2 className="text-lg font-bold text-gray-900 leading-tight mb-1 line-clamp-1">
             {trip.title}

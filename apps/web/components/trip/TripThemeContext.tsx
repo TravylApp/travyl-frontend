@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { resolveTheme, adjustBrightness } from '@travyl/shared';
-import type { TripTheme } from '@travyl/shared';
+import type { TripTheme, Trip } from '@travyl/shared';
 
 interface TripThemeContextValue {
   theme: TripTheme;
@@ -28,80 +28,41 @@ function hexToRgb(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
-function getStorageKey(tripId: string) {
-  return `trip-theme-${tripId}`;
-}
-
-interface PersistedThemeState {
-  themeId: string;
-  customColor: string | null;
-  tabColorOverrides: Record<string, string>;
-  itineraryColorOverrides: Record<string, string>;
-  hiddenTabs: Record<string, boolean>;
-}
-
-function loadPersistedState(tripId: string): PersistedThemeState | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(getStorageKey(tripId));
-    if (!raw) return null;
-    return JSON.parse(raw) as PersistedThemeState;
-  } catch {
-    return null;
-  }
-}
-
-function persistState(tripId: string, state: PersistedThemeState) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(getStorageKey(tripId), JSON.stringify(state));
-  } catch {
-    // storage full or unavailable — silently ignore
-  }
-}
-
 export function TripThemeProvider({
-  tripId,
-  initialThemeId = 'navy',
-  initialCustomColor,
+  trip,
   children,
 }: {
-  tripId: string;
-  initialThemeId?: string;
-  initialCustomColor?: string | null;
+  trip: Trip | null;
   children: React.ReactNode;
 }) {
-  // Always initialize with defaults so server and client match (avoids hydration mismatch)
-  const [themeId, setThemeId] = useState(initialThemeId);
-  const [customColor, setCustomColor] = useState<string | null>(initialCustomColor ?? null);
+  const [themeId, setThemeId] = useState('navy');
+  const [customColor, setCustomColor] = useState<string | null>(null);
   const [tabColorOverrides, setTabColorOverrides] = useState<Record<string, string>>({});
   const [itineraryColorOverrides, setItineraryColorOverrides] = useState<Record<string, string>>({});
-  const [hiddenTabs, setHiddenTabs] = useState<Record<string, boolean>>({
-    hotels: true,
-    flights: true,
-    restaurants: true,
-    activities: true,
-    packing: true,
-    budget: true,
-    cars: true,
-    favorites: true,
-  });
-  const [hydrated, setHydrated] = useState(false);
+  const [hiddenTabs, setHiddenTabs] = useState<Record<string, boolean>>({});
+  const [synced, setSynced] = useState(false);
 
-  // After mount, restore persisted state from localStorage
+  // Sync from trip data when it loads (once)
   useEffect(() => {
-    const saved = loadPersistedState(tripId);
-    if (saved) {
-      setThemeId(saved.themeId);
-      setCustomColor(saved.customColor);
-      setTabColorOverrides(saved.tabColorOverrides ?? {});
-      setItineraryColorOverrides(saved.itineraryColorOverrides ?? {});
-      // Only restore hiddenTabs if user has customized them (non-empty); otherwise keep defaults
-      if (saved.hiddenTabs && Object.keys(saved.hiddenTabs).length > 0) {
-        setHiddenTabs(saved.hiddenTabs);
-      }
+    if (!trip || synced) return;
+    setThemeId(trip.theme ?? 'navy');
+    setCustomColor(trip.custom_theme_color ?? null);
+    if (trip.tab_color_overrides && Object.keys(trip.tab_color_overrides).length > 0) {
+      setTabColorOverrides(trip.tab_color_overrides);
     }
-    setHydrated(true);
+    if (trip.itinerary_color_overrides && Object.keys(trip.itinerary_color_overrides).length > 0) {
+      setItineraryColorOverrides(trip.itinerary_color_overrides);
+    }
+    if (trip.hidden_tabs && Object.keys(trip.hidden_tabs).length > 0) {
+      setHiddenTabs(trip.hidden_tabs);
+    }
+    setSynced(true);
+  }, [trip, synced]);
+
+  // Reset sync flag when trip ID changes
+  const tripId = trip?.id;
+  useEffect(() => {
+    setSynced(false);
   }, [tripId]);
 
   const theme = resolveTheme(themeId, customColor ?? undefined);
@@ -135,12 +96,6 @@ export function TripThemeProvider({
   const setTabHidden = useCallback((segment: string, hidden: boolean) => {
     setHiddenTabs((prev) => ({ ...prev, [segment]: hidden }));
   }, []);
-
-  // Persist to localStorage whenever any theme state changes (only after hydration to avoid overwriting with defaults)
-  useEffect(() => {
-    if (!hydrated) return;
-    persistState(tripId, { themeId, customColor, tabColorOverrides, itineraryColorOverrides, hiddenTabs });
-  }, [hydrated, tripId, themeId, customColor, tabColorOverrides, itineraryColorOverrides, hiddenTabs]);
 
   return (
     <TripThemeCtx.Provider

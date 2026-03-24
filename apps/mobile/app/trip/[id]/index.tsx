@@ -1,60 +1,42 @@
-import { useState } from 'react';
-import { View, ScrollView, Text, Pressable, Linking } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useRef } from 'react';
+import {
+  View, ScrollView, Text, Pressable, Linking, Image, Share,
+  Dimensions, useColorScheme,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
-  useItineraryScreen, Amber, Red, Sky, Violet,
-  MOCK_WEATHER_FORECAST,
-  MOCK_WEATHER, MOCK_NEWS,
+  useItineraryScreen,
+  formatDateRange,
+  TextStyles, FontFamily,
 } from '@travyl/shared';
-import type { NewsItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, useTabAccent } from './_layout';
-import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
+import { PageTransition } from './_layout';
 
-// ─── Collapsible Section ─────────────────────────────────
-function CollapsibleSection({ title, icon, color, children, defaultOpen = false }: {
-  title: string; icon: string; color: string; children: React.ReactNode; defaultOpen?: boolean;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ACCENT_COLOR = '#c8a96a';
+
+// ─── Accent label + serif heading (matches web pattern) ──────
+function SectionHeader({ accent, title }: {
+  accent: string; title: string;
 }) {
   const colors = useThemeColors();
-  const [open, setOpen] = useState(defaultOpen);
   return (
-    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, overflow: 'hidden', marginBottom: 10, borderWidth: 1, borderColor: colors.border }}>
-      <Pressable onPress={() => setOpen(!open)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}>
-        <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: color + '15', alignItems: 'center', justifyContent: 'center' }}>
-          <FontAwesome name={icon as any} size={14} color={color} />
+    <View style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <View>
+          <Text style={{
+            ...TextStyles.xs, fontWeight: '700', letterSpacing: 3,
+            textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 4,
+          }}>{accent}</Text>
+          <Text style={{
+            ...TextStyles.headline, fontSize: 22,
+            color: colors.text,
+          }}>{title}</Text>
         </View>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, flex: 1 }}>{title}</Text>
-        <FontAwesome name={open ? 'chevron-up' : 'chevron-down'} size={10} color={colors.textTertiary} />
-      </Pressable>
-      {open && <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>{children}</View>}
+      </View>
     </View>
-  );
-}
-
-// ─── Info Row ────────────────────────────────────────────
-function InfoRow({ icon, iconColor, label, value, onPress }: {
-  icon: string; iconColor: string; label: string; value: string; onPress?: () => void;
-}) {
-  const colors = useThemeColors();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        flexDirection: 'row', alignItems: 'center',
-        paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-      }}
-    >
-      <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: iconColor + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-        <FontAwesome name={icon as any} size={11} color={iconColor} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 10, color: colors.textTertiary }}>{label}</Text>
-        <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text }}>{value}</Text>
-      </View>
-      {onPress && <FontAwesome name="chevron-right" size={10} color={colors.border} />}
-    </Pressable>
   );
 }
 
@@ -68,214 +50,370 @@ function weatherIcon(condition: string): string {
   return 'cloud';
 }
 
-// ─── News Category Config ────────────────────────────────
-const NEWS_CATEGORY_CONFIG: Record<NewsItem['category'], { icon: string; color: string; bg: string; label: string }> = {
-  event:    { icon: 'star',            color: '#7c3aed', bg: '#f5f3ff', label: 'Event' },
-  advisory: { icon: 'exclamation-triangle', color: '#d97706', bg: '#fffbeb', label: 'Advisory' },
-  news:     { icon: 'newspaper-o',     color: '#2563eb', bg: '#eff6ff', label: 'News' },
-  tip:      { icon: 'lightbulb-o',     color: '#059669', bg: '#ecfdf5', label: 'Tip' },
-};
 
 // ─── Data ────────────────────────────────────────────────
-const TRANSPORT_OPTIONS = [
-  { icon: 'subway', iconColor: '#2563eb', name: 'Metro', description: 'Lines 1-14, RER A-E' },
-  { icon: 'bus', iconColor: '#16a34a', name: 'Bus & Tram', description: '350+ routes, 5:30am-12:30am' },
-  { icon: 'taxi', iconColor: '#7c3aed', name: 'Taxis', description: 'G7, Uber, Bolt available' },
-  { icon: 'bicycle', iconColor: '#d97706', name: 'Bike Share', description: "Velib' — 1,400+ stations" },
+const TRANSPORT_INFO = [
+  { name: 'Métro', text: 'Lines 1, 4 & 7 cover tourist areas' },
+  { name: 'Bus', text: 'Route 69 passes major landmarks' },
+  { name: 'Walking', text: 'Best for Le Marais & Montmartre' },
+  { name: 'Taxi', text: 'Beige cabs / Uber · Airport €50–70' },
+];
+
+const GOOD_TO_KNOW = [
+  'Tipping is included — round up for great service',
+  'Tap water is safe — ask for "une carafe d\'eau"',
+  'Watch for pickpockets at tourist sites and on the Métro',
 ];
 
 const EMERGENCY_INFO = [
-  { label: 'Emergency (EU)', number: '112' },
+  { label: 'All', number: '112' },
   { label: 'Police', number: '17' },
-  { label: 'Ambulance (SAMU)', number: '15' },
-  { label: 'Fire Brigade', number: '18' },
+  { label: 'Medical', number: '15' },
 ];
 
-const DESTINATION_TIPS = [
-  { icon: 'eur', label: 'Currency', value: 'Euro (EUR)' },
-  { icon: 'language', label: 'Language', value: 'French (English in tourist areas)' },
-  { icon: 'clock-o', label: 'Time Zone', value: 'CET (UTC+1)' },
-  { icon: 'money', label: 'Tipping', value: 'Service included; round up' },
-  { icon: 'plug', label: 'Power', value: 'Type C/E plugs, 230V' },
-  { icon: 'tint', label: 'Water', value: 'Tap water is safe' },
-];
-
-const QUICK_LINKS = [
-  { label: 'Google Maps', icon: 'map', url: 'https://maps.google.com/?q=Paris,France' },
-  { label: 'Currency', icon: 'exchange', url: 'https://xe.com' },
-  { label: 'Translate', icon: 'language', url: 'https://translate.google.com/?sl=en&tl=fr' },
-  { label: 'Local Time', icon: 'clock-o', url: 'https://time.is/Paris' },
+const QUICK_FACTS = [
+  { bold: 'EUR €', text: '€1 ≈ $1.08' },
+  { bold: 'French', text: 'English widely spoken' },
+  { bold: 'CET +1', text: '6h ahead of EST' },
+  { bold: 'Type C/E', text: '230V adapter' },
 ];
 
 // ─── Main Screen ─────────────────────────────────────────
 export default function OverviewScreen() {
-  const ACCENT = useTabAccent('index');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { trip, days, flights, hotels, isLoading } = useItineraryScreen(id);
+  const { trip } = useItineraryScreen(id);
   const colors = useThemeColors();
+  const isDark = useColorScheme() === 'dark';
+  const scrollRef = useRef<ScrollView>(null);
+  const router = useRouter();
 
-  const allActivities = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities));
   const forecast = MOCK_WEATHER_FORECAST;
+  const weather = MOCK_WEATHER;
+  const news = MOCK_NEWS;
 
-  const totalDays = days.length;
-  const allStats = [
-    { icon: 'calendar' as const, count: totalDays, label: totalDays === 1 ? 'Day' : 'Days' },
-    { icon: 'users' as const, count: trip?.travelers ?? 0, label: (trip?.travelers ?? 0) === 1 ? 'Traveler' : 'Travelers' },
-    { icon: 'plane' as const, count: flights.length, label: flights.length === 1 ? 'Flight' : 'Flights' },
-    { icon: 'building-o' as const, count: hotels.length, label: hotels.length === 1 ? 'Hotel' : 'Hotels' },
-  ];
-  const visibleStats = allStats.filter((s) => s.count > 0);
+  const tripData = MOCK_TRIPS.find((t) => t.id === (trip?.id ?? id));
+  const coverImage = tripData?.image?.replace(/\?w=\d+/, '?w=1200&q=80');
+  const destination = trip?.destination || tripData?.destination || 'Paris, France';
+  const cityName = destination.split(',')[0].trim();
+  const countryName = destination.split(',').slice(1).join(',').trim();
+
+  const dateStr = trip ? formatDateRange(trip.start_date, trip.end_date) : null;
+  const travelersStr = trip ? `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}` : null;
+
+  const handleShare = async () => {
+    if (!trip) return;
+    try {
+      await Share.share({
+        message: `Check out my trip to ${trip.destination}! ${trip.start_date} – ${trip.end_date}`,
+        title: trip.title ?? `Trip to ${trip.destination}`,
+      });
+    } catch (_) {}
+  };
 
   return (
     <PageTransition>
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: 32 }}>
-      <View style={{ padding: 16 }}>
-        {/* ─── Current Weather Card ────────────────────────── */}
-        <View style={{
-          borderRadius: 12, padding: 14, marginBottom: 14,
-          borderWidth: 1, borderColor: '#bae6fd',
-          backgroundColor: '#f0f9ff',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <View style={{
-                width: 44, height: 44, borderRadius: 12,
-                backgroundColor: 'rgba(255,255,255,0.8)',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                <FontAwesome
-                  name={weatherIcon(MOCK_WEATHER.conditions) as any}
-                  size={20}
-                  color={MOCK_WEATHER.conditions.toLowerCase().includes('cloud') ? '#6b7280' : '#f59e0b'}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                  <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{MOCK_WEATHER.high}°</Text>
-                  <Text style={{ fontSize: 13, color: colors.textTertiary }}>/ {MOCK_WEATHER.low}°{MOCK_WEATHER.unit === 'celsius' ? 'C' : 'F'}</Text>
-                </View>
-                <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={2}>{MOCK_WEATHER.conditions} in {MOCK_WEATHER.destination}</Text>
-              </View>
-            </View>
-          </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* ─── Background image bleed ───────────────────────── */}
+      {coverImage && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 420 }} pointerEvents="none">
+          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <LinearGradient
+            colors={[
+              'rgba(0,0,0,0.1)',
+              'rgba(0,0,0,0.25)',
+              isDark ? 'rgba(18,18,20,0.7)' : 'rgba(255,255,255,0.7)',
+              isDark ? '#121214' : colors.background,
+            ]}
+            locations={[0, 0.35, 0.7, 1]}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+        </View>
+      )}
 
-          {/* Inline forecast strip */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 6 }}>
-            {forecast.map((day) => (
-              <View key={day.day} style={{
-                alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6,
-                borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.6)', minWidth: 52,
-              }}>
-                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textSecondary }}>{day.day}</Text>
-                <FontAwesome name={weatherIcon(day.condition) as any} size={14} color={Amber[500]} style={{ marginVertical: 3 }} />
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>{day.high}°</Text>
-                  <Text style={{ fontSize: 9, color: colors.textTertiary }}>{day.low}°</Text>
-                </View>
+      {/* ─── Back + action buttons over bleed ─────────────── */}
+      <View style={{
+        position: 'absolute', top: 50, left: 14, right: 14, zIndex: 10,
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      }} pointerEvents="box-none">
+        <Pressable
+          onPress={() => router.back()}
+          style={{
+            width: 34, height: 34, borderRadius: 17,
+            backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <FontAwesome name="chevron-left" size={14} color="#fff" />
+        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Pressable
+            onPress={handleShare}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+              borderRadius: 10, width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <FontAwesome name="share" size={13} color="#fff" />
+          </Pressable>
+        </View>
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+      {/* ─── Hero text over bleed ─────────────────────────── */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 90, paddingBottom: 8 }}>
+        <Text style={{
+          ...TextStyles.xs, fontWeight: '700', letterSpacing: 3,
+          textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
+        }}>
+          {countryName || 'Your Trip Guide'}
+        </Text>
+        <Text style={{
+          ...TextStyles.display, lineHeight: 36, marginBottom: 8,
+          color: '#fff',
+          textShadowColor: 'rgba(0,0,0,0.5)',
+          textShadowOffset: { width: 0, height: 2 },
+          textShadowRadius: 16,
+        }}>
+          {cityName.toUpperCase()}
+        </Text>
+
+        {/* Date + travelers + weather inline */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+          {dateStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{dateStr}</Text>}
+          {dateStr && travelersStr && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
+          {travelersStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{travelersStr}</Text>}
+          {(dateStr || travelersStr) && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <FontAwesome name={weatherIcon(weather.conditions) as any} size={13} color="rgba(255,255,255,0.5)" />
+            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)' }}>{weather.high}° / {weather.low}°</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ─── Lede + Essentials ────────────────────────────── */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+        <Text style={{
+          ...TextStyles.bodyLg, lineHeight: 20, fontFamily: FontFamily.serif,
+          color: isDark ? '#e0d8cc' : '#4a3f35', marginBottom: 12,
+          textShadowColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)',
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 6,
+        }}>
+          Paris never reveals itself all at once. It unfolds — slowly, generously — in the steam
+          rising from a morning café crème, in the light that catches the Seine just before sunset.
+        </Text>
+
+        {/* Quick facts — inline text, matches web */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          {QUICK_FACTS.map((f) => (
+            <Text key={f.bold} style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63' }}>
+              <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text> · {f.text}
+            </Text>
+          ))}
+        </View>
+
+        {/* Forecast strip — editorial style */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 12,
+          paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1,
+          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <FontAwesome
+              name={weatherIcon(weather.conditions) as any}
+              size={14}
+              color={ACCENT_COLOR}
+            />
+            <Text style={{ ...TextStyles.bodyLgEm, fontWeight: '700', color: ACCENT_COLOR }}>
+              {weather.high}° / {weather.low}°
+            </Text>
+            <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
+          </View>
+          <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
+            {forecast.slice(0, 5).map((day) => (
+              <View key={day.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
+                <Text style={{ ...TextStyles.bodyLg }}>{day.icon}</Text>
+                <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
               </View>
             ))}
           </ScrollView>
         </View>
+      </View>
 
-        {/* ─── Emergency Contacts ─────────────────────────── */}
-        <CollapsibleSection title="Emergency Contacts" icon="phone" color={Red[500]}>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-            {EMERGENCY_INFO.map((e) => (
-              <Pressable
-                key={e.number}
-                onPress={() => Linking.openURL(`tel:${e.number}`)}
-                style={{ flex: 1, backgroundColor: Red[50], borderRadius: 10, padding: 10, alignItems: 'center' }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: '700', color: Red[600] }}>{e.number}</Text>
-                <Text style={{ fontSize: 9, color: colors.textSecondary, marginTop: 2 }}>{e.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={{ backgroundColor: Amber[50], borderRadius: 8, borderWidth: 1, borderColor: Amber[100], padding: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-              <FontAwesome name="shield" size={10} color={Amber[600]} style={{ marginTop: 2 }} />
-              <Text style={{ fontSize: 10, color: colors.text, flex: 1, lineHeight: 15 }}>
-                Keep valuables in hotel safe. Use front pockets in crowded areas. Watch for pickpockets at tourist hotspots.
-              </Text>
+      {/* ─── Things to Do — horizontal scroll cards ───────── */}
+      <View style={{ marginTop: 20 }}>
+        <View style={{ paddingHorizontal: 20 }}>
+          <SectionHeader accent="Explore" title="Things to Do" />
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+          decelerationRate="fast"
+          snapToInterval={SCREEN_WIDTH - 60}
+        >
+          {MOCK_EXPLORE_ITEMS.map((item) => (
+            <View key={item.id} style={{
+              width: SCREEN_WIDTH - 60, height: 220, borderRadius: 14, overflow: 'hidden',
+            }}>
+              <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
+                locations={[0, 0.4, 1]}
+                pointerEvents="none"
+                style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+              />
+              {/* Category pill */}
+              <View style={{
+                position: 'absolute', top: 10, left: 10,
+                backgroundColor: 'rgba(200,169,106,0.15)', borderWidth: 1,
+                borderColor: 'rgba(200,169,106,0.2)', borderRadius: 12,
+                paddingHorizontal: 10, paddingVertical: 4,
+              }}>
+                <Text style={{
+                  ...TextStyles.xs, fontWeight: '700', letterSpacing: 0.5,
+                  textTransform: 'uppercase', color: ACCENT_COLOR,
+                }}>{item.category}</Text>
+              </View>
+              {/* Bottom text */}
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
+                <Text style={{
+                  ...TextStyles.title, fontSize: 17, color: '#fff', marginBottom: 4,
+                }}>{item.title}</Text>
+                <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.6)', lineHeight: 16 }} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              </View>
             </View>
-          </View>
-        </CollapsibleSection>
-
-        {/* ─── Getting Around ────────────────────────────────── */}
-        <CollapsibleSection title="Getting Around" icon="bus" color={Sky[500]}>
-          {TRANSPORT_OPTIONS.map((t) => (
-            <InfoRow key={t.name} icon={t.icon} iconColor={t.iconColor} label={t.name} value={t.description} />
           ))}
-        </CollapsibleSection>
+        </ScrollView>
+      </View>
 
-        {/* ─── Destination Tips ──────────────────────────────── */}
-        <CollapsibleSection title="Destination Tips" icon="lightbulb-o" color={Violet[500]}>
-          {DESTINATION_TIPS.map((tip) => (
-            <InfoRow key={tip.label} icon={tip.icon} iconColor={Violet[500]} label={tip.label} value={tip.value} />
-          ))}
-        </CollapsibleSection>
+      {/* ─── Quote Divider ────────────────────────────────── */}
+      <View style={{ paddingHorizontal: 32, paddingVertical: 24, alignItems: 'center' }}>
+        <Text style={{
+          ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
+          fontStyle: 'italic',
+          textAlign: 'center', color: isDark ? 'rgba(200,192,182,0.5)' : 'rgba(80,65,50,0.5)',
+          lineHeight: 22,
+        }}>
+          &ldquo;Paris is always a good idea.&rdquo;{' '}
+          <Text style={{ fontStyle: 'normal', opacity: 0.5 }}>— Audrey Hepburn</Text>
+        </Text>
+      </View>
 
-        {/* ─── Things to Check Out ───────────────────────────── */}
-        <CollapsibleSection title="Things to Check Out" icon="newspaper-o" color="#2563eb">
-          {MOCK_NEWS.map((item) => {
-            const config = NEWS_CATEGORY_CONFIG[item.category];
+      {/* ─── What's Going On — dark gradient news cards ───── */}
+      <View style={{ paddingHorizontal: 20 }}>
+        <SectionHeader accent="What's Happening" title="What's Going On" />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 10 }}
+          decelerationRate="fast"
+          snapToInterval={SCREEN_WIDTH - 60}
+        >
+          {news.map((item, i) => {
+            const grad = NEWS_GRADIENTS[i % NEWS_GRADIENTS.length];
             return (
               <Pressable
                 key={item.id}
                 onPress={() => item.url && Linking.openURL(item.url)}
-                style={{
-                  flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-                  backgroundColor: config.bg + '40', borderRadius: 10, padding: 10, marginBottom: 6,
-                }}
+                style={{ width: SCREEN_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
               >
-                <View style={{
-                  width: 32, height: 32, borderRadius: 8,
-                  backgroundColor: config.bg,
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <FontAwesome name={config.icon as any} size={13} color={config.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <View style={{ backgroundColor: config.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: config.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                        {config.label}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 9, color: colors.textTertiary }}>{item.source}</Text>
-                  </View>
-                  <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text }} numberOfLines={2}>{item.title}</Text>
-                  <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{item.snippet}</Text>
-                </View>
-                {item.url && (
-                  <FontAwesome name="external-link" size={10} color={colors.border} style={{ marginTop: 4 }} />
-                )}
+                <LinearGradient
+                  colors={[grad[0], grad[1]]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{ flex: 1, justifyContent: 'flex-end', padding: 16 }}
+                >
+                  {/* Gold accent line at top */}
+                  <View style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                    backgroundColor: 'rgba(200,169,106,0.3)',
+                  }} />
+                  <Text style={{
+                    ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
+                    textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
+                  }}>
+                    {item.category}
+                    {item.source ? <Text style={{ opacity: 0.5 }}> · {item.source}</Text> : null}
+                  </Text>
+                  <Text style={{
+                    ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
+                    fontWeight: '700',
+                    color: 'rgba(255,255,255,0.9)', lineHeight: 20, marginBottom: 6,
+                  }} numberOfLines={2}>{item.title}</Text>
+                  <Text style={{
+                    ...TextStyles.caption, color: 'rgba(255,255,255,0.5)', lineHeight: 16,
+                  }} numberOfLines={2}>{item.snippet}</Text>
+                </LinearGradient>
               </Pressable>
             );
           })}
-        </CollapsibleSection>
+        </ScrollView>
+      </View>
 
-        {/* ─── Quick Links ───────────────────────────────────── */}
-        <CollapsibleSection title="Quick Links" icon="external-link" color={ACCENT}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {QUICK_LINKS.map((link) => (
-              <Pressable
-                key={link.label}
-                onPress={() => Linking.openURL(link.url)}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  backgroundColor: ACCENT + '10',
-                  paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
-                }}
-              >
-                <FontAwesome name={link.icon as any} size={12} color={ACCENT} />
-                <Text style={{ fontSize: 12, fontWeight: '500', color: ACCENT }}>{link.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </CollapsibleSection>
+      {/* ─── Before You Go (essentials footer) ────────────── */}
+      <View style={{
+        marginTop: 28, paddingHorizontal: 20, paddingTop: 20,
+        borderTopWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      }}>
+        <Text style={{
+          ...TextStyles.title,
+          color: colors.text, marginBottom: 16,
+        }}>Before You Go</Text>
+
+        {/* Getting Around */}
+        <Text style={{
+          ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
+          textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 10,
+        }}>Getting Around</Text>
+        {TRANSPORT_INFO.map((t) => (
+          <Text key={t.name} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
+            <Text style={{ fontWeight: '600', color: colors.text }}>{t.name}</Text> — {t.text}
+          </Text>
+        ))}
+
+        {/* Good to Know */}
+        <Text style={{
+          ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
+          textTransform: 'uppercase', color: ACCENT_COLOR, marginTop: 18, marginBottom: 10,
+        }}>Good to Know</Text>
+        {GOOD_TO_KNOW.map((tip, i) => (
+          <Text key={i} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
+            {tip}
+          </Text>
+        ))}
+
+        {/* Emergency */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 16,
+          marginTop: 14, paddingTop: 12,
+          borderTopWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        }}>
+          <Text style={{
+            ...TextStyles.xs, fontWeight: '700', letterSpacing: 1,
+            textTransform: 'uppercase', color: isDark ? '#9e9689' : '#7a6e63',
+          }}>Emergency</Text>
+          {EMERGENCY_INFO.map((e) => (
+            <Pressable
+              key={e.number}
+              onPress={() => Linking.openURL(`tel:${e.number}`)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Text style={{ ...TextStyles.subhead, fontSize: 15, fontWeight: '700', color: 'rgba(239,68,68,0.7)' }}>{e.number}</Text>
+              <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688' }}>{e.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
     </ScrollView>
+    </View>
     </PageTransition>
   );
 }

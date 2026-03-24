@@ -1,7 +1,7 @@
 import { View, ScrollView, Text, Pressable, Linking, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, ITINERARY_COLORS, MOCK_WEATHER_FORECAST } from '@travyl/shared';
+import { useItineraryScreen, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTabAccent } from './_layout';
 
@@ -72,7 +72,7 @@ function InfoSectionCard({ section }: { section: InfoSection }) {
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
       <View style={{ backgroundColor: INFO_COLOR, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name={section.icon} size={14} color="#fff" />
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{section.title}</Text>
+        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{section.title}</Text>
       </View>
       <View style={{ padding: 14 }}>
         {section.items.map((item, i) => (
@@ -93,8 +93,8 @@ function InfoSectionCard({ section }: { section: InfoSection }) {
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 2 }}>{item.label}</Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>{item.value}</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginBottom: 2 }}>{item.label}</Text>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>{item.value}</Text>
             </View>
             {/^\+?\d[\d\s-]+$/.test(item.value.trim()) && (
               <FontAwesome name="phone" size={14} color={INFO_COLOR} />
@@ -106,26 +106,27 @@ function InfoSectionCard({ section }: { section: InfoSection }) {
   );
 }
 
-function WeatherForecastCard() {
+function WeatherForecastCard({ forecast }: {
+  forecast: { day: string; high: number; low: number; icon: string; condition: string }[];
+}) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
-  const forecast = MOCK_WEATHER_FORECAST;
 
   return (
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
       <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name="sun-o" size={14} color="#fff" />
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Weather Forecast</Text>
+        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Weather Forecast</Text>
       </View>
       <View style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           {forecast.map((day) => (
             <View key={day.day} style={{ alignItems: 'center', flex: 1 }}>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>{day.day}</Text>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary, marginBottom: 6 }}>{day.day}</Text>
               <FontAwesome name={weatherIcon(day.condition)} size={20} color="#f59e0b" />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT, marginTop: 4 }}>{day.high}°</Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{day.low}°</Text>
-              <Text style={{ fontSize: 9, color: colors.textTertiary, marginTop: 2, textAlign: 'center' }}>{day.condition}</Text>
+              <Text style={{ ...TextStyles.subhead, fontSize: 15, fontWeight: '700', color: ACCENT, marginTop: 4 }}>{day.high}°</Text>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{day.low}°</Text>
+              <Text style={{ ...TextStyles.xs, color: colors.textTertiary, marginTop: 2, textAlign: 'center' }}>{day.condition}</Text>
             </View>
           ))}
         </View>
@@ -148,7 +149,7 @@ function QuickLinksCard() {
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
       <View style={{ backgroundColor: ACCENT, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name="external-link" size={14} color="#fff" />
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Quick Links</Text>
+        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Quick Links</Text>
       </View>
       <View style={{ padding: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {links.map((link) => (
@@ -166,7 +167,7 @@ function QuickLinksCard() {
             }}
           >
             <FontAwesome name={link.icon} size={12} color={ACCENT} />
-            <Text style={{ fontSize: 12, fontWeight: '500', color: ACCENT }}>{link.label}</Text>
+            <Text style={{ ...TextStyles.body, fontWeight: '500', color: ACCENT }}>{link.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -179,6 +180,8 @@ export default function InfoScreen() {
   const { trip, isLoading } = useItineraryScreen(id);
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
+
+  const forecast = trip?.trip_context?.weather?.forecast ?? [];
 
   if (isLoading) {
     return (
@@ -198,16 +201,16 @@ export default function InfoScreen() {
           <FontAwesome name="info-circle" size={20} color={INFO_COLOR} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: ACCENT }}>
+          <Text style={{ ...TextStyles.subhead, fontWeight: '700', color: ACCENT }}>
             {trip?.destination ?? 'Trip'} Info
           </Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+          <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 2 }}>
             Everything you need to know for your trip
           </Text>
         </View>
       </View>
 
-      <WeatherForecastCard />
+      {forecast.length > 0 && <WeatherForecastCard forecast={forecast} />}
       <InfoSectionCard section={TRANSPORT_INFO} />
       <InfoSectionCard section={EMERGENCY_CONTACTS} />
       <InfoSectionCard section={DESTINATION_TIPS} />

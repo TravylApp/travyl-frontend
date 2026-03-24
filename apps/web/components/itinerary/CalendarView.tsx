@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { CalendarActivity, CollaboratorPresence } from '@travyl/shared';
-import { MOCK_CALENDAR_ACTIVITIES, MOCK_DAYS, MOCK_COLLABORATORS } from '@travyl/shared';
+const MOCK_COLLABORATORS: CollaboratorPresence[] = [];
+const MOCK_DAYS: { dayLabel: string; dateLabel: string; theme?: string }[] = [];
 import { useItineraryContext } from './ItineraryContext';
 
 // ─── Constants ──────────────────────────────────────────────

@@ -52,7 +52,8 @@ export default function RootLayout() {
     'Satoshi-Medium': require('../assets/fonts/Satoshi-Medium.ttf'),
     'Satoshi-Bold': require('../assets/fonts/Satoshi-Bold.ttf'),
     'Satoshi-Black': require('../assets/fonts/Satoshi-Black.ttf'),
-    ...FontAwesome.font,
+    'Lustria-Regular': require('../assets/fonts/Lustria-Regular.ttf'),
+    FontAwesome: require('../assets/fonts/FontAwesome.ttf'),
   });
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      console.log('Front-end developed by JPB Developments — https://www.jpbdevelopments.com');
     }
   }, [loaded]);
 

@@ -33,6 +33,8 @@ interface LeafletMapProps {
   zoom?: number;
   height?: number | string;
   className?: string;
+  /** Render locations as clean pill labels instead of dots */
+  labelMarkers?: boolean;
 }
 
 function createIcon(color: string, isSelected: boolean): L.DivIcon {
@@ -59,6 +61,29 @@ function createIcon(color: string, isSelected: boolean): L.DivIcon {
   });
 }
 
+function createLabelIcon(name: string): L.DivIcon {
+  // Extract emoji and text
+  const emoji = name.match(/^\p{Emoji_Presentation}/u)?.[0] ?? ''
+  const text = emoji ? name.slice(emoji.length).trim() : name
+  return L.divIcon({
+    className: '',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    html: `<div style="
+      display:flex;flex-direction:column;align-items:center;gap:2px;
+      pointer-events:auto;cursor:default;
+    ">
+      <div style="font-size:28px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${emoji || '📍'}</div>
+      <div style="
+        background:white;border-radius:6px;padding:2px 6px;
+        box-shadow:0 1px 4px rgba(0,0,0,0.12);
+        font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:600;
+        color:#1e293b;white-space:nowrap;line-height:1.2;
+      ">${text}</div>
+    </div>`,
+  });
+}
+
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
@@ -71,6 +96,7 @@ export default function LeafletMap({
   zoom = 13,
   height = 300,
   className = '',
+  labelMarkers = false,
 }: LeafletMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -96,6 +122,18 @@ export default function LeafletMap({
       markersRef.current.clear();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Invalidate size when container resizes (e.g. animated panel open)
+  useEffect(() => {
+    const el = containerRef.current;
+    const map = mapRef.current;
+    if (!el || !map) return;
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   // Single-location marker
@@ -127,16 +165,17 @@ export default function LeafletMap({
     const bounds = L.latLngBounds([]);
     locations!.forEach((loc) => {
       const selected = loc.id === selectedId;
-      const icon = createIcon(loc.color, selected);
-      const marker = L.marker([loc.lat, loc.lng], { icon })
-        .addTo(map)
-        .bindPopup(
+      const icon = labelMarkers ? createLabelIcon(loc.name) : createIcon(loc.color, selected);
+      const marker = L.marker([loc.lat, loc.lng], { icon }).addTo(map);
+      if (!labelMarkers) {
+        marker.bindPopup(
           `<div style="font-family:system-ui,sans-serif;min-width:120px;">
             <div style="font-weight:600;font-size:13px;color:#1e293b;margin-bottom:2px;">${loc.name}</div>
             <div style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;background:${loc.color}15;color:${loc.color};font-weight:500;">${loc.category}</div>
           </div>`,
           { closeButton: false },
         );
+      }
       markersRef.current.set(loc.id, marker);
       bounds.extend([loc.lat, loc.lng]);
     });
@@ -144,7 +183,7 @@ export default function LeafletMap({
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
-  }, [locations, selectedId, isMulti]);
+  }, [locations, selectedId, isMulti, labelMarkers]);
 
   // Pan to selected
   useEffect(() => {

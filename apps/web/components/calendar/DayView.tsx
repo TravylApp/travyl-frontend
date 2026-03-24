@@ -3,7 +3,7 @@ import { TimeGutter } from './TimeGutter'
 import { DayColumn } from './DayColumn'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
 
-interface DayViewProps {
+export interface DayViewProps {
   dayIndex: number
   label: string
   activities: CalendarActivity[]
@@ -11,8 +11,11 @@ interface DayViewProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
-  onCreateActivity?: (dayIndex: number, startHour: number) => void
+  onSelectEvent: (id: string, anchorEl?: HTMLElement) => void
+  onDeselect: () => void
+  pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
+  onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
 }
 
 export function DayView({
@@ -24,7 +27,10 @@ export function DayView({
   timeRange,
   tripStartDate,
   onSelectEvent,
-  onCreateActivity,
+  onDeselect,
+  pendingDrop = null,
+  onResizeEvent,
+  onContextMenu,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -42,7 +48,10 @@ export function DayView({
           tripStartDate={tripStartDate}
           onSelectEvent={onSelectEvent}
           onClickDayHeader={undefined}
-          onCreateActivity={onCreateActivity}
+          onDeselect={onDeselect}
+          pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+          onResizeEvent={onResizeEvent}
+          onContextMenu={onContextMenu}
         />
       </div>
     </div>

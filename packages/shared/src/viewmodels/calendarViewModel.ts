@@ -2,22 +2,59 @@ import type { Activity } from '../types'
 import type { CalendarActivity } from '../types'
 
 const ACTIVITY_COLORS: Record<string, string> = {
-  sightseeing: '#4a7dff',
-  dining:      '#e67e22',
-  tour:        '#1abc9c',
-  cultural:    '#9b59b6',
-  shopping:    '#e74c3c',
-  nightlife:   '#8e44ad',
-  outdoor:     '#2ecc71',
-  museum:      '#f39c12',
-  transport:   '#3498db',
-  hotel:       '#6c7b8a',
+  sightseeing: '#003594',
+  dining:      '#D97706',
+  tour:        '#0d9488',
+  cultural:    '#7C3AED',
+  shopping:    '#dc2626',
+  nightlife:   '#9333ea',
+  outdoor:     '#059669',
+  museum:      '#d97706',
+  transport:   '#2563eb',
+  hotel:       '#6b7280',
 }
 
-const DEFAULT_ACTIVITY_COLOR = '#6b7b9e'
+const DEFAULT_ACTIVITY_COLOR = '#6b7280'
 
 export function getActivityColor(type: string): string {
   return ACTIVITY_COLORS[type] ?? DEFAULT_ACTIVITY_COLOR
+}
+
+const ACTIVITY_COLORS_DARK_BG: Record<string, string> = {
+  sightseeing: '#1e3a5f',
+  dining:      '#78350f',
+  tour:        '#134e4a',
+  cultural:    '#4c1d95',
+  shopping:    '#7f1d1d',
+  nightlife:   '#581c87',
+  outdoor:     '#064e3b',
+  museum:      '#78350f',
+  transport:   '#1e3a5f',
+  hotel:       '#374151',
+}
+
+const ACTIVITY_COLORS_DARK_BORDER: Record<string, string> = {
+  sightseeing: '#4a7ab5',
+  dining:      '#F59E0B',
+  tour:        '#14b8a6',
+  cultural:    '#8b5cf6',
+  shopping:    '#f87171',
+  nightlife:   '#a78bfa',
+  outdoor:     '#10b981',
+  museum:      '#fbbf24',
+  transport:   '#60a5fa',
+  hotel:       '#9ca3af',
+}
+
+const DEFAULT_ACTIVITY_COLOR_DARK_BG = '#374151'
+const DEFAULT_ACTIVITY_COLOR_DARK_BORDER = '#9ca3af'
+
+export function getActivityColorDark(type: string): string {
+  return ACTIVITY_COLORS_DARK_BG[type] ?? DEFAULT_ACTIVITY_COLOR_DARK_BG
+}
+
+export function getActivityColorDarkBorder(type: string): string {
+  return ACTIVITY_COLORS_DARK_BORDER[type] ?? DEFAULT_ACTIVITY_COLOR_DARK_BORDER
 }
 
 function parseTimeToHours(time: string): number {

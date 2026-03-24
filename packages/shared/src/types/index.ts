@@ -1,5 +1,9 @@
 // Core entity types — mirrors the Supabase schema
 
+export type Visibility = 'private' | 'link' | 'public'
+export type LinkPermission = 'viewer' | 'editor'
+export type CollaboratorRole = 'viewer' | 'editor'
+
 export interface Profile {
   id: string;
   email: string;
@@ -8,6 +12,48 @@ export interface Profile {
   onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface TripContextData {
+  hero_image_url?: string;
+  hero_images?: string[];
+  lat?: number;
+  lng?: number;
+  lede_text?: string;
+  quick_facts?: {
+    currency?: string;
+    language?: string;
+    timezone?: string;
+    power?: string;
+    transport?: string;
+    taxi?: string;
+    tipping?: string;
+    water?: string;
+    emergency?: string;
+  };
+  weather?: {
+    current?: { high: number; low: number; condition: string };
+    forecast?: { day: string; high: number; low: number; icon: string; condition: string }[];
+  };
+  explore_items?: {
+    id: string;
+    title: string;
+    subtitle?: string;
+    category: string;
+    description: string;
+    image?: string;
+    tags?: string[];
+  }[];
+  news?: {
+    id: string;
+    title: string;
+    snippet: string;
+    category: 'event' | 'advisory' | 'news' | 'tip';
+    source: string;
+    date: string;
+    url?: string;
+    image?: string;
+  }[];
 }
 
 export interface Trip {
@@ -21,16 +67,21 @@ export interface Trip {
   currency: string;
   travelers: number;
   status: 'planning' | 'booked' | 'active' | 'completed' | 'abandoned';
-  trip_context: Record<string, unknown>;
+  trip_context: TripContextData;
   is_generated: boolean;
-  is_shared: boolean;
+  visibility: Visibility;
+  link_permission: LinkPermission;
   share_link_token: string | null;
-  share_link_role: 'viewer' | 'editor';
   forked_from_trip_id: string | null;
   fork_count: number;
-  is_public: boolean;
   theme: string;
   custom_theme_color: string | null;
+  tab_color_overrides?: Record<string, string>;
+  itinerary_color_overrides?: Record<string, string>;
+  hidden_tabs?: Record<string, boolean>;
+  is_public?: boolean;
+  is_shared?: boolean;
+  cover_image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -238,30 +289,93 @@ export interface DiscoverItem {
 
 // ─── Budget Types ───────────────────────────────────────────
 
-export interface BudgetExpense {
-  id: string;
-  description: string;
-  amount: number;
+export interface TripBudgetCategory {
+  id: string
+  trip_id: string
+  category: string
+  budgeted: number
+  sort_order: number
+  created_by: string
+  created_at: string
+  updated_at: string
 }
 
-export interface BudgetItem {
-  id: string;
-  category: string;
-  budgeted: number;
-  actual: number;
-  fixed: boolean;
-  expenses?: BudgetExpense[];
+export interface TripManualExpense {
+  id: string
+  trip_id: string
+  category_id: string
+  description: string
+  amount: number
+  currency: string
+  created_by: string
+  created_at: string
+}
+
+export interface BudgetCategoryData {
+  id: string
+  name: string
+  budgeted: number
+  actual: number
+  calendarItems: Array<{
+    id: string
+    name: string
+    day: number
+    time?: string
+    cost: number
+    originalCurrency?: string
+  }>
+  manualExpenses: TripManualExpense[]
+  percentUsed: number
 }
 
 // ─── Packing Types ──────────────────────────────────────────
 
-export interface PackingItem {
-  item: string;
-  packed: boolean;
+export const PACKING_CATEGORIES = ['clothing', 'toiletries', 'electronics', 'documents', 'accessories', 'essentials'] as const
+export type PackingCategory = (typeof PACKING_CATEGORIES)[number]
+
+export interface DbPackingItem {
+  id: string
+  trip_id: string
+  user_id: string
+  name: string
+  category: PackingCategory
+  is_packed: boolean
+  packed_by: string | null
+  packed_at: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+  user_display_name?: string
+  user_avatar_url?: string
 }
 
-export interface PackingList {
-  [category: string]: PackingItem[];
+export interface PackingAuditEntry {
+  id: string
+  trip_id: string
+  user_id: string
+  item_id: string | null
+  action: 'added' | 'packed' | 'unpacked' | 'removed'
+  item_name: string
+  created_at: string
+  user_display_name?: string
+  user_avatar_url?: string
+}
+
+export interface CatalogItem {
+  name: string
+  category: PackingCategory
+  tags: string[]
+}
+
+export interface PackingSuggestion {
+  id: string
+  trip_id: string
+  user_id: string
+  name: string
+  category: PackingCategory
+  reason: string
+  status: 'pending' | 'accepted' | 'dismissed'
+  created_at: string
 }
 
 export interface WeatherInfo {
@@ -307,6 +421,20 @@ export interface PlaceItem {
 
 export type ViewMode = 'week' | 'day'
 
+export interface ActivityData {
+  category?: string
+  location_name?: string
+  image_url?: string
+  rating?: number
+  flight_number?: string
+  airline?: string
+  check_in?: string
+  check_out?: string
+  booking_ref?: string
+  pollResult?: 'remove'
+  unscheduled?: boolean
+}
+
 export interface CalendarActivity {
   id: string;
   title: string;
@@ -329,6 +457,63 @@ export interface CalendarActivity {
   parentId?: string;
   /** Optional hex color override */
   color?: string;
+  /** For multi-day activities (hotels). Same as day if omitted. */
+  endDay?: number;
+  /** For map integration */
+  latitude?: number;
+  /** For map integration */
+  longitude?: number;
+  /** DB sort_order */
+  sortOrder?: number;
+  pollResult?: 'remove'
+  /** True when removed from calendar by a rescope but not deleted. */
+  unscheduled?: boolean
+  /** Flight number for flight/transport activities */
+  flightNumber?: string
+  /** Airline name for flight/transport activities */
+  airline?: string
+  /** Check-in date/time for hotel activities */
+  checkIn?: string
+  /** Check-out date/time for hotel activities */
+  checkOut?: string
+  /** Booking confirmation reference */
+  bookingRef?: string
+}
+
+export interface Poll {
+  activityId: string
+  startedBy: string
+  startedAt: string
+  status: 'active' | 'resolved'
+  result: 'keep' | 'remove' | ''
+  votes: Record<string, 'yes' | 'no'>
+}
+
+// ─── Suggestion / For You Panel ─────────────────────────────
+
+export interface SuggestionCard {
+  id: string
+  name: string
+  category: ActivityCategory
+  imageUrl: string
+  duration: number        // hours
+  price: number | null
+  currency: string
+  rating: number | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+  source: 'ai' | 'search'
+  relevanceScore: number
+  reason?: string
+}
+
+export interface RecommendationSection {
+  sectionType: 'destination' | 'category' | 'affinity' | 'schedule' | 'social'
+  sectionTitle: string
+  sectionSubtitle?: string
+  suggestions: SuggestionCard[]
 }
 
 export interface UserAwareness {
@@ -339,8 +524,10 @@ export interface UserAwareness {
   isOnline: boolean;
   selectedEventId: string | null;
   currentView: ViewMode;
+  selectedDayIndex?: number;
   /** Legacy itinerary view — selected block id */
   selectedBlockId?: string;
+  cursor?: { day: number; hour: number };
 }
 
 /** Alias for UserAwareness — used by legacy itinerary components */
@@ -534,4 +721,167 @@ export interface TravelBoard {
   icon: string;
   iconColor: string;
   images: string[];
+}
+
+// ─── Trip Sharing ────────────────────────────────────────────
+
+// TripVisibility is an alias for Visibility (exported at top of file)
+export type TripVisibility = Visibility
+
+export interface TripNote {
+  id: string
+  trip_id: string
+  user_id: string
+  day: number
+  hour: number
+  text: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TripCollaborator {
+  id: string
+  trip_id: string
+  user_id: string | null
+  invited_email: string | null
+  invite_token: string | null
+  role_type: CollaboratorRole
+  invite_status: 'pending' | 'accepted' | 'declined'
+  invited_by: string
+  accepted_at: string | null
+  created_at: string
+}
+
+export interface EffectivePermission {
+  role: 'owner' | 'editor' | 'viewer'
+  canEdit: boolean
+  canDelete: boolean
+  canInvite: boolean
+  canCreateNotes: boolean
+}
+
+// ─── Trip Card / Member Types ──────────────────────────────
+
+export interface TripMember {
+  id: string;
+  name: string;
+  avatar?: string;
+  role: 'owner' | 'editor' | 'viewer';
+}
+
+export interface MockTripCard extends Trip {
+  image: string;
+  images?: string[];
+  route?: TripRoute;
+  members?: TripMember[];
+}
+
+// ─── Flight / Hotel Detail Types ────────────────────────────
+
+export interface MockFlightDetail {
+  id: string;
+  type: 'arrival' | 'return';
+  airline: string;
+  flightNumber: string;
+  originIata: string;
+  originName: string;
+  destIata: string;
+  destName: string;
+  departureTime: string;
+  arrivalTime: string;
+  departureTerminal: string;
+  arrivalTerminal: string;
+  gate: string;
+  boardingTime: string;
+  duration: string;
+  aircraft: string;
+  cabinClass: string;
+  seats: string;
+  baggage: string;
+  meal: string;
+  wifi: boolean;
+  confirmation: string;
+  status: 'On Time' | 'Delayed' | 'Boarding';
+  pricePerTraveler: number;
+  totalPrice: number;
+  currency: string;
+  isBooked: boolean;
+}
+
+export interface MockHotelRoom {
+  id: string;
+  name: string;
+  image: string;
+  images?: string[];
+  amenities: string[];
+  pricePerNight: number;
+  size?: string;
+  beds?: string;
+  maxGuests?: number;
+  isSelected: boolean;
+}
+
+export interface MockHotelGuestRatings {
+  overall: number;
+  label: string;
+  cleanliness: number;
+  staff: number;
+  location: number;
+  comfort: number;
+  value: number;
+  totalRatings: number;
+}
+
+export interface MockHotelDetail {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  starRating: number;
+  checkInTime: string;
+  checkOutTime: string;
+  checkInDate: string;
+  checkOutDate: string;
+  amenities: string[];
+  images: string[];
+  rooms: MockHotelRoom[];
+  isBooked: boolean;
+  totalPrice: number;
+  currency: string;
+  guestRatings: MockHotelGuestRatings;
+  taxesAndFees: { cityTax: number; serviceFee: number; vat: number };
+  phone: string;
+  email: string;
+  website: string;
+  neighborhood: string;
+  confirmationNumber: string;
+}
+
+// ─── Packing ────────────────────────────────────────────────
+
+export interface PackingItem {
+  item: string;
+  packed: boolean;
+}
+
+export type PackingList = Record<string, PackingItem[]>;
+
+// ─── Budget ─────────────────────────────────────────────────
+
+export interface BudgetExpense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface BudgetItem {
+  id: string;
+  category: string;
+  budgeted: number;
+  actual: number;
+  fixed: boolean;
+  expenses: BudgetExpense[];
 }

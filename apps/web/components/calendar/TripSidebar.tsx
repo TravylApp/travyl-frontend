@@ -1,8 +1,12 @@
 'use client'
 import { useState, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import { Map, Calendar, PageEdit, Wallet, Settings } from 'iconoir-react'
-import { MiniCalendar } from './MiniCalendar'
+import {
+  Home, CalendarDays, BookOpen, Plane, Building2, UtensilsCrossed,
+  Compass, Luggage, PieChart, Heart, Car, Settings,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_EXPANDED_WIDTH,
@@ -12,54 +16,34 @@ import {
 interface NavItem {
   id: string
   label: string
-  icon: React.ReactNode
+  icon: LucideIcon
+  /** Defined = navigate to /trip/[id]/[segment]; undefined = in-page via onNavChange */
+  segment?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    icon: <Map width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
-  },
-  {
-    id: 'calendar',
-    label: 'Calendar',
-    icon: <Calendar width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
-  },
-  {
-    id: 'info',
-    label: 'Info',
-    icon: <PageEdit width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
-  },
-  {
-    id: 'budget',
-    label: 'Budget',
-    icon: <Wallet width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    icon: <Settings width={18} height={18} strokeWidth={1.5} aria-hidden="true" />,
-  },
+  { id: 'overview',     label: 'Overview',     icon: Home,              segment: '' },
+  { id: 'calendar',     label: 'Calendar',     icon: CalendarDays,      segment: 'calendar' },
+  { id: 'itinerary',    label: 'Itinerary',    icon: BookOpen,          segment: 'itinerary' },
+  { id: 'hotels',       label: 'Hotels',       icon: Building2,         segment: 'hotels' },
+  { id: 'flights',      label: 'Flights',      icon: Plane,             segment: 'flights' },
+  { id: 'restaurants',  label: 'Restaurants',  icon: UtensilsCrossed,   segment: 'restaurants' },
+  { id: 'activities',   label: 'Explore',      icon: Compass,           segment: 'activities' },
+  { id: 'packing',      label: 'Packing',      icon: Luggage,           segment: 'packing' },
+  { id: 'budget',       label: 'Budget',       icon: PieChart,          segment: 'budget' },
+  { id: 'cars',         label: 'Car Rental',   icon: Car,               segment: 'cars' },
+  { id: 'favorites',    label: 'Favorites',    icon: Heart,             segment: 'favorites' },
+  { id: 'settings',     label: 'Settings',     icon: Settings,          segment: 'settings' },
 ]
 
 interface TripSidebarProps {
-  activeNav?: string
+  tripId?: string
   onNavChange?: (id: string) => void
-  tripStartDate: Date
-  tripDays: number
-  currentDay: number
-  onSelectDay: (dayIndex: number) => void
 }
 
-export function TripSidebar({
-  activeNav = 'calendar',
-  onNavChange,
-  tripStartDate,
-  tripDays,
-  currentDay,
-  onSelectDay,
-}: TripSidebarProps) {
+export function TripSidebar({ tripId, onNavChange }: TripSidebarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [expanded, setExpanded] = useState(false)
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -72,9 +56,22 @@ export function TripSidebar({
   }
 
   function handleMouseLeave() {
-    collapseTimer.current = setTimeout(() => {
-      setExpanded(false)
-    }, SIDEBAR_COLLAPSE_DELAY)
+    collapseTimer.current = setTimeout(() => setExpanded(false), SIDEBAR_COLLAPSE_DELAY)
+  }
+
+  function isActive(item: NavItem): boolean {
+    if (!tripId) return false
+    const base = `/trip/${tripId}`
+    if (item.segment === '') return pathname === base
+    return pathname === `${base}/${item.segment}`
+  }
+
+  function handleClick(item: NavItem) {
+    if (item.segment === undefined) {
+      onNavChange?.(item.id)
+    } else if (tripId) {
+      router.push(item.segment ? `/trip/${tripId}/${item.segment}` : `/trip/${tripId}`)
+    }
   }
 
   return (
@@ -83,26 +80,29 @@ export function TripSidebar({
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative flex flex-col shrink-0 overflow-hidden border-r border-white/10 bg-[#141824]"
+      className="relative flex flex-col self-stretch shrink-0 overflow-hidden border-r border-[var(--cal-border)] bg-[var(--cal-surface)]"
       aria-label="Trip navigation"
     >
-      {/* Nav items */}
       <ul className="flex flex-col gap-0.5 p-2 mt-2">
         {NAV_ITEMS.map((item) => {
-          const isActive = item.id === activeNav
+          const active = isActive(item)
+          const Icon = item.icon
           return (
             <li key={item.id}>
               <button
-                onClick={() => onNavChange?.(item.id)}
-                aria-current={isActive ? 'page' : undefined}
+                onClick={() => handleClick(item)}
+                aria-current={active ? 'page' : undefined}
+                title={!expanded ? item.label : undefined}
                 className={[
                   'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors',
-                  isActive
-                    ? 'bg-blue-600/20 text-blue-400'
-                    : 'text-gray-400 hover:bg-white/10 hover:text-white',
+                  active
+                    ? 'bg-[var(--cal-nav-active-bg)] text-[var(--cal-nav-active-text)]'
+                    : 'text-[var(--cal-nav-inactive)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]',
                 ].join(' ')}
               >
-                <span className="shrink-0">{item.icon}</span>
+                <span className="shrink-0">
+                  <Icon width={18} height={18} strokeWidth={1.5} aria-hidden="true" />
+                </span>
                 {expanded && (
                   <span className="whitespace-nowrap overflow-hidden text-ellipsis">
                     {item.label}
@@ -113,21 +113,7 @@ export function TripSidebar({
           )
         })}
       </ul>
-
-      {/* Spacer */}
       <div className="flex-1" />
-
-      {/* Mini calendar (expanded only) */}
-      {expanded && (
-        <div className="border-t border-white/10">
-          <MiniCalendar
-            tripStartDate={tripStartDate}
-            tripDays={tripDays}
-            currentDay={currentDay}
-            onSelectDay={onSelectDay}
-          />
-        </div>
-      )}
     </motion.nav>
   )
 }

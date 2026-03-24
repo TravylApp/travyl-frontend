@@ -2,10 +2,10 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, ArrowLeft, Send, Mail, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuthStore, LOGIN_DESTINATIONS, PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from '@travyl/shared';
-import { Footer, OceanWave } from '@/components/home';
+import { useAuthStore, LOGIN_DESTINATIONS } from '@travyl/shared';
 
 export default function LoginPage() {
   return (
@@ -55,8 +55,7 @@ function LoginPageInner() {
   const dest = LOGIN_DESTINATIONS[currentPage];
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <div className="flex-1 flex">
+    <div className="flex min-h-screen">
       {/* Left Panel — Magazine Carousel */}
       <div className="hidden lg:flex lg:flex-1 relative overflow-hidden bg-black">
         <AnimatePresence mode="wait">
@@ -65,7 +64,7 @@ function LoginPageInner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="absolute inset-0"
           >
             <img src={dest.image} alt={dest.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -79,11 +78,7 @@ function LoginPageInner() {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-white font-black text-2xl tracking-[2px]">TRAVYL</span>
             <div className="w-7 h-7 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
-              <svg viewBox={PAPER_PLANE_VIEWBOX} className="w-4 h-4 -rotate-12" fill="none">
-                {PAPER_PLANE_PATHS.map((d, i) => (
-                  <path key={i} d={d} fill="white" />
-                ))}
-              </svg>
+              <PaperPlane size={16} className="-rotate-12 text-white" />
             </div>
           </div>
           <p className="text-white/40 text-[10px] tracking-[2px] uppercase">March 2026 &bull; Issue 024</p>
@@ -96,7 +91,7 @@ function LoginPageInner() {
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 30 }}
-            transition={{ duration: 0.4, ease: [0.43, 0.13, 0.23, 0.96] }}
+            transition={{ duration: 0.2, ease: [0.43, 0.13, 0.23, 0.96] }}
             className="absolute bottom-12 left-12 max-w-[550px] pointer-events-none"
           >
             <h1 className="text-white font-serif text-[80px] xl:text-[100px] 2xl:text-[120px] leading-[0.85] tracking-tighter mb-3">
@@ -145,7 +140,7 @@ function LoginPageInner() {
               <motion.button
                 key={i}
                 onClick={() => setCurrentPage(i)}
-                className={`relative h-2 rounded-full transition-all duration-500 group/dot ${
+                className={`relative h-2 rounded-full transition-all duration-200 group/dot ${
                   i === currentPage ? 'w-12 bg-white' : 'w-2 bg-white/30 hover:bg-white/60'
                 }`}
                 whileHover={{ scale: 1.2 }}
@@ -195,7 +190,7 @@ function LoginPageInner() {
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.1 }}
               onClick={() => router.push('/')}
               className="hidden lg:flex items-center gap-2 text-[#1e3a5f]/60 hover:text-[#1e3a5f] transition-colors mb-8 text-sm group"
             >
@@ -210,7 +205,7 @@ function LoginPageInner() {
                 initial={{ opacity: 0, x: isSignUp ? 20 : -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: isSignUp ? -20 : 20 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.15 }}
                 className="mb-7"
               >
                 <h2 className="text-[#1e3a5f] text-[22px] font-black tracking-tight mb-2">
@@ -313,7 +308,7 @@ function LoginPageInner() {
                         onChange={(e) => setName(e.target.value)}
                         onFocus={() => setFocusedField('name')}
                         onBlur={() => setFocusedField(null)}
-                        className="w-full h-[56px] pl-11 pr-4 rounded-xl border border-[#1e3a5f]/10 bg-white text-[#1e3a5f] placeholder:text-[#1e3a5f]/30 focus:outline-none focus:border-[#1e3a5f]/40 focus:ring-2 focus:ring-[#1e3a5f]/10 transition-all text-sm"
+                        className="w-full h-[56px] pl-11 pr-4 rounded-xl border border-[#1e3a5f]/10 bg-white text-[#1e3a5f] placeholder:text-[#1e3a5f]/30 focus:outline-none focus:border-[#1e3a5f]/40 focus:ring-2 focus:ring-[#1e3a5f]/10 transition-colors text-sm"
                       />
                     </div>
                   </motion.div>
@@ -332,7 +327,7 @@ function LoginPageInner() {
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
-                  className="w-full h-[56px] pl-11 pr-4 rounded-xl border border-[#1e3a5f]/10 bg-white text-[#1e3a5f] placeholder:text-[#1e3a5f]/30 focus:outline-none focus:border-[#1e3a5f]/40 focus:ring-2 focus:ring-[#1e3a5f]/10 transition-all text-sm"
+                  className="w-full h-[56px] pl-11 pr-4 rounded-xl border border-[#1e3a5f]/10 bg-white text-[#1e3a5f] placeholder:text-[#1e3a5f]/30 focus:outline-none focus:border-[#1e3a5f]/40 focus:ring-2 focus:ring-[#1e3a5f]/10 transition-colors text-sm"
                 />
               </div>
 
@@ -348,7 +343,7 @@ function LoginPageInner() {
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  className="w-full h-[56px] pl-11 pr-12 rounded-xl border border-[#1e3a5f]/10 bg-white text-[#1e3a5f] placeholder:text-[#1e3a5f]/30 focus:outline-none focus:border-[#1e3a5f]/40 focus:ring-2 focus:ring-[#1e3a5f]/10 transition-all text-sm"
+                  className="w-full h-[56px] pl-11 pr-12 rounded-xl border border-[#1e3a5f]/10 bg-white text-[#1e3a5f] placeholder:text-[#1e3a5f]/30 focus:outline-none focus:border-[#1e3a5f]/40 focus:ring-2 focus:ring-[#1e3a5f]/10 transition-colors text-sm"
                 />
                 <motion.button
                   type="button"
@@ -377,7 +372,7 @@ function LoginPageInner() {
                 className="w-full h-[56px] rounded-xl bg-[#1e3a5f] text-white text-sm font-semibold hover:bg-[#2a4d78] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-[#1e3a5f]/20 hover:shadow-xl hover:shadow-[#1e3a5f]/30 disabled:opacity-50"
               >
                 {submitting ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
-                <Send size={16} className="-rotate-12" />
+                <PaperPlane size={16} className="-rotate-12" />
               </motion.button>
             </form>
 
@@ -401,9 +396,6 @@ function LoginPageInner() {
           </div>
         </div>
       </div>
-      </div>
-      <OceanWave />
-      <Footer />
     </div>
   );
 }

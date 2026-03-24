@@ -1,7 +1,7 @@
 import { SVGProps } from "react";
 import { PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from "@travyl/shared";
 
-interface PaperPlaneProps extends SVGProps<SVGSVGElement> {
+interface PaperPlaneProps extends Omit<SVGProps<SVGSVGElement>, 'ref'> {
   size?: number;
 }
 

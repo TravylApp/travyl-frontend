@@ -54,46 +54,44 @@ export function MiniCalendar({
   }
 
   return (
-    <div className="select-none px-2 py-3">
+    <div className="p-2 text-xs select-none">
       {/* Month label */}
-      <p className="mb-2 text-center text-xs font-medium text-gray-400 uppercase tracking-wide">
+      <div className="text-center text-[var(--cal-text-secondary)] font-serif font-normal tracking-wide mb-1.5">
         {MONTH_NAMES[month]} {year}
-      </p>
+      </div>
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {WEEKDAY_LABELS.map((d) => (
-          <span key={d} className="text-center text-[10px] text-gray-600 font-medium">
-            {d}
-          </span>
+      <div className="grid grid-cols-7 gap-0.5 mb-1">
+        {WEEKDAY_LABELS.map((label) => (
+          <div
+            key={label}
+            className="text-center text-[var(--cal-text-tertiary)] font-medium"
+          >
+            {label}
+          </div>
         ))}
       </div>
 
-      {/* Day cells */}
-      <div className="grid grid-cols-7 gap-y-0.5">
+      {/* Day grid */}
+      <div className="grid grid-cols-7 gap-0.5">
         {cells.map((dom, idx) => {
-          if (dom === null) {
-            return <span key={`empty-${idx}`} />
-          }
+          if (dom === null) return <div key={idx} className="h-5" />
 
-          const isInTrip = dom >= tripStartDom && dom <= tripEndDom
-          const isCurrent =
-            dom === currentDom && currentDomMonth === month
+          const inTrip = dom >= tripStartDom && dom <= tripEndDom
+          const isCurrent = dom === currentDom && month === currentDomMonth
 
           return (
             <button
-              key={dom}
+              key={idx}
               onClick={() => handleCellClick(dom)}
-              disabled={!isInTrip}
-              aria-label={`Day ${dom}`}
-              aria-current={isCurrent ? 'date' : undefined}
+              disabled={!inTrip}
               className={[
-                'flex h-6 w-6 mx-auto items-center justify-center rounded-full text-[11px] transition-colors',
+                'h-5 w-5 flex items-center justify-center rounded text-[10px] transition-colors',
                 isCurrent
-                  ? 'bg-blue-600 text-white font-semibold'
-                  : isInTrip
-                  ? 'text-gray-200 hover:bg-white/10 cursor-pointer'
-                  : 'text-gray-700 cursor-default',
+                  ? 'bg-[#003594] text-white font-semibold'
+                  : inTrip
+                  ? 'text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]'
+                  : 'text-[var(--cal-border)] cursor-default',
               ].join(' ')}
             >
               {dom}

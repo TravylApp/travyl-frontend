@@ -3,14 +3,17 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useTrips, MOCK_TRIPS } from '@travyl/shared';
+import { useTrips } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
-import { Plus, Plane } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { PaperPlane } from '@/components/ui';
 import { Footer, OceanWave } from '@/components/home';
-import { ViewToggle, TripCard, TripListItem } from '@/components/trips';
+import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
 
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -72,7 +75,7 @@ function SkeletonCard() {
 export default function MyTripsPage() {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
         </div>
@@ -88,6 +91,90 @@ export default function MyTripsPage() {
   );
 }
 
+function getTripDuration(start: string, end: string): number {
+  const s = new Date(start + 'T00:00:00');
+  const e = new Date(end + 'T00:00:00');
+  return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Duration → flex weight (wider = longer trip) and row height
+function getTripWeight(days: number): number {
+  if (days <= 1) return 1;
+  if (days <= 3) return 1.3;
+  if (days <= 5) return 1.6;
+  if (days <= 7) return 2;
+  if (days <= 10) return 2.4;
+  return 3;
+}
+
+function getRowHeight(maxDays: number): number {
+  if (maxDays <= 3) return 200;
+  if (maxDays <= 5) return 240;
+  if (maxDays <= 7) return 280;
+  if (maxDays <= 10) return 320;
+  return 360;
+}
+
+// Pack trips into rows: always 2–3 cards per row, never 1
+function buildRows(trips: { trip: MockTripCard; duration: number; weight: number }[]) {
+  const rows: typeof trips[] = [];
+  let i = 0;
+
+  while (i < trips.length) {
+    const remaining = trips.length - i;
+
+    if (remaining <= 3) {
+      // Last few cards — put them all in one row
+      rows.push(trips.slice(i));
+      break;
+    }
+
+    // Decide: 2 or 3 cards in this row
+    // Use 3 cards when the next trips are shorter (lower weight), 2 when they're long
+    const totalWeight3 = trips[i].weight + trips[i + 1].weight + trips[i + 2].weight;
+    if (totalWeight3 <= 5.5) {
+      rows.push(trips.slice(i, i + 3));
+      i += 3;
+    } else {
+      rows.push(trips.slice(i, i + 2));
+      i += 2;
+    }
+  }
+
+  return rows;
+}
+
+function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
+  const items = trips.map((trip) => {
+    const duration = getTripDuration(trip.start_date, trip.end_date);
+    return { trip, duration, weight: getTripWeight(duration) };
+  });
+
+  const rows = buildRows(items);
+  let globalIdx = 0;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((row, rowIdx) => {
+        const maxDays = Math.max(...row.map((r) => r.duration));
+        const height = getRowHeight(maxDays);
+        const startIdx = globalIdx;
+        globalIdx += row.length;
+
+        return (
+          <div key={rowIdx} className="flex gap-3" style={{ height }}>
+            {row.map((item, j) => (
+              <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
+                <TripCard trip={item.trip} />
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function TripsContent() {
   const searchParams = useSearchParams();
   const statusParam = (searchParams.get('status') as StatusFilter) || 'all';
@@ -95,17 +182,14 @@ function TripsContent() {
 
   // Local state for view mode
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [modalOpen, setModalOpen] = useState(false)
 
   const { data: trips, isLoading, isError } = useTrips();
 
-  // Use real trips when available, otherwise fallback to mock data
-  const allTrips: MockTripCard[] = (trips?.length && !isError)
-    ? trips.map((t) => ({
-        ...t,
-        image: MOCK_TRIPS.find((m) => m.id === t.id)?.image
-          || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
-      }))
-    : MOCK_TRIPS;
+  const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
+    ...t,
+    image: t.cover_image_url ?? FALLBACK_IMAGE,
+  }))
 
   // Apply filters
   let displayTrips = filterTripsByStatus(allTrips, statusParam);
@@ -113,22 +197,26 @@ function TripsContent() {
 
   if (isLoading && !isError) {
     return (
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        <OceanWave />
+        <Footer />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex-1 w-full">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
@@ -140,6 +228,7 @@ function TripsContent() {
             {/* Plan a Trip Button */}
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
               style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
+              onClick={() => setModalOpen(true)}
             >
               <Plus size={16} />
               Plan a Trip
@@ -189,28 +278,65 @@ function TripsContent() {
 
         {/* Grid or List View */}
         {displayTrips.length > 0 ? (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {displayTrips.map((trip) => (
-                <TripListItem key={trip.id} trip={trip} />
-              ))}
-            </div>
-          )
+          (() => {
+            // Separate past trips from current/upcoming when viewing "all"
+            const currentTrips = statusParam === 'all'
+              ? displayTrips.filter((t) => getTripStatusFilter(t) !== 'past')
+              : statusParam === 'past' ? [] : displayTrips;
+            const pastTrips = statusParam === 'all'
+              ? displayTrips.filter((t) => getTripStatusFilter(t) === 'past')
+              : statusParam === 'past' ? displayTrips : [];
+
+            return (
+              <>
+                {/* Current / Upcoming / Active trips */}
+                {currentTrips.length > 0 && (
+                  viewMode === 'grid' ? (
+                    <TripMasonryGrid trips={currentTrips} />
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {currentTrips.map((trip) => (
+                        <TripListItem key={trip.id} trip={trip} />
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {/* Past trips section */}
+                {pastTrips.length > 0 && (
+                  <div className="mt-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <h2 className="text-lg font-semibold text-gray-400">Past Trips</h2>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                    {viewMode === 'grid' ? (
+                      <div className="relative">
+                        <div className="grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                          <TripMasonryGrid trips={pastTrips} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3 opacity-60">
+                        {pastTrips.map((trip) => (
+                          <TripListItem key={trip.id} trip={trip} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Plane size={32} className="text-gray-400" />
+              <PaperPlane size={32} className="text-gray-400" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800 mb-1">No trips yet</h2>
             <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>
             <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
               style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
+              onClick={() => setModalOpen(true)}
             >
               <Plus size={16} />
               Plan a Trip
@@ -220,6 +346,7 @@ function TripsContent() {
       </div>
       <OceanWave />
       <Footer />
+      <CreateTripModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

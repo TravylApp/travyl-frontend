@@ -1,4 +1,4 @@
-export { supabase } from './supabase';
+export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
   fetchSavedItems,
@@ -17,10 +17,34 @@ export {
   fetchUserPublicTrips,
   fetchTripByShareToken,
   updateTripVisibility,
+  ensureShareLinkToken,
   addToItinerary,
   removeFromItinerary,
   toggleFavorite,
   updateBudgetExpense,
   addBudgetExpense,
-  updateTripSettings,
+  updateTripThemeSettings,
+  updateTripDetails,
+  deleteTrip,
+  leaveTrip,
+  inviteCollaborator,
+  fetchCollaborators,
 } from './api';
+export {
+  fetchBudgetCategories,
+  upsertBudgetCategory,
+  deleteBudgetCategory,
+  fetchManualExpenses,
+  addManualExpense,
+  deleteManualExpense,
+} from './budgetService';
+export {
+  fetchPackingItems,
+  fetchPackingAuditLog,
+  insertPackingItem,
+  updatePackingItemPacked,
+  deletePackingItem,
+  fetchPackingSuggestions,
+  updateSuggestionStatus,
+  dismissAllSuggestions,
+} from './packingService';

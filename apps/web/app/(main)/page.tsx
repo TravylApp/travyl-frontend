@@ -1,28 +1,103 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
-import { Search, ArrowRight, MapPin, Calendar, Users } from "lucide-react";
-import { useHomeScreen, useHeroConfig, EASE_OUT_EXPO } from "@travyl/shared";
-import type { PlaceItem } from "@travyl/shared";
+import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
+import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
+import type { FollowUpQuestion, PlanResponse } from "@travyl/shared";
+import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
-import { useCyclingPlaceholder } from "@/hooks/useCyclingPlaceholder";
+import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
 import {
   HowItWorks,
   GetInspired,
   TravelMosaic,
-  ExplorePreview,
   TagUs,
   OceanWave,
   TakeoffTransition,
   Footer,
   ParallaxQuoteDivider,
 } from "@/components/home";
-import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
+import { memo } from "react";
+
+const PLACEHOLDER_PHRASES = [
+  "7 days in Paris with my partner...",
+  "A week in Tokyo exploring street food...",
+  "Family beach vacation in Bali...",
+  "Weekend getaway to the Swiss Alps...",
+  "Solo backpacking through Southeast Asia...",
+];
+
+const SUBTITLE_PHRASES = [
+  "Type your dream trip and let us plan it for you",
+  "Discover hidden gems around the world",
+  "Your next adventure starts with a single search",
+  "From idea to itinerary in seconds",
+  "Tell us where you want to go",
+];
+
+const CyclingSubtitle = memo(function CyclingSubtitle() {
+  const textRef = useCyclingPlaceholderRef(SUBTITLE_PHRASES, 40, 2500, 25);
+  return <><span ref={textRef} /><span className="animate-pulse">|</span></>;
+});
+
+const HeroSearchInput = memo(function HeroSearchInput({
+  tripQuery,
+  setTripQuery,
+  onSearch,
+  staticPlaceholder,
+  inputRef,
+}: {
+  tripQuery: string;
+  setTripQuery: (v: string) => void;
+  onSearch: () => void;
+  staticPlaceholder?: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  return (
+    <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
+      <Search className="text-gray-400 shrink-0" size={18} />
+      <input
+        ref={inputRef}
+        type="text"
+        value={tripQuery}
+        onChange={(e) => setTripQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onSearch()}
+        placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
+        className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
+      />
+    </div>
+  );
+});
+
+// ─── Follow-up question option card ─────────────────────────
+function OptionCard({ label, index, selected, onSelect }: {
+  label: string; index: number; selected: boolean; onSelect: () => void;
+}) {
+  const keys = ["A", "B", "C", "D", "E"];
+  return (
+    <button
+      onClick={onSelect}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
+        selected
+          ? "bg-[#1e3a5f] text-white shadow-md"
+          : "bg-white/10 text-white/80 hover:bg-white/20 border border-white/15"
+      }`}
+    >
+      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+        selected ? "bg-white/20 text-white" : "bg-white/10 text-white/50"
+      }`}>
+        {keys[index] || index + 1}
+      </span>
+      <span className="font-medium">{label}</span>
+    </button>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
@@ -42,26 +117,22 @@ export default function Home() {
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
-  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const PLACEHOLDER_PHRASES = [
-    "7 days in Paris with my partner...",
-    "A week in Tokyo exploring street food...",
-    "Family beach vacation in Bali...",
-    "Weekend getaway to the Swiss Alps...",
-    "Solo backpacking through Southeast Asia...",
-  ];
-  const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  // API-driven planning flow
+  const planner = useTripPlanner();
+  const [currentQIdx, setCurrentQIdx] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const planRef = useRef<PlanResponse | null>(null);
 
-  // Cycling subtitle phrases
-  const SUBTITLE_PHRASES = [
-    "Type your dream trip and let us plan it for you",
-    "Discover hidden gems around the world",
-    "Your next adventure starts with a single search",
-    "From idea to itinerary in seconds",
-    "Tell us where you want to go",
-  ];
-  const cyclingSubtitle = useCyclingPlaceholder(SUBTITLE_PHRASES, 40, 2500, 25);
+  const isClarifying = planner.state.phase === 'clarifying';
+  const isExtracting = planner.state.phase === 'extracting';
+  const isPlanning = planner.state.phase === 'planning';
+  const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : [];
+  const currentQuestion = questions[currentQIdx];
+
+  // Cycling placeholders live in isolated memo components above
+  // to avoid re-rendering the entire page every ~25ms
 
   // Cycling suggestion pills
   const allSuggestions = heroConfig?.suggestions?.length
@@ -111,16 +182,20 @@ export default function Home() {
   });
   const dividerBgY = useTransform(dividerScroll, [0, 1], [-80, 80]);
 
-  // Hero slideshow — use API image if available, otherwise cycle defaults
-  const FALLBACK_SLIDES = [
-    "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop",
-    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&fit=crop",
-    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&fit=crop",
-    "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1600&fit=crop",
-  ];
-  const heroSlides = heroConfig?.background_image_url
-    ? [heroConfig.background_image_url]
-    : FALLBACK_SLIDES;
+  // Hero slideshow — fetch from backend API, no hardcoded fallbacks
+  const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
+  const heroImageQueries = usePlaceImages(HERO_DESTINATIONS);
+
+  // Only include slides that have actually loaded
+  const heroSlides = useMemo(() => {
+    if (heroConfig?.background_image_url) return [heroConfig.background_image_url];
+    const loaded = heroImageQueries
+      .map((q) => q.data?.url)
+      .filter((url): url is string => !!url);
+    return loaded.length > 0 ? loaded : HERO_DESTINATIONS.map(() =>
+      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop&fm=webp&q=80`
+    ).slice(0, 1); // single fallback while loading
+  }, [heroConfig?.background_image_url, heroImageQueries]);
 
   useEffect(() => {
     if (heroSlides.length <= 1) return;
@@ -130,29 +205,150 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
+  // Handle selecting an answer option
+  const handleOptionSelect = useCallback((questionId: string, option: string) => {
+    const newAnswers = { ...selectedAnswers, [questionId]: option };
+    setSelectedAnswers(newAnswers);
+
+    // Auto-advance to next question after a brief pause
+    if (currentQIdx < questions.length - 1) {
+      setTimeout(() => setCurrentQIdx((i) => i + 1), 400);
+    } else {
+      // All questions answered — submit to plan
+      setTimeout(() => {
+        setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+        setShowTakeoff(true);
+        planner.submitAnswers(newAnswers);
+      }, 600);
+    }
+  }, [selectedAnswers, currentQIdx, questions.length, planner]);
+
+  // Handle keyboard shortcuts for options (1-5 or A-E)
+  useEffect(() => {
+    if (!isClarifying || !currentQuestion) return;
+    const handler = (e: KeyboardEvent) => {
+      const opts = currentQuestion.options;
+      let idx = -1;
+      if (e.key >= '1' && e.key <= '5') idx = parseInt(e.key) - 1;
+      else if (e.key.toLowerCase() >= 'a' && e.key.toLowerCase() <= 'e') idx = e.key.toLowerCase().charCodeAt(0) - 97;
+      if (idx >= 0 && idx < opts.length) {
+        handleOptionSelect(currentQuestion.id, opts[idx]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isClarifying, currentQuestion, handleOptionSelect]);
+
+  const handleConvReset = useCallback(() => {
+    planner.reset();
+    setCurrentQIdx(0);
+    setSelectedAnswers({});
+    setTripQuery("");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [planner, setTripQuery]);
+
   const onSearch = () => {
-    if (handleSearch()) {
+    const val = tripQuery.trim();
+    if (!val) return;
+    // Send to backend for extraction
+    planner.submitPrompt(val);
+    setTripQuery("");
+  };
+
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [takeoffCompleted, setTakeoffCompleted] = useState(false);
+  const isSaving = useRef(false);
+  const user = useAuthStore((s) => s.user);
+
+  // Show takeoff when planning starts
+  useEffect(() => {
+    if (planner.state.phase === 'planning' && !showTakeoff) {
       setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
+      setLoadingError(null);
+      setTakeoffCompleted(false);
     }
-  };
+    if (planner.state.phase === 'error' && showTakeoff) {
+      setLoadingError(planner.state.message);
+    }
+  }, [planner.state.phase]);
+
+  // When plan completes — save if logged in, otherwise store for preview
+  useEffect(() => {
+    if (planner.state.phase !== 'complete' || isSaving.current) return;
+    isSaving.current = true;
+    const plan = planner.state.plan;
+
+    (async () => {
+      if (!plan?.extracted) {
+        setShowTakeoff(false);
+        isSaving.current = false;
+        router.push("/trips");
+        return;
+      }
+
+      if (user) {
+        // Logged in — save to Supabase, then redirect to trip page
+        try {
+          const tripId = await savePlanToSupabase(plan as any);
+          setTakeoffCompleted(true);
+          await new Promise((r) => setTimeout(r, 800));
+          setShowTakeoff(false);
+          planner.reset();
+          isSaving.current = false;
+          router.push(`/trip/${tripId}`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to save trip';
+          console.error('Save failed:', msg);
+          setLoadingError(msg);
+          isSaving.current = false;
+        }
+      } else {
+        // Not logged in — store plan for preview, no save needed yet
+        try {
+          sessionStorage.setItem('pendingPlan', JSON.stringify(plan));
+        } catch (_) {}
+        setTakeoffCompleted(true);
+        await new Promise((r) => setTimeout(r, 800));
+        setShowTakeoff(false);
+        planner.reset();
+        isSaving.current = false;
+        router.push('/trip/preview');
+      }
+    })();
+  }, [planner.state.phase]);
+
+  const plannerStatusMessage = useMemo(() => {
+    switch (planner.state.phase) {
+      case 'extracting': return 'Understanding your trip...';
+      case 'planning': return 'Building your perfect itinerary...';
+      case 'complete': return 'Saving your trip...';
+      default: return undefined;
+    }
+  }, [planner.state.phase]);
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
       <section ref={heroRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
         {/* Slideshow background */}
-        <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0" style={{ scale: heroBgScale, y: heroBgY }}>
+        <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
             <img
               key={src}
               src={src}
               alt=""
+              width={1600}
+              height={900}
+              fetchPriority={i === 0 ? "high" : "low"}
+              decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"
               style={{ opacity: heroSlide % heroSlides.length === i ? 1 : 0 }}
             />
           ))}
         </motion.div>
+        {/* Dark overlay for text contrast */}
+        <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/30 via-black/20 to-black/40" />
 
         <motion.div
           className="relative z-10 max-w-3xl mx-auto text-center w-full"
@@ -175,7 +371,7 @@ export default function Home() {
             {heroConfig?.subtitle ? (
               <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
             ) : (
-              <>{cyclingSubtitle}<span className="animate-pulse">|</span></>
+              <CyclingSubtitle />
             )}
           </motion.p>
 
@@ -186,52 +382,136 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.6, ease: EASE_OUT_EXPO }}
             className="max-w-2xl mx-auto"
           >
+            {/* Answered options summary */}
+            {isClarifying && Object.keys(selectedAnswers).length > 0 && (
+              <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
+                <div className="bg-black/30 backdrop-blur-md rounded-2xl px-5 py-2.5 border border-white/15 shadow-lg">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-white/80 truncate">
+                      {Object.values(selectedAnswers).join(" · ")}
+                    </p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {questions.map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                          style={{
+                            background: i < currentQIdx ? "rgba(255,255,255,0.7)" : i === currentQIdx ? "white" : "rgba(255,255,255,0.2)",
+                          }}
+                        />
+                      ))}
+                      <button
+                        onClick={handleConvReset}
+                        className="ml-1.5 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white/80 transition-colors"
+                        title="Start over"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading state while extracting */}
+            {(isExtracting || isPlanning) && (
+              <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
+                <div className="bg-black/30 backdrop-blur-md rounded-full px-6 py-3 border border-white/15 flex items-center justify-center gap-3 shadow-lg">
+                  <p className="text-white text-sm font-medium drop-shadow-sm">
+                    {isExtracting ? "Understanding your trip..." : "Building your itinerary..."}
+                  </p>
+                  <div className="flex gap-1 shrink-0">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse"
+                        style={{ animationDelay: `${i * 200}ms` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error state */}
+            {planner.state.phase === 'error' && (
+              <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
+                <div className="bg-red-500/20 backdrop-blur-md rounded-full px-5 py-2.5 border border-red-400/30 flex items-center justify-between gap-3 shadow-lg">
+                  <p className="text-sm text-white">{planner.state.message}</p>
+                  <button onClick={handleConvReset} className="text-white/70 hover:text-white text-xs font-medium">Try again</button>
+                </div>
+              </div>
+            )}
+
+            {/* Search bar */}
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
               <div className="flex items-center p-1.5 gap-2">
-                <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
-                  <Search className="text-gray-400 shrink-0" size={18} />
-                  <input
-                    type="text"
-                    value={tripQuery}
-                    onChange={(e) => setTripQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && onSearch()}
-                    placeholder={tripQuery ? "" : (heroConfig?.search_placeholder ?? typingPlaceholder)}
-                    className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
-                  />
-                </div>
+                <HeroSearchInput
+                  tripQuery={tripQuery}
+                  setTripQuery={setTripQuery}
+                  onSearch={onSearch}
+                  staticPlaceholder={heroConfig?.search_placeholder}
+                  inputRef={inputRef}
+                />
                 <button
                   ref={sendButtonRef}
                   onClick={onSearch}
-                  className="bg-[#1e3a5f] hover:bg-[#162d4a] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
+                  disabled={isExtracting || isPlanning}
+                  className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
                 >
                   <PaperPlane size={16} />
                 </button>
               </div>
             </div>
 
-            {/* Suggestion Pills — cycling groups */}
-            <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
-              <AnimatePresence mode="wait">
-                <motion.div
+            {/* Follow-up questions — multiple choice cards */}
+            {isClarifying && currentQuestion && (
+              <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out]">
+                <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/15 shadow-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles size={14} className="text-white/60" />
+                    <p className="text-sm text-white font-semibold">{currentQuestion.question}</p>
+                    <span className="ml-auto text-[10px] text-white/40 font-medium">
+                      {currentQIdx + 1}/{questions.length}
+                    </span>
+                  </div>
+                  <div className="grid gap-2">
+                    {currentQuestion.options.map((opt, i) => (
+                      <OptionCard
+                        key={opt}
+                        label={opt}
+                        index={i}
+                        selected={selectedAnswers[currentQuestion.id] === opt}
+                        onSelect={() => handleOptionSelect(currentQuestion.id, opt)}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-white/30 mt-2 text-center">
+                    Press {currentQuestion.options.map((_, i) => ["A","B","C","D","E"][i]).join("/")} to select
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Suggestion Pills — only show when idle */}
+            {planner.state.phase === 'idle' && (
+              <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
+                <div
                   key={pillGroup}
-                  className="flex justify-center gap-1.5 sm:gap-2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.4 }}
+                  className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
                 >
                   {visiblePills.map((s) => (
-                    <motion.button
+                    <button
                       key={s.id}
                       onClick={() => setTripQuery(s.label)}
                       className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"
                     >
                       {s.label}
-                    </motion.button>
+                    </button>
                   ))}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       </section>
@@ -243,20 +523,14 @@ export default function Home() {
             { value: 500, suffix: "K+", decimals: 0, label: "Destinations", desc: "Discover unexpected gems, even in your own backyard." },
             { value: 95, suffix: "M+", decimals: 0, label: "Fellow Travelers", desc: "Share your adventures and learn from our global community." },
             { value: 2.0, suffix: "B+", decimals: 1, label: "Trips Planned", desc: "Navigate your way and keep a record of all your travels." },
-          ].map((item, i) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: i * 0.15, ease: EASE_OUT_EXPO }}
-            >
+          ].map((item) => (
+            <div key={item.label}>
               <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
                 <AnimatedCounter value={item.value} suffix={item.suffix} decimals={item.decimals} />
               </p>
               <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#5c4a3a]">{item.label}</p>
               <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#3d2f23]">{item.desc}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </section>
@@ -385,7 +659,6 @@ export default function Home() {
 
       <GetInspired />
       <TagUs />
-      <ExplorePreview onItemClick={(item) => setSelectedPlace(item)} />
 
       {/* ─── Ocean Wave ─────────────────────────────────────── */}
       <OceanWave />
@@ -393,25 +666,21 @@ export default function Home() {
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />
 
-      {/* ─── Place Detail Overlay ────────────────────────────── */}
-      <AnimatePresence>
-        {selectedPlace && (
-          <PlaceDetailOverlay
-            place={selectedPlace}
-            onClose={() => setSelectedPlace(null)}
-            onNavigate={(p) => setSelectedPlace(p)}
-          />
-        )}
-      </AnimatePresence>
-
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition
         visible={showTakeoff}
         buttonRect={buttonRect}
-        onComplete={() => {
+        statusMessage={plannerStatusMessage}
+        completed={takeoffCompleted}
+        error={loadingError}
+        onRetry={() => {
           setShowTakeoff(false);
-          router.push("/trips");
+          setLoadingError(null);
+          setTakeoffCompleted(false);
+          planner.reset();
+          isSaving.current = false;
         }}
+        onComplete={() => {}}
       />
     </div>
   );

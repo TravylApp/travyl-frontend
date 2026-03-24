@@ -9,6 +9,9 @@ build/
 out/
 *.tsbuildinfo
 
+# SST
+.sst/
+
 # Environment
 .env
 .env.*
@@ -17,6 +20,7 @@ out/
 
 # Claude
 .claude/
+CLAUDE.md
 docs/plans/
 
 # OS
@@ -35,8 +39,12 @@ android/
 
 # Debug
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # Supabase
 supabase/.temp/
+
+.superpowers/
+.sst/
+sst-env.d.ts
+.worktrees/
+.worktrees/
