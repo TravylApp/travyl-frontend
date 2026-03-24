@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
 
   const existing = trip.trip_context ?? {}
 
-  // Skip if already enriched
-  if (existing.hero_image_url && existing.wiki && existing.quick_facts) {
+  // Skip if fully enriched (has all key fields including explore_items)
+  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0) {
     return NextResponse.json({ status: 'already_enriched' })
   }
 
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       : exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6)) || undefined,
     lat, lng,
     lede_text: `A ${durationDays}-day trip to ${city}.`,
-    explore_items: exploreItems.length > 0 ? exploreItems : undefined,
+    explore_items: exploreItems,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
     hotels: hotelData?.length > 0 ? hotelData : undefined,
     news: newsData?.length > 0 ? newsData : undefined,
@@ -141,10 +141,13 @@ export async function POST(req: NextRequest) {
     } : undefined,
   }
 
-  // Merge: only fill missing fields
+  // Merge: fill missing fields and replace empty arrays
   const merged = { ...existing }
   for (const [key, value] of Object.entries(fresh)) {
-    if (value != null && merged[key] == null) {
+    if (value == null) continue
+    const current = merged[key]
+    // Fill if missing, or replace empty arrays with real data
+    if (current == null || (Array.isArray(current) && current.length === 0 && Array.isArray(value) && value.length > 0)) {
       merged[key] = value
     }
   }
