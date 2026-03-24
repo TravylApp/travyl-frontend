@@ -186,7 +186,9 @@ function TripsContent() {
 
   const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
     ...t,
-    image: `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
+    image: t.trip_context?.hero_image_url
+      || t.trip_context?.hero_images?.[0]
+      || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
   }))
 
   // Apply filters

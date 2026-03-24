@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Calendar, Users, PieChart, MapPin, Users2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+// Using <img> instead of next/image — hero images come from many dynamic domains
+import { Calendar, Users, PieChart, MapPin, Users2, Pencil, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
@@ -27,6 +29,8 @@ interface TripCardProps {
 
 export function TripCard({ trip }: TripCardProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
   const cardRef = useRef<HTMLDivElement>(null);
@@ -50,16 +54,16 @@ export function TripCard({ trip }: TripCardProps) {
     >
       <Link
         href={`/trip/${trip.id}`}
-        className="block rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
+        className="group block rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
       >
         {/* Image Header - Smaller height */}
         <div className="relative h-36 overflow-hidden">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={trip.image}
             alt={trip.destination}
-            fill
-            className="object-cover hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
@@ -74,6 +78,35 @@ export function TripCard({ trip }: TripCardProps) {
               <Users2 size={12} className="text-[#1e3a5f]" />
             </div>
           )}
+
+          {/* Edit + Delete — Top Left, shown on hover */}
+          <div className="absolute top-3 left-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/trip/${trip.id}/settings`); }}
+              className="p-1.5 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-110 transition-all"
+              title="Edit trip"
+            >
+              <Pencil size={12} className="text-[#1e3a5f]" />
+            </button>
+            <button
+              onClick={async (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
+                try {
+                  const res = await fetch('/api/trips/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tripId: trip.id }),
+                  });
+                  if (res.ok) queryClient.invalidateQueries({ queryKey: ['trips'] });
+                } catch {}
+              }}
+              className="p-1.5 rounded-full bg-red-500/80 backdrop-blur-sm hover:bg-red-600 hover:scale-110 transition-all"
+              title="Delete trip"
+            >
+              <Trash2 size={12} className="text-white" />
+            </button>
+          </div>
         </div>
 
         {/* Card Body - White background with trip name prominent */}

@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { PaperPlane } from '@/components/ui'
 import { useAuthStore } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
+import { enrichTripContext } from '@/lib/enrichTrip'
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
 
@@ -176,23 +177,41 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
 
     setSubmitting(true)
     try {
-      const { data, error: insertError } = await supabase
-        .from('trips')
-        .insert({
+      // Parse city/country from destination string
+      const parts = destination.trim().split(',')
+      const city = parts[0]?.trim() || destination.trim()
+      const country = parts[parts.length - 1]?.trim() || ''
+      const lat = selectedCoords?.lat ?? 0
+      const lng = selectedCoords?.lon ?? 0
+      const durationDays = startDate && endDate
+        ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
+        : 5
+
+      // Enrich trip context with all APIs (hero image, wiki, weather, etc.)
+      const tripContext = await enrichTripContext({ city, country, lat, lng, durationDays })
+
+      // Create via server API (works with or without auth)
+      const res = await fetch('/api/trips/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: title.trim(),
           destination: destination.trim(),
           start_date: startDate,
           end_date: endDate,
           status: 'planning',
           user_id: user?.id ?? null,
-        })
-        .select()
-        .single()
+          trip_context: tripContext,
+        }),
+      })
 
-      if (insertError) {
-        setError(insertError.message)
+      if (!res.ok) {
+        const err = await res.json()
+        setError(err.error || 'Failed to create trip')
         return
       }
+
+      const data = await res.json()
 
       await queryClient.invalidateQueries({ queryKey: ['trips'] })
       onClose()

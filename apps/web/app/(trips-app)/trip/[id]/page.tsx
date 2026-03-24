@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
 import type { TripContextData } from '@travyl/shared';
@@ -363,11 +363,44 @@ function TripMosaic({ photos, destination }: { photos: string[]; destination?: s
 
 // ── Main Page ────────────────────────────────────────────────
 
+/** Check if trip_context needs enrichment (missing key overview fields) */
+function needsEnrichment(ctx: TripContextData | undefined | null): boolean {
+  if (!ctx) return true;
+  // If missing hero image AND wiki AND quick_facts, it's essentially empty
+  return !ctx.hero_image_url && !ctx.wiki && !ctx.quick_facts;
+}
+
 export default function TripOverview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { trip, isLoading } = useItineraryScreen(id);
+  const { trip, isLoading, refetch } = useItineraryScreen(id);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+  const [enriching, setEnriching] = useState(false);
+  const enrichAttempted = useRef(false);
   const revealRef = useRevealOnScroll(!!trip);
+
+  // Auto-enrich: if trip exists but trip_context is empty, call server-side enrichment
+  const autoEnrich = useCallback(async () => {
+    if (!trip || !trip.destination || enrichAttempted.current) return;
+    if (!needsEnrichment(trip.trip_context)) return;
+    if (trip.id?.startsWith('local-')) return;
+
+    enrichAttempted.current = true;
+    setEnriching(true);
+    try {
+      const res = await fetch('/api/trips/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: trip.id }),
+      });
+      if (res.ok) refetch();
+    } catch {
+      // Enrichment failed silently
+    } finally {
+      setEnriching(false);
+    }
+  }, [trip, refetch]);
+
+  useEffect(() => { autoEnrich(); }, [autoEnrich]);
 
   const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news ?? [];
 
@@ -380,10 +413,12 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     });
   };
 
-  if (isLoading) {
+  if (isLoading || enriching) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse text-sm text-gray-400">Loading trip...</div>
+        <div className="animate-pulse text-sm text-gray-400">
+          {enriching ? 'Generating your trip overview...' : 'Loading trip...'}
+        </div>
       </div>
     );
   }

@@ -79,8 +79,7 @@ const HeroSearchInput = memo(function HeroSearchInput({
 // ─── Conversational follow-up questions ─────────────────────
 const TRIP_QUESTIONS = [
   { key: "destination", placeholder: "Where do you want to go?" },
-  { key: "dates", placeholder: "When are you going? (e.g. March 15-20, next week)" },
-  { key: "duration", placeholder: "How many days?" },
+  { key: "dates", placeholder: "When are you going? (e.g. March 15-20, 5 days in April)" },
   { key: "companions", placeholder: "Who's coming along?" },
   { key: "vibe", placeholder: "What's the vibe? (foodie, adventure, relaxing...)" },
   { key: "budget", placeholder: "Any budget range? (budget, mid-range, luxury)" },
@@ -92,7 +91,8 @@ function buildChainSentence(answers: TripAnswers): string {
   const parts: string[] = [];
   if (answers.duration) parts.push(answers.duration);
   if (answers.destination) parts.push(`in ${answers.destination}`);
-  if (answers.dates) parts.push(answers.dates);
+  // Only show dates if different from duration (avoid "7 days · 7 days")
+  if (answers.dates && answers.dates !== answers.duration) parts.push(answers.dates);
   if (answers.companions) parts.push(`with ${answers.companions}`);
   if (answers.vibe) parts.push(answers.vibe);
   if (answers.budget) parts.push(answers.budget.toLowerCase().includes("budget") ? answers.budget : `${answers.budget} budget`);
@@ -251,73 +251,25 @@ export default function Home() {
       sessionStorage.setItem(`trip-${tempId}`, JSON.stringify(basicTrip));
       sessionStorage.setItem('pendingTripId', tempId);
 
-      // Now enrich with all API data in the background
+      // Now enrich with all API data
       const { supabase } = await import('@travyl/shared');
+      const { enrichTripContext } = await import('@/lib/enrichTrip');
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Fetch explore items for the destination (multiple categories)
-      let exploreItems: { id: string; title: string; description: string; category: string; image: string }[] = [];
-      const eLat = extracted.destination.lat;
-      const eLng = extracted.destination.lng;
-      try {
-        const cats = ['sightseeing', 'restaurant', 'museum'];
-        const results = await Promise.all(
-          cats.map(async (cat) => {
-            const r = await fetch(`/api/places?lat=${eLat}&lng=${eLng}&category=${cat}&limit=4`);
-            return r.ok ? r.json() : [];
-          })
-        );
-        const seen = new Set<string>();
-        exploreItems = results.flat().filter((p: any) => {
-          if (seen.has(p.id)) return false;
-          seen.add(p.id);
-          return true;
-        }).map((p: any) => ({
-          id: p.id,
-          title: p.name,
-          description: p.description || p.tagline || p.category,
-          category: p.category,
-          image: p.image,
-        }));
-      } catch {}
+      const tripContext = await enrichTripContext({
+        city: extracted.destination.city,
+        country: extracted.destination.country,
+        lat: extracted.destination.lat,
+        lng: extracted.destination.lng,
+        durationDays,
+        composition: extracted.travelers?.composition,
+        interests: extracted.interests,
+      });
 
-      // Fetch hero image, weather, hotels, news, and landmark photos in parallel
-      const lat = extracted.destination.lat;
-      const lng = extracted.destination.lng;
-      const city = extracted.destination.city;
-      const country = extracted.destination.country;
-      // Map country to cuisine area for TheMealDB
-      const COUNTRY_CUISINE: Record<string, string> = {
-        France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
-        Mexico: 'Mexican', India: 'Indian', China: 'Chinese', Thailand: 'Thai',
-        Morocco: 'Moroccan', Turkey: 'Turkish', Greece: 'Greek', Vietnam: 'Vietnamese',
-        UK: 'British', USA: 'American', Canada: 'Canadian', Ireland: 'Irish',
-        Portugal: 'Portuguese', Brazil: 'Brazilian', Egypt: 'Egyptian', Poland: 'Polish',
-      };
-      const cuisineArea = COUNTRY_CUISINE[country] ?? '';
-
-      const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData] = await Promise.all([
-        fetch(`/api/images?q=${encodeURIComponent(city)}`)
-          .then(r => r.ok ? r.json().then((d: any) => d.url as string) : undefined).catch(() => undefined),
-        fetch(`/api/weather?location=${encodeURIComponent(dest)}&days=${durationDays}`)
-          .then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`/api/news?destination=${encodeURIComponent(city)}&limit=8`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`/api/places?lat=${lat}&lng=${lng}&category=sightseeing&limit=8`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`/api/country?name=${encodeURIComponent(country)}`)
-          .then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/wiki?q=${encodeURIComponent(city)}`)
-          .then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/holidays?country=${encodeURIComponent(extracted.destination.region?.substring(0, 2) ?? country.substring(0, 2))}&year=${new Date().getFullYear()}`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-        cuisineArea ? fetch(`/api/cuisine?area=${encodeURIComponent(cuisineArea)}`)
-          .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-        fetch(`/api/sunrise?lat=${lat}&lng=${lng}`)
-          .then(r => r.ok ? r.json() : null).catch(() => null),
-      ]);
+      // Use plan's fallback photo if enrichment didn't find one
+      if (!tripContext.hero_image_url && plan.destination_photo_url) {
+        tripContext.hero_image_url = plan.destination_photo_url;
+      }
 
       const tripData = {
         title: `${extracted.destination.city} Trip`,
@@ -329,52 +281,26 @@ export default function Home() {
         travelers: extracted.travelers?.count ?? 1,
         budget: extracted.daily_estimate_usd ? durationDays * extracted.daily_estimate_usd : null,
         currency: 'USD',
-        trip_context: {
-          // Prefer landmark photos for cover (scenic location images)
-          hero_image_url: landmarkPhotos[0]?.image || exploreItems[0]?.image || heroImageUrl || plan.destination_photo_url,
-          lede_text: `A ${durationDays}-day ${extracted.travelers?.composition ?? ''} trip to ${extracted.destination.city}. ${extracted.interests?.length ? 'Highlights include ' + extracted.interests.slice(0, 3).join(', ') + '.' : ''}`,
-          explore_items: exploreItems.length > 0 ? exploreItems : undefined,
-          // Landmark photos for the bottom mosaic (real location images)
-          hero_images: landmarkPhotos.length > 0
-            ? landmarkPhotos.filter((p: any) => p.image).map((p: any) => p.image).slice(0, 8)
-            : exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6),
-          weather: weatherData ? {
-            current: weatherData.current,
-            forecast: weatherData.forecast,
-          } : undefined,
-          hotels: hotelData.length > 0 ? hotelData : undefined,
-          news: newsData.length > 0 ? newsData : undefined,
-          country: countryInfo ?? undefined,
-          wiki: wikiData ?? undefined,
-          holidays: holidays.length > 0 ? holidays.slice(0, 10) : undefined,
-          cuisine: cuisineData.length > 0 ? cuisineData.slice(0, 6) : undefined,
-          sunrise: sunriseData ?? undefined,
-          quick_facts: countryInfo ? {
-            currency: `${countryInfo.currency?.code} (${countryInfo.currency?.symbol})`,
-            language: countryInfo.language,
-            timezone: countryInfo.timezone,
-            emergency: '112',
-          } : undefined,
-        },
+        trip_context: tripContext,
       };
 
       // Update the sessionStorage trip with enriched data
       sessionStorage.setItem(`trip-${tempId}`, JSON.stringify({ id: tempId, ...tripData }));
 
-      // Also try Supabase (may fail due to RLS — that's OK, local trip works)
+      // Save to Supabase via server API (works with or without auth)
       try {
-        const { data: supaTrip } = await supabase
-          .from('trips')
-          .insert({ ...tripData, user_id: session?.user?.id ?? null })
-          .select()
-          .single();
-        if (supaTrip) {
-          // Supabase succeeded — update pendingTripId to use the real ID
+        const res = await fetch('/api/trips/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tripData),
+        });
+        if (res.ok) {
+          const supaTrip = await res.json();
           sessionStorage.setItem('pendingTripId', supaTrip.id);
           sessionStorage.removeItem(`trip-${tempId}`);
         }
       } catch {
-        // Supabase failed — local trip is fine
+        // Server failed — local trip still works
       }
     } catch {
       // API call failed — still navigate to trips page
@@ -475,17 +401,28 @@ export default function Home() {
     if (isConversing) {
       const currentQ = TRIP_QUESTIONS[convStep];
       let normalized = val;
-      if (currentQ.key === "duration") {
-        // "5" → "5 days", "2" → "2 days", but leave "weekend" / "1 week" as-is
-        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} days`;
-        else if (!/day|night|week/i.test(val)) normalized = `${val.trim()} days`;
+      const newAnswersExtra: TripAnswers = {};
+      if (currentQ.key === "dates") {
+        // Also extract duration from date answer (e.g. "5 days in April", "March 15-20")
+        const durMatch = val.match(/(\d+)\s*(?:day|night|week)s?/i);
+        if (durMatch) {
+          const num = parseInt(durMatch[1]);
+          const unit = durMatch[0].match(/day|night|week/i)![0].toLowerCase();
+          newAnswersExtra.duration = `${num} ${unit}${num !== 1 ? 's' : ''}`;
+        } else if (/^\d+$/.test(val.trim())) {
+          // Just a number like "5" → treat as days
+          normalized = `${val.trim()} days`;
+          newAnswersExtra.duration = normalized;
+        } else if (/weekend/i.test(val)) {
+          newAnswersExtra.duration = 'weekend';
+        }
       } else if (currentQ.key === "companions") {
         // "2" → "2 people", but leave "family" / "partner" as-is
         if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} people`;
       } else if (currentQ.key === "destination") {
         normalized = val.trim().replace(/\b\w/g, (c) => c.toUpperCase());
       }
-      const newAnswers = { ...answers, [currentQ.key]: normalized };
+      const newAnswers = { ...answers, [currentQ.key]: normalized, ...newAnswersExtra };
       setAnswers(newAnswers);
       setTripQuery("");
 
