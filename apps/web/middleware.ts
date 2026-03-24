@@ -12,9 +12,18 @@ export async function middleware(request: NextRequest) {
 
   const res = NextResponse.next()
 
+  // Skip Supabase middleware if credentials are not configured (dev mode)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('your-project')) {
+    // Missing Supabase credentials - skip auth checks in development
+    return res
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {

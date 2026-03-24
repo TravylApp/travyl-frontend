@@ -15,9 +15,15 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   session: null,
-  loading: true,
+  loading: false, // Start with loading false when Supabase is not configured
 
   initialize: () => {
+    if (!supabase) {
+      // Supabase not configured, return no-op unsubscribe
+      set({ loading: false });
+      return () => {};
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       set({ session, user: session?.user ?? null, loading: false });
     });
@@ -32,11 +38,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signIn: async (email, password) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   },
 
   signUp: async (email, password, name?) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -52,6 +60,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    if (!supabase) throw new Error('Supabase is not configured');
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   },

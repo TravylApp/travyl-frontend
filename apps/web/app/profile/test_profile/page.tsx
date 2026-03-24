@@ -136,24 +136,9 @@ export default function ProfilePage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Get auth state
-  const { user, loading: authLoading } = useAuthStore();
-
   // Fetch trips on mount
   useEffect(() => {
     async function loadTrips() {
-      // Wait for auth to finish loading
-      if (authLoading) {
-        return;
-      }
-
-      // Check if user is authenticated
-      if (!user) {
-        setError("You must be signed in to view your profile");
-        setIsLoading(false);
-        return;
-      }
-
       // Check if Supabase is configured
       if (!supabase) {
         setError("Supabase is not configured. Please add your credentials to .env.local");
@@ -204,7 +189,7 @@ export default function ProfilePage() {
     }
 
     loadTrips();
-  }, [authLoading, user]);
+  }, []);
 
   const toggleFavorite = (name: string) => {
     setFavoritedNames((prev) => {
@@ -337,41 +322,6 @@ export default function ProfilePage() {
       return updated;
     });
   }, []);
-
-  // Check authentication before showing content
-  if (authLoading || isLoading) {
-    return (
-      <DndProvider backend={HTML5Backend}>
-        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
-          <Loader2 size={48} className="text-[#1e3a5f] animate-spin" />
-        </div>
-      </DndProvider>
-    );
-  }
-
-  if (!user && !authLoading) {
-    return (
-      <DndProvider backend={HTML5Backend}>
-        <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] flex items-center justify-center p-6">
-          <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <User size={40} className="text-blue-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-[#1e3a5f] mb-3">Sign In to View Your Profile</h2>
-            <p className="text-gray-600 mb-8">
-              You need to be logged in to view your trips, favorites, and profile settings.
-            </p>
-            <a
-              href="/login"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
-            >
-              Sign In
-            </a>
-          </div>
-        </div>
-      </DndProvider>
-    );
-  }
 
   return (
     <DndProvider backend={HTML5Backend}>
