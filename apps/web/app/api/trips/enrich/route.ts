@@ -94,7 +94,9 @@ export async function POST(req: NextRequest) {
 
   // Fetch all enrichment APIs in parallel
   const countryCode = country.substring(0, 2).toUpperCase()
-  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife] = await Promise.all([
+  const startParam = trip.start_date || ''
+  const endParam = trip.end_date || ''
+  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData] = await Promise.all([
     fetch(`${baseUrl}/api/images?q=${encodeURIComponent(city)}`)
       .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined),
     fetch(`${baseUrl}/api/weather?location=${encodeURIComponent(trip.destination)}&days=${durationDays}`)
@@ -122,6 +124,9 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=nightlife&limit=3`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // Real events (Eventbrite + PredictHQ)
+    lat ? fetch(`${baseUrl}/api/events?lat=${lat}&lng=${lng}&city=${encodeURIComponent(city)}&start=${startParam}&end=${endParam}&limit=8`)
+      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
   ])
 
   // Build "What's Going On" venues from different categories (with real Google Places photos)
@@ -144,6 +149,7 @@ export async function POST(req: NextRequest) {
     lede_text: `A ${durationDays}-day trip to ${city}.`,
     explore_items: exploreItems,
     foursquare_venues: goingOnVenues.length > 0 ? goingOnVenues : undefined,
+    events: eventsData?.length > 0 ? eventsData : undefined,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
     hotels: hotelData?.length > 0 ? hotelData : undefined,
     news: newsData?.length > 0 ? newsData : undefined,

@@ -480,12 +480,16 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                   </div>
                 )}
 
-                {/* What's Going On — right column, Foursquare venues */}
-                {(trip?.trip_context as any)?.foursquare_venues?.length > 0 && (
+                {/* What's Going On — right column, real events */}
+                {(trip?.trip_context as any)?.events?.length > 0 ? (
+                  <div className="flex-1 min-w-0">
+                    <WhatsGoingOnSection exploreItems={(trip!.trip_context as any).events.map((e: any) => ({ id: e.id, title: e.title, description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description, category: e.category, image: e.image }))} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
+                  </div>
+                ) : (trip?.trip_context as any)?.foursquare_venues?.length > 0 ? (
                   <div className="flex-1 min-w-0">
                     <WhatsGoingOnSection exploreItems={(trip!.trip_context as any).foursquare_venues} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
