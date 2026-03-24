@@ -156,6 +156,8 @@ type TabKey = (typeof TABS)[number]['key'];
 
 export default function PlacesPage() {
   const [searchCity, setSearchCity] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Browse mode: infinite scroll through cities × categories
@@ -263,7 +265,7 @@ export default function PlacesPage() {
       .map(([cat, count]) => ({ label: cat, count }));
   }, [tabFiltered]);
 
-  // Filter by subcategory + search
+  // Filter by subcategory + local search (skip local filter when API search is active)
   const filtered = useMemo(() => {
     let items = tabFiltered;
 
@@ -271,7 +273,8 @@ export default function PlacesPage() {
       items = items.filter((p) => p.category === activeSubcategory);
     }
 
-    if (searchQuery) {
+    // Only apply local text filter when NOT in API search mode
+    if (searchQuery && !searchCity) {
       const q = searchQuery.toLowerCase();
       items = items.filter(
         (p) =>
@@ -288,7 +291,7 @@ export default function PlacesPage() {
     else if (sortBy === 'name') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
     return items;
-  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
+  }, [tabFiltered, activeSubcategory, searchQuery, searchCity, sortBy]);
 
   // Reset showcase when filters/view change
   useEffect(() => {
@@ -367,14 +370,40 @@ export default function PlacesPage() {
               <input
                 type="text"
                 placeholder="Search a city or destination..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && searchQuery.trim()) setSearchCity(searchQuery.trim()) }}
+                value={searchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchInput(val);
+                  // Debounce API search — triggers after 500ms of no typing
+                  if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  if (val.trim().length >= 2) {
+                    searchDebounceRef.current = setTimeout(() => {
+                      setSearchCity(val.trim());
+                      setSearchQuery(''); // clear local filter — API handles it
+                    }, 500);
+                  } else if (!val.trim()) {
+                    setSearchCity('');
+                    setSearchQuery('');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchInput.trim()) {
+                    // Instant search on Enter
+                    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                    setSearchCity(searchInput.trim());
+                    setSearchQuery('');
+                  }
+                }}
                 className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
               />
-              {searchQuery && (
+              {searchInput && (
                 <button
-                  onClick={() => { setSearchQuery(''); setSearchCity('') }}
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearchQuery('');
+                    setSearchCity('');
+                    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X size={12} />
@@ -829,32 +858,58 @@ export default function PlacesPage() {
                 <>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">Explore</h2>
+                      <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">
+                        {searchCity ? `Results for "${searchCity}"` : 'Explore'}
+                      </h2>
                       <p className="text-xs text-gray-400">
-                        {filtered.length} places from around the world
+                        {filtered.length} places {searchCity ? 'found' : 'from around the world'}
                       </p>
                     </div>
+                    {searchCity && (
+                      <button
+                        onClick={() => { setSearchInput(''); setSearchCity(''); setSearchQuery(''); }}
+                        className="text-xs text-[#1e3a5f] hover:underline"
+                      >
+                        Clear search
+                      </button>
+                    )}
                   </div>
 
-                  <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4" style={{ columnCount }}>
-                    {filtered.map((item, i) => (
-                      <div key={item.id} className="mb-4 break-inside-avoid">
-                        <PinCard
-                          item={item}
-                          index={i}
-                          isFavorited={favorites.includes(item.id)}
-                          onFavorite={toggleFavorite}
-                          onClick={(id) => openGridShowcase(id)}
-                        />
+                  {/* Search loading overlay */}
+                  {searchLoading && (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center gap-3">
+                        <div className="w-5 h-5 border-2 border-gray-300 border-t-[#1e3a5f] rounded-full animate-spin" />
+                        <span className="text-sm text-gray-500">Searching {searchCity}...</span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+
+                  {!searchLoading && (
+                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4" style={{ columnCount }}>
+                      {filtered.map((item, i) => (
+                        <div key={item.id} className="mb-4 break-inside-avoid">
+                          <PinCard
+                            item={item}
+                            index={i}
+                            isFavorited={favorites.includes(item.id)}
+                            onFavorite={toggleFavorite}
+                            onClick={(id) => openGridShowcase(id)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-20">
                   <Search size={32} className="mx-auto text-gray-300 mb-3" />
                   <p className="text-sm text-gray-500">
-                    {activeTab === 'favorites' ? 'No favorites yet. Heart places to save them here.' : 'No places match your search.'}
+                    {activeTab === 'favorites'
+                      ? 'No favorites yet. Heart places to save them here.'
+                      : searchCity
+                        ? `No places found for "${searchCity}". Try a different city or destination.`
+                        : 'No places match your filters.'}
                   </p>
                 </div>
               )}
