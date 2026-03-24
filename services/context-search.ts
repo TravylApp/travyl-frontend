@@ -16,7 +16,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const supabase = createClient(
       Resource.SupabaseUrl.value,
-      Resource.SupabaseServiceRoleKey.value,
+      Resource.SupabaseSecretKey.value,
     )
 
     // Embed the query
@@ -42,6 +42,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       endDate: row.metadata.endDate,
       status: row.metadata.status,
       activityCount: row.metadata.activityCount,
+      imageUrl: row.metadata.imageUrl ?? null,
       score: row.score,
     }))
 

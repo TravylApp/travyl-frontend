@@ -1,184 +1,138 @@
-'use client';
+'use client'
 
-import { use } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { MapPin, Calendar, Users, GitFork, Loader2, Lock, AlertCircle } from 'lucide-react';
-import { fetchTripByShareToken, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
-import type { Trip } from '@travyl/shared';
+import { use, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Loader2, Lock, GitFork } from 'lucide-react'
+import type { User } from '@supabase/supabase-js'
+import { supabase, fetchTripByShareToken, useForkTrip } from '@travyl/shared'
+import type { Trip } from '@travyl/shared'
+import { YjsTripProvider } from '@/components/calendar/providers/YjsTripProvider'
+import { CalendarDashboard } from '@/components/calendar/CalendarDashboard'
 
-const BRAND = '#1e3a5f';
+const BRAND = '#1e3a5f'
 
-interface SharedTripViewProps {
-  trip: Trip;
-}
-
-function SharedTripView({ trip }: SharedTripViewProps) {
-  const user = useAuthStore((s) => s.user);
-  const { mutate: forkTripMutation, isPending } = useForkTrip();
-  const router = useRouter();
-
-  const canFork = canForkTrip(trip, user?.id ?? null);
+function SharedCalendarView({ trip, resolvedUser: user, token }: { trip: Trip; resolvedUser: User | null; token: string }) {
+  const router = useRouter()
+  const { mutate: forkTripMutation, isPending } = useForkTrip()
 
   const handleFork = () => {
     forkTripMutation(
       { tripId: trip.id },
-      { onSuccess: () => router.push('/trips') }
-    );
-  };
+      { onSuccess: () => router.push('/trips') },
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero */}
-      <div className="relative h-[280px] overflow-hidden bg-gradient-to-br from-blue-400 to-purple-500">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <MapPin size={48} className="text-white/30" />
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Read-only banner */}
+      <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#1e3a5f] text-white text-sm shrink-0">
+        <div className="flex items-center gap-2">
+          <Lock size={13} className="opacity-70" />
+          <span className="opacity-80">Viewing shared trip — read only</span>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-
-        <div className="absolute bottom-0 left-0 right-0 max-w-4xl mx-auto px-4 pb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Lock size={14} className="text-white/70" />
-            <span className="text-xs text-white/70 font-medium">Shared Trip</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">{trip.title}</h1>
-          <div className="flex items-center gap-1.5 mb-3">
-            <MapPin size={16} className="text-white/80" />
-            <span className="text-lg text-white/90">{trip.destination}</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-white/80">
-            <div className="flex items-center gap-1.5">
-              <Calendar size={14} />
-              <span>{formatDateRange(trip.start_date, trip.end_date)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Users size={14} />
-              <span>{trip.travelers} traveler{trip.travelers === 1 ? '' : 's'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* View-only notice */}
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200 mb-6">
-          <AlertCircle size={20} className="text-blue-500 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-blue-800">View-only access</p>
-            <p className="text-xs text-blue-600 mt-0.5">
-              This is a shared trip. You can view the details and fork it to your own account.
-            </p>
-          </div>
-        </div>
-
-        {/* Trip Details Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Trip Details</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100">
-                <MapPin size={18} className="text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Destination</p>
-                <p className="text-sm font-semibold text-gray-900">{trip.destination}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100">
-                <Calendar size={18} className="text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Duration</p>
-                <p className="text-sm font-semibold text-gray-900">{formatDateRange(trip.start_date, trip.end_date)}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-100">
-                <Users size={18} className="text-purple-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Travelers</p>
-                <p className="text-sm font-semibold text-gray-900">{trip.travelers}</p>
-              </div>
-            </div>
-
-            {trip.budget && (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-100">
-                  <span className="text-amber-600 text-lg font-bold">$</span>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Budget</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {trip.budget.toLocaleString()} {trip.currency}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {canFork && (
+        <div className="flex items-center gap-3">
+          {user && !user.is_anonymous ? (
             <button
               onClick={handleFork}
               disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: BRAND }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs font-medium disabled:opacity-50"
             >
-              {isPending ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  <span>Forking...</span>
-                </>
-              ) : (
-                <>
-                  <GitFork size={18} />
-                  <span>Fork This Trip</span>
-                </>
-              )}
+              {isPending ? <Loader2 size={12} className="animate-spin" /> : <GitFork size={12} />}
+              Fork this trip
             </button>
+          ) : (
+            <Link
+              href={`/login?next=${encodeURIComponent(`/trip/${trip.id}/share/${token}`)}`}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs font-medium"
+            >
+              Sign in to fork
+            </Link>
           )}
-
-          <Link
-            href={user ? '/trips' : '/login'}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all"
-          >
-            {user ? 'Go to My Trips' : 'Sign in to Fork'}
-          </Link>
         </div>
       </div>
+
+      {/* Calendar */}
+      <YjsTripProvider tripId={trip.id}>
+        <CalendarDashboard
+          tripId={trip.id}
+          userId={user?.id ?? 'anonymous'}
+          userName={user?.user_metadata?.display_name ?? ''}
+          isSharedView={true}
+        />
+      </YjsTripProvider>
     </div>
-  );
+  )
 }
 
 export default function SharedTripPage({ params }: { params: Promise<{ id: string; token: string }> }) {
-  const { id, token } = use(params);
+  const { id, token } = use(params)
+  const [trip, setTrip] = useState<Trip | null>(null)
+  const [resolvedUser, setResolvedUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<'invalid' | 'error' | null>(null)
 
-  const { data: trip, isLoading, error } = useQuery({
-    queryKey: ['sharedTrip', token],
-    queryFn: () => fetchTripByShareToken(token),
-  });
+  useEffect(() => {
+    async function init() {
+      try {
+        // Check if user already has a session (authenticated users skip anonymous sign-in)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          const { error: anonError } = await supabase.auth.signInAnonymously()
+          if (anonError) throw anonError
+        }
 
-  // Verify the trip ID matches
-  const isValidTrip = trip?.id === id;
+        // Re-read session after potential anonymous sign-in to get the resolved user
+        const { data: { session: resolvedSession } } = await supabase.auth.getSession()
+        setResolvedUser(resolvedSession?.user ?? null)
+
+        const fetchedTrip = await fetchTripByShareToken(token)
+        if (!fetchedTrip) {
+          setError('invalid')
+        } else if (fetchedTrip.id !== id) {
+          console.warn('share page: token/id mismatch', { urlId: id, tripId: fetchedTrip.id })
+          setError('invalid')
+        } else {
+          setTrip(fetchedTrip)
+        }
+      } catch (err) {
+        console.error('share page init error:', err)
+        setError('error')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    init()
+  }, [id, token])
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-gray-400" />
       </div>
-    );
+    )
   }
 
-  if (error || !trip || !isValidTrip) {
+  if (error === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
+            style={{ backgroundColor: BRAND }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (error === 'invalid' || !trip) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -187,7 +141,7 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid or Expired Link</h2>
           <p className="text-gray-500 mb-6">
-            This share link is invalid or the trip is no longer shared. Please contact the trip owner for a new link.
+            This share link is invalid or the trip is no longer shared.
           </p>
           <Link
             href="/explore"
@@ -198,8 +152,8 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
           </Link>
         </div>
       </div>
-    );
+    )
   }
 
-  return <SharedTripView trip={trip} />;
+  return <SharedCalendarView trip={trip} resolvedUser={resolvedUser} token={token} />
 }

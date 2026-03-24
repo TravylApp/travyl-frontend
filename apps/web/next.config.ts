@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-transpilePackages: ["@travyl/shared"],
+  transpilePackages: ["@travyl/shared"],
   images: {
     remotePatterns: [
       {
@@ -12,6 +11,10 @@ transpilePackages: ["@travyl/shared"],
       {
         protocol: "https",
         hostname: "i.pravatar.cc",
+      },
+      {
+        protocol: "https",
+        hostname: "**",
       },
     ],
   },

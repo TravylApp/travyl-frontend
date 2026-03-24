@@ -3,6 +3,7 @@ import * as Y from 'yjs'
 import { supabase, toActivityRow } from '@travyl/shared'
 import type { CalendarActivity } from '../types'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
+import { useIndexTrip } from '@/hooks/useIndexTrip'
 
 const CALENDAR_ACTIVITY_KEYS = [
   'id',
@@ -44,6 +45,7 @@ export function useActivityMutations(
   userId: string,
 ): UseActivityMutationsReturn {
   const { activitiesMap, pollsMap } = useYjsTripContext()
+  const { indexTrip } = useIndexTrip()
 
   const addActivity = useCallback(
     async (activity: CalendarActivity): Promise<void> => {
@@ -66,8 +68,10 @@ export function useActivityMutations(
         }
         activitiesMap.set(activity.id, yMap)
       })
+
+      indexTrip(tripId)
     },
-    [activitiesMap, tripId, tripStartDate, userId],
+    [activitiesMap, tripId, tripStartDate, userId, indexTrip],
   )
 
   const updateActivity = useCallback(
@@ -135,8 +139,10 @@ export function useActivityMutations(
           pollsMap.delete(id)
         }
       })
+
+      indexTrip(tripId)
     },
-    [activitiesMap, pollsMap],
+    [activitiesMap, pollsMap, tripId, indexTrip],
   )
 
   const duplicateActivity = useCallback(

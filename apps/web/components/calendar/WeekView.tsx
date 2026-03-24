@@ -4,6 +4,7 @@ import { TimeGutter } from './TimeGutter'
 import { DayColumn } from './DayColumn'
 import { ResizeDivider } from './ResizeDivider'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
+import type { Poll } from '@travyl/shared'
 
 const MIN_COLUMN_WIDTH = 60
 
@@ -24,6 +25,12 @@ interface WeekViewProps {
   onShiftClickEvent?: (id: string) => void
   onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
   onContextMenu?: (id: string, x: number, y: number) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  tripOwnerId?: string
+  onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  onRestorePoll?: (activityId: string) => void
+  onRemovePollActivity?: (activityId: string) => void
 }
 
 export function WeekView({
@@ -43,6 +50,12 @@ export function WeekView({
   onShiftClickEvent,
   onResizeEvent,
   onContextMenu,
+  polls,
+  pollUserId,
+  tripOwnerId,
+  onVotePoll,
+  onRestorePoll,
+  onRemovePollActivity,
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [columnWidths, setColumnWidths] = useState<number[]>([])
@@ -110,6 +123,12 @@ export function WeekView({
                   onShiftClickEvent={onShiftClickEvent}
                   onResizeEvent={onResizeEvent}
                   onContextMenu={onContextMenu}
+                  polls={polls}
+                  pollUserId={pollUserId}
+                  tripOwnerId={tripOwnerId}
+                  onVotePoll={onVotePoll}
+                  onRestorePoll={onRestorePoll}
+                  onRemovePollActivity={onRemovePollActivity}
                 />
               </div>
               {i < days.length - 1 && (

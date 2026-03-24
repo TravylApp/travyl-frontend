@@ -75,7 +75,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'tripId required' }) }
     }
 
-    const supabase = createClient(Resource.SupabaseUrl.value, Resource.SupabaseServiceRoleKey.value)
+    const supabase = createClient(Resource.SupabaseUrl.value, Resource.SupabaseSecretKey.value)
 
     // Check for existing pending suggestions
     const { data: existing } = await supabase
