@@ -141,13 +141,15 @@ export async function POST(req: NextRequest) {
     } : undefined,
   }
 
-  // Merge: fill missing fields and replace empty arrays
+  // Merge: fill missing fields, replace empty arrays, and fix zero lat/lng
   const merged = { ...existing }
   for (const [key, value] of Object.entries(fresh)) {
     if (value == null) continue
     const current = merged[key]
-    // Fill if missing, or replace empty arrays with real data
-    if (current == null || (Array.isArray(current) && current.length === 0 && Array.isArray(value) && value.length > 0)) {
+    const isEmpty = current == null
+      || (Array.isArray(current) && current.length === 0 && Array.isArray(value) && value.length > 0)
+      || ((key === 'lat' || key === 'lng') && current === 0 && value !== 0)
+    if (isEmpty) {
       merged[key] = value
     }
   }
