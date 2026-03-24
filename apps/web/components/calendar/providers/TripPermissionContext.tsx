@@ -21,12 +21,17 @@ interface TripPermissionProviderProps {
   trip: Trip
   collaborators: TripCollaborator[]
   children: ReactNode
+  /** When true, always returns viewer permissions regardless of user identity */
+  isSharedView?: boolean
 }
 
-export function TripPermissionProvider({ trip, collaborators, children }: TripPermissionProviderProps) {
+export function TripPermissionProvider({ trip, collaborators, children, isSharedView }: TripPermissionProviderProps) {
   const user = useAuthStore((s) => s.user)
 
   const permission = useMemo<EffectivePermission>(() => {
+    if (isSharedView) {
+      return { role: 'viewer', canEdit: false, canDelete: false, canInvite: false, canCreateNotes: false }
+    }
     if (!user) {
       return { role: 'viewer', canEdit: false, canDelete: false, canInvite: false, canCreateNotes: false }
     }
@@ -39,7 +44,7 @@ export function TripPermissionProvider({ trip, collaborators, children }: TripPe
       return { role: isEditor ? 'editor' : 'viewer', canEdit: isEditor, canDelete: false, canInvite: false, canCreateNotes: isEditor }
     }
     return { role: 'viewer', canEdit: false, canDelete: false, canInvite: false, canCreateNotes: false }
-  }, [user, trip.user_id, collaborators])
+  }, [isSharedView, user, trip.user_id, collaborators])
 
   return <TripPermissionCtx.Provider value={permission}>{children}</TripPermissionCtx.Provider>
 }
