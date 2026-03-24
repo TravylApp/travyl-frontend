@@ -1,64 +1,100 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Lock, GitFork } from 'lucide-react'
+import { Loader2, Lock, GitFork, Edit2 } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
-import { supabase, fetchTripByShareToken, useForkTrip } from '@travyl/shared'
-import type { Trip } from '@travyl/shared'
+import { supabase, fetchTripByShareToken, fetchCollaborators, joinTripViaLink, useForkTrip } from '@travyl/shared'
+import type { Trip, TripCollaborator } from '@travyl/shared'
 import { YjsTripProvider } from '@/components/calendar/providers/YjsTripProvider'
 import { CalendarDashboard } from '@/components/calendar/CalendarDashboard'
 
 const BRAND = '#1e3a5f'
 
-function SharedCalendarView({ trip, resolvedUser: user, token }: { trip: Trip; resolvedUser: User | null; token: string }) {
+type ShareRole = 'owner' | 'editor' | 'viewer' | 'link-editor'
+
+function resolveShareRole(trip: Trip, user: User | null, collaborators: TripCollaborator[]): ShareRole {
+  if (!user || user.is_anonymous) return trip.link_permission === 'editor' ? 'link-editor' : 'viewer'
+  if (trip.user_id === user.id) return 'owner'
+  const collab = collaborators.find((c) => c.user_id === user.id && c.invite_status === 'accepted')
+  if (collab) return collab.role_type === 'editor' ? 'editor' : 'viewer'
+  return trip.link_permission === 'editor' ? 'link-editor' : 'viewer'
+}
+
+function SharedCalendarView({ trip, user, token, shareRole }: { trip: Trip; user: User | null; token: string; shareRole: ShareRole }) {
   const router = useRouter()
-  const { mutate: forkTripMutation, isPending } = useForkTrip()
+  const { mutate: forkTripMutation, isPending: isForkPending } = useForkTrip()
+  const [isJoining, setIsJoining] = useState(false)
+  const stableAnonId = useRef(crypto.randomUUID())
+  const isReadOnly = shareRole === 'viewer' || shareRole === 'link-editor'
 
   const handleFork = () => {
-    forkTripMutation(
-      { tripId: trip.id },
-      { onSuccess: () => router.push('/trips') },
-    )
+    forkTripMutation({ tripId: trip.id }, { onSuccess: () => router.push('/trips') })
+  }
+
+  const handleJoinToEdit = async () => {
+    if (!user || user.is_anonymous) {
+      router.push(`/login?next=${encodeURIComponent(`/trip/${trip.id}/share/${token}`)}`)
+      return
+    }
+    setIsJoining(true)
+    try {
+      await joinTripViaLink(trip.id, user.id, 'editor')
+      router.push(`/trip/${trip.id}`)
+    } catch (err) {
+      console.error('joinTripViaLink failed:', err)
+      setIsJoining(false)
+    }
   }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Read-only banner */}
+      {/* Contextual top banner */}
       <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#1e3a5f] text-white text-sm shrink-0">
-        <div className="flex items-center gap-2">
-          <Lock size={13} className="opacity-70" />
-          <span className="opacity-80">Viewing shared trip — read only</span>
+        <div className="flex items-center gap-2 opacity-80">
+          {shareRole === 'link-editor' ? <Edit2 size={13} /> : <Lock size={13} />}
+          <span>{shareRole === 'link-editor' ? 'Anyone with this link can edit' : 'Viewing shared trip — read only'}</span>
         </div>
-        <div className="flex items-center gap-3">
-          {user && !user.is_anonymous ? (
+        <div className="flex items-center gap-2">
+          {shareRole === 'link-editor' && (
             <button
-              onClick={handleFork}
-              disabled={isPending}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs font-medium disabled:opacity-50"
+              onClick={handleJoinToEdit}
+              disabled={isJoining}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#003594] hover:bg-[#002B7A] transition-colors text-xs font-semibold disabled:opacity-50"
             >
-              {isPending ? <Loader2 size={12} className="animate-spin" /> : <GitFork size={12} />}
-              Fork this trip
+              {isJoining ? <Loader2 size={12} className="animate-spin" /> : <Edit2 size={12} />}
+              {user && !user.is_anonymous ? 'Join to edit' : 'Sign in to edit'}
             </button>
-          ) : (
-            <Link
-              href={`/login?next=${encodeURIComponent(`/trip/${trip.id}/share/${token}`)}`}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs font-medium"
-            >
-              Sign in to fork
-            </Link>
+          )}
+          {shareRole === 'viewer' && (
+            user && !user.is_anonymous ? (
+              <button
+                onClick={handleFork}
+                disabled={isForkPending}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs font-medium disabled:opacity-50"
+              >
+                {isForkPending ? <Loader2 size={12} className="animate-spin" /> : <GitFork size={12} />}
+                Fork this trip
+              </button>
+            ) : (
+              <Link
+                href={`/login?next=${encodeURIComponent(`/trip/${trip.id}/share/${token}`)}`}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-xs font-medium"
+              >
+                Sign in to fork
+              </Link>
+            )
           )}
         </div>
       </div>
 
-      {/* Calendar */}
       <YjsTripProvider tripId={trip.id}>
         <CalendarDashboard
           tripId={trip.id}
-          userId={user?.id ?? 'anonymous'}
+          userId={user?.id ?? stableAnonId.current}
           userName={user?.user_metadata?.display_name ?? ''}
-          isSharedView={true}
+          isSharedView={isReadOnly}
         />
       </YjsTripProvider>
     </div>
@@ -67,34 +103,43 @@ function SharedCalendarView({ trip, resolvedUser: user, token }: { trip: Trip; r
 
 export default function SharedTripPage({ params }: { params: Promise<{ id: string; token: string }> }) {
   const { id, token } = use(params)
+  const router = useRouter()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [resolvedUser, setResolvedUser] = useState<User | null>(null)
+  const [shareRole, setShareRole] = useState<ShareRole>('viewer')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<'invalid' | 'error' | null>(null)
 
   useEffect(() => {
     async function init() {
       try {
-        // Check if user already has a session (authenticated users skip anonymous sign-in)
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) {
           const { error: anonError } = await supabase.auth.signInAnonymously()
           if (anonError) throw anonError
         }
-
-        // Re-read session after potential anonymous sign-in to get the resolved user
         const { data: { session: resolvedSession } } = await supabase.auth.getSession()
-        setResolvedUser(resolvedSession?.user ?? null)
+        const user = resolvedSession?.user ?? null
+        setResolvedUser(user)
 
         const fetchedTrip = await fetchTripByShareToken(token)
-        if (!fetchedTrip) {
-          setError('invalid')
-        } else if (fetchedTrip.id !== id) {
-          console.warn('share page: token/id mismatch', { urlId: id, tripId: fetchedTrip.id })
-          setError('invalid')
-        } else {
-          setTrip(fetchedTrip)
+        if (!fetchedTrip || fetchedTrip.id !== id) { setError('invalid'); return }
+
+        // Owner → send to real trip page
+        if (user && !user.is_anonymous && user.id === fetchedTrip.user_id) {
+          router.replace(`/trip/${fetchedTrip.id}`); return
         }
+
+        // Check if visitor is an accepted collaborator
+        let collaborators: TripCollaborator[] = []
+        if (user && !user.is_anonymous) {
+          try { collaborators = await fetchCollaborators(fetchedTrip.id) } catch { /* non-fatal */ }
+          const collab = collaborators.find((c) => c.user_id === user.id && c.invite_status === 'accepted')
+          if (collab) { router.replace(`/trip/${fetchedTrip.id}`); return }
+        }
+
+        setTrip(fetchedTrip)
+        setShareRole(resolveShareRole(fetchedTrip, user, collaborators))
       } catch (err) {
         console.error('share page init error:', err)
         setError('error')
@@ -102,58 +147,37 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
         setIsLoading(false)
       }
     }
-
     init()
-  }, [id, token])
+  }, [id, token, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-gray-400" />
+  if (isLoading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <Loader2 size={32} className="animate-spin text-gray-400" />
+    </div>
+  )
+
+  if (error === 'error') return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center max-w-md mx-auto px-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+        <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
+        <button onClick={() => window.location.reload()} className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold hover:opacity-90" style={{ backgroundColor: BRAND }}>Retry</button>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (error === 'error') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
-          <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
-            style={{ backgroundColor: BRAND }}
-          >
-            Retry
-          </button>
+  if (error === 'invalid' || !trip) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center max-w-md mx-auto px-4">
+        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+          <Lock size={28} className="text-red-500" />
         </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid or Expired Link</h2>
+        <p className="text-gray-500 mb-6">This share link is invalid or the trip is no longer shared.</p>
+        <Link href="/explore" className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold hover:opacity-90" style={{ backgroundColor: BRAND }}>Explore Trips</Link>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (error === 'invalid' || !trip) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-            <Lock size={28} className="text-red-500" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid or Expired Link</h2>
-          <p className="text-gray-500 mb-6">
-            This share link is invalid or the trip is no longer shared.
-          </p>
-          <Link
-            href="/explore"
-            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
-            style={{ backgroundColor: BRAND }}
-          >
-            Explore Trips
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  return <SharedCalendarView trip={trip} resolvedUser={resolvedUser} token={token} />
+  return <SharedCalendarView trip={trip} user={resolvedUser} token={token} shareRole={shareRole} />
 }
