@@ -96,4 +96,7 @@ api.route('GET /recommend', {
 api.route('POST /invite', {
   handler: 'services/invite.handler',
   link: [supabaseSecretKey, supabaseUrl, email],
+  environment: {
+    APP_URL: $app.stage === 'production' ? 'https://gotravyl.com' : 'http://localhost:3000',
+  },
 })
