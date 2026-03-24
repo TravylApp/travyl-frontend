@@ -9,11 +9,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing q parameter' }, { status: 400 })
   }
 
-  // Try Unsplash API first
+  // 1. Unsplash API — best quality, needs API key
   if (UNSPLASH_ACCESS_KEY) {
     try {
       const res = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' travel')}&per_page=1&orientation=landscape`,
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' landmark city')}&per_page=1&orientation=landscape`,
         { headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` } }
       )
       const data = await res.json()
@@ -29,10 +29,9 @@ export async function GET(req: NextRequest) {
     } catch {}
   }
 
-  // Fallback: fetch a place image from the backend
+  // 2. Backend places API — Google Places photos (geo-tagged)
   if (API_URL) {
     try {
-      // Geocode the query to get coordinates
       const geoRes = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
         { headers: { 'Accept-Language': 'en' } }
@@ -47,7 +46,6 @@ export async function GET(req: NextRequest) {
         if (placesRes.ok) {
           const places = await placesRes.json()
           if (places[0]?.photo_url) {
-            // Upscale the Google Places image
             const url = places[0].photo_url.replace(/=w\d+-h\d+/, '=w1200-h800')
             return NextResponse.json({ url })
           }
@@ -56,7 +54,22 @@ export async function GET(req: NextRequest) {
     } catch {}
   }
 
-  // Last resort: use images.unsplash.com direct link (curated)
+  // 3. Wikipedia — always has location-specific images
+  try {
+    const wikiRes = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`,
+      { next: { revalidate: 3600 } }
+    )
+    if (wikiRes.ok) {
+      const wikiData = await wikiRes.json()
+      const img = wikiData.originalimage?.source || wikiData.thumbnail?.source
+      if (img) {
+        return NextResponse.json({ url: img })
+      }
+    }
+  } catch {}
+
+  // 4. Last resort — generic travel image
   return NextResponse.json({
     url: `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&fit=crop&q=80`,
   })

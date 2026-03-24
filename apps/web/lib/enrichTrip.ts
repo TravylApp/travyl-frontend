@@ -33,6 +33,7 @@ export async function enrichTripContext(params: EnrichParams): Promise<TripConte
 
   // Fetch explore items (3 categories in parallel)
   let exploreItems: NonNullable<TripContextData['explore_items']> = [];
+  // Try backend places API first
   try {
     const cats = ['sightseeing', 'restaurant', 'museum'];
     const results = await Promise.all(
@@ -54,6 +55,31 @@ export async function enrichTripContext(params: EnrichParams): Promise<TripConte
       image: p.image,
     }));
   } catch {}
+
+  // Fallback: Foursquare if backend returned nothing
+  if (exploreItems.length === 0 && lat && lng) {
+    try {
+      const fsCats = ['attraction', 'restaurant', 'museum'];
+      const results = await Promise.all(
+        fsCats.map(async (cat) => {
+          const r = await fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=4`);
+          return r.ok ? r.json() : [];
+        })
+      );
+      const seen = new Set<string>();
+      exploreItems = results.flat().filter((p: any) => {
+        if (!p?.id || seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      }).map((p: any) => ({
+        id: p.id,
+        title: p.name,
+        description: p.tip || p.category || 'Popular spot',
+        category: p.category || 'Attraction',
+        image: p.image,
+      }));
+    } catch {}
+  }
 
   // Fetch all enrichment APIs in parallel
   const countryCode = country.substring(0, 2).toUpperCase();

@@ -204,20 +204,49 @@ export default function Home() {
     setShowTakeoff(true);
 
     try {
-      const res = await fetch(`/api/trips/plan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: query }),
-      });
-      if (!res.ok) return;
+      // Try NLP backend first, fall back to conversational answers
+      let extracted: any = null;
+      let plan: any = {};
+      try {
+        const res = await fetch(`/api/trips/plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: query }),
+        });
+        if (res.ok) {
+          plan = await res.json();
+          extracted = plan.extracted;
+        }
+      } catch {}
 
-      const plan = await res.json();
-      const extracted = plan.extracted;
-      if (!extracted?.destination) return;
+      // Fallback: build extracted data from conversational answers
+      if (!extracted?.destination) {
+        const destStr = answers.destination || query.split(/\s+(?:for|with|in)\s+/i)[0]?.trim() || query;
+        const parts = destStr.split(',');
+        const city = parts[0]?.trim() || destStr;
+        const country = parts.length > 1 ? parts[parts.length - 1]?.trim() : '';
+        const durMatch = (answers.duration || answers.dates || query).match(/(\d+)/);
+        extracted = {
+          destination: { city, country, lat: 0, lng: 0 },
+          duration_days: durMatch ? parseInt(durMatch[1]) : 5,
+          travelers: { count: answers.companions?.match(/(\d+)/)?.[1] ? parseInt(answers.companions.match(/(\d+)/)![1]) : 1, composition: answers.companions },
+          interests: answers.vibe ? [answers.vibe] : [],
+          dates: {},
+        };
+        // Geocode the destination
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destStr)}&format=json&limit=1`);
+          const geoData = await geoRes.json();
+          if (geoData[0]) {
+            extracted.destination.lat = parseFloat(geoData[0].lat);
+            extracted.destination.lng = parseFloat(geoData[0].lon);
+          }
+        } catch {}
+      }
 
       // Create trip ID immediately so onComplete can navigate
       const tempId = `local-${Date.now()}`;
-      const dest = `${extracted.destination.city}, ${extracted.destination.country}`;
+      const dest = `${extracted.destination.city}${extracted.destination.country ? ', ' + extracted.destination.country : ''}`;
       const durationDays = extracted.duration_days ?? 5;
 
       // Default dates: if not provided, start next week for durationDays

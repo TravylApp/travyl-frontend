@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   const baseUrl = req.nextUrl.origin
 
-  // Fetch explore items
+  // Fetch explore items — try backend, fall back to Foursquare
   let exploreItems: any[] = []
   if (lat && lng) {
     try {
@@ -73,6 +73,23 @@ export async function POST(req: NextRequest) {
         if (seen.has(p.id)) return false; seen.add(p.id); return true
       }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image }))
     } catch {}
+
+    // Fallback: Foursquare
+    if (exploreItems.length === 0) {
+      try {
+        const fsCats = ['attraction', 'restaurant', 'museum']
+        const results = await Promise.all(
+          fsCats.map(async (cat) => {
+            const r = await fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
+            return r.ok ? r.json() : []
+          })
+        )
+        const seen = new Set<string>()
+        exploreItems = results.flat().filter((p: any) => {
+          if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
+        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
+      } catch {}
+    }
   }
 
   // Fetch all enrichment APIs in parallel
