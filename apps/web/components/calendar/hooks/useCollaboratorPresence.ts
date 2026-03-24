@@ -15,6 +15,8 @@ interface UseCollaboratorPresenceOptions {
   userId: string
   userName: string
   userColor?: string
+  /** When true, skip the presence channel entirely (e.g. share page viewers) */
+  disabled?: boolean
 }
 
 interface UseCollaboratorPresenceReturn {
@@ -44,7 +46,7 @@ function pickColor(userId: string): string {
 export function useCollaboratorPresence(
   options: UseCollaboratorPresenceOptions,
 ): UseCollaboratorPresenceReturn {
-  const { tripId, userId, userName, userColor } = options
+  const { tripId, userId, userName, userColor, disabled } = options
   const [collaborators, setCollaborators] = useState<UserAwareness[]>([])
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -57,6 +59,8 @@ export function useCollaboratorPresence(
   const color = userColor ?? pickColor(userId)
 
   useEffect(() => {
+    if (disabled) return
+
     const channel = supabase.channel(`presence:trip:${tripId}`, {
       config: { presence: { key: userId } },
     })
@@ -77,9 +81,7 @@ export function useCollaboratorPresence(
       for (const key of Object.keys(state)) {
         const entries = state[key]
         if (!entries || entries.length === 0) continue
-        // Take the latest presence entry for this key
         const entry = entries[entries.length - 1]
-        // Skip the local user from the collaborators list
         if (entry.userId === userId) continue
         users.push({
           userId: entry.userId,
@@ -112,7 +114,7 @@ export function useCollaboratorPresence(
       channelRef.current = null
       channel.unsubscribe()
     }
-  }, [tripId, userId, userName, color])
+  }, [tripId, userId, userName, color, disabled])
 
   const setSelectedEvent = useCallback(
     (eventId: string | null) => {
