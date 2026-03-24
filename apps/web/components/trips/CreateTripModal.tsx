@@ -202,10 +202,11 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         const imgRes = await fetch(`/api/destination-image?destination=${encodeURIComponent(shortDest)}`)
         const { url } = await imgRes.json() as { url: string | null }
         if (url) {
-          await supabase
+          const { error: imgUpdateError } = await supabase
             .from('trips')
             .update({ cover_image_url: url })
             .eq('id', data.id)
+          if (imgUpdateError) console.warn('cover_image_url update failed:', imgUpdateError.message)
         }
       } catch {
         // Non-fatal: trip was created, it will show the fallback image
