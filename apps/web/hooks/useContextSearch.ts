@@ -47,6 +47,7 @@ export function useContextSearch(query: string) {
     queryFn: () => fetchContextSearch(debouncedQuery),
     enabled,
     staleTime: 30_000,
+    refetchOnMount: 'always',
   })
 
   return {
