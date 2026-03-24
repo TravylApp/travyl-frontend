@@ -36,9 +36,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const tripIds = (data ?? []).map((row: any) => row.trip_id)
     const { data: tripRows } = tripIds.length
-      ? await supabase.from('trips').select('id, cover_image_url').in('id', tripIds)
+      ? await supabase.from('trips').select('id, cover_image_url, trip_context').in('id', tripIds)
       : { data: [] }
-    const coverImages = Object.fromEntries((tripRows ?? []).map((t: any) => [t.id, t.cover_image_url]))
+    const tripData = Object.fromEntries((tripRows ?? []).map((t: any) => [t.id, t]))
 
     const results = (data ?? []).map((row: any) => ({
       tripId: row.trip_id,
@@ -48,7 +48,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       endDate: row.metadata.endDate,
       status: row.metadata.status,
       activityCount: row.metadata.activityCount,
-      imageUrl: coverImages[row.trip_id] ?? row.metadata.imageUrl ?? null,
+      imageUrl: tripData[row.trip_id]?.cover_image_url
+        ?? tripData[row.trip_id]?.trip_context?.hero_images?.[0]
+        ?? row.metadata.imageUrl
+        ?? null,
       score: row.score,
     }))
 
