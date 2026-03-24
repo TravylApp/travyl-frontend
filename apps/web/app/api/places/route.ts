@@ -107,7 +107,7 @@ interface BackendPlace {
   subcategory?: string
   rating: number
   review_count?: number
-  price_level?: string | null
+  price_level?: string | number | null
   description?: string | null
   photo_url?: string | null
   website?: string | null
@@ -196,7 +196,8 @@ export async function GET(req: NextRequest) {
     // Cache for 1 hour, revalidate in background for 24h
     res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
     return res_out
-  } catch {
+  } catch (err) {
+    console.error('[places] Route error:', err)
     return NextResponse.json([])
   }
 }
@@ -299,9 +300,16 @@ function mapTags(cat: string, backendTags?: string[], cuisine?: string | null): 
   return [...new Set(tags)]
 }
 
-function mapPrice(level: string | null | undefined): 1 | 2 | 3 | 4 | undefined {
-  if (!level) return undefined
+function mapPrice(level: string | number | null | undefined): 1 | 2 | 3 | 4 | undefined {
+  if (level == null) return undefined
+  // Backend sends either a number (1-4) or a string like "$$"
+  if (typeof level === 'number') {
+    return level >= 1 && level <= 4 ? (level as 1 | 2 | 3 | 4) : undefined
+  }
   const len = level.replace(/[^$]/g, '').length
   if (len >= 1 && len <= 4) return len as 1 | 2 | 3 | 4
+  // Try parsing as number
+  const num = parseInt(level, 10)
+  if (num >= 1 && num <= 4) return num as 1 | 2 | 3 | 4
   return undefined
 }

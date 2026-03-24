@@ -166,15 +166,127 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
     }
   }
 
+  // Also fetch from Foursquare + OpenTripMap for richer data (restaurants, nightlife, experiences)
+  const fsCats = ['restaurant', 'nightlife', 'attraction', 'cafe', 'museum', 'park', 'shopping']
+  for (const cat of fsCats) {
+    fetches.push(
+      fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=10`)
+        .then(async r => {
+          if (!r.ok) return []
+          const venues = await r.json()
+          if (venues.error) return []
+          // Map Foursquare venues to PlaceItem shape
+          return (venues as any[]).map((v: any) => ({
+            id: `fs_${v.id}`,
+            name: v.name,
+            image: v.image || '',
+            images: v.images?.length ? v.images : undefined,
+            type: mapFoursquareType(cat),
+            rating: v.rating ? v.rating / 2 : 0, // FS rates 0-10, normalize to 0-5
+            tagline: v.address || v.category || cat,
+            category: v.category || cat,
+            description: v.tip || '',
+            latitude: v.lat,
+            longitude: v.lng,
+            address: v.address,
+            website: v.url,
+            priceLevel: v.price && v.price >= 1 && v.price <= 4 ? v.price : undefined,
+            hours: v.hours,
+            reviewCount: v.ratingCount,
+            tags: [cat],
+          })) as PlaceItemType[]
+        })
+        .catch(() => [])
+    )
+  }
+
+  // OpenTripMap — cultural/historical attractions with descriptions
+  const otmCats = ['attraction', 'museum', 'historic', 'architecture', 'nature']
+  for (const cat of otmCats) {
+    fetches.push(
+      fetch(`/api/opentripmap?lat=${lat}&lng=${lng}&category=${cat}&limit=8&radius=10000`)
+        .then(async r => {
+          if (!r.ok) return []
+          const places = await r.json()
+          if (places.error) return []
+          return (places as any[]).filter((p: any) => p.name && p.image).map((p: any) => ({
+            id: `otm_${p.id}`,
+            name: p.name,
+            image: p.image || '',
+            type: cat === 'nature' ? 'experience' : 'attraction' as any,
+            rating: p.rating ? Math.min(p.rating, 5) : 0,
+            tagline: p.description?.split('.')[0] || p.category || cat,
+            category: p.category || cat,
+            description: p.description || '',
+            latitude: p.lat,
+            longitude: p.lng,
+            tags: [cat],
+          })) as PlaceItemType[]
+        })
+        .catch(() => [])
+    )
+  }
+
+  // Eventbrite + PredictHQ events
+  fetches.push(
+    fetch(`/api/events?lat=${lat}&lng=${lng}&limit=15`)
+      .then(async r => {
+        if (!r.ok) return []
+        const events = await r.json()
+        if (events.error || !Array.isArray(events)) return []
+        return events.filter((e: any) => e.title).map((e: any) => ({
+          id: `ev_${e.id}`,
+          name: e.title,
+          image: e.image || '',
+          type: 'event' as const,
+          rating: 0,
+          tagline: e.venue || e.category || 'Event',
+          category: e.category || 'Event',
+          description: e.description || '',
+          latitude: parseFloat(lat as any),
+          longitude: parseFloat(lng as any),
+          tags: ['Event', e.category].filter(Boolean),
+          website: e.url,
+        })) as PlaceItemType[]
+      })
+      .catch(() => [])
+  )
+
   const results = await Promise.all(fetches)
 
-  // Deduplicate by id
+  // Deduplicate by id, then by name (cross-source dedup)
+  // Also ensure every place has an image (fallback to Unsplash)
   const seen = new Set<string>()
+  const seenNames = new Set<string>()
+  const FALLBACKS = [
+    'photo-1488646953014-85cb44e25828', 'photo-1507525428034-b723cf961d3e',
+    'photo-1476514525535-07fb3b4ae5f1', 'photo-1469854523086-cc02fe5d8800',
+    'photo-1530789253388-582c481c54b0', 'photo-1502602898657-3e91760cbb34',
+    'photo-1493976040374-85c8e12f0c0e', 'photo-1504150558240-0b4fd8946624',
+  ]
+  let fallbackIdx = 0
   return results.flat().filter((p) => {
+    if (!p.name) return false
     if (seen.has(p.id)) return false
+    const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (seenNames.has(normName)) return false
     seen.add(p.id)
+    seenNames.add(normName)
     return true
+  }).map(p => {
+    // Ensure every place has an image
+    if (!p.image || p.image === '') {
+      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=800&fit=crop&q=80` }
+    }
+    return p
   })
+}
+
+function mapFoursquareType(cat: string): 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' {
+  if (['restaurant', 'cafe', 'nightlife'].includes(cat)) return 'restaurant'
+  if (['museum', 'attraction'].includes(cat)) return 'attraction'
+  if (['park'].includes(cat)) return 'experience'
+  return 'destination'
 }
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
