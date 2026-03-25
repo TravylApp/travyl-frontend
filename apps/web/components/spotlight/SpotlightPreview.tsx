@@ -1,13 +1,16 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { Building2, Plane, MapPin, Calendar, Star, DollarSign, Users, ArrowRight } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
+
+const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
 
 interface Props {
   result: SpotlightResult
 }
 
-const PREVIEW_TYPES = new Set(['trip', 'hotel', 'flight', 'restaurant'])
+const PREVIEW_TYPES = new Set(['trip', 'hotel', 'flight', 'restaurant', 'activity', 'destination'])
 
 export function hasPreview(result: SpotlightResult | null | undefined): boolean {
   return !!result && PREVIEW_TYPES.has(result.type)
@@ -23,6 +26,10 @@ export function SpotlightPreview({ result }: Props) {
       return <FlightPreview result={result} />
     case 'restaurant':
       return <RestaurantPreview result={result} />
+    case 'activity':
+      return <ActivityPreview result={result} />
+    case 'destination':
+      return <DestinationPreview result={result} />
     default:
       return null
   }
@@ -90,6 +97,8 @@ function HotelPreview({ result }: { result: SpotlightResult }) {
   const checkIn = meta?.checkIn as string | undefined
   const checkOut = meta?.checkOut as string | undefined
   const rating = meta?.rating as number | undefined
+  const lat = meta?.latitude as number | undefined
+  const lng = meta?.longitude as number | undefined
 
   return (
     <div className="flex flex-col h-full">
@@ -137,6 +146,11 @@ function HotelPreview({ result }: { result: SpotlightResult }) {
           </span>
         )}
       </div>
+      {lat && lng && (
+        <div className="mt-3 h-[120px] rounded-lg overflow-hidden border border-white/10">
+          <LeafletMap lat={lat} lng={lng} label={result.title} height={120} zoom={15} />
+        </div>
+      )}
     </div>
   )
 }
@@ -208,6 +222,8 @@ function RestaurantPreview({ result }: { result: SpotlightResult }) {
   const cuisine = meta?.cuisine as string | undefined
   const priceLevel = meta?.priceLevel as string | undefined
   const rating = meta?.rating as number | undefined
+  const lat = meta?.latitude as number | undefined
+  const lng = meta?.longitude as number | undefined
 
   return (
     <div className="flex flex-col h-full">
@@ -244,6 +260,82 @@ function RestaurantPreview({ result }: { result: SpotlightResult }) {
           </span>
         )}
       </div>
+      {lat && lng && (
+        <div className="mt-3 h-[120px] rounded-lg overflow-hidden border border-white/10">
+          <LeafletMap lat={lat} lng={lng} label={result.title} height={120} zoom={15} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ActivityPreview({ result }: { result: SpotlightResult }) {
+  const meta = result.metadata as Record<string, unknown> | undefined
+  const category = meta?.category as string | undefined
+  const rating = meta?.rating as number | undefined
+  const lat = meta?.latitude as number | undefined
+  const lng = meta?.longitude as number | undefined
+
+  return (
+    <div className="flex flex-col h-full">
+      {result.imageUrl ? (
+        <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-950 dark:to-teal-950 flex items-center justify-center">
+          <Calendar className="w-8 h-8 text-emerald-400" />
+        </div>
+      )}
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+        {result.title}
+      </h3>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+        {result.subtitle}
+      </p>
+      <div className="flex flex-wrap items-center gap-2 mt-3">
+        {category && (
+          <span className="inline-flex px-2 py-0.5 text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full">
+            {category}
+          </span>
+        )}
+        {typeof rating === 'number' && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            <Star className="w-3 h-3 fill-current" />
+            {rating.toFixed(1)}
+          </span>
+        )}
+      </div>
+      {lat && lng && (
+        <div className="mt-3 h-[120px] rounded-lg overflow-hidden border border-white/10">
+          <LeafletMap lat={lat} lng={lng} label={result.title} height={120} zoom={15} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DestinationPreview({ result }: { result: SpotlightResult }) {
+  const meta = result.metadata as Record<string, unknown> | undefined
+  const lat = meta?.latitude as number | undefined
+  const lng = meta?.longitude as number | undefined
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-950 dark:to-orange-950 flex items-center justify-center">
+        <MapPin className="w-8 h-8 text-rose-400" />
+      </div>
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+        {result.title}
+      </h3>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+        {result.subtitle}
+      </p>
+      {lat && lng && (
+        <div className="mt-3 h-[120px] rounded-lg overflow-hidden border border-white/10">
+          <LeafletMap lat={lat} lng={lng} label={result.title} height={120} zoom={10} />
+        </div>
+      )}
     </div>
   )
 }

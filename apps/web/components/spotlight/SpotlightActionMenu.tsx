@@ -10,6 +10,10 @@ import {
   PinOff,
   Play,
   ChevronLeft,
+  MapPin,
+  Navigation,
+  Share2,
+  Eye,
 } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
 import { SpotlightResultItem } from './SpotlightResultItem'
@@ -90,14 +94,85 @@ export function getActionsForResult(
     },
   }
 
+  const meta = result.metadata as Record<string, unknown> | undefined
+  const lat = meta?.latitude as number | undefined
+  const lng = meta?.longitude as number | undefined
+
+  const mapActions: SpotlightAction[] = []
+  if (lat && lng) {
+    mapActions.push({
+      id: 'open-in-maps',
+      label: 'Open in Maps',
+      icon: MapPin,
+      execute: () => {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')
+      },
+    })
+    mapActions.push({
+      id: 'get-directions',
+      label: 'Get Directions',
+      icon: Navigation,
+      execute: () => {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank')
+      },
+    })
+  }
+
+  const viewTripAction: SpotlightAction | null = result.tripId
+    ? {
+        id: 'view-trip',
+        label: 'View Trip',
+        icon: Eye,
+        execute: () => {
+          window.location.href = `/trip/${result.tripId}`
+        },
+      }
+    : null
+
+  const shareTripAction: SpotlightAction = {
+    id: 'share-trip',
+    label: 'Share Trip',
+    icon: Share2,
+    execute: () => {
+      navigator.clipboard.writeText(window.location.origin + result.href)
+    },
+  }
+
   switch (result.type) {
     case 'trip':
-      return [openAction, copyLinkAction, duplicateAction, pinAction]
+      return [openAction, copyLinkAction, shareTripAction, duplicateAction, pinAction]
     case 'hotel':
-    case 'flight':
     case 'restaurant':
     case 'activity':
-      return [openDetailsAction, copyLinkAction, removeFromTripAction, pinAction]
+      return [
+        openDetailsAction,
+        ...mapActions,
+        ...(viewTripAction ? [viewTripAction] : []),
+        copyLinkAction,
+        removeFromTripAction,
+        pinAction,
+      ]
+    case 'flight':
+      return [
+        openDetailsAction,
+        ...(viewTripAction ? [viewTripAction] : []),
+        copyLinkAction,
+        removeFromTripAction,
+        pinAction,
+      ]
+    case 'destination':
+      return [
+        {
+          id: 'explore-on-map',
+          label: 'Explore on Map',
+          icon: MapPin,
+          execute: () => {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(result.title)}`, '_blank')
+          },
+        },
+        copyLinkAction,
+        pinAction,
+      ]
     case 'navigation':
       return [{ id: 'open', label: 'Open', icon: ExternalLink, execute: onSelect }]
     case 'command':

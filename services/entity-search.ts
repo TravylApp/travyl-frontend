@@ -13,6 +13,8 @@ interface EntitySearchResult {
   trip_destination: string | null
   image_url: string | null
   score: number
+  latitude: number | null
+  longitude: number | null
 }
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {

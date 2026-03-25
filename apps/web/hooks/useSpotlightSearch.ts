@@ -59,6 +59,8 @@ async function fetchEntitySearch(
       trip_destination: string | null
       image_url: string | null
       score: number
+      latitude: number | null
+      longitude: number | null
       metadata?: Record<string, unknown>
     }>>
   }
@@ -76,7 +78,11 @@ async function fetchEntitySearch(
       tripTitle: item.trip_title ?? undefined,
       href: buildHref(item.entity_type, item.entity_id, item.trip_id),
       score: item.score,
-      metadata: item.metadata,
+      metadata: {
+        ...item.metadata,
+        latitude: item.latitude ?? undefined,
+        longitude: item.longitude ?? undefined,
+      },
     }))
   }
   return mapped
