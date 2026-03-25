@@ -319,7 +319,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     canRedo,
   })
 
-  // Publish commands to global store so GlobalCommandPalette can show them
+  // Publish commands to global store so SpotlightSearch can show them
   const setCommands = useCalendarCommandsStore((s) => s.setCommands)
   const clearCommands = useCalendarCommandsStore((s) => s.clearCommands)
   useEffect(() => {
