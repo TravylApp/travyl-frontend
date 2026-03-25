@@ -1,16 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchTrips } from '../services/api';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 async function fetchTripsWithAnonymous() {
-  let ids: string[] = [];
+  // On web, check localStorage for anonymous trip IDs
+  let anonIds: string[] = [];
   try {
-    const stored = (typeof localStorage !== 'undefined' ? localStorage.getItem('my-trip-ids') : null)
-      || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('my-trip-ids') : null);
-    if (stored) ids = JSON.parse(stored);
+    const g = globalThis as any;
+    const stored = g.localStorage?.getItem('my-trip-ids')
+      || g.sessionStorage?.getItem('my-trip-ids');
+    if (stored) anonIds = JSON.parse(stored);
   } catch {}
-  const url = ids.length > 0 ? `/api/trips?ids=${ids.join(',')}` : '/api/trips';
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to fetch trips');
-  return res.json() as Promise<any[]>;
+
+  // If we have anonymous IDs, fetch via our API route (web only)
+  if (anonIds.length > 0 && typeof (globalThis as any).document !== 'undefined') {
+    try {
+      const res = await fetch(`/api/trips?ids=${anonIds.join(',')}`);
+      if (res.ok) return res.json();
+    } catch {}
+  }
+
+  // Default: use Supabase directly (works on both web and mobile for logged-in users)
+  return fetchTrips();
 }
 
 export function useTrips() {
