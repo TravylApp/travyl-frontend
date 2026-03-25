@@ -196,8 +196,8 @@ export default function OverviewScreen() {
           {travelersStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{travelersStr}</Text>}
           {(dateStr || travelersStr) && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <FontAwesome name={weatherIcon(weather.conditions) as any} size={13} color="rgba(255,255,255,0.5)" />
-            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)' }}>{weather.high}° / {weather.low}°</Text>
+            <Text style={{ fontSize: 14 }}>{weatherEmoji(weather.icon || weather.conditions || '')}</Text>
+            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)' }}>{weather.temp ?? weather.high ?? ''}°</Text>
           </View>
         </View>
       </View>

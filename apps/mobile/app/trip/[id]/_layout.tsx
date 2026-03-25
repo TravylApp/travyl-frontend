@@ -303,6 +303,18 @@ function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
 
 // ─── Helpers ─────────────────────────────────────────────
 
+function weatherEmoji(icon: string): string {
+  const c = icon.toLowerCase();
+  if (c.includes('clear') && c.includes('night')) return '🌙';
+  if (c.includes('clear') || c.includes('sun')) return '☀️';
+  if (c.includes('partly') || c.includes('cloud')) return '⛅';
+  if (c.includes('rain') || c.includes('shower') || c.includes('drizzle')) return '🌧';
+  if (c.includes('snow')) return '❄️';
+  if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+  if (c.includes('fog') || c.includes('mist')) return '🌫️';
+  return '☁️';
+}
+
 function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: string[]) {
   return state.routes
     .map((route, index) => ({ route, index }))
@@ -429,18 +441,22 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
             {weather && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <FontAwesome name="cloud" size={12} color="#c8a96a" />
-                  <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a' }}>{weather.high}° / {weather.low}°</Text>
+                  <Text style={{ fontSize: 14 }}>{weatherEmoji((weather as any).icon || weather.conditions || '')}</Text>
+                  <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a' }}>{(weather as any).temp ?? weather.high ?? ''}°</Text>
                   <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)' }}>Now</Text>
                 </View>
                 {forecast.length > 0 && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>|</Text>}
-                {forecast.slice(0, 4).map((d) => (
-                  <View key={d.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.6)' }}>{d.day}</Text>
-                    <Text style={{ ...TextStyles.body }}>{d.icon}</Text>
-                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff' }}>{d.high}°</Text>
-                  </View>
-                ))}
+                {forecast.slice(0, 4).map((d: any, idx: number) => {
+                  const dayName = d.day || (d.date ? new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '');
+                  const icon = weatherEmoji(d.icon || d.conditions || '');
+                  return (
+                    <View key={d.date || idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.6)' }}>{dayName}</Text>
+                      <Text style={{ fontSize: 14 }}>{icon}</Text>
+                      <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff' }}>{d.high}°</Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </View>
