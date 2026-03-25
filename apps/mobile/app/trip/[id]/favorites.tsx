@@ -357,7 +357,7 @@ function FavoritesSkeleton() {
 export default function FavoritesScreen() {
   const ACCENT = useTabAccent('favorites');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isLoading } = useItineraryScreen(id);
+  const { trip, isLoading } = useItineraryScreen(id);
 
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
   const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
@@ -369,9 +369,15 @@ export default function FavoritesScreen() {
     setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const favoritedActivities = MOCK_DISCOVER_ACTIVITIES.filter((a) => activityFavorites.includes(a.id));
-  const favoritedRestaurants = MOCK_DISCOVER_RESTAURANTS.filter((r) => restaurantFavorites.includes(r.id));
-  const favoritedDestinations = MOCK_DISCOVER_ACTIVITIES.filter((a) => destinationFavorites.includes(a.id));
+  // Build from trip_context instead of mock data
+  const ctx = trip?.trip_context as any;
+  const allDiscoverItems: DiscoverItem[] = useMemo(() => [
+    ...(ctx?.explore_items ?? []).map((e: any) => ({ id: e.id, name: e.title || e.name, description: e.description || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [] })),
+    ...(ctx?.foursquare_venues ?? []).map((v: any) => ({ id: v.id, name: v.title || v.name, description: v.description || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [] })),
+  ], [ctx]);
+  const favoritedActivities = allDiscoverItems.filter((a) => activityFavorites.includes(a.id));
+  const favoritedRestaurants = allDiscoverItems.filter((r) => restaurantFavorites.includes(r.id));
+  const favoritedDestinations = allDiscoverItems.filter((a) => destinationFavorites.includes(a.id));
 
   const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
 
