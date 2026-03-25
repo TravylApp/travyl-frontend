@@ -26,9 +26,6 @@ interface EventBlockProps {
   poll?: Poll
   userId?: string
   onVote?: (activityId: string, vote: 'yes' | 'no') => void
-  onRestorePoll?: (activityId: string) => void
-  onRemovePollActivity?: (activityId: string) => void
-  canManagePoll?: boolean
   timeRangeStartHour: number
   timeRangeEndHour?: number
   column?: number
@@ -48,9 +45,6 @@ export function EventBlock({
   poll,
   userId,
   onVote,
-  onRestorePoll,
-  onRemovePollActivity,
-  canManagePoll = false,
   timeRangeStartHour,
   timeRangeEndHour = 24,
   column = 0,

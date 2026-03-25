@@ -34,8 +34,6 @@ interface DayColumnProps {
   pollUserId?: string
   tripOwnerId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
-  onRestorePoll?: (activityId: string) => void
-  onRemovePollActivity?: (activityId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -101,8 +99,6 @@ export function DayColumn({
   pollUserId,
   tripOwnerId,
   onVotePoll,
-  onRestorePoll,
-  onRemovePollActivity,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
@@ -253,13 +249,6 @@ export function DayColumn({
               poll={polls?.get(activity.id)}
               userId={pollUserId}
               onVote={onVotePoll}
-              onRestorePoll={onRestorePoll}
-              onRemovePollActivity={onRemovePollActivity}
-              canManagePoll={
-                polls?.get(activity.id)
-                  ? polls.get(activity.id)!.startedBy === pollUserId || tripOwnerId === pollUserId
-                  : false
-              }
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}

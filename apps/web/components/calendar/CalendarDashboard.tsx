@@ -557,8 +557,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         pollUserId={userId}
                         tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   ) : (
@@ -587,8 +585,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         pollUserId={userId}
                         tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   )}
