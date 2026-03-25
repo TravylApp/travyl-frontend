@@ -531,8 +531,6 @@ export default function FavoritesScreen() {
                 onToggleFav={toggleFavorite}
                 cardWidth={STACK_CARD_W}
                 cardHeight={STACK_CARD_H}
-                enableMagazine
-                onCardPress={(_place, idx) => setShowcaseIdx(idx)}
               />
             )}
           </View>
@@ -547,7 +545,6 @@ export default function FavoritesScreen() {
           favorites={favorites}
           onToggleFav={toggleFavorite}
           overlay
-          enableMagazine
           onClose={() => setShowcaseIdx(-1)}
         />
       )}
