@@ -539,23 +539,8 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     });
   };
 
-  if (isLoading || enriching) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-8 h-8 border-3 border-gray-200 border-t-[#1e3a5f] rounded-full animate-spin" />
-        <div className="text-sm text-gray-500 font-medium">
-          {enriching ? 'Building your trip overview...' : 'Loading trip...'}
-        </div>
-        {enriching && (
-          <p className="text-xs text-gray-400 max-w-xs text-center">
-            Finding things to do, local cuisine, events, and more for your destination
-          </p>
-        )}
-      </div>
-    );
-  }
-
   // Fetch fresh "things to do" and events on each visit using trip coordinates
+  // IMPORTANT: hooks must be called before any early return
   const tripLat = trip?.trip_context?.lat;
   const tripLng = trip?.trip_context?.lng;
 
@@ -579,7 +564,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image, tags: p.tags }));
     },
     enabled: !!tripLat && !!tripLng && !enriching,
-    staleTime: 5 * 60 * 1000, // Fresh for 5 min
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: liveEvents } = useQuery({
@@ -588,9 +573,9 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       if (!tripLat || !tripLng) return [];
       const res = await fetch(`/api/events?lat=${tripLat}&lng=${tripLng}&limit=10`);
       if (!res.ok) return [];
-      const events = await res.json();
-      if (!Array.isArray(events)) return [];
-      return events.map((e: any) => ({
+      const evts = await res.json();
+      if (!Array.isArray(evts)) return [];
+      return evts.map((e: any) => ({
         id: e.id, title: e.title,
         description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
         category: e.category, image: e.image,
@@ -607,6 +592,22 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category, image: e.image,
   }))) || [];
+
+  if (isLoading || enriching) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-8 h-8 border-3 border-gray-200 border-t-[#1e3a5f] rounded-full animate-spin" />
+        <div className="text-sm text-gray-500 font-medium">
+          {enriching ? 'Building your trip overview...' : 'Loading trip...'}
+        </div>
+        {enriching && (
+          <p className="text-xs text-gray-400 max-w-xs text-center">
+            Finding things to do, local cuisine, events, and more for your destination
+          </p>
+        )}
+      </div>
+    );
+  }
 
   const hasExploreItems = exploreItems.length > 0;
   const hasCuisine = trip?.trip_context?.cuisine && trip.trip_context.cuisine.length > 0;
