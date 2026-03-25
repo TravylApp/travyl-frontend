@@ -35,10 +35,9 @@ const BROWSE_CITIES = [
 ];
 
 async function fetchMobilePlaces(): Promise<PlaceItem[]> {
-  console.log('[Places] WEB_API env:', process.env.EXPO_PUBLIC_WEB_API_URL);
-  console.log('[Places] Fetching from:', WEB_API);
-  const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
-  const cities = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 3);
+  // 2 cities × 3 categories = 6 calls (was 12) — faster load
+  const cats = ['sightseeing', 'restaurant', 'museum'];
+  const cities = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 2);
   const results = await Promise.all(
     cities.flatMap((city) =>
       cats.map(async (cat) => {
@@ -46,7 +45,7 @@ async function fetchMobilePlaces(): Promise<PlaceItem[]> {
           // Call web app's /api/places — it handles SerpAPI, image upscaling,
           // tag formatting, price mapping, and has all API keys
           const res = await fetch(
-            `${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=5`
+            `${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`
           );
           if (!res.ok) return [];
           return res.json() as Promise<PlaceItem[]>;
@@ -239,10 +238,6 @@ export default function FavoritesScreen() {
     retry: 2,
   });
 
-  // Debug — remove after confirming data loads
-  useEffect(() => {
-    console.log('[Places] Loading:', placesLoading, 'Count:', PLACES.length, 'Error:', placesError?.message);
-  }, [placesLoading, PLACES.length, placesError]);
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) =>
@@ -295,13 +290,6 @@ export default function FavoritesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      {/* Debug banner — shows at top of screen */}
-      <View style={{ position: 'absolute', top: 50, left: 10, right: 10, zIndex: 9999, backgroundColor: placesError ? '#fee2e2' : placesLoading ? '#fef9c3' : '#dcfce7', padding: 8, borderRadius: 8 }}>
-        <Text style={{ fontSize: 11, color: '#333' }}>
-          {placesLoading ? '⏳ Loading...' : placesError ? `❌ ${placesError.message}` : `✅ ${PLACES.length} places loaded`}
-        </Text>
-        <Text style={{ fontSize: 9, color: '#666' }}>API: {WEB_API}</Text>
-      </View>
       <StatusBar barStyle="dark-content" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
