@@ -89,3 +89,6 @@ export { isVoteKey, userIdFromVoteKey, parseVotesFromYMap, resolveVotes } from '
 // Rescoper utilities
 export { detectOperation, getConflictingActivities, computeNewTotalDays } from './rescoper'
 export type { RescoperOperation } from './rescoper'
+
+export { mergeSearchResults, deduplicateResults } from './entitySearch'
+export type { SpotlightResult } from './entitySearch'
