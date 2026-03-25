@@ -35,8 +35,9 @@ const BROWSE_CITIES = [
 ];
 
 async function fetchMobilePlaces(): Promise<PlaceItem[]> {
+  console.log('[Places] Fetching from:', WEB_API);
   const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
-  const cities = BROWSE_CITIES.sort(() => Math.random() - 0.5).slice(0, 3);
+  const cities = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 3);
   const results = await Promise.all(
     cities.flatMap((city) =>
       cats.map(async (cat) => {
@@ -246,7 +247,7 @@ export default function FavoritesScreen() {
     if (activeTab === 'all') return PLACES;
     if (activeTab === 'favorites') return PLACES.filter((p) => favorites.includes(p.id));
     return PLACES.filter((p) => p.type === activeTab);
-  }, [activeTab, favorites]);
+  }, [activeTab, favorites, PLACES]);
 
   const subcategories = useMemo(() => {
     const counts: Record<string, number> = {};
