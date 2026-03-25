@@ -15,6 +15,7 @@ const TYPE_LABELS: Record<string, string> = {
   navigation: 'Navigation',
   command: 'Commands',
   setting: 'Settings',
+  action: 'Quick Actions',
 }
 
 interface Props {

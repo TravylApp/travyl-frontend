@@ -2,7 +2,7 @@
 
 import { forwardRef } from 'react'
 import { motion } from 'motion/react'
-import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal, Star, Calendar, Pin } from 'lucide-react'
+import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal, Star, Calendar, Pin, Sparkles } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
 import { highlightMatch } from './highlightMatch'
 
@@ -16,6 +16,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   navigation: ArrowRight,
   command: Terminal,
   setting: Settings,
+  action: Sparkles,
 }
 
 const TYPE_ICON_COLORS: Record<string, string> = {
@@ -28,6 +29,7 @@ const TYPE_ICON_COLORS: Record<string, string> = {
   navigation: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
   command: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
   setting: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  action: 'bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/50 dark:to-blue-900/50 text-indigo-600 dark:text-indigo-400',
 }
 
 interface Props {
@@ -44,6 +46,7 @@ export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
     const iconColor = TYPE_ICON_COLORS[result.type] ?? TYPE_ICON_COLORS.navigation
 
     // Type-specific rendering
+    const isActionType = result.type === 'action'
     const isRichType = ['trip', 'hotel', 'flight', 'restaurant'].includes(result.type)
     const isSimpleType = ['navigation', 'command', 'setting'].includes(result.type)
     const meta = result.metadata as Record<string, unknown> | undefined
@@ -52,22 +55,35 @@ export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
       <button
         ref={ref}
         onClick={onClick}
-        className="w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors relative"
+        className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors relative ${
+          isActionType ? 'my-0.5' : ''
+        }`}
       >
         {/* Animated highlight background */}
         {isActive && (
           <motion.div
             layoutId="spotlight-highlight"
-            className="absolute inset-0 bg-blue-50 dark:bg-blue-950/30 rounded-lg"
+            className={`absolute inset-0 rounded-lg ${
+              isActionType
+                ? 'bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/40'
+                : 'bg-blue-50 dark:bg-blue-950/30'
+            }`}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
+        )}
+
+        {/* Action type subtle background when not active */}
+        {isActionType && !isActive && (
+          <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-950/20 dark:to-blue-950/20" />
         )}
 
         {/* Active indicator bar */}
         {isActive && (
           <motion.div
             layoutId="spotlight-indicator"
-            className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-blue-500"
+            className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full ${
+              isActionType ? 'bg-indigo-500' : 'bg-blue-500'
+            }`}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
         )}

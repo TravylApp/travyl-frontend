@@ -223,10 +223,37 @@ export function useSpotlightSearch() {
     }
   }, [tripSearchResults, scope])
 
-  // Merge all sources (now including commands)
+  // Detect trip creation intent
+  const createTripIntent = useMemo((): SpotlightResult | null => {
+    const q = query.toLowerCase().trim()
+    const createMatch = q.match(/^(?:new|create)\s+trip(?:\s+to\s+(.+))?$/i)
+    const tripToMatch = q.match(/^trip\s+to\s+(.+)$/i)
+
+    if (createMatch || tripToMatch) {
+      const dest = createMatch?.[1] || tripToMatch?.[1] || ''
+      return {
+        id: 'create-trip',
+        type: 'action' as const,
+        title: dest ? `Create trip to ${dest.charAt(0).toUpperCase() + dest.slice(1)}` : 'Create New Trip',
+        subtitle: 'Start planning a new adventure',
+        href: '',
+        score: 100,
+        metadata: { prefillDestination: dest },
+      }
+    }
+    return null
+  }, [query])
+
+  // Inject create-trip action into results
+  const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!createTripIntent) return {}
+    return { action: [createTripIntent] }
+  }, [createTripIntent])
+
+  // Merge all sources (now including commands and actions)
   const results = useMemo(() => {
-    return mergeSearchResults([tripResults, entityResults ?? {}, navResults, commandResults], { maxPerCategory: 3 })
-  }, [tripResults, entityResults, navResults, commandResults])
+    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, navResults, commandResults], { maxPerCategory: 3 })
+  }, [actionResults, tripResults, entityResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {

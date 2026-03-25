@@ -1,6 +1,6 @@
 export interface SpotlightResult {
   id: string
-  type: 'trip' | 'hotel' | 'flight' | 'restaurant' | 'activity' | 'destination' | 'navigation' | 'command' | 'setting'
+  type: 'trip' | 'hotel' | 'flight' | 'restaurant' | 'activity' | 'destination' | 'navigation' | 'command' | 'setting' | 'action'
   title: string
   subtitle: string
   imageUrl?: string
