@@ -1,17 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import * as Y from 'yjs'
-import { supabase, toCalendarActivity, type ActivityRow } from '@travyl/shared'
+import { supabase, toCalendarActivity, type ActivityRow, type Trip } from '@travyl/shared'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
-
-interface Trip {
-  id: string
-  title: string
-  destination: string
-  start_date: string
-  end_date: string
-  status: string
-  user_id: string
-}
 
 const CALENDAR_ACTIVITY_KEYS = [
   'id',
@@ -31,6 +21,11 @@ const CALENDAR_ACTIVITY_KEYS = [
   'longitude',
   'sortOrder',
   'pollResult',
+  'flightNumber',
+  'airline',
+  'checkIn',
+  'checkOut',
+  'bookingRef',
 ] as const
 
 interface UseTripActivitiesReturn {
@@ -38,6 +33,7 @@ interface UseTripActivitiesReturn {
   tripStartDate: string
   loading: boolean
   error: string | null
+  refetchTrip: () => Promise<void>
 }
 
 export function useTripActivities(tripId: string): UseTripActivitiesReturn {
@@ -122,5 +118,10 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
 
   const tripStartDate = trip?.start_date ?? ''
 
-  return { trip, tripStartDate, loading, error }
+  const refetchTrip = useCallback(async () => {
+    const { data, error } = await supabase.from('trips').select('*').eq('id', tripId).single()
+    if (!error && data) setTrip(data as Trip)
+  }, [tripId])
+
+  return { trip, tripStartDate, loading, error, refetchTrip }
 }

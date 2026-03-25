@@ -6,6 +6,7 @@ import { Eye, EyeOff, ArrowLeft, Mail, Lock, ChevronLeft, ChevronRight } from 'l
 import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore, LOGIN_DESTINATIONS } from '@travyl/shared';
+import { supabase } from '@travyl/shared';
 
 export default function LoginPage() {
   return (
@@ -42,7 +43,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace('/');
+      router.replace(searchParams.get('next') || '/');
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {
@@ -53,6 +54,12 @@ function LoginPageInner() {
   const nextPage = () => setCurrentPage((p) => (p + 1) % LOGIN_DESTINATIONS.length);
   const prevPage = () => setCurrentPage((p) => (p - 1 + LOGIN_DESTINATIONS.length) % LOGIN_DESTINATIONS.length);
   const dest = LOGIN_DESTINATIONS[currentPage];
+
+  const handleSocialSignIn = async (provider: 'google' | 'facebook' | 'azure' | 'apple') => {
+    setError('');
+    const { error } = await supabase.auth.signInWithOAuth({ provider });
+    if (error) setError(error.message);
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -227,6 +234,7 @@ function LoginPageInner() {
               {[
                 {
                   label: 'Google',
+                  provider: 'google' as const,
                   icon: (
                     <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -238,6 +246,7 @@ function LoginPageInner() {
                 },
                 {
                   label: 'Facebook',
+                  provider: 'facebook' as const,
                   icon: (
                     <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="#1877F2">
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -246,6 +255,7 @@ function LoginPageInner() {
                 },
                 {
                   label: 'Apple',
+                  provider: 'apple' as const,
                   icon: (
                     <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="#1e3a5f">
                       <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
@@ -254,6 +264,7 @@ function LoginPageInner() {
                 },
                 {
                   label: 'Microsoft',
+                  provider: 'azure' as const,
                   icon: (
                     <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]">
                       <path fill="#f25022" d="M11.4 11.4H2.2V2.2h9.2z" />
@@ -266,6 +277,7 @@ function LoginPageInner() {
               ].map((provider) => (
                 <motion.button
                   key={provider.label}
+                  onClick={() => handleSocialSignIn(provider.provider)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   className="flex items-center justify-center gap-2.5 h-[56px] rounded-xl border border-[#1e3a5f]/10 bg-white hover:bg-[#1e3a5f]/[0.03] hover:border-[#1e3a5f]/20 hover:shadow-lg transition-all text-[#1e3a5f] text-sm cursor-pointer"

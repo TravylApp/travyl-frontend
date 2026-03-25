@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useTrips } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { Plus } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
@@ -12,6 +12,8 @@ import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/component
 
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -182,29 +184,11 @@ function TripsContent() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [modalOpen, setModalOpen] = useState(false)
 
-  const { data: trips, isLoading, isError } = useQuery({
-    queryKey: ['trips'],
-    queryFn: async () => {
-      // Pass any locally-created trip IDs for anonymous users
-      // Check both localStorage (persistent) and sessionStorage (legacy) for trip IDs
-      const stored = localStorage.getItem('my-trip-ids') || sessionStorage.getItem('my-trip-ids');
-      const ids = stored ? JSON.parse(stored) as string[] : [];
-      // Migrate sessionStorage to localStorage if needed
-      if (sessionStorage.getItem('my-trip-ids') && !localStorage.getItem('my-trip-ids')) {
-        localStorage.setItem('my-trip-ids', sessionStorage.getItem('my-trip-ids')!);
-      }
-      const url = ids.length > 0 ? `/api/trips?ids=${ids.join(',')}` : '/api/trips';
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch trips');
-      return res.json();
-    },
-  });
+  const { data: trips, isLoading, isError } = useTrips();
 
-  const allTrips: MockTripCard[] = (trips ?? []).map((t: any) => ({
+  const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
     ...t,
-    image: t.trip_context?.hero_image_url
-      || t.trip_context?.hero_images?.[0]
-      || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
+    image: t.cover_image_url ?? FALLBACK_IMAGE,
   }))
 
   // Apply filters

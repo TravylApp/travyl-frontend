@@ -14,6 +14,7 @@ export interface ContextSearchResult {
   endDate: string
   status: string
   activityCount: number
+  imageUrl: string | null
   score: number
 }
 
@@ -22,7 +23,7 @@ async function fetchContextSearch(query: string): Promise<ContextSearchResult[]>
   const token = session?.access_token
   if (!token) return []
 
-  const res = await fetch(`${API_URL}/api/events/search?city=${encodeURIComponent(query)}&country=`, {
+  const res = await fetch(`${API_URL}/context-search?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -46,6 +47,7 @@ export function useContextSearch(query: string) {
     queryFn: () => fetchContextSearch(debouncedQuery),
     enabled,
     staleTime: 30_000,
+    refetchOnMount: 'always',
   })
 
   return {

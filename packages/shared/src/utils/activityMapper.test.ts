@@ -188,3 +188,51 @@ describe('toActivityRow', () => {
     expect(result.estimated_cost).toBe(0)
   })
 })
+
+describe('toActivityRow — unscheduled', () => {
+  const base: CalendarActivity = {
+    id: 'a1', title: 'Test', type: 'sightseeing',
+    day: 3, startHour: 9, duration: 2,
+  }
+  const tripStartDate = '2026-06-12'
+
+  it('persists unscheduled: true to activity_data', () => {
+    const row = toActivityRow({ ...base, unscheduled: true }, 'trip1', 'user1', tripStartDate)
+    expect((row.activity_data as Record<string, unknown>).unscheduled).toBe(true)
+  })
+
+  it('persists unscheduled: false to activity_data', () => {
+    const row = toActivityRow({ ...base, unscheduled: false }, 'trip1', 'user1', tripStartDate)
+    expect((row.activity_data as Record<string, unknown>).unscheduled).toBe(false)
+  })
+
+  it('omits unscheduled from activity_data when undefined', () => {
+    const row = toActivityRow(base, 'trip1', 'user1', tripStartDate)
+    expect((row.activity_data as Record<string, unknown>).unscheduled).toBeUndefined()
+  })
+})
+
+describe('toCalendarActivity — unscheduled', () => {
+  const baseRow: ActivityRow = {
+    id: 'a1', trip_id: 'trip1', user_id: 'user1',
+    activity_name: 'Test', activity_type: 'sightseeing',
+    starting_date: '2026-06-15', ending_date: '2026-06-15',
+    starting_time: '09:00', ending_time: '11:00',
+    estimated_cost: 0, latitude: 0, longitude: 0,
+    currency: null, notes: null, sort_order: 0,
+    activity_data: { category: 'sightseeing', unscheduled: true },
+    created_at: '', updated_at: '',
+  }
+  const tripStartDate = '2026-06-12'
+
+  it('reads unscheduled: true from activity_data', () => {
+    const cal = toCalendarActivity(baseRow, tripStartDate)
+    expect(cal.unscheduled).toBe(true)
+  })
+
+  it('defaults unscheduled to false when not in activity_data', () => {
+    const row = { ...baseRow, activity_data: { category: 'sightseeing' } }
+    const cal = toCalendarActivity(row, tripStartDate)
+    expect(cal.unscheduled).toBe(false)
+  })
+})

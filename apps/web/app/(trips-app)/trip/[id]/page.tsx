@@ -685,7 +685,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {trip?.trip_context?.phrases && Object.keys(trip.trip_context.phrases).length > 0 && (
                   <div className="flex-1 min-w-0">
-                    <PhrasesSection phrases={trip.trip_context.phrases} language={trip.trip_context.country?.language} />
+                    <PhrasesSection phrases={trip.trip_context.phrases as any} language={trip.trip_context.country?.language} />
                   </div>
                 )}
                 {trip?.trip_context?.cost_of_living && (

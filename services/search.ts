@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { validateAuth } from './lib/auth'
-import { searchPlaces } from './lib/location'
+import { searchPlaces } from './lib/serpapi'
 import type { SearchResponse } from './lib/types'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
@@ -13,10 +13,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'q and destination required' }) }
     }
 
-    // Search Foursquare Places with user's query
-    const results = await searchPlaces(destination, {
-      query,
-      maxResults: 10,
+    // Search via SerpAPI Google Local
+    const results = await searchPlaces(destination, query ?? 'all', {
+      limit: 10,
     })
 
     const response: SearchResponse = { results }

@@ -9,16 +9,28 @@ import {
 import { HOUR_HEIGHT, COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 import { formatTimeRange } from './utils'
 import { useCalendarThemeContext } from './CalendarThemeContext'
+import { useResizeHandles } from './hooks/useResizeHandles'
 import type { CalendarActivity, UserAwareness } from './types'
+import type { Poll } from '@travyl/shared'
+import { PollBar } from './PollBar'
 
 interface EventBlockProps {
   activity: CalendarActivity
   viewers?: UserAwareness[]
   isSelected?: boolean
   isMultiSelected?: boolean
-  onSelect: (id: string) => void
+  onSelect: (id: string, anchorEl: HTMLElement) => void
   onShiftClick?: (id: string) => void
+  onResize?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
+  poll?: Poll
+  userId?: string
+  onVote?: (activityId: string, vote: 'yes' | 'no') => void
+  onRestorePoll?: (activityId: string) => void
+  onRemovePollActivity?: (activityId: string) => void
+  canManagePoll?: boolean
   timeRangeStartHour: number
+  timeRangeEndHour?: number
   column?: number
   totalColumns?: number
   hiddenCount?: number
@@ -31,7 +43,16 @@ export function EventBlock({
   isMultiSelected = false,
   onSelect,
   onShiftClick,
+  onResize,
+  onContextMenu,
+  poll,
+  userId,
+  onVote,
+  onRestorePoll,
+  onRemovePollActivity,
+  canManagePoll = false,
   timeRangeStartHour,
+  timeRangeEndHour = 24,
   column = 0,
   totalColumns = 1,
   hiddenCount = 0,
@@ -39,6 +60,22 @@ export function EventBlock({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { type: 'activity' as const, activity },
+  })
+
+  const {
+    isResizing,
+    previewStartHour,
+    previewDuration,
+    topHandleProps,
+    bottomHandleProps,
+  } = useResizeHandles({
+    startHour: activity.startHour,
+    duration: activity.duration,
+    timeRangeStartHour,
+    timeRangeEndHour,
+    onResize: (newStart, newDuration) => {
+      onResize?.(activity.id, newStart, newDuration)
+    },
   })
 
   const { isDark } = useCalendarThemeContext()
@@ -57,24 +94,27 @@ export function EventBlock({
     ? `${COLUMN_OUTER_PAD}px`
     : `${COLUMN_OUTER_PAD}px + ${column} * (${colWidth} + ${COLUMN_GAP}px)`
 
+  const displayStartHour = isResizing && previewStartHour !== null ? previewStartHour : activity.startHour
+  const displayDuration = isResizing && previewDuration !== null ? previewDuration : activity.duration
+
   const style: React.CSSProperties = {
     position: 'absolute',
-    top: (activity.startHour - timeRangeStartHour) * HOUR_HEIGHT,
-    height: Math.max(activity.duration * HOUR_HEIGHT - 2, 20),
+    top: (displayStartHour - timeRangeStartHour) * HOUR_HEIGHT,
+    height: Math.max(displayDuration * HOUR_HEIGHT - 2, 20),
     left: `calc(${leftOffset})`,
     width: `calc(${colWidth})`,
-    transform: CSS.Translate.toString(transform),
+    transform: isResizing ? undefined : CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : isSelected ? 10 : 1,
+    zIndex: isDragging ? 50 : isResizing ? 40 : isSelected ? 10 : 1,
     borderLeft: `3px solid ${borderColor}`,
-    transition: isDragging ? undefined : 'left 150ms ease, width 150ms ease',
+    transition: isDragging || isResizing ? undefined : 'left 150ms ease, width 150ms ease',
     ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      onSelect(activity.id)
+      onSelect(activity.id, e.currentTarget)
     }
   }
 
@@ -110,7 +150,14 @@ export function EventBlock({
           onShiftClick(activity.id)
           return
         }
-        onSelect(activity.id)
+        onSelect(activity.id, e.currentTarget)
+      }}
+      onContextMenu={(e: React.MouseEvent<HTMLDivElement>) => {
+        if (onContextMenu) {
+          e.preventDefault()
+          e.stopPropagation()
+          onContextMenu(activity.id, e.clientX, e.clientY)
+        }
       }}
       onKeyDown={handleKeyDown}
     >
@@ -119,10 +166,6 @@ export function EventBlock({
           <div
             className="absolute inset-0 bg-cover bg-center rounded-md"
             style={{ backgroundImage: `url(${activity.image})` }}
-          />
-          <div
-            className="absolute inset-0 rounded-md"
-            style={{ background: `linear-gradient(135deg, ${color}4d, ${color}33)` }}
           />
           <div
             className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-6"
@@ -182,6 +225,43 @@ export function EventBlock({
         <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-auto">
           +{hiddenCount} more
         </div>
+      )}
+
+      {/* Poll bar — pinned to bottom of card */}
+      {poll && userId && onVote && onRestorePoll && onRemovePollActivity && (
+        <div className="absolute bottom-0 left-0 right-0 z-10">
+          <PollBar
+            poll={poll}
+            userId={userId}
+            onVote={(v) => onVote(activity.id, v)}
+            collaborators={viewers}
+            compact={displayDuration < 0.67}
+            isResolved={poll.status === 'resolved'}
+            canManage={canManagePoll}
+            onRestore={() => onRestorePoll(activity.id)}
+            onRemove={() => onRemovePollActivity(activity.id)}
+          />
+        </div>
+      )}
+
+      {/* Resize handles */}
+      {onResize && (
+        <>
+          <div
+            {...topHandleProps}
+            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-20 group/handle"
+            style={{ touchAction: 'none' }}
+          >
+            <div className="absolute top-0 left-1/4 right-1/4 h-[2px] rounded-full bg-white/0 group-hover/handle:bg-white/60 transition-colors" />
+          </div>
+          <div
+            {...bottomHandleProps}
+            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-20 group/handle"
+            style={{ touchAction: 'none' }}
+          >
+            <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full bg-white/0 group-hover/handle:bg-white/60 transition-colors" />
+          </div>
+        </>
       )}
     </div>
   )

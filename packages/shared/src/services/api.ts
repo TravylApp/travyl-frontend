@@ -301,11 +301,9 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
     .from('trips')
     .select('*')
     .eq('share_link_token', token)
-    .single();
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw error;
-  }
+    .maybeSingle();
+  if (error || !data) return null;
+  if (data.visibility === 'private') return null;
   return data;
 }
 
@@ -400,12 +398,18 @@ export async function addBudgetExpense(tripId: string, category: string, amount:
   if (error) throw error;
 }
 
-export async function updateTripSettings(tripId: string, settings: Record<string, unknown>) {
-  const { error } = await supabase
-    .from('trips')
-    .update({ settings })
-    .eq('id', tripId);
-  if (error) throw error;
+export async function updateTripThemeSettings(
+  tripId: string,
+  updates: {
+    theme?: string
+    custom_theme_color?: string | null
+    tab_color_overrides?: Record<string, string>
+    itinerary_color_overrides?: Record<string, string>
+    hidden_tabs?: Record<string, boolean>
+  }
+): Promise<void> {
+  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  if (error) throw error
 }
 
 // ── Collaborators ──────────────────────────────────────
@@ -496,4 +500,195 @@ export async function moveTripNote(noteId: string, day: number, hour: number): P
 export async function deleteTripNote(noteId: string): Promise<void> {
   const { error } = await supabase.from('trip_notes').delete().eq('id', noteId)
   if (error) throw error
+}
+
+// ─── Save AI Plan to Supabase ─────────────────────────────
+
+interface PlanToSave {
+  extracted: {
+    destination: { city: string; country: string; lat: number; lng: number };
+    dates: { start: string | null; end: string | null };
+    duration_days: number;
+    travelers: { count: number };
+    budget_level: string | null;
+    daily_estimate_usd: number;
+    interests: string[];
+  };
+  itinerary: Array<{
+    day: number;
+    date: string;
+    slots: Array<{
+      poi: {
+        id: string;
+        name: string;
+        lat: number;
+        lng: number;
+        category: string;
+        subcategory: string;
+        rating?: number;
+        description?: string;
+        photo_url?: string;
+        visit_duration_min: number;
+        tags: string[];
+      };
+      start_time: string;
+      end_time: string;
+      start_time_12h: string;
+      end_time_12h: string;
+      travel_from_prev_min: number;
+    }>;
+    weather?: { date: string; high_c: number; low_c: number; condition: string; icon: string };
+  }>;
+  hotels: Array<{ name: string; stars: number; price_per_night: number; currency: string; rating?: number; photo_url?: string; amenities: string[]; booking_url?: string }>;
+  flights: Array<{ airline: string; departure_time: string; arrival_time: string; duration_min: number; stops: number; price: number; currency: string; booking_url?: string }>;
+  destination_photo_url: string | null;
+  timezone: string | null;
+}
+
+export async function savePlanToSupabase(
+  plan: PlanToSave,
+  onProgress?: (stage: string, pct: number) => void
+): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('You must be logged in to save a trip. Please sign in and try again.')
+
+  const ext = plan.extracted
+  const dest = ext.destination
+
+  onProgress?.('Creating trip...', 10)
+
+  // 1. Create trip
+  const tripInsert: Record<string, unknown> = {
+    user_id: user.id,
+    title: `${dest.city}, ${dest.country}`,
+    destination: `${dest.city}, ${dest.country}`,
+    start_date: ext.dates.start,
+    end_date: ext.dates.end,
+    travelers: ext.travelers.count,
+    budget: ext.daily_estimate_usd * ext.duration_days,
+    currency: 'USD',
+    status: 'planning',
+    is_generated: true,
+    trip_context: {
+      hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+      quick_facts: {
+        budget_level: ext.budget_level,
+        daily_budget: ext.daily_estimate_usd,
+        interests: ext.interests,
+        timezone: plan.timezone,
+      },
+      weather: plan.itinerary.filter(d => d.weather).map(d => d.weather),
+    },
+  }
+
+  const { data: trip, error: tripErr } = await supabase
+    .from('trips')
+    .insert(tripInsert)
+    .select('id')
+    .single()
+
+  if (tripErr) {
+    throw new Error(`Failed to create trip: ${tripErr.message} (code: ${tripErr.code})`)
+  }
+  const tripId = trip.id
+
+  onProgress?.('Building itinerary...', 30)
+
+  // 2. Create itinerary days + activities
+  for (let d = 0; d < plan.itinerary.length; d++) {
+    const day = plan.itinerary[d]
+    const pct = 30 + Math.round((d / plan.itinerary.length) * 40)
+    onProgress?.(`Day ${day.day}...`, pct)
+
+    const { data: dayRow, error: dayErr } = await supabase
+      .from('itinerary_days')
+      .insert({ trip_id: tripId, day_number: day.day, date: day.date })
+      .select('id')
+      .single()
+
+    if (dayErr) {
+      console.error('Failed to create itinerary day:', dayErr)
+      continue // don't fail the whole save for one day
+    }
+
+    if (day.slots.length > 0) {
+      const activities = day.slots.map((slot, i) => {
+        const poi = slot.poi
+        const catMap: Record<string, string> = {
+          restaurant: 'food', cafe: 'food', bar: 'food',
+          park: 'nature', beach: 'nature', garden: 'nature', hiking: 'nature',
+          hotel: 'hotel', hostel: 'hotel', airport: 'airport',
+        }
+        return {
+          trip_id: tripId,
+          itinerary_day_id: dayRow.id,
+          user_id: user.id,
+          activity_name: poi.name,
+          activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
+          starting_date: day.date,
+          ending_date: day.date,
+          starting_time: slot.start_time,
+          ending_time: slot.end_time,
+          latitude: poi.lat,
+          longitude: poi.lng,
+          sort_order: i,
+          activity_data: {
+            category: poi.category,
+            subcategory: poi.subcategory,
+            location_name: poi.name,
+            image_url: poi.photo_url || null,
+            rating: poi.rating || null,
+            description: poi.description || null,
+            tags: poi.tags,
+            visit_duration_min: poi.visit_duration_min,
+          },
+        }
+      })
+
+      const { error: actErr } = await supabase.from('activities').insert(activities)
+      if (actErr) console.error('Failed to save activities for day', day.day, actErr)
+    }
+  }
+
+  onProgress?.('Saving hotels...', 75)
+
+  // 3. Save hotels (best effort)
+  if (plan.hotels.length > 0) {
+    const hotelRows = plan.hotels.map(h => ({
+      trip_id: tripId,
+      data: {
+        name: h.name,
+        price_per_night: h.price_per_night,
+        currency: h.currency,
+        rating: h.rating || null,
+        star_rating: h.stars,
+        image_url: h.photo_url || null,
+        check_in: ext.dates.start,
+        check_out: ext.dates.end,
+      },
+    }))
+    const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
+    if (hotelErr) console.error('Failed to save hotels:', hotelErr)
+  }
+
+  onProgress?.('Saving flights...', 85)
+
+  // 4. Save flights (best effort)
+  if (plan.flights.length > 0) {
+    const flightRows = plan.flights.map(f => ({
+      trip_id: tripId,
+      data: {
+        airline: f.airline,
+        departure_at: f.departure_time,
+        arrival_at: f.arrival_time,
+        price: f.price,
+        currency: f.currency,
+      },
+    }))
+    const { error: flightErr } = await supabase.from('flights').insert(flightRows)
+    if (flightErr) console.error('Failed to save flights:', flightErr)
+  }
+
+  onProgress?.('Done!', 100)
+  return tripId
 }

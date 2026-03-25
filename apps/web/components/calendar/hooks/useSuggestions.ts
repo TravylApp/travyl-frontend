@@ -5,8 +5,6 @@ import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { SuggestionCard } from '../types'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
-
 const FILTER_CATEGORIES = [
   'All',
   'Sightseeing',
@@ -50,45 +48,16 @@ interface UseSuggestionsReturn {
   refetch: () => void
 }
 
-async function geocode(destination: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destination)}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'en' } }
-    )
-    const data = await res.json()
-    if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-    return null
-  } catch {
-    return null
-  }
-}
-
 async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
-  if (!API_URL || !destination) return []
+  if (!destination) return []
 
   try {
-    const coords = await geocode(destination)
-    if (!coords) return []
-
-    const { supabase } = await import('@travyl/shared')
-    const { data: { session } } = await supabase.auth.getSession()
-    const token = session?.access_token
-
-    const params = new URLSearchParams({
-      lat: String(coords.lat),
-      lng: String(coords.lng),
-      limit: '20',
-    })
-    const url = `${API_URL}/api/places/nearby?${params}`
-    const headers: Record<string, string> = { Accept: 'application/json' }
-    if (token) headers.Authorization = `Bearer ${token}`
-
-    const res = await fetch(url, { headers })
+    const params = new URLSearchParams({ destination })
+    const res = await fetch(`/api/suggest?${params}`)
     if (!res.ok) return []
 
     const data = await res.json()
-    return Array.isArray(data) ? data : data.suggestions ?? data.places ?? []
+    return data.suggestions ?? []
   } catch {
     return []
   }

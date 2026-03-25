@@ -32,21 +32,9 @@ export interface TripContextData {
     emergency?: string;
   };
   weather?: {
-    current?: { temp: number; feelslike?: number; conditions: string; icon?: string; humidity?: number; windspeed?: number };
-    forecast?: { date: string; high: number; low: number; conditions: string; icon?: string; description?: string; precipprob?: number }[];
+    current?: { high: number; low: number; condition: string; temp?: number; feelslike?: number; conditions?: string };
+    forecast?: { day: string; date?: string; high: number; low: number; icon: string; condition: string }[];
   };
-  hotels?: {
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    address?: string;
-    category?: string;
-    rating?: number;
-    price?: number;
-    image?: string | null;
-    tip?: string;
-  }[];
   explore_items?: {
     id: string;
     title: string;
@@ -66,112 +54,21 @@ export interface TripContextData {
     url?: string;
     image?: string;
   }[];
-  country?: {
-    name: string;
-    currency: { code: string; symbol: string; name: string };
-    language: string;
-    timezone: string;
-    callingCode: string;
-    flag: string;
-    capital: string;
-    region: string;
-    population: number;
-    cca2?: string;
-    emergency?: string;
-  };
-  safety?: {
-    score: number;
-    message: string;
-    source?: string;
-    updated?: string;
-  };
-  wiki?: {
-    title: string;
-    extract: string;
-    thumbnail?: string;
-    description?: string;
-  };
-  foursquare_venues?: {
-    id: string;
-    title?: string;
-    name?: string;
-    description?: string;
-    tagline?: string;
-    category?: string;
-    image?: string;
-    tip?: string;
-    rating?: number;
-    lat?: number;
-    lng?: number;
-  }[];
-  events?: {
-    id: string;
-    title: string;
-    description?: string;
-    category: string;
-    date?: string;
-    venue?: string;
-    image?: string;
-    url?: string;
-  }[];
-  holidays?: { date: string; name: string; localName?: string }[];
-  cuisine?: { id: string; name: string; image: string }[];
-  sunrise?: { sunrise: string; sunset: string; golden_hour: string; day_length: string };
-  nearby_cities?: {
-    id: string;
-    name: string;
-    country: string;
-    countryCode: string;
-    population?: number;
-    lat: number;
-    lng: number;
-    distance: number; // km from destination
-  }[];
-  timezone_info?: {
-    timezone: string;
-    currentTime?: string;
-    utcOffset?: string;
-    abbreviation?: string;
-    hasDST?: boolean;
-  };
-  phrases?: Record<string, string>;
-  restaurants?: {
-    id: string;
-    name: string;
-    lat?: number;
-    lng?: number;
-    address?: string;
-    category?: string;
-    cuisines?: string[];
-    rating?: number;
-    reviewCount?: number;
-    priceLevel?: string;
-    image?: string | null;
-    images?: string[];
-    tripAdvisorUrl?: string;
-    tip?: string;
-    source?: string;
-  }[];
-  aqi?: {
-    aqi: number;
-    level: string;
-    pm25?: number;
-    pm10?: number;
-  };
-  cost_of_living?: {
-    meal_cheap: number;
-    meal_mid: number;
-    coffee: number;
-    beer: number;
-    taxi_km: number;
-    public_transport: number;
-    water_bottle: number;
-    daily_budget_low: number;
-    daily_budget_mid: number;
-    daily_budget_high: number;
-    currency?: string;
-    source?: string;
-  };
+  hotels?: any[];
+  foursquare_venues?: any[];
+  events?: any[];
+  cuisine?: any[];
+  phrases?: any[];
+  cost_of_living?: any;
+  nearby_cities?: any[];
+  safety?: any;
+  timezone_info?: any;
+  sunrise?: any;
+  aqi?: any;
+  wiki?: string | { extract?: string };
+  country?: any;
+  holidays?: any[];
+  restaurants?: any[];
 }
 
 export interface Trip {
@@ -194,6 +91,12 @@ export interface Trip {
   fork_count: number;
   theme: string;
   custom_theme_color: string | null;
+  tab_color_overrides?: Record<string, string>;
+  itinerary_color_overrides?: Record<string, string>;
+  hidden_tabs?: Record<string, boolean>;
+  is_public?: boolean;
+  is_shared?: boolean;
+  cover_image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -544,6 +447,7 @@ export interface ActivityData {
   check_out?: string
   booking_ref?: string
   pollResult?: 'remove'
+  unscheduled?: boolean
 }
 
 export interface CalendarActivity {
@@ -577,6 +481,18 @@ export interface CalendarActivity {
   /** DB sort_order */
   sortOrder?: number;
   pollResult?: 'remove'
+  /** True when removed from calendar by a rescope but not deleted. */
+  unscheduled?: boolean
+  /** Flight number for flight/transport activities */
+  flightNumber?: string
+  /** Airline name for flight/transport activities */
+  airline?: string
+  /** Check-in date/time for hotel activities */
+  checkIn?: string
+  /** Check-out date/time for hotel activities */
+  checkOut?: string
+  /** Booking confirmation reference */
+  bookingRef?: string
 }
 
 export interface Poll {
@@ -957,4 +873,30 @@ export interface MockHotelDetail {
   website: string;
   neighborhood: string;
   confirmationNumber: string;
+}
+
+// ─── Packing ────────────────────────────────────────────────
+
+export interface PackingItem {
+  item: string;
+  packed: boolean;
+}
+
+export type PackingList = Record<string, PackingItem[]>;
+
+// ─── Budget ─────────────────────────────────────────────────
+
+export interface BudgetExpense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface BudgetItem {
+  id: string;
+  category: string;
+  budgeted: number;
+  actual: number;
+  fixed: boolean;
+  expenses: BudgetExpense[];
 }

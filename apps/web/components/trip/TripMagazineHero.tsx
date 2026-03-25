@@ -96,7 +96,8 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
   const WeatherIcon = conditions.includes('cloud') ? Cloud : conditions.includes('rain') ? Droplets : Sun;
 
   const quote = useQuote();
-  const wiki = trip?.trip_context?.wiki;
+  const rawWiki = trip?.trip_context?.wiki;
+  const wiki = typeof rawWiki === 'string' ? { extract: rawWiki } : rawWiki;
 
   // Currency conversion — inline with quick facts
   const destCurrency = trip?.trip_context?.country?.currency;

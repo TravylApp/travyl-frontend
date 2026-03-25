@@ -13,9 +13,10 @@ interface DetailPanelProps {
   onClose: () => void
   onRemove: (id: string) => void
   onUpdateActivity?: (id: string, updates: Partial<CalendarActivity>) => void
+  onEdit?: (id: string) => void
 }
 
-export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActivity }: DetailPanelProps) {
+export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActivity, onEdit }: DetailPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
 
@@ -197,7 +198,9 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
           <div className="flex gap-2 border-t border-[var(--cal-border)] p-4">
             <button
               className="flex-1 rounded-lg border border-[var(--cal-border)] py-2 text-sm text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)] transition-colors"
-              onClick={onClose}
+              onClick={() => {
+                if (onEdit && activity) onEdit(activity.id)
+              }}
             >
               Edit
             </button>

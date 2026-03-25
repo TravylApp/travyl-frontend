@@ -16,25 +16,62 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const supabase = createClient(
       Resource.SupabaseUrl.value,
-      Resource.SupabaseServiceRoleKey.value,
+      Resource.SupabaseSecretKey.value,
     )
 
-    // Embed the query
-    const queryEmbedding = await generateEmbedding(query)
+    // Run vector search and text fallback in parallel
+    const [vectorResults, textResults] = await Promise.all([
+      // Vector similarity search
+      (async () => {
+        try {
+          const queryEmbedding = await generateEmbedding(query)
+          const { data, error } = await supabase.rpc('search_trips', {
+            query_embedding: JSON.stringify(queryEmbedding),
+            match_user_id: userId,
+            match_count: 5,
+          })
+          if (error) {
+            console.error('vector search error:', error)
+            return []
+          }
+          return data ?? []
+        } catch (err) {
+          console.error('embedding error:', err)
+          return []
+        }
+      })(),
 
-    // Search via RPC
-    const { data, error } = await supabase.rpc('search_trips', {
-      query_embedding: JSON.stringify(queryEmbedding),
-      match_user_id: userId,
-      match_count: 5,
-    })
+      // Text fallback: ILIKE on title and destination via trip_embeddings metadata
+      supabase
+        .from('trip_embeddings')
+        .select('trip_id, metadata')
+        .eq('user_id', userId)
+        .or(`text_content.ilike.%${query}%`)
+        .limit(5)
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('text search error:', error)
+            return []
+          }
+          return (data ?? []).map((row: any) => ({
+            trip_id: row.trip_id,
+            metadata: row.metadata,
+            score: 0.5, // fixed relevance for text matches
+          }))
+        }),
+    ])
 
-    if (error) {
-      console.error('search error:', error)
-      return { statusCode: 500, body: JSON.stringify({ error: 'Search failed' }) }
+    // Merge and deduplicate — vector results take priority
+    const seen = new Set<string>()
+    const merged = []
+    for (const row of [...vectorResults, ...textResults]) {
+      if (!seen.has(row.trip_id)) {
+        seen.add(row.trip_id)
+        merged.push(row)
+      }
     }
 
-    const results = (data ?? []).map((row: any) => ({
+    const results = merged.slice(0, 5).map((row: any) => ({
       tripId: row.trip_id,
       title: row.metadata.title,
       destination: row.metadata.destination,
@@ -42,6 +79,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       endDate: row.metadata.endDate,
       status: row.metadata.status,
       activityCount: row.metadata.activityCount,
+      imageUrl: row.metadata.imageUrl ?? null,
       score: row.score,
     }))
 

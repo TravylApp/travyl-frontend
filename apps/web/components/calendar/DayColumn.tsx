@@ -4,7 +4,7 @@ import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
 import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
-import type { TripNote } from '@travyl/shared'
+import type { TripNote, Poll } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
 
@@ -16,20 +16,26 @@ interface DayColumnProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
+  onSelectEvent: (id: string, anchorEl?: HTMLElement) => void
   onClickDayHeader?: () => void
   onDeselect: () => void
   pendingActivity?: CalendarActivity | null
   notes?: TripNote[]
-  canCreateNotes?: boolean
   canEditNotes?: boolean
   userId?: string
   isOwner?: boolean
-  onCreateNote?: (day: number, hour: number) => void
   onUpdateNote?: (noteId: string, text: string) => void
   onDeleteNote?: (noteId: string) => void
   marqueeSelectedIds?: Set<string>
   onShiftClickEvent?: (id: string) => void
+  onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
+  polls?: Map<string, Poll>
+  pollUserId?: string
+  tripOwnerId?: string
+  onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  onRestorePoll?: (activityId: string) => void
+  onRemovePollActivity?: (activityId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -82,30 +88,28 @@ export function DayColumn({
   onDeselect,
   pendingActivity = null,
   notes,
-  canCreateNotes,
   canEditNotes,
   userId,
   isOwner,
-  onCreateNote,
   onUpdateNote,
   onDeleteNote,
   marqueeSelectedIds,
   onShiftClickEvent,
+  onResizeEvent,
+  onContextMenu,
+  polls,
+  pollUserId,
+  tripOwnerId,
+  onVotePoll,
+  onRestorePoll,
+  onRemovePollActivity,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return  // ignore bubbled clicks from EventBlock/PostItNote
-    const rect = e.currentTarget.getBoundingClientRect()
-    const offsetY = e.clientY - rect.top
-    const rawHour = timeRange.startHour + offsetY / HOUR_HEIGHT
-    const snappedHour = Math.round(rawHour * 2) / 2
-    if (e.shiftKey && canCreateNotes && onCreateNote) {
-      onCreateNote(dayIndex, snappedHour)
-      return
-    }
+    if (e.target !== e.currentTarget) return
     onDeselect()
   }
 
@@ -244,7 +248,20 @@ export function DayColumn({
               isMultiSelected={marqueeSelectedIds?.has(activity.id)}
               onSelect={onSelectEvent}
               onShiftClick={onShiftClickEvent}
+              onResize={onResizeEvent}
+              onContextMenu={onContextMenu}
+              poll={polls?.get(activity.id)}
+              userId={pollUserId}
+              onVote={onVotePoll}
+              onRestorePoll={onRestorePoll}
+              onRemovePollActivity={onRemovePollActivity}
+              canManagePoll={
+                polls?.get(activity.id)
+                  ? polls.get(activity.id)!.startedBy === pollUserId || tripOwnerId === pollUserId
+                  : false
+              }
               timeRangeStartHour={timeRange.startHour}
+              timeRangeEndHour={timeRange.endHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}

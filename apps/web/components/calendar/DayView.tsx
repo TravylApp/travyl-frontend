@@ -4,7 +4,7 @@ import { DayColumn } from './DayColumn'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
 import type { Poll } from '@travyl/shared'
 
-interface DayViewProps {
+export interface DayViewProps {
   dayIndex: number
   label: string
   activities: CalendarActivity[]
@@ -12,19 +12,17 @@ interface DayViewProps {
   selectedEventId?: string | null
   timeRange: TimeRange
   tripStartDate: Date
-  onSelectEvent: (id: string) => void
+  onSelectEvent: (id: string, anchorEl?: HTMLElement) => void
   onDeselect: () => void
   pendingDrop?: { dayIndex: number; activity: CalendarActivity } | null
-  onResize?: (id: string, newStartHour: number, newDuration: number) => void
+  onResizeEvent?: (id: string, newStartHour: number, newDuration: number) => void
+  onContextMenu?: (id: string, x: number, y: number) => void
   polls?: Map<string, Poll>
   pollUserId?: string
-  pollCollaborators?: UserAwareness[]
   tripOwnerId?: string
-  onVote?: (activityId: string, vote: 'yes' | 'no') => void
-  onStartPoll?: (activityId: string) => void
-  onClosePoll?: (activityId: string) => void
-  onRestoreActivity?: (activityId: string) => void
-  onRemoveActivity?: (activityId: string) => void
+  onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  onRestorePoll?: (activityId: string) => void
+  onRemovePollActivity?: (activityId: string) => void
 }
 
 export function DayView({
@@ -38,16 +36,14 @@ export function DayView({
   onSelectEvent,
   onDeselect,
   pendingDrop = null,
-  onResize,
+  onResizeEvent,
+  onContextMenu,
   polls,
   pollUserId,
-  pollCollaborators,
   tripOwnerId,
-  onVote,
-  onStartPoll,
-  onClosePoll,
-  onRestoreActivity,
-  onRemoveActivity,
+  onVotePoll,
+  onRestorePoll,
+  onRemovePollActivity,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -67,6 +63,14 @@ export function DayView({
           onClickDayHeader={undefined}
           onDeselect={onDeselect}
           pendingActivity={pendingDrop?.dayIndex === dayIndex ? pendingDrop.activity : null}
+          onResizeEvent={onResizeEvent}
+          onContextMenu={onContextMenu}
+          polls={polls}
+          pollUserId={pollUserId}
+          tripOwnerId={tripOwnerId}
+          onVotePoll={onVotePoll}
+          onRestorePoll={onRestorePoll}
+          onRemovePollActivity={onRemovePollActivity}
         />
       </div>
     </div>

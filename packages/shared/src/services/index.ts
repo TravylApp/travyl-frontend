@@ -23,11 +23,17 @@ export {
   toggleFavorite,
   updateBudgetExpense,
   addBudgetExpense,
-  updateTripSettings,
+  updateTripThemeSettings,
   updateTripDetails,
   deleteTrip,
   leaveTrip,
   inviteCollaborator,
+  fetchCollaborators,
+  updateCollaboratorRole,
+  removeCollaborator,
+  acceptInviteByToken,
+  joinTripViaLink,
+  findPendingInviteByEmail,
 } from './api';
 export {
   fetchBudgetCategories,

@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { PaperPlane } from '@/components/ui'
 import { useAuthStore } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
+import { useIndexTrip } from '@/hooks/useIndexTrip'
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
 
@@ -35,6 +36,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
+  const { indexTrip } = useIndexTrip()
 
   const [title, setTitle] = useState('')
   const [destination, setDestination] = useState('')
@@ -174,46 +176,62 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
     setError(null)
     if (!validate()) return
 
+    if (!user?.id) {
+      setError('You must be signed in to create a trip.')
+      return
+    }
+
     setSubmitting(true)
     try {
-      // Create trip immediately with basic data
-      const res = await fetch('/api/trips/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error: insertError } = await supabase
+        .from('trips')
+        .insert({
           title: title.trim(),
           destination: destination.trim(),
           start_date: startDate,
           end_date: endDate,
           status: 'planning',
-          user_id: user?.id ?? null,
-        }),
-      })
+          user_id: user.id,
+        })
+        .select()
+        .single()
 
-      if (!res.ok) {
-        const err = await res.json()
-        setError(err.error || 'Failed to create trip')
+      if (insertError) {
+        setError(insertError.message)
         return
       }
 
-      const data = await res.json()
+      // Fetch and store a destination cover image (non-fatal if it fails)
+      const shortDest = destination.split(',')[0].trim()
+      try {
+        const imgRes = await fetch(`/api/destination-image?destination=${encodeURIComponent(shortDest)}`)
+        const { url } = await imgRes.json() as { url: string | null }
+        if (url) {
+          const { error: imgUpdateError } = await supabase
+            .from('trips')
+            .update({ cover_image_url: url })
+            .eq('id', data.id)
+          if (imgUpdateError) console.warn('cover_image_url update failed:', imgUpdateError.message)
+        }
+      } catch {
+        // Non-fatal: trip was created, it will show the fallback image
+      }
 
-      // Track trip ID in localStorage so anonymous users keep their trips across sessions
+      await queryClient.invalidateQueries({ queryKey: ['trips'] })
+      indexTrip(data.id)
+      // Track trip ID for anonymous persistence
       try {
         const stored = localStorage.getItem('my-trip-ids')
         const ids: string[] = stored ? JSON.parse(stored) : []
         if (!ids.includes(data.id)) ids.push(data.id)
         localStorage.setItem('my-trip-ids', JSON.stringify(ids))
       } catch {}
-
-      // Enrich in the background (don't block navigation)
+      // Enrich in background
       fetch('/api/trips/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tripId: data.id }),
       }).catch(() => {})
-
-      await queryClient.invalidateQueries({ queryKey: ['trips'] })
       onClose()
       router.push(`/trip/${data.id}`)
     } finally {

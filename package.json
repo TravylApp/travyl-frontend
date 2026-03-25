@@ -19,13 +19,15 @@
     "@types/aws-lambda": "^8.10.161",
     "aws-cdk-lib": "^2.243.0",
     "constructs": "^10.5.1",
-    "sst": "^4.3.7"
+    "sst": "^4.3.7",
+    "tsx": "^4.21.0"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1014.0",
     "@aws-sdk/client-dynamodb": "^3.1011.0",
     "@aws-sdk/client-eventbridge": "^3.1011.0",
     "@aws-sdk/client-location": "^3.1011.0",
+    "@aws-sdk/client-sesv2": "^3.1014.0",
     "@aws-sdk/lib-dynamodb": "^3.1011.0"
   }
 }

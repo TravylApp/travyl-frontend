@@ -1,6 +1,11 @@
 import { cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseServiceRoleKey, supabaseUrl, serpApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels } from './secrets'
+
+export const email = new sst.aws.Email('TravylEmail', {
+  sender: 'gotravyl.com',
+  dns: false,
+})
 
 export const api = new sst.aws.ApiGatewayV2('RecommendationApi', {
   cors: {
@@ -30,7 +35,7 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [cacheTable, supabaseServiceRoleKey, supabaseUrl, serpApiKey],
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -44,7 +49,7 @@ api.route('GET /suggest', {
 
 api.route('GET /search', {
   handler: 'services/search.handler',
-  link: [supabaseServiceRoleKey, supabaseUrl],
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -58,12 +63,12 @@ api.route('GET /search', {
 
 api.route('POST /interact', {
   handler: 'services/interact.handler',
-  link: [bus, supabaseServiceRoleKey, supabaseUrl],
+  link: [bus, supabaseSecretKey, supabaseUrl],
 })
 
 api.route('POST /index', {
   handler: 'services/index-trip.handler',
-  link: [supabaseServiceRoleKey, supabaseUrl],
+  link: [supabaseSecretKey, supabaseUrl, pexels],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],
@@ -74,7 +79,7 @@ api.route('POST /index', {
 
 api.route('GET /context-search', {
   handler: 'services/context-search.handler',
-  link: [supabaseServiceRoleKey, supabaseUrl],
+  link: [supabaseSecretKey, supabaseUrl],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],
@@ -85,5 +90,13 @@ api.route('GET /context-search', {
 
 api.route('GET /recommend', {
   handler: 'services/recommend.handler',
-  link: [cacheTable, userInteractions, supabaseServiceRoleKey, supabaseUrl, serpApiKey],
+  link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
+api.route('POST /invite', {
+  handler: 'services/invite.handler',
+  link: [supabaseSecretKey, supabaseUrl, email],
+  environment: {
+    APP_URL: $app.stage === 'production' ? 'https://gotravyl.com' : 'http://localhost:3000',
+  },
 })

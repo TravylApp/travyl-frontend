@@ -2,39 +2,23 @@
 
 import { use, useState, useEffect, useCallback } from 'react';
 import {
-  User, FileText, Phone, CreditCard, Settings, Bell, Shield,
-  Save, Trash2, Download, Share2, AlertTriangle, ChevronRight,
-  Check, X, Plus, Palette, LayoutGrid, Globe, GitFork, Copy,
+  Save, Trash2, AlertTriangle, Share2,
+  Check, X, Globe, GitFork, Copy,
   Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
-  Luggage, PieChart, Heart, Car, Settings2,
+  Luggage, PieChart, Heart, Car, Settings2, LogOut,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ThemePicker } from '@/components/trip/ThemePicker';
 import { useTripTheme } from '@/components/trip/TripThemeContext';
-import { useItineraryScreen, useAuthStore, isTripOwner, updateTripVisibility } from '@travyl/shared';
+import {
+  useItineraryScreen, useAuthStore, isTripOwner,
+  updateTripDetails, updateTripVisibility, updateTripThemeSettings,
+  ensureShareLinkToken, deleteTrip, leaveTrip,
+} from '@travyl/shared';
+import type { Trip } from '@travyl/shared';
+import { useRouter } from 'next/navigation';
 
-// ─── Sub-tab definitions ──────────────────────────────────────
-
-interface SubTab {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-}
-
-const SUB_TABS: SubTab[] = [
-  { id: 'appearance',       label: 'Theme & Colors',    icon: Palette },
-  { id: 'tabs',             label: 'Tabs',              icon: LayoutGrid },
-  { id: 'profile',          label: 'Profile',           icon: User },
-  { id: 'travel-documents', label: 'Travel Documents',  icon: FileText },
-  { id: 'emergency',        label: 'Emergency Contact', icon: Phone },
-  { id: 'payment',          label: 'Payment',           icon: CreditCard },
-  { id: 'preferences',      label: 'Preferences',       icon: Settings },
-  { id: 'notifications',    label: 'Notifications',     icon: Bell },
-  { id: 'sharing',          label: 'Sharing',           icon: Share2 },
-  { id: 'privacy',          label: 'Privacy',           icon: Shield },
-];
-
-// Tab definitions for the Tabs settings section
+// ─── Tab definitions ─────────────────────────────────────────
 const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon; alwaysOn?: boolean }[] = [
   { segment: 'index',       label: 'Overview',    icon: Home,              alwaysOn: true },
   { segment: 'itinerary',   label: 'Itinerary',   icon: Calendar },
@@ -49,12 +33,30 @@ const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon; alw
   { segment: 'settings',    label: 'Settings',    icon: Settings2,         alwaysOn: true },
 ];
 
+const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (\u20ac)' },
+  { value: 'GBP', label: 'GBP (\u00a3)' },
+  { value: 'JPY', label: 'JPY (\u00a5)' },
+  { value: 'CAD', label: 'CAD ($)' },
+  { value: 'AUD', label: 'AUD ($)' },
+  { value: 'MXN', label: 'MXN ($)' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'planning',  label: 'Planning' },
+  { value: 'booked',    label: 'Booked' },
+  { value: 'active',    label: 'Active' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'abandoned', label: 'Abandoned' },
+];
+
 const FALLBACK_BRAND = '#1e3a5f';
 
 // ─── Reusable small components ────────────────────────────────
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-lg font-bold text-gray-900 mb-4">{children}</h2>;
+  return <h2 className="text-xl font-serif font-normal text-gray-900 mb-4 tracking-wide">{children}</h2>;
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -66,11 +68,13 @@ function Input({
   onChange,
   type = 'text',
   placeholder,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <input
@@ -78,7 +82,8 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent transition"
+      disabled={disabled}
+      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
       style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
     />
   );
@@ -88,16 +93,19 @@ function Select({
   value,
   onChange,
   options,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  disabled?: boolean;
 }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:border-transparent transition"
+      disabled={disabled}
+      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
       style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
     >
       {options.map((o) => (
@@ -133,394 +141,68 @@ function Toggle({
   );
 }
 
-// ─── Section renderers ────────────────────────────────────────
+// ─── Trip Details Section ────────────────────────────────────
 
-function ProfileSection({
-  data,
+function TripDetailsSection({
+  details,
   onChange,
+  disabled,
 }: {
-  data: typeof INITIAL_PROFILE;
-  onChange: (patch: Partial<typeof INITIAL_PROFILE>) => void;
+  details: {
+    title: string;
+    destination: string;
+    start_date: string;
+    end_date: string;
+    budget: string;
+    currency: string;
+    travelers: string;
+    status: string;
+  };
+  onChange: (patch: Partial<typeof details>) => void;
+  disabled: boolean;
 }) {
   return (
     <div>
-      <SectionHeading>Profile</SectionHeading>
+      <SectionHeading>Trip Details</SectionHeading>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>First Name</FieldLabel>
-          <Input value={data.firstName} onChange={(v) => onChange({ firstName: v })} />
-        </div>
-        <div>
-          <FieldLabel>Last Name</FieldLabel>
-          <Input value={data.lastName} onChange={(v) => onChange({ lastName: v })} />
-        </div>
-        <div>
-          <FieldLabel>Email</FieldLabel>
-          <Input value={data.email} onChange={(v) => onChange({ email: v })} type="email" />
-        </div>
-        <div>
-          <FieldLabel>Phone</FieldLabel>
-          <Input value={data.phone} onChange={(v) => onChange({ phone: v })} type="tel" />
-        </div>
-        <div>
-          <FieldLabel>Date of Birth</FieldLabel>
-          <Input value={data.dob} onChange={(v) => onChange({ dob: v })} type="date" />
-        </div>
-        <div>
-          <FieldLabel>Nationality</FieldLabel>
-          <Input value={data.nationality} onChange={(v) => onChange({ nationality: v })} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TravelDocumentsSection({
-  data,
-  onChange,
-}: {
-  data: typeof INITIAL_DOCUMENTS;
-  onChange: (patch: Partial<typeof INITIAL_DOCUMENTS>) => void;
-}) {
-  return (
-    <div>
-      <SectionHeading>Travel Documents</SectionHeading>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>Passport Number</FieldLabel>
-          <Input value={data.passportNumber} onChange={(v) => onChange({ passportNumber: v })} />
-        </div>
-        <div>
-          <FieldLabel>Expiry Date</FieldLabel>
-          <Input value={data.passportExpiry} onChange={(v) => onChange({ passportExpiry: v })} type="date" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EmergencyContactSection({
-  data,
-  onChange,
-}: {
-  data: typeof INITIAL_EMERGENCY;
-  onChange: (patch: Partial<typeof INITIAL_EMERGENCY>) => void;
-}) {
-  return (
-    <div>
-      <SectionHeading>Emergency Contact</SectionHeading>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <FieldLabel>Contact Name</FieldLabel>
-          <Input value={data.name} onChange={(v) => onChange({ name: v })} />
-        </div>
-        <div>
-          <FieldLabel>Phone Number</FieldLabel>
-          <Input value={data.phone} onChange={(v) => onChange({ phone: v })} type="tel" />
+        <div className="sm:col-span-2">
+          <FieldLabel>Trip Name</FieldLabel>
+          <Input value={details.title} onChange={(v) => onChange({ title: v })} disabled={disabled} />
         </div>
         <div className="sm:col-span-2">
-          <FieldLabel>Relationship</FieldLabel>
-          <Input value={data.relationship} onChange={(v) => onChange({ relationship: v })} />
+          <FieldLabel>Destination</FieldLabel>
+          <Input value={details.destination} onChange={(v) => onChange({ destination: v })} disabled={disabled} />
         </div>
-      </div>
-    </div>
-  );
-}
-
-interface SavedCard {
-  id: string;
-  brand: string;
-  last4: string;
-  isDefault: boolean;
-}
-
-function PaymentSection({
-  cards,
-  onSetDefault,
-  onDelete,
-  onAdd,
-}: {
-  cards: SavedCard[];
-  onSetDefault: (id: string) => void;
-  onDelete: (id: string) => void;
-  onAdd: () => void;
-}) {
-  return (
-    <div>
-      <SectionHeading>Payment Methods</SectionHeading>
-      <div className="space-y-3 mb-4">
-        {cards.map((card) => (
-          <div
-            key={card.id}
-            className="flex items-center justify-between rounded-xl border bg-white p-4"
-            style={{ borderColor: card.isDefault ? FALLBACK_BRAND : '#e5e7eb' }}
-          >
-            <div className="flex items-center gap-3">
-              <CreditCard size={20} style={{ color: card.isDefault ? FALLBACK_BRAND : '#9ca3af' }} />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {card.brand} ending in {card.last4}
-                </p>
-                {card.isDefault && (
-                  <span className="text-xs font-medium" style={{ color: FALLBACK_BRAND }}>
-                    Default
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {!card.isDefault && (
-                <button
-                  onClick={() => onSetDefault(card.id)}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Set Default
-                </button>
-              )}
-              <button
-                onClick={() => onDelete(card.id)}
-                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={onAdd}
-        className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-        style={{ backgroundColor: FALLBACK_BRAND }}
-      >
-        <Plus size={14} />
-        Add New Card
-      </button>
-    </div>
-  );
-}
-
-function PreferencesSection({
-  data,
-  onChange,
-}: {
-  data: typeof INITIAL_PREFERENCES;
-  onChange: (patch: Partial<typeof INITIAL_PREFERENCES>) => void;
-}) {
-  return (
-    <div>
-      <SectionHeading>Preferences</SectionHeading>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <FieldLabel>Language</FieldLabel>
-          <Select
-            value={data.language}
-            onChange={(v) => onChange({ language: v })}
-            options={[
-              { value: 'en', label: 'English' },
-              { value: 'es', label: 'Spanish' },
-              { value: 'fr', label: 'French' },
-              { value: 'de', label: 'German' },
-              { value: 'ja', label: 'Japanese' },
-            ]}
-          />
+          <FieldLabel>Start Date</FieldLabel>
+          <Input value={details.start_date} onChange={(v) => onChange({ start_date: v })} type="date" disabled={disabled} />
+        </div>
+        <div>
+          <FieldLabel>End Date</FieldLabel>
+          <Input value={details.end_date} onChange={(v) => onChange({ end_date: v })} type="date" disabled={disabled} />
+        </div>
+        <div>
+          <FieldLabel>Budget</FieldLabel>
+          <Input value={details.budget} onChange={(v) => onChange({ budget: v })} type="number" placeholder="0" disabled={disabled} />
         </div>
         <div>
           <FieldLabel>Currency</FieldLabel>
-          <Select
-            value={data.currency}
-            onChange={(v) => onChange({ currency: v })}
-            options={[
-              { value: 'USD', label: 'USD ($)' },
-              { value: 'EUR', label: 'EUR' },
-              { value: 'GBP', label: 'GBP' },
-              { value: 'JPY', label: 'JPY' },
-              { value: 'CAD', label: 'CAD' },
-            ]}
-          />
+          <Select value={details.currency} onChange={(v) => onChange({ currency: v })} options={CURRENCY_OPTIONS} disabled={disabled} />
         </div>
         <div>
-          <FieldLabel>Time Format</FieldLabel>
-          <Select
-            value={data.timeFormat}
-            onChange={(v) => onChange({ timeFormat: v })}
-            options={[
-              { value: '12h', label: '12-hour' },
-              { value: '24h', label: '24-hour' },
-            ]}
-          />
+          <FieldLabel>Travelers</FieldLabel>
+          <Input value={details.travelers} onChange={(v) => onChange({ travelers: v })} type="number" placeholder="1" disabled={disabled} />
         </div>
         <div>
-          <FieldLabel>Date Format</FieldLabel>
-          <Select
-            value={data.dateFormat}
-            onChange={(v) => onChange({ dateFormat: v })}
-            options={[
-              { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
-              { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
-              { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
-            ]}
-          />
-        </div>
-        <div>
-          <FieldLabel>Distance Unit</FieldLabel>
-          <Select
-            value={data.distanceUnit}
-            onChange={(v) => onChange({ distanceUnit: v })}
-            options={[
-              { value: 'mi', label: 'Miles' },
-              { value: 'km', label: 'Kilometers' },
-            ]}
-          />
-        </div>
-        <div>
-          <FieldLabel>Temperature Unit</FieldLabel>
-          <Select
-            value={data.temperatureUnit}
-            onChange={(v) => onChange({ temperatureUnit: v })}
-            options={[
-              { value: 'F', label: 'Fahrenheit' },
-              { value: 'C', label: 'Celsius' },
-            ]}
-          />
+          <FieldLabel>Status</FieldLabel>
+          <Select value={details.status} onChange={(v) => onChange({ status: v })} options={STATUS_OPTIONS} disabled={disabled} />
         </div>
       </div>
     </div>
   );
 }
 
-function NotificationsSection({
-  data,
-  onToggle,
-}: {
-  data: typeof INITIAL_NOTIFICATIONS;
-  onToggle: (key: keyof typeof INITIAL_NOTIFICATIONS) => void;
-}) {
-  const items: { key: keyof typeof INITIAL_NOTIFICATIONS; label: string; description: string }[] = [
-    { key: 'flightUpdates',      label: 'Flight Updates',       description: 'Gate changes, delays, and boarding alerts' },
-    { key: 'hotelConfirmations', label: 'Hotel Confirmations',  description: 'Booking confirmations and check-in reminders' },
-    { key: 'activityReminders',  label: 'Activity Reminders',   description: 'Upcoming tour and event notifications' },
-    { key: 'weatherAlerts',      label: 'Weather Alerts',       description: 'Severe weather warnings at your destination' },
-    { key: 'travelAdvisories',   label: 'Travel Advisories',    description: 'Government-issued travel safety notices' },
-    { key: 'specialOffers',      label: 'Special Offers',       description: 'Deals and discounts from partners' },
-  ];
-
-  return (
-    <div>
-      <SectionHeading>Notifications</SectionHeading>
-      <div className="space-y-1">
-        {items.map(({ key, label, description }) => (
-          <div
-            key={key}
-            className="flex items-center justify-between rounded-xl p-4 hover:bg-gray-50 transition"
-          >
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{label}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-            </div>
-            <Toggle enabled={data[key]} onToggle={() => onToggle(key)} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PrivacySection({
-  shareTripLink,
-  onDownloadData,
-  onClearHistory,
-  onDeleteAccount,
-}: {
-  shareTripLink: string;
-  onDownloadData: () => void;
-  onClearHistory: () => void;
-  onDeleteAccount: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(shareTripLink).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div>
-      <SectionHeading>Privacy</SectionHeading>
-      <div className="space-y-6">
-        {/* Download Data */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Download My Data</p>
-            <p className="text-xs text-gray-500 mt-0.5">Export a copy of all your trip data</p>
-          </div>
-          <button
-            onClick={onDownloadData}
-            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-          >
-            <Download size={14} />
-            Download
-          </button>
-        </div>
-
-        {/* Share Trip Link */}
-        <div className="rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Share2 size={14} className="text-gray-500" />
-            <p className="text-sm font-semibold text-gray-900">Share Trip Link</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-xs text-gray-600 font-mono truncate">
-              {shareTripLink}
-            </div>
-            <button
-              onClick={copyLink}
-              className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg text-white transition"
-              style={{ backgroundColor: copied ? '#10b981' : FALLBACK_BRAND }}
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
-        </div>
-
-        {/* Clear Search History */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Clear Search History</p>
-            <p className="text-xs text-gray-500 mt-0.5">Remove all recent searches</p>
-          </div>
-          <button
-            onClick={onClearHistory}
-            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-          >
-            <Trash2 size={14} />
-            Clear
-          </button>
-        </div>
-
-        {/* Danger Zone */}
-        <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={16} className="text-red-600" />
-            <p className="text-sm font-bold text-red-700">Danger Zone</p>
-          </div>
-          <p className="text-xs text-red-600 mb-3">
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </p>
-          <button
-            onClick={onDeleteAccount}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
-          >
-            <Trash2 size={14} />
-            Delete Account
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Trip Sharing Section ────────────────────────────────────────
+// ─── Trip Sharing Section ────────────────────────────────────
 
 function TripSharingSection({
   tripId,
@@ -557,7 +239,6 @@ function TripSharingSection({
     <div>
       <SectionHeading>Trip Sharing</SectionHeading>
       <div className="space-y-4">
-        {/* Make Public Toggle */}
         <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
@@ -571,7 +252,6 @@ function TripSharingSection({
           <Toggle enabled={isPublic} onToggle={onTogglePublic} />
         </div>
 
-        {/* Share Link Toggle */}
         <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50">
@@ -585,7 +265,6 @@ function TripSharingSection({
           <Toggle enabled={isShared} onToggle={onToggleShared} />
         </div>
 
-        {/* Share URL Display */}
         {isShared && shareToken && (
           <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
             <div className="flex items-center gap-2 mb-2">
@@ -607,7 +286,6 @@ function TripSharingSection({
           </div>
         )}
 
-        {/* Fork Count */}
         {forkCount > 0 && (
           <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-4">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-50">
@@ -624,62 +302,116 @@ function TripSharingSection({
   );
 }
 
-// ─── Initial mock data ────────────────────────────────────────
+// ─── Danger Zone Section ─────────────────────────────────────
 
-const INITIAL_PROFILE = {
-  firstName: 'Alex',
-  lastName: 'Rivera',
-  email: 'alex.rivera@email.com',
-  phone: '+1 (555) 123-4567',
-  dob: '1992-06-15',
-  nationality: 'United States',
-};
+function DangerZoneSection({
+  isOwner,
+  tripTitle,
+  onDeleteTrip,
+  onLeaveTrip,
+}: {
+  isOwner: boolean;
+  tripTitle: string;
+  onDeleteTrip: () => void;
+  onLeaveTrip: () => void;
+}) {
+  const [confirmText, setConfirmText] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
-const INITIAL_DOCUMENTS = {
-  passportNumber: 'X12345678',
-  passportExpiry: '2029-03-20',
-};
+  const canDelete = confirmText.toLowerCase() === tripTitle.toLowerCase();
 
-const INITIAL_EMERGENCY = {
-  name: 'Jordan Rivera',
-  phone: '+1 (555) 987-6543',
-  relationship: 'Sibling',
-};
+  return (
+    <div>
+      <SectionHeading>Danger Zone</SectionHeading>
+      <div className="rounded-xl border-2 border-red-200 bg-red-50/50 p-5 space-y-4">
+        {isOwner ? (
+          <>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle size={16} className="text-red-600" />
+                <p className="text-sm font-bold text-red-700">Delete Trip</p>
+              </div>
+              <p className="text-xs text-red-600">
+                Permanently delete this trip and all associated data. This action cannot be undone.
+              </p>
+            </div>
 
-const INITIAL_CARDS: SavedCard[] = [
-  { id: '1', brand: 'Visa',       last4: '4242', isDefault: true },
-  { id: '2', brand: 'Mastercard', last4: '8888', isDefault: false },
-  { id: '3', brand: 'Amex',       last4: '1234', isDefault: false },
-];
-
-const INITIAL_PREFERENCES = {
-  language: 'en',
-  currency: 'USD',
-  timeFormat: '12h',
-  dateFormat: 'MM/DD/YYYY',
-  distanceUnit: 'mi',
-  temperatureUnit: 'F',
-};
-
-const INITIAL_NOTIFICATIONS = {
-  flightUpdates: true,
-  hotelConfirmations: true,
-  activityReminders: true,
-  weatherAlerts: false,
-  travelAdvisories: true,
-  specialOffers: false,
-};
+            {!showConfirm ? (
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+              >
+                <Trash2 size={14} />
+                Delete Trip
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-red-700 mb-1.5">
+                    Type <strong>{tripTitle}</strong> to confirm:
+                  </p>
+                  <input
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder={tripTitle}
+                    className="w-full rounded-lg border border-red-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={onDeleteTrip}
+                    disabled={!canDelete}
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 size={14} />
+                    Confirm Delete
+                  </button>
+                  <button
+                    onClick={() => { setShowConfirm(false); setConfirmText(''); }}
+                    className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <LogOut size={16} className="text-red-600" />
+                <p className="text-sm font-bold text-red-700">Leave Trip</p>
+              </div>
+              <p className="text-xs text-red-600">
+                Remove yourself from this trip. You will lose access to all trip data.
+              </p>
+            </div>
+            <button
+              onClick={onLeaveTrip}
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+            >
+              <LogOut size={14} />
+              Leave Trip
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Main page component ──────────────────────────────────────
 
 export default function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const { trip, isLoading: tripLoading, refetch } = useItineraryScreen(id);
   const user = useAuthStore((s) => s.user);
   const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
 
-  const [activeTab, setActiveTab] = useState('appearance');
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ── Appearance — driven by shared TripThemeContext ───
   const {
@@ -690,194 +422,219 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     hiddenTabs, setTabHidden,
   } = useTripTheme();
 
-  // Trip sharing state
+  // ── Trip details state ──
+  const [details, setDetails] = useState({
+    title: '',
+    destination: '',
+    start_date: '',
+    end_date: '',
+    budget: '',
+    currency: 'USD',
+    travelers: '1',
+    status: 'planning',
+  });
+
+  // ── Trip sharing state ──
   const [isPublic, setIsPublic] = useState(false);
   const [isShared, setIsShared] = useState(false);
 
-  // Sync trip sharing state with loaded trip
+  // Sync state from loaded trip
   useEffect(() => {
     if (trip) {
+      setDetails({
+        title: trip.title ?? '',
+        destination: trip.destination ?? '',
+        start_date: trip.start_date ?? '',
+        end_date: trip.end_date ?? '',
+        budget: trip.budget != null ? String(trip.budget) : '',
+        currency: trip.currency ?? 'USD',
+        travelers: trip.travelers != null ? String(trip.travelers) : '1',
+        status: trip.status ?? 'planning',
+      });
       setIsPublic(trip.visibility === 'public');
       setIsShared(trip.visibility !== 'private');
     }
   }, [trip]);
 
-  // Handle toggling public status
+  const markDirty = useCallback(() => setDirty(true), []);
+
+  const updateDetails = (patch: Partial<typeof details>) => {
+    setDetails((prev) => ({ ...prev, ...patch }));
+    markDirty();
+  };
+
+  // ── Save all changes ──
+  const handleSave = async () => {
+    if (!trip) return;
+    setSaving(true);
+    try {
+      // Save trip details
+      await updateTripDetails(trip.id, {
+        title: details.title,
+        destination: details.destination,
+        start_date: details.start_date,
+        end_date: details.end_date,
+        budget: details.budget ? Number(details.budget) : null,
+        currency: details.currency,
+        travelers: details.travelers ? Number(details.travelers) : 1,
+        status: details.status as Trip['status'],
+      });
+
+      // Save theme settings
+      await updateTripThemeSettings(trip.id, {
+        theme: themeId,
+        custom_theme_color: customColor,
+        tab_color_overrides: tabColorOverrides,
+        itinerary_color_overrides: itineraryColorOverrides,
+        hidden_tabs: hiddenTabs,
+      });
+
+      setDirty(false);
+      refetch();
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    if (trip) {
+      setDetails({
+        title: trip.title ?? '',
+        destination: trip.destination ?? '',
+        start_date: trip.start_date ?? '',
+        end_date: trip.end_date ?? '',
+        budget: trip.budget != null ? String(trip.budget) : '',
+        currency: trip.currency ?? 'USD',
+        travelers: trip.travelers != null ? String(trip.travelers) : '1',
+        status: trip.status ?? 'planning',
+      });
+    }
+    setDirty(false);
+  };
+
+  // ── Sharing handlers ──
   const handleTogglePublic = async () => {
     if (!trip || !isOwner) return;
     try {
-      await updateTripVisibility(trip.id, isPublic ? 'private' : 'public');
+      const newVisibility = isPublic ? 'private' : 'public';
+      await updateTripVisibility(trip.id, newVisibility as 'private' | 'public');
       setIsPublic(!isPublic);
+      if (newVisibility === 'public') setIsShared(true);
       refetch();
-    } catch (error) {
+    } catch {
       alert('Failed to update trip visibility');
     }
   };
 
-  // Handle toggling shared status (mock for now - would need backend support)
-  const handleToggleShared = () => {
-    setIsShared(!isShared);
-    // In a real implementation, this would call an API to generate/update the share token
+  const handleToggleShared = async () => {
+    if (!trip || !isOwner) return;
+    try {
+      if (!isShared) {
+        await ensureShareLinkToken(trip.id);
+        await updateTripVisibility(trip.id, 'link');
+        setIsShared(true);
+      } else {
+        await updateTripVisibility(trip.id, 'private');
+        setIsShared(false);
+        setIsPublic(false);
+      }
+      refetch();
+    } catch {
+      alert('Failed to update sharing settings');
+    }
   };
 
-  // ── State for each section ───
-  const [profile, setProfile] = useState(INITIAL_PROFILE);
-  const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
-  const [emergency, setEmergency] = useState(INITIAL_EMERGENCY);
-  const [cards, setCards] = useState<SavedCard[]>(INITIAL_CARDS);
-  const [preferences, setPreferences] = useState(INITIAL_PREFERENCES);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-
-  // Track if anything changed
-  const markDirty = useCallback(() => setDirty(true), []);
-
-  const handleSave = () => {
-    // In a real app this would call the API
-    setDirty(false);
+  // ── Danger zone handlers ──
+  const handleDeleteTrip = async () => {
+    if (!trip) return;
+    try {
+      await deleteTrip(trip.id);
+      router.push('/trips');
+    } catch {
+      alert('Failed to delete trip');
+    }
   };
 
-  const handleDiscard = () => {
-    setProfile(INITIAL_PROFILE);
-    setDocuments(INITIAL_DOCUMENTS);
-    setEmergency(INITIAL_EMERGENCY);
-    setCards(INITIAL_CARDS);
-    setPreferences(INITIAL_PREFERENCES);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    setDirty(false);
+  const handleLeaveTrip = async () => {
+    if (!trip || !user) return;
+    try {
+      await leaveTrip(trip.id, user.id);
+      router.push('/trips');
+    } catch {
+      alert('Failed to leave trip');
+    }
   };
 
-  // ── Section-specific helpers ──
-  const updateProfile = (patch: Partial<typeof INITIAL_PROFILE>) => {
-    setProfile((prev) => ({ ...prev, ...patch }));
-    markDirty();
-  };
-
-  const updateDocuments = (patch: Partial<typeof INITIAL_DOCUMENTS>) => {
-    setDocuments((prev) => ({ ...prev, ...patch }));
-    markDirty();
-  };
-
-  const updateEmergency = (patch: Partial<typeof INITIAL_EMERGENCY>) => {
-    setEmergency((prev) => ({ ...prev, ...patch }));
-    markDirty();
-  };
-
-  const setDefaultCard = (cardId: string) => {
-    setCards((prev) =>
-      prev.map((c) => ({ ...c, isDefault: c.id === cardId })),
+  if (tripLoading) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center text-gray-400 text-sm">
+        Loading settings...
+      </div>
     );
-    markDirty();
-  };
+  }
 
-  const deleteCard = (cardId: string) => {
-    setCards((prev) => prev.filter((c) => c.id !== cardId));
-    markDirty();
-  };
+  return (
+    <div className="max-w-2xl mx-auto pb-24 divide-y divide-gray-200">
+      {/* Theme & Colors */}
+      <section className="py-8 first:pt-0">
+        <SectionHeading>Theme & Colors</SectionHeading>
+        <ThemePicker
+          currentTheme={themeId}
+          customColor={customColor}
+          onSelectTheme={(tid, color) => { setTripTheme(tid, color); markDirty(); }}
+          tabColors={theme.tabColors}
+          tabColorOverrides={tabColorOverrides}
+          onTabColorChange={(name, color) => { setTabColor(name, color); markDirty(); }}
+          onResetTabColors={() => { resetTabColors(); markDirty(); }}
+          itineraryColors={theme.itineraryColors}
+          itineraryColorOverrides={itineraryColorOverrides}
+          onItineraryColorChange={(section, color) => { setItineraryColor(section, color); markDirty(); }}
+          onResetItineraryColors={() => { resetItineraryColors(); markDirty(); }}
+        />
+      </section>
 
-  const addCard = () => {
-    // Placeholder — in production this opens a payment form
-    const newId = String(Date.now());
-    setCards((prev) => [
-      ...prev,
-      { id: newId, brand: 'Visa', last4: String(Math.floor(1000 + Math.random() * 9000)), isDefault: false },
-    ]);
-    markDirty();
-  };
-
-  const updatePreferences = (patch: Partial<typeof INITIAL_PREFERENCES>) => {
-    setPreferences((prev) => ({ ...prev, ...patch }));
-    markDirty();
-  };
-
-  const toggleNotification = (key: keyof typeof INITIAL_NOTIFICATIONS) => {
-    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
-    markDirty();
-  };
-
-  // ── Content router ──
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'appearance':
-        return (
-          <div>
-            <SectionHeading>Theme & Colors</SectionHeading>
-            <ThemePicker
-              currentTheme={themeId}
-              customColor={customColor}
-              onSelectTheme={(tid, color) => { setTripTheme(tid, color); markDirty(); }}
-              tabColors={theme.tabColors}
-              tabColorOverrides={tabColorOverrides}
-              onTabColorChange={(name, color) => { setTabColor(name, color); markDirty(); }}
-              onResetTabColors={() => { resetTabColors(); markDirty(); }}
-              itineraryColors={theme.itineraryColors}
-              itineraryColorOverrides={itineraryColorOverrides}
-              onItineraryColorChange={(section, color) => { setItineraryColor(section, color); markDirty(); }}
-              onResetItineraryColors={() => { resetItineraryColors(); markDirty(); }}
-            />
-          </div>
-        );
-      case 'tabs':
-        return (
-          <div>
-            <SectionHeading>Manage Tabs</SectionHeading>
-            <p className="text-sm text-gray-500 mb-4">Choose which tabs appear in your trip navigation.</p>
-            <div className="space-y-1">
-              {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
-                const isEnabled = !hiddenTabs[segment];
-                const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
-                return (
-                  <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 transition">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: isEnabled ? tabColor : '#d1d5db' }}>
-                        <Icon size={14} style={{ color: theme.textOnBase }} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{label}</p>
-                        {alwaysOn && <p className="text-[11px] text-gray-400">Always visible</p>}
-                      </div>
-                    </div>
-                    {alwaysOn ? (
-                      <div className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">Required</div>
-                    ) : (
-                      <Toggle enabled={isEnabled} onToggle={() => setTabHidden(segment, isEnabled)} color={theme.base} />
-                    )}
+      {/* Manage Tabs */}
+      <section className="py-8">
+        <SectionHeading>Manage Tabs</SectionHeading>
+        <p className="text-sm text-gray-500 mb-4">Choose which tabs appear in your trip navigation.</p>
+        <div className="space-y-1">
+          {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
+            const isEnabled = !hiddenTabs[segment];
+            const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
+            return (
+              <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 transition">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: isEnabled ? tabColor : '#d1d5db' }}>
+                    <Icon size={14} style={{ color: theme.textOnBase }} />
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      case 'profile':
-        return <ProfileSection data={profile} onChange={updateProfile} />;
-      case 'travel-documents':
-        return <TravelDocumentsSection data={documents} onChange={updateDocuments} />;
-      case 'emergency':
-        return <EmergencyContactSection data={emergency} onChange={updateEmergency} />;
-      case 'payment':
-        return (
-          <PaymentSection
-            cards={cards}
-            onSetDefault={setDefaultCard}
-            onDelete={deleteCard}
-            onAdd={addCard}
-          />
-        );
-      case 'preferences':
-        return <PreferencesSection data={preferences} onChange={updatePreferences} />;
-      case 'notifications':
-        return <NotificationsSection data={notifications} onToggle={toggleNotification} />;
-      case 'sharing':
-        // Only show sharing section to trip owner
-        if (!isOwner) {
-          return (
-            <div className="text-center py-8">
-              <Shield size={32} className="text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Only the trip owner can manage sharing settings.</p>
-            </div>
-          );
-        }
-        return (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{label}</p>
+                    {alwaysOn && <p className="text-[11px] text-gray-400">Always visible</p>}
+                  </div>
+                </div>
+                {alwaysOn ? (
+                  <div className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">Required</div>
+                ) : (
+                  <Toggle enabled={isEnabled} onToggle={() => { setTabHidden(segment, isEnabled); markDirty(); }} color={theme.base} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Trip Details */}
+      <section className="py-8">
+        <TripDetailsSection details={details} onChange={updateDetails} disabled={!isOwner} />
+      </section>
+
+      {/* Trip Sharing — owner only */}
+      {isOwner && (
+        <section className="py-8">
           <TripSharingSection
             tripId={id}
             isPublic={isPublic}
@@ -887,64 +644,20 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
             onTogglePublic={handleTogglePublic}
             onToggleShared={handleToggleShared}
           />
-        );
-      case 'privacy':
-        return (
-          <PrivacySection
-            shareTripLink={`https://travyl.app/trip/${id}/share`}
-            onDownloadData={() => alert('Downloading your data...')}
-            onClearHistory={() => alert('Search history cleared.')}
-            onDeleteAccount={() => alert('Account deletion requested.')}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+        </section>
+      )}
 
-  return (
-    <div className="flex flex-col md:flex-row gap-6 min-h-[480px]">
-      {/* ── Left sidebar: sub-tab list ── */}
-      <nav className="shrink-0 md:w-56">
-        <ul className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
-          {SUB_TABS.map(({ id: tabId, label, icon: Icon }) => {
-            const isActive = activeTab === tabId;
-            return (
-              <li key={tabId}>
-                <button
-                  onClick={() => setActiveTab(tabId)}
-                  className={`flex items-center gap-2.5 w-full whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? 'shadow-sm'
-                      : 'hover:bg-white/10'
-                  }`}
-                  style={isActive
-                    ? { backgroundColor: theme.base, color: theme.textOnBase }
-                    : { color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }
-                  }
-                >
-                  <Icon size={16} style={isActive ? { color: theme.textOnBase } : { color: 'rgba(255,255,255,0.7)' }} />
-                  <span className="flex-1 text-left">{label}</span>
-                  <ChevronRight
-                    size={14}
-                    style={isActive ? { color: theme.textOnBase, opacity: 0.7 } : { color: 'rgba(255,255,255,0.4)' }}
-                    className="hidden md:block"
-                  />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* Danger Zone */}
+      <section className="py-8">
+        <DangerZoneSection
+          isOwner={isOwner}
+          tripTitle={trip?.title ?? ''}
+          onDeleteTrip={handleDeleteTrip}
+          onLeaveTrip={handleLeaveTrip}
+        />
+      </section>
 
-      {/* ── Right content area ── */}
-      <div className="flex-1 min-w-0">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          {renderContent()}
-        </div>
-      </div>
-
-      {/* ── Floating save bar ── */}
+      {/* Floating save bar */}
       {dirty && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-3 shadow-xl">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -960,11 +673,12 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg text-white transition hover:opacity-90"
+            disabled={saving}
+            className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg text-white transition hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: theme.base, color: theme.textOnBase }}
           >
             <Save size={14} />
-            Save Changes
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       )}

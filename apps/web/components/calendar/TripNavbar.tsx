@@ -4,9 +4,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User } from 'iconoir-react'
 import { useAuthStore } from '@travyl/shared'
+import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
 import type { Command } from './types'
 import type { CalendarTheme } from './hooks/useCalendarTheme'
+import { useEffectivePermission } from './providers/TripPermissionContext'
+import { RescoperPopover } from './RescoperPopover'
+import { UnscheduledPopover } from './UnscheduledPopover'
 
 // ─── TripMenuBar ────────────────────────────────────────────────
 // Internal sub-component. Not exported.
@@ -126,6 +130,15 @@ export interface TripNavbarProps {
   theme: CalendarTheme
   onToggleTheme: () => void
   tripDays: { dayIndex: number; label: string }[]
+  trip: Trip | null
+  scheduledActivities: CalendarActivity[]
+  unscheduledActivities: CalendarActivity[]
+  /** Same userId CalendarDashboard receives — threaded to RescoperPopover → useRescope → useActivityMutations */
+  userId: string
+  onAssignUnscheduled: (id: string, dayOffset: number) => void
+  onDeleteUnscheduled: (id: string) => void
+  /** When true: read-only shared view — hides share, avatar dropdown, and new activity controls */
+  isSharedView?: boolean
 }
 
 function getInitials(name: string | undefined): string {
@@ -173,11 +186,21 @@ export function TripNavbar({
   theme,
   onToggleTheme,
   tripDays,
+  trip,
+  scheduledActivities,
+  unscheduledActivities,
+  userId,
+  onAssignUnscheduled,
+  onDeleteUnscheduled,
+  isSharedView = false,
 }: TripNavbarProps) {
   const user = useAuthStore((s) => s.user)
   const signOut = useAuthStore((s) => s.signOut)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
   const avatarRef = useRef<HTMLDivElement>(null)
+  const { canEdit } = useEffectivePermission()
+  const [rescoperOpen, setRescoperOpen] = useState(false)
+  const [unscheduledOpen, setUnscheduledOpen] = useState(false)
 
   const avatarUrl = user?.user_metadata?.avatar_url
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name
@@ -237,13 +260,32 @@ export function TripNavbar({
         <TripMenuBar commands={commands} />
 
         {/* Trip info */}
-        <div className="flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0">
-          <span
-            className="truncate text-[13px] font-serif font-normal tracking-wide text-[#1e3a5f] dark:text-[#f5efe8] leading-tight"
-          >
+        <div
+          className="relative flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0"
+        >
+          <span className="truncate text-[13px] font-serif font-normal tracking-wide text-[#1e3a5f] dark:text-[#f5efe8] leading-tight">
             {tripName}
           </span>
-          <span className="text-[10px] text-[#4a7ab5] leading-tight">{dateRange}</span>
+          {canEdit ? (
+            <button
+              onClick={() => setRescoperOpen((v) => !v)}
+              className="text-[10px] text-[#4a7ab5] leading-tight hover:text-[#003594] dark:hover:text-[#f5efe8] transition-colors text-left"
+              aria-label="Edit trip dates and destination"
+            >
+              {dateRange}
+            </button>
+          ) : (
+            <span className="text-[10px] text-[#4a7ab5] leading-tight">{dateRange}</span>
+          )}
+
+          {rescoperOpen && trip && (
+            <RescoperPopover
+              trip={trip}
+              userId={userId}
+              scheduledActivities={scheduledActivities}
+              onClose={() => setRescoperOpen(false)}
+            />
+          )}
         </div>
 
         {/* Spacer */}
@@ -279,6 +321,30 @@ export function TripNavbar({
         {/* Right controls */}
         <div className="flex items-center gap-2 px-3 h-full shrink-0">
 
+          {/* Unscheduled activities pill */}
+          {unscheduledActivities.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setUnscheduledOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded-full border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors shrink-0"
+              >
+                <span className="font-medium">{unscheduledActivities.length}</span>
+                <span>unscheduled</span>
+              </button>
+
+              {unscheduledOpen && trip && (
+                <UnscheduledPopover
+                  activities={unscheduledActivities}
+                  tripStartDate={new Date(trip.start_date + 'T00:00:00Z')}
+                  tripEndDate={new Date(trip.end_date + 'T00:00:00Z')}
+                  onAssign={onAssignUnscheduled}
+                  onDelete={onDeleteUnscheduled}
+                  onClose={() => setUnscheduledOpen(false)}
+                />
+              )}
+            </div>
+          )}
+
           {/* View toggle */}
           <div
             role="group"
@@ -303,6 +369,7 @@ export function TripNavbar({
           </div>
 
           {/* New Activity */}
+          {!isSharedView && (
           <button
             onClick={onAddEvent}
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-[#1e3a5f]/25 dark:hover:text-white transition-colors shrink-0"
@@ -313,6 +380,7 @@ export function TripNavbar({
               N
             </kbd>
           </button>
+          )}
 
           {/* Theme toggle - inline light/dark button */}
           <button
@@ -364,6 +432,7 @@ export function TripNavbar({
           )}
 
           {/* Share */}
+          {!isSharedView && (
           <button
             onClick={onShare}
             className="flex items-center gap-1.5 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#D97706] transition-colors shrink-0"
@@ -371,8 +440,14 @@ export function TripNavbar({
             <ShareAndroid width={12} height={12} />
             Share
           </button>
+          )}
 
           {/* Avatar dropdown */}
+          {isSharedView ? (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-100 dark:bg-[#1e3a5f]/20">
+              <span className="text-xs text-gray-500 dark:text-[#4a7ab5]">Viewing</span>
+            </div>
+          ) : (
           <div className="relative" ref={avatarRef}>
             <button
               onClick={() => setAvatarDropdownOpen((o) => !o)}
@@ -438,6 +513,7 @@ export function TripNavbar({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

@@ -85,3 +85,7 @@ export { convertToTripCurrency, formatBudgetAmount } from './currency'
 
 // Poll utilities
 export { isVoteKey, userIdFromVoteKey, parseVotesFromYMap, resolveVotes } from './pollHelpers'
+
+// Rescoper utilities
+export { detectOperation, getConflictingActivities, computeNewTotalDays } from './rescoper'
+export type { RescoperOperation } from './rescoper'
