@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@travyl/shared'
-
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+import { useAuthStore } from '@travyl/shared'
 
 export interface ContextSearchResult {
   tripId: string
@@ -18,33 +16,33 @@ export interface ContextSearchResult {
   score: number
 }
 
-async function fetchContextSearch(query: string): Promise<ContextSearchResult[]> {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
-  if (!token) return []
-
-  const res = await fetch(`${API_URL}/context-search?q=${encodeURIComponent(query)}`, {
+async function fetchContextSearch(query: string, token: string): Promise<ContextSearchResult[]> {
+  const res = await fetch(`/api/context-search?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error('[context-search] proxy error:', res.status, await res.text().catch(() => ''))
+    return []
+  }
   const json = await res.json()
   return json.results ?? []
 }
 
 export function useContextSearch(query: string) {
   const [debouncedQuery, setDebouncedQuery] = useState(query)
+  const token = useAuthStore((s) => s.session?.access_token)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300)
     return () => clearTimeout(timer)
   }, [query])
 
-  const enabled = debouncedQuery.length >= 3
+  const enabled = debouncedQuery.length >= 3 && !!token
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['context-search', debouncedQuery],
-    queryFn: () => fetchContextSearch(debouncedQuery),
+    queryKey: ['context-search', debouncedQuery, token],
+    queryFn: () => fetchContextSearch(debouncedQuery, token!),
     enabled,
     staleTime: 30_000,
     refetchOnMount: 'always',

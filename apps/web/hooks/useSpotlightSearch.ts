@@ -6,7 +6,6 @@ import { useParams, usePathname } from 'next/navigation'
 import { useAuthStore, mergeSearchResults, type SpotlightResult } from '@travyl/shared'
 import { useContextSearch } from './useContextSearch'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const MAX_RECENT = 10
 
@@ -30,7 +29,7 @@ async function fetchEntitySearch(
   if (types) params.set('types', types.join(','))
   if (tripId) params.set('tripId', tripId)
 
-  const res = await fetch(`${API_URL}/entity-search?${params}`, {
+  const res = await fetch(`/api/entity-search?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) return {}
