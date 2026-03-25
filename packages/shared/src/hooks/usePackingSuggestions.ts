@@ -8,7 +8,7 @@ import { PACKING_CATEGORIES } from '../types'
 export function usePackingSuggestions(
   tripId: string | undefined,
   items: DbPackingItem[],
-  addItem: (name: string, category: PackingCategory) => void,
+  addItem: (name: string, category: string) => void,
 ) {
   const queryClient = useQueryClient()
   const hasAttemptedGeneration = useRef(false)
