@@ -563,13 +563,13 @@ export default function PlacesPage() {
                 onChange={(e) => {
                   const val = e.target.value;
                   setSearchInput(val);
-                  // Debounce API search — triggers after 500ms of no typing
+                  // Debounce API search — triggers after 300ms of no typing
                   if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                   if (val.trim().length >= 2) {
                     searchDebounceRef.current = setTimeout(() => {
                       setSearchCity(val.trim());
-                      setSearchQuery(''); // clear local filter — API handles it
-                    }, 500);
+                      setSearchQuery('');
+                    }, 300);
                   } else if (!val.trim()) {
                     setSearchCity('');
                     setSearchQuery('');
@@ -1086,9 +1086,9 @@ export default function PlacesPage() {
                   )}
 
                   {!searchLoading && (
-                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4" style={{ columnCount }}>
+                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4" style={{ columnCount, contentVisibility: 'auto' }}>
                       {filtered.map((item, i) => (
-                        <div key={item.id} className="mb-4 break-inside-avoid">
+                        <div key={item.id} className="mb-4 break-inside-avoid" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 380px' }}>
                           <PinCard
                             item={item}
                             index={i}

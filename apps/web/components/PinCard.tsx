@@ -65,10 +65,9 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
         duration: 0.5,
-        delay: shouldAnimate ? Math.min(index * 0.06, 0.8) : 0,
+        delay: shouldAnimate ? Math.min(index * 0.04, 0.4) : 0,
         ease: [0.22, 1, 0.36, 1],
       }}
-      layout
       className="break-inside-avoid min-w-0"
       style={{ perspective: 1000 }}
     >
