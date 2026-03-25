@@ -746,23 +746,10 @@ export function GlobalCommandPalette() {
 
   function renderItemRight(item: PaletteItem) {
     if (item.type === 'setting-toggle') {
-      return (
-        <span className={[
-          'text-[10px] font-medium px-2 py-0.5 rounded-full',
-          item.enabled
-            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-            : 'bg-gray-100 text-gray-500 dark:bg-[#1e3a5f]/20 dark:text-[#484f58]',
-        ].join(' ')}>
-          {item.enabled ? 'On' : 'Off'}
-        </span>
-      )
+      return <ToggleSwitch enabled={item.enabled} />
     }
     if (item.type === 'setting-picker') {
-      return (
-        <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5]">
-          {item.currentValue}
-        </span>
-      )
+      return renderPickerControl(item)
     }
     if (item.type === 'setting-link') {
       return (
@@ -901,7 +888,10 @@ export function GlobalCommandPalette() {
                               if (!disabled) setHighlightedIndex(index)
                             }}
                             className={[
-                              'w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors',
+                              'w-full flex items-center justify-between px-4 text-sm text-left transition-colors',
+                              (item.type === 'setting-toggle' || item.type === 'setting-picker' || item.type === 'setting-link')
+                                ? 'py-2.5'
+                                : 'py-2',
                               disabled
                                 ? 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none'
                                 : isHighlighted
