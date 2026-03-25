@@ -15,6 +15,7 @@ export function SuggestionDetailDrawer({
   isClosing,
   onClose,
 }: SuggestionDetailDrawerProps) {
+  const [isVisible, setIsVisible] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
   const [isImageHovered, setIsImageHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
@@ -22,6 +23,12 @@ export function SuggestionDetailDrawer({
   const images = suggestion.imageUrls.filter((u) => !failedUrls.has(u))
   const hasMultiple = images.length > 1
   const tagColor = getActivityColor(suggestion.category)
+
+  // Slide-in: flip to visible on next animation frame so CSS transition plays
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setIsVisible(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   // Reset image index when suggestion changes
   useEffect(() => {
@@ -62,7 +69,7 @@ export function SuggestionDetailDrawer({
         'absolute inset-y-0 right-0 w-full z-30',
         'bg-[var(--cal-surface-elevated)] flex flex-col',
         'transition-transform duration-300 ease-out',
-        isClosing ? 'translate-x-full' : 'translate-x-0',
+        !isVisible || isClosing ? 'translate-x-full' : 'translate-x-0',
       ].join(' ')}
     >
       {/* Photo carousel — sticky header */}

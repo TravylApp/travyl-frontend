@@ -43,11 +43,16 @@ export function ForYouPanel({
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openDrawer = useCallback((suggestion: SuggestionCardType) => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
     setSelectedSuggestion(suggestion)
     setIsClosing(false)
   }, [])
 
   const closeDrawer = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
     setIsClosing(true)
     closeTimerRef.current = setTimeout(() => {
       setSelectedSuggestion(null)
