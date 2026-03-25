@@ -790,9 +790,8 @@ export default function PlacesPage() {
           className={`mx-auto px-6 lg:px-10 xl:px-14 py-4 transition-all duration-300 ${
             columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : 'max-w-7xl'
           }`}
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l40 40M40 0L0 40' stroke='%23000' stroke-width='0.3' opacity='0.03'/%3E%3C/svg%3E")`,
-          }}
+          style={{}}
+          // Removed crosshatch SVG background pattern — causes visual noise during scroll
         >
           {/* Grid idle showcase curtain */}
           <AnimatePresence>
@@ -1008,15 +1007,9 @@ export default function PlacesPage() {
             )}
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
+
             {!gridShowcase && (
-            <motion.div
-              key={`${activeTab}-${activeSubcategory}-${searchQuery}-${sortBy}`}
-              initial={{ opacity: 0.4 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.12 } }}
-              transition={{ duration: 0.08 }}
-            >
+            <div>
               {filtered.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between mb-4">
@@ -1049,9 +1042,23 @@ export default function PlacesPage() {
                   )}
 
                   {!searchLoading && (
-                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4" style={{ columnCount, contentVisibility: 'auto' }}>
+                    <div
+                      className="gap-4"
+                      style={{
+                        columnCount,
+                        columnGap: '1rem',
+                      }}
+                    >
                       {filtered.map((item, i) => (
-                        <div key={item.id} className="mb-4 break-inside-avoid" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 380px' }}>
+                        <div
+                          key={item.id}
+                          className="mb-4"
+                          style={{
+                            breakInside: 'avoid',
+                            contentVisibility: 'auto',
+                            containIntrinsicBlockSize: '380px',
+                          }}
+                        >
                           <PinCard
                             item={item}
                             index={i}
@@ -1076,9 +1083,8 @@ export default function PlacesPage() {
                   </p>
                 </div>
               )}
-            </motion.div>
+            </div>
             )}
-          </AnimatePresence>
         </div>
       ) : (
         <CardStack

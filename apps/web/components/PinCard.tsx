@@ -59,15 +59,16 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
     item.priceLevel || item.admissionFee || item.bestTimeToVisit ||
     (item.tips && item.tips.length > 0) || item.description;
 
+  const Wrapper = shouldAnimate ? motion.div : 'div';
+  const wrapperProps = shouldAnimate ? {
+    initial: { opacity: 0, y: 28, scale: 0.93 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    transition: { duration: 0.5, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+  } : {};
+
   return (
-    <motion.div
-      initial={shouldAnimate ? { opacity: 0, y: 28, scale: 0.93 } : false}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        duration: 0.5,
-        delay: shouldAnimate ? Math.min(index * 0.04, 0.4) : 0,
-        ease: [0.22, 1, 0.36, 1],
-      }}
+    <Wrapper
+      {...wrapperProps}
       className="break-inside-avoid min-w-0"
       style={{ perspective: 1000 }}
     >
@@ -282,6 +283,6 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </Wrapper>
   );
 }
