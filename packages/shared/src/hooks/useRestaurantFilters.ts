@@ -35,8 +35,8 @@ export const RESTAURANT_SORT_OPTIONS: { key: RestaurantSortOption; label: string
 ];
 
 // ─── Hook ─────────────────────────────────────────────────────
-export function useRestaurantFilters() {
-  const allDining: DiscoverItem[] = [];
+export function useRestaurantFilters(externalItems?: DiscoverItem[]) {
+  const allDining: DiscoverItem[] = externalItems ?? [];
   const bookedItems = allDining.filter((d) => d.isBooked);
   const discoverItems = allDining.filter((d) => !d.isBooked);
 
