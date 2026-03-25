@@ -111,62 +111,6 @@ export default function OverviewScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-      {/* ─── Lede + Essentials (hero is rendered by _layout.tsx) ── */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
-        <Text style={{
-          ...TextStyles.bodyLg, lineHeight: 20, fontFamily: FontFamily.serif,
-          color: isDark ? '#e0d8cc' : '#4a3f35', marginBottom: 12,
-          textShadowColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)',
-          textShadowOffset: { width: 0, height: 1 },
-          textShadowRadius: 6,
-        }}>
-          {typeof ctx?.wiki === 'string' ? ctx.wiki.slice(0, 200) : ctx?.wiki?.extract?.slice(0, 200) ?? ctx?.lede_text ?? `Discover ${cityName} — a destination full of culture, cuisine, and unforgettable experiences.`}
-        </Text>
-
-        {/* Quick facts — from trip_context, fallback to static */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          {(ctx?.quick_facts ? [
-            ctx.quick_facts.currency && { bold: ctx.quick_facts.currency.split(' · ')[0], text: ctx.quick_facts.currency.split(' · ').slice(1).join(' · ') || '' },
-            ctx.quick_facts.language && { bold: ctx.quick_facts.language.split(' · ')[0], text: '' },
-            ctx.quick_facts.timezone && { bold: ctx.quick_facts.timezone.split(' · ')[0], text: '' },
-            ctx.quick_facts.emergency && { bold: ctx.quick_facts.emergency, text: 'Emergency' },
-          ].filter(Boolean) : buildQuickFacts(ctx)).map((f: any) => (
-            <Text key={f.bold} style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63' }}>
-              <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text>{f.text ? ` · ${f.text}` : ''}
-            </Text>
-          ))}
-        </View>
-
-        {/* Forecast strip — editorial style */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', gap: 12,
-          paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1,
-          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <FontAwesome
-              name={weatherIcon(weather.conditions) as any}
-              size={14}
-              color={ACCENT_COLOR}
-            />
-            <Text style={{ ...TextStyles.bodyLgEm, fontWeight: '700', color: ACCENT_COLOR }}>
-              {weather.temp ?? weather.high ?? ''}°{weather.low != null ? ` / ${weather.low}°` : ''}
-            </Text>
-            <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
-          </View>
-          <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-            {forecast.slice(0, 5).map((day: any, idx: number) => (
-              <View key={day.date || day.day || idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
-                <Text style={{ fontSize: 16 }}>{day.icon}</Text>
-                <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-
       {/* ─── Things to Do — horizontal scroll cards ───────── */}
       <View style={{ marginTop: 20 }}>
         <View style={{ paddingHorizontal: 20 }}>
