@@ -77,7 +77,7 @@ export default function MyTripsPage() {
     <Suspense fallback={
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+          <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <SkeletonCard />
@@ -200,7 +200,7 @@ function TripsContent() {
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+            <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <SkeletonCard />
@@ -219,7 +219,7 @@ function TripsContent() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+          <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
 
           <div className="flex items-center gap-3 flex-wrap">
             {/* View Toggle */}
@@ -306,7 +306,7 @@ function TripsContent() {
                 {pastTrips.length > 0 && (
                   <div className="mt-10">
                     <div className="flex items-center gap-3 mb-4">
-                      <h2 className="text-lg font-semibold text-gray-400">Past Trips</h2>
+                      <h2 className="text-lg font-serif font-normal text-gray-400 tracking-wide">Past Trips</h2>
                       <div className="flex-1 h-px bg-gray-200" />
                     </div>
                     {viewMode === 'grid' ? (
@@ -332,7 +332,7 @@ function TripsContent() {
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
               <PaperPlane size={32} className="text-gray-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">No trips yet</h2>
+            <h2 className="text-lg font-serif font-normal text-gray-800 mb-1 tracking-wide">No trips yet</h2>
             <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>
             <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
               style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}

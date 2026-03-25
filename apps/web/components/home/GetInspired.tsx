@@ -281,10 +281,9 @@ export function GetInspired() {
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
-            className="text-2xl md:text-3xl text-foreground mb-1"
+            className="text-2xl md:text-3xl font-serif font-normal text-foreground mb-1 tracking-wide"
           >
-            <span className="font-extrabold">Get</span>{" "}
-            <span className="font-normal italic">Inspired</span>
+            Get <span className="italic">Inspired</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 10 }}

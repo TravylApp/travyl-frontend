@@ -358,7 +358,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-normal text-white mb-4 leading-tight tracking-wide"
           >
             {heroConfig?.title ?? "Explore the world from one place."}
           </motion.h1>
@@ -528,8 +528,8 @@ export default function Home() {
               <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
                 <AnimatedCounter value={item.value} suffix={item.suffix} decimals={item.decimals} />
               </p>
-              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#5c4a3a]">{item.label}</p>
-              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#3d2f23]">{item.desc}</p>
+              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#1e3a5f]">{item.label}</p>
+              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#2a1f17]">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -540,7 +540,7 @@ export default function Home() {
         <section className="py-12 px-6">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
+              <h2 className="text-2xl font-serif font-normal text-foreground tracking-wide">
                 Your Recent Trips
               </h2>
               <Link
@@ -632,7 +632,7 @@ export default function Home() {
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <PaperPlane className="text-primary -rotate-12" size={28} />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">
+            <h2 className="text-xl font-serif font-normal text-foreground mb-2 tracking-wide">
               No trips yet
             </h2>
             <p className="text-muted-foreground mb-6">
