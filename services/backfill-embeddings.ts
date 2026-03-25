@@ -27,20 +27,37 @@ export async function backfill() {
     try {
       const { data: activities } = await supabase
         .from('activity')
-        .select('activity_name, activity_type, notes')
+        .select('activity_name, activity_type, notes, starting_date, ending_date, activity_data')
         .eq('trip_id', trip.id)
+
+      interface ActivityData { category?: string; location_name?: string }
 
       const activityText = (activities ?? [])
         .map((a) => {
-          const base = `${a.activity_name} (${a.activity_type})`
-          return a.notes ? `${base} - ${a.notes}` : base
+          const activityData = a.activity_data as ActivityData | null
+          const type = activityData?.category ?? a.activity_type
+          let text = `${a.activity_name} (${type})`
+          if (activityData?.location_name) text += ` at ${activityData.location_name}`
+          if (a.starting_date) {
+            text += ` on ${a.starting_date}`
+            if (a.ending_date && a.ending_date !== a.starting_date) {
+              text += ` to ${a.ending_date}`
+            }
+          }
+          if (a.notes) text += ` - ${a.notes}`
+          return text
         })
         .join(', ')
+
+      const dateRange = trip.start_date && trip.end_date
+        ? `${trip.start_date} to ${trip.end_date}`
+        : null
 
       const textContent = [
         trip.title,
         trip.destination,
         trip.status,
+        dateRange,
         activityText,
       ].filter(Boolean).join(' | ')
 
@@ -65,14 +82,30 @@ export async function backfill() {
         }
       }
 
+      const activityList = activities ?? []
+      const activityNames = [...new Set(activityList.map((a) => a.activity_name).filter(Boolean))]
+      const activityLocations = [...new Set(
+        activityList
+          .map((a) => (a.activity_data as ActivityData | null)?.location_name)
+          .filter((loc): loc is string => Boolean(loc)),
+      )]
+      const activityTypes = [...new Set(
+        activityList
+          .map((a) => (a.activity_data as ActivityData | null)?.category ?? a.activity_type)
+          .filter(Boolean),
+      )]
+
       const metadata = {
         title: trip.title,
         destination: trip.destination,
         status: trip.status,
         startDate: trip.start_date,
         endDate: trip.end_date,
-        activityCount: activities?.length ?? 0,
+        activityCount: activityList.length,
         imageUrl: heroImages[0] ?? null,
+        activityNames,
+        activityLocations,
+        activityTypes,
       }
 
       const { error: upsertError } = await supabase
