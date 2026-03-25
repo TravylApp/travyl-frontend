@@ -15,7 +15,7 @@ interface PackingPanelProps {
 export function PackingPanel({ tripId }: PackingPanelProps) {
   const router = useRouter()
   const { user } = useAuthStore()
-  const { items, itemsByCategory, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem } = usePackingList(tripId, user?.id)
+  const { items, itemsByCategory, orderedCategories, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem } = usePackingList(tripId, user?.id)
   const {
     suggestionsByCategory,
     isGenerating,
@@ -57,6 +57,7 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
       <PackingProgress packed={progress.packed} total={progress.total} percent={progress.percent} compact />
       <div className="flex-1 overflow-auto">
         <PackingCategoryList
+          orderedCategories={orderedCategories}
           itemsByCategory={itemsByCategory}
           suggestionsByCategory={suggestionsByCategory}
           onToggle={togglePacked}

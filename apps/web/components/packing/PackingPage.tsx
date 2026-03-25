@@ -13,7 +13,7 @@ interface PackingPageProps {
 
 export function PackingPage({ tripId }: PackingPageProps) {
   const { user } = useAuthStore()
-  const { items, itemsByCategory, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem } = usePackingList(tripId, user?.id)
+  const { items, itemsByCategory, orderedCategories, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem } = usePackingList(tripId, user?.id)
   const {
     suggestionsByCategory,
     isGenerating,
@@ -45,6 +45,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
         <SpotlightSearch existingItems={items} onAddItem={addItem as (name: string, category: string) => void} />
         <div className="flex-1 overflow-auto mt-4">
           <PackingCategoryList
+            orderedCategories={orderedCategories}
             itemsByCategory={itemsByCategory}
             suggestionsByCategory={suggestionsByCategory}
             onToggle={togglePacked}

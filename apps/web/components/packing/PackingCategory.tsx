@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { NavArrowDown, NavArrowRight } from 'iconoir-react'
-import type { DbPackingItem, PackingCategory as PackingCategoryType, PackingSuggestion } from '@travyl/shared'
-import { getCategoryLabel } from './utils'
+import type { DbPackingItem, PackingSuggestion } from '@travyl/shared'
+import { getCategoryLabel, isStaticCategory } from './utils'
 import { PackingItem } from './PackingItem'
 import { SuggestionChip } from './SuggestionChip'
 
 interface PackingCategoryProps {
-  category: PackingCategoryType
+  category: string
   items: DbPackingItem[]
   suggestions?: PackingSuggestion[]
   onToggle: (id: string) => void
@@ -57,6 +57,9 @@ export function PackingCategory({
 
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)] flex-1 text-left">
           {getCategoryLabel(category)}
+          {!isStaticCategory(category) && (
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 ml-1">✦ AI</span>
+          )}
         </span>
 
         <span className="text-xs tabular-nums text-[var(--cal-text-muted)]">
