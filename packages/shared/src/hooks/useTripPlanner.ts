@@ -1,7 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 
-const API_URL = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL
-  ?? process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
+// On web: use our own API proxy routes to avoid CORS (no prefix needed)
+// On mobile: use the web app URL as proxy (has all API keys)
+const IS_WEB = typeof (globalThis as any).document !== 'undefined' && !process.env.EXPO_PUBLIC_SUPABASE_URL;
+const WEB_PROXY = process.env.EXPO_PUBLIC_WEB_API_URL;
+const API_URL = IS_WEB ? '' : (WEB_PROXY ?? process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL ?? process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL);
 
 // Mirrors backend schemas
 export interface FollowUpQuestion {
@@ -99,7 +102,7 @@ export function useTripPlanner() {
   const contextRef = useRef<{ city?: string; country?: string }>({});
 
   const submitPrompt = useCallback(async (prompt: string, context?: { city?: string; country?: string }) => {
-    if (!API_URL) {
+    if (API_URL == null) {
       setState({ phase: 'error', message: 'API not configured' });
       return;
     }
@@ -142,7 +145,7 @@ export function useTripPlanner() {
   }, []);
 
   const runPlan = async (prompt: string, answers: Record<string, string>) => {
-    if (!API_URL) return;
+    if (API_URL == null) return;
     setState({ phase: 'planning' });
 
     try {
