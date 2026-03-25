@@ -424,6 +424,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   }
 
   const handleBack = () => {
+    if (isSharedView) { router.push('/'); return }
     router.push('/trips')
   }
 
@@ -680,7 +681,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   strokeLinecap="round"
                 />
               </svg>
-              <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
+              <p className="text-sm text-gray-500">{isSharedView ? 'No activities planned yet' : 'No activities yet — add one to get started'}</p>
             </div>
           )}
         </DndContext>

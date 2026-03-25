@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-// TODO: Read/write preferences from Zustand store + Supabase user metadata
+import { useSettingsStore, useAuthStore } from '@travyl/shared';
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -48,7 +48,6 @@ function SettingsToggle({
   return (
     <div className="flex h-14 items-center justify-between border-b border-border px-4">
       <span className="text-foreground">{label}</span>
-      {/* TODO: Wire up toggle handler */}
       <button
         onClick={onToggle}
         className={`relative h-6 w-11 rounded-full transition-colors ${
@@ -66,6 +65,15 @@ function SettingsToggle({
 }
 
 export default function SettingsPage() {
+  const user = useAuthStore((s) => s.user);
+  const currency = useSettingsStore((s) => s.currency);
+  const distanceUnits = useSettingsStore((s) => s.distanceUnits);
+  const travelStyle = useSettingsStore((s) => s.travelStyle);
+  const pushNotifications = useSettingsStore((s) => s.pushNotifications);
+  const emailNotifications = useSettingsStore((s) => s.emailNotifications);
+  const togglePush = useSettingsStore((s) => s.togglePushNotifications);
+  const toggleEmail = useSettingsStore((s) => s.toggleEmailNotifications);
+
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
       {/* Back to Profile */}
@@ -82,7 +90,7 @@ export default function SettingsPage() {
       <SectionHeader title="Account" />
       <div className="overflow-hidden rounded-xl border border-border">
         {/* TODO: Navigate to email change flow */}
-        <SettingsRow label="Email" value="jane@example.com" onClick={() => {}} />
+        <SettingsRow label="Email" value={user?.email ?? '—'} onClick={() => {}} />
         {/* TODO: Navigate to password change flow */}
         <SettingsRow label="Change Password" onClick={() => {}} />
         {/* TODO: Confirm + call Supabase delete user */}
@@ -93,18 +101,18 @@ export default function SettingsPage() {
       <SectionHeader title="Preferences" />
       <div className="overflow-hidden rounded-xl border border-border">
         {/* TODO: Open currency picker */}
-        <SettingsRow label="Currency" value="USD" onClick={() => {}} />
+        <SettingsRow label="Currency" value={currency} onClick={() => {}} />
         {/* TODO: Open distance unit picker */}
-        <SettingsRow label="Distance Units" value="Miles" onClick={() => {}} />
+        <SettingsRow label="Distance Units" value={distanceUnits === 'miles' ? 'Miles' : 'Kilometers'} onClick={() => {}} />
         {/* TODO: Open travel style picker */}
-        <SettingsRow label="Default Travel Style" value="Balanced" onClick={() => {}} />
+        <SettingsRow label="Default Travel Style" value={travelStyle.charAt(0).toUpperCase() + travelStyle.slice(1)} onClick={() => {}} />
       </div>
 
       {/* Notifications */}
       <SectionHeader title="Notifications" />
       <div className="overflow-hidden rounded-xl border border-border">
-        <SettingsToggle label="Push Notifications" enabled={true} onToggle={() => {}} />
-        <SettingsToggle label="Email Notifications" enabled={false} onToggle={() => {}} />
+        <SettingsToggle label="Push Notifications" enabled={pushNotifications} onToggle={togglePush} />
+        <SettingsToggle label="Email Notifications" enabled={emailNotifications} onToggle={toggleEmail} />
       </div>
 
       {/* About */}
