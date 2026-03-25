@@ -3,7 +3,7 @@ import {
   View, ScrollView, Text, Pressable, Linking, Image, Share,
   Dimensions, useColorScheme,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
@@ -89,7 +89,6 @@ export default function OverviewScreen() {
   const colors = useThemeColors();
   const isDark = useColorScheme() === 'dark';
   const scrollRef = useRef<ScrollView>(null);
-  const router = useRouter();
 
   const ctx = trip?.trip_context as any;
   const forecast = (ctx?.weather?.forecast ?? []).map((d: any) => ({
@@ -100,109 +99,19 @@ export default function OverviewScreen() {
   const weather = ctx?.weather?.current ?? { temp: 0, high: 0, low: 0, conditions: '' };
   const news = ctx?.news ?? [];
 
-  const coverImage = ctx?.hero_image_url || ctx?.hero_images?.[0] || null;
   const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
-  const countryName = destination.split(',').slice(1).join(',').trim();
-
-  const dateStr = trip ? formatDateRange(trip.start_date, trip.end_date) : null;
-  const travelersStr = trip ? `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}` : null;
-
-  const handleShare = async () => {
-    if (!trip) return;
-    try {
-      await Share.share({
-        message: `Check out my trip to ${trip.destination}! ${trip.start_date} – ${trip.end_date}`,
-        title: trip.title ?? `Trip to ${trip.destination}`,
-      });
-    } catch (_) {}
-  };
 
   return (
     <PageTransition>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ─── Background image bleed ───────────────────────── */}
-      {coverImage && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 420 }} pointerEvents="none">
-          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-          <LinearGradient
-            colors={[
-              'rgba(0,0,0,0.1)',
-              'rgba(0,0,0,0.25)',
-              isDark ? 'rgba(18,18,20,0.7)' : 'rgba(255,255,255,0.7)',
-              isDark ? '#121214' : colors.background,
-            ]}
-            locations={[0, 0.35, 0.7, 1]}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-        </View>
-      )}
-
-      {/* ─── Back + action buttons over bleed ─────────────── */}
-      <View style={{
-        position: 'absolute', top: 50, left: 14, right: 14, zIndex: 10,
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      }} pointerEvents="box-none">
-        <Pressable
-          onPress={() => router.back()}
-          style={{
-            width: 34, height: 34, borderRadius: 17,
-            backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <FontAwesome name="chevron-left" size={14} color="#fff" />
-        </Pressable>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <Pressable
-            onPress={handleShare}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-              borderRadius: 10, width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <FontAwesome name="share" size={13} color="#fff" />
-          </Pressable>
-        </View>
-      </View>
-
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-      {/* ─── Hero text over bleed ─────────────────────────── */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 90, paddingBottom: 8 }}>
-        <Text style={{
-          ...TextStyles.xs, fontWeight: '700', letterSpacing: 3,
-          textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
-        }}>
-          {countryName || 'Your Trip Guide'}
-        </Text>
-        <Text style={{
-          ...TextStyles.display, lineHeight: 36, marginBottom: 8,
-          color: '#fff',
-          textShadowColor: 'rgba(0,0,0,0.5)',
-          textShadowOffset: { width: 0, height: 2 },
-          textShadowRadius: 16,
-        }}>
-          {cityName.toUpperCase()}
-        </Text>
-
-        {/* Date + travelers + weather inline */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-          {dateStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{dateStr}</Text>}
-          {dateStr && travelersStr && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
-          {travelersStr && <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>{travelersStr}</Text>}
-          {(dateStr || travelersStr) && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 14 }}>{weatherEmoji(weather.icon || weather.conditions || '')}</Text>
-            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)' }}>{weather.temp ?? weather.high ?? ''}°</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ─── Lede + Essentials ────────────────────────────── */}
+      {/* ─── Lede + Essentials (hero is rendered by _layout.tsx) ── */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
         <Text style={{
           ...TextStyles.bodyLg, lineHeight: 20, fontFamily: FontFamily.serif,
