@@ -216,3 +216,5 @@
 [ 4542829ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.dev.gotravyl.com/api/trips/extract:0
 [ 4548013ms] [ERROR] Access to fetch at 'https://api.dev.gotravyl.com/api/trips/extract' from origin 'https://deeviaje.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://deeviaje.com/:0
 [ 4548014ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.dev.gotravyl.com/api/trips/extract:0
+[ 5941080ms] [WARNING] The resource https://deeviaje.com/_next/static/chunks/815807c4d833ddb0.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://deeviaje.com/:0
+[ 6820325ms] [WARNING] The resource https://deeviaje.com/_next/static/chunks/815807c4d833ddb0.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://deeviaje.com/:0

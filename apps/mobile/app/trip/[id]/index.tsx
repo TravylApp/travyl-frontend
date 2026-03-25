@@ -87,13 +87,13 @@ export default function OverviewScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  const forecast = MOCK_WEATHER_FORECAST;
-  const weather = MOCK_WEATHER;
-  const news = MOCK_NEWS;
+  const ctx = trip?.trip_context as any;
+  const forecast = ctx?.weather?.forecast ?? [];
+  const weather = ctx?.weather?.current ?? { high: 0, low: 0, conditions: '' };
+  const news = ctx?.news ?? [];
 
-  const tripData = MOCK_TRIPS.find((t) => t.id === (trip?.id ?? id));
-  const coverImage = tripData?.image?.replace(/\?w=\d+/, '?w=1200&q=80');
-  const destination = trip?.destination || tripData?.destination || 'Paris, France';
+  const coverImage = ctx?.hero_image_url || ctx?.hero_images?.[0] || null;
+  const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
   const countryName = destination.split(',').slice(1).join(',').trim();
 
@@ -203,15 +203,19 @@ export default function OverviewScreen() {
           textShadowOffset: { width: 0, height: 1 },
           textShadowRadius: 6,
         }}>
-          Paris never reveals itself all at once. It unfolds — slowly, generously — in the steam
-          rising from a morning café crème, in the light that catches the Seine just before sunset.
+          {typeof ctx?.wiki === 'string' ? ctx.wiki.slice(0, 200) : ctx?.wiki?.extract?.slice(0, 200) ?? ctx?.lede_text ?? `Discover ${cityName} — a destination full of culture, cuisine, and unforgettable experiences.`}
         </Text>
 
-        {/* Quick facts — inline text, matches web */}
+        {/* Quick facts — from trip_context, fallback to static */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          {QUICK_FACTS.map((f) => (
+          {(ctx?.quick_facts ? [
+            ctx.quick_facts.currency && { bold: ctx.quick_facts.currency.split(' · ')[0], text: ctx.quick_facts.currency.split(' · ').slice(1).join(' · ') || '' },
+            ctx.quick_facts.language && { bold: ctx.quick_facts.language.split(' · ')[0], text: '' },
+            ctx.quick_facts.timezone && { bold: ctx.quick_facts.timezone.split(' · ')[0], text: '' },
+            ctx.quick_facts.emergency && { bold: ctx.quick_facts.emergency, text: 'Emergency' },
+          ].filter(Boolean) : QUICK_FACTS).map((f: any) => (
             <Text key={f.bold} style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63' }}>
-              <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text> · {f.text}
+              <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text>{f.text ? ` · ${f.text}` : ''}
             </Text>
           ))}
         </View>
@@ -235,7 +239,7 @@ export default function OverviewScreen() {
           </View>
           <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-            {forecast.slice(0, 5).map((day) => (
+            {forecast.slice(0, 5).map((day: any) => (
               <View key={day.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
                 <Text style={{ ...TextStyles.bodyLg }}>{day.icon}</Text>
@@ -258,7 +262,7 @@ export default function OverviewScreen() {
           decelerationRate="fast"
           snapToInterval={SCREEN_WIDTH - 60}
         >
-          {MOCK_EXPLORE_ITEMS.map((item) => (
+          {(ctx?.explore_items ?? []).map((item: any) => (
             <View key={item.id} style={{
               width: SCREEN_WIDTH - 60, height: 220, borderRadius: 14, overflow: 'hidden',
             }}>
@@ -318,8 +322,9 @@ export default function OverviewScreen() {
           decelerationRate="fast"
           snapToInterval={SCREEN_WIDTH - 60}
         >
-          {news.map((item, i) => {
-            const grad = NEWS_GRADIENTS[i % NEWS_GRADIENTS.length];
+          {news.map((item: any, i: number) => {
+            const gradients: [string, string][] = [['#1a1a2e', '#16213e'], ['#0f3460', '#1a1a2e'], ['#2c3e50', '#1a1a2e'], ['#1b2838', '#0f3460']];
+            const grad = gradients[i % gradients.length];
             return (
               <Pressable
                 key={item.id}

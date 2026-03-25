@@ -186,7 +186,7 @@ function TripsContent() {
 
   const { data: trips, isLoading, isError } = useTrips();
 
-  const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
+  const allTrips: MockTripCard[] = (trips ?? []).map((t: any) => ({
     ...t,
     image: t.cover_image_url ?? FALLBACK_IMAGE,
   }))
