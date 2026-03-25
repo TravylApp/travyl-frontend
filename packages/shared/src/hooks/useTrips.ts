@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchTrips } from '../services/api';
+import type { Trip } from '../types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-async function fetchTripsWithAnonymous() {
+async function fetchTripsWithAnonymous(): Promise<Trip[]> {
   // On web, check localStorage for anonymous trip IDs
   let anonIds: string[] = [];
   try {
@@ -16,7 +17,7 @@ async function fetchTripsWithAnonymous() {
   if (anonIds.length > 0 && typeof (globalThis as any).document !== 'undefined') {
     try {
       const res = await fetch(`/api/trips?ids=${anonIds.join(',')}`);
-      if (res.ok) return res.json();
+      if (res.ok) return res.json() as Promise<Trip[]>;
     } catch {}
   }
 
