@@ -1,13 +1,16 @@
 'use client'
 
-import { Clock, Building2, Plane, UtensilsCrossed, MapPin, Plus, Calendar } from 'lucide-react'
+import { Clock, Building2, Plane, UtensilsCrossed, MapPin, Plus, Calendar, Pin, Compass, ArrowRight, Terminal, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import type { PinnedResult } from '@/hooks/useSpotlightSearch'
 
 interface Props {
   recentSearches: string[]
   onSelectRecent: (query: string) => void
   onClearRecent: () => void
   onClose: () => void
+  pinnedResults: PinnedResult[]
+  onSelectPinned: (pinned: PinnedResult) => void
 }
 
 const QUICK_CATEGORIES = [
@@ -22,11 +25,55 @@ const QUICK_ACTIONS = [
   { label: 'Go to Calendar', icon: Calendar, href: '/trips', shortcut: null },
 ]
 
-export function SpotlightEmptyState({ recentSearches, onSelectRecent, onClearRecent, onClose }: Props) {
+const PINNED_TYPE_ICONS: Record<string, React.ElementType> = {
+  trip: Compass,
+  hotel: Building2,
+  flight: Plane,
+  restaurant: UtensilsCrossed,
+  activity: MapPin,
+  destination: MapPin,
+  navigation: ArrowRight,
+  command: Terminal,
+  setting: Settings,
+}
+
+export function SpotlightEmptyState({ recentSearches, onSelectRecent, onClearRecent, onClose, pinnedResults, onSelectPinned }: Props) {
   const router = useRouter()
 
   return (
     <div className="px-4 py-3">
+      {/* Pinned Favorites */}
+      {pinnedResults.length > 0 && (
+        <div className="mb-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2 block">
+            Pinned
+          </span>
+          <div className="space-y-0.5">
+            {pinnedResults.map((pinned) => {
+              const Icon = PINNED_TYPE_ICONS[pinned.type] ?? MapPin
+              return (
+                <button
+                  key={pinned.id}
+                  onClick={() => onSelectPinned(pinned)}
+                  className="flex items-center gap-2.5 w-full px-2.5 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-md bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                    <Pin className="w-3.5 h-3.5 text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-sm font-medium truncate">{pinned.title}</div>
+                    {pinned.subtitle && (
+                      <div className="text-xs text-gray-400 truncate">{pinned.subtitle}</div>
+                    )}
+                  </div>
+                  <Icon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="mb-4">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2 block">
@@ -92,7 +139,7 @@ export function SpotlightEmptyState({ recentSearches, onSelectRecent, onClearRec
 
       {/* Keyboard hint */}
       <p className="text-[11px] text-gray-400/60 mt-4 text-center">
-        Type to search &middot; Use arrow keys to navigate
+        Type to search &middot; Use arrow keys to navigate &middot; &rarr; for actions
       </p>
     </div>
   )

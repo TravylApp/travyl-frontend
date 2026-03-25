@@ -26,6 +26,7 @@ interface Props {
   query: string
   animationDelay?: number
   itemRefs: RefObject<(HTMLButtonElement | null)[]>
+  isPinned?: (id: string) => boolean
 }
 
 export function SpotlightResultGroup({
@@ -37,6 +38,7 @@ export function SpotlightResultGroup({
   query,
   animationDelay = 0,
   itemRefs,
+  isPinned,
 }: Props) {
   if (!results.length) return null
 
@@ -67,6 +69,7 @@ export function SpotlightResultGroup({
           isActive={activeIndex === baseIndex + i}
           onClick={() => onSelect(result)}
           query={query}
+          isPinned={isPinned?.(result.id)}
         />
       ))}
     </motion.div>

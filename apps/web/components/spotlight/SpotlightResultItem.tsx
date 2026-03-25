@@ -1,7 +1,8 @@
 'use client'
 
 import { forwardRef } from 'react'
-import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal, Star, Calendar } from 'lucide-react'
+import { motion } from 'motion/react'
+import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal, Star, Calendar, Pin } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
 import { highlightMatch } from './highlightMatch'
 
@@ -34,10 +35,11 @@ interface Props {
   isActive: boolean
   onClick: () => void
   query: string
+  isPinned?: boolean
 }
 
 export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
-  function SpotlightResultItem({ result, isActive, onClick, query }, ref) {
+  function SpotlightResultItem({ result, isActive, onClick, query, isPinned }, ref) {
     const Icon = TYPE_ICONS[result.type] ?? MapPin
     const iconColor = TYPE_ICON_COLORS[result.type] ?? TYPE_ICON_COLORS.navigation
 
@@ -50,34 +52,50 @@ export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
       <button
         ref={ref}
         onClick={onClick}
-        className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors relative ${
-          isActive
-            ? 'bg-blue-50 dark:bg-blue-950/30'
-            : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-        }`}
+        className="w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors relative"
       >
+        {/* Animated highlight background */}
+        {isActive && (
+          <motion.div
+            layoutId="spotlight-highlight"
+            className="absolute inset-0 bg-blue-50 dark:bg-blue-950/30 rounded-lg"
+            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+          />
+        )}
+
         {/* Active indicator bar */}
         {isActive && (
-          <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-blue-500" />
+          <motion.div
+            layoutId="spotlight-indicator"
+            className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-blue-500"
+            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+          />
         )}
 
         {/* Icon / Image */}
-        {result.imageUrl && isRichType ? (
-          <img
-            src={result.imageUrl}
-            alt=""
-            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-          />
-        ) : (
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconColor}`}>
-            <Icon className="w-4.5 h-4.5" />
-          </div>
-        )}
+        <div className="relative z-10 flex-shrink-0">
+          {result.imageUrl && isRichType ? (
+            <img
+              src={result.imageUrl}
+              alt=""
+              className="w-10 h-10 rounded-lg object-cover"
+            />
+          ) : (
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconColor}`}>
+              <Icon className="w-4.5 h-4.5" />
+            </div>
+          )}
+        </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-            {highlightMatch(result.title, query)}
+        <div className="relative z-10 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {highlightMatch(result.title, query)}
+            </span>
+            {isPinned && (
+              <Pin className="w-3 h-3 text-amber-500 flex-shrink-0" />
+            )}
           </div>
           {result.subtitle && (
             <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
@@ -90,16 +108,23 @@ export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
         </div>
 
         {/* Right-side extras */}
-        {isSimpleType && result.shortcut && (
-          <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0">
-            {result.shortcut.display}
-          </kbd>
-        )}
-        {result.tripTitle && result.type !== 'trip' && !isSimpleType && (
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0 max-w-[80px] truncate">
-            {result.tripTitle}
-          </span>
-        )}
+        <div className="relative z-10 flex-shrink-0">
+          {isSimpleType && result.shortcut && (
+            <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+              {result.shortcut.display}
+            </kbd>
+          )}
+          {result.tripTitle && result.type !== 'trip' && !isSimpleType && (
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 max-w-[80px] truncate">
+              {result.tripTitle}
+            </span>
+          )}
+          {isActive && !isSimpleType && (
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-2">
+              &rarr;
+            </span>
+          )}
+        </div>
       </button>
     )
   },

@@ -14,10 +14,11 @@ interface Props {
   onSelect: (result: SpotlightResult) => void
   query: string
   itemRefs: RefObject<(HTMLButtonElement | null)[]>
+  isPinned?: (id: string) => boolean
 }
 
 export const SpotlightResults = forwardRef<HTMLDivElement, Props>(
-  function SpotlightResults({ results, activeIndex, onSelect, query, itemRefs }, ref) {
+  function SpotlightResults({ results, activeIndex, onSelect, query, itemRefs, isPinned }, ref) {
     const orderedCategories = useMemo(() => {
       return CATEGORY_ORDER.filter((type) => results[type]?.length)
     }, [results])
@@ -52,6 +53,7 @@ export const SpotlightResults = forwardRef<HTMLDivElement, Props>(
                 query={query}
                 animationDelay={groupIndex * 0.05}
                 itemRefs={itemRefs}
+                isPinned={isPinned}
               />
             )
           })}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, LayoutGroup } from 'motion/react'
 import type { SpotlightResult } from '@travyl/shared'
 import { useSpotlightSearch } from '@/hooks/useSpotlightSearch'
 import { SpotlightInput } from './SpotlightInput'
@@ -10,12 +10,20 @@ import { SpotlightResults } from './SpotlightResults'
 import { SpotlightEmptyState } from './SpotlightEmptyState'
 import { SpotlightPreview, hasPreview } from './SpotlightPreview'
 import { SpotlightFooter } from './SpotlightFooter'
+import { SpotlightActionMenu, getActionsForResult, type SpotlightAction } from './SpotlightActionMenu'
 
 const CATEGORY_ORDER = ['trip', 'hotel', 'flight', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
+
+interface ActionMode {
+  result: SpotlightResult
+  activeActionIndex: number
+  actions: SpotlightAction[]
+}
 
 export function SpotlightSearch() {
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [actionMode, setActionMode] = useState<ActionMode | null>(null)
   const router = useRouter()
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -27,6 +35,17 @@ export function SpotlightSearch() {
     recentSearches,
     addRecentSearch,
     clearRecent,
+    isInTripContext,
+    tripId,
+    tripName,
+    clearTripScope,
+    removeTripScope,
+    scope,
+    setScope,
+    pinnedResults,
+    pinResult,
+    unpinResult,
+    isPinned,
   } = useSpotlightSearch()
 
   // Flatten results for keyboard navigation
@@ -40,7 +59,7 @@ export function SpotlightSearch() {
 
   // Active result for preview
   const activeResult = flatResults[activeIndex] ?? null
-  const showPreview = hasPreview(activeResult)
+  const showPreview = !actionMode && hasPreview(activeResult)
 
   // Scroll active item into view
   useEffect(() => {
@@ -67,14 +86,15 @@ export function SpotlightSearch() {
     if (!isOpen) {
       setQuery('')
       setActiveIndex(0)
+      setActionMode(null)
+      setScope(null)
     }
-  }, [isOpen, setQuery])
+  }, [isOpen, setQuery, setScope])
 
   const handleSelect = useCallback(
     (result: SpotlightResult) => {
       if (query.length >= 2) addRecentSearch(query)
       setIsOpen(false)
-      // If the result has an execute function (command), call it instead of navigating
       if (result.execute) {
         result.execute()
       } else {
@@ -84,8 +104,88 @@ export function SpotlightSearch() {
     [query, addRecentSearch, router],
   )
 
+  const enterActionMode = useCallback(
+    (result: SpotlightResult) => {
+      const actions = getActionsForResult(result, {
+        isPinned: isPinned(result.id),
+        onPin: () => {
+          pinResult(result)
+          setActionMode(null)
+        },
+        onUnpin: () => {
+          unpinResult(result.id)
+          setActionMode(null)
+        },
+        onSelect: () => handleSelect(result),
+      })
+      setActionMode({ result, activeActionIndex: 0, actions })
+    },
+    [isPinned, pinResult, unpinResult, handleSelect],
+  )
+
+  const exitActionMode = useCallback(() => {
+    setActionMode(null)
+  }, [])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Action mode keyboard handling
+      if (actionMode) {
+        switch (e.key) {
+          case 'ArrowDown':
+            e.preventDefault()
+            setActionMode((prev) => prev ? {
+              ...prev,
+              activeActionIndex: Math.min(prev.activeActionIndex + 1, prev.actions.length - 1),
+            } : null)
+            break
+          case 'ArrowUp':
+            e.preventDefault()
+            setActionMode((prev) => prev ? {
+              ...prev,
+              activeActionIndex: Math.max(prev.activeActionIndex - 1, 0),
+            } : null)
+            break
+          case 'Enter':
+            e.preventDefault()
+            if (actionMode.actions[actionMode.activeActionIndex]) {
+              actionMode.actions[actionMode.activeActionIndex].execute()
+              // Close spotlight if the action navigates or executes
+              if (['open', 'open-details', 'execute'].includes(actionMode.actions[actionMode.activeActionIndex].id)) {
+                setIsOpen(false)
+              }
+            }
+            break
+          case 'ArrowLeft':
+          case 'Escape':
+            e.preventDefault()
+            exitActionMode()
+            break
+        }
+        return
+      }
+
+      // Cmd+Enter: open in new tab
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (activeResult?.href) {
+          window.open(activeResult.href, '_blank')
+        }
+        return
+      }
+
+      // Cmd+C: copy link (only when no text selected)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        const selection = window.getSelection()
+        if (!selection || selection.toString().length === 0) {
+          if (activeResult?.href) {
+            e.preventDefault()
+            navigator.clipboard.writeText(window.location.origin + activeResult.href)
+          }
+        }
+        return
+      }
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
@@ -94,6 +194,12 @@ export function SpotlightSearch() {
         case 'ArrowUp':
           e.preventDefault()
           setActiveIndex((prev) => Math.max(prev - 1, 0))
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          if (activeResult) {
+            enterActionMode(activeResult)
+          }
           break
         case 'Tab': {
           e.preventDefault()
@@ -121,7 +227,7 @@ export function SpotlightSearch() {
           break
       }
     },
-    [flatResults, activeIndex, handleSelect, results],
+    [flatResults, activeIndex, handleSelect, results, actionMode, exitActionMode, enterActionMode, activeResult],
   )
 
   // Reset active index when results change
@@ -131,6 +237,7 @@ export function SpotlightSearch() {
 
   const hasResults = query.length >= 1 && flatResults.length > 0
   const showEmptyState = query.length < 1
+  const showTripContext = isInTripContext && !clearTripScope
 
   return (
     <AnimatePresence>
@@ -151,69 +258,92 @@ export function SpotlightSearch() {
             className="fixed top-[20%] left-1/2 -translate-x-1/2 z-50"
             onKeyDown={handleKeyDown}
           >
-            <motion.div
-              layout
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className={`bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden ${
-                showPreview ? 'w-[680px] max-w-[90vw]' : 'w-[560px] max-w-[90vw]'
-              }`}
-            >
-              <SpotlightInput
-                query={query}
-                onQueryChange={setQuery}
-                isLoading={isLoading}
-              />
-              <div className="flex">
-                {/* Left: results / empty state */}
-                <div className={showPreview ? 'w-[360px] flex-shrink-0' : 'flex-1'}>
-                  {showEmptyState ? (
-                    <SpotlightEmptyState
-                      recentSearches={recentSearches}
-                      onSelectRecent={(q) => setQuery(q)}
-                      onClearRecent={clearRecent}
-                      onClose={() => setIsOpen(false)}
-                    />
-                  ) : hasResults ? (
-                    <SpotlightResults
-                      ref={resultsRef}
-                      results={results}
-                      activeIndex={activeIndex}
-                      onSelect={handleSelect}
-                      query={query}
-                      itemRefs={itemRefs}
-                    />
-                  ) : query.length >= 1 && !isLoading ? (
-                    <div className="px-4 py-8 text-center">
-                      <p className="text-sm text-gray-400">No results found</p>
-                      <p className="text-xs text-gray-400/70 mt-1">
-                        Try a different search term
-                      </p>
-                    </div>
-                  ) : query.length >= 1 && isLoading ? (
-                    <div className="px-4 py-8 text-center">
-                      <p className="text-sm text-gray-400">Searching...</p>
-                    </div>
-                  ) : null}
-                </div>
+            <LayoutGroup>
+              <motion.div
+                layout
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className={`bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden ${
+                  showPreview ? 'w-[680px] max-w-[90vw]' : 'w-[560px] max-w-[90vw]'
+                }`}
+              >
+                <SpotlightInput
+                  query={query}
+                  onQueryChange={setQuery}
+                  isLoading={isLoading}
+                  scope={scope}
+                  onScopeChange={setScope}
+                  tripContextName={tripName}
+                  onRemoveTripContext={removeTripScope}
+                  showTripContext={showTripContext}
+                />
+                <div className="flex">
+                  {/* Left: results / empty state / action menu */}
+                  <div className={showPreview ? 'w-[360px] flex-shrink-0' : 'flex-1'}>
+                    {actionMode ? (
+                      <SpotlightActionMenu
+                        result={actionMode.result}
+                        actions={actionMode.actions}
+                        activeActionIndex={actionMode.activeActionIndex}
+                        onBack={exitActionMode}
+                      />
+                    ) : showEmptyState ? (
+                      <SpotlightEmptyState
+                        recentSearches={recentSearches}
+                        onSelectRecent={(q) => setQuery(q)}
+                        onClearRecent={clearRecent}
+                        onClose={() => setIsOpen(false)}
+                        pinnedResults={pinnedResults}
+                        onSelectPinned={(pinned) => {
+                          setIsOpen(false)
+                          router.push(pinned.href)
+                        }}
+                      />
+                    ) : hasResults ? (
+                      <SpotlightResults
+                        ref={resultsRef}
+                        results={results}
+                        activeIndex={activeIndex}
+                        onSelect={handleSelect}
+                        query={query}
+                        itemRefs={itemRefs}
+                        isPinned={isPinned}
+                      />
+                    ) : query.length >= 1 && !isLoading ? (
+                      <div className="px-4 py-8 text-center">
+                        <p className="text-sm text-gray-400">No results found</p>
+                        <p className="text-xs text-gray-400/70 mt-1">
+                          Try a different search term
+                        </p>
+                      </div>
+                    ) : query.length >= 1 && isLoading ? (
+                      <div className="px-4 py-8 text-center">
+                        <p className="text-sm text-gray-400">Searching...</p>
+                      </div>
+                    ) : null}
+                  </div>
 
-                {/* Right: preview pane */}
-                <AnimatePresence mode="wait">
-                  {showPreview && activeResult && (
-                    <motion.div
-                      key={activeResult.id}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      transition={{ duration: 0.15 }}
-                      className="w-[300px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 p-4 max-h-[400px] overflow-y-auto"
-                    >
-                      <SpotlightPreview result={activeResult} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <SpotlightFooter resultCount={flatResults.length} />
-            </motion.div>
+                  {/* Right: preview pane */}
+                  <AnimatePresence mode="wait">
+                    {showPreview && activeResult && (
+                      <motion.div
+                        key={activeResult.id}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.15 }}
+                        className="w-[300px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 p-4 max-h-[400px] overflow-y-auto"
+                      >
+                        <SpotlightPreview result={activeResult} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <SpotlightFooter
+                  resultCount={flatResults.length}
+                  isActionMode={!!actionMode}
+                />
+              </motion.div>
+            </LayoutGroup>
           </motion.div>
         </>
       )}
