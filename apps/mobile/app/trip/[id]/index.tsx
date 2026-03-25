@@ -371,6 +371,89 @@ export default function OverviewScreen() {
         </ScrollView>
       </View>
 
+      {/* ─── Local Cuisine — horizontal scroll ──────────────── */}
+      {(ctx?.cuisine ?? []).length > 0 && (
+        <View style={{ marginTop: 24 }}>
+          <View style={{ paddingHorizontal: 20 }}>
+            <SectionHeader accent="Local Cuisine" title="Must-Try Dishes" />
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+            decelerationRate="fast"
+            snapToInterval={SCREEN_WIDTH * 0.7 + 12}
+          >
+            {(ctx.cuisine as any[]).map((dish: any, idx: number) => (
+              <View key={dish.id || idx} style={{
+                width: SCREEN_WIDTH * 0.7, height: 200, borderRadius: 14, overflow: 'hidden',
+              }}>
+                {dish.image ? (
+                  <Image source={{ uri: dish.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                ) : (
+                  <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+                    <FontAwesome name="cutlery" size={28} color="rgba(255,255,255,0.3)" />
+                  </View>
+                )}
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.7)']}
+                  locations={[0.4, 1]}
+                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}
+                >
+                  <Text style={{ ...TextStyles.subhead, fontWeight: '700', color: '#fff', fontFamily: FontFamily.serif }}>{dish.name}</Text>
+                </LinearGradient>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* ─── Essential Phrases ─────────────────────────────── */}
+      {(ctx?.phrases ?? []).length > 0 && (
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <SectionHeader accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
+          <View style={{ gap: 8 }}>
+            {(Array.isArray(ctx.phrases) ? ctx.phrases : Object.entries(ctx.phrases).map(([en, local]: any) => ({ english: en, local }))).slice(0, 8).map((phrase: any, idx: number) => (
+              <View key={idx} style={{
+                flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+              }}>
+                <Text style={{ ...TextStyles.body, fontWeight: '600', color: colors.text }}>{phrase.english || phrase.en || Object.keys(phrase)[0]}</Text>
+                <Text style={{ ...TextStyles.body, color: ACCENT_COLOR, fontFamily: FontFamily.serif }}>{phrase.local || phrase.translation || Object.values(phrase)[0]}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* ─── Cost of Living ────────────────────────────────── */}
+      {ctx?.cost_of_living && (
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <SectionHeader accent="Budget" title="Cost of Living" />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {[
+              { label: 'Budget meal', value: ctx.cost_of_living.budget_meal, icon: 'cutlery' },
+              { label: 'Mid-range meal', value: ctx.cost_of_living.mid_range_meal, icon: 'cutlery' },
+              { label: 'Coffee', value: ctx.cost_of_living.coffee, icon: 'coffee' },
+              { label: 'Beer', value: ctx.cost_of_living.beer, icon: 'beer' },
+              { label: 'Transport', value: ctx.cost_of_living.public_transport, icon: 'bus' },
+              { label: 'Water', value: ctx.cost_of_living.water_bottle, icon: 'tint' },
+            ].filter(i => i.value).map((item, idx) => (
+              <View key={idx} style={{
+                width: (SCREEN_WIDTH - 50) / 3, alignItems: 'center',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8,
+              }}>
+                <FontAwesome name={item.icon as any} size={16} color={ACCENT_COLOR} style={{ marginBottom: 6 }} />
+                <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: colors.text }}>{item.value}</Text>
+                <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', textAlign: 'center', marginTop: 2 }}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* ─── Before You Go (essentials footer) ────────────── */}
       <View style={{
         marginTop: 28, paddingHorizontal: 20, paddingTop: 20,
