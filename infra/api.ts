@@ -88,6 +88,11 @@ api.route('GET /context-search', {
   ],
 })
 
+api.route('GET /entity-search', {
+  handler: 'services/entity-search.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+})
+
 api.route('GET /recommend', {
   handler: 'services/recommend.handler',
   link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
