@@ -97,7 +97,8 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination?.split(',')[0]?.trim();
 
-  const destAirport = searchParams?.destination || (destination ? CITY_AIRPORTS[destination] : undefined);
+  const cityName = destination?.split(',')[0]?.trim();
+  const destAirport = searchParams?.destination || (cityName ? CITY_AIRPORTS[cityName] : undefined);
   const originAirport = searchParams?.origin || 'JFK';
   const departDate = searchParams?.date || trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
   const passengers = searchParams?.passengers || trip?.travelers || 1;

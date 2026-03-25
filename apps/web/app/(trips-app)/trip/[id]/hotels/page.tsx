@@ -133,8 +133,8 @@ function useHotels(tripId: string, searchQuery?: string) {
   );
 
   // Also fetch more from Foursquare if we have coordinates
-  const lat = (contextHotels?.[0] as any)?.lat;
-  const lng = (contextHotels?.[0] as any)?.lng;
+  const lat = (contextHotels?.[0] as any)?.lat ?? trip?.trip_context?.lat;
+  const lng = (contextHotels?.[0] as any)?.lng ?? trip?.trip_context?.lng;
   const trimmedQuery = searchQuery?.trim() || '';
   const { data: fetchedHotels = [] } = useQuery({
     queryKey: ['hotels-foursquare', destination, trimmedQuery],
@@ -153,7 +153,7 @@ function useHotels(tripId: string, searchQuery?: string) {
       return convertFoursquareToHotelData(data, fromContext.length);
     },
     staleTime: 10 * 60 * 1000,
-    enabled: !!destination && (fromContext.length < 4 || !!trimmedQuery),
+    enabled: !!destination && !!(lat && lng),
   });
 
   // Combine and deduplicate by name
