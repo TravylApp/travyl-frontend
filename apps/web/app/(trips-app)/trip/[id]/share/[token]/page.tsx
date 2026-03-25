@@ -12,22 +12,36 @@ import { CalendarDashboard } from '@/components/calendar/CalendarDashboard'
 
 const BRAND = '#1e3a5f'
 
+// ─── Derived permission for share page ────────────────────────
 type ShareRole = 'owner' | 'editor' | 'viewer' | 'link-editor'
 
-function resolveShareRole(trip: Trip, user: User | null, collaborators: TripCollaborator[]): ShareRole {
-  if (!user || user.is_anonymous) return trip.link_permission === 'editor' ? 'link-editor' : 'viewer'
+function resolveShareRole(
+  trip: Trip,
+  user: User | null,
+  collaborators: TripCollaborator[],
+): ShareRole {
+  if (!user || user.is_anonymous) {
+    return trip.link_permission === 'editor' ? 'link-editor' : 'viewer'
+  }
   if (trip.user_id === user.id) return 'owner'
   const collab = collaborators.find((c) => c.user_id === user.id && c.invite_status === 'accepted')
   if (collab) return collab.role_type === 'editor' ? 'editor' : 'viewer'
   return trip.link_permission === 'editor' ? 'link-editor' : 'viewer'
 }
 
-function SharedCalendarView({ trip, user, token, shareRole }: { trip: Trip; user: User | null; token: string; shareRole: ShareRole }) {
+// ─── Inner view (only rendered once trip + role are resolved) ──
+interface SharedCalendarViewProps {
+  trip: Trip
+  user: User | null
+  token: string
+  shareRole: ShareRole
+}
+
+function SharedCalendarView({ trip, user, token, shareRole }: SharedCalendarViewProps) {
   const router = useRouter()
   const { mutate: forkTripMutation, isPending: isForkPending } = useForkTrip()
   const [isJoining, setIsJoining] = useState(false)
   const stableAnonId = useRef(crypto.randomUUID())
-  const isReadOnly = shareRole === 'viewer' || shareRole === 'link-editor'
 
   const handleFork = () => {
     forkTripMutation({ tripId: trip.id }, { onSuccess: () => router.push('/trips') })
@@ -48,15 +62,27 @@ function SharedCalendarView({ trip, user, token, shareRole }: { trip: Trip; user
     }
   }
 
+  const isReadOnly = shareRole === 'viewer' || shareRole === 'link-editor'
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Contextual top banner */}
+      {/* Top banner — contextual based on role */}
       <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#1e3a5f] text-white text-sm shrink-0">
         <div className="flex items-center gap-2 opacity-80">
-          {shareRole === 'link-editor' ? <Edit2 size={13} /> : <Lock size={13} />}
-          <span>{shareRole === 'link-editor' ? 'Anyone with this link can edit' : 'Viewing shared trip — read only'}</span>
+          {shareRole === 'link-editor' ? (
+            <Edit2 size={13} />
+          ) : (
+            <Lock size={13} />
+          )}
+          <span>
+            {shareRole === 'link-editor'
+              ? 'Anyone with this link can edit'
+              : 'Viewing shared trip — read only'}
+          </span>
         </div>
+
         <div className="flex items-center gap-2">
+          {/* Join to edit — for link-editor permission */}
           {shareRole === 'link-editor' && (
             <button
               onClick={handleJoinToEdit}
@@ -67,6 +93,8 @@ function SharedCalendarView({ trip, user, token, shareRole }: { trip: Trip; user
               {user && !user.is_anonymous ? 'Join to edit' : 'Sign in to edit'}
             </button>
           )}
+
+          {/* Fork — only for read-only viewers */}
           {shareRole === 'viewer' && (
             user && !user.is_anonymous ? (
               <button
@@ -89,6 +117,7 @@ function SharedCalendarView({ trip, user, token, shareRole }: { trip: Trip; user
         </div>
       </div>
 
+      {/* Calendar */}
       <YjsTripProvider tripId={trip.id}>
         <CalendarDashboard
           tripId={trip.id}
@@ -101,6 +130,7 @@ function SharedCalendarView({ trip, user, token, shareRole }: { trip: Trip; user
   )
 }
 
+// ─── Page ──────────────────────────────────────────────────────
 export default function SharedTripPage({ params }: { params: Promise<{ id: string; token: string }> }) {
   const { id, token } = use(params)
   const router = useRouter()
@@ -113,6 +143,7 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     async function init() {
       try {
+        // Resolve session (anonymous sign-in for unauthenticated visitors)
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) {
           const { error: anonError } = await supabase.auth.signInAnonymously()
@@ -123,19 +154,34 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
         setResolvedUser(user)
 
         const fetchedTrip = await fetchTripByShareToken(token)
-        if (!fetchedTrip || fetchedTrip.id !== id) { setError('invalid'); return }
-
-        // Owner → send to real trip page
-        if (user && !user.is_anonymous && user.id === fetchedTrip.user_id) {
-          router.replace(`/trip/${fetchedTrip.id}`); return
+        if (!fetchedTrip || fetchedTrip.id !== id) {
+          setError('invalid')
+          return
         }
 
-        // Check if visitor is an accepted collaborator
+        // Owner visiting their own share link → send them to the real trip page
+        if (user && !user.is_anonymous && user.id === fetchedTrip.user_id) {
+          router.replace(`/trip/${fetchedTrip.id}`)
+          return
+        }
+
+        // Fetch collaborators to check if the visitor is already a member
         let collaborators: TripCollaborator[] = []
         if (user && !user.is_anonymous) {
-          try { collaborators = await fetchCollaborators(fetchedTrip.id) } catch { /* non-fatal */ }
-          const collab = collaborators.find((c) => c.user_id === user.id && c.invite_status === 'accepted')
-          if (collab) { router.replace(`/trip/${fetchedTrip.id}`); return }
+          try {
+            collaborators = await fetchCollaborators(fetchedTrip.id)
+          } catch {
+            // non-fatal — fall back to link_permission
+          }
+
+          // Accepted collaborators → send them to the normal trip page
+          const collab = collaborators.find(
+            (c) => c.user_id === user.id && c.invite_status === 'accepted',
+          )
+          if (collab) {
+            router.replace(`/trip/${fetchedTrip.id}`)
+            return
+          }
         }
 
         setTrip(fetchedTrip)
@@ -147,37 +193,58 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
         setIsLoading(false)
       }
     }
+
     init()
   }, [id, token, router])
 
-  if (isLoading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Loader2 size={32} className="animate-spin text-gray-400" />
-    </div>
-  )
-
-  if (error === 'error') return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center max-w-md mx-auto px-4">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
-        <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
-        <button onClick={() => window.location.reload()} className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold hover:opacity-90" style={{ backgroundColor: BRAND }}>Retry</button>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-gray-400" />
       </div>
-    </div>
-  )
+    )
+  }
 
-  if (error === 'invalid' || !trip) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center max-w-md mx-auto px-4">
-        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-          <Lock size={28} className="text-red-500" />
+  if (error === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
+            style={{ backgroundColor: BRAND }}
+          >
+            Retry
+          </button>
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid or Expired Link</h2>
-        <p className="text-gray-500 mb-6">This share link is invalid or the trip is no longer shared.</p>
-        <Link href="/explore" className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold hover:opacity-90" style={{ backgroundColor: BRAND }}>Explore Trips</Link>
       </div>
-    </div>
-  )
+    )
+  }
+
+  if (error === 'invalid' || !trip) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <Lock size={28} className="text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid or Expired Link</h2>
+          <p className="text-gray-500 mb-6">
+            This share link is invalid or the trip is no longer shared.
+          </p>
+          <Link
+            href="/explore"
+            className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-all hover:opacity-90"
+            style={{ backgroundColor: BRAND }}
+          >
+            Explore Trips
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return <SharedCalendarView trip={trip} user={resolvedUser} token={token} shareRole={shareRole} />
 }
