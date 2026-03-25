@@ -800,13 +800,24 @@ export default function PlacesPage() {
 
       {/* Content: Grid or Stack */}
       {placesLoading && places.length === 0 ? (
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 xl:px-14 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 xl:px-14 py-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="bg-gray-200 dark:bg-white/10 rounded-2xl" style={{ height: 200 + (i % 3) * 40 }} />
-                <div className="mt-2 h-4 bg-gray-200 dark:bg-white/10 rounded w-3/4" />
-                <div className="mt-1 h-3 bg-gray-100 dark:bg-white/5 rounded w-1/2" />
+              <div key={i} className="mb-4 break-inside-avoid">
+                <div
+                  className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-200 to-gray-100 dark:from-white/10 dark:to-white/5 animate-pulse"
+                  style={{ height: 320 + (i % 4) * 30 }}
+                >
+                  <div className="h-full flex flex-col justify-end p-4">
+                    <div className="h-3 bg-white/20 rounded w-16 mb-3" />
+                    <div className="h-5 bg-white/30 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-white/15 rounded w-1/2 mb-3" />
+                    <div className="flex gap-1.5">
+                      <div className="h-4 bg-white/10 rounded-full w-12" />
+                      <div className="h-4 bg-white/10 rounded-full w-10" />
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -1118,12 +1129,19 @@ export default function PlacesPage() {
       )}
       {/* Infinite scroll sentinel */}
       {!searchCity && hasNextPage && (
-        <div ref={loadMoreRef} className="flex justify-center py-8">
+        <div ref={loadMoreRef} className="flex justify-center py-10">
           {isFetchingNextPage && (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-[#1e3a5f] rounded-full animate-spin" />
-              Loading more places...
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="text-xs text-gray-400 font-medium tracking-wide">Discovering more places...</span>
             </div>
+          )}
+          {!isFetchingNextPage && (
+            <div className="h-4" />
           )}
         </div>
       )}
