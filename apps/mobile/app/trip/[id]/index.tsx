@@ -50,6 +50,19 @@ function weatherIcon(condition: string): string {
   return 'cloud';
 }
 
+function weatherEmoji(icon: string): string {
+  const c = icon.toLowerCase();
+  if (c.includes('clear') && c.includes('night')) return '🌙';
+  if (c.includes('clear') || c.includes('sun')) return '☀️';
+  if (c.includes('partly') || c.includes('cloud')) return '⛅';
+  if (c.includes('rain') || c.includes('shower') || c.includes('drizzle')) return '🌧';
+  if (c.includes('snow')) return '❄️';
+  if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+  if (c.includes('fog') || c.includes('mist')) return '🌫️';
+  if (c.includes('wind')) return '💨';
+  return '☁️';
+}
+
 
 // ─── Data ────────────────────────────────────────────────
 // Dynamic helpers — build from trip_context, no hardcoded city data
@@ -79,8 +92,12 @@ export default function OverviewScreen() {
   const router = useRouter();
 
   const ctx = trip?.trip_context as any;
-  const forecast = ctx?.weather?.forecast ?? [];
-  const weather = ctx?.weather?.current ?? { high: 0, low: 0, conditions: '' };
+  const forecast = (ctx?.weather?.forecast ?? []).map((d: any) => ({
+    ...d,
+    day: d.day || (d.date ? new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : ''),
+    icon: weatherEmoji(d.icon || d.conditions || ''),
+  }));
+  const weather = ctx?.weather?.current ?? { temp: 0, high: 0, low: 0, conditions: '' };
   const news = ctx?.news ?? [];
 
   const coverImage = ctx?.hero_image_url || ctx?.hero_images?.[0] || null;
@@ -224,16 +241,16 @@ export default function OverviewScreen() {
               color={ACCENT_COLOR}
             />
             <Text style={{ ...TextStyles.bodyLgEm, fontWeight: '700', color: ACCENT_COLOR }}>
-              {weather.high}° / {weather.low}°
+              {weather.temp ?? weather.high ?? ''}°{weather.low != null ? ` / ${weather.low}°` : ''}
             </Text>
             <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', marginLeft: -2 }}>Now</Text>
           </View>
           <Text style={{ color: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)' }}>|</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-            {forecast.slice(0, 5).map((day: any) => (
-              <View key={day.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {forecast.slice(0, 5).map((day: any, idx: number) => (
+              <View key={day.date || day.day || idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9e9689' : '#7a6e63' }}>{day.day}</Text>
-                <Text style={{ ...TextStyles.bodyLg }}>{day.icon}</Text>
+                <Text style={{ fontSize: 16 }}>{day.icon}</Text>
                 <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: colors.text }}>{day.high}°</Text>
               </View>
             ))}
@@ -253,8 +270,8 @@ export default function OverviewScreen() {
           decelerationRate="fast"
           snapToInterval={SCREEN_WIDTH - 60}
         >
-          {(ctx?.explore_items ?? []).map((item: any) => (
-            <View key={item.id} style={{
+          {(ctx?.explore_items ?? []).filter((item: any) => item.image).map((item: any, idx: number) => (
+            <View key={item.id || idx} style={{
               width: SCREEN_WIDTH - 60, height: 220, borderRadius: 14, overflow: 'hidden',
             }}>
               <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
