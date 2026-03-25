@@ -79,7 +79,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd }: {
           <div>
             <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
               style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Explore</span>
-            <h2 className="text-2xl sm:text-3xl font-bold font-serif"
+            <h2 className="text-2xl sm:text-3xl font-normal font-serif tracking-wide"
               style={{ color: 'var(--magazine-heading)' }}>Things to Do</h2>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
@@ -192,7 +192,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, news }: {
           <div>
             <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
               style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>What&apos;s Happening</span>
-            <h2 className="text-2xl sm:text-3xl font-bold font-serif"
+            <h2 className="text-2xl sm:text-3xl font-normal font-serif tracking-wide"
               style={{ color: 'var(--magazine-heading)' }}>What&apos;s Going On</h2>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
@@ -367,7 +367,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                 <div className="w-full sm:w-[30%] shrink-0 rounded-2xl px-5 py-4 backdrop-blur-md bg-white/20 border border-white/40 shadow-sm">
                   <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
                     style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Latest</span>
-                  <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4"
+                  <h2 className="text-2xl sm:text-3xl font-normal font-serif tracking-wide mb-4"
                     style={{ color: 'var(--magazine-heading)' }}>News</h2>
                   <div className="flex flex-col gap-3">
                     {news.filter(n => n.category === 'news' || n.category === 'advisory').map((item) => (

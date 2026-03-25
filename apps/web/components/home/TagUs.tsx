@@ -28,9 +28,8 @@ export function TagUs() {
   return (
     <section className="py-16 px-6">
       <div className="max-w-6xl mx-auto text-center">
-        <h2 className="text-2xl md:text-3xl text-foreground mb-8">
-          <span className="font-extrabold">Tag us</span>{" "}
-          <span className="font-normal italic">on your Next Trip</span>
+        <h2 className="text-2xl md:text-3xl font-serif font-normal text-foreground mb-8 tracking-wide">
+          Tag us <span className="italic">on your Next Trip</span>
         </h2>
 
         <div

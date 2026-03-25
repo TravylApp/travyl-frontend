@@ -209,7 +209,7 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+          <h2 className="text-xl font-serif font-normal text-gray-900 mb-2 tracking-wide">Something went wrong</h2>
           <p className="text-gray-500 mb-6">Unable to load this trip. Please try again.</p>
           <button
             onClick={() => window.location.reload()}
@@ -230,7 +230,7 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <Lock size={28} className="text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid or Expired Link</h2>
+          <h2 className="text-xl font-serif font-normal text-gray-900 mb-2 tracking-wide">Invalid or Expired Link</h2>
           <p className="text-gray-500 mb-6">
             This share link is invalid or the trip is no longer shared.
           </p>

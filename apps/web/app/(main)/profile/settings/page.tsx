@@ -84,7 +84,7 @@ export default function SettingsPage() {
         &larr; Back to Profile
       </Link>
 
-      <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+      <h1 className="text-2xl font-serif font-normal text-foreground tracking-wide">Settings</h1>
 
       {/* Account */}
       <SectionHeader title="Account" />

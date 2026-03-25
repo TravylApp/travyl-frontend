@@ -397,6 +397,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       startPoll(activityId, userId)
     } else if (actionId === 'close-poll') {
       closePoll(activityId)
+    } else if (actionId === 'restore-poll') {
+      restoreActivity(activityId)
+    } else if (actionId === 'remove-activity') {
+      // Same effect as 'delete' — removes from calendar and restores to ForYou panel
+      handleRemoveActivity(activityId)
     }
   }
 
@@ -551,10 +556,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   ) : (
@@ -581,10 +583,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   )}
@@ -726,7 +725,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     {contextMenu && (() => {
       const poll = polls.get(contextMenu.activityId)
       const hasActivePoll = poll?.status === 'active'
-      const canClosePoll = hasActivePoll && (poll.startedBy === userId || trip?.user_id === userId)
+      const isResolvedPoll = poll?.status === 'resolved'
+      const canManagePoll = poll ? (poll.startedBy === userId || trip?.user_id === userId) : false
+      const canClosePoll = hasActivePoll && canManagePoll
       return (
         <ActivityContextMenu
           x={contextMenu.x}
@@ -735,9 +736,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
             { id: 'edit', label: 'Edit' },
             { id: 'duplicate', label: 'Duplicate' },
             { id: 'separator', label: '', separator: true },
-            hasActivePoll
-              ? { id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }
-              : { id: 'start-poll', label: 'Start Poll' },
+            ...(isResolvedPoll && canManagePoll
+              ? [
+                  { id: 'restore-poll', label: 'Restore Poll' },
+                  { id: 'remove-activity', label: 'Remove from Calendar', danger: true },
+                ]
+              : isResolvedPoll
+                ? [] // non-managers see no poll action on a resolved poll
+                : hasActivePoll
+                  ? [{ id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }]
+                  : [{ id: 'start-poll', label: 'Start Poll' }]
+            ),
             { id: 'separator2', label: '', separator: true },
             { id: 'delete', label: 'Delete', danger: true },
           ]}

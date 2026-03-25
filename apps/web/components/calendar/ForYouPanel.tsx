@@ -1,11 +1,14 @@
 'use client'
 
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search } from 'iconoir-react'
 import { FOR_YOU_PANEL_DEFAULT_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
+import { SuggestionDetailDrawer } from './SuggestionDetailDrawer'
 import { useSuggestions } from './hooks/useSuggestions'
 import type { FilterCategory } from './hooks/useSuggestions'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
+import type { SuggestionCard as SuggestionCardType } from './types'
 
 interface ForYouPanelProps {
   destination: string
@@ -26,6 +29,7 @@ export function ForYouPanel({
     error,
     searchQuery,
     setSearchQuery,
+    commitSearch,
     activeFilter,
     setActiveFilter,
     filterCategories,
@@ -34,10 +38,39 @@ export function ForYouPanel({
 
   const { trackEvent } = useInteractionTracking(tripId)
 
+  const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestionCardType | null>(null)
+  const [isClosing, setIsClosing] = useState(false)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const openDrawer = useCallback((suggestion: SuggestionCardType) => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setSelectedSuggestion(suggestion)
+    setIsClosing(false)
+  }, [])
+
+  const closeDrawer = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setIsClosing(true)
+    closeTimerRef.current = setTimeout(() => {
+      setSelectedSuggestion(null)
+      setIsClosing(false)
+    }, 300)
+  }, [])
+
+  // Clear pending close timer on unmount to prevent setState on unmounted component
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
+  }, [])
+
   return (
     <aside
       style={{ width: width ?? FOR_YOU_PANEL_DEFAULT_WIDTH }}
-      className="flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
+      className="relative flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
       {/* Header */}
@@ -57,6 +90,7 @@ export function ForYouPanel({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
             placeholder="Search activities..."
             className="flex-1 bg-transparent text-sm text-[var(--cal-text)] placeholder-[var(--cal-text-tertiary)] outline-none"
           />
@@ -133,6 +167,7 @@ export function ForYouPanel({
                 key={suggestion.id}
                 suggestion={suggestion}
                 onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
+                onSelect={openDrawer}
               />
             ))}
           </div>
@@ -144,6 +179,15 @@ export function ForYouPanel({
         <div className="text-center text-[11px] text-[var(--cal-text-tertiary)] py-2.5 border-t border-[var(--cal-border-light)]">
           Drag any card onto the calendar to schedule it
         </div>
+      )}
+
+      {/* Detail drawer — conditionally mounted, slides in from right */}
+      {selectedSuggestion && (
+        <SuggestionDetailDrawer
+          suggestion={selectedSuggestion}
+          isClosing={isClosing}
+          onClose={closeDrawer}
+        />
       )}
     </aside>
   )

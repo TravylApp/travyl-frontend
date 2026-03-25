@@ -678,7 +678,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             <div>
               <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-white/70"
                 style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-white"
+              <h2 className="text-2xl sm:text-3xl font-normal font-serif text-white tracking-wide"
                 style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md"

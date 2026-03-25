@@ -140,28 +140,35 @@ export function useYjsSync(
 
     const observer = (
       events: Y.YEvent<any>[],
-      _transaction: Y.Transaction,
+      transaction: Y.Transaction,
     ) => {
-      for (const event of events) {
-        if (event.target === activitiesMap) {
-          // Top-level add/delete on the activities map
-          if (event instanceof Y.YMapEvent) {
-            for (const key of event.keysChanged) {
-              dirtyRef.current.add(key)
+      // Only flush local changes — remote changes come from another client that
+      // already owns the write. Flushing them here causes partial-row DB errors
+      // and wrongly transfers user_id ownership.
+      const isRemote = transaction.origin === 'remote'
+
+      if (!isRemote) {
+        for (const event of events) {
+          if (event.target === activitiesMap) {
+            // Top-level add/delete on the activities map
+            if (event instanceof Y.YMapEvent) {
+              for (const key of event.keysChanged) {
+                dirtyRef.current.add(key)
+              }
             }
+          } else if (event.target instanceof Y.Map) {
+            // Nested Y.Map field edit — find parent key
+            const parentMap = event.target
+            activitiesMap.forEach((yMap, key) => {
+              if (yMap === parentMap) {
+                dirtyRef.current.add(key)
+              }
+            })
           }
-        } else if (event.target instanceof Y.Map) {
-          // Nested Y.Map field edit — find parent key
-          const parentMap = event.target
-          activitiesMap.forEach((yMap, key) => {
-            if (yMap === parentMap) {
-              dirtyRef.current.add(key)
-            }
-          })
         }
+        scheduleFlush()
       }
 
-      scheduleFlush()
       setActivities(readAllActivities(activitiesMap))
     }
 

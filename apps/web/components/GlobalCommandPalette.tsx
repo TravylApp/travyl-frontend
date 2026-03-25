@@ -52,6 +52,7 @@ interface SettingPickerItem {
   currentValue: string
   options: { value: string; label: string }[]
   onSelect: (value: string) => void
+  variant?: 'swatches' | 'pills' | 'segmented' | 'chips' | 'scrollable-pills'
 }
 
 interface SettingLinkItem {
@@ -95,6 +96,15 @@ const CONFIGURABLE_TABS = [
   { segment: 'favorites',   label: 'Favorites Tab' },
 ] as const
 
+// ─── Status colors ────────────────────────────────────────────
+const STATUS_COLORS: Record<string, string> = {
+  planning:  '#9CA3AF',
+  booked:    '#F59E0B',
+  active:    '#10B981',
+  completed: '#003594',
+  abandoned: '#EF4444',
+}
+
 // ─── Date formatting ─────────────────────────────────────────
 
 function formatTripDates(startDate: string, endDate: string): string {
@@ -106,14 +116,205 @@ function formatTripDates(startDate: string, endDate: string): string {
   return `${startStr} - ${endStr}`
 }
 
+// ─── Inline control components ────────────────────────────────
+
+// ToggleSwitch: track is a soft tint (emerald-100 on, gray off), emerald thumb when on, gray when off.
+// pointer-events-none — the row button handles the click via executeItem → onToggle.
+function ToggleSwitch({ enabled }: { enabled: boolean }) {
+  return (
+    <div
+      className={[
+        'relative inline-flex h-4 w-7 shrink-0 rounded-full transition-colors duration-150 pointer-events-none',
+        enabled
+          ? 'bg-emerald-100 dark:bg-emerald-900/30'
+          : 'bg-gray-300 dark:bg-[#1e3a5f]/60',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'inline-block h-3 w-3 rounded-full shadow transition-transform duration-150 mt-0.5',
+          enabled
+            ? 'translate-x-3.5 bg-emerald-500'
+            : 'translate-x-0.5 bg-gray-400 dark:bg-gray-500',
+        ].join(' ')}
+      />
+    </div>
+  )
+}
+
+// renderPickerControl: renders the right-side inline control for a SettingPickerItem.
+// Depends on: TRIP_THEMES (module import), STATUS_COLORS (module constant)
+function renderPickerControl(item: SettingPickerItem) {
+  function isActive(opt: { value: string; label: string }) {
+    return (
+      opt.value === item.currentValue ||
+      opt.label.toLowerCase() === item.currentValue.toLowerCase()
+    )
+  }
+
+  if (item.variant === 'swatches') {
+    return (
+      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        {item.options.map((opt) => {
+          const color = TRIP_THEMES[opt.value]?.base ?? '#888'
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              title={opt.label}
+              style={{ backgroundColor: color }}
+              className={[
+                'w-4 h-4 rounded-full transition-all shrink-0',
+                active
+                  ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-100 dark:ring-offset-[#0f1a28] shadow'
+                  : 'opacity-60 hover:opacity-100',
+              ].join(' ')}
+            />
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (item.variant === 'pills') {
+    return (
+      <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onClick={(e) => e.stopPropagation()}>
+        {item.options.map((opt) => {
+          const color = STATUS_COLORS[opt.value] ?? '#888'
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              style={active
+                ? { backgroundColor: color, borderColor: color }
+                : { borderColor: color }
+              }
+              className={[
+                'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap shrink-0',
+                active ? 'text-white' : 'text-gray-500 dark:text-[#4a7ab5]',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (item.variant === 'segmented') {
+    return (
+      <div
+        className="flex items-center rounded overflow-hidden border border-gray-200 dark:border-[#1e3a5f]/40 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {item.options.map((opt, i) => {
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              className={[
+                'text-[10px] px-2 py-0.5 transition-colors',
+                i > 0 ? 'border-l border-gray-200 dark:border-[#1e3a5f]/40' : '',
+                active
+                  ? 'bg-[#1e3a5f] text-white dark:bg-[#4a7ab5]'
+                  : 'text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (item.variant === 'chips') {
+    return (
+      <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onClick={(e) => e.stopPropagation()}>
+        {item.options.map((opt) => {
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              className={[
+                'text-[10px] px-2 py-0.5 rounded-full border transition-colors whitespace-nowrap shrink-0',
+                active
+                  ? 'bg-[#1e3a5f] dark:bg-[#4a7ab5] text-white border-transparent'
+                  : 'border-gray-300 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5] hover:border-gray-400',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // variant === 'scrollable-pills' (default) — used for currency.
+  // Intentionally renders opt.value (e.g. "USD") not opt.label ("USD — US Dollar")
+  // so pills are compact enough to fit in a scrollable row.
+  return (
+    <div
+      className="flex items-center gap-1 overflow-x-auto max-w-[200px] pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {item.options.map((opt) => {
+        const active = isActive(opt)
+        return (
+          <button
+            key={opt.value}
+            onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+            className={[
+              'text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap transition-colors shrink-0',
+              active
+                ? 'bg-[#1e3a5f] dark:bg-[#4a7ab5] text-white border-transparent'
+                : 'border-gray-300 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5]',
+            ].join(' ')}
+          >
+            {opt.value}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// renderItemRight: renders the right-side inline control for a PaletteItem.
+// Depends on: ToggleSwitch, renderPickerControl (both module-level)
+function renderItemRight(item: PaletteItem) {
+  if (item.type === 'setting-toggle') {
+    return <ToggleSwitch enabled={item.enabled} />
+  }
+  if (item.type === 'setting-picker') {
+    return renderPickerControl(item)
+  }
+  if (item.type === 'setting-link') {
+    return (
+      <span className="text-[10px] text-gray-400 dark:text-[#484f58]">→</span>
+    )
+  }
+  if (item.type === 'command' && item.command.shortcut) {
+    return (
+      <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded ml-4 shrink-0">
+        {item.command.shortcut.display}
+      </kbd>
+    )
+  }
+  return null
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 export function GlobalCommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
-  const [activePicker, setActivePicker] = useState<SettingPickerItem | null>(null)
-  const [savedQuery, setSavedQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -156,8 +357,6 @@ export function GlobalCommandPalette() {
     if (isOpen) {
       setQuery('')
       setHighlightedIndex(0)
-      setActivePicker(null)
-      setSavedQuery('')
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }, [isOpen])
@@ -183,6 +382,7 @@ export function GlobalCommandPalette() {
           { value: 'MXN', label: 'MXN — Mexican Peso' },
         ],
         onSelect: (v: string) => setCurrency(v as Currency),
+        variant: 'scrollable-pills',
       },
       {
         type: 'setting-picker' as const,
@@ -195,6 +395,7 @@ export function GlobalCommandPalette() {
           { value: 'kilometers', label: 'Kilometers' },
         ],
         onSelect: (v: string) => setDistanceUnits(v as DistanceUnits),
+        variant: 'segmented',
       },
       {
         type: 'setting-picker' as const,
@@ -210,6 +411,7 @@ export function GlobalCommandPalette() {
           { value: 'relaxed', label: 'Relaxed' },
         ],
         onSelect: (v: string) => setTravelStyle(v as TravelStyle),
+        variant: 'chips',
       },
       {
         type: 'setting-toggle' as const,
@@ -285,6 +487,7 @@ export function GlobalCommandPalette() {
           label: TRIP_THEMES[id].name,
         })),
         onSelect: (v: string) => reg.setTripTheme(v),
+        variant: 'swatches',
       })
 
       // Tab toggles
@@ -315,6 +518,7 @@ export function GlobalCommandPalette() {
           { value: 'abandoned', label: 'Abandoned' },
         ],
         onSelect: (v: string) => reg.setStatus(v as Trip['status']),
+        variant: 'pills',
       })
     }
 
@@ -450,10 +654,7 @@ export function GlobalCommandPalette() {
       item.onToggle()
       // Keep palette open after toggle
     } else if (item.type === 'setting-picker') {
-      setSavedQuery(query)
-      setActivePicker(item)
-      setHighlightedIndex(0)
-      // Keep palette open — enter picker mode
+      // no-op — inline controls handle onSelect directly via their own onClick
     } else if (item.type === 'setting-link') {
       setIsOpen(false)
       router.push(item.path)
@@ -464,135 +665,36 @@ export function GlobalCommandPalette() {
     return item.type === 'command' && !item.command.isEnabled
   }
 
-  // ─── Picker mode helpers ──────────────────────────────────
-
-  function exitPickerMode() {
-    setActivePicker(null)
-    setQuery(savedQuery)
-    setSavedQuery('')
-    setHighlightedIndex(0)
-  }
-
-  function selectPickerOption(value: string) {
-    if (activePicker) {
-      activePicker.onSelect(value)
-      exitPickerMode()
-    }
-  }
-
   // ─── Keyboard navigation ────────────────────────────────
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (activePicker) {
-      // Picker mode keyboard handling
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        exitPickerMode()
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setHighlightedIndex((prev) =>
-          prev < activePicker.options.length - 1 ? prev + 1 : prev
-        )
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        const opt = activePicker.options[highlightedIndex]
-        if (opt) selectPickerOption(opt.value)
-      }
-      return
-    }
-
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (activePicker) {
-        setHighlightedIndex((prev) => Math.min(prev + 1, activePicker.options.length - 1))
-      } else {
-        setHighlightedIndex((prev) => {
-          for (let i = prev + 1; i < flatItems.length; i++) {
-            if (!isItemDisabled(flatItems[i])) return i
-          }
-          return prev
-        })
-      }
+      setHighlightedIndex((prev) => {
+        for (let i = prev + 1; i < flatItems.length; i++) {
+          if (!isItemDisabled(flatItems[i])) return i
+        }
+        return prev
+      })
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      if (activePicker) {
-        setHighlightedIndex((prev) => Math.max(prev - 1, 0))
-      } else {
-        setHighlightedIndex((prev) => {
-          for (let i = prev - 1; i >= 0; i--) {
-            if (!isItemDisabled(flatItems[i])) return i
-          }
-          return prev
-        })
-      }
+      setHighlightedIndex((prev) => {
+        for (let i = prev - 1; i >= 0; i--) {
+          if (!isItemDisabled(flatItems[i])) return i
+        }
+        return prev
+      })
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      if (activePicker) {
-        const option = activePicker.options[highlightedIndex]
-        if (option) {
-          activePicker.onSelect(option.value)
-          setActivePicker(null)
-          setQuery(savedQuery)
-          setHighlightedIndex(0)
-        }
-      } else {
-        const item = flatItems[highlightedIndex]
-        if (item && !isItemDisabled(item)) {
-          executeItem(item)
-        }
+      const item = flatItems[highlightedIndex]
+      if (item && !isItemDisabled(item)) {
+        executeItem(item)
       }
     } else if (e.key === 'Escape') {
       e.preventDefault()
       e.stopPropagation()
-      if (activePicker) {
-        setActivePicker(null)
-        setQuery(savedQuery)
-        setHighlightedIndex(0)
-      } else {
-        setIsOpen(false)
-      }
+      setIsOpen(false)
     }
-  }
-
-  // ─── Render helpers ───────────────────────────────────────
-
-  function renderItemRight(item: PaletteItem) {
-    if (item.type === 'setting-toggle') {
-      return (
-        <span className={[
-          'text-[10px] font-medium px-2 py-0.5 rounded-full',
-          item.enabled
-            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-            : 'bg-gray-100 text-gray-500 dark:bg-[#1e3a5f]/20 dark:text-[#484f58]',
-        ].join(' ')}>
-          {item.enabled ? 'On' : 'Off'}
-        </span>
-      )
-    }
-    if (item.type === 'setting-picker') {
-      return (
-        <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5]">
-          {item.currentValue}
-        </span>
-      )
-    }
-    if (item.type === 'setting-link') {
-      return (
-        <span className="text-[10px] text-gray-400 dark:text-[#484f58]">→</span>
-      )
-    }
-    if (item.type === 'command' && item.command.shortcut) {
-      return (
-        <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded ml-4 shrink-0">
-          {item.command.shortcut.display}
-        </kbd>
-      )
-    }
-    return null
   }
 
   // ─── Render ──────────────────────────────────────────────
@@ -620,136 +722,95 @@ export function GlobalCommandPalette() {
             transition={{ duration: 0.12 }}
             onKeyDown={handleKeyDown}
           >
-            {/* ─── Input / Picker header ─── */}
+            {/* ─── Input header ─── */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-[#1e3a5f]/30">
-              {activePicker ? (
-                <>
-                  <button
-                    onClick={exitPickerMode}
-                    className="text-gray-400 dark:text-[#4a7ab5] hover:text-gray-600 dark:hover:text-[#cdd9e5] shrink-0"
-                  >
-                    ←
-                  </button>
-                  <span className="flex-1 text-sm text-gray-900 dark:text-[#f5efe8]">
-                    {activePicker.label}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="16" height="16" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2"
-                    className="text-gray-400 dark:text-[#4a7ab5] shrink-0"
-                  >
-                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                  </svg>
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search trips, settings, navigate..."
-                    className="flex-1 bg-transparent text-sm text-gray-900 dark:text-[#f5efe8] placeholder-gray-400 dark:placeholder-[#4a7ab5] outline-none"
-                  />
-                </>
-              )}
+              <svg
+                width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2"
+                className="text-gray-400 dark:text-[#4a7ab5] shrink-0"
+              >
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search trips, settings, navigate..."
+                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-[#f5efe8] placeholder-gray-400 dark:placeholder-[#4a7ab5] outline-none"
+              />
               <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded">
                 Esc
               </kbd>
             </div>
 
             <div className="max-h-[360px] overflow-y-auto py-1">
-              {/* ─── Picker mode ─── */}
-              {activePicker ? (
-                activePicker.options.map((opt, i) => {
-                  const isSelected = opt.label === activePicker.currentValue
-                  const isHighlighted = i === highlightedIndex
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => selectPickerOption(opt.value)}
-                      onMouseEnter={() => setHighlightedIndex(i)}
-                      className={[
-                        'w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors',
-                        isHighlighted
-                          ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
-                          : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
-                      ].join(' ')}
-                    >
-                      <span>{opt.label}</span>
-                      {isSelected && (
-                        <span className="text-emerald-500 dark:text-emerald-400">✓</span>
-                      )}
-                    </button>
-                  )
-                })
-              ) : (
-                <>
-                  {flatItems.length === 0 && !tripSearchLoading && (
-                    <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
-                      No results found
-                    </div>
-                  )}
-
-                  {tripSearchLoading && query.length >= 3 && tripResults.length === 0 && (
-                    <div className="px-4 py-3 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
-                      Searching trips...
-                    </div>
-                  )}
-
-                  {groups.map((group) => (
-                    <div key={group.key}>
-                      <div className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-[#4a7ab5] uppercase tracking-wider">
-                        {group.label}
-                      </div>
-                      {group.items.map((item) => {
-                        const index = flatItems.indexOf(item)
-                        const isHighlighted = index === highlightedIndex
-                        const disabled = isItemDisabled(item)
-
-                        return (
-                          <button
-                            key={item.id}
-                            disabled={disabled}
-                            onClick={() => {
-                              if (!disabled) executeItem(item)
-                            }}
-                            onMouseEnter={() => {
-                              if (!disabled) setHighlightedIndex(index)
-                            }}
-                            className={[
-                              'w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors',
-                              disabled
-                                ? 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none'
-                                : isHighlighted
-                                  ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
-                                  : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
-                            ].join(' ')}
-                          >
-                            <span className="flex items-center gap-2.5">
-                              {item.type === 'trip' && item.data.imageUrl && (
-                                <img
-                                  src={item.data.imageUrl}
-                                  alt={item.data.destination}
-                                  className="w-[46px] h-[36px] rounded object-cover shrink-0"
-                                />
-                              )}
-                              <span className="flex flex-col min-w-0">
-                                <span>{item.label}</span>
-                                {item.type === 'trip' && (item.data.startDate && item.data.endDate) && (
-                                  <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5] truncate">
-                                    {item.data.destination} · {formatTripDates(item.data.startDate, item.data.endDate)}
-                                  </span>
-                                )}
-                              </span>
-                            </span>
-                            {renderItemRight(item)}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ))}
-                </>
+              {flatItems.length === 0 && !tripSearchLoading && (
+                <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
+                  No results found
+                </div>
               )}
+
+              {tripSearchLoading && query.length >= 3 && tripResults.length === 0 && (
+                <div className="px-4 py-3 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
+                  Searching trips...
+                </div>
+              )}
+
+              {groups.map((group) => (
+                <div key={group.key}>
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-[#4a7ab5] uppercase tracking-wider">
+                    {group.label}
+                  </div>
+                  {group.items.map((item) => {
+                    const index = flatItems.indexOf(item)
+                    const isHighlighted = index === highlightedIndex
+                    const disabled = isItemDisabled(item)
+
+                    return (
+                      <button
+                        key={item.id}
+                        disabled={disabled}
+                        onClick={() => {
+                          if (!disabled) executeItem(item)
+                        }}
+                        onMouseEnter={() => {
+                          if (!disabled) setHighlightedIndex(index)
+                        }}
+                        className={[
+                          'w-full flex items-center justify-between px-4 text-sm text-left transition-colors',
+                          (item.type === 'setting-toggle' || item.type === 'setting-picker' || item.type === 'setting-link')
+                            ? 'py-2.5'
+                            : 'py-2',
+                          disabled
+                            ? 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none'
+                            : isHighlighted
+                              ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
+                              : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
+                        ].join(' ')}
+                      >
+                        <span className="flex items-center gap-2.5">
+                          {item.type === 'trip' && item.data.imageUrl && (
+                            <img
+                              src={item.data.imageUrl}
+                              alt={item.data.destination}
+                              className="w-[46px] h-[36px] rounded object-cover shrink-0"
+                            />
+                          )}
+                          <span className="flex flex-col min-w-0">
+                            <span>{item.label}</span>
+                            {item.type === 'trip' && (item.data.startDate && item.data.endDate) && (
+                              <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5] truncate">
+                                {item.data.destination} · {formatTripDates(item.data.startDate, item.data.endDate)}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                        {renderItemRight(item)}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </motion.div>
         </motion.div>
