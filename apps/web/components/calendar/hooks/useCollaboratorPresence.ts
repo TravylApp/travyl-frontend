@@ -50,6 +50,8 @@ export function useCollaboratorPresence(
   const [collaborators, setCollaborators] = useState<UserAwareness[]>([])
 
   const channelRef = useRef<RealtimeChannel | null>(null)
+  // Stable per-tab ID — unique even when the same user has multiple windows open
+  const tabIdRef = useRef<string>(crypto.randomUUID())
   const localStateRef = useRef({
     selectedEventId: null as string | null,
     currentView: 'week' as ViewMode,
@@ -61,8 +63,9 @@ export function useCollaboratorPresence(
   useEffect(() => {
     if (disabled) return
 
+    const tabId = tabIdRef.current
     const channel = supabase.channel(`presence:trip:${tripId}`, {
-      config: { presence: { key: userId } },
+      config: { presence: { key: tabId } },
     })
 
     channelRef.current = channel
@@ -82,7 +85,7 @@ export function useCollaboratorPresence(
         const entries = state[key]
         if (!entries || entries.length === 0) continue
         const entry = entries[entries.length - 1]
-        if (entry.userId === userId) continue
+        if (key === tabId) continue
         users.push({
           userId: entry.userId,
           name: entry.userName,
