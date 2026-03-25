@@ -19,7 +19,9 @@ import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const API_URL = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL;
+// Use web app as API proxy — it has all the API keys (Foursquare, etc.)
+// In dev: localhost:3000, in production: deeviaje.com
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
 
 const BROWSE_CITIES = [
   { lat: '48.8566', lng: '2.3522' },   // Paris
@@ -33,34 +35,19 @@ const BROWSE_CITIES = [
 ];
 
 async function fetchMobilePlaces(): Promise<PlaceItem[]> {
-  if (!API_URL) return [];
   const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
   const cities = BROWSE_CITIES.sort(() => Math.random() - 0.5).slice(0, 3);
   const results = await Promise.all(
     cities.flatMap((city) =>
       cats.map(async (cat) => {
         try {
+          // Call web app's /api/places — it handles SerpAPI, image upscaling,
+          // tag formatting, price mapping, and has all API keys
           const res = await fetch(
-            `${API_URL}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=5`
+            `${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=5`
           );
           if (!res.ok) return [];
-          const data = await res.json();
-          return data.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            image: p.photo_url?.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no') || '',
-            type: ['restaurant', 'cafe', 'bar'].includes(p.category) ? 'restaurant' as const
-              : ['park', 'garden', 'beach'].includes(p.category) ? 'experience' as const
-              : 'attraction' as const,
-            rating: p.rating ?? 0,
-            tagline: p.description?.split('.')[0] ?? p.category,
-            category: p.category,
-            description: p.description ?? '',
-            latitude: p.lat,
-            longitude: p.lng,
-            reviewCount: p.review_count,
-            tags: p.tags ?? [],
-          })) as PlaceItem[];
+          return res.json() as Promise<PlaceItem[]>;
         } catch { return []; }
       })
     )
