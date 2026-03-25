@@ -193,7 +193,7 @@ function renderPickerControl(item: SettingPickerItem) {
               }
               className={[
                 'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap',
-                active ? 'text-white' : 'text-gray-500 dark:text-gray-400',
+                active ? 'text-white' : 'text-gray-500 dark:text-[#4a7ab5]',
               ].join(' ')}
             >
               {opt.label}
