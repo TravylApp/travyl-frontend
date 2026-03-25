@@ -45,9 +45,9 @@ export function SuggestionDetailDrawer({
     setActiveIdx((i) => Math.max(0, Math.min(images.length - 1, i + dir)))
   }
 
-  const formatPrice = (price: number | null) => {
+  const formatPrice = (price: number | null, currency: string) => {
     if (price === null || price === 0) return 'Free'
-    return `€${price}`
+    return `${currency}${price}`
   }
 
   const formatDuration = (hours: number) => {
@@ -161,7 +161,7 @@ export function SuggestionDetailDrawer({
           )}
           {suggestion.price != null && (
             <span className="text-[11px] text-[var(--cal-text-secondary)]">
-              {formatPrice(suggestion.price)}
+              {formatPrice(suggestion.price, suggestion.currency)}
             </span>
           )}
           <span
@@ -182,7 +182,7 @@ export function SuggestionDetailDrawer({
         {/* Location */}
         {suggestion.location && (
           <p className="text-[11px] text-[var(--cal-text-secondary)] flex items-start gap-1">
-            <span className="mt-[1px] shrink-0">📍</span>
+            <span className="mt-[1px] shrink-0" aria-hidden="true">📍</span>
             <span>{suggestion.location}</span>
           </p>
         )}
