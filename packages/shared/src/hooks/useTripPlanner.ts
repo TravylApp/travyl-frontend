@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
+const API_URL = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL
+  ?? process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
 
 // Mirrors backend schemas
 export interface FollowUpQuestion {

@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect, memo } from 'react';
+import { useState, useMemo, useCallback, useEffect, memo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -18,7 +19,60 @@ import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PLACES: PlaceItem[] = [];
+const API_URL = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL;
+
+const BROWSE_CITIES = [
+  { lat: '48.8566', lng: '2.3522' },   // Paris
+  { lat: '35.6762', lng: '139.6503' }, // Tokyo
+  { lat: '41.9028', lng: '12.4964' },  // Rome
+  { lat: '40.7128', lng: '-74.0060' }, // New York
+  { lat: '41.3874', lng: '2.1686' },   // Barcelona
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '25.2048', lng: '55.2708' },  // Dubai
+];
+
+async function fetchMobilePlaces(): Promise<PlaceItem[]> {
+  if (!API_URL) return [];
+  const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
+  const cities = BROWSE_CITIES.sort(() => Math.random() - 0.5).slice(0, 3);
+  const results = await Promise.all(
+    cities.flatMap((city) =>
+      cats.map(async (cat) => {
+        try {
+          const res = await fetch(
+            `${API_URL}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=5`
+          );
+          if (!res.ok) return [];
+          const data = await res.json();
+          return data.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            image: p.photo_url?.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no') || '',
+            type: ['restaurant', 'cafe', 'bar'].includes(p.category) ? 'restaurant' as const
+              : ['park', 'garden', 'beach'].includes(p.category) ? 'experience' as const
+              : 'attraction' as const,
+            rating: p.rating ?? 0,
+            tagline: p.description?.split('.')[0] ?? p.category,
+            category: p.category,
+            description: p.description ?? '',
+            latitude: p.lat,
+            longitude: p.lng,
+            reviewCount: p.review_count,
+            tags: p.tags ?? [],
+          })) as PlaceItem[];
+        } catch { return []; }
+      })
+    )
+  );
+  const seen = new Set<string>();
+  return results.flat().filter((p) => {
+    if (!p.name || !p.image || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+}
+
 const PAD = 16;
 const GAP = 8;
 const STACK_CARD_W = SCREEN_WIDTH * 0.72;
@@ -189,15 +243,16 @@ export default function FavoritesScreen() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
+  const { data: PLACES = [] } = useQuery({
+    queryKey: ['mobile-places'],
+    queryFn: fetchMobilePlaces,
+    staleTime: 10 * 60 * 1000,
+  });
+
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) =>
       prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
     );
-  }, []);
-
-  // Prefetch images so they're cached when the tab loads
-  useEffect(() => {
-    Image.prefetch(PLACES.map((p) => p.image));
   }, []);
 
   const tabFiltered = useMemo(() => {
