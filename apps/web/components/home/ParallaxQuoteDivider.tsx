@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, forwardRef, useMemo } from "react";
 import { motion, AnimatePresence, type MotionValue } from "motion/react";
 import { TypeWriter } from "@/components/TypeWriter";
 
@@ -17,37 +17,44 @@ const ALL_SLIDES = [
   { image: "https://images.unsplash.com/photo-1528127269322-539801943592?w=1400&fit=crop&q=75", quote: "Travel is the only thing you buy that makes you richer.", author: null },
 ];
 
-// Pick 4 random slides on mount so it's different each visit
-function pickSlides() {
-  const shuffled = [...ALL_SLIDES];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, 4);
+// Daily seed — same for server and client on the same day, changes at midnight
+function dailySeed(): number {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
-const PARALLAX_SLIDES = typeof window !== 'undefined' ? pickSlides() : ALL_SLIDES.slice(0, 4);
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(((seed * 2654435761 + i * 1597334677) >>> 0) / 4294967296 * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, { bgY: MotionValue<number> }>(
   function ParallaxQuoteDivider({ bgY }, ref) {
     const [slideIndex, setSlideIndex] = useState(0);
 
+    // Deterministic shuffle — same on server and client for the same day
+    const slides = useMemo(() => seededShuffle(ALL_SLIDES, dailySeed()).slice(0, 4), []);
+
     useEffect(() => {
       const interval = setInterval(() => {
-        setSlideIndex((prev) => (prev + 1) % PARALLAX_SLIDES.length);
+        setSlideIndex((prev) => (prev + 1) % slides.length);
       }, 10000);
       return () => clearInterval(interval);
-    }, []);
+    }, [slides.length]);
 
     return (
       <section ref={ref} className="relative h-[50vh] overflow-hidden">
         <motion.div className="absolute inset-[-20%]" style={{ y: bgY }}>
-          {PARALLAX_SLIDES.map((slide, i) => (
+          {slides.map((slide, i) => (
             <img
               key={slide.image}
               src={slide.image}
               alt=""
+              loading="lazy"
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"
               style={{ opacity: slideIndex === i ? 1 : 0 }}
             />
@@ -64,9 +71,9 @@ export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, { bgY: MotionValu
               transition={{ duration: 0.8 }}
               className="text-sm sm:text-base md:text-lg text-white font-light italic text-center max-w-[85%] md:max-w-xl drop-shadow-md"
             >
-              &ldquo;<TypeWriter key={slideIndex} text={PARALLAX_SLIDES[slideIndex].quote} delay={300} speed={35} />&rdquo;
-              {PARALLAX_SLIDES[slideIndex].author && (
-                <span className="text-white/60 not-italic"> — {PARALLAX_SLIDES[slideIndex].author}</span>
+              &ldquo;<TypeWriter key={slideIndex} text={slides[slideIndex].quote} delay={300} speed={35} />&rdquo;
+              {slides[slideIndex].author && (
+                <span className="text-white/60 not-italic"> — {slides[slideIndex].author}</span>
               )}
             </motion.p>
           </AnimatePresence>
