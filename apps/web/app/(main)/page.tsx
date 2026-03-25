@@ -360,6 +360,7 @@ export default function Home() {
                 hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
                 hero_image_url: plan.destination_photo_url,
                 explore_items: uniqueExplore,
+                // Top 5 curated hotels from planner
                 hotels: (plan.hotels ?? []).map((h: any) => ({
                   id: `hotel-${h.name.replace(/\s+/g, '-').toLowerCase()}`,
                   name: h.name,
@@ -368,11 +369,68 @@ export default function Home() {
                   rating: h.rating,
                   ratingCount: h.review_count,
                   price: h.price_per_night,
+                  totalPrice: h.total_price,
                   currency: h.currency,
                   stars: h.stars,
                   amenities: h.amenities,
+                  address: h.address,
+                  link: h.link,
+                  lat: h.lat,
+                  lng: h.lng,
                 })),
-                weather: weatherForecast.length > 0 ? { forecast: weatherForecast } : undefined,
+                // Full pool of 20 hotels from SerpAPI (Google Hotels)
+                all_hotels: ((plan as any).data?.hotels ?? []).map((h: any) => ({
+                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name,
+                  image: h.photo_url,
+                  rating: h.rating,
+                  ratingCount: h.review_count,
+                  price: h.price_per_night,
+                  totalPrice: h.total_price,
+                  currency: h.currency,
+                  stars: h.stars,
+                  amenities: h.amenities,
+                  address: h.address,
+                  link: h.link,
+                  lat: h.lat,
+                  lng: h.lng,
+                })),
+                // Events from SerpAPI (Google Events)
+                events: ((plan as any).data?.events ?? []).map((e: any) => ({
+                  id: e.id || `event-${e.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  title: e.name,
+                  date: e.date,
+                  time: e.time,
+                  venue: e.venue,
+                  description: e.description,
+                  category: e.category,
+                  image: e.photo_url,
+                  url: e.link,
+                  price: e.price,
+                  lat: e.lat,
+                  lng: e.lng,
+                })),
+                // Full POI pool from SerpAPI (40 places — all source: serpapi/Google)
+                foursquare_venues: ((plan as any).data?.pois ?? [])
+                  .filter((p: any) => !seenIds.has(p.id))
+                  .map((p: any) => ({
+                    id: p.id,
+                    title: p.name,
+                    name: p.name,
+                    description: p.description,
+                    category: p.category,
+                    image: p.photo_url,
+                    rating: p.rating,
+                    tags: p.tags,
+                  })),
+                weather: weatherForecast.length > 0 ? {
+                  forecast: weatherForecast,
+                  current: weatherForecast[0] ? {
+                    high: weatherForecast[0].high,
+                    low: weatherForecast[0].low,
+                    condition: weatherForecast[0].condition,
+                  } : undefined,
+                } : undefined,
                 quick_facts: {
                   currency: ext.budget_level ? `${ext.budget_level} (~$${ext.daily_estimate_usd}/day)` : undefined,
                   timezone: (plan as any).timezone,
