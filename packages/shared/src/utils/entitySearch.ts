@@ -8,6 +8,10 @@ export interface SpotlightResult {
   tripTitle?: string
   href: string
   score: number
+  // Extended fields for rich cards & commands
+  shortcut?: { key: string; meta?: boolean; shift?: boolean; display: string }
+  execute?: () => void
+  metadata?: Record<string, unknown>
 }
 
 export function mergeSearchResults(

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams, usePathname } from 'next/navigation'
 import { useAuthStore, mergeSearchResults, type SpotlightResult } from '@travyl/shared'
 import { useContextSearch } from './useContextSearch'
+import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 
 const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const MAX_RECENT = 10
@@ -45,6 +46,7 @@ async function fetchEntitySearch(
       trip_destination: string | null
       image_url: string | null
       score: number
+      metadata?: Record<string, unknown>
     }>>
   }
 
@@ -61,6 +63,7 @@ async function fetchEntitySearch(
       tripTitle: item.trip_title ?? undefined,
       href: buildHref(item.entity_type, item.entity_id, item.trip_id),
       score: item.score,
+      metadata: item.metadata,
     }))
   }
   return mapped
@@ -84,6 +87,7 @@ export function useSpotlightSearch() {
   const token = useAuthStore((s) => s.session?.access_token)
   const pathname = usePathname()
   const params = useParams()
+  const commands = useCalendarCommandsStore((s) => s.commands)
 
   // Detect if we're inside a trip context
   const tripId = (params?.id as string) ?? null
@@ -109,8 +113,8 @@ export function useSpotlightSearch() {
     staleTime: 30_000,
   })
 
-  // Client-side filter for navigation items
-  const navResults = useMemo(() => {
+  // Client-side filter for navigation items (lowered threshold to 1 char)
+  const navResults = useMemo((): Record<string, SpotlightResult[]> => {
     if (debouncedQuery.length < 1) return {}
     const q = debouncedQuery.toLowerCase()
     const matched = NAV_ITEMS.filter(
@@ -119,8 +123,27 @@ export function useSpotlightSearch() {
     return matched.length ? { navigation: matched } : {}
   }, [debouncedQuery])
 
+  // Client-side filter for calendar commands
+  const commandResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!commands?.length || debouncedQuery.length < 1) return {}
+    const q = debouncedQuery.toLowerCase()
+    const matched: SpotlightResult[] = commands
+      .filter((cmd) => cmd.isEnabled && cmd.label.toLowerCase().includes(q))
+      .map((cmd) => ({
+        id: `cmd-${cmd.id}`,
+        type: 'command' as const,
+        title: cmd.label,
+        subtitle: cmd.group,
+        href: '',
+        score: 1,
+        shortcut: cmd.shortcut,
+        execute: cmd.execute,
+      }))
+    return matched.length ? { command: matched } : {}
+  }, [commands, debouncedQuery])
+
   // Transform trip search results into SpotlightResult format
-  const tripResults = useMemo(() => {
+  const tripResults = useMemo((): Record<string, SpotlightResult[]> => {
     if (!tripSearchResults?.length) return {}
     return {
       trip: tripSearchResults.map((r) => ({
@@ -136,10 +159,10 @@ export function useSpotlightSearch() {
     }
   }, [tripSearchResults])
 
-  // Merge all sources
+  // Merge all sources (now including commands)
   const results = useMemo(() => {
-    return mergeSearchResults([tripResults, entityResults ?? {}, navResults], { maxPerCategory: 3 })
-  }, [tripResults, entityResults, navResults])
+    return mergeSearchResults([tripResults, entityResults ?? {}, navResults, commandResults], { maxPerCategory: 3 })
+  }, [tripResults, entityResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {

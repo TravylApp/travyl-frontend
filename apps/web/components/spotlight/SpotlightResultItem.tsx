@@ -1,7 +1,9 @@
 'use client'
 
-import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal } from 'lucide-react'
+import { forwardRef } from 'react'
+import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal, Star, Calendar } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
+import { highlightMatch } from './highlightMatch'
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   trip: Compass,
@@ -15,36 +17,189 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   setting: Settings,
 }
 
+const TYPE_ICON_COLORS: Record<string, string> = {
+  trip: 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400',
+  hotel: 'bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400',
+  flight: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400',
+  restaurant: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
+  activity: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+  destination: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
+  navigation: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  command: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  setting: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+}
+
 interface Props {
   result: SpotlightResult
   isActive: boolean
   onClick: () => void
+  query: string
 }
 
-export function SpotlightResultItem({ result, isActive, onClick }: Props) {
-  const Icon = TYPE_ICONS[result.type] ?? MapPin
+export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
+  function SpotlightResultItem({ result, isActive, onClick, query }, ref) {
+    const Icon = TYPE_ICONS[result.type] ?? MapPin
+    const iconColor = TYPE_ICON_COLORS[result.type] ?? TYPE_ICON_COLORS.navigation
 
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors ${
-        isActive ? 'bg-blue-50 dark:bg-blue-950/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-      }`}
-    >
-      {result.imageUrl ? (
-        <img src={result.imageUrl} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
-      ) : (
-        <div className="w-8 h-8 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-          <Icon className="w-4 h-4 text-gray-500" />
+    // Type-specific rendering
+    const isRichType = ['trip', 'hotel', 'flight', 'restaurant'].includes(result.type)
+    const isSimpleType = ['navigation', 'command', 'setting'].includes(result.type)
+    const meta = result.metadata as Record<string, unknown> | undefined
+
+    return (
+      <button
+        ref={ref}
+        onClick={onClick}
+        className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors relative ${
+          isActive
+            ? 'bg-blue-50 dark:bg-blue-950/30'
+            : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+        }`}
+      >
+        {/* Active indicator bar */}
+        {isActive && (
+          <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-blue-500" />
+        )}
+
+        {/* Icon / Image */}
+        {result.imageUrl && isRichType ? (
+          <img
+            src={result.imageUrl}
+            alt=""
+            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+          />
+        ) : (
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+            <Icon className="w-4.5 h-4.5" />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            {highlightMatch(result.title, query)}
+          </div>
+          {result.subtitle && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {highlightMatch(result.subtitle, query)}
+            </div>
+          )}
+
+          {/* Type-specific metadata row */}
+          {isRichType && <MetadataRow result={result} meta={meta} />}
         </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{result.title}</div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{result.subtitle}</div>
-      </div>
-      {result.tripTitle && result.type !== 'trip' && (
-        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{result.tripTitle}</span>
-      )}
-    </button>
+
+        {/* Right-side extras */}
+        {isSimpleType && result.shortcut && (
+          <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0">
+            {result.shortcut.display}
+          </kbd>
+        )}
+        {result.tripTitle && result.type !== 'trip' && !isSimpleType && (
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0 max-w-[80px] truncate">
+            {result.tripTitle}
+          </span>
+        )}
+      </button>
+    )
+  },
+)
+
+function MetadataRow({ result, meta }: { result: SpotlightResult; meta?: Record<string, unknown> }) {
+  if (!meta && result.type !== 'trip') return null
+
+  switch (result.type) {
+    case 'trip': {
+      const startDate = meta?.startDate as string | undefined
+      const endDate = meta?.endDate as string | undefined
+      const activityCount = meta?.activityCount as number | undefined
+      const status = meta?.status as string | undefined
+      if (!startDate && !activityCount && !status) return null
+      return (
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {startDate && endDate && (
+            <span className="flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500">
+              <Calendar className="w-3 h-3" />
+              {formatShortDate(startDate)} - {formatShortDate(endDate)}
+            </span>
+          )}
+          {typeof activityCount === 'number' && (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+              &middot; {activityCount} activities
+            </span>
+          )}
+          {status && <StatusBadge status={status} />}
+        </div>
+      )
+    }
+    case 'hotel': {
+      const stars = meta?.stars as number | undefined
+      const pricePerNight = meta?.pricePerNight as string | undefined
+      return (
+        <div className="flex items-center gap-2 mt-0.5">
+          {stars && (
+            <span className="flex items-center gap-0.5">
+              {Array.from({ length: Math.min(stars, 5) }).map((_, i) => (
+                <Star key={i} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+              ))}
+            </span>
+          )}
+          {pricePerNight && (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+              {pricePerNight}/night
+            </span>
+          )}
+        </div>
+      )
+    }
+    case 'flight': {
+      const departure = meta?.departure as string | undefined
+      const cabin = meta?.cabin as string | undefined
+      return (
+        <div className="flex items-center gap-2 mt-0.5">
+          {departure && (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{departure}</span>
+          )}
+          {cabin && (
+            <span className="inline-flex px-1.5 py-0 text-[10px] font-medium bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 rounded-full">
+              {cabin}
+            </span>
+          )}
+        </div>
+      )
+    }
+    case 'restaurant': {
+      const priceLevel = meta?.priceLevel as string | undefined
+      return priceLevel ? (
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">{priceLevel}</span>
+        </div>
+      ) : null
+    }
+    default:
+      return null
+  }
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    planning: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+    booked: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+    active: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+    completed: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+  }
+  return (
+    <span className={`inline-flex px-1.5 py-0 text-[10px] font-medium rounded-full capitalize ${styles[status] ?? styles.planning}`}>
+      {status}
+    </span>
   )
+}
+
+function formatShortDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr)
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d)
+  } catch {
+    return dateStr
+  }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'motion/react'
 import type { SpotlightResult } from '@travyl/shared'
@@ -8,6 +8,8 @@ import { useSpotlightSearch } from '@/hooks/useSpotlightSearch'
 import { SpotlightInput } from './SpotlightInput'
 import { SpotlightResults } from './SpotlightResults'
 import { SpotlightEmptyState } from './SpotlightEmptyState'
+import { SpotlightPreview, hasPreview } from './SpotlightPreview'
+import { SpotlightFooter } from './SpotlightFooter'
 
 const CATEGORY_ORDER = ['trip', 'hotel', 'flight', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
 
@@ -15,6 +17,8 @@ export function SpotlightSearch() {
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const router = useRouter()
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const resultsRef = useRef<HTMLDivElement>(null)
   const {
     query,
     setQuery,
@@ -33,6 +37,18 @@ export function SpotlightSearch() {
     }
     return flat
   }, [results])
+
+  // Active result for preview
+  const activeResult = flatResults[activeIndex] ?? null
+  const showPreview = hasPreview(activeResult)
+
+  // Scroll active item into view
+  useEffect(() => {
+    const el = itemRefs.current[activeIndex]
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [activeIndex])
 
   // Ctrl+K to open
   useEffect(() => {
@@ -56,9 +72,14 @@ export function SpotlightSearch() {
 
   const handleSelect = useCallback(
     (result: SpotlightResult) => {
-      if (query.length >= 3) addRecentSearch(query)
+      if (query.length >= 2) addRecentSearch(query)
       setIsOpen(false)
-      router.push(result.href)
+      // If the result has an execute function (command), call it instead of navigating
+      if (result.execute) {
+        result.execute()
+      } else {
+        router.push(result.href)
+      }
     },
     [query, addRecentSearch, router],
   )
@@ -77,6 +98,7 @@ export function SpotlightSearch() {
         case 'Tab': {
           e.preventDefault()
           const categories = CATEGORY_ORDER.filter((t) => results[t]?.length)
+          if (!categories.length) break
           let runIdx = 0
           let currentCat = 0
           for (let c = 0; c < categories.length; c++) {
@@ -107,6 +129,9 @@ export function SpotlightSearch() {
     setActiveIndex(0)
   }, [results])
 
+  const hasResults = query.length >= 1 && flatResults.length > 0
+  const showEmptyState = query.length < 1
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -123,29 +148,72 @@ export function SpotlightSearch() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-xl z-50"
+            className="fixed top-[20%] left-1/2 -translate-x-1/2 z-50"
             onKeyDown={handleKeyDown}
           >
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <motion.div
+              layout
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className={`bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden ${
+                showPreview ? 'w-[680px] max-w-[90vw]' : 'w-[560px] max-w-[90vw]'
+              }`}
+            >
               <SpotlightInput
                 query={query}
                 onQueryChange={setQuery}
                 isLoading={isLoading}
               />
-              {query.length < 3 ? (
-                <SpotlightEmptyState
-                  recentSearches={recentSearches}
-                  onSelectRecent={(q) => setQuery(q)}
-                  onClearRecent={clearRecent}
-                />
-              ) : (
-                <SpotlightResults
-                  results={results}
-                  activeIndex={activeIndex}
-                  onSelect={handleSelect}
-                />
-              )}
-            </div>
+              <div className="flex">
+                {/* Left: results / empty state */}
+                <div className={showPreview ? 'w-[360px] flex-shrink-0' : 'flex-1'}>
+                  {showEmptyState ? (
+                    <SpotlightEmptyState
+                      recentSearches={recentSearches}
+                      onSelectRecent={(q) => setQuery(q)}
+                      onClearRecent={clearRecent}
+                      onClose={() => setIsOpen(false)}
+                    />
+                  ) : hasResults ? (
+                    <SpotlightResults
+                      ref={resultsRef}
+                      results={results}
+                      activeIndex={activeIndex}
+                      onSelect={handleSelect}
+                      query={query}
+                      itemRefs={itemRefs}
+                    />
+                  ) : query.length >= 1 && !isLoading ? (
+                    <div className="px-4 py-8 text-center">
+                      <p className="text-sm text-gray-400">No results found</p>
+                      <p className="text-xs text-gray-400/70 mt-1">
+                        Try a different search term
+                      </p>
+                    </div>
+                  ) : query.length >= 1 && isLoading ? (
+                    <div className="px-4 py-8 text-center">
+                      <p className="text-sm text-gray-400">Searching...</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Right: preview pane */}
+                <AnimatePresence mode="wait">
+                  {showPreview && activeResult && (
+                    <motion.div
+                      key={activeResult.id}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.15 }}
+                      className="w-[300px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 p-4 max-h-[400px] overflow-y-auto"
+                    >
+                      <SpotlightPreview result={activeResult} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <SpotlightFooter resultCount={flatResults.length} />
+            </motion.div>
           </motion.div>
         </>
       )}
