@@ -22,6 +22,7 @@ export async function backfill() {
   console.log(`Backfilling ${trips.length} trips...`)
 
   interface TripContextJson { hero_images?: string[] }
+  interface ActivityData { category?: string; location_name?: string }
 
   for (const trip of trips) {
     try {
@@ -29,8 +30,6 @@ export async function backfill() {
         .from('activity')
         .select('activity_name, activity_type, notes, starting_date, ending_date, activity_data')
         .eq('trip_id', trip.id)
-
-      interface ActivityData { category?: string; location_name?: string }
 
       const activityText = (activities ?? [])
         .map((a) => {
