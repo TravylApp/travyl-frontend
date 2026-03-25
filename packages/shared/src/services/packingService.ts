@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { DbPackingItem, PackingAuditEntry, PackingCategory, PackingSuggestion } from '../types'
+import type { DbPackingItem, PackingAuditEntry, PackingSuggestion } from '../types'
 
 export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
   const { data, error } = await supabase
@@ -23,10 +23,60 @@ export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<
   return data ?? []
 }
 
-export async function insertPackingItem(tripId: string, userId: string, name: string, category: PackingCategory, sortOrder: number): Promise<DbPackingItem> {
-  const { data, error } = await supabase.from('packing_items').insert({ trip_id: tripId, user_id: userId, name, category, sort_order: sortOrder }).select().single()
+export async function insertPackingItem(
+  tripId: string, userId: string, name: string, category: string, sortOrder: number,
+  ownerId?: string | null, groupTag?: string | null,
+): Promise<DbPackingItem> {
+  const { data, error } = await supabase
+    .from('packing_items')
+    .insert({
+      trip_id: tripId, user_id: userId, name, category, sort_order: sortOrder,
+      ...(ownerId !== undefined && { owner_id: ownerId }),
+      ...(groupTag !== undefined && { group_tag: groupTag }),
+    })
+    .select().single()
   if (error) throw error
   return data
+}
+
+export async function claimPackingItem(itemId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('packing_items')
+    .update({ owner_id: userId, updated_at: new Date().toISOString() })
+    .eq('id', itemId).is('owner_id', null)
+    .select('id').single()
+  if (error) return false
+  return !!data
+}
+
+export async function releasePackingItem(itemId: string): Promise<void> {
+  const { error } = await supabase
+    .from('packing_items')
+    .update({ owner_id: null, updated_at: new Date().toISOString() })
+    .eq('id', itemId)
+  if (error) throw error
+}
+
+export async function transferPackingItem(itemId: string, targetUserId: string): Promise<void> {
+  const { error } = await supabase
+    .from('packing_items')
+    .update({ owner_id: targetUserId, updated_at: new Date().toISOString() })
+    .eq('id', itemId)
+  if (error) throw error
+}
+
+export async function insertAuditEntry(
+  tripId: string, userId: string, itemId: string | null,
+  action: PackingAuditEntry['action'], itemName: string,
+  targetUserId?: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('packing_audit_log')
+    .insert({
+      trip_id: tripId, user_id: userId, item_id: itemId, action, item_name: itemName,
+      ...(targetUserId && { target_user_id: targetUserId }),
+    })
+  if (error) throw error
 }
 
 export async function updatePackingItemPacked(itemId: string, isPacked: boolean, packedBy: string | null): Promise<void> {
