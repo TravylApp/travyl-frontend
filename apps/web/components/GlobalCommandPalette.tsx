@@ -96,6 +96,15 @@ const CONFIGURABLE_TABS = [
   { segment: 'favorites',   label: 'Favorites Tab' },
 ] as const
 
+// ─── Status colors ────────────────────────────────────────────
+const STATUS_COLORS: Record<string, string> = {
+  planning:  '#9CA3AF',
+  booked:    '#F59E0B',
+  active:    '#10B981',
+  completed: '#003594',
+  abandoned: '#EF4444',
+}
+
 // ─── Date formatting ─────────────────────────────────────────
 
 function formatTripDates(startDate: string, endDate: string): string {
@@ -105,6 +114,175 @@ function formatTripDates(startDate: string, endDate: string): string {
   const startStr = start.toLocaleDateString('en-US', opts)
   const endStr = end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })
   return `${startStr} - ${endStr}`
+}
+
+// ─── Inline control components ────────────────────────────────
+
+// ToggleSwitch: track is a soft tint (emerald-100 on, gray off), white thumb is the visual indicator.
+// pointer-events-none — the row button handles the click via executeItem → onToggle.
+function ToggleSwitch({ enabled }: { enabled: boolean }) {
+  return (
+    <div
+      className={[
+        'relative inline-flex h-4 w-7 shrink-0 rounded-full transition-colors duration-150 pointer-events-none',
+        enabled
+          ? 'bg-emerald-100 dark:bg-emerald-900/30'
+          : 'bg-gray-300 dark:bg-[#1e3a5f]/60',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'inline-block h-3 w-3 rounded-full shadow transition-transform duration-150 mt-0.5',
+          enabled
+            ? 'translate-x-3.5 bg-emerald-500'
+            : 'translate-x-0.5 bg-gray-400 dark:bg-gray-500',
+        ].join(' ')}
+      />
+    </div>
+  )
+}
+
+// renderPickerControl: renders the right-side inline control for a SettingPickerItem.
+// Depends on: TRIP_THEMES (module import), STATUS_COLORS (module constant)
+function renderPickerControl(item: SettingPickerItem) {
+  function isActive(opt: { value: string; label: string }) {
+    return (
+      opt.value === item.currentValue ||
+      opt.label.toLowerCase() === item.currentValue.toLowerCase()
+    )
+  }
+
+  if (item.variant === 'swatches') {
+    return (
+      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        {item.options.map((opt) => {
+          const color = TRIP_THEMES[opt.value]?.base ?? '#888'
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              title={opt.label}
+              style={{ backgroundColor: color }}
+              className={[
+                'w-4 h-4 rounded-full transition-all shrink-0',
+                active
+                  ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-100 dark:ring-offset-[#0f1a28] shadow'
+                  : 'opacity-60 hover:opacity-100',
+              ].join(' ')}
+            />
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (item.variant === 'pills') {
+    return (
+      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+        {item.options.map((opt) => {
+          const color = STATUS_COLORS[opt.value] ?? '#888'
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              style={active
+                ? { backgroundColor: color, borderColor: color }
+                : { borderColor: color }
+              }
+              className={[
+                'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap',
+                active ? 'text-white' : 'text-gray-500 dark:text-gray-400',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (item.variant === 'segmented') {
+    return (
+      <div
+        className="flex items-center rounded overflow-hidden border border-gray-200 dark:border-[#1e3a5f]/40 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {item.options.map((opt, i) => {
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              className={[
+                'text-[10px] px-2 py-0.5 transition-colors',
+                i > 0 ? 'border-l border-gray-200 dark:border-[#1e3a5f]/40' : '',
+                active
+                  ? 'bg-[#1e3a5f] text-white dark:bg-[#4a7ab5]'
+                  : 'text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (item.variant === 'chips') {
+    return (
+      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+        {item.options.map((opt) => {
+          const active = isActive(opt)
+          return (
+            <button
+              key={opt.value}
+              onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+              className={[
+                'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                active
+                  ? 'bg-[#1e3a5f] dark:bg-[#4a7ab5] text-white border-transparent'
+                  : 'border-gray-300 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5] hover:border-gray-400',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // variant === 'scrollable-pills' (default) — used for currency.
+  // Intentionally renders opt.value (e.g. "USD") not opt.label ("USD — US Dollar")
+  // so pills are compact enough to fit in a scrollable row.
+  return (
+    <div
+      className="flex items-center gap-1 overflow-x-auto max-w-[200px] pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {item.options.map((opt) => {
+        const active = isActive(opt)
+        return (
+          <button
+            key={opt.value}
+            onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
+            className={[
+              'text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap transition-colors shrink-0',
+              active
+                ? 'bg-[#1e3a5f] dark:bg-[#4a7ab5] text-white border-transparent'
+                : 'border-gray-300 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5]',
+            ].join(' ')}
+          >
+            {opt.value}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 // ─── Component ───────────────────────────────────────────────
