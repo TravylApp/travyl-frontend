@@ -9,9 +9,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
   ITINERARY_COLORS,
-  MOCK_FLIGHT_DETAILS,
-  MOCK_HOTEL_DETAIL,
-  MOCK_DISCOVER_ACTIVITIES,
   GLANCE_HERO_IMAGES,
   adjustBrightness,
   getActivityTypeColor,
@@ -52,16 +49,28 @@ function parseHour(timeStr: string | null): number | null {
 // ─── Match itinerary activity → DiscoverItem by keyword overlap ──────
 const STOP_WORDS = new Set(['the', 'at', 'a', 'an', 'of', 'in', 'to', 'and', 'le', 'la', 'de', 'du', 'des']);
 
-function findDiscoverMatch(activityName: string): typeof MOCK_DISCOVER_ACTIVITIES[number] | undefined {
-  const keywords = activityName.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w));
-  let bestMatch: typeof MOCK_DISCOVER_ACTIVITIES[number] | undefined;
+function findDiscoverMatch(activityName: string, discoverPool: any[]): any | undefined {
+  const keywords = activityName.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2 && !STOP_WORDS.has(w));
+  let bestMatch: any | undefined;
   let bestScore = 0;
-  for (const d of MOCK_DISCOVER_ACTIVITIES) {
-    const dLower = d.name.toLowerCase();
-    const score = keywords.filter((kw) => dLower.includes(kw)).length;
+  for (const d of discoverPool) {
+    const dLower = (d.name || '').toLowerCase();
+    const score = keywords.filter((kw: string) => dLower.includes(kw)).length;
     if (score > bestScore) { bestScore = score; bestMatch = d; }
   }
   return bestScore >= 1 ? bestMatch : undefined;
+}
+
+// Build discover items from trip_context data
+function buildDiscoverItems(trip: any): any[] {
+  const ctx = trip?.trip_context;
+  if (!ctx) return [];
+  const items: any[] = [];
+  const seen = new Set<string>();
+  const add = (e: any) => { if (e?.id && !seen.has(e.id)) { seen.add(e.id); items.push(e); } };
+  for (const e of ctx?.explore_items ?? []) add({ id: e.id, name: e.title || e.name, description: e.description || e.category || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [], rating: e.rating || 0 });
+  for (const v of ctx?.foursquare_venues ?? []) add({ id: v.id, name: v.title || v.name, description: v.description || v.category || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [], rating: v.rating || 0 });
+  return items;
 }
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
@@ -147,12 +156,13 @@ const ROUTE_COLORS = [
   { color: '#64748b', label: 'Slate' },
 ];
 
-function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng }: {
+function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng, discoverPool = [] }: {
   todayActivities: ActivityViewModel[];
   allActivities: ActivityViewModel[];
   onClose: () => void;
   centerLat: number;
   centerLng: number;
+  discoverPool?: any[];
 }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
@@ -267,7 +277,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng 
   }, [markers]);
 
   const exploreItems = useMemo(() => {
-    let items = MOCK_DISCOVER_ACTIVITIES;
+    let items = discoverPool;
     if (exploreSearch) {
       const q = exploreSearch.toLowerCase();
       items = items.filter((i) =>
@@ -1563,10 +1573,11 @@ function ViewToggle({ mode, onToggle, accent }: { mode: 'glance' | 'detailed'; o
 
 
 // ─── Add Activity Panel (self-contained state to avoid parent re-renders) ───
-function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
+function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity, discoverPool = [] }: {
   dayIndex: number; timeOfDay: string;
   days: ItineraryDayViewModel[];
   onAddActivity: (dayIndex: number, timeOfDay: string, name: string, category: string) => void;
+  discoverPool?: any[];
 }) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
@@ -1575,7 +1586,7 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity }: {
   const results = useMemo(() => {
     if (!query || query.length < 2) return [];
     const q = query.toLowerCase();
-    return MOCK_DISCOVER_ACTIVITIES.filter(
+    return discoverPool.filter(
       (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
     ).slice(0, 4);
   }, [query]);
@@ -1765,7 +1776,7 @@ function GlanceActivityRow({ activity, dayIndex, timeOfDay, drag, isActive, onRe
 // ─── Glance View: swipeable day cards with add/remove/regenerate ───
 function GlancePager({
   days, selectedDayIndex, onSelectDay, arrivalFlightNumber, returnFlightNumber,
-  onRemoveActivity, onRegenerateActivity, onAddActivity, onReorderDay, onUpdateTime, onActivityPress,
+  onRemoveActivity, onRegenerateActivity, onAddActivity, onReorderDay, onUpdateTime, onActivityPress, discoverPool = [],
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -1778,6 +1789,7 @@ function GlancePager({
   onReorderDay: (dayIndex: number, reorderedActivities: ActivityViewModel[]) => void;
   onUpdateTime: (dayIndex: number, activityId: string, newTime: string) => void;
   onActivityPress: (activityId: string) => void;
+  discoverPool?: any[];
 }) {
   const colors = useThemeColors();
   const { width: screenW } = useWindowDimensions();
@@ -1858,7 +1870,7 @@ function GlancePager({
             <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
               {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
             </Text>
-            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
+            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
           </View>
         ))}
       </View>
@@ -1878,7 +1890,7 @@ function GlancePager({
             <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
               {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
             </Text>
-            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
+            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
           </View>
         ))}
       </View>
@@ -1935,14 +1947,14 @@ function GlancePager({
                   onPress={onActivityPress}
                 />
                 {isLastInGroup && (
-                  <AddActivityPanel dayIndex={i} timeOfDay={currentTod} days={days} onAddActivity={onAddActivity} />
+                  <AddActivityPanel dayIndex={i} timeOfDay={currentTod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
                 )}
                 {emptyGapTods.map((tod) => (
                   <View key={tod} style={{ marginTop: 10 }}>
                     <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
                       {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
                     </Text>
-                    <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} />
+                    <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
                   </View>
                 ))}
               </View>
@@ -1986,6 +1998,14 @@ export default function ItineraryScreen() {
     useItineraryScreen(id);
   const centerLat = trip?.trip_context?.lat ?? 0;
   const centerLng = trip?.trip_context?.lng ?? 0;
+
+  // Build data from trip_context — replaces all mock data
+  const discoverPool = useMemo(() => buildDiscoverItems(trip), [trip]);
+  const tripHotel: any = useMemo(() => {
+    const h = (trip?.trip_context as any)?.hotels?.[0];
+    if (!h) return { name: 'Hotel', address: '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: '', stars: 3, rating: 0 };
+    return { name: h.name, address: h.address || '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: h.image || h.photo_url || '', stars: h.stars || 3, rating: h.rating || 0 };
+  }, [trip]);
   const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
   const isFocused = useIsFocused();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -2052,6 +2072,7 @@ export default function ItineraryScreen() {
     const newAct: ActivityViewModel = {
       id: `add-${Date.now()}`,
       name,
+      image: '',
       category,
       locationName: null,
       startTime: TOD_START_TIMES[timeOfDay] ?? '12:00 PM',
@@ -2184,8 +2205,8 @@ export default function ItineraryScreen() {
 
   const arrivalFlightNumber = flights[0]?.flightNumber ?? null;
   const returnFlightNumber = flights[1]?.flightNumber ?? null;
-  const arrivalFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'arrival');
-  const returnFlight = MOCK_FLIGHT_DETAILS.find((f) => f.type === 'return');
+  const arrivalFlight = ([] as any[]).find((f) => f.type === 'arrival');
+  const returnFlight = ([] as any[]).find((f) => f.type === 'return');
 
   const isFirstDay = selectedDayIndex === 0;
   const isLastDay = selectedDayIndex === days.length - 1;
@@ -2215,7 +2236,7 @@ export default function ItineraryScreen() {
   }, []);
 
   const filteredDiscoverItems = useMemo(() => {
-    let items = MOCK_DISCOVER_ACTIVITIES;
+    let items = discoverPool;
     if (addSearch) {
       const q = addSearch.toLowerCase();
       items = items.filter((i) =>
@@ -2244,12 +2265,12 @@ export default function ItineraryScreen() {
 
   // Shared lookup: call findDiscoverMatch once per unique activity across all days
   const discoverMatchMap = useMemo(() => {
-    const map = new Map<string, typeof MOCK_DISCOVER_ACTIVITIES[number]>();
+    const map = new Map<string, typeof discoverPool[number]>();
     for (const day of effectiveDays) {
       for (const group of day.timeGroups) {
         for (const activity of group.activities) {
           if (!map.has(activity.id)) {
-            const match = findDiscoverMatch(activity.name);
+            const match = findDiscoverMatch(activity.name, discoverPool);
             if (match) map.set(activity.id, match);
           }
         }
@@ -2261,7 +2282,7 @@ export default function ItineraryScreen() {
   const activityImages = useMemo(() => {
     if (!selectedDay) return {};
     const map: Record<string, string> = {};
-    const allImages = MOCK_DISCOVER_ACTIVITIES.flatMap((d) => d.images ?? []).filter(Boolean);
+    const allImages = discoverPool.flatMap((d) => d.images ?? []).filter(Boolean);
     for (const group of selectedDay.timeGroups) {
       for (const activity of group.activities) {
         const match = discoverMatchMap.get(activity.id);
@@ -2277,7 +2298,7 @@ export default function ItineraryScreen() {
   }, [selectedDay, discoverMatchMap]);
 
   const dayHeroImages = useMemo(() => {
-    const allImages = MOCK_DISCOVER_ACTIVITIES.flatMap((d) => d.images ?? []).filter(Boolean);
+    const allImages = discoverPool.flatMap((d) => d.images ?? []).filter(Boolean);
     return effectiveDays.map((day, dayIdx) => {
       for (const group of day.timeGroups) {
         for (const activity of group.activities) {
@@ -2336,7 +2357,7 @@ export default function ItineraryScreen() {
   }, [selectedActivityId]); // Only run when selection changes, not on every data mutation
 
   const allPlacesFromDiscover = useMemo(
-    () => MOCK_DISCOVER_ACTIVITIES.map(discoverItemToPlaceItem),
+    () => discoverPool.map(discoverItemToPlaceItem),
     [],
   );
 
@@ -2424,6 +2445,7 @@ export default function ItineraryScreen() {
           onReorderDay={reorderGlanceDay}
           onUpdateTime={updateActivityTime}
           onActivityPress={setSelectedActivityId}
+          discoverPool={discoverPool}
         />
       ) : (
       <View style={{ flex: 1 }}>
@@ -2446,7 +2468,7 @@ export default function ItineraryScreen() {
               {/* Hotel check-in on first day */}
               {isFirstDay && (
                 <HotelSection
-                  hotel={MOCK_HOTEL_DETAIL}
+                  hotel={tripHotel}
                   label={`Check-in \u00b7 ${selectedDay.dateLabel}`}
                   collapsed={allCollapsedOverride ?? undefined}
                 />
@@ -2484,7 +2506,7 @@ export default function ItineraryScreen() {
               {/* Hotel nightly on middle days */}
               {!isFirstDay && !isLastDay && (
                 <HotelSection
-                  hotel={MOCK_HOTEL_DETAIL}
+                  hotel={tripHotel}
                   label={`Night ${selectedDay.dayNumber} \u00b7 ${selectedDay.dateLabel}`}
                   collapsed={allCollapsedOverride ?? undefined}
                 />
@@ -2494,9 +2516,9 @@ export default function ItineraryScreen() {
               {isLastDay && (
                 <>
                   <CheckoutSection
-                    hotelName={MOCK_HOTEL_DETAIL.name}
-                    hotelAddress={MOCK_HOTEL_DETAIL.address}
-                    checkOutTime={MOCK_HOTEL_DETAIL.checkOutTime}
+                    hotelName={tripHotel.name}
+                    hotelAddress={tripHotel.address}
+                    checkOutTime={tripHotel.checkOutTime}
                     collapsed={allCollapsedOverride ?? undefined}
                   />
                   {returnFlight && (
@@ -2538,6 +2560,7 @@ export default function ItineraryScreen() {
           onClose={() => setMapOpen(false)}
           centerLat={centerLat}
           centerLng={centerLng}
+          discoverPool={discoverPool}
         />
       )}
 
