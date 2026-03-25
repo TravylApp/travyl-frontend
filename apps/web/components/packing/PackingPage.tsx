@@ -21,7 +21,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
     generateSuggestions,
     acceptSuggestion,
     dismissSuggestion,
-  } = usePackingSuggestions(tripId, items, addItem)
+  } = usePackingSuggestions(tripId, items, addItem as (name: string, category: string) => void)
 
   if (isLoading) {
     return (
@@ -42,7 +42,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
   return (
     <div className="flex gap-6 h-full p-6">
       <div className="flex-1 flex flex-col min-w-0">
-        <SpotlightSearch existingItems={items} onAddItem={addItem} />
+        <SpotlightSearch existingItems={items} onAddItem={addItem as (name: string, category: string) => void} />
         <div className="flex-1 overflow-auto mt-4">
           <PackingCategoryList
             itemsByCategory={itemsByCategory}

@@ -1,12 +1,24 @@
-import type { PackingCategory } from '@travyl/shared'
+import { PACKING_CATEGORIES } from '@travyl/shared'
 
-export const CATEGORY_LABELS: Record<PackingCategory, string> = {
+const STATIC_LABELS: Record<string, string> = {
   clothing: 'Clothing',
   toiletries: 'Toiletries',
   electronics: 'Electronics',
   documents: 'Documents',
   accessories: 'Accessories',
   essentials: 'Essentials',
+}
+
+export function getCategoryLabel(category: string): string {
+  if (STATIC_LABELS[category]) return STATIC_LABELS[category]
+  return category
+    .split(/[-_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+export function isStaticCategory(category: string): boolean {
+  return (PACKING_CATEGORIES as readonly string[]).includes(category)
 }
 
 export function stringToColor(str: string): string {

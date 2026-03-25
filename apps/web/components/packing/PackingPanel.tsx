@@ -23,7 +23,7 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
     generateSuggestions,
     acceptSuggestion,
     dismissSuggestion,
-  } = usePackingSuggestions(tripId, items, addItem)
+  } = usePackingSuggestions(tripId, items, addItem as (name: string, category: string) => void)
 
   if (isLoading) {
     return (
@@ -53,7 +53,7 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
           <Expand width={14} height={14} />
         </button>
       </div>
-      <SpotlightSearch existingItems={items} onAddItem={addItem} />
+      <SpotlightSearch existingItems={items} onAddItem={addItem as (name: string, category: string) => void} />
       <PackingProgress packed={progress.packed} total={progress.total} percent={progress.percent} compact />
       <div className="flex-1 overflow-auto">
         <PackingCategoryList

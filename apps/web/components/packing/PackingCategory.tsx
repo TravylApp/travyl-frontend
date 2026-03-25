@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { NavArrowDown, NavArrowRight } from 'iconoir-react'
 import type { DbPackingItem, PackingCategory as PackingCategoryType, PackingSuggestion } from '@travyl/shared'
-import { CATEGORY_LABELS } from './utils'
+import { getCategoryLabel } from './utils'
 import { PackingItem } from './PackingItem'
 import { SuggestionChip } from './SuggestionChip'
 
@@ -56,7 +56,7 @@ export function PackingCategory({
         )}
 
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)] flex-1 text-left">
-          {CATEGORY_LABELS[category]}
+          {getCategoryLabel(category)}
         </span>
 
         <span className="text-xs tabular-nums text-[var(--cal-text-muted)]">
