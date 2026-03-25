@@ -4,23 +4,36 @@ import type { DbPackingItem, PackingAuditEntry, PackingSuggestion } from '../typ
 export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
   const { data, error } = await supabase
     .from('packing_items')
-    .select('*')
+    .select('*, user:profiles!packing_items_user_id_fkey(display_name, avatar_url), owner:profiles!packing_items_owner_id_fkey(display_name)')
     .eq('trip_id', tripId)
     .order('category')
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    user_display_name: row.user?.display_name ?? null,
+    user_avatar_url: row.user?.avatar_url ?? null,
+    owner_display_name: row.owner?.display_name ?? null,
+    user: undefined,
+    owner: undefined,
+  }))
 }
 
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
   const { data, error } = await supabase
     .from('packing_audit_log')
-    .select('*')
+    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name), target:profiles!packing_audit_log_target_user_id_fkey(display_name)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    user_display_name: row.user?.display_name ?? null,
+    target_display_name: row.target?.display_name ?? null,
+    user: undefined,
+    target: undefined,
+  }))
 }
 
 export async function insertPackingItem(

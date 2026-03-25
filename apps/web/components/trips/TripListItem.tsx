@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2 } from 'lucide-react';
-import { formatDateRange } from '@travyl/shared';
+import { formatDateRange, formatCurrency } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
@@ -15,9 +15,6 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
   abandoned: { label: 'Cancelled', bg: 'bg-red-500/90', text: 'text-white' },
 };
 
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
-}
 
 interface TripListItemProps {
   trip: MockTripCard;

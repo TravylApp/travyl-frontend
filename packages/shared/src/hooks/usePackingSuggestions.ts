@@ -34,11 +34,15 @@ export function usePackingSuggestions(
     if (!tripId || isGenerating) return
     setIsGenerating(true)
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+      if (!apiUrl) {
+        console.warn('[usePackingSuggestions] NEXT_PUBLIC_RECOMMENDATION_API_URL not set')
+        return
+      }
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
       if (!token) return
 
-      const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
       await fetch(`${apiUrl}/packing-suggest`, {
         method: 'POST',
         headers: {

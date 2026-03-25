@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
-import { fetchPackingItems, fetchPackingAuditLog, insertPackingItem, updatePackingItemPacked, deletePackingItem, claimPackingItem, releasePackingItem, transferPackingItem } from '../services/packingService'
+import { fetchPackingItems, fetchPackingAuditLog, insertPackingItem, insertAuditEntry, updatePackingItemPacked, deletePackingItem, claimPackingItem, releasePackingItem, transferPackingItem } from '../services/packingService'
 import type { DbPackingItem, PackingCategory } from '../types'
 import { PACKING_CATEGORIES } from '../types'
 
@@ -73,7 +73,9 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     mutationFn: async ({ name, category }: { name: string; category: PackingCategory }) => {
       const catItems = items.filter((i) => i.category === category)
       const maxSort = catItems.length > 0 ? Math.max(...catItems.map((i) => i.sort_order)) : -1
-      return insertPackingItem(tripId!, userId!, name, category, maxSort + 1)
+      const newItem = await insertPackingItem(tripId!, userId!, name, category, maxSort + 1)
+      await insertAuditEntry(tripId!, userId!, newItem.id, 'added', name).catch(() => {})
+      return newItem
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
@@ -85,7 +87,9 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     mutationFn: async (itemId: string) => {
       const item = items.find((i) => i.id === itemId)
       if (!item) return
-      return updatePackingItemPacked(itemId, !item.is_packed, userId ?? null)
+      const newPacked = !item.is_packed
+      await updatePackingItemPacked(itemId, newPacked, userId ?? null)
+      await insertAuditEntry(tripId!, userId!, itemId, newPacked ? 'packed' : 'unpacked', item.name).catch(() => {})
     },
     onMutate: async (itemId: string) => {
       await queryClient.cancelQueries({ queryKey: ['packingItems', tripId] })
@@ -103,7 +107,11 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
   })
 
   const removeItemMutation = useMutation({
-    mutationFn: (itemId: string) => deletePackingItem(itemId),
+    mutationFn: async (itemId: string) => {
+      const item = items.find((i) => i.id === itemId)
+      await deletePackingItem(itemId)
+      if (item) await insertAuditEntry(tripId!, userId!, itemId, 'removed', item.name).catch(() => {})
+    },
     onMutate: async (itemId: string) => {
       await queryClient.cancelQueries({ queryKey: ['packingItems', tripId] })
       const previous = queryClient.getQueryData<DbPackingItem[]>(['packingItems', tripId])
@@ -127,10 +135,10 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     if (!item) return
     const success = await claimPackingItem(itemId, userId)
     if (!success) {
-      // Someone else claimed it first — refetch
       queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
       return
     }
+    await insertAuditEntry(tripId, userId, itemId, 'claimed', item.name).catch(() => {})
     queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
     queryClient.invalidateQueries({ queryKey: ['packingAuditLog', tripId] })
   }, [items, tripId, userId, queryClient])
@@ -140,6 +148,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     const item = items.find((i) => i.id === itemId)
     if (!item) return
     await releasePackingItem(itemId)
+    await insertAuditEntry(tripId, userId, itemId, 'released', item.name).catch(() => {})
     queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
     queryClient.invalidateQueries({ queryKey: ['packingAuditLog', tripId] })
   }, [items, tripId, userId, queryClient])
@@ -149,6 +158,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     const item = items.find((i) => i.id === itemId)
     if (!item) return
     await transferPackingItem(itemId, targetUserId)
+    await insertAuditEntry(tripId, userId, itemId, 'transferred', item.name, targetUserId).catch(() => {})
     queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
     queryClient.invalidateQueries({ queryKey: ['packingAuditLog', tripId] })
   }, [items, tripId, userId, queryClient])

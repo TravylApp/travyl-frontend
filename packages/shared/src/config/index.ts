@@ -43,8 +43,6 @@ export * from './itineraryData';
 
 export * from './activityDetails';
 
-export * from './exploreData';
-
 export * from './placeCardSizes';
 
 export * from './placeCollections';

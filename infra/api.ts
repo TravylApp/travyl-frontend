@@ -105,3 +105,14 @@ api.route('POST /invite', {
     APP_URL: $app.stage === 'production' ? 'https://gotravyl.com' : 'http://localhost:3000',
   },
 })
+
+api.route('POST /packing-suggest', {
+  handler: 'services/packing-suggest.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})

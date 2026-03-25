@@ -89,8 +89,8 @@ async function fetchEntitySearch(
 }
 
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
-  // Destinations don't have a tripId — link to trips list
-  if (type === 'destination') return `/trips`
+  // Destinations don't have a tripId — link to explore page filtered by destination
+  if (type === 'destination') return `/explore?q=${encodeURIComponent(entityName ?? '')}`
   if (!tripId) return '/'
   switch (type) {
     case 'hotel': return `/trip/${tripId}/hotels/${entityId}`
