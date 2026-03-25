@@ -26,6 +26,7 @@ export function SpotlightSearch() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [actionMode, setActionMode] = useState<ActionMode | null>(null)
   const [creatorMode, setCreatorMode] = useState<{ prefillDestination: string } | null>(null)
+  const [creatorPhase, setCreatorPhase] = useState<string>('idle')
   const router = useRouter()
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -90,6 +91,7 @@ export function SpotlightSearch() {
       setActiveIndex(0)
       setActionMode(null)
       setCreatorMode(null)
+      setCreatorPhase('idle')
       setScope(null)
     }
   }, [isOpen, setQuery, setScope])
@@ -139,12 +141,28 @@ export function SpotlightSearch() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      // Creator mode: only handle Escape (go back to results)
+      // Creator mode keyboard handling
       if (creatorMode) {
         if (e.key === 'Escape') {
           e.preventDefault()
           e.stopPropagation()
           setCreatorMode(null)
+          setCreatorPhase('idle')
+          return
+        }
+        // During clarifying phase, intercept A-E and 1-5 keys
+        if (creatorPhase === 'clarifying') {
+          const key = e.key.toLowerCase()
+          let idx = -1
+          if (key >= '1' && key <= '5') idx = parseInt(key) - 1
+          else if (key >= 'a' && key <= 'e') idx = key.charCodeAt(0) - 97
+          if (idx >= 0) {
+            e.preventDefault()
+            e.stopPropagation()
+            const selectFn = (window as any).__spotlightSelectByIndex
+            if (typeof selectFn === 'function') selectFn(idx)
+            return
+          }
         }
         // All other keys are handled by the creator form inputs
         return
@@ -248,7 +266,7 @@ export function SpotlightSearch() {
           break
       }
     },
-    [flatResults, activeIndex, handleSelect, results, actionMode, exitActionMode, enterActionMode, activeResult, creatorMode],
+    [flatResults, activeIndex, handleSelect, results, actionMode, exitActionMode, enterActionMode, activeResult, creatorMode, creatorPhase],
   )
 
   // Reset active index when results change
@@ -291,13 +309,16 @@ export function SpotlightSearch() {
                   <>
                     <SpotlightTripCreator
                       prefillDestination={creatorMode.prefillDestination}
+                      query={query}
                       onClose={() => setIsOpen(false)}
-                      onBack={() => setCreatorMode(null)}
+                      onBack={() => { setCreatorMode(null); setCreatorPhase('idle') }}
+                      onPhaseChange={setCreatorPhase}
                     />
                     <SpotlightFooter
                       resultCount={0}
                       isActionMode={false}
                       isCreatorMode
+                      creatorPhase={creatorPhase}
                     />
                   </>
                 ) : (
