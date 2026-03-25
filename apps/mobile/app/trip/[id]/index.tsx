@@ -52,31 +52,22 @@ function weatherIcon(condition: string): string {
 
 
 // ─── Data ────────────────────────────────────────────────
-const TRANSPORT_INFO = [
-  { name: 'Métro', text: 'Lines 1, 4 & 7 cover tourist areas' },
-  { name: 'Bus', text: 'Route 69 passes major landmarks' },
-  { name: 'Walking', text: 'Best for Le Marais & Montmartre' },
-  { name: 'Taxi', text: 'Beige cabs / Uber · Airport €50–70' },
-];
+// Dynamic helpers — build from trip_context, no hardcoded city data
+function buildQuickFacts(ctx: any): { bold: string; text: string }[] {
+  if (!ctx?.quick_facts) return [];
+  const qf = ctx.quick_facts;
+  const facts: { bold: string; text: string }[] = [];
+  if (qf.currency) facts.push({ bold: qf.currency.split(' · ')[0], text: qf.currency.split(' · ').slice(1).join(' · ') || '' });
+  if (qf.language) facts.push({ bold: qf.language.split(' · ')[0], text: '' });
+  if (qf.timezone) facts.push({ bold: qf.timezone.split(' · ')[0], text: '' });
+  return facts;
+}
 
-const GOOD_TO_KNOW = [
-  'Tipping is included — round up for great service',
-  'Tap water is safe — ask for "une carafe d\'eau"',
-  'Watch for pickpockets at tourist sites and on the Métro',
-];
-
-const EMERGENCY_INFO = [
-  { label: 'All', number: '112' },
-  { label: 'Police', number: '17' },
-  { label: 'Medical', number: '15' },
-];
-
-const QUICK_FACTS = [
-  { bold: 'EUR €', text: '€1 ≈ $1.08' },
-  { bold: 'French', text: 'English widely spoken' },
-  { bold: 'CET +1', text: '6h ahead of EST' },
-  { bold: 'Type C/E', text: '230V adapter' },
-];
+function buildEmergencyInfo(ctx: any): { label: string; number: string }[] {
+  const emergency = ctx?.quick_facts?.emergency || ctx?.country?.emergency;
+  if (!emergency) return [{ label: 'All', number: '112' }];
+  return [{ label: 'Emergency', number: String(emergency).split(' ')[0] }];
+}
 
 // ─── Main Screen ─────────────────────────────────────────
 export default function OverviewScreen() {
@@ -213,7 +204,7 @@ export default function OverviewScreen() {
             ctx.quick_facts.language && { bold: ctx.quick_facts.language.split(' · ')[0], text: '' },
             ctx.quick_facts.timezone && { bold: ctx.quick_facts.timezone.split(' · ')[0], text: '' },
             ctx.quick_facts.emergency && { bold: ctx.quick_facts.emergency, text: 'Emergency' },
-          ].filter(Boolean) : QUICK_FACTS).map((f: any) => (
+          ].filter(Boolean) : buildQuickFacts(ctx)).map((f: any) => (
             <Text key={f.bold} style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63' }}>
               <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text>{f.text ? ` · ${f.text}` : ''}
             </Text>
@@ -373,27 +364,33 @@ export default function OverviewScreen() {
           color: colors.text, marginBottom: 16,
         }}>Before You Go</Text>
 
-        {/* Getting Around */}
-        <Text style={{
-          ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
-          textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 10,
-        }}>Getting Around</Text>
-        {TRANSPORT_INFO.map((t) => (
-          <Text key={t.name} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
-            <Text style={{ fontWeight: '600', color: colors.text }}>{t.name}</Text> — {t.text}
-          </Text>
-        ))}
+        {/* Quick Facts — from trip_context */}
+        {buildQuickFacts(ctx).length > 0 && (
+          <>
+            <Text style={{
+              ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
+              textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 10,
+            }}>At a Glance</Text>
+            {buildQuickFacts(ctx).map((f) => (
+              <Text key={f.bold} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
+                <Text style={{ fontWeight: '600', color: colors.text }}>{f.bold}</Text>{f.text ? ` · ${f.text}` : ''}
+              </Text>
+            ))}
+          </>
+        )}
 
-        {/* Good to Know */}
-        <Text style={{
-          ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
-          textTransform: 'uppercase', color: ACCENT_COLOR, marginTop: 18, marginBottom: 10,
-        }}>Good to Know</Text>
-        {GOOD_TO_KNOW.map((tip, i) => (
-          <Text key={i} style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
-            {tip}
-          </Text>
-        ))}
+        {/* Safety & Country info */}
+        {ctx?.country?.safety && (
+          <>
+            <Text style={{
+              ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
+              textTransform: 'uppercase', color: ACCENT_COLOR, marginTop: 18, marginBottom: 10,
+            }}>Good to Know</Text>
+            <Text style={{ ...TextStyles.body, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 6, lineHeight: 18 }}>
+              {ctx.country.safety}
+            </Text>
+          </>
+        )}
 
         {/* Emergency */}
         <View style={{
@@ -405,7 +402,7 @@ export default function OverviewScreen() {
             ...TextStyles.xs, fontWeight: '700', letterSpacing: 1,
             textTransform: 'uppercase', color: isDark ? '#9e9689' : '#7a6e63',
           }}>Emergency</Text>
-          {EMERGENCY_INFO.map((e) => (
+          {buildEmergencyInfo(ctx).map((e) => (
             <Pressable
               key={e.number}
               onPress={() => Linking.openURL(`tel:${e.number}`)}
