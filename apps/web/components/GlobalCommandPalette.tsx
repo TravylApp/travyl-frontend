@@ -291,8 +291,6 @@ export function GlobalCommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
-  const [activePicker, setActivePicker] = useState<SettingPickerItem | null>(null)
-  const [savedQuery, setSavedQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -335,8 +333,6 @@ export function GlobalCommandPalette() {
     if (isOpen) {
       setQuery('')
       setHighlightedIndex(0)
-      setActivePicker(null)
-      setSavedQuery('')
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }, [isOpen])
@@ -634,10 +630,7 @@ export function GlobalCommandPalette() {
       item.onToggle()
       // Keep palette open after toggle
     } else if (item.type === 'setting-picker') {
-      setSavedQuery(query)
-      setActivePicker(item)
-      setHighlightedIndex(0)
-      // Keep palette open — enter picker mode
+      // no-op — inline controls handle onSelect directly via their own onClick
     } else if (item.type === 'setting-link') {
       setIsOpen(false)
       router.push(item.path)
@@ -648,97 +641,35 @@ export function GlobalCommandPalette() {
     return item.type === 'command' && !item.command.isEnabled
   }
 
-  // ─── Picker mode helpers ──────────────────────────────────
-
-  function exitPickerMode() {
-    setActivePicker(null)
-    setQuery(savedQuery)
-    setSavedQuery('')
-    setHighlightedIndex(0)
-  }
-
-  function selectPickerOption(value: string) {
-    if (activePicker) {
-      activePicker.onSelect(value)
-      exitPickerMode()
-    }
-  }
-
   // ─── Keyboard navigation ────────────────────────────────
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (activePicker) {
-      // Picker mode keyboard handling
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        exitPickerMode()
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setHighlightedIndex((prev) =>
-          prev < activePicker.options.length - 1 ? prev + 1 : prev
-        )
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        const opt = activePicker.options[highlightedIndex]
-        if (opt) selectPickerOption(opt.value)
-      }
-      return
-    }
-
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (activePicker) {
-        setHighlightedIndex((prev) => Math.min(prev + 1, activePicker.options.length - 1))
-      } else {
-        setHighlightedIndex((prev) => {
-          for (let i = prev + 1; i < flatItems.length; i++) {
-            if (!isItemDisabled(flatItems[i])) return i
-          }
-          return prev
-        })
-      }
+      setHighlightedIndex((prev) => {
+        for (let i = prev + 1; i < flatItems.length; i++) {
+          if (!isItemDisabled(flatItems[i])) return i
+        }
+        return prev
+      })
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      if (activePicker) {
-        setHighlightedIndex((prev) => Math.max(prev - 1, 0))
-      } else {
-        setHighlightedIndex((prev) => {
-          for (let i = prev - 1; i >= 0; i--) {
-            if (!isItemDisabled(flatItems[i])) return i
-          }
-          return prev
-        })
-      }
+      setHighlightedIndex((prev) => {
+        for (let i = prev - 1; i >= 0; i--) {
+          if (!isItemDisabled(flatItems[i])) return i
+        }
+        return prev
+      })
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      if (activePicker) {
-        const option = activePicker.options[highlightedIndex]
-        if (option) {
-          activePicker.onSelect(option.value)
-          setActivePicker(null)
-          setQuery(savedQuery)
-          setHighlightedIndex(0)
-        }
-      } else {
-        const item = flatItems[highlightedIndex]
-        if (item && !isItemDisabled(item)) {
-          executeItem(item)
-        }
+      const item = flatItems[highlightedIndex]
+      if (item && !isItemDisabled(item)) {
+        executeItem(item)
       }
     } else if (e.key === 'Escape') {
       e.preventDefault()
       e.stopPropagation()
-      if (activePicker) {
-        setActivePicker(null)
-        setQuery(savedQuery)
-        setHighlightedIndex(0)
-      } else {
-        setIsOpen(false)
-      }
+      setIsOpen(false)
     }
   }
 
@@ -791,139 +722,95 @@ export function GlobalCommandPalette() {
             transition={{ duration: 0.12 }}
             onKeyDown={handleKeyDown}
           >
-            {/* ─── Input / Picker header ─── */}
+            {/* ─── Input header ─── */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-[#1e3a5f]/30">
-              {activePicker ? (
-                <>
-                  <button
-                    onClick={exitPickerMode}
-                    className="text-gray-400 dark:text-[#4a7ab5] hover:text-gray-600 dark:hover:text-[#cdd9e5] shrink-0"
-                  >
-                    ←
-                  </button>
-                  <span className="flex-1 text-sm text-gray-900 dark:text-[#f5efe8]">
-                    {activePicker.label}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="16" height="16" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2"
-                    className="text-gray-400 dark:text-[#4a7ab5] shrink-0"
-                  >
-                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                  </svg>
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search trips, settings, navigate..."
-                    className="flex-1 bg-transparent text-sm text-gray-900 dark:text-[#f5efe8] placeholder-gray-400 dark:placeholder-[#4a7ab5] outline-none"
-                  />
-                </>
-              )}
+              <svg
+                width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2"
+                className="text-gray-400 dark:text-[#4a7ab5] shrink-0"
+              >
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search trips, settings, navigate..."
+                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-[#f5efe8] placeholder-gray-400 dark:placeholder-[#4a7ab5] outline-none"
+              />
               <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded">
                 Esc
               </kbd>
             </div>
 
             <div className="max-h-[360px] overflow-y-auto py-1">
-              {/* ─── Picker mode ─── */}
-              {activePicker ? (
-                activePicker.options.map((opt, i) => {
-                  const isSelected = opt.label === activePicker.currentValue
-                  const isHighlighted = i === highlightedIndex
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => selectPickerOption(opt.value)}
-                      onMouseEnter={() => setHighlightedIndex(i)}
-                      className={[
-                        'w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors',
-                        isHighlighted
-                          ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
-                          : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
-                      ].join(' ')}
-                    >
-                      <span>{opt.label}</span>
-                      {isSelected && (
-                        <span className="text-emerald-500 dark:text-emerald-400">✓</span>
-                      )}
-                    </button>
-                  )
-                })
-              ) : (
-                <>
-                  {flatItems.length === 0 && !tripSearchLoading && (
-                    <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
-                      No results found
-                    </div>
-                  )}
-
-                  {tripSearchLoading && query.length >= 3 && tripResults.length === 0 && (
-                    <div className="px-4 py-3 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
-                      Searching trips...
-                    </div>
-                  )}
-
-                  {groups.map((group) => (
-                    <div key={group.key}>
-                      <div className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-[#4a7ab5] uppercase tracking-wider">
-                        {group.label}
-                      </div>
-                      {group.items.map((item) => {
-                        const index = flatItems.indexOf(item)
-                        const isHighlighted = index === highlightedIndex
-                        const disabled = isItemDisabled(item)
-
-                        return (
-                          <button
-                            key={item.id}
-                            disabled={disabled}
-                            onClick={() => {
-                              if (!disabled) executeItem(item)
-                            }}
-                            onMouseEnter={() => {
-                              if (!disabled) setHighlightedIndex(index)
-                            }}
-                            className={[
-                              'w-full flex items-center justify-between px-4 text-sm text-left transition-colors',
-                              (item.type === 'setting-toggle' || item.type === 'setting-picker' || item.type === 'setting-link')
-                                ? 'py-2.5'
-                                : 'py-2',
-                              disabled
-                                ? 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none'
-                                : isHighlighted
-                                  ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
-                                  : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
-                            ].join(' ')}
-                          >
-                            <span className="flex items-center gap-2.5">
-                              {item.type === 'trip' && item.data.imageUrl && (
-                                <img
-                                  src={item.data.imageUrl}
-                                  alt={item.data.destination}
-                                  className="w-[46px] h-[36px] rounded object-cover shrink-0"
-                                />
-                              )}
-                              <span className="flex flex-col min-w-0">
-                                <span>{item.label}</span>
-                                {item.type === 'trip' && (item.data.startDate && item.data.endDate) && (
-                                  <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5] truncate">
-                                    {item.data.destination} · {formatTripDates(item.data.startDate, item.data.endDate)}
-                                  </span>
-                                )}
-                              </span>
-                            </span>
-                            {renderItemRight(item)}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ))}
-                </>
+              {flatItems.length === 0 && !tripSearchLoading && (
+                <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
+                  No results found
+                </div>
               )}
+
+              {tripSearchLoading && query.length >= 3 && tripResults.length === 0 && (
+                <div className="px-4 py-3 text-center text-sm text-gray-400 dark:text-[#4a7ab5]">
+                  Searching trips...
+                </div>
+              )}
+
+              {groups.map((group) => (
+                <div key={group.key}>
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-gray-400 dark:text-[#4a7ab5] uppercase tracking-wider">
+                    {group.label}
+                  </div>
+                  {group.items.map((item) => {
+                    const index = flatItems.indexOf(item)
+                    const isHighlighted = index === highlightedIndex
+                    const disabled = isItemDisabled(item)
+
+                    return (
+                      <button
+                        key={item.id}
+                        disabled={disabled}
+                        onClick={() => {
+                          if (!disabled) executeItem(item)
+                        }}
+                        onMouseEnter={() => {
+                          if (!disabled) setHighlightedIndex(index)
+                        }}
+                        className={[
+                          'w-full flex items-center justify-between px-4 text-sm text-left transition-colors',
+                          (item.type === 'setting-toggle' || item.type === 'setting-picker' || item.type === 'setting-link')
+                            ? 'py-2.5'
+                            : 'py-2',
+                          disabled
+                            ? 'text-gray-400 dark:text-[#484f58] cursor-default pointer-events-none'
+                            : isHighlighted
+                              ? 'bg-gray-100 dark:bg-[#1e3a5f]/30 text-gray-900 dark:text-[#f5efe8]'
+                              : 'text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20',
+                        ].join(' ')}
+                      >
+                        <span className="flex items-center gap-2.5">
+                          {item.type === 'trip' && item.data.imageUrl && (
+                            <img
+                              src={item.data.imageUrl}
+                              alt={item.data.destination}
+                              className="w-[46px] h-[36px] rounded object-cover shrink-0"
+                            />
+                          )}
+                          <span className="flex flex-col min-w-0">
+                            <span>{item.label}</span>
+                            {item.type === 'trip' && (item.data.startDate && item.data.endDate) && (
+                              <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5] truncate">
+                                {item.data.destination} · {formatTripDates(item.data.startDate, item.data.endDate)}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                        {renderItemRight(item)}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </motion.div>
         </motion.div>
