@@ -310,6 +310,7 @@ export default function Home() {
         // so the overview page has hotels, itinerary, budget immediately
         try {
           const ext = plan.extracted;
+          if (!ext?.destination) throw new Error('No destination extracted');
           const dest = ext.destination;
           const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
 
@@ -439,7 +440,11 @@ export default function Home() {
               },
             }),
           });
-          if (!res.ok) throw new Error('Save failed');
+          if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+            console.error('[Trip Create] Failed:', res.status, errBody);
+            throw new Error(`Save failed: ${res.status}`);
+          }
           const trip = await res.json();
           // Track in localStorage for anonymous persistence
           try {
@@ -460,7 +465,8 @@ export default function Home() {
           planner.reset();
           isSaving.current = false;
           router.push(`/trip/${trip.id}`);
-        } catch {
+        } catch (saveErr) {
+          console.error('[Trip Create] Caught:', saveErr);
           // Fallback to preview if save fails
           try { sessionStorage.setItem('pendingPlan', JSON.stringify(plan)); } catch {}
           setTakeoffCompleted(true);
