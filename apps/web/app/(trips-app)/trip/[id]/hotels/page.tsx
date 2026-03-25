@@ -77,45 +77,49 @@ const ROOM_IMAGES = [
 
 function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {
   return hotels.map((h: any, i: number) => {
-    const stars = h.price ? Math.min(h.price + 2, 5) : 3 + (i % 3);
-    const basePrice = stars === 5 ? 300 + i * 50 : stars === 4 ? 180 + i * 30 : 100 + i * 20;
-    const ratingBase = stars === 5 ? 9.0 : stars === 4 ? 8.4 : 7.8;
-    const rating = Math.round((ratingBase + (i % 5) * 0.15) * 10) / 10;
     const idx = i + idx_offset;
+    // Use REAL data from SerpAPI/planner when available, fallback to estimates
+    const realStars = h.stars ?? (h.price ? Math.min(h.price + 2, 5) : 3);
+    const realPrice = h.price ?? h.price_per_night ?? (realStars >= 4 ? 180 + i * 30 : 100 + i * 20);
+    const realRating = h.rating ?? (8.0 + (i % 5) * 0.15);
+    const realReviews = h.ratingCount ?? h.review_count ?? 0;
+    const realAmenities = h.amenities?.length ? h.amenities : ['WiFi', 'Breakfast'];
+    const mainImage = h.image ?? h.photo_url ?? HOTEL_IMAGES[idx % HOTEL_IMAGES.length];
+
     return {
       id: h.id ?? `hotel-${idx}`,
       name: h.name,
-      stars,
-      rating,
-      reviews: 200 + idx * 317,
-      price: basePrice,
+      stars: realStars,
+      rating: realRating,
+      reviews: realReviews,
+      price: realPrice,
       address: h.address ?? '',
       neighborhood: h.category ?? 'City Center',
       lat: h.lat ?? 0,
       lng: h.lng ?? 0,
       images: [
-        h.image ?? HOTEL_IMAGES[idx % HOTEL_IMAGES.length],
+        mainImage,
         HOTEL_IMAGES[(idx + 1) % HOTEL_IMAGES.length],
         HOTEL_IMAGES[(idx + 2) % HOTEL_IMAGES.length],
       ],
-      amenities: ['WiFi', 'Breakfast', ...(stars >= 4 ? ['Spa', 'Gym'] : []), ...(stars >= 5 ? ['Pool', 'Parking'] : [])],
+      amenities: realAmenities,
       roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: basePrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
-        { type: stars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: stars >= 4 ? '35m²' : '26m²', price: Math.round(basePrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
       ],
       checkIn: '3:00 PM',
       checkOut: '11:00 AM',
       cancellation: 'Free cancellation until 48h before',
       phone: '',
-      email: '',
+      email: h.link ?? '',
       guestRatings: {
-        overall: rating,
-        label: rating >= 9 ? 'Superb' : rating >= 8.5 ? 'Excellent' : rating >= 8 ? 'Very Good' : 'Good',
-        cleanliness: Math.round((rating + 0.2) * 10) / 10,
-        staff: Math.round((rating + 0.1) * 10) / 10,
-        location: Math.round((rating + 0.3) * 10) / 10,
-        comfort: Math.round((rating - 0.1) * 10) / 10,
-        value: Math.round((rating - 0.2) * 10) / 10,
+        overall: realRating,
+        label: realRating >= 4.5 ? 'Superb' : realRating >= 4.0 ? 'Excellent' : realRating >= 3.5 ? 'Very Good' : 'Good',
+        cleanliness: Math.round((realRating + 0.1) * 10) / 10,
+        staff: Math.round((realRating) * 10) / 10,
+        location: Math.round((realRating + 0.2) * 10) / 10,
+        comfort: Math.round((realRating) * 10) / 10,
+        value: Math.round((realRating - 0.1) * 10) / 10,
       },
     };
   });
@@ -124,7 +128,10 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
 function useHotels(tripId: string, searchQuery?: string) {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination;
-  const contextHotels = trip?.trip_context?.hotels;
+  // Prefer all_hotels (full 20 from SerpAPI planner) over hotels (top 5)
+  const contextHotels = (trip?.trip_context as any)?.all_hotels?.length
+    ? (trip?.trip_context as any).all_hotels
+    : trip?.trip_context?.hotels;
 
   // If trip_context has hotels, use those
   const fromContext = useMemo(
