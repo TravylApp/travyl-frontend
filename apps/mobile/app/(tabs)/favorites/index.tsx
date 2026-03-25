@@ -293,26 +293,15 @@ export default function FavoritesScreen() {
 
   const closeModal = useCallback(() => setSelectedPlace(null), []);
 
-  // Debug: show loading/error state visually
-  if (placesLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: colors.text, fontSize: 16 }}>Loading places from {WEB_API}...</Text>
-      </View>
-    );
-  }
-
-  if (placesError) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <Text style={{ color: 'red', fontSize: 14, textAlign: 'center' }}>Error: {placesError.message}</Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>URL: {WEB_API}</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      {/* Debug banner — shows at top of screen */}
+      <View style={{ position: 'absolute', top: 50, left: 10, right: 10, zIndex: 9999, backgroundColor: placesError ? '#fee2e2' : placesLoading ? '#fef9c3' : '#dcfce7', padding: 8, borderRadius: 8 }}>
+        <Text style={{ fontSize: 11, color: '#333' }}>
+          {placesLoading ? '⏳ Loading...' : placesError ? `❌ ${placesError.message}` : `✅ ${PLACES.length} places loaded`}
+        </Text>
+        <Text style={{ fontSize: 9, color: '#666' }}>API: {WEB_API}</Text>
+      </View>
       <StatusBar barStyle="dark-content" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
