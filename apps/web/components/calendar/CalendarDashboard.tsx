@@ -400,6 +400,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     } else if (actionId === 'restore-poll') {
       restoreActivity(activityId)
     } else if (actionId === 'remove-activity') {
+      // Same effect as 'delete' — removes from calendar and restores to ForYou panel
       handleRemoveActivity(activityId)
     }
   }
