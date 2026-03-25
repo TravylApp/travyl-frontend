@@ -3,6 +3,7 @@
 import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 
@@ -499,7 +500,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const enrichAttempted = useRef(false);
   const revealRef = useRevealOnScroll(!!trip);
 
-  // Auto-enrich: if trip exists but trip_context is empty, call server-side enrichment
+  // Auto-enrich: if trip exists but trip_context is incomplete, trigger enrichment and poll
   const autoEnrich = useCallback(async () => {
     if (!trip || !trip.destination || enrichAttempted.current) return;
     if (!needsEnrichment(trip.trip_context)) return;
@@ -513,9 +514,13 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tripId: trip.id }),
       });
-      if (res.ok) refetch();
+      if (res.ok) {
+        // Enrichment succeeded — refetch trip data
+        await refetch();
+      }
     } catch {
-      // Enrichment failed silently
+      // Enrichment failed — allow retry on next visit
+      enrichAttempted.current = false;
     } finally {
       setEnriching(false);
     }
@@ -536,15 +541,74 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   if (isLoading || enriching) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse text-sm text-gray-400">
-          {enriching ? 'Generating your trip overview...' : 'Loading trip...'}
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-8 h-8 border-3 border-gray-200 border-t-[#1e3a5f] rounded-full animate-spin" />
+        <div className="text-sm text-gray-500 font-medium">
+          {enriching ? 'Building your trip overview...' : 'Loading trip...'}
         </div>
+        {enriching && (
+          <p className="text-xs text-gray-400 max-w-xs text-center">
+            Finding things to do, local cuisine, events, and more for your destination
+          </p>
+        )}
       </div>
     );
   }
 
-  const hasExploreItems = trip?.trip_context?.explore_items && trip.trip_context.explore_items.length > 0;
+  // Fetch fresh "things to do" and events on each visit using trip coordinates
+  const tripLat = trip?.trip_context?.lat;
+  const tripLng = trip?.trip_context?.lng;
+
+  const { data: liveExploreItems } = useQuery({
+    queryKey: ['trip-explore', trip?.id, tripLat, tripLng],
+    queryFn: async () => {
+      if (!tripLat || !tripLng) return [];
+      const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'shopping'];
+      const results = await Promise.all(
+        cats.map(async (cat) => {
+          const res = await fetch(`/api/places?lat=${tripLat}&lng=${tripLng}&category=${cat}&limit=4`);
+          if (!res.ok) return [];
+          return res.json();
+        })
+      );
+      const seen = new Set<string>();
+      return results.flat().filter((p: any) => {
+        if (!p.name || !p.image || seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image, tags: p.tags }));
+    },
+    enabled: !!tripLat && !!tripLng && !enriching,
+    staleTime: 5 * 60 * 1000, // Fresh for 5 min
+  });
+
+  const { data: liveEvents } = useQuery({
+    queryKey: ['trip-events', trip?.id, tripLat, tripLng],
+    queryFn: async () => {
+      if (!tripLat || !tripLng) return [];
+      const res = await fetch(`/api/events?lat=${tripLat}&lng=${tripLng}&limit=10`);
+      if (!res.ok) return [];
+      const events = await res.json();
+      if (!Array.isArray(events)) return [];
+      return events.map((e: any) => ({
+        id: e.id, title: e.title,
+        description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+        category: e.category, image: e.image,
+      }));
+    },
+    enabled: !!tripLat && !!tripLng && !enriching,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Use live data if available, fall back to trip_context
+  const exploreItems = (liveExploreItems?.length ? liveExploreItems : trip?.trip_context?.explore_items) || [];
+  const events = (liveEvents?.length ? liveEvents : trip?.trip_context?.events?.map((e: any) => ({
+    id: e.id, title: e.title,
+    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    category: e.category, image: e.image,
+  }))) || [];
+
+  const hasExploreItems = exploreItems.length > 0;
   const hasCuisine = trip?.trip_context?.cuisine && trip.trip_context.cuisine.length > 0;
   const hasNews = news.length > 0;
   const hasEvents = news.some(n => n.category === 'event' || n.category === 'tip');
@@ -561,7 +625,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
                 {hasExploreItems && (
-                  <ThingsToDoSection items={trip!.trip_context!.explore_items!} addedItems={addedItems} onToggleAdd={toggleAdd}
+                  <ThingsToDoSection items={exploreItems} addedItems={addedItems} onToggleAdd={toggleAdd}
                     onItemClick={(item) => setSelectedPlace({
                       id: item.id, name: item.title, image: item.image || '', type: 'attraction',
                       rating: 0, tagline: item.description, category: item.category,
@@ -597,7 +661,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           </div>
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
-          {(hasNewsArticles || (trip?.trip_context?.events?.length ?? 0) > 0 || (trip?.trip_context?.foursquare_venues?.length ?? 0) > 0) && (
+          {(hasNewsArticles || events.length > 0) && (
             <div className="relative z-10 px-6 sm:px-10 mt-8">
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
@@ -605,15 +669,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                     <NewsSection news={news} />
                   </div>
                 )}
-                {(trip?.trip_context?.events?.length ?? 0) > 0 ? (
+                {events.length > 0 && (
                   <div className="flex-1 min-w-0">
-                    <WhatsGoingOnSection exploreItems={trip!.trip_context!.events!.map((e) => ({ id: e.id, title: e.title, description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '', category: e.category, image: e.image }))} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
+                    <WhatsGoingOnSection exploreItems={events} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
                   </div>
-                ) : (trip?.trip_context?.foursquare_venues?.length ?? 0) > 0 ? (
-                  <div className="flex-1 min-w-0">
-                    <WhatsGoingOnSection exploreItems={trip!.trip_context!.foursquare_venues!.map((v) => ({ id: v.id, title: v.title || v.name || '', description: v.description || v.tagline || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
-                  </div>
-                ) : null}
+                )}
               </div>
             </div>
           )}
