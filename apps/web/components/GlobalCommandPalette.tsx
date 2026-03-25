@@ -9,8 +9,8 @@ import type { ContextSearchResult } from '@/hooks/useContextSearch'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { useTripSettingsStore } from '@/stores/tripSettingsStore'
 import type { Command } from './calendar/types'
-import { TRIP_THEMES, THEME_ORDER } from '@travyl/shared'
-import type { Trip } from '@travyl/shared'
+import { useSettingsStore, useAuthStore, TRIP_THEMES, THEME_ORDER } from '@travyl/shared'
+import type { Currency, DistanceUnits, TravelStyle, Trip } from '@travyl/shared'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -121,6 +121,18 @@ export function GlobalCommandPalette() {
   const setPaletteOpen = useCalendarCommandsStore((s) => s.setPaletteOpen)
   const tripRegistration = useTripSettingsStore((s) => s.registration)
 
+  const user = useAuthStore((s) => s.user)
+  const currency = useSettingsStore((s) => s.currency)
+  const distanceUnits = useSettingsStore((s) => s.distanceUnits)
+  const travelStyle = useSettingsStore((s) => s.travelStyle)
+  const pushNotifications = useSettingsStore((s) => s.pushNotifications)
+  const emailNotifications = useSettingsStore((s) => s.emailNotifications)
+  const setCurrency = useSettingsStore((s) => s.setCurrency)
+  const setDistanceUnits = useSettingsStore((s) => s.setDistanceUnits)
+  const setTravelStyle = useSettingsStore((s) => s.setTravelStyle)
+  const togglePush = useSettingsStore((s) => s.togglePushNotifications)
+  const toggleEmail = useSettingsStore((s) => s.toggleEmailNotifications)
+
   // Sync palette open state to store so calendar commands can check it
   useEffect(() => { setPaletteOpen(isOpen) }, [isOpen, setPaletteOpen])
   const { results: tripResults, isLoading: tripSearchLoading } = useContextSearch(query)
@@ -149,6 +161,109 @@ export function GlobalCommandPalette() {
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }, [isOpen])
+
+  // ─── Profile settings registry ───────────────────────────
+
+  const settingItems = useMemo<SettingItem[]>(() => {
+    if (!user) return []
+    return [
+      {
+        type: 'setting-picker' as const,
+        id: 'setting-currency',
+        label: 'Currency',
+        keywords: ['currency', 'money', 'usd', 'eur', 'gbp', 'jpy', 'cad', 'aud', 'mxn'],
+        currentValue: currency,
+        options: [
+          { value: 'USD', label: 'USD — US Dollar' },
+          { value: 'EUR', label: 'EUR — Euro' },
+          { value: 'GBP', label: 'GBP — British Pound' },
+          { value: 'JPY', label: 'JPY — Japanese Yen' },
+          { value: 'CAD', label: 'CAD — Canadian Dollar' },
+          { value: 'AUD', label: 'AUD — Australian Dollar' },
+          { value: 'MXN', label: 'MXN — Mexican Peso' },
+        ],
+        onSelect: (v: string) => setCurrency(v as Currency),
+      },
+      {
+        type: 'setting-picker' as const,
+        id: 'setting-distance',
+        label: 'Distance Units',
+        keywords: ['distance', 'units', 'miles', 'kilometers', 'km'],
+        currentValue: distanceUnits === 'miles' ? 'Miles' : 'Kilometers',
+        options: [
+          { value: 'miles', label: 'Miles' },
+          { value: 'kilometers', label: 'Kilometers' },
+        ],
+        onSelect: (v: string) => setDistanceUnits(v as DistanceUnits),
+      },
+      {
+        type: 'setting-picker' as const,
+        id: 'setting-travel-style',
+        label: 'Travel Style',
+        keywords: ['travel', 'style', 'balanced', 'budget', 'luxury', 'adventure', 'relaxed'],
+        currentValue: travelStyle.charAt(0).toUpperCase() + travelStyle.slice(1),
+        options: [
+          { value: 'balanced', label: 'Balanced' },
+          { value: 'budget', label: 'Budget' },
+          { value: 'luxury', label: 'Luxury' },
+          { value: 'adventure', label: 'Adventure' },
+          { value: 'relaxed', label: 'Relaxed' },
+        ],
+        onSelect: (v: string) => setTravelStyle(v as TravelStyle),
+      },
+      {
+        type: 'setting-toggle' as const,
+        id: 'setting-push',
+        label: 'Push Notifications',
+        keywords: ['push', 'notifications', 'alerts'],
+        enabled: pushNotifications,
+        onToggle: togglePush,
+      },
+      {
+        type: 'setting-toggle' as const,
+        id: 'setting-email-notif',
+        label: 'Email Notifications',
+        keywords: ['email', 'notifications', 'alerts', 'mail'],
+        enabled: emailNotifications,
+        onToggle: toggleEmail,
+      },
+      {
+        type: 'setting-link' as const,
+        id: 'setting-email-account',
+        label: 'Email (Account)',
+        keywords: ['email', 'account'],
+        path: '/profile/settings',
+      },
+      {
+        type: 'setting-link' as const,
+        id: 'setting-password',
+        label: 'Change Password',
+        keywords: ['password', 'security'],
+        path: '/profile/settings',
+      },
+      {
+        type: 'setting-link' as const,
+        id: 'setting-delete-account',
+        label: 'Delete Account',
+        keywords: ['delete', 'account', 'remove'],
+        path: '/profile/settings',
+      },
+      {
+        type: 'setting-link' as const,
+        id: 'setting-terms',
+        label: 'Terms of Service',
+        keywords: ['terms', 'legal'],
+        path: '/profile/settings',
+      },
+      {
+        type: 'setting-link' as const,
+        id: 'setting-privacy',
+        label: 'Privacy Policy',
+        keywords: ['privacy', 'legal', 'policy'],
+        path: '/profile/settings',
+      },
+    ]
+  }, [user, currency, distanceUnits, travelStyle, pushNotifications, emailNotifications, setCurrency, setDistanceUnits, setTravelStyle, togglePush, toggleEmail])
 
   // ─── Trip settings items ──────────────────────────────────
 
@@ -253,6 +368,15 @@ export function GlobalCommandPalette() {
       result.push({ key: 'navigation', label: 'Navigation', items: filteredNav })
     }
 
+    // Profile Settings
+    const filteredSettings = settingItems.filter((s) =>
+      s.label.toLowerCase().includes(q) ||
+      s.keywords.some((kw) => kw.includes(q))
+    )
+    if (filteredSettings.length > 0) {
+      result.push({ key: 'settings', label: 'Settings', items: filteredSettings })
+    }
+
     // Trip Settings (only when on a trip)
     const filteredTripSettings = tripSettingItems.filter((s) =>
       s.label.toLowerCase().includes(q) ||
@@ -300,7 +424,7 @@ export function GlobalCommandPalette() {
     }
 
     return result
-  }, [query, tripResults, calendarCommands, tripSettingItems])
+  }, [query, tripResults, calendarCommands, settingItems, tripSettingItems])
 
   const flatItems = useMemo(() => groups.flatMap((g) => g.items), [groups])
 
@@ -383,30 +507,54 @@ export function GlobalCommandPalette() {
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightedIndex((prev) => {
-        for (let i = prev + 1; i < flatItems.length; i++) {
-          if (!isItemDisabled(flatItems[i])) return i
-        }
-        return prev
-      })
+      if (activePicker) {
+        setHighlightedIndex((prev) => Math.min(prev + 1, activePicker.options.length - 1))
+      } else {
+        setHighlightedIndex((prev) => {
+          for (let i = prev + 1; i < flatItems.length; i++) {
+            if (!isItemDisabled(flatItems[i])) return i
+          }
+          return prev
+        })
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setHighlightedIndex((prev) => {
-        for (let i = prev - 1; i >= 0; i--) {
-          if (!isItemDisabled(flatItems[i])) return i
-        }
-        return prev
-      })
+      if (activePicker) {
+        setHighlightedIndex((prev) => Math.max(prev - 1, 0))
+      } else {
+        setHighlightedIndex((prev) => {
+          for (let i = prev - 1; i >= 0; i--) {
+            if (!isItemDisabled(flatItems[i])) return i
+          }
+          return prev
+        })
+      }
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      const item = flatItems[highlightedIndex]
-      if (item && !isItemDisabled(item)) {
-        executeItem(item)
+      if (activePicker) {
+        const option = activePicker.options[highlightedIndex]
+        if (option) {
+          activePicker.onSelect(option.value)
+          setActivePicker(null)
+          setQuery(savedQuery)
+          setHighlightedIndex(0)
+        }
+      } else {
+        const item = flatItems[highlightedIndex]
+        if (item && !isItemDisabled(item)) {
+          executeItem(item)
+        }
       }
     } else if (e.key === 'Escape') {
       e.preventDefault()
       e.stopPropagation()
-      setIsOpen(false)
+      if (activePicker) {
+        setActivePicker(null)
+        setQuery(savedQuery)
+        setHighlightedIndex(0)
+      } else {
+        setIsOpen(false)
+      }
     }
   }
 
@@ -499,7 +647,7 @@ export function GlobalCommandPalette() {
                     ref={inputRef}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search trips, navigate..."
+                    placeholder="Search trips, settings, navigate..."
                     className="flex-1 bg-transparent text-sm text-gray-900 dark:text-[#f5efe8] placeholder-gray-400 dark:placeholder-[#4a7ab5] outline-none"
                   />
                 </>

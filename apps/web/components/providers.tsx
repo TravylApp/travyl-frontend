@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useAuthStore, configureSupabase } from '@travyl/shared';
+import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { GlobalCommandPalette } from './GlobalCommandPalette';
 
@@ -28,6 +28,26 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     const unsubscribe = initialize();
     return unsubscribe;
   }, [initialize]);
+
+  const user = useAuthStore((s) => s.user);
+  const hydrateSettings = useSettingsStore((s) => s.hydrate);
+
+  useEffect(() => {
+    if (!user) {
+      hydrateSettings({});
+      return;
+    }
+    const sb = getSupabaseBrowser();
+    sb.from('profiles')
+      .select('preferences')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.preferences) {
+          hydrateSettings(data.preferences as Record<string, unknown>);
+        }
+      });
+  }, [user, hydrateSettings]);
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
