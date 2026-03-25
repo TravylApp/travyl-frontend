@@ -64,10 +64,13 @@ export async function GET(req: NextRequest) {
       ...(query ? { query } : {}),
     })
 
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
     const res = await fetch(
       `https://api.foursquare.com/v2/venues/explore?${params}`,
-      { next: { revalidate: 3600 } }
+      { signal: controller.signal }
     )
+    clearTimeout(timer)
 
     if (!res.ok) {
       return NextResponse.json({ error: 'Foursquare fetch failed' }, { status: res.status })
@@ -76,28 +79,13 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     const items = data.response?.groups?.[0]?.items ?? []
 
-    // Fetch venue photos in parallel for richer imagery
-    const venuePhotos = await Promise.all(
-      items.slice(0, 8).map(async (item: { venue: FoursquareVenue }) => {
-        try {
-          const photoRes = await fetch(
-            `https://api.foursquare.com/v2/venues/${item.venue.id}/photos?limit=3&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&v=${V}`,
-            { next: { revalidate: 86400 } }
-          )
-          if (!photoRes.ok) return []
-          const photoData = await photoRes.json()
-          return (photoData.response?.photos?.items ?? []).map((p: any) => `${p.prefix}600x400${p.suffix}`)
-        } catch { return [] }
-      })
-    )
+    // Skip individual photo fetches — use bestPhoto from explore response instead
+    // (Photo fetches were causing route timeouts)
 
-    const venues = items.map((item: { venue: FoursquareVenue; tips?: { text: string }[] }, idx: number) => {
+    const venues = items.map((item: { venue: FoursquareVenue; tips?: { text: string }[] }) => {
       const v = item.venue
       const cat = v.categories?.[0]
-      const photos = venuePhotos[idx] ?? []
-      const mainPhoto = photos[0]
-        || (v.bestPhoto ? `${v.bestPhoto.prefix}600x400${v.bestPhoto.suffix}` : null)
-        || (cat?.icon ? `${cat.icon.prefix}bg_88${cat.icon.suffix}` : null)
+      const mainPhoto = v.bestPhoto ? `${v.bestPhoto.prefix}600x400${v.bestPhoto.suffix}` : null
 
       return {
         id: v.id,
@@ -110,7 +98,7 @@ export async function GET(req: NextRequest) {
         ratingCount: v.ratingSignals,
         price: v.price?.tier,
         image: mainPhoto,
-        images: photos.length > 0 ? photos : (mainPhoto ? [mainPhoto] : []),
+        images: mainPhoto ? [mainPhoto] : [],
         url: v.url,
         hours: v.hours?.status,
         tip: item.tips?.[0]?.text,
