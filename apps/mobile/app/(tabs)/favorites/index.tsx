@@ -293,6 +293,24 @@ export default function FavoritesScreen() {
 
   const closeModal = useCallback(() => setSelectedPlace(null), []);
 
+  // Debug: show loading/error state visually
+  if (placesLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: colors.text, fontSize: 16 }}>Loading places from {WEB_API}...</Text>
+      </View>
+    );
+  }
+
+  if (placesError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <Text style={{ color: 'red', fontSize: 14, textAlign: 'center' }}>Error: {placesError.message}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>URL: {WEB_API}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
