@@ -70,7 +70,7 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
 
   const formatPrice = (price: number | null, currency: string) => {
     if (price === null || price === 0) return 'Free'
-    return `€${price}`
+    return `${currency}${price}`
   }
 
   const formatDuration = (hours: number) => {
