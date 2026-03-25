@@ -88,14 +88,15 @@ async function fetchEntitySearch(
   return mapped
 }
 
-function buildHref(type: string, entityId: string, tripId: string | null): string {
+function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
+  // Destinations don't have a tripId — link to trips list
+  if (type === 'destination') return `/trips`
   if (!tripId) return '/'
   switch (type) {
     case 'hotel': return `/trip/${tripId}/hotels/${entityId}`
     case 'flight': return `/trip/${tripId}/flights/${entityId}`
     case 'restaurant': return `/trip/${tripId}/restaurants/${entityId}`
     case 'activity': return `/trip/${tripId}/activities/${entityId}`
-    case 'destination': return `/trips`
     default: return '/'
   }
 }
