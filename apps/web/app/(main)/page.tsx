@@ -306,10 +306,44 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — save to Supabase (user_id: null) so they get the full enriched overview
+        // Not logged in — save to Supabase with planner data in trip_context
+        // so the overview page has hotels, itinerary, budget immediately
         try {
           const ext = plan.extracted;
           const dest = ext.destination;
+          const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
+
+          // Build explore_items from itinerary slots (attractions + restaurants)
+          const exploreFromPlan = (plan.itinerary ?? []).flatMap((day: any) =>
+            (day.slots ?? []).map((slot: any) => ({
+              id: slot.poi.id,
+              title: slot.poi.name,
+              description: slot.poi.description || slot.poi.category,
+              category: slot.poi.category,
+              image: slot.poi.photo_url,
+              tags: slot.poi.tags,
+            }))
+          );
+          // Deduplicate by id
+          const seenIds = new Set<string>();
+          const uniqueExplore = exploreFromPlan.filter((e: any) => {
+            if (seenIds.has(e.id)) return false;
+            seenIds.add(e.id);
+            return true;
+          });
+
+          // Build weather from itinerary day weather
+          const weatherForecast = (plan.itinerary ?? [])
+            .filter((d: any) => d.weather)
+            .map((d: any) => ({
+              day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+              date: d.date,
+              high: d.weather.high_c,
+              low: d.weather.low_c,
+              condition: d.weather.condition,
+              icon: d.weather.icon || '☀️',
+            }));
+
           const res = await fetch('/api/trips/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -318,11 +352,32 @@ export default function Home() {
               start_date: ext.dates.start,
               end_date: ext.dates.end,
               travelers: ext.travelers.count,
-              budget: ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null,
+              budget: totalBudget,
               currency: 'USD',
               trip_context: {
+                lat: dest.lat,
+                lng: dest.lng,
                 hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
                 hero_image_url: plan.destination_photo_url,
+                explore_items: uniqueExplore,
+                hotels: (plan.hotels ?? []).map((h: any) => ({
+                  id: `hotel-${h.name.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name,
+                  category: 'Hotel',
+                  image: h.photo_url,
+                  rating: h.rating,
+                  ratingCount: h.review_count,
+                  price: h.price_per_night,
+                  currency: h.currency,
+                  stars: h.stars,
+                  amenities: h.amenities,
+                })),
+                weather: weatherForecast.length > 0 ? { forecast: weatherForecast } : undefined,
+                quick_facts: {
+                  currency: ext.budget_level ? `${ext.budget_level} (~$${ext.daily_estimate_usd}/day)` : undefined,
+                  timezone: (plan as any).timezone,
+                },
+                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
               },
             }),
           });
