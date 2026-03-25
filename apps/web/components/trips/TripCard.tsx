@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Users, PieChart, MapPin, Users2 } from 'lucide-react';
+import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Pencil } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDateRange } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
@@ -32,6 +33,29 @@ export function TripCard({ trip, className, style }: TripCardProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
+  const queryClient = useQueryClient();
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
+    try {
+      await fetch('/api/trips/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: trip.id }),
+      });
+      // Remove from localStorage tracking
+      try {
+        const stored = localStorage.getItem('my-trip-ids');
+        if (stored) {
+          const ids = JSON.parse(stored).filter((id: string) => id !== trip.id);
+          localStorage.setItem('my-trip-ids', JSON.stringify(ids));
+        }
+      } catch {}
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+    } catch {}
+  };
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Calculate position based on card location in viewport
@@ -78,6 +102,13 @@ export function TripCard({ trip, className, style }: TripCardProps) {
               <Users2 size={12} className="text-[#1e3a5f]" />
             </div>
           )}
+
+          {/* Edit / Delete — show on hover */}
+          <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={handleDelete} className="p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-red-500/80 transition-colors" title="Delete trip">
+              <Trash2 size={12} className="text-white" />
+            </button>
+          </div>
         </div>
 
         {/* Card Body - White background with trip name prominent */}
