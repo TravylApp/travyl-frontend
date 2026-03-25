@@ -11,6 +11,7 @@ import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/I
 import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { TripSidebar } from '@/components/trip/TripSidebar';
+import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 
@@ -127,6 +128,7 @@ function TripLayoutContent({
 }) {
   const [mapOpen, setMapOpen] = useState(false);
   const { trip } = useItineraryScreen(tripId);
+  useTripSettingsRegistration(tripId);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
 
   // Sync map open with context requests

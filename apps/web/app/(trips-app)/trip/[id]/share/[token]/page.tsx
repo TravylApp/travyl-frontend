@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2, Lock, GitFork, Edit2 } from 'lucide-react'
@@ -41,6 +41,7 @@ function SharedCalendarView({ trip, user, token, shareRole }: SharedCalendarView
   const router = useRouter()
   const { mutate: forkTripMutation, isPending: isForkPending } = useForkTrip()
   const [isJoining, setIsJoining] = useState(false)
+  const stableAnonId = useRef(crypto.randomUUID())
 
   const handleFork = () => {
     forkTripMutation({ tripId: trip.id }, { onSuccess: () => router.push('/trips') })
@@ -120,7 +121,7 @@ function SharedCalendarView({ trip, user, token, shareRole }: SharedCalendarView
       <YjsTripProvider tripId={trip.id}>
         <CalendarDashboard
           tripId={trip.id}
-          userId={user?.id ?? 'anonymous'}
+          userId={user?.id ?? stableAnonId.current}
           userName={user?.user_metadata?.display_name ?? ''}
           isSharedView={isReadOnly}
         />

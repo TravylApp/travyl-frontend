@@ -71,6 +71,7 @@ export function useYjsSync(
   tripId: string,
   tripStartDate: string,
   userId: string,
+  readOnly = false,
 ): UseYjsSyncReturn {
   const { activitiesMap, connectionStatus } = useYjsTripContext()
   const [activities, setActivities] = useState<CalendarActivity[]>([])
@@ -92,6 +93,7 @@ export function useYjsSync(
 
   // ── Debounced flush ──────────────────────────────────────
   const flush = useCallback(async () => {
+    if (readOnly) return
     const ids = Array.from(dirtyRef.current)
     if (ids.length === 0) return
     dirtyRef.current.clear()
@@ -177,6 +179,7 @@ export function useYjsSync(
 
   // ── Tab refocus reconciliation ───────────────────────────
   useEffect(() => {
+    if (readOnly) return
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') return
 
