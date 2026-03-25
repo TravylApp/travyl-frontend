@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
@@ -9,9 +9,10 @@ import type { SuggestionCard as SuggestionCardType } from './types'
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
   onVisible?: () => void
+  onSelect?: (suggestion: SuggestionCardType) => void
 }
 
-export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `suggestion-${suggestion.id}`,
@@ -21,6 +22,43 @@ export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
   useEffect(() => {
     onVisible?.()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Drag vs. click detection: intercept dnd-kit listeners to track drag start/reset
+  const didDragRef = useRef(false)
+  const extendedListeners = listeners
+    ? {
+        ...listeners,
+        onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+          didDragRef.current = false
+          listeners.onPointerDown?.(e as any)
+        },
+        // onDragStart fires synchronously when dnd-kit activates a drag
+        onDragStart: (e: any) => {
+          didDragRef.current = true
+          listeners.onDragStart?.(e)
+        },
+      }
+    : {}
+
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [cycleKey, setCycleKey] = useState(0)
+  const [isHovered, setIsHovered] = useState(false)
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
+
+  const images = (suggestion.imageUrls ?? []).filter(u => !failedUrls.has(u))
+  const hasMultiple = images.length > 1
+
+  useEffect(() => {
+    if (!hasMultiple || !isHovered) return
+    const id = setInterval(() => {
+      setActiveIdx(i => (i + 1) % images.length)
+    }, 1800)
+    return () => clearInterval(id)
+  }, [isHovered, hasMultiple, images.length, cycleKey])
+
+  useEffect(() => {
+    if (!isHovered) setActiveIdx(0)
+  }, [isHovered])
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -40,26 +78,97 @@ export function SuggestionCard({ suggestion, onVisible }: SuggestionCardProps) {
     return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
   }
 
+  const navigate = (dir: 1 | -1, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setActiveIdx(i => Math.max(0, Math.min(images.length - 1, i + dir)))
+    setCycleKey(k => k + 1)
+  }
+
+  const handleClick = () => {
+    if (didDragRef.current) {
+      didDragRef.current = false
+      return
+    }
+    onSelect?.(suggestion)
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...extendedListeners}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={handleClick}
       className={[
         'group break-inside-avoid mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
         'relative transition-all duration-200',
         isDragging ? '' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
       ].join(' ')}
     >
-      {/* Image */}
-      <img
-        src={suggestion.imageUrl}
-        alt=""
-        className="w-full block object-cover"
+      {/* Image carousel */}
+      <div
+        className="relative w-full overflow-hidden"
         style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
-        draggable={false}
-      />
+      >
+        {images.length === 0 ? (
+          /* Placeholder when no usable photos are available */
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
+          />
+        ) : (
+          images.map((url, idx) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+              style={{ opacity: idx === activeIdx ? 1 : 0 }}
+              draggable={false}
+              onError={() => {
+                setFailedUrls(prev => new Set(prev).add(url))
+                if (idx === activeIdx) setActiveIdx(i => Math.max(0, i - 1))
+              }}
+            />
+          ))
+        )}
+        {hasMultiple && (
+          <div className="absolute bottom-[7px] left-1/2 -translate-x-1/2 flex gap-[3px] z-10">
+            {images.map((_, idx) => (
+              <div
+                key={idx}
+                className="h-[3px] rounded-full transition-all duration-300"
+                style={{
+                  width: idx === activeIdx ? 14 : 4,
+                  background: idx === activeIdx ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Arrow navigation — visible on hover when multiple images exist */}
+        {isHovered && hasMultiple && activeIdx > 0 && (
+          <button
+            aria-label="Previous photo"
+            onClick={(e) => navigate(-1, e)}
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white text-[10px] hover:bg-black/70 transition-colors"
+          >
+            ‹
+          </button>
+        )}
+        {isHovered && hasMultiple && activeIdx < images.length - 1 && (
+          <button
+            aria-label="Next photo"
+            onClick={(e) => navigate(1, e)}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white text-[10px] hover:bg-black/70 transition-colors"
+          >
+            ›
+          </button>
+        )}
+      </div>
 
       {/* Price badge — top left */}
       <div className="absolute top-[7px] left-[7px] bg-black/55 backdrop-blur-[8px] rounded-md px-[7px] py-[2px] text-[11px] font-semibold text-white">
