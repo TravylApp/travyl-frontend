@@ -83,9 +83,10 @@ const BROWSE_CATEGORIES = [
 ]
 
 async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
-  // Each page fetches 3 cities × 5 categories, limit 20 each
-  const citiesPerPage = 3
-  const catsPerPage = 5
+  // 2 cities × 3 categories = 6 API calls per page (was 15)
+  // Reduced to cut load time from ~4s to ~1.5s per page
+  const citiesPerPage = 2
+  const catsPerPage = 3
   const startCity = (pageParam * citiesPerPage) % BROWSE_CITIES.length
   const startCat = (pageParam * catsPerPage) % BROWSE_CATEGORIES.length
 
@@ -101,7 +102,7 @@ async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
   const results = await Promise.all(
     cities.flatMap((city) =>
       cats.map(async (cat) => {
-        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=20`)
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
         if (!res.ok) return []
         return res.json() as Promise<PlaceItemType[]>
       })
@@ -131,46 +132,35 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
     return results.flat().filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
   }
 
-  // Step 2: fetch across multiple neighborhoods + categories for maximum coverage
-  // Offset coordinates by ~0.02-0.03 degrees (~2-3km) to cover different areas of the city
-  const neighborhoods = [
-    { lat, lng },                                  // city center
-    { lat: lat + 0.025, lng: lng + 0.015 },        // northeast
-    { lat: lat - 0.02,  lng: lng - 0.02 },         // southwest
-    { lat: lat + 0.015, lng: lng - 0.025 },        // northwest
-  ]
-  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark', 'nightlife', 'garden', 'market']
-
-  // Fetch: center gets all categories, neighborhoods get key categories
-  const centerCats = categories
-  const neighborhoodCats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'shopping']
+  // Step 2: fetch key categories from center + one offset neighborhood
+  // Reduced from 43 API calls to ~14 for much faster search (~2s vs ~8s)
+  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'landmark']
 
   const fetches: Promise<PlaceItemType[]>[] = []
 
-  // Center: all categories, limit 20
-  for (const cat of centerCats) {
+  // Center: key categories, limit 15
+  for (const cat of categories) {
     fetches.push(
-      fetch(`/api/places?lat=${neighborhoods[0].lat}&lng=${neighborhoods[0].lng}&category=${cat}&limit=20`)
+      fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=15`)
         .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
         .catch(() => [])
     )
   }
-  // Neighborhoods: key categories, limit 15
-  for (let i = 1; i < neighborhoods.length; i++) {
-    for (const cat of neighborhoodCats) {
-      fetches.push(
-        fetch(`/api/places?lat=${neighborhoods[i].lat}&lng=${neighborhoods[i].lng}&category=${cat}&limit=15`)
-          .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-          .catch(() => [])
-      )
-    }
+  // One offset neighborhood for variety (northeast, +2km)
+  const offsetCats = ['sightseeing', 'restaurant', 'park']
+  for (const cat of offsetCats) {
+    fetches.push(
+      fetch(`/api/places?lat=${lat + 0.02}&lng=${lng + 0.015}&category=${cat}&limit=10`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+        .catch(() => [])
+    )
   }
 
-  // Also fetch from Foursquare + OpenTripMap for richer data (restaurants, nightlife, experiences)
-  const fsCats = ['restaurant', 'nightlife', 'attraction', 'cafe', 'museum', 'park', 'shopping']
+  // Foursquare: only restaurants and attractions (best photo quality)
+  const fsCats = ['restaurant', 'attraction']
   for (const cat of fsCats) {
     fetches.push(
-      fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=10`)
+      fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
         .then(async r => {
           if (!r.ok) return []
           const venues = await r.json()
@@ -207,36 +197,9 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
     )
   }
 
-  // OpenTripMap — cultural/historical attractions with descriptions
-  const otmCats = ['attraction', 'museum', 'historic', 'architecture', 'nature']
-  for (const cat of otmCats) {
-    fetches.push(
-      fetch(`/api/opentripmap?lat=${lat}&lng=${lng}&category=${cat}&limit=8&radius=10000`)
-        .then(async r => {
-          if (!r.ok) return []
-          const places = await r.json()
-          if (places.error) return []
-          return (places as any[]).filter((p: any) => p.name && p.image).map((p: any) => ({
-            id: `otm_${p.id}`,
-            name: p.name,
-            image: p.image,
-            type: (cat === 'nature' ? 'experience' : 'attraction') as any,
-            rating: p.rating ? Math.min(p.rating, 5) : 0,
-            tagline: p.description?.split('.')[0] || p.category || toTitleCase(cat),
-            category: p.category || toTitleCase(cat),
-            description: p.description || '',
-            latitude: p.lat,
-            longitude: p.lng,
-            tags: [toTitleCase(cat)],
-          })) as PlaceItemType[]
-        })
-        .catch(() => [])
-    )
-  }
-
-  // Eventbrite + PredictHQ events
+  // Events — single call (was 5 OpenTripMap + 1 events = 6 slow calls)
   fetches.push(
-    fetch(`/api/events?lat=${lat}&lng=${lng}&limit=15`)
+    fetch(`/api/events?lat=${lat}&lng=${lng}&limit=8`)
       .then(async r => {
         if (!r.ok) return []
         const events = await r.json()
