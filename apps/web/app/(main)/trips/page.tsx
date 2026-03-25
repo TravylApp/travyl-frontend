@@ -186,8 +186,13 @@ function TripsContent() {
     queryKey: ['trips'],
     queryFn: async () => {
       // Pass any locally-created trip IDs for anonymous users
-      const stored = sessionStorage.getItem('my-trip-ids');
+      // Check both localStorage (persistent) and sessionStorage (legacy) for trip IDs
+      const stored = localStorage.getItem('my-trip-ids') || sessionStorage.getItem('my-trip-ids');
       const ids = stored ? JSON.parse(stored) as string[] : [];
+      // Migrate sessionStorage to localStorage if needed
+      if (sessionStorage.getItem('my-trip-ids') && !localStorage.getItem('my-trip-ids')) {
+        localStorage.setItem('my-trip-ids', sessionStorage.getItem('my-trip-ids')!);
+      }
       const url = ids.length > 0 ? `/api/trips?ids=${ids.join(',')}` : '/api/trips';
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch trips');

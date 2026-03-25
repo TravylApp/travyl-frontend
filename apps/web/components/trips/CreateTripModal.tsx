@@ -198,12 +198,12 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
 
       const data = await res.json()
 
-      // Track trip ID in sessionStorage so anonymous users can see their trips
+      // Track trip ID in localStorage so anonymous users keep their trips across sessions
       try {
-        const stored = sessionStorage.getItem('my-trip-ids')
+        const stored = localStorage.getItem('my-trip-ids')
         const ids: string[] = stored ? JSON.parse(stored) : []
         if (!ids.includes(data.id)) ids.push(data.id)
-        sessionStorage.setItem('my-trip-ids', JSON.stringify(ids))
+        localStorage.setItem('my-trip-ids', JSON.stringify(ids))
       } catch {}
 
       // Enrich in the background (don't block navigation)

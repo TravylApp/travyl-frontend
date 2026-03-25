@@ -315,12 +315,12 @@ export default function Home() {
           sessionStorage.setItem('pendingTripId', supaTrip.id);
           resolvedTripIdRef.current = supaTrip.id;
           sessionStorage.removeItem(`trip-${tempId}`);
-          // Track trip ID so anonymous users can see their trips
+          // Track trip ID so anonymous users keep their trips across sessions
           try {
-            const stored = sessionStorage.getItem('my-trip-ids');
+            const stored = localStorage.getItem('my-trip-ids');
             const ids: string[] = stored ? JSON.parse(stored) : [];
             if (!ids.includes(supaTrip.id)) ids.push(supaTrip.id);
-            sessionStorage.setItem('my-trip-ids', JSON.stringify(ids));
+            localStorage.setItem('my-trip-ids', JSON.stringify(ids));
           } catch {}
           // Enrich in background — auto-enrich on overview will also catch it
           fetch('/api/trips/enrich', {
