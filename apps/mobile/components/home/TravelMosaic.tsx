@@ -4,8 +4,8 @@ import Animated, {
   useSharedValue,
   type SharedValue,
 } from 'react-native-reanimated';
+import { useQuery } from '@tanstack/react-query';
 import {
-  useMosaicTiles,
   TILE_CATEGORY_GRADIENTS,
   TILE_CATEGORY_COLORS,
 } from '@travyl/shared';
@@ -43,8 +43,31 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
   const { width, height: screenH } = useWindowDimensions();
   const contentWidth = width - PADDING * 2;
   const containerY = useSharedValue(99999);
-  const { data: dbTiles } = useMosaicTiles();
-  const allTiles = dbTiles?.length ? dbTiles : PLACEHOLDER_TILES;
+  const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
+  const { data: fetchedTiles } = useQuery({
+    queryKey: ['mobile-mosaic'],
+    queryFn: async (): Promise<MosaicTile[]> => {
+      const cities = [
+        { lat: '48.8566', lng: '2.3522' },
+        { lat: '41.9028', lng: '12.4964' },
+        { lat: '35.6762', lng: '139.6503' },
+      ];
+      const results = await Promise.all(
+        cities.map(async (c) => {
+          try {
+            const res = await fetch(`${WEB_API}/api/places?lat=${c.lat}&lng=${c.lng}&category=sightseeing&limit=3`);
+            if (!res.ok) return [];
+            return res.json();
+          } catch { return []; }
+        })
+      );
+      const seen = new Set<string>();
+      return results.flat().filter((p: any) => p.name && p.image && !seen.has(p.id) && (seen.add(p.id), true))
+        .map((p: any) => ({ id: p.id, name: p.name, category: 'destination' as const, tagline: p.tagline || '', image_url: p.image, gridSpan: [2, 1] as [number, number] }));
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const allTiles = fetchedTiles?.length ? fetchedTiles : PLACEHOLDER_TILES;
 
   const tiles = allTiles.slice(0, 8);
   const featured = tiles[0];
