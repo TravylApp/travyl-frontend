@@ -5,7 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
+import { TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -1021,6 +1021,7 @@ export default function HotelsScreen() {
   const ACCENT = useTabAccent('hotels');
   const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { trip } = useItineraryScreen(_id);
   const [selectedRoom, setSelectedRoom] = useState(0);
   const [booked, setBooked] = useState(false);
   const [confirmationNumber, setConfirmationNumber] = useState('');
@@ -1037,8 +1038,28 @@ export default function HotelsScreen() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Use real hotels from trip_context, fallback to hardcoded
+  const ctx = trip?.trip_context as any;
+  const realHotels = useMemo(() => {
+    const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
+    if (source.length === 0) return BROWSE_HOTELS;
+    return source.map((h: any, i: number) => ({
+      id: h.id || `hotel-${i}`,
+      name: h.name,
+      stars: h.stars ?? 3,
+      rating: h.rating ?? 0,
+      reviews: h.ratingCount ?? h.review_count ?? 0,
+      price: h.price ?? h.price_per_night ?? 100,
+      neighborhood: h.address?.split(',')[0] || 'City Center',
+      image: h.image ?? h.photo_url ?? `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400`,
+      amenities: h.amenities ?? ['WiFi'],
+      brand: '',
+      label: i === 0 ? 'Top Pick' : i < 3 ? 'Popular' : '',
+    }));
+  }, [ctx]);
+
   const filteredHotels = useMemo(() => {
-    let result = [...BROWSE_HOTELS];
+    let result = [...realHotels];
     if (starFilter.length > 0) {
       result = result.filter((h) => starFilter.includes(h.stars));
     }
