@@ -9,8 +9,6 @@ export {
   Violet,
   Indigo,
   Cyan,
-  Teal,
-  Slate,
   Navy,
   Brand,
   TripStatusColors,
