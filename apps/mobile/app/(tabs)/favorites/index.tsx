@@ -35,6 +35,7 @@ const BROWSE_CITIES = [
 ];
 
 async function fetchMobilePlaces(): Promise<PlaceItem[]> {
+  console.log('[Places] WEB_API env:', process.env.EXPO_PUBLIC_WEB_API_URL);
   console.log('[Places] Fetching from:', WEB_API);
   const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
   const cities = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 3);
@@ -231,11 +232,17 @@ export default function FavoritesScreen() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
-  const { data: PLACES = [] } = useQuery({
+  const { data: PLACES = [], isLoading: placesLoading, error: placesError } = useQuery({
     queryKey: ['mobile-places'],
     queryFn: fetchMobilePlaces,
     staleTime: 10 * 60 * 1000,
+    retry: 2,
   });
+
+  // Debug — remove after confirming data loads
+  useEffect(() => {
+    console.log('[Places] Loading:', placesLoading, 'Count:', PLACES.length, 'Error:', placesError?.message);
+  }, [placesLoading, PLACES.length, placesError]);
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) =>
