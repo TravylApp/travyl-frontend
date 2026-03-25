@@ -15,7 +15,7 @@ interface PackingPanelProps {
 export function PackingPanel({ tripId }: PackingPanelProps) {
   const router = useRouter()
   const { user } = useAuthStore()
-  const { items, itemsByCategory, orderedCategories, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem } = usePackingList(tripId, user?.id)
+  const { items, itemsByCategory, orderedCategories, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem, claimItem, releaseItem } = usePackingList(tripId, user?.id)
   const {
     suggestionsByCategory,
     isGenerating,
@@ -62,6 +62,9 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
           suggestionsByCategory={suggestionsByCategory}
           onToggle={togglePacked}
           onRemove={removeItem}
+          onClaim={claimItem}
+          onRelease={releaseItem}
+          currentUserId={user?.id}
           onAcceptSuggestion={acceptSuggestion}
           onDismissSuggestion={dismissSuggestion}
           isGenerating={isGenerating}

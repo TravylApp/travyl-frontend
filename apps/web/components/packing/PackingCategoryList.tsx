@@ -9,6 +9,9 @@ interface PackingCategoryListProps {
   suggestionsByCategory?: Record<string, PackingSuggestion[]>
   onToggle: (id: string) => void
   onRemove: (id: string) => void
+  onClaim?: (id: string) => void
+  onRelease?: (id: string) => void
+  currentUserId?: string
   onAcceptSuggestion?: (id: string) => void
   onDismissSuggestion?: (id: string) => void
   isGenerating?: boolean
@@ -20,6 +23,9 @@ export function PackingCategoryList({
   suggestionsByCategory = {},
   onToggle,
   onRemove,
+  onClaim,
+  onRelease,
+  currentUserId,
   onAcceptSuggestion,
   onDismissSuggestion,
   isGenerating = false,
@@ -60,6 +66,9 @@ export function PackingCategoryList({
             suggestions={categorySuggestions}
             onToggle={onToggle}
             onRemove={onRemove}
+            onClaim={onClaim}
+            onRelease={onRelease}
+            currentUserId={currentUserId}
             onAcceptSuggestion={onAcceptSuggestion}
             onDismissSuggestion={onDismissSuggestion}
             defaultExpanded

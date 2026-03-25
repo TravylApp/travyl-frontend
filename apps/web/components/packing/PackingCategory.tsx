@@ -14,6 +14,9 @@ interface PackingCategoryProps {
   suggestions?: PackingSuggestion[]
   onToggle: (id: string) => void
   onRemove: (id: string) => void
+  onClaim?: (id: string) => void
+  onRelease?: (id: string) => void
+  currentUserId?: string
   onAcceptSuggestion?: (id: string) => void
   onDismissSuggestion?: (id: string) => void
   defaultExpanded?: boolean
@@ -25,6 +28,9 @@ export function PackingCategory({
   suggestions = [],
   onToggle,
   onRemove,
+  onClaim,
+  onRelease,
+  currentUserId,
   onAcceptSuggestion,
   onDismissSuggestion,
   defaultExpanded = true,
@@ -86,6 +92,9 @@ export function PackingCategory({
                     item={item}
                     onToggle={onToggle}
                     onRemove={onRemove}
+                    onClaim={onClaim}
+                    onRelease={onRelease}
+                    currentUserId={currentUserId}
                   />
                 ))}
                 {suggestions.map((suggestion) => (
