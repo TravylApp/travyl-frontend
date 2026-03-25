@@ -12,7 +12,7 @@ import { useCalendarThemeContext } from './CalendarThemeContext'
 import { useResizeHandles } from './hooks/useResizeHandles'
 import type { CalendarActivity, UserAwareness } from './types'
 import type { Poll } from '@travyl/shared'
-import { PollBar } from './PollBar'
+import { FloatingVoteButtons } from './PollBar'
 
 interface EventBlockProps {
   activity: CalendarActivity
@@ -133,7 +133,7 @@ export function EventBlock({
       aria-label={`${activity.title}, ${formatTimeRange(activity)}`}
       aria-selected={isSelected}
       className={[
-        'rounded-md cursor-grab active:cursor-grabbing overflow-hidden select-none relative',
+        'group rounded-md cursor-grab active:cursor-grabbing select-none relative',
         'text-white text-xs',
         isMultiSelected
           ? 'ring-2 ring-blue-400 bg-blue-500/10'
@@ -161,90 +161,76 @@ export function EventBlock({
       }}
       onKeyDown={handleKeyDown}
     >
-      {hasImage ? (
-        <>
-          <div
-            className="absolute inset-0 bg-cover bg-center rounded-md"
-            style={{ backgroundImage: `url(${activity.image})` }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-6"
-            style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
-          >
+      {/* Inner clip wrapper — provides overflow-hidden and rounded corners for card content */}
+      <div className="absolute inset-0 rounded-md overflow-hidden">
+        {hasImage ? (
+          <>
             <div
-              className="font-semibold truncate text-white"
-              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
-            >
-              {activity.title}
-            </div>
+              className="absolute inset-0 bg-cover bg-center rounded-md"
+              style={{ backgroundImage: `url(${activity.image})` }}
+            />
             <div
-              className="text-[10px] text-white/85 truncate"
-              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+              className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-6"
+              style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
             >
-              {formatTimeRange(activity)}
-            </div>
-            {activity.location && (
               <div
-                className="text-[9px] text-white/70 truncate"
+                className="font-semibold truncate text-white"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+              >
+                {activity.title}
+              </div>
+              <div
+                className="text-[10px] text-white/85 truncate"
                 style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
               >
-                {activity.location}
+                {formatTimeRange(activity)}
               </div>
+              {activity.location && (
+                <div
+                  className="text-[9px] text-white/70 truncate"
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                >
+                  {activity.location}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="px-2 py-1 flex flex-col gap-0.5">
+            <span className="font-semibold truncate leading-tight text-white">{activity.title}</span>
+            <span className="opacity-80 truncate text-white">{formatTimeRange(activity)}</span>
+            {activity.location && (
+              <span className="opacity-70 truncate text-[10px] text-white">{activity.location}</span>
             )}
           </div>
-        </>
-      ) : (
-        <div className="px-2 py-1 flex flex-col gap-0.5">
-          <span className="font-semibold truncate leading-tight text-white">{activity.title}</span>
-          <span className="opacity-80 truncate text-white">{formatTimeRange(activity)}</span>
-          {activity.location && (
-            <span className="opacity-70 truncate text-[10px] text-white">{activity.location}</span>
-          )}
-        </div>
-      )}
+        )}
 
-      {activeViewers.length > 0 && (
-        <div className="absolute top-1 right-1 flex gap-0.5">
-          {activeViewers.slice(0, 5).map((viewer) => (
-            <span
-              key={viewer.userId}
-              title={viewer.name}
-              className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white ring-1 ring-white/50"
-              style={{ backgroundColor: viewer.color }}
-            >
-              {viewer.avatarInitial}
-            </span>
-          ))}
-          {activeViewers.length > 5 && (
-            <span className="text-[9px] opacity-80">+{activeViewers.length - 5}</span>
-          )}
-        </div>
-      )}
+        {activeViewers.length > 0 && (
+          <div className="absolute top-1 right-1 flex gap-0.5">
+            {activeViewers.slice(0, 5).map((viewer) => (
+              <span
+                key={viewer.userId}
+                title={viewer.name}
+                className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white ring-1 ring-white/50"
+                style={{ backgroundColor: viewer.color }}
+              >
+                {viewer.avatarInitial}
+              </span>
+            ))}
+            {activeViewers.length > 5 && (
+              <span className="text-[9px] opacity-80">+{activeViewers.length - 5}</span>
+            )}
+          </div>
+        )}
 
-      {hiddenCount > 0 && (
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-auto">
-          +{hiddenCount} more
-        </div>
-      )}
+        {hiddenCount > 0 && (
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-auto">
+            +{hiddenCount} more
+          </div>
+        )}
+      </div>
 
-      {/* Poll bar — pinned to bottom of card */}
-      {poll && userId && onVote && onRestorePoll && onRemovePollActivity && (
-        <div className="absolute bottom-0 left-0 right-0 z-10">
-          <PollBar
-            poll={poll}
-            userId={userId}
-            onVote={(v) => onVote(activity.id, v)}
-            collaborators={viewers}
-            compact={displayDuration < 0.67}
-            isResolved={poll.status === 'resolved'}
-            canManage={canManagePoll}
-            onRestore={() => onRestorePoll(activity.id)}
-            onRemove={() => onRemovePollActivity(activity.id)}
-          />
-        </div>
-      )}
-
-      {/* Resize handles */}
+      {/* Resize handles — direct children of root div, NOT inside inner clip wrapper */}
       {onResize && (
         <>
           <div
@@ -262,6 +248,17 @@ export function EventBlock({
             <div className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full bg-white/0 group-hover/handle:bg-white/60 transition-colors" />
           </div>
         </>
+      )}
+
+      {/* Floating vote buttons — outside inner clip, floats right of card */}
+      {poll && userId && onVote && (
+        <FloatingVoteButtons
+          poll={poll}
+          userId={userId}
+          onVote={(v) => onVote(activity.id, v)}
+          compact={displayDuration < 0.67}
+          isResolved={poll.status === 'resolved'}
+        />
       )}
     </div>
   )
