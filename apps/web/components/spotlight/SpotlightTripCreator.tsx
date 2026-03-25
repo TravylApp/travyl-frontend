@@ -137,10 +137,10 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
       className="relative"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back</span>
@@ -151,180 +151,201 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
             AI Trip Planner
           </span>
         </div>
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-          ESC
-        </kbd>
+        {isClarifying && (
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+            {currentQIdx + 1}/{questions.length}
+          </span>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="px-5 py-4 max-h-[400px] overflow-y-auto">
-        {/* Extracting phase */}
-        {(phase === 'idle' || phase === 'extracting') && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-8 gap-4"
-          >
-            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
-            </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Understanding your trip...
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[280px]">
-                &quot;{prefillDestination ? `trip to ${prefillDestination}` : query || 'plan a trip'}&quot;
-              </p>
-            </div>
-            <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-          </motion.div>
-        )}
+      {/* Content — glassmorphism container */}
+      <div className="px-4 py-4 max-h-[400px] overflow-y-auto">
+        <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 dark:from-slate-950/95 dark:to-gray-900/95 backdrop-blur-xl rounded-2xl p-4 border border-white/10 shadow-2xl">
 
-        {/* Clarifying phase */}
-        {isClarifying && currentQuestion && (
-          <div className="space-y-4">
-            {/* Question header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Question {currentQIdx + 1} of {questions.length}
-                </span>
+          {/* Extracting phase */}
+          {(phase === 'idle' || phase === 'extracting') && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-8 gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-indigo-400 animate-pulse" />
               </div>
-              {/* Progress dots */}
-              <div className="flex items-center gap-1">
-                {questions.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      i <= currentQIdx ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                  />
-                ))}
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-white">
+                  Understanding your trip...
+                </p>
+                <p className="text-xs text-white/50 max-w-[280px]">
+                  &quot;{prefillDestination ? `trip to ${prefillDestination}` : query || 'plan a trip'}&quot;
+                </p>
               </div>
-            </div>
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </motion.div>
+          )}
 
-            {/* Animated question */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentQIdx}
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-3"
-              >
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  {currentQuestion.question}
-                </h3>
+          {/* Clarifying phase */}
+          {isClarifying && currentQuestion && (
+            <div className="space-y-3">
+              {/* Question header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-white/60" />
+                  <span className="text-xs font-medium text-white/50">
+                    Question {currentQIdx + 1} of {questions.length}
+                  </span>
+                </div>
+                {/* Progress dots */}
+                <div className="flex items-center gap-1.5">
+                  {questions.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                        i < currentQIdx
+                          ? 'bg-emerald-400'
+                          : i === currentQIdx
+                            ? 'bg-indigo-400'
+                            : 'bg-white/20'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
 
-                {/* Option cards */}
-                <div className="space-y-2">
-                  {currentQuestion.options.map((option, i) => {
-                    const isSelected = selectedAnswers[currentQuestion.id] === option
-                    const letter = LETTERS[i] ?? String(i + 1)
+              {/* Animated question */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentQIdx}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-3"
+                >
+                  <h3 className="text-sm font-semibold text-white">
+                    {currentQuestion.question}
+                  </h3>
 
-                    return (
-                      <button
-                        key={`${currentQuestion.id}-${i}`}
-                        onClick={() => handleOptionSelect(currentQuestion.id, option)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all text-sm ${
-                          isSelected
-                            ? 'bg-blue-600 text-white shadow-md'
-                            : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        <span
-                          className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold shrink-0 ${
+                  {/* Option cards — glassmorphism style */}
+                  <div className="grid gap-2">
+                    {currentQuestion.options.map((option, i) => {
+                      const isSelected = selectedAnswers[currentQuestion.id] === option
+                      const letter = LETTERS[i] ?? String(i + 1)
+
+                      return (
+                        <motion.button
+                          key={`${currentQuestion.id}-${i}`}
+                          onClick={() => handleOptionSelect(currentQuestion.id, option)}
+                          whileTap={{ scale: 0.98 }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 ${
                             isSelected
-                              ? 'bg-white/20 text-white'
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                              ? 'bg-[#1e3a5f] text-white shadow-lg shadow-blue-500/20'
+                              : 'bg-white/[0.07] text-white/80 hover:bg-white/[0.13] border border-white/[0.08]'
                           }`}
                         >
-                          {letter}
-                        </span>
-                        <span className="flex-1">{option}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+                          <span
+                            className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold shrink-0 transition-colors ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-white/[0.08] text-white/50'
+                            }`}
+                          >
+                            {letter}
+                          </span>
+                          <span className="font-medium flex-1">{option}</span>
+                        </motion.button>
+                      )
+                    })}
+                  </div>
 
-                {/* Keyboard hint */}
-                <p className="text-xs text-gray-400 dark:text-gray-500 text-center pt-1">
-                  Press {currentQuestion.options.map((_, i) => LETTERS[i]).join('/')} or {currentQuestion.options.map((_, i) => String(i + 1)).join('/')} to select
-                </p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )}
+                  {/* Keyboard hint */}
+                  <p className="text-[10px] text-white/30 text-center pt-1">
+                    Press {currentQuestion.options.map((_, i) => LETTERS[i]).join('/')} to select
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
 
-        {/* Planning phase */}
-        {phase === 'planning' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-8 gap-4"
-          >
-            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
-            </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Planning your trip to {destination}...
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Building itinerary, finding hotels and flights
-              </p>
-            </div>
-            <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-          </motion.div>
-        )}
-
-        {/* Complete phase — show brief saving state */}
-        {phase === 'complete' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-8 gap-4"
-          >
-            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-green-500" />
-            </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Saving your trip...
-              </p>
-            </div>
-            <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
-          </motion.div>
-        )}
-
-        {/* Error phase */}
-        {phase === 'error' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-8 gap-4"
-          >
-            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-            </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Something went wrong
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[280px]">
-                {planner.state.phase === 'error' ? planner.state.message : 'An unexpected error occurred'}
-              </p>
-            </div>
-            <button
-              onClick={handleRetry}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+          {/* Planning phase */}
+          {phase === 'planning' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-8 gap-4"
             >
-              Try Again
-            </button>
-          </motion.div>
-        )}
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-indigo-400 animate-pulse" />
+              </div>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-white">
+                  Planning your trip to {destination}...
+                </p>
+                <p className="text-xs text-white/40">
+                  Building itinerary, finding hotels and flights
+                </p>
+              </div>
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Complete phase — show brief saving state */}
+          {phase === 'complete' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-8 gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-emerald-400" />
+              </div>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-white">
+                  Your trip is ready!
+                </p>
+                <p className="text-xs text-white/40">
+                  Saving and redirecting...
+                </p>
+              </div>
+              <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
+            </motion.div>
+          )}
+
+          {/* Error phase */}
+          {phase === 'error' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-8 gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-white">
+                  Something went wrong
+                </p>
+                <p className="text-xs text-white/40 max-w-[280px]">
+                  {planner.state.phase === 'error' ? planner.state.message : 'An unexpected error occurred'}
+                </p>
+              </div>
+              <button
+                onClick={handleRetry}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors border border-white/10"
+              >
+                Try Again
+              </button>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Subtle bottom glow */}
