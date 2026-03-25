@@ -6,7 +6,7 @@ import { validateAuth } from './lib/auth'
 
 const ses = new SESv2Client({})
 const SENDER = 'noreply@gotravyl.com'
-const APP_URL = 'https://gotravyl.com'
+const APP_URL = process.env.APP_URL ?? 'https://gotravyl.com'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
@@ -72,22 +72,24 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       if (insertError) throw insertError
     }
 
-    // Send invite email
+    // Send invite email (non-fatal — invite record is already persisted)
     const acceptUrl = `${APP_URL}/invite/accept?token=${inviteToken}`
     const roleLabel = role === 'editor' ? 'edit' : 'view'
 
-    await ses.send(
-      new SendEmailCommand({
-        FromEmailAddress: SENDER,
-        Destination: { ToAddresses: [email] },
-        Content: {
-          Simple: {
-            Subject: {
-              Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl`,
-            },
-            Body: {
-              Html: {
-                Data: `
+    let emailWarning: string | undefined
+    try {
+      await ses.send(
+        new SendEmailCommand({
+          FromEmailAddress: SENDER,
+          Destination: { ToAddresses: [email] },
+          Content: {
+            Simple: {
+              Subject: {
+                Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl`,
+              },
+              Body: {
+                Html: {
+                  Data: `
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:sans-serif;">
@@ -106,17 +108,30 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   </div>
 </body>
 </html>`,
-              },
-              Text: {
-                Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl.\n\nAccept here: ${acceptUrl}`,
+                },
+                Text: {
+                  Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl.\n\nAccept here: ${acceptUrl}`,
+                },
               },
             },
           },
-        },
-      }),
-    )
+        }),
+      )
+    } catch (sesErr: any) {
+      // Log the real SES error (visible in CloudWatch) but don't fail the request
+      console.error('SES send failed:', sesErr?.message ?? sesErr)
+      emailWarning = sesErr?.message ?? 'Email could not be sent'
+    }
 
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) }
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        ok: true,
+        inviteToken,
+        acceptUrl,
+        ...(emailWarning ? { emailWarning } : {}),
+      }),
+    }
   } catch (err: any) {
     if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
       return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }

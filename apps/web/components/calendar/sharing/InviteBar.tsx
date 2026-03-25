@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { CollaboratorRole } from '@travyl/shared'
 
 interface InviteBarProps {
-  onInvite: (email: string, role: CollaboratorRole) => void
+  onInvite: (email: string, role: CollaboratorRole) => Promise<void>
   isLoading?: boolean
 }
 
@@ -12,11 +12,15 @@ export function InviteBar({ onInvite, isLoading }: InviteBarProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<CollaboratorRole>('viewer')
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmed = email.trim().toLowerCase()
     if (!trimmed) return
-    onInvite(trimmed, role)
-    setEmail('')
+    try {
+      await onInvite(trimmed, role)
+      setEmail('') // only clear on success
+    } catch {
+      // error display handled by parent
+    }
   }
 
   return (

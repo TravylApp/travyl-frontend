@@ -43,7 +43,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace('/');
+      router.replace(searchParams.get('next') || '/');
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {

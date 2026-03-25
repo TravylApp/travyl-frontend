@@ -29,6 +29,11 @@ export {
   leaveTrip,
   inviteCollaborator,
   fetchCollaborators,
+  updateCollaboratorRole,
+  removeCollaborator,
+  acceptInviteByToken,
+  joinTripViaLink,
+  findPendingInviteByEmail,
 } from './api';
 export {
   fetchBudgetCategories,
