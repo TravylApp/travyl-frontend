@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useDraggable } from '@dnd-kit/core'
+import { useDraggable, useDndMonitor } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard as SuggestionCardType } from './types'
@@ -23,19 +23,20 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
     onVisible?.()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Drag vs. click detection: intercept dnd-kit listeners to track drag start/reset
+  // Drag vs. click detection: reset on pointer down, set when dnd-kit activates drag
   const didDragRef = useRef(false)
+  const draggableId = `suggestion-${suggestion.id}`
+  useDndMonitor({
+    onDragStart(event) {
+      if (event.active.id === draggableId) didDragRef.current = true
+    },
+  })
   const extendedListeners = listeners
     ? {
         ...listeners,
         onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
           didDragRef.current = false
-          listeners.onPointerDown?.(e as any)
-        },
-        // onDragStart fires synchronously when dnd-kit activates a drag
-        onDragStart: (e: any) => {
-          didDragRef.current = true
-          listeners.onDragStart?.(e)
+          listeners.onPointerDown?.(e)
         },
       }
     : {}
