@@ -118,7 +118,7 @@ function formatTripDates(startDate: string, endDate: string): string {
 
 // ─── Inline control components ────────────────────────────────
 
-// ToggleSwitch: track is a soft tint (emerald-100 on, gray off), white thumb is the visual indicator.
+// ToggleSwitch: track is a soft tint (emerald-100 on, gray off), emerald thumb when on, gray when off.
 // pointer-events-none — the row button handles the click via executeItem → onToggle.
 function ToggleSwitch({ enabled }: { enabled: boolean }) {
   return (
@@ -179,7 +179,7 @@ function renderPickerControl(item: SettingPickerItem) {
 
   if (item.variant === 'pills') {
     return (
-      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onClick={(e) => e.stopPropagation()}>
         {item.options.map((opt) => {
           const color = STATUS_COLORS[opt.value] ?? '#888'
           const active = isActive(opt)
@@ -192,7 +192,7 @@ function renderPickerControl(item: SettingPickerItem) {
                 : { borderColor: color }
               }
               className={[
-                'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap',
+                'text-[10px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap shrink-0',
                 active ? 'text-white' : 'text-gray-500 dark:text-[#4a7ab5]',
               ].join(' ')}
             >
@@ -234,7 +234,7 @@ function renderPickerControl(item: SettingPickerItem) {
 
   if (item.variant === 'chips') {
     return (
-      <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onClick={(e) => e.stopPropagation()}>
         {item.options.map((opt) => {
           const active = isActive(opt)
           return (
@@ -242,7 +242,7 @@ function renderPickerControl(item: SettingPickerItem) {
               key={opt.value}
               onClick={(e) => { e.stopPropagation(); item.onSelect(opt.value) }}
               className={[
-                'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                'text-[10px] px-2 py-0.5 rounded-full border transition-colors whitespace-nowrap shrink-0',
                 active
                   ? 'bg-[#1e3a5f] dark:bg-[#4a7ab5] text-white border-transparent'
                   : 'border-gray-300 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5] hover:border-gray-400',
@@ -283,6 +283,30 @@ function renderPickerControl(item: SettingPickerItem) {
       })}
     </div>
   )
+}
+
+// renderItemRight: renders the right-side inline control for a PaletteItem.
+// Depends on: ToggleSwitch, renderPickerControl (both module-level)
+function renderItemRight(item: PaletteItem) {
+  if (item.type === 'setting-toggle') {
+    return <ToggleSwitch enabled={item.enabled} />
+  }
+  if (item.type === 'setting-picker') {
+    return renderPickerControl(item)
+  }
+  if (item.type === 'setting-link') {
+    return (
+      <span className="text-[10px] text-gray-400 dark:text-[#484f58]">→</span>
+    )
+  }
+  if (item.type === 'command' && item.command.shortcut) {
+    return (
+      <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded ml-4 shrink-0">
+        {item.command.shortcut.display}
+      </kbd>
+    )
+  }
+  return null
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -671,30 +695,6 @@ export function GlobalCommandPalette() {
       e.stopPropagation()
       setIsOpen(false)
     }
-  }
-
-  // ─── Render helpers ───────────────────────────────────────
-
-  function renderItemRight(item: PaletteItem) {
-    if (item.type === 'setting-toggle') {
-      return <ToggleSwitch enabled={item.enabled} />
-    }
-    if (item.type === 'setting-picker') {
-      return renderPickerControl(item)
-    }
-    if (item.type === 'setting-link') {
-      return (
-        <span className="text-[10px] text-gray-400 dark:text-[#484f58]">→</span>
-      )
-    }
-    if (item.type === 'command' && item.command.shortcut) {
-      return (
-        <kbd className="text-[10px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1.5 py-0.5 rounded ml-4 shrink-0">
-          {item.command.shortcut.display}
-        </kbd>
-      )
-    }
-    return null
   }
 
   // ─── Render ──────────────────────────────────────────────
