@@ -2,8 +2,7 @@ import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { fetchPackingSuggestions, updateSuggestionStatus } from '../services/packingService'
-import type { PackingSuggestion, PackingCategory, DbPackingItem } from '../types'
-import { PACKING_CATEGORIES } from '../types'
+import type { PackingSuggestion, DbPackingItem } from '../types'
 
 export function usePackingSuggestions(
   tripId: string | undefined,
@@ -24,9 +23,9 @@ export function usePackingSuggestions(
 
   const suggestionsByCategory = useMemo(() => {
     const grouped: Record<string, PackingSuggestion[]> = {}
-    for (const cat of PACKING_CATEGORIES) {
-      const catSuggestions = suggestions.filter((s) => s.category === cat)
-      if (catSuggestions.length > 0) grouped[cat] = catSuggestions
+    for (const s of suggestions) {
+      if (!grouped[s.category]) grouped[s.category] = []
+      grouped[s.category].push(s)
     }
     return grouped
   }, [suggestions])
