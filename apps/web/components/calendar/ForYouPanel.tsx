@@ -26,6 +26,7 @@ export function ForYouPanel({
     error,
     searchQuery,
     setSearchQuery,
+    commitSearch,
     activeFilter,
     setActiveFilter,
     filterCategories,
@@ -57,6 +58,7 @@ export function ForYouPanel({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
             placeholder="Search activities..."
             className="flex-1 bg-transparent text-sm text-[var(--cal-text)] placeholder-[var(--cal-text-tertiary)] outline-none"
           />
