@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
 import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
-import type { FollowUpQuestion, PlanResponse } from "@travyl/shared";
+import type { FollowUpQuestion, PlanResponse, PlaceItem } from "@travyl/shared";
+import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -257,6 +258,7 @@ export default function Home() {
 
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [takeoffCompleted, setTakeoffCompleted] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const isSaving = useRef(false);
   const user = useAuthStore((s) => s.user);
 
@@ -693,7 +695,7 @@ export default function Home() {
 
       {/* ─── Static Content Sections ──────────────────────────── */}
       <HowItWorks onCtaPress={() => router.push("/trips")} />
-      <TravelMosaic />
+      <TravelMosaic onTileClick={(place) => setSelectedPlace(place)} />
 
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
       <ParallaxQuoteDivider ref={dividerRef} bgY={dividerBgY} />
@@ -706,6 +708,20 @@ export default function Home() {
 
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />
+
+      {/* ─── Place Detail Overlay ────────────────────────────── */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            isFavorited={false}
+            onToggleFavorite={() => {}}
+            onClose={() => setSelectedPlace(null)}
+            onNavigate={(p) => setSelectedPlace(p)}
+            onSearchTag={() => {}}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition

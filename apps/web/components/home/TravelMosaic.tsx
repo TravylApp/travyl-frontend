@@ -75,6 +75,7 @@ async function fetchMosaicTiles(): Promise<MosaicTile[]> {
       tagline: p.tagline ?? '',
       image_url: p.image,
       gridSpan: [i < 2 ? 3 : 2, i < 2 ? 2 : 1] as [number, number],
+      placeData: p, // keep full PlaceItem for detail overlay
     }));
 
   return shuffle(tiles).slice(0, 12);
@@ -88,7 +89,7 @@ const MOBILE_HEIGHTS = [240, 200, 200, 200, 200, 200, 200];
 const DESKTOP_SPANS =   [12, 7, 5, 4, 4, 4, 5, 7, 6, 6];
 const DESKTOP_HEIGHTS = [320, 260, 260, 200, 200, 200, 260, 260, 220, 220];
 
-export function TravelMosaic() {
+export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => void } = {}) {
   const { data: fetchedTiles = [] } = useQuery({
     queryKey: ['mosaic-tiles'],
     queryFn: fetchMosaicTiles,
@@ -132,6 +133,7 @@ export function TravelMosaic() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.3, delay: i * 0.05, ease: EASE_OUT_EXPO }}
                 whileHover={{ scale: 1.02 }}
+                onClick={() => onTileClick?.((tile as any).placeData)}
                 className="rounded-2xl overflow-hidden relative cursor-pointer group"
                 style={{
                   gridColumn: `span ${colSpan}`,
