@@ -52,6 +52,7 @@ interface SettingPickerItem {
   currentValue: string
   options: { value: string; label: string }[]
   onSelect: (value: string) => void
+  variant?: 'swatches' | 'pills' | 'segmented' | 'chips' | 'scrollable-pills'
 }
 
 interface SettingLinkItem {
@@ -183,6 +184,7 @@ export function GlobalCommandPalette() {
           { value: 'MXN', label: 'MXN — Mexican Peso' },
         ],
         onSelect: (v: string) => setCurrency(v as Currency),
+        variant: 'scrollable-pills',
       },
       {
         type: 'setting-picker' as const,
@@ -195,6 +197,7 @@ export function GlobalCommandPalette() {
           { value: 'kilometers', label: 'Kilometers' },
         ],
         onSelect: (v: string) => setDistanceUnits(v as DistanceUnits),
+        variant: 'segmented',
       },
       {
         type: 'setting-picker' as const,
@@ -210,6 +213,7 @@ export function GlobalCommandPalette() {
           { value: 'relaxed', label: 'Relaxed' },
         ],
         onSelect: (v: string) => setTravelStyle(v as TravelStyle),
+        variant: 'chips',
       },
       {
         type: 'setting-toggle' as const,
@@ -285,6 +289,7 @@ export function GlobalCommandPalette() {
           label: TRIP_THEMES[id].name,
         })),
         onSelect: (v: string) => reg.setTripTheme(v),
+        variant: 'swatches',
       })
 
       // Tab toggles
@@ -315,6 +320,7 @@ export function GlobalCommandPalette() {
           { value: 'abandoned', label: 'Abandoned' },
         ],
         onSelect: (v: string) => reg.setStatus(v as Trip['status']),
+        variant: 'pills',
       })
     }
 
