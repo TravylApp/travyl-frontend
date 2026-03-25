@@ -32,7 +32,6 @@ interface DayColumnProps {
   onContextMenu?: (id: string, x: number, y: number) => void
   polls?: Map<string, Poll>
   pollUserId?: string
-  tripOwnerId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
 }
 
@@ -97,7 +96,6 @@ export function DayColumn({
   onContextMenu,
   polls,
   pollUserId,
-  tripOwnerId,
   onVotePoll,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(

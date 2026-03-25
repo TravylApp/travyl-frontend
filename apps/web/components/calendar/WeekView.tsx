@@ -27,7 +27,6 @@ interface WeekViewProps {
   onContextMenu?: (id: string, x: number, y: number) => void
   polls?: Map<string, Poll>
   pollUserId?: string
-  tripOwnerId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
 }
 
@@ -50,7 +49,6 @@ export function WeekView({
   onContextMenu,
   polls,
   pollUserId,
-  tripOwnerId,
   onVotePoll,
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -121,7 +119,6 @@ export function WeekView({
                   onContextMenu={onContextMenu}
                   polls={polls}
                   pollUserId={pollUserId}
-                  tripOwnerId={tripOwnerId}
                   onVotePoll={onVotePoll}
                 />
               </div>

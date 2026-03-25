@@ -556,7 +556,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
                       />
                     </motion.div>
@@ -584,7 +583,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
                       />
                     </motion.div>
@@ -743,9 +741,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   { id: 'restore-poll', label: 'Restore Poll' },
                   { id: 'remove-activity', label: 'Remove from Calendar', danger: true },
                 ]
-              : hasActivePoll
-                ? [{ id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }]
-                : [{ id: 'start-poll', label: 'Start Poll' }]
+              : isResolvedPoll
+                ? [] // non-managers see no poll action on a resolved poll
+                : hasActivePoll
+                  ? [{ id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }]
+                  : [{ id: 'start-poll', label: 'Start Poll' }]
             ),
             { id: 'separator2', label: '', separator: true },
             { id: 'delete', label: 'Delete', danger: true },
