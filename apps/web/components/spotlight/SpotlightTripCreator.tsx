@@ -96,22 +96,13 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
         return
       }
 
-      if (user) {
-        try {
-          const tripId = await savePlanToSupabase(plan as any)
-          onClose()
-          router.push(`/trip/${tripId}`)
-        } catch {
-          onClose()
-          router.push('/trips')
-        }
-      } else {
-        // Not logged in — store plan and redirect to preview
-        try {
-          sessionStorage.setItem('pendingPlan', JSON.stringify(plan))
-        } catch { /* ignore */ }
+      try {
+        const tripId = await savePlanToSupabase(plan as any)
         onClose()
-        router.push('/trip/preview')
+        router.push(`/trip/${tripId}`)
+      } catch {
+        onClose()
+        router.push('/trips')
       }
     })()
   }, [planner.state.phase, planner.state, user, onClose, router])

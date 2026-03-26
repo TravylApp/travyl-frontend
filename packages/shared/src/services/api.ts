@@ -544,7 +544,6 @@ export async function savePlanToSupabase(
   onProgress?: (stage: string, pct: number) => void
 ): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('You must be logged in to save a trip. Please sign in and try again.')
 
   const ext = plan.extracted
   const dest = ext.destination
@@ -553,7 +552,8 @@ export async function savePlanToSupabase(
 
   // 1. Create trip
   const tripInsert: Record<string, unknown> = {
-    user_id: user.id,
+    user_id: user?.id || null,
+    visibility: user?.id ? 'private' : 'public',
     title: `${dest.city}, ${dest.country}`,
     destination: `${dest.city}, ${dest.country}`,
     start_date: ext.dates.start,
@@ -617,7 +617,7 @@ export async function savePlanToSupabase(
         return {
           trip_id: tripId,
           itinerary_day_id: dayRow.id,
-          user_id: user.id,
+          user_id: user?.id || null,
           activity_name: poi.name,
           activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
           starting_date: day.date,
