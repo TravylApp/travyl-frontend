@@ -42,6 +42,7 @@ export function useYjsSync(
   const [error, setError] = useState<string | null>(null)
 
   const dirtyRef = useRef<Set<string>>(new Set())
+  const beforeSnapshotRef = useRef<Map<string, Partial<CalendarActivity>>>(new Map())
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Stable refs for values used in callbacks
@@ -85,6 +86,40 @@ export function useYjsSync(
     if (upsertError) {
       console.error('[useYjsSync] flush upsert error:', upsertError.message)
       setError(upsertError.message)
+    } else {
+      // Write audit rows for each flushed activity
+      const isMoveFields = ['day', 'endDay', 'startHour']
+      const auditRows = ids
+        .map((id) => {
+          const yMap = activitiesMap.get(id)
+          if (!yMap) return null
+          const after = yMapToCalendarActivity(id, yMap)
+          const before = beforeSnapshotRef.current.get(id) ?? {}
+          beforeSnapshotRef.current.delete(id)
+
+          const changedKeys = Object.keys(before)
+          if (changedKeys.length === 0) return null  // No before-state captured (e.g. new activity — handled by useActivityMutations)
+
+          const isMove = changedKeys.some((k) => isMoveFields.includes(k))
+
+          return {
+            trip_id: tripIdRef.current,
+            activity_id: id,
+            edit_type: isMove ? 'move' : 'edit',
+            original_data: before,
+            new_data: isMove
+              ? { day: after.day, endDay: after.endDay, startHour: after.startHour }
+              : after,
+            user_id: userIdRef.current,
+          }
+        })
+        .filter(Boolean)
+
+      if (auditRows.length > 0) {
+        supabase.from('itinerary_edits').insert(auditRows).then(({ error }) => {
+          if (error) console.warn('[useYjsSync] audit insert error:', error.message)
+        })
+      }
     }
   }, [activitiesMap])
 
@@ -125,6 +160,22 @@ export function useYjsSync(
             activitiesMap.forEach((yMap, key) => {
               if (yMap === parentMap) {
                 dirtyRef.current.add(key)
+              }
+            })
+          }
+        }
+        // Capture before-state from Yjs change events (first-write-wins per flush window)
+        for (const event of events) {
+          if (event.target instanceof Y.Map && event instanceof Y.YMapEvent) {
+            activitiesMap.forEach((yMap, key) => {
+              if (yMap === event.target) {
+                if (!beforeSnapshotRef.current.has(key)) {
+                  const before: Record<string, unknown> = {}
+                  event.changes.keys.forEach(({ oldValue }, field) => {
+                    before[field] = oldValue
+                  })
+                  beforeSnapshotRef.current.set(key, before as Partial<CalendarActivity>)
+                }
               }
             })
           }
