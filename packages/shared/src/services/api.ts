@@ -589,8 +589,9 @@ export async function savePlanToSupabase(
 
   onProgress?.('Building itinerary...', 30)
 
-  // 2. Create itinerary days + activities
-  for (let d = 0; d < plan.itinerary.length; d++) {
+  // 2. Create itinerary days + activities (skip if table doesn't exist)
+  let itineraryTableExists = true
+  for (let d = 0; d < plan.itinerary.length && itineraryTableExists; d++) {
     const day = plan.itinerary[d]
     const pct = 30 + Math.round((d / plan.itinerary.length) * 40)
     onProgress?.(`Day ${day.day}...`, pct)
@@ -602,8 +603,13 @@ export async function savePlanToSupabase(
       .single()
 
     if (dayErr) {
+      // If table doesn't exist (404/42P01), stop trying
+      if (dayErr.code === '42P01' || dayErr.message?.includes('does not exist') || dayErr.code === 'PGRST204') {
+        itineraryTableExists = false
+        break
+      }
       console.error('Failed to create itinerary day:', dayErr)
-      continue // don't fail the whole save for one day
+      continue
     }
 
     if (day.slots.length > 0) {

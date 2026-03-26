@@ -309,10 +309,10 @@ export function CardStackCarousel({
 
   const magazineCard = (
     <Animated.View
-      {...panResponder.panHandlers}
+      {...(showMap ? {} : panResponder.panHandlers)}
       style={[
-        { width: SCREEN_WIDTH, height: magH, alignItems: 'center', justifyContent: 'center' },
-        animatedCardStyle,
+        { width: SCREEN_WIDTH, height: showMap ? magH * 0.6 : magH, alignItems: 'center', justifyContent: 'center' },
+        showMap ? {} : animatedCardStyle,
       ]}
     >
       <MagazineCurtain

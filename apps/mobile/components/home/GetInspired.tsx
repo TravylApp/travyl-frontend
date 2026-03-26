@@ -6,8 +6,8 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
-const CARD_W = SCREEN_WIDTH * 0.62;
-const CARD_H = CARD_W * 1.35;
+const CARD_W = SCREEN_WIDTH * 0.75;
+const CARD_H = CARD_W * 1.4;
 
 const INSPIRE_CITIES = [
   { lat: '48.8566', lng: '2.3522' },
