@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Calendar, RefreshCw, Share2, X } from 'lucide-react';
+import { MapPin, Map, Calendar, RefreshCw, Share2, X, AlertTriangle } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { TripSidebar } from '@/components/trip/TripSidebar';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
@@ -79,7 +80,7 @@ function TripHero({
   const countryData = ctx?.country;
 
   return (
-    <div className="relative min-h-[85vh] overflow-hidden">
+    <div className={`relative overflow-hidden ${tripImage ? 'min-h-[85vh]' : 'min-h-[40vh]'}`}>
       {/* Background image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {tripImage ? (
@@ -102,7 +103,7 @@ function TripHero({
               {city}
             </h1>
           ) : (
-            <div className="h-20 w-[60%] rounded-md bg-white/20" />
+            <div className="h-20 w-[60%] rounded-md bg-white/20 animate-pulse" />
           )}
           {trip && !isLoading && (
             <div className="flex items-center gap-2 text-[13px] text-white/70 mt-3 flex-wrap">
@@ -256,7 +257,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
 
 // ─── Trip Explore Section (destination-specific categories) ──
 
-function TripExploreSection({ trip }: { trip: Trip | null }) {
+export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
   const ctx = trip?.trip_context;
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -407,6 +408,88 @@ function TripExploreSection({ trip }: { trip: Trip | null }) {
   );
 }
 
+// ─── Trip Error State ───────────────────────────────────────
+
+function TripErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center mb-4">
+        <AlertTriangle size={24} className="text-red-500" />
+      </div>
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        Unable to load trip
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-6">
+        We couldn&apos;t fetch the trip data. This could be a temporary issue — try again or check your connection.
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-colors"
+        style={{ backgroundColor: 'var(--trip-base, #1e3a5f)' }}
+      >
+        <RefreshCw size={14} />
+        Try again
+      </button>
+    </div>
+  );
+}
+
+// ─── Mobile Bottom Tab Bar ──────────────────────────────────
+
+const MOBILE_TABS = [
+  { segment: '', label: 'Overview', icon: '🏠' },
+  { segment: 'itinerary', label: 'Itinerary', icon: '📋' },
+  { segment: 'calendar', label: 'Calendar', icon: '📅' },
+  { segment: 'hotels', label: 'Hotels', icon: '🏨' },
+  { segment: 'flights', label: 'Flights', icon: '✈️' },
+  { segment: 'restaurants', label: 'Dining', icon: '🍽️' },
+  { segment: 'activities', label: 'Explore', icon: '🧭' },
+  { segment: 'packing', label: 'Packing', icon: '🧳' },
+  { segment: 'budget', label: 'Budget', icon: '💰' },
+  { segment: 'favorites', label: 'Saved', icon: '❤️' },
+  { segment: 'settings', label: 'Settings', icon: '⚙️' },
+];
+
+function MobileTabBar({ tripId }: { tripId: string }) {
+  const pathname = usePathname();
+  const basePath = `/trip/${tripId}`;
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const isActive = (segment: string) => {
+    if (segment === '') return pathname === basePath || pathname === basePath + '/';
+    return pathname === `${basePath}/${segment}` || pathname.startsWith(`${basePath}/${segment}/`);
+  };
+
+  return (
+    <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 dark:bg-[#111827]/95 backdrop-blur-lg border-t border-gray-200 dark:border-white/10">
+      <div ref={scrollRef} className="flex overflow-x-auto scrollbar-hide px-1 py-1.5 gap-0.5">
+        {MOBILE_TABS.map((tab) => {
+          const active = isActive(tab.segment);
+          const href = tab.segment ? `${basePath}/${tab.segment}` : basePath;
+          return (
+            <Link
+              key={tab.segment}
+              href={href}
+              className={`flex flex-col items-center shrink-0 px-3 py-1 rounded-lg text-center transition-colors ${
+                active
+                  ? 'bg-[#1e3a5f]/10 dark:bg-white/10'
+                  : 'hover:bg-gray-100 dark:hover:bg-white/5'
+              }`}
+            >
+              <span className="text-[16px] leading-none">{tab.icon}</span>
+              <span className={`text-[9px] mt-0.5 font-medium ${
+                active ? 'text-[#1e3a5f] dark:text-white' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+                {tab.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Layout ────────────────────────────────────────────
 
 export default function TripLayoutInner({
@@ -435,7 +518,7 @@ function TripLayoutContent({
   children: React.ReactNode;
 }) {
   const [mapOpen, setMapOpen] = useState(false);
-  const { trip } = useItineraryScreen(tripId);
+  const { trip, isLoading, error, refetch } = useItineraryScreen(tripId);
   useTripSettingsRegistration(tripId);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
 
@@ -494,19 +577,22 @@ function TripLayoutContent({
   const dir = directionRef.current;
 
   const pageVariants = {
-    initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
-    animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
-    exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
+    initial: { opacity: 0, y: dir > 0 ? 12 : -12 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
   };
 
   // Calendar: full-screen layout with shared sidebar, no hero/card chrome
   if (isCalendar) {
     return (
-      <div className="flex h-screen overflow-hidden">
-        <TripSidebar tripId={tripId} />
+      <div className="flex h-screen overflow-hidden pb-14 md:pb-0">
+        <div className="hidden md:block">
+          <TripSidebar tripId={tripId} />
+        </div>
         <div className="flex-1 min-w-0 h-full">
           {children}
         </div>
+        <MobileTabBar tripId={tripId} />
       </div>
     );
   }
@@ -542,37 +628,42 @@ function TripLayoutContent({
           }
         >
         <div className="flex flex-col md:flex-row">
-          {/* Sidebar */}
-          <TripSidebar tripId={tripId} />
+          {/* Sidebar — hidden on mobile, replaced by bottom tab bar */}
+          <div className="hidden md:block">
+            <TripSidebar tripId={tripId} />
+          </div>
 
           {/* Content area */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 min-h-[60vh]">
             <ContentHeader
               tripId={tripId}
               mapOpen={mapOpen}
               onToggleMap={() => setMapOpen(!mapOpen)}
             />
 
-            <div className="flex">
+            <div className="flex flex-1">
               <div
                 className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-5 pt-4 pb-5'
+                  isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-3 sm:px-5 pt-4 pb-5'
                 }`}
-                style={{ perspective: 1200 }}
               >
+                {/* Error state — shown when trip data fails to load */}
+                {!isLoading && error && !trip ? (
+                  <TripErrorState onRetry={refetch} />
+                ) : (
                 <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
                   <motion.div
                     key={`tab-${currentSegment}`}
-                    layout
                     initial={pageVariants.initial}
                     animate={pageVariants.animate}
                     exit={pageVariants.exit}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ transformOrigin: 'center top' }}
+                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                    className="h-full"
                   >
                     {children}
                   </motion.div>
                 </AnimatePresence>
+                )}
               </div>
 
               {/* Map side panel */}
@@ -645,18 +736,14 @@ function TripLayoutContent({
 
       </div>{/* end max-w-7xl */}
 
-      {/* Trip Explore — transparent so hero image bleeds through */}
-      <div className="w-full relative z-10">
-        <TripExploreSection trip={trip} />
-        {/* Spacer — lets the hero image fade out cleanly */}
-        <div className="h-24" />
-      </div>
-
       {/* Footer — above the hero image */}
       <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
         <OceanWave />
         <Footer />
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <MobileTabBar tripId={tripId} />
     </div>
   );
 }
