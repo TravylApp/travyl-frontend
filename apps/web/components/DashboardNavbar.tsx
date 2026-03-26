@@ -35,7 +35,7 @@ export default function DashboardNavbar() {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
-    const prefersDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    const prefersDark = savedTheme === 'dark'
     setIsDarkMode(prefersDark)
     document.documentElement.classList.toggle('dark', prefersDark)
   }, [])
