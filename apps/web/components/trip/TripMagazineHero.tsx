@@ -86,9 +86,9 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
   const coverImage = rawCover?.includes('googleusercontent.com')
     ? rawCover.replace(/=w\d+-h\d+[^&]*/, '=w1600-h1000-k-no')
     : rawCover;
-  const destination = trip?.destination || 'Destination';
-  const cityName = destination.split(',')[0].trim();
-  const countryName = destination.split(',').slice(1).join(',').trim();
+  const destination = trip?.destination;
+  const cityName = destination ? destination.split(',')[0].trim() : '';
+  const countryName = destination ? destination.split(',').slice(1).join(',').trim() : '';
   const dateStr = trip?.start_date && trip?.end_date ? formatDateRange(trip.start_date, trip.end_date) : null;
   const travelersStr = trip ? `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}` : null;
 
@@ -167,13 +167,17 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
             // eslint-disable-next-line @next/next/no-img-element
             <img src={flagUrl} alt="" width={24} height={18} className="rounded-[2px] shadow-sm" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
           )}
-          <span>{countryName || 'Your Trip Guide'}</span>
+          <span>{countryName || (trip ? 'Your Trip Guide' : '')}</span>
         </p>
         <div className="flex items-center gap-4">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[0.95] font-serif"
-            style={{ letterSpacing: '0.02em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
-            {cityName.toUpperCase()}
-          </h1>
+          {cityName ? (
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[0.95] font-serif"
+              style={{ letterSpacing: '0.02em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
+              {cityName.toUpperCase()}
+            </h1>
+          ) : (
+            <div className="h-14 sm:h-16 md:h-20 w-[60%] rounded-lg bg-white/15 animate-pulse" />
+          )}
           {hasEssentials && (
             <button
               onClick={() => setEssentialsOpen((v) => !v)}
