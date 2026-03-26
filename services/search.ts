@@ -5,7 +5,7 @@ import type { SearchResponse } from './lib/types'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
-    const userId = await validateAuth(event.headers.authorization)
+    await validateAuth(event.headers.authorization)
     const query = event.queryStringParameters?.q
     const destination = event.queryStringParameters?.destination
 

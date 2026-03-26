@@ -29,7 +29,6 @@ import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
-import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
@@ -279,12 +278,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     scrollRef,
     timeRangeStartHour: timeRange.startHour,
   })
-
-  // ─── Derive flight banners ────────────────────────────────────
-  const FLIGHT_BANNERS: FlightBanner[] = []
-
-  // ─── Derive hotel banners ─────────────────────────────────────
-  const HOTEL_BANNERS: HotelBanner[] = []
 
   const selectedActivity = useMemo(
     () => scheduledActivities.find((a) => a.id === selectedEventId) ?? null,
@@ -559,8 +552,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
               {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
               <AllDayRow
                 days={visibleDays}
-                flights={FLIGHT_BANNERS}
-                hotels={HOTEL_BANNERS}
               />
               {/* Scrollable time grid */}
               <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">

@@ -146,15 +146,6 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
 
 /* Reveal animations for overview page */
 .reveal-on-scroll {

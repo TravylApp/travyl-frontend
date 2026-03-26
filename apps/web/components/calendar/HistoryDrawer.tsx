@@ -77,7 +77,7 @@ export function HistoryDrawer({
     }
 
     // Log the revert itself
-    const { error: auditError } = await supabase.from('itinerary_edits').insert({
+    await supabase.from('itinerary_edits').insert({
       trip_id: tripId,
       activity_id: activityId,
       edit_type: 'revert',
@@ -85,7 +85,7 @@ export function HistoryDrawer({
       new_data: entry.original_data,
       user_id: userId,
     })
-    if (auditError) console.warn('[HistoryDrawer] revert audit insert failed:', auditError.message)
+
 
     queryClient.invalidateQueries({ queryKey: ['activity-history', tripId] })
   }
