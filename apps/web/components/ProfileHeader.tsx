@@ -56,7 +56,7 @@ export function ProfileHeader() {
       <div className="max-w-[1400px] mx-auto relative z-10">
         {/* Settings Link */}
         <div className="flex justify-end mb-4 sm:mb-6">
-          <Link href="/profile/test_settings">
+          <Link href="/profile/settings">
             <button className="flex items-center gap-1.5 text-white/40 hover:text-white/60 transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
               <Settings size={14} />
               <span style={{ fontSize: "12px", fontWeight: 500 }}>Settings</span>

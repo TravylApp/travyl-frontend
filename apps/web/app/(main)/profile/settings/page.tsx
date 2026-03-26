@@ -10,7 +10,7 @@ import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
 import { useAuthStore, supabase } from '@travyl/shared';
-import { fetchProfile } from '@travyl/shared';
+import { fetchProfile, updateProfile, updateUserMetadata, updateUserPassword } from '@travyl/shared';
 import type { Profile } from '@travyl/shared';
 
 // ─── Types ─────────────────────────────────────────────
@@ -382,9 +382,61 @@ export default function ProfileSettings() {
 
   const handleSave = async (): Promise<boolean> => {
     if (!hasChanges) { toast.info('No changes to save'); return true; }
+    if (!user || !session) { toast.error('You must be signed in to save settings'); return false; }
+
     setIsSaving(true);
     try {
-      await new Promise(r => setTimeout(r, 1200));
+      // Update profile fields in profiles table
+      if (formData.firstName || formData.city || formData.country || formData.profilePhoto) {
+        await updateProfile(user.id, {
+          display_name: formData.firstName || null,
+          avatar_url: formData.profilePhoto || null,
+          city: formData.city || null,
+          country: formData.country || null,
+        });
+      }
+
+      // Update user metadata in auth
+      const metadataUpdates: Record<string, unknown> = {
+        lastName: formData.lastName || null,
+        phone: formData.phone || null,
+        emergencyName: formData.emergencyName || null,
+        emergencyPhone: formData.emergencyPhone || null,
+        emergencyRelation: formData.emergencyRelation || null,
+        dietaryRequirements: formData.dietaryRequirements || null,
+        currency: formData.currency || null,
+        language: formData.language || null,
+        timezone: formData.timezone || null,
+        distanceUnit: formData.distanceUnit || null,
+        temperatureUnit: formData.temperatureUnit || null,
+      };
+
+      // Only include non-null values
+      const cleanMetadataUpdates = Object.fromEntries(
+        Object.entries(metadataUpdates).filter(([_, v]) => v !== null)
+      );
+
+      if (Object.keys(cleanMetadataUpdates).length > 0) {
+        await updateUserMetadata(cleanMetadataUpdates);
+      }
+
+      // Update password if provided
+      if (formData.newPassword && formData.currentPassword) {
+        // First verify current password by attempting to sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email || '',
+          password: formData.currentPassword,
+        });
+
+        if (signInError) {
+          toast.error('Current password is incorrect');
+          return false;
+        }
+
+        await updateUserPassword(formData.newPassword);
+        toast.success('Password updated successfully!');
+      }
+
       if (!inlineSaveVisible) {
         setShowStickySuccess(true);
         if (stickySuccessTimer.current) clearTimeout(stickySuccessTimer.current);
@@ -394,8 +446,9 @@ export default function ProfileSettings() {
       }
       snapshotAll();
       return true;
-    } catch {
-      toast.error('Failed to save. Please try again.');
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to save settings. Please try again.');
       return false;
     } finally {
       setIsSaving(false);

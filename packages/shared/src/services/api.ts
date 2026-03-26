@@ -47,6 +47,37 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   } catch { return null; }
 }
 
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country'>>): Promise<Profile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUserMetadata(metadata: Record<string, unknown>): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { error } = await supabase.auth.updateUser({
+    data: metadata,
+  });
+
+  if (error) throw error;
+}
+
+export async function updateUserPassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) throw error;
+}
+
 // ─── Home Page Data ──────────────────────────────────────────
 
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
