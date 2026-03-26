@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard } from './types'
 
@@ -200,6 +201,17 @@ export function SuggestionDetailDrawer({
             {suggestion.description}
           </p>
         )}
+
+        {/* View full details link */}
+        <div className="pt-1">
+          <Link
+            href={`/activity/${suggestion.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-[var(--cal-border)] text-[12px] font-medium text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)] transition-colors"
+          >
+            View full details
+          </Link>
+        </div>
       </div>
     </div>
   )
