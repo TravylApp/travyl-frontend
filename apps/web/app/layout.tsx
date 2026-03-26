@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Sora, Lustria } from "next/font/google";
 import Providers from "@/components/providers";
+import { validateEnv } from "@/lib/validateEnv";
 import "./globals.css";
+
+validateEnv();
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",

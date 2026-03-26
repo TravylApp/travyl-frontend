@@ -30,12 +30,12 @@ function AcceptInviteInner() {
           return
         }
 
-        const { tripId } = await acceptInviteByToken(token!, session.user.id)
+        const { tripId } = await acceptInviteByToken(token!)
         setStatus('success')
         setTimeout(() => router.replace(`/trip/${tripId}`), 1200)
       } catch (err: any) {
         const msg = err?.message ?? ''
-        if (msg.includes('Results contain 0 rows') || msg.includes('PGRST116')) {
+        if (msg.includes('Results contain 0 rows') || msg.includes('PGRST116') || msg.includes('not found or already accepted')) {
           setStatus('already-accepted')
         } else {
           console.error('accept invite error:', err)
