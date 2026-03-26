@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { CACHE_1H } from '@/lib/api-utils'
 
-const FALLBACK_QUOTES = [
+interface Quote {
+  content: string
+  author: string
+}
+
+const FALLBACK_QUOTES: Quote[] = [
   { content: 'The world is a book and those who do not travel read only one page.', author: 'Saint Augustine' },
   { content: 'Not all those who wander are lost.', author: 'J.R.R. Tolkien' },
   { content: 'Travel is the only thing you buy that makes you richer.', author: 'Anonymous' },
@@ -13,37 +19,27 @@ const FALLBACK_QUOTES = [
   { content: 'Jobs fill your pocket, but adventures fill your soul.', author: 'Jaime Lyn Beatty' },
 ]
 
-export async function GET(req: NextRequest) {
-  const tag = req.nextUrl.searchParams.get('tag')
+function randomFallback(): Quote {
+  return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)]
+}
 
+export async function GET(req: NextRequest) {
   try {
+    const tag = req.nextUrl.searchParams.get('tag')
     const url = tag
       ? `https://api.quotable.io/quotes/random?tags=${encodeURIComponent(tag)}`
       : 'https://api.quotable.io/quotes/random'
 
-    const res = await fetch(url, { next: { revalidate: 3600 } })
-
-    if (!res.ok) {
-      // API is down — use fallback
-      const fallback = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)]
-      return NextResponse.json(fallback)
-    }
+    const res = await fetch(url, CACHE_1H)
+    if (!res.ok) return NextResponse.json(randomFallback())
 
     const data = await res.json()
     const quote = Array.isArray(data) ? data[0] : data
 
-    if (!quote?.content) {
-      const fallback = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)]
-      return NextResponse.json(fallback)
-    }
+    if (!quote?.content) return NextResponse.json(randomFallback())
 
-    return NextResponse.json({
-      content: quote.content,
-      author: quote.author,
-    })
+    return NextResponse.json<Quote>({ content: quote.content, author: quote.author })
   } catch {
-    // Network error or timeout — use fallback
-    const fallback = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)]
-    return NextResponse.json(fallback)
+    return NextResponse.json(randomFallback())
   }
 }

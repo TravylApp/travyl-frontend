@@ -594,15 +594,6 @@ export interface DestinationDetail {
   population?: string
 }
 
-export interface NormalizedEntity {
-  name: string
-  images: string[]
-  overline: string
-  rating: number | null
-  priceLevel?: number | null
-  href: string
-}
-
 export interface UserAwareness {
   userId: string;
   name: string;
@@ -626,18 +617,6 @@ export interface WeatherForecast {
   low: number;
   icon: string;
   condition: string;
-}
-
-// ─── News / Events ────────────────────────────────────────────
-
-export interface NewsItem {
-  id: string;
-  title: string;
-  snippet: string;
-  category: 'event' | 'advisory' | 'news' | 'tip';
-  source: string;
-  date: string;
-  url?: string;
 }
 
 // ─── Globe / Map Location ────────────────────────────────────

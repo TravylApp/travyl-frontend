@@ -22,15 +22,15 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
   const { data, error } = await supabase
     .from('packing_audit_log')
-    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name), target:profiles!packing_audit_log_target_user_id_fkey(display_name)')
+    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name, email), target:profiles!packing_audit_log_target_user_id_fkey(display_name, email)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
   return (data ?? []).map((row: any) => ({
     ...row,
-    user_display_name: row.user?.display_name ?? null,
-    target_display_name: row.target?.display_name ?? null,
+    user_display_name: row.user?.display_name ?? row.user?.email ?? null,
+    target_display_name: row.target?.display_name ?? row.target?.email ?? null,
     user: undefined,
     target: undefined,
   }))

@@ -80,18 +80,14 @@ export function getActionsForResult(
     id: 'duplicate',
     label: 'Duplicate',
     icon: CopyPlus,
-    execute: () => {
-      console.log('Duplicate trip:', result.id)
-    },
+    execute: () => {},
   }
 
   const removeFromTripAction: SpotlightAction = {
     id: 'remove-from-trip',
     label: 'Remove from Trip',
     icon: Trash2,
-    execute: () => {
-      console.log('Remove from trip:', result.id)
-    },
+    execute: () => {},
   }
 
   const meta = result.metadata as Record<string, unknown> | undefined

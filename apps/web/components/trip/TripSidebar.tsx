@@ -118,7 +118,7 @@ export function TripSidebar({ tripId }: TripSidebarProps) {
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative flex flex-col shrink-0 overflow-hidden border-r border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-[#111827]"
+      className="relative flex flex-col shrink-0 overflow-hidden border-r border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-[#111827] h-screen sticky top-0"
       aria-label="Trip navigation"
     >
       <ul className="flex flex-col gap-0.5 p-2 mt-2">

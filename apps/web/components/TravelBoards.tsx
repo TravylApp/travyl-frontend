@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Plus, Clock, MapPin, Sparkles, Compass, Star, Triangle } from "lucide-react";
 import { PaperPlane } from '@/components/ui';
 import { motion } from "motion/react";
@@ -35,18 +36,18 @@ function BoardCard({ board }: { board: TravelBoard }) {
       <div className="relative bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="flex h-[176px]">
           {/* Main image */}
-          <div className="flex-1">
-            <img src={board.images[0]} alt="" className="w-full h-full object-cover" />
+          <div className="flex-1 relative">
+            <Image src={board.images[0]} alt="" fill className="object-cover" sizes="(max-width: 768px) 50vw, 33vw" />
           </div>
           {/* Side images */}
           {board.images.length > 1 && (
             <div className="flex flex-col flex-1">
-              <div className="flex-1 border-l border-b border-gray-200">
-                <img src={board.images[1]} alt="" className="w-full h-full object-cover" />
+              <div className="flex-1 border-l border-b border-gray-200 relative">
+                <Image src={board.images[1]} alt="" fill className="object-cover" sizes="(max-width: 768px) 25vw, 17vw" />
               </div>
               {board.images.length > 2 ? (
-                <div className="flex-1 border-l border-gray-200">
-                  <img src={board.images[2]} alt="" className="w-full h-full object-cover" />
+                <div className="flex-1 border-l border-gray-200 relative">
+                  <Image src={board.images[2]} alt="" fill className="object-cover" sizes="(max-width: 768px) 25vw, 17vw" />
                 </div>
               ) : (
                 <div className="flex-1 border-l border-gray-200 bg-gray-100 flex items-center justify-center">

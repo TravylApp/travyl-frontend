@@ -6,23 +6,47 @@ import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
 import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
-import type { FollowUpQuestion, PlanResponse, PlaceItem } from "@travyl/shared";
+import type { FollowUpQuestion, PlaceItem } from "@travyl/shared";
 import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
-import {
-  HowItWorks,
-  GetInspired,
-  TravelMosaic,
-  TagUs,
-  OceanWave,
-  TakeoffTransition,
-  Footer,
-  ParallaxQuoteDivider,
-} from "@/components/home";
+import dynamic from "next/dynamic";
+
+const HowItWorks = dynamic(
+  () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
+  { ssr: false }
+);
+const GetInspired = dynamic(
+  () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
+  { ssr: false }
+);
+const TravelMosaic = dynamic(
+  () => import("@/components/home/TravelMosaic").then((m) => ({ default: m.TravelMosaic })),
+  { ssr: false }
+);
+const TagUs = dynamic(
+  () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
+  { ssr: false }
+);
+const OceanWave = dynamic(
+  () => import("@/components/home/OceanWave").then((m) => ({ default: m.OceanWave })),
+  { ssr: false }
+);
+const TakeoffTransition = dynamic(
+  () => import("@/components/home/TakeoffTransition").then((m) => ({ default: m.TakeoffTransition })),
+  { ssr: false }
+);
+const Footer = dynamic(
+  () => import("@/components/home/Footer").then((m) => ({ default: m.Footer })),
+  { ssr: false }
+);
+const ParallaxQuoteDivider = dynamic(
+  () => import("@/components/home/ParallaxQuoteDivider").then((m) => ({ default: m.ParallaxQuoteDivider })),
+  { ssr: false }
+);
 import { memo } from "react";
 
 const PLACEHOLDER_PHRASES = [
@@ -113,7 +137,6 @@ export default function Home() {
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
-  const heroRef = useRef<HTMLElement>(null);
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
@@ -124,7 +147,7 @@ export default function Home() {
   const planner = useTripPlanner();
   const [currentQIdx, setCurrentQIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
-  const planRef = useRef<PlanResponse | null>(null);
+
 
   const isClarifying = planner.state.phase === 'clarifying';
   const isExtracting = planner.state.phase === 'extracting';
@@ -165,23 +188,15 @@ export default function Home() {
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
 
-  // Parallax transforms
-  const { scrollYProgress: heroScroll } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const heroTextY = useTransform(heroScroll, [0, 1], [0, 150]);
-  const heroTextOpacity = useTransform(heroScroll, [0, 0.6], [1, 0]);
-  const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
-  const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
+  // Parallax transforms — use document scroll (no target ref) to avoid hydration error
+  const { scrollYProgress: heroScroll } = useScroll();
+  const heroTextY = useTransform(heroScroll, [0, 0.35], [0, 150]);
+  const heroTextOpacity = useTransform(heroScroll, [0, 0.2], [1, 0]);
+  const heroBgY = useTransform(heroScroll, [0, 0.35], [0, -120]);
+  const heroBgScale = useTransform(heroScroll, [0, 0.35], [1, 1.15]);
 
-  // Parallax divider
-  const dividerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress: dividerScroll } = useScroll({
-    target: dividerRef,
-    offset: ["start end", "end start"],
-  });
-  const dividerBgY = useTransform(dividerScroll, [0, 1], [-80, 80]);
+  // Parallax divider — uses CSS background-attachment instead of motion ref
+  const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
 
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
@@ -306,7 +321,6 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — save to Supabase with planner data in trip_context
         // Not logged in — save to Supabase with planner data in trip_context
         // so the overview page has hotels, itinerary, budget immediately
         try {
@@ -508,7 +522,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section ref={heroRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+      <section className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
@@ -518,6 +532,7 @@ export default function Home() {
               alt=""
               width={1600}
               height={900}
+              loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "low"}
               decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"
@@ -833,7 +848,7 @@ export default function Home() {
       <TravelMosaic onTileClick={(place) => setSelectedPlace(place)} />
 
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
-      <ParallaxQuoteDivider ref={dividerRef} bgY={dividerBgY} />
+      <ParallaxQuoteDivider bgY={dividerBgY} />
 
       <GetInspired />
       <TagUs />

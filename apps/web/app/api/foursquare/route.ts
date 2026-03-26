@@ -1,112 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  BACKEND_URL,
+  fetchExternal,
+  getRequiredParams,
+  getOptionalParam,
+  errorResponse,
+  CACHE_1H,
+} from '@/lib/api-utils'
 
-const CLIENT_ID = process.env.FOURSQUARE_CLIENT_ID
-const CLIENT_SECRET = process.env.FOURSQUARE_CLIENT_SECRET
-const V = '20260323'
-
-// Foursquare v2 category IDs
-const CATEGORY_MAP: Record<string, string> = {
-  hotel: '4bf58dd8d48988d1fa931735',
-  restaurant: '4d4b7105d754a06374d81259',
-  nightlife: '4d4b7105d754a06376d81259',
-  attraction: '4d4b7104d754a06370d81259',
-  cafe: '4bf58dd8d48988d1e0931735',
-  museum: '4bf58dd8d48988d181941735',
-  park: '4bf58dd8d48988d163941735',
-  shopping: '4d4b7105d754a06378d81259',
-  airport: '4bf58dd8d48988d1ed931735',
-}
-
-interface FoursquareVenue {
+interface BackendPlace {
   id: string
   name: string
-  location: {
-    lat: number
-    lng: number
-    address?: string
-    city?: string
-    country?: string
-    formattedAddress?: string[]
-  }
-  categories: { name: string; icon: { prefix: string; suffix: string } }[]
+  latitude?: number
+  longitude?: number
+  lat?: number
+  lng?: number
+  address?: string
+  category?: string
+  subcategory?: string
   rating?: number
-  ratingSignals?: number
-  price?: { tier: number }
-  url?: string
-  hours?: { status?: string }
-  bestPhoto?: { prefix: string; suffix: string; width: number; height: number }
+  review_count?: number
+  price_level?: string
+  photo_url?: string
+  photos?: string[]
+  website?: string
+  hours?: string
+  description?: string
 }
 
 export async function GET(req: NextRequest) {
-  const lat = req.nextUrl.searchParams.get('lat')
-  const lng = req.nextUrl.searchParams.get('lng')
-  const query = req.nextUrl.searchParams.get('q')
-  const category = req.nextUrl.searchParams.get('category') ?? 'attraction'
-  const limit = req.nextUrl.searchParams.get('limit') ?? '10'
+  const params = getRequiredParams(req, 'lat', 'lng')
+  if (params instanceof NextResponse) return params
 
-  if (!CLIENT_ID || !CLIENT_SECRET) {
-    return NextResponse.json([])
-  }
+  const category = getOptionalParam(req, 'category', 'attraction')
+  const limit = getOptionalParam(req, 'limit', '10')
 
-  if (!lat || !lng) {
-    return NextResponse.json({ error: 'Missing lat/lng' }, { status: 400 })
+  if (!BACKEND_URL) {
+    return errorResponse('Backend URL not configured', 503)
   }
 
   try {
-    const categoryId = CATEGORY_MAP[category] ?? ''
-    const params = new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      v: V,
-      ll: `${lat},${lng}`,
-      limit,
-      ...(categoryId ? { categoryId } : {}),
-      ...(query ? { query } : {}),
+    const url = new URL('/api/places/nearby', BACKEND_URL)
+    url.searchParams.set('lat', params.lat)
+    url.searchParams.set('lng', params.lng)
+    url.searchParams.set('category', category)
+    url.searchParams.set('limit', limit)
+
+    const data = await fetchExternal<BackendPlace[]>(url.toString(), {
+      ...CACHE_1H,
+      fallback: [],
     })
 
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 8000)
-    const res = await fetch(
-      `https://api.foursquare.com/v2/venues/explore?${params}`,
-      { signal: controller.signal }
-    )
-    clearTimeout(timer)
-
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Foursquare fetch failed' }, { status: res.status })
-    }
-
-    const data = await res.json()
-    const items = data.response?.groups?.[0]?.items ?? []
-
-    // Skip individual photo fetches — use bestPhoto from explore response instead
-    // (Photo fetches were causing route timeouts)
-
-    const venues = items.map((item: { venue: FoursquareVenue; tips?: { text: string }[] }) => {
-      const v = item.venue
-      const cat = v.categories?.[0]
-      const mainPhoto = v.bestPhoto ? `${v.bestPhoto.prefix}600x400${v.bestPhoto.suffix}` : null
+    const venues = data.map((place) => {
+      const lat = place.latitude ?? place.lat ?? 0
+      const lng = place.longitude ?? place.lng ?? 0
+      const mainPhoto = place.photo_url || null
+      const images = place.photos?.length
+        ? place.photos
+        : mainPhoto
+          ? [mainPhoto]
+          : []
 
       return {
-        id: v.id,
-        name: v.name,
-        lat: v.location.lat,
-        lng: v.location.lng,
-        address: v.location.formattedAddress?.join(', ') ?? v.location.address,
-        category: cat?.name ?? category,
-        rating: v.rating,
-        ratingCount: v.ratingSignals,
-        price: v.price?.tier,
+        id: place.id,
+        name: place.name,
+        lat,
+        lng,
+        address: place.address ?? '',
+        category: place.subcategory ?? place.category ?? category,
+        rating: place.rating ?? undefined,
+        ratingCount: place.review_count ?? undefined,
+        price: place.price_level ?? undefined,
         image: mainPhoto,
-        images: mainPhoto ? [mainPhoto] : [],
-        url: v.url,
-        hours: v.hours?.status,
-        tip: item.tips?.[0]?.text,
+        images,
+        url: place.website ?? undefined,
+        hours: place.hours ?? undefined,
+        tip: place.description ?? undefined,
       }
     })
 
     return NextResponse.json(venues)
   } catch {
-    return NextResponse.json({ error: 'Foursquare service unavailable' }, { status: 500 })
+    return errorResponse('Places service unavailable', 500)
   }
 }

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+
 // Lazy-init to avoid crashing at build time when env vars aren't set
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const key = process.env.SUPABASE_SECRET_KEY!
   return createClient(url, key)
 }
 
@@ -80,13 +82,13 @@ export async function POST(req: NextRequest) {
       }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image }))
     } catch {}
 
-    // Fallback 1: Foursquare
-    if (exploreItems.length === 0) {
+    // Fallback 1: Foursquare (via backend /api/places/nearby)
+    if (exploreItems.length === 0 && BACKEND_URL) {
       try {
         const fsCats = ['attraction', 'restaurant', 'museum']
         const results = await Promise.all(
           fsCats.map(async (cat) => {
-            const r = await fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
+            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
             return r.ok ? r.json() : []
           })
         )
@@ -120,12 +122,18 @@ export async function POST(req: NextRequest) {
   const startParam = trip.start_date || ''
   const endParam = trip.end_date || ''
   const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
-    fetch(`${baseUrl}/api/images?q=${encodeURIComponent(city)}`)
-      .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined),
-    fetch(`${baseUrl}/api/weather?location=${encodeURIComponent(trip.destination)}&days=${durationDays}`)
-      .then(r => r.ok ? r.json() : null).catch(() => null),
-    lat ? fetch(`${baseUrl}/api/foursquare?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    (BACKEND_URL
+      ? fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(city)}`)
+          .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined)
+      : Promise.resolve(undefined)),
+    (BACKEND_URL
+      ? fetch(`${BACKEND_URL}/api/weather/forecast?location=${encodeURIComponent(trip.destination)}&days=${durationDays}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null)),
+    (lat && BACKEND_URL
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
+          .then(r => r.ok ? r.json() : []).catch(() => [])
+      : Promise.resolve([])),
     fetch(`${baseUrl}/api/news?destination=${encodeURIComponent(city)}&limit=8`)
       .then(r => r.ok ? r.json() : []).catch(() => []),
     lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=sightseeing&limit=8`)
@@ -147,9 +155,11 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=nightlife&limit=3`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    // Real events (Eventbrite + PredictHQ)
-    lat ? fetch(`${baseUrl}/api/events?lat=${lat}&lng=${lng}&city=${encodeURIComponent(city)}&start=${startParam}&end=${endParam}&limit=8`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // Real events (Eventbrite + PredictHQ — via backend)
+    (BACKEND_URL
+      ? fetch(`${BACKEND_URL}/api/events/search?city=${encodeURIComponent(city)}${startParam ? `&start_date=${startParam}` : ''}${endParam ? `&end_date=${endParam}` : ''}`)
+          .then(r => r.ok ? r.json() : []).catch(() => [])
+      : Promise.resolve([])),
     // Travel safety advisory
     countryCode ? fetch(`${baseUrl}/api/safety?country=${encodeURIComponent(countryCode)}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
@@ -168,12 +178,16 @@ export async function POST(req: NextRequest) {
     // Cost of living estimates
     fetch(`${baseUrl}/api/costliving?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}`)
       .then(r => r.ok ? r.json() : null).catch(() => null),
-    // TripAdvisor restaurants — real photos + ratings
-    lat ? fetch(`${baseUrl}/api/tripadvisor?lat=${lat}&lng=${lng}&q=${encodeURIComponent(city + ' restaurants')}&category=restaurants&limit=6`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    // TripAdvisor attractions — supplement explore items
-    lat ? fetch(`${baseUrl}/api/tripadvisor?lat=${lat}&lng=${lng}&q=${encodeURIComponent(city + ' attractions')}&category=attractions&limit=6`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // TripAdvisor restaurants — real photos + ratings (via backend)
+    (lat && BACKEND_URL
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6`)
+          .then(r => r.ok ? r.json() : []).catch(() => [])
+      : Promise.resolve([])),
+    // TripAdvisor attractions — supplement explore items (via backend)
+    (lat && BACKEND_URL
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6`)
+          .then(r => r.ok ? r.json() : []).catch(() => [])
+      : Promise.resolve([])),
   ])
 
   // Supplement explore_items with TripAdvisor attractions (better photos, more data)
@@ -239,9 +253,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Supplement hero_images with Unsplash/Pexels for better mosaic quality
-  if (fresh.hero_images && fresh.hero_images.length < 6) {
+  if (fresh.hero_images && fresh.hero_images.length < 6 && BACKEND_URL) {
     try {
-      const imgRes = await fetch(`${baseUrl}/api/images?q=${encodeURIComponent(city + ' travel')}&type=hero`)
+      const imgRes = await fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(city + ' travel')}&type=hero`)
       if (imgRes.ok) {
         const imgData = await imgRes.json()
         if (imgData.url && !fresh.hero_images.includes(imgData.url)) {
@@ -257,12 +271,12 @@ export async function POST(req: NextRequest) {
     ...goingOnVenues.filter((v: any) => !v.image).map((v: any) => ({ ref: v, type: /restaurant|food|culinary|dining/i.test(v.category) ? 'restaurant' : 'activity' })),
   ].slice(0, 6) // Limit to 6 image fetches to avoid rate limits
 
-  if (itemsMissingImages.length > 0) {
+  if (itemsMissingImages.length > 0 && BACKEND_URL) {
     const imageResults = await Promise.all(
       itemsMissingImages.map(async ({ ref, type }) => {
         try {
           const name = ref.title || ref.name || ''
-          const r = await fetch(`${baseUrl}/api/images?q=${encodeURIComponent(name + ' ' + city)}&type=${type}`)
+          const r = await fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(name + ' ' + city)}&type=${type}`)
           if (r.ok) {
             const d = await r.json()
             return { ref, url: d.url }

@@ -66,7 +66,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
 
 // ─── Trip Explore Section (destination-specific categories) ──
 
-function TripExploreSection({ trip }: { trip: Trip | null }) {
+export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
   const ctx = trip?.trip_context;
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);

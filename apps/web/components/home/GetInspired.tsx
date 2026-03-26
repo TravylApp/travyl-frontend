@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import type React from "react";
+import Image from "next/image";
 import { AnimatePresence, motion, type PanInfo } from "motion/react";
 import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
 import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
@@ -68,6 +70,22 @@ async function fetchInspiredPlaces(): Promise<PlaceItem[]> {
   return shuffle(places).slice(0, 20);
 }
 
+function useInView(rootMargin = "200px"): [React.RefObject<HTMLElement | null>, boolean] {
+  const ref = useRef<HTMLElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); observer.disconnect(); } },
+      { rootMargin }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rootMargin]);
+  return [ref, inView];
+}
+
 const SWIPE_THRESHOLD = 80;
 
 function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolean }) {
@@ -79,12 +97,13 @@ function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolea
 
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden bg-black relative group">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={images[imgIdx]}
         alt={place.name}
-        referrerPolicy="no-referrer"
+        fill
         className="absolute inset-0 w-full h-full object-cover"
+        sizes="(max-width: 768px) 100vw, 380px"
+        referrerPolicy="no-referrer"
       />
 
       {/* Gradient */}
@@ -262,6 +281,7 @@ function InspirationCardBack({ place }: { place: PlaceItem }) {
 }
 
 export function GetInspired() {
+  const [sectionRef, inView] = useInView();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -269,6 +289,7 @@ export function GetInspired() {
     queryKey: ['inspired-places'],
     queryFn: fetchInspiredPlaces,
     staleTime: 10 * 60 * 1000,
+    enabled: inView,
   });
 
   // Reset flip when card changes
@@ -333,7 +354,7 @@ export function GetInspired() {
   };
 
   return (
-    <section className="py-16 px-6">
+    <section ref={sectionRef as React.RefObject<HTMLElement>} className="py-16 px-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <motion.h2
