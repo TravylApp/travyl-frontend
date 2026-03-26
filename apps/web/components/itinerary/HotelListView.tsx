@@ -13,6 +13,7 @@ import {
   Phone,
   Mail,
   Map as MapIcon,
+  Hotel,
 } from 'lucide-react';
 import type { HotelSearchResult, RoomType } from '@travyl/shared';
 
@@ -28,10 +29,10 @@ const HOTEL_SEARCH_RESULTS: HotelSearchResult[] = [
     rating: 9.4,
     reviews: 2841,
     price: 580,
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&fm=webp&q=75',
     images: [
-      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-      'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&fm=webp&q=75',
+      'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&fm=webp&q=75',
     ],
     address: '25 Avenue Montaigne, 75008 Paris',
     neighborhood: 'Champs-Élysées',
@@ -64,10 +65,10 @@ const HOTEL_SEARCH_RESULTS: HotelSearchResult[] = [
     rating: 8.8,
     reviews: 1523,
     price: 245,
-    image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400',
+    image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&fm=webp&q=75',
     images: [
-      'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
-      'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800',
+      'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&fm=webp&q=75',
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&fm=webp&q=75',
     ],
     address: '12 Rue des Archives, 75004 Paris',
     neighborhood: 'Le Marais',
@@ -98,9 +99,9 @@ const HOTEL_SEARCH_RESULTS: HotelSearchResult[] = [
     rating: 8.2,
     reviews: 967,
     price: 175,
-    image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=400',
+    image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=400&fm=webp&q=75',
     images: [
-      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
+      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&fm=webp&q=75',
     ],
     address: '45 Rue de Seine, 75006 Paris',
     neighborhood: 'Saint-Germain-des-Prés',
@@ -185,13 +186,21 @@ function ImageCarousel({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   return (
     <div className="relative w-full h-full min-h-[260px] rounded-xl overflow-hidden group">
-      <img
-        src={images[index]}
-        alt="Hotel"
-        className="w-full h-full object-cover"
-      />
+      {imgError ? (
+        <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+          <Hotel size={32} className="text-blue-300" />
+        </div>
+      ) : (
+        <img
+          src={images[index]}
+          alt="Hotel"
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      )}
       {images.length > 1 && (
         <>
           <button
@@ -538,6 +547,7 @@ function CompactHotelCard({
   isSelected: boolean;
   onSelect: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   return (
     <button
       onClick={onSelect}
@@ -549,7 +559,13 @@ function CompactHotelCard({
     >
       {/* Thumbnail */}
       <div className="w-24 h-20 rounded-lg overflow-hidden flex-shrink-0">
-        <img src={hotel.image} alt={hotel.name} className="w-full h-full object-cover" />
+        {imgError ? (
+          <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+            <Hotel size={20} className="text-blue-300" />
+          </div>
+        ) : (
+          <img src={hotel.image} alt={hotel.name} className="w-full h-full object-cover" onError={() => setImgError(true)} />
+        )}
       </div>
 
       {/* Info */}

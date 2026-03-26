@@ -22,7 +22,7 @@ async function insertAuditRow(
     new_data: newData,
     user_id: userId,
   })
-  if (error) console.warn('[insertAuditRow]', error.message)
+  if (error) return
 }
 
 interface UseActivityMutationsReturn {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Heart, Star, MapPin, CalendarDays, Clock, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { GlobeLocation } from '@travyl/shared';
@@ -54,7 +55,7 @@ export function EventCard({
       >
         <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 relative">
           {event.imageUrl ? (
-            <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" onLoad={() => setImgLoaded(true)} />
+            <Image src={event.imageUrl} alt={event.name} width={44} height={44} className="w-full h-full object-cover" onLoad={() => setImgLoaded(true)} />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: event.color + '20' }}>
               <CalendarDays size={14} style={{ color: event.color }} />
@@ -93,10 +94,12 @@ export function EventCard({
     >
       <div className="relative h-[160px] overflow-hidden">
         {event.imageUrl ? (
-          <img
+          <Image
             src={event.imageUrl}
             alt={event.name}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            fill
+            className={`object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            sizes="(max-width: 640px) 100vw, 320px"
             onLoad={() => setImgLoaded(true)}
           />
         ) : (
