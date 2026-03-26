@@ -16,11 +16,11 @@ function getSupabase() {
 }
 
 function getDayOfWeek(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long' })
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' })
 }
 
 async function fetchWeather(lat: number, lng: number, date: string) {
-  const isHistorical = new Date(date) < new Date()
+  const isHistorical = new Date(`${date}T12:00:00`) < new Date()
   const base = isHistorical
     ? 'https://archive-api.open-meteo.com/v1/archive'
     : 'https://api.open-meteo.com/v1/forecast'
@@ -63,6 +63,26 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       .single()
 
     if (!activity) return { statusCode: 404, body: JSON.stringify({ error: 'activity not found' }) }
+
+    // Authorization check — verify caller has access to this trip
+    const { data: owned } = await supabase
+      .from('trips')
+      .select('id')
+      .eq('id', tripId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const { data: collaborated } = await supabase
+      .from('trip_collaborators')
+      .select('trip_id')
+      .eq('trip_id', tripId)
+      .eq('user_id', userId)
+      .eq('invite_status', 'accepted')
+      .maybeSingle()
+
+    if (!owned && !collaborated) {
+      return { statusCode: 403, body: JSON.stringify({ error: 'Forbidden' }) }
+    }
 
     // Cache check — sk is starting_date so moving the activity to a new date generates
     // a fresh cache entry naturally
