@@ -86,6 +86,15 @@ export function HotelCard({ hotel }: HotelCardProps) {
         <button className="w-full mt-3 py-2.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-[13px] font-semibold rounded-xl shadow-md hover:shadow-lg transition-all">
           Book Hotel
         </button>
+
+        {/* View full details */}
+        <Link
+          href={`/hotel/${hotel.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center mt-2 py-2 text-[12px] font-medium text-gray-400 hover:text-[#1e3a5f] transition-colors"
+        >
+          View full details
+        </Link>
       </div>
     </div>
     </Link>

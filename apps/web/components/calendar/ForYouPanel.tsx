@@ -34,6 +34,9 @@ export function ForYouPanel({
     setActiveFilter,
     filterCategories,
     refetch,
+    hasMore,
+    isLoadingMore,
+    loadMore,
   } = useSuggestions({ destination, scheduledActivityIds })
 
   const { trackEvent } = useInteractionTracking(tripId)
@@ -60,7 +63,6 @@ export function ForYouPanel({
     }, 300)
   }, [])
 
-  // Clear pending close timer on unmount to prevent setState on unmounted component
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
@@ -70,7 +72,7 @@ export function ForYouPanel({
   return (
     <aside
       style={{ width: width ?? FOR_YOU_PANEL_DEFAULT_WIDTH }}
-      className="relative flex flex-col shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
+      className="relative flex flex-col shrink-0 self-stretch border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
       aria-label="Activity suggestions"
     >
       {/* Header */}
@@ -123,9 +125,8 @@ export function ForYouPanel({
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      <div className="h-0 grow overflow-y-auto px-2 pb-3 scrollbar-thin">
         {isLoading ? (
-          /* Skeleton loading */
           <div className="columns-2 gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
@@ -136,7 +137,6 @@ export function ForYouPanel({
             ))}
           </div>
         ) : error ? (
-          /* Error state */
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <p className="text-sm text-[var(--cal-text-secondary)]">
               Couldn&apos;t load suggestions
@@ -146,7 +146,6 @@ export function ForYouPanel({
             </button>
           </div>
         ) : suggestions.length === 0 ? (
-          /* Empty state */
           <div className="flex flex-col items-center justify-center py-12 gap-1">
             <p className="text-sm text-[var(--cal-text-secondary)]">
               {searchQuery.trim()
@@ -160,17 +159,33 @@ export function ForYouPanel({
             )}
           </div>
         ) : (
-          /* Masonry grid */
-          <div className="columns-2 gap-2">
-            {suggestions.map((suggestion) => (
-              <SuggestionCard
-                key={suggestion.id}
-                suggestion={suggestion}
-                onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
-                onSelect={openDrawer}
-              />
-            ))}
-          </div>
+          <>
+            <div className="columns-2 gap-2">
+              {suggestions.map((suggestion) => (
+                <SuggestionCard
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  onVisible={() => trackEvent(suggestion.id, 'impression', suggestion.category)}
+                  onSelect={openDrawer}
+                />
+              ))}
+            </div>
+
+            {/* Load more / loading spinner */}
+            {isLoadingMore ? (
+              <div className="flex justify-center py-4">
+                <div className="h-5 w-5 rounded-full border-2 border-[var(--cal-border)] border-t-[#003594] animate-spin" />
+              </div>
+            ) : hasMore ? (
+              <button
+                type="button"
+                onClick={loadMore}
+                className="w-full py-3 mt-2 text-xs font-medium text-[var(--cal-accent)] border border-[var(--cal-border)] hover:bg-[var(--cal-border-light)] rounded-lg transition-colors"
+              >
+                Load more suggestions
+              </button>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -181,7 +196,7 @@ export function ForYouPanel({
         </div>
       )}
 
-      {/* Detail drawer — conditionally mounted, slides in from right */}
+      {/* Detail drawer */}
       {selectedSuggestion && (
         <SuggestionDetailDrawer
           suggestion={selectedSuggestion}

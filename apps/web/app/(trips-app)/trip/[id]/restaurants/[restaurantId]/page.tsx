@@ -50,9 +50,12 @@ export default function RestaurantDetailPage({
 
   if (!result) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <EntityBreadcrumb label="Restaurants" href={`/trip/${tripId}/restaurants`} />
-        <p className="text-gray-500 dark:text-gray-400">Restaurant not found.</p>
+      <div className="max-w-3xl mx-auto py-6">
+        <EntityBreadcrumb
+          items={[{ label: 'Trip', href: `/trip/${tripId}` }]}
+          current="Restaurant not found"
+        />
+        <p className="text-gray-500 dark:text-gray-400 px-6 py-4">Restaurant not found.</p>
       </div>
     )
   }
@@ -74,11 +77,20 @@ export default function RestaurantDetailPage({
     activity.category.charAt(0).toUpperCase() + activity.category.slice(1)
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
-      <EntityBreadcrumb label="Restaurants" href={`/trip/${tripId}/restaurants`} />
+    <div className="max-w-3xl mx-auto pb-24">
+      <EntityBreadcrumb
+        items={[{ label: 'Trip', href: `/trip/${tripId}` }, { label: 'Restaurants', href: `/trip/${tripId}/restaurants` }]}
+        current={activity.name}
+      />
+
+      <EntityActionsBar
+        entityId={restaurantId}
+        entityType="place"
+        entityName={activity.name}
+      />
 
       {/* Overview */}
-      <div className="mb-6">
+      <div className="px-6 md:px-10 py-6 border-b border-gray-100">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
           {activity.name}
         </h1>
@@ -146,19 +158,13 @@ export default function RestaurantDetailPage({
 
       {/* Location map */}
       {hasCoordinates && (
-        <EntitySection title="Location">
-          <EntityMap
-            latitude={activity.latitude!}
-            longitude={activity.longitude!}
-            label={activity.location_name ?? activity.name}
-          />
-        </EntitySection>
+        <EntityMap
+          latitude={activity.latitude!}
+          longitude={activity.longitude!}
+          address={activity.location_name}
+          name={activity.name}
+        />
       )}
-
-      <EntityActionsBar
-        onEdit={() => {}}
-        onRemove={() => {}}
-      />
     </div>
   )
 }

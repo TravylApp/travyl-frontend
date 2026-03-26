@@ -13,7 +13,7 @@ import { SpotlightFooter } from './SpotlightFooter'
 import { SpotlightActionMenu, getActionsForResult, type SpotlightAction } from './SpotlightActionMenu'
 import { SpotlightTripCreator } from './SpotlightTripCreator'
 
-const CATEGORY_ORDER = ['action', 'trip', 'hotel', 'flight', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
+const CATEGORY_ORDER = ['action', 'trip', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
 
 interface ActionMode {
   result: SpotlightResult

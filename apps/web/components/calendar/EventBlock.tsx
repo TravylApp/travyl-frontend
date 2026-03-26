@@ -32,6 +32,7 @@ interface EventBlockProps {
   timeRangeEndHour?: number
   column?: number
   totalColumns?: number
+  columnSpan?: number
   hiddenCount?: number
 }
 
@@ -51,6 +52,7 @@ export function EventBlock({
   timeRangeEndHour = 24,
   column = 0,
   totalColumns = 1,
+  columnSpan = 1,
   hiddenCount = 0,
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -99,10 +101,14 @@ export function EventBlock({
   // Column positioning — uses calc() with fixed pixel gaps
   // COLUMN_OUTER_PAD preserves the existing 4px inset on each side of the day column
   const availableWidth = `(100% - ${2 * COLUMN_OUTER_PAD}px)`
-  const colWidth = `(${availableWidth} - ${(totalColumns - 1) * COLUMN_GAP}px) / ${totalColumns}`
+  const singleColWidth = `(${availableWidth} - ${(totalColumns - 1) * COLUMN_GAP}px) / ${totalColumns}`
   const leftOffset = column === 0
     ? `${COLUMN_OUTER_PAD}px`
-    : `${COLUMN_OUTER_PAD}px + ${column} * (${colWidth} + ${COLUMN_GAP}px)`
+    : `${COLUMN_OUTER_PAD}px + ${column} * (${singleColWidth} + ${COLUMN_GAP}px)`
+  // Width spans multiple columns when adjacent columns are empty
+  const colWidth = columnSpan === 1
+    ? singleColWidth
+    : `(${singleColWidth}) * ${columnSpan} + ${COLUMN_GAP}px * ${columnSpan - 1}`
 
   const displayStartHour = isResizing && previewStartHour !== null ? previewStartHour : activity.startHour
   const displayDuration = isResizing && previewDuration !== null ? previewDuration : activity.duration

@@ -1,6 +1,7 @@
 'use client'
 
 import { Clock, Building2, Plane, UtensilsCrossed, MapPin, Plus, Calendar, Pin, Compass, ArrowRight, Terminal, Settings } from 'lucide-react'
+// Building2 and Plane kept for PINNED_TYPE_ICONS (pinned hotel/flight results may persist in localStorage)
 import { useRouter } from 'next/navigation'
 import type { PinnedResult } from '@/hooks/useSpotlightSearch'
 
@@ -14,8 +15,6 @@ interface Props {
 }
 
 const QUICK_CATEGORIES = [
-  { label: 'Hotels', icon: Building2 },
-  { label: 'Flights', icon: Plane },
   { label: 'Restaurants', icon: UtensilsCrossed },
   { label: 'Activities', icon: MapPin },
 ]

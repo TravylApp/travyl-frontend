@@ -18,6 +18,7 @@ export {
   fetchTripByShareToken,
   updateTripVisibility,
   ensureShareLinkToken,
+  rotateShareLinkToken,
   addToItinerary,
   removeFromItinerary,
   toggleFavorite,

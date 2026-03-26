@@ -529,6 +529,7 @@ export interface SuggestionCard {
   name: string
   category: ActivityCategory
   imageUrl: string
+  imageUrls?: string[]
   duration: number        // hours
   price: number | null
   currency: string
@@ -547,6 +548,62 @@ export interface RecommendationSection {
   sectionTitle: string
   sectionSubtitle?: string
   suggestions: SuggestionCard[]
+}
+
+export interface ActivityDetail {
+  id: string
+  name: string
+  category: ActivityCategory
+  imageUrl: string
+  imageUrls?: string[]
+  duration: number
+  price: number | null
+  currency: string
+  rating: number | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+  source: 'ai' | 'search'
+  relevanceScore: number
+  reason?: string
+  meetingPoint?: string
+  availableTimes?: string[]
+  groupSize?: number
+  languages?: string[]
+  included?: string[]
+  notIncluded?: string[]
+  tips?: string[]
+  accessibility?: string[]
+  address?: string
+  phone?: string
+  website?: string
+}
+
+export interface DestinationDetail {
+  name: string
+  country: string
+  description: string
+  language: string
+  currency: string
+  timezone: string
+  bestTimeToVisit: string
+  budgetLevel: 1 | 2 | 3 | 4
+  tags: string[]
+  image: string
+  images?: string[]
+  latitude: number
+  longitude: number
+  population?: string
+}
+
+export interface NormalizedEntity {
+  name: string
+  images: string[]
+  overline: string
+  rating: number | null
+  priceLevel?: number | null
+  href: string
 }
 
 export interface UserAwareness {

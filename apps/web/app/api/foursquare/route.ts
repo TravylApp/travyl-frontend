@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const limit = req.nextUrl.searchParams.get('limit') ?? '10'
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    return NextResponse.json({ error: 'Foursquare not configured' }, { status: 500 })
+    return NextResponse.json([])
   }
 
   if (!lat || !lng) {

@@ -290,7 +290,7 @@ export default function Home() {
       }
 
       if (user) {
-        // Logged in — save to Supabase, then redirect to trip page
+        // Logged in — save to Supabase via shared helper, then redirect
         try {
           const tripId = await savePlanToSupabase(plan as any);
           setTakeoffCompleted(true);
@@ -306,6 +306,7 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
+        // Not logged in — save to Supabase with planner data in trip_context
         // Not logged in — save to Supabase with planner data in trip_context
         // so the overview page has hotels, itinerary, budget immediately
         try {
@@ -379,50 +380,35 @@ export default function Home() {
                   lat: h.lat,
                   lng: h.lng,
                 })),
-                // Full pool of 20 hotels from SerpAPI (Google Hotels)
-                all_hotels: ((plan as any).data?.hotels ?? []).map((h: any) => ({
+                // Top 8 hotels (trimmed to keep payload under CloudFront limit)
+                all_hotels: ((plan as any).data?.hotels ?? []).slice(0, 8).map((h: any) => ({
                   id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
                   name: h.name,
                   image: h.photo_url,
                   rating: h.rating,
-                  ratingCount: h.review_count,
                   price: h.price_per_night,
-                  totalPrice: h.total_price,
-                  currency: h.currency,
                   stars: h.stars,
-                  amenities: h.amenities,
                   address: h.address,
                   link: h.link,
-                  lat: h.lat,
-                  lng: h.lng,
                 })),
-                // Events from SerpAPI (Google Events)
-                events: ((plan as any).data?.events ?? []).map((e: any) => ({
+                // Top 5 events
+                events: ((plan as any).data?.events ?? []).slice(0, 5).map((e: any) => ({
                   id: e.id || `event-${e.name?.replace(/\s+/g, '-').toLowerCase()}`,
                   title: e.name,
                   date: e.date,
-                  time: e.time,
                   venue: e.venue,
-                  description: e.description,
-                  category: e.category,
                   image: e.photo_url,
-                  url: e.link,
-                  price: e.price,
-                  lat: e.lat,
-                  lng: e.lng,
                 })),
-                // Full POI pool from SerpAPI (40 places — all source: serpapi/Google)
+                // Top 10 POIs (trimmed from 40)
                 foursquare_venues: ((plan as any).data?.pois ?? [])
                   .filter((p: any) => !seenIds.has(p.id))
+                  .slice(0, 10)
                   .map((p: any) => ({
                     id: p.id,
-                    title: p.name,
                     name: p.name,
-                    description: p.description,
                     category: p.category,
                     image: p.photo_url,
                     rating: p.rating,
-                    tags: p.tags,
                   })),
                 weather: weatherForecast.length > 0 ? {
                   forecast: weatherForecast,
@@ -452,10 +438,9 @@ export default function Home() {
                   })),
                 })),
               },
-              // Pass raw plan data so the API can save hotels/flights/itinerary to their own tables
-              hotels: plan.hotels ?? [],
-              flights: plan.flights ?? [],
-              itinerary: plan.itinerary ?? [],
+              // Pass trimmed plan data for API to save
+              hotels: (plan.hotels ?? []).slice(0, 5),
+              flights: (plan.flights ?? []).slice(0, 5),
             }),
           });
           if (!res.ok) {
@@ -484,15 +469,22 @@ export default function Home() {
           isSaving.current = false;
           router.push(`/trip/${trip.id}`);
         } catch (saveErr) {
-          console.error('[Trip Create] Caught:', saveErr);
-          // Fallback to preview if save fails
-          try { sessionStorage.setItem('pendingPlan', JSON.stringify(plan)); } catch {}
-          setTakeoffCompleted(true);
-          await new Promise((r) => setTimeout(r, 800));
-          setShowTakeoff(false);
-          planner.reset();
-          isSaving.current = false;
-          router.push('/trip/preview');
+          console.error('[Trip Create] API route failed, falling back to direct save:', saveErr);
+          // Fallback: save directly to Supabase (bypasses CloudFront)
+          try {
+            const tripId = await savePlanToSupabase(plan as any);
+            setTakeoffCompleted(true);
+            await new Promise((r) => setTimeout(r, 800));
+            setShowTakeoff(false);
+            planner.reset();
+            isSaving.current = false;
+            router.push(`/trip/${tripId}`);
+          } catch (fallbackErr) {
+            console.error('[Trip Create] Fallback also failed:', fallbackErr);
+            setLoadingError(fallbackErr instanceof Error ? fallbackErr.message : 'Failed to save trip');
+            setShowTakeoff(false);
+            isSaving.current = false;
+          }
         }
       }
     })();
@@ -515,7 +507,7 @@ export default function Home() {
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
             <img
-              key={src}
+              key={`hero-${i}`}
               src={src}
               alt=""
               width={1600}

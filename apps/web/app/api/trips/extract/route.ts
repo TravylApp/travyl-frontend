@@ -4,7 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 export async function POST(req: NextRequest) {
   if (!API_URL) {
-    return NextResponse.json({ error: 'API not configured' }, { status: 500 })
+    return NextResponse.json({ items: [] })
   }
 
   const body = await req.json()

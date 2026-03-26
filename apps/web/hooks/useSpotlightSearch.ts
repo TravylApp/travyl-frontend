@@ -7,20 +7,24 @@ import { useAuthStore, useTrip, mergeSearchResults, type SpotlightResult } from 
 import { useContextSearch } from './useContextSearch'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { fuzzyMatch } from '@/components/spotlight/fuzzyMatch'
+import { parseQueryIntent, type ParsedIntent } from '@/lib/parseQueryIntent'
 
 const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const PINNED_RESULTS_KEY = 'travyl:pinnedResults'
 const MAX_RECENT = 10
 
-export type SearchScope = 'hotels' | 'flights' | 'trips' | 'restaurants' | 'activities' | 'commands' | null
+export type SearchScope = 'trips' | 'restaurants' | 'activities' | 'commands' | null
 
 const SCOPE_TO_TYPES: Record<string, string[]> = {
-  hotels: ['hotel'],
-  flights: ['flight'],
   trips: ['trip'],
   restaurants: ['restaurant'],
   activities: ['activity'],
   commands: ['command'],
+}
+
+const ENTITY_TYPE_TO_SCOPE: Partial<Record<string, SearchScope>> = {
+  restaurant: 'restaurants',
+  activity: 'activities',
 }
 
 // Static navigation items
@@ -88,15 +92,41 @@ async function fetchEntitySearch(
   return mapped
 }
 
+interface DiscoverPlace {
+  id: string
+  name: string
+  category: string
+  imageUrl: string
+  rating: number | null
+  priceLevel: string | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+}
+
+interface DiscoverResponse {
+  destination: { name: string; imageUrl: string } | null
+  places: DiscoverPlace[]
+  route?: { origin: string; destination: string }
+}
+
+async function fetchDiscover(query: string, token: string): Promise<DiscoverResponse> {
+  const res = await fetch(`/api/discover?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return { destination: null, places: [] }
+  return res.json()
+}
+
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
-  // Destinations link to the destination showcase page
   if (type === 'destination') return `/destination/${encodeURIComponent(entityName ?? '')}`
+  if (type === 'restaurant') return `/restaurant/${encodeURIComponent(entityId)}`
+  if (type === 'hotel') return `/hotel/${encodeURIComponent(entityId)}`
+  if (type === 'activity') return `/activity/${encodeURIComponent(entityId)}`
   if (!tripId) return '/'
   switch (type) {
-    case 'hotel': return `/trip/${tripId}/hotels/${entityId}`
     case 'flight': return `/trip/${tripId}/flights/${entityId}`
-    case 'restaurant': return `/trip/${tripId}/restaurants/${entityId}`
-    case 'activity': return `/trip/${tripId}/activities/${entityId}`
     default: return '/'
   }
 }
@@ -154,6 +184,14 @@ export function useSpotlightSearch() {
 
   const shouldSearch = debouncedQuery.length >= 3 && !!token
 
+  // Intent parsing — Phase 1 (sync regex) or Phase 2 (Haiku LLM fallback) before any search fires
+  const { data: parsedIntent, isLoading: intentLoading } = useQuery<ParsedIntent>({
+    queryKey: ['parse-intent', debouncedQuery],
+    queryFn: () => parseQueryIntent(debouncedQuery, token!),
+    enabled: shouldSearch,
+    staleTime: Infinity, // intent for a given query string never changes
+  })
+
   // Existing context-search for trips (vector-powered)
   const { results: tripSearchResults, isLoading: tripSearchLoading } = useContextSearch(query)
 
@@ -163,6 +201,19 @@ export function useSpotlightSearch() {
     queryFn: () => fetchEntitySearch(debouncedQuery, entitySearchTypes, effectiveTripId, token!),
     enabled: shouldSearch,
     staleTime: 30_000,
+  })
+
+  // Use parsed location if available (e.g. "Bakersfield" from "bakersfield restaurants")
+  const discoverLocation = parsedIntent?.location ?? debouncedQuery
+
+  // Live discover for destination queries — waits for intent to resolve before firing.
+  // Fires regardless of scope so entity-type scoped searches (e.g. "bakersfield restaurants")
+  // still get discover results; scope filtering happens in discoverResults memo below.
+  const { data: discoverData, isLoading: discoverLoading } = useQuery({
+    queryKey: ['discover', discoverLocation],
+    queryFn: () => fetchDiscover(discoverLocation, token!),
+    enabled: shouldSearch && parsedIntent !== undefined,
+    staleTime: 60_000,
   })
 
   // Client-side filter for navigation items using fuzzy match
@@ -230,37 +281,113 @@ export function useSpotlightSearch() {
     }
   }, [tripSearchResults, scope])
 
-  // Detect trip creation intent
-  const createTripIntent = useMemo((): SpotlightResult | null => {
-    const q = query.toLowerCase().trim()
-    const createMatch = q.match(/^(?:new|create)\s+trip(?:\s+to\s+(.+))?$/i)
-    const tripToMatch = q.match(/^trip\s+to\s+(.+)$/i)
+  // Transform discover response into SpotlightResult format
+  const discoverResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!discoverData?.places?.length) return {}
 
-    if (createMatch || tripToMatch) {
-      const dest = createMatch?.[1] || tripToMatch?.[1] || ''
-      return {
+    // Build destination card — only when no scope (scope-less exploration)
+    const results: Record<string, SpotlightResult[]> = {}
+
+    if (!scope && discoverData.destination?.name) {
+      results.destination = [{
+        id: `discover-dest-${discoverData.destination.name}`,
+        type: 'destination' as const,
+        title: discoverData.destination.name,
+        subtitle: `${discoverData.places.length} places to explore`,
+        imageUrl: discoverData.destination.imageUrl || undefined,
+        href: `/destination/${encodeURIComponent(discoverData.destination.name)}`,
+        score: 2, // higher than entity results
+        metadata: {},
+      }]
+    }
+
+    // Group places by category → map to SpotlightResult types
+    const categoryMap: Record<string, SpotlightResult['type']> = {
+      dining: 'restaurant',
+      sightseeing: 'activity',
+      outdoor: 'activity',
+      cultural: 'activity',
+      shopping: 'activity',
+      nightlife: 'activity',
+      tour: 'activity',
+    }
+
+    // When a scope is active, only include place types that match it
+    const allowedTypes = scope ? new Set(SCOPE_TO_TYPES[scope] ?? []) : null
+
+    for (const place of discoverData.places) {
+      const type = categoryMap[place.category] ?? 'activity'
+      if (allowedTypes && !allowedTypes.has(type)) continue
+      if (!results[type]) results[type] = []
+      results[type].push({
+        id: place.id,
+        type,
+        title: place.name,
+        subtitle: place.location,
+        imageUrl: place.imageUrl || undefined,
+        href: `/destination/${encodeURIComponent(discoverData.destination?.name ?? debouncedQuery)}`,
+        score: 1.5,
+        metadata: {
+          rating: place.rating ?? undefined,
+          priceLevel: place.priceLevel ?? undefined,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          category: place.category,
+          source: 'discover',
+        },
+      })
+    }
+
+    return results
+  }, [discoverData, debouncedQuery, scope])
+
+  // Action results derived from parsed intent (replaces createTripIntent + routeIntent memos)
+  const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!parsedIntent) return {}
+    const actions: SpotlightResult[] = []
+
+    if (parsedIntent.intent === 'create-trip') {
+      actions.push({
         id: 'create-trip',
         type: 'action' as const,
-        title: dest ? `Create trip to ${dest.charAt(0).toUpperCase() + dest.slice(1)}` : 'Create New Trip',
+        title: parsedIntent.location
+          ? `Create trip to ${parsedIntent.location}`
+          : 'Create New Trip',
         subtitle: 'Start planning a new adventure',
         href: '',
         score: 100,
-        metadata: { prefillDestination: dest },
-      }
+        metadata: { prefillDestination: parsedIntent.location ?? '' },
+      })
     }
-    return null
-  }, [query])
 
-  // Inject create-trip action into results
-  const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
-    if (!createTripIntent) return {}
-    return { action: [createTripIntent] }
-  }, [createTripIntent])
+    if (parsedIntent.intent === 'route' && discoverData?.route) {
+      const { origin, destination } = discoverData.route
+      actions.push({
+        id: 'create-trip-route',
+        type: 'action' as const,
+        title: `Plan trip: ${origin} to ${destination}`,
+        subtitle: 'Start planning with destinations pre-filled',
+        href: '',
+        score: 100,
+        metadata: { prefillDestination: destination, origin },
+      })
+    }
 
-  // Merge all sources (now including commands and actions)
+    return actions.length ? { action: actions } : {}
+  }, [parsedIntent, discoverData?.route])
+
+  // Auto-set scope from parsed entity type (only when user hasn't set one manually)
+  useEffect(() => {
+    if (parsedIntent?.entityType && scope === null) {
+      const autoScope = ENTITY_TYPE_TO_SCOPE[parsedIntent.entityType]
+      if (autoScope) setScope(autoScope)
+    }
+  }, [parsedIntent?.entityType, scope, setScope])
+
+  // Merge all sources (now including commands, actions, and discover)
   const results = useMemo(() => {
-    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, navResults, commandResults], { maxPerCategory: 3 })
-  }, [actionResults, tripResults, entityResults, navResults, commandResults])
+    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, discoverResults, navResults, commandResults], { maxPerCategory: 5 })
+  }, [actionResults, tripResults, entityResults, discoverResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -313,7 +440,7 @@ export function useSpotlightSearch() {
     query,
     setQuery,
     results,
-    isLoading: tripSearchLoading || entityLoading,
+    isLoading: tripSearchLoading || entityLoading || discoverLoading || intentLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,

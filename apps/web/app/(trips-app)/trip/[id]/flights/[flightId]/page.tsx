@@ -44,9 +44,12 @@ export default function FlightDetailPage({
 
   if (!flight) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <EntityBreadcrumb label="Flights" href={`/trip/${tripId}/flights`} />
-        <p className="text-gray-500 dark:text-gray-400">Flight not found.</p>
+      <div className="max-w-3xl mx-auto py-6">
+        <EntityBreadcrumb
+          items={[{ label: 'Trip', href: `/trip/${tripId}` }]}
+          current="Flight not found"
+        />
+        <p className="text-gray-500 dark:text-gray-400 px-6 py-4">Flight not found.</p>
       </div>
     )
   }
@@ -62,11 +65,14 @@ export default function FlightDetailPage({
       : null
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
-      <EntityBreadcrumb label="Flights" href={`/trip/${tripId}/flights`} />
+    <div className="max-w-3xl mx-auto pb-24">
+      <EntityBreadcrumb
+        items={[{ label: 'Trip', href: `/trip/${tripId}` }, { label: 'Flights', href: `/trip/${tripId}/flights` }]}
+        current={`${data.origin_iata} → ${data.dest_iata}`}
+      />
 
       {/* Hero — full-width gradient banner */}
-      <div className="w-full rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-6 mb-6 relative overflow-hidden">
+      <div className="w-full bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-6 mb-0 relative overflow-hidden">
         {/* Airline + flight number row */}
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-white/90">{data.airline}</span>
@@ -110,6 +116,12 @@ export default function FlightDetailPage({
           </div>
         </div>
       </div>
+
+      <EntityActionsBar
+        entityId={flightId}
+        entityType="activity"
+        entityName={`${data.airline} ${data.flight_number ?? ''} ${data.origin_iata}–${data.dest_iata}`}
+      />
 
       {/* Flight Info */}
       <EntitySection title="Flight Info">
@@ -213,11 +225,6 @@ export default function FlightDetailPage({
           </div>
         </EntitySection>
       )}
-
-      <EntityActionsBar
-        onEdit={() => {}}
-        onRemove={() => {}}
-      />
     </div>
   )
 }

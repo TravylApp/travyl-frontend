@@ -46,7 +46,8 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
   const [isHovered, setIsHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
 
-  const images = (suggestion.imageUrl ? [suggestion.imageUrl] : []).filter(u => !failedUrls.has(u))
+  const rawImages = suggestion.imageUrls?.length ? suggestion.imageUrls : suggestion.imageUrl ? [suggestion.imageUrl] : []
+  const images = rawImages.filter(u => !failedUrls.has(u))
   const hasMultiple = images.length > 1
 
   useEffect(() => {
@@ -113,18 +114,18 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
         className="relative w-full overflow-hidden"
         style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
       >
-        {images.length === 0 ? (
-          /* Placeholder when no usable photos are available */
-          <div
-            className="absolute inset-0"
-            style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
-          />
-        ) : (
+        {/* Always show gradient behind images as fallback for broken loads */}
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
+        />
+        {images.length === 0 ? null : (
           images.map((url, idx) => (
             <img
               key={url}
               src={url}
               alt=""
+              loading="lazy"
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
               style={{ opacity: idx === activeIdx ? 1 : 0 }}
               draggable={false}
@@ -209,19 +210,6 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
         </div>
       </div>
 
-      {/* Hover overlay + drag badge */}
-      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-[10px] rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-white text-[11px] font-medium flex items-center gap-[5px]">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="9" cy="6" r="1.5" />
-          <circle cx="15" cy="6" r="1.5" />
-          <circle cx="9" cy="12" r="1.5" />
-          <circle cx="15" cy="12" r="1.5" />
-          <circle cx="9" cy="18" r="1.5" />
-          <circle cx="15" cy="18" r="1.5" />
-        </svg>
-        Drag to schedule
-      </div>
     </div>
   )
 }
