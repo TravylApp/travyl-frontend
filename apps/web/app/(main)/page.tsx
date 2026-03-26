@@ -469,15 +469,22 @@ export default function Home() {
           isSaving.current = false;
           router.push(`/trip/${trip.id}`);
         } catch (saveErr) {
-          console.error('[Trip Create] Caught:', saveErr);
-          // Fallback to preview if save fails
-          try { sessionStorage.setItem('pendingPlan', JSON.stringify(plan)); } catch {}
-          setTakeoffCompleted(true);
-          await new Promise((r) => setTimeout(r, 800));
-          setShowTakeoff(false);
-          planner.reset();
-          isSaving.current = false;
-          router.push('/trip/preview');
+          console.error('[Trip Create] API route failed, falling back to direct save:', saveErr);
+          // Fallback: save directly to Supabase (bypasses CloudFront)
+          try {
+            const tripId = await savePlanToSupabase(plan as any);
+            setTakeoffCompleted(true);
+            await new Promise((r) => setTimeout(r, 800));
+            setShowTakeoff(false);
+            planner.reset();
+            isSaving.current = false;
+            router.push(`/trip/${tripId}`);
+          } catch (fallbackErr) {
+            console.error('[Trip Create] Fallback also failed:', fallbackErr);
+            setLoadingError(fallbackErr instanceof Error ? fallbackErr.message : 'Failed to save trip');
+            setShowTakeoff(false);
+            isSaving.current = false;
+          }
         }
       }
     })();
