@@ -13,6 +13,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import dynamic from "next/dynamic";
 import { fetchTrips } from "@travyl/shared";
+import { Footer, OceanWave } from "@/components/home";
 import { supabase } from "@travyl/shared";
 import type { Trip } from "@travyl/shared";
 
@@ -134,12 +135,11 @@ function CardGrid({
             </div>
           </div>
         </div>
-      ))}
+      </div>
+    </div>
     </div>
   );
 }
-
-import { Footer, OceanWave } from "@/components/home";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"boards" | "favorites" | "globe">("boards");
