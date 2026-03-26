@@ -120,14 +120,13 @@ async function fetchDiscover(query: string, token: string): Promise<DiscoverResp
 }
 
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
-  // Destinations link to the destination showcase page
   if (type === 'destination') return `/destination/${encodeURIComponent(entityName ?? '')}`
+  if (type === 'restaurant') return `/restaurant/${encodeURIComponent(entityId)}`
+  if (type === 'hotel') return `/hotel/${encodeURIComponent(entityId)}`
+  if (type === 'activity') return `/activity/${encodeURIComponent(entityId)}`
   if (!tripId) return '/'
   switch (type) {
-    case 'hotel': return `/trip/${tripId}/hotels/${entityId}`
     case 'flight': return `/trip/${tripId}/flights/${entityId}`
-    case 'restaurant': return `/trip/${tripId}/restaurants/${entityId}`
-    case 'activity': return `/trip/${tripId}/activities/${entityId}`
     default: return '/'
   }
 }
@@ -207,11 +206,13 @@ export function useSpotlightSearch() {
   // Use parsed location if available (e.g. "Bakersfield" from "bakersfield restaurants")
   const discoverLocation = parsedIntent?.location ?? debouncedQuery
 
-  // Live discover for destination queries — waits for intent to resolve before firing
+  // Live discover for destination queries — waits for intent to resolve before firing.
+  // Fires regardless of scope so entity-type scoped searches (e.g. "bakersfield restaurants")
+  // still get discover results; scope filtering happens in discoverResults memo below.
   const { data: discoverData, isLoading: discoverLoading } = useQuery({
     queryKey: ['discover', discoverLocation],
     queryFn: () => fetchDiscover(discoverLocation, token!),
-    enabled: shouldSearch && !scope && parsedIntent !== undefined,
+    enabled: shouldSearch && parsedIntent !== undefined,
     staleTime: 60_000,
   })
 
@@ -284,10 +285,10 @@ export function useSpotlightSearch() {
   const discoverResults = useMemo((): Record<string, SpotlightResult[]> => {
     if (!discoverData?.places?.length) return {}
 
-    // Build destination card if available
+    // Build destination card — only when no scope (scope-less exploration)
     const results: Record<string, SpotlightResult[]> = {}
 
-    if (discoverData.destination?.name) {
+    if (!scope && discoverData.destination?.name) {
       results.destination = [{
         id: `discover-dest-${discoverData.destination.name}`,
         type: 'destination' as const,
@@ -311,8 +312,12 @@ export function useSpotlightSearch() {
       tour: 'activity',
     }
 
+    // When a scope is active, only include place types that match it
+    const allowedTypes = scope ? new Set(SCOPE_TO_TYPES[scope] ?? []) : null
+
     for (const place of discoverData.places) {
       const type = categoryMap[place.category] ?? 'activity'
+      if (allowedTypes && !allowedTypes.has(type)) continue
       if (!results[type]) results[type] = []
       results[type].push({
         id: place.id,
@@ -334,7 +339,7 @@ export function useSpotlightSearch() {
     }
 
     return results
-  }, [discoverData, debouncedQuery])
+  }, [discoverData, debouncedQuery, scope])
 
   // Action results derived from parsed intent (replaces createTripIntent + routeIntent memos)
   const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
