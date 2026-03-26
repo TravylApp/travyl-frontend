@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@travyl/shared"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "iconoir-react"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 2592000, // 30 days — external image URLs are stable

@@ -257,7 +257,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
 
 // ─── Trip Explore Section (destination-specific categories) ──
 
-function TripExploreSection({ trip }: { trip: Trip | null }) {
+export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
   const ctx = trip?.trip_context;
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -577,9 +577,9 @@ function TripLayoutContent({
   const dir = directionRef.current;
 
   const pageVariants = {
-    initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
-    animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
-    exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
+    initial: { opacity: 0, y: dir > 0 ? 12 : -12 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
   };
 
   // Calendar: full-screen layout with shared sidebar, no hero/card chrome
@@ -646,7 +646,6 @@ function TripLayoutContent({
                 className={`flex-1 min-w-0 relative overflow-hidden ${
                   isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-3 sm:px-5 pt-4 pb-5'
                 }`}
-                style={{ perspective: 1200 }}
               >
                 {/* Error state — shown when trip data fails to load */}
                 {!isLoading && error && !trip ? (
@@ -655,12 +654,11 @@ function TripLayoutContent({
                 <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
                   <motion.div
                     key={`tab-${currentSegment}`}
-                    layout
                     initial={pageVariants.initial}
                     animate={pageVariants.animate}
                     exit={pageVariants.exit}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ transformOrigin: 'center top' }}
+                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                    className="h-full"
                   >
                     {children}
                   </motion.div>
@@ -737,13 +735,6 @@ function TripLayoutContent({
       </div>
 
       </div>{/* end max-w-7xl */}
-
-      {/* Trip Explore — transparent so hero image bleeds through */}
-      <div className="w-full relative z-10">
-        <TripExploreSection trip={trip} />
-        {/* Spacer — lets the hero image fade out cleanly */}
-        <div className="h-24" />
-      </div>
 
       {/* Footer — above the hero image */}
       <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
