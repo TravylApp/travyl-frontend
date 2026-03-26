@@ -515,7 +515,7 @@ export default function Home() {
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
             <img
-              key={src}
+              key={`hero-${i}`}
               src={src}
               alt=""
               width={1600}

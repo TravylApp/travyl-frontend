@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
+import GlobalNavbar from './GlobalNavbar';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -51,6 +52,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
+      <GlobalNavbar />
       {children}
       <SpotlightSearch />
     </QueryClientProvider>
