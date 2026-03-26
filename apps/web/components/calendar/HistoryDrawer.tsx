@@ -54,6 +54,7 @@ export function HistoryDrawer({
   if (!isOpen) return null
 
   async function handleRevert(entry: AuditEntry) {
+    if (entry.edit_type === 'revert') return
     const activityId = entry.activity_id
 
     switch (entry.edit_type) {
@@ -76,7 +77,7 @@ export function HistoryDrawer({
     }
 
     // Log the revert itself
-    await supabase.from('itinerary_edits').insert({
+    const { error: auditError } = await supabase.from('itinerary_edits').insert({
       trip_id: tripId,
       activity_id: activityId,
       edit_type: 'revert',
@@ -84,6 +85,7 @@ export function HistoryDrawer({
       new_data: entry.original_data,
       user_id: userId,
     })
+    if (auditError) console.warn('[HistoryDrawer] revert audit insert failed:', auditError.message)
 
     queryClient.invalidateQueries({ queryKey: ['activity-history', tripId] })
   }
@@ -98,7 +100,7 @@ export function HistoryDrawer({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#1e3a5f]/30">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8]">Change History</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8]">Change history</h2>
           <button
             onClick={onClose}
             aria-label="Close history"
