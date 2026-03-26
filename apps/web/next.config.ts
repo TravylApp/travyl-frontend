@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@travyl/shared"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "iconoir-react"],
+  },
   images: {
     remotePatterns: [
       {
