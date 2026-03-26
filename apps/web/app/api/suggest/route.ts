@@ -54,7 +54,7 @@ const fetchSuggestionsForDestination = unstable_cache(
       id: `serp-${place.place_id ?? i}`,
       name: place.title,
       category: inferCategory(place.type, 'sightseeing'),
-      imageUrls: extractImageUrls(place, extraImagesList[i] ?? []),
+      imageUrl: extractImageUrls(place, extraImagesList[i] ?? [])[0] ?? '',
       duration: 2,
       price: mapPrice(place.price),
       currency: 'USD',
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!process.env.SERPAPI_KEY) {
-    return NextResponse.json({ error: 'SERPAPI_KEY not configured' }, { status: 500 })
+    return NextResponse.json({ suggestions: [], source: 'unconfigured' })
   }
 
   const query = q ? q : (CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all)
