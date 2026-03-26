@@ -36,6 +36,7 @@ import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
+import { HistoryDrawer } from './HistoryDrawer'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
@@ -85,6 +86,7 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName, isSharedView = false }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
@@ -530,6 +532,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           }
           onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
+          onOpenHistory={() => setIsHistoryOpen(true)}
         />
 
         {/* Grid area */}
@@ -757,6 +760,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         onSettingsChange={refetchTrip}
       />
     )}
+    <HistoryDrawer
+      tripId={tripId}
+      isOpen={isHistoryOpen}
+      onClose={() => setIsHistoryOpen(false)}
+      onMove={moveActivity}
+      onEdit={updateActivity}
+      onDelete={removeActivity}
+      onAdd={addActivity}
+      tripStartDate={tripStartDate}
+      userId={userId}
+    />
     {contextMenu && (() => {
       const poll = polls.get(contextMenu.activityId)
       const hasActivePoll = poll?.status === 'active'

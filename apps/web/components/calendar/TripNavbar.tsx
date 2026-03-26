@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
-import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User } from 'iconoir-react'
+import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User, Clock } from 'iconoir-react'
 import { useAuthStore } from '@travyl/shared'
 import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
@@ -139,6 +139,7 @@ export interface TripNavbarProps {
   onDeleteUnscheduled: (id: string) => void
   /** When true: read-only shared view — hides share, avatar dropdown, and new activity controls */
   isSharedView?: boolean
+  onOpenHistory?: () => void
 }
 
 function getInitials(name: string | undefined): string {
@@ -193,6 +194,7 @@ export function TripNavbar({
   onAssignUnscheduled,
   onDeleteUnscheduled,
   isSharedView = false,
+  onOpenHistory,
 }: TripNavbarProps) {
   const user = useAuthStore((s) => s.user)
   const signOut = useAuthStore((s) => s.signOut)
@@ -380,6 +382,18 @@ export function TripNavbar({
               N
             </kbd>
           </button>
+          )}
+
+          {/* Change history */}
+          {onOpenHistory && !isSharedView && (
+            <button
+              onClick={onOpenHistory}
+              title="Change history"
+              aria-label="Change history"
+              className="p-1.5 rounded-lg text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30 transition-colors"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
           )}
 
           {/* Theme toggle - inline light/dark button */}
