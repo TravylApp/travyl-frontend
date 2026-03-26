@@ -119,8 +119,8 @@ interface BackendPlace {
 }
 
 export async function GET(req: NextRequest) {
-  const lat = req.nextUrl.searchParams.get('lat') ?? ''
-  const lng = req.nextUrl.searchParams.get('lng') ?? ''
+  const lat = req.nextUrl.searchParams.get('lat') ?? '48.8566'
+  const lng = req.nextUrl.searchParams.get('lng') ?? '2.3522'
   const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
   const limit = req.nextUrl.searchParams.get('limit') ?? '20'
   const q = req.nextUrl.searchParams.get('q')
@@ -130,119 +130,39 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let searchLat = lat
-    let searchLng = lng
+    let data: BackendPlace[]
 
-    // Natural language search — use SerpAPI google_local directly
-    const SERPAPI_KEY = process.env.SERPAPI_KEY
-    if (q && SERPAPI_KEY) {
-      // Try SerpAPI local search first (handles "best tacos in Oaxaca" etc.)
-      const serpQuery = category === 'sightseeing' ? q : `${category} ${q}`
-      const serpParams = new URLSearchParams({
-        engine: 'google_local',
-        q: serpQuery,
-        api_key: SERPAPI_KEY,
-      })
-      // If it looks like a city name (short, no spaces beyond one), also check known cities
-      const knownCity = KNOWN_CITIES[q.toLowerCase()]
-      if (knownCity) {
-        serpParams.set('ll', `@${knownCity.lat},${knownCity.lng},14z`)
-      }
+    // Natural language queries go through the NLP search endpoint (SerpAPI google_local).
+    // Known city names still use geocode + nearby for structured backend results.
+    const isNlpQuery = q && !KNOWN_CITIES[q.toLowerCase()]
 
-      try {
-        const serpRes = await fetch(`https://serpapi.com/search.json?${serpParams}`, {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(8000),
-          next: { revalidate: 3600 } as any,
-        })
-        if (serpRes.ok) {
-          const serpData = await serpRes.json()
-          const localResults = serpData.local_results ?? []
-          if (localResults.length > 0) {
-            const sliced = localResults.slice(0, parseInt(limit))
-
-            // Fetch high-res images for top 5 results only (balance speed vs quality)
-            const imageResults = await Promise.all(
-              sliced.slice(0, 5).map(async (place: any) => {
-                try {
-                  const imgRes = await fetch(
-                    `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(place.title + ' ' + (place.address?.split(',')[0] || ''))}&num=4&api_key=${SERPAPI_KEY}`,
-                    { signal: AbortSignal.timeout(4000) }
-                  )
-                  if (!imgRes.ok) return []
-                  const imgData = await imgRes.json()
-                  return (imgData.images_results ?? [])
-                    .slice(0, 4)
-                    .map((img: any) => img.original ?? '')
-                    .filter((u: string) => !!u && !u.includes('encrypted-tbn'))
-                } catch { return [] }
-              })
-            )
-
-            const places = sliced.map((place: any, idx: number) => {
-              const extraImages = imageResults[idx] ?? []
-              const mainImage = extraImages[0] || upscaleGoogleImage(place.thumbnail) || getFallbackImage(place.title, idx)
-              return {
-                id: `serp_${place.place_id ?? idx}`,
-                name: place.title,
-                image: mainImage,
-                images: extraImages.length > 1 ? extraImages : undefined,
-                type: mapType(place.type, category),
-                rating: place.rating ?? 0,
-                tagline: place.description?.split('.')[0] ?? place.type ?? category,
-                category: mapCategory(place.type, undefined),
-                description: place.description ?? '',
-                latitude: place.gps_coordinates?.latitude ?? 0,
-                longitude: place.gps_coordinates?.longitude ?? 0,
-                reviewCount: place.reviews,
-                address: place.address,
-                website: place.website,
-                hours: place.hours ? (typeof place.hours === 'string' ? place.hours : place.hours[0]) : undefined,
-                tags: mapTags(place.type, [], undefined),
-              }
-            })
-
-            const res_out = NextResponse.json(places)
-            res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
-            return res_out
-          }
-        }
-      } catch (serpErr) {
-        console.warn('[places] SerpAPI local search failed, falling back to backend:', serpErr)
-      }
-    }
-
-    // Fallback: geocode + backend nearby search
-    if (q) {
-      const knownCity = KNOWN_CITIES[q.toLowerCase()]
-      if (knownCity) {
-        searchLat = knownCity.lat
-        searchLng = knownCity.lng
+    if (isNlpQuery) {
+      const nlpRes = await fetch(
+        `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      if (nlpRes.ok) {
+        const nlpData = await nlpRes.json()
+        data = (nlpData.results ?? []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          lat: r.latitude,
+          lng: r.longitude,
+          category: r.category,
+          rating: r.rating ?? 0,
+          description: r.description,
+          photo_url: r.imageUrl,
+          address: r.location,
+          price_level: r.price != null
+            ? (r.price <= 15 ? '$' : r.price <= 35 ? '$$' : r.price <= 60 ? '$$$' : '$$$$')
+            : null,
+        }))
       } else {
-        try {
-          const geoRes = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-            {
-              headers: { 'Accept-Language': 'en', 'User-Agent': 'Travyl/1.0' },
-              signal: AbortSignal.timeout(5000),
-            }
-          )
-          const geoData = await geoRes.json()
-          if (geoData.length > 0) {
-            searchLat = geoData[0].lat
-            searchLng = geoData[0].lon
-          }
-        } catch {}
+        data = await fetchNearby(q, lat, lng, category, limit)
       }
+    } else {
+      data = await fetchNearby(q, lat, lng, category, limit)
     }
-
-    const res = await fetch(
-      `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
-      { headers: { Accept: 'application/json' } }
-    )
-    if (!res.ok) return NextResponse.json([])
-
-    const data: BackendPlace[] = await res.json()
 
     // Map to PlaceItem format (categories must match PLACE_COLLECTIONS in shared)
     const requestedCat = category
@@ -274,6 +194,45 @@ export async function GET(req: NextRequest) {
     console.error('[places] Route error:', err)
     return NextResponse.json([])
   }
+}
+
+async function fetchNearby(
+  q: string | null,
+  defaultLat: string,
+  defaultLng: string,
+  category: string,
+  limit: string,
+): Promise<BackendPlace[]> {
+  let searchLat = defaultLat
+  let searchLng = defaultLng
+  if (q) {
+    const knownCity = KNOWN_CITIES[q.toLowerCase()]
+    if (knownCity) {
+      searchLat = knownCity.lat
+      searchLng = knownCity.lng
+    } else {
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+          {
+            headers: { 'Accept-Language': 'en', 'User-Agent': 'Travyl/1.0 (travel planning app)' },
+            signal: AbortSignal.timeout(5000),
+          }
+        )
+        const geoData = await geoRes.json()
+        if (geoData.length > 0) {
+          searchLat = geoData[0].lat
+          searchLng = geoData[0].lon
+        }
+      } catch {}
+    }
+  }
+  const res = await fetch(
+    `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
+    { headers: { Accept: 'application/json' } }
+  )
+  if (!res.ok) return []
+  return res.json()
 }
 
 function upscaleGoogleImage(url: string | null | undefined): string | null {

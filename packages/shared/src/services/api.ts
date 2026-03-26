@@ -453,10 +453,10 @@ export async function removeCollaborator(collaboratorId: string): Promise<void> 
   if (error) throw error
 }
 
-export async function acceptInviteByToken(inviteToken: string, userId: string): Promise<{ tripId: string }> {
-  const { data, error } = await supabase.from('trip_collaborators').update({ user_id: userId, invite_status: 'accepted', accepted_at: new Date().toISOString() }).eq('invite_token', inviteToken).eq('invite_status', 'pending').select('trip_id').single()
+export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId: string }> {
+  const { data, error } = await supabase.rpc('accept_invite_by_token', { p_token: inviteToken })
   if (error) throw error
-  return { tripId: data.trip_id }
+  return { tripId: (data as { trip_id: string }).trip_id }
 }
 
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {

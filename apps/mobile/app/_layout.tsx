@@ -1,7 +1,7 @@
 import '../global.css';
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -10,7 +10,6 @@ import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { Text, TextInput } from 'react-native';
-import { useColorScheme } from '@/components/useColorScheme';
 import { useAuthStore } from '@travyl/shared';
 
 // Set Satoshi as the default font for all Text and TextInput components
@@ -84,10 +83,8 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="trip/[id]" options={{ headerShown: false, gestureEnabled: false }} />
