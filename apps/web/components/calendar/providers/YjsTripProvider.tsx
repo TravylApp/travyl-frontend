@@ -34,22 +34,32 @@ interface YjsTripProviderProps {
 }
 
 export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
-  const docRef = useRef<Y.Doc | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'reconnecting' | 'disconnected'
   >('disconnected')
 
-  // Create/recreate doc when tripId changes
-  if (!docRef.current) {
+  // One Y.Doc per tripId, created synchronously during render so it is
+  // immediately available to context consumers without waiting for an effect.
+  // Replacing docRef here (not in an effect) means consumers always see the
+  // correct doc on the very first render — no second doc swapped in later.
+  const docRef = useRef<Y.Doc | null>(null)
+  const docTripIdRef = useRef<string>('')
+  if (docTripIdRef.current !== tripId) {
+    docRef.current?.destroy()
     docRef.current = new Y.Doc()
+    docTripIdRef.current = tripId
   }
+  const doc = docRef.current!
+
+  // Destroy the doc when the component unmounts (tripId-change destroys happen in render body above)
+  useEffect(() => {
+    return () => { docRef.current?.destroy() }
+  }, [])
 
   useEffect(() => {
-    const doc = new Y.Doc()
-    docRef.current = doc
     let isMounted = true
 
-    // Load persisted state from Supabase (maybeSingle: no row = new trip, not an error)
+    // Load persisted Yjs state from Supabase
     supabase
       .from('yjs_documents')
       .select('content')
@@ -57,7 +67,7 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
       .maybeSingle()
       .then(({ data }) => {
         if (data?.content && isMounted) {
-          Y.applyUpdate(doc, new Uint8Array(data.content as number[]))
+          Y.applyUpdate(doc, new Uint8Array(data.content as number[]), 'hydration')
         }
       })
 
@@ -81,7 +91,7 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
     // Broadcast local updates + debounced persist
     let persistTimeout: ReturnType<typeof setTimeout>
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === 'remote') return
+      if (origin === 'remote' || origin === 'hydration') return
 
       channel.send({
         type: 'broadcast',
@@ -105,19 +115,17 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
       clearTimeout(persistTimeout)
       doc.off('update', onUpdate)
       channel.unsubscribe()
-      doc.destroy()
     }
-  }, [tripId])
+  }, [tripId, doc])
 
   const value = useMemo(
     () => ({
-      doc: docRef.current!,
-      activitiesMap: docRef.current!.getMap('activities') as Y.Map<Y.Map<unknown>>,
-      pollsMap: docRef.current!.getMap('polls') as Y.Map<Y.Map<unknown>>,
+      doc,
+      activitiesMap: doc.getMap('activities') as Y.Map<Y.Map<unknown>>,
+      pollsMap: doc.getMap('polls') as Y.Map<Y.Map<unknown>>,
       connectionStatus,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tripId, connectionStatus],
+    [doc, connectionStatus],
   )
 
   return (

@@ -2,26 +2,44 @@ import { NextRequest, NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
 import type { SuggestionCard } from '@travyl/shared'
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 const SERPAPI_BASE = 'https://serpapi.com/search.json'
 
+// Each page fetches a different category query for variety
+const PAGE_QUERIES = [
+  'top things to do',
+  'top tourist attractions',
+  'best restaurants',
+  'best bars and nightlife',
+  'museums and cultural sites',
+  'outdoor activities',
+  'guided tours and excursions',
+]
+
 const CATEGORY_QUERIES: Record<string, string> = {
-  all: 'top things to do',
-  sightseeing: 'top tourist attractions',
-  dining: 'best restaurants',
-  nightlife: 'best bars and nightlife',
-  cultural: 'museums and cultural sites',
+  all: PAGE_QUERIES[0],
+  sightseeing: PAGE_QUERIES[1],
+  dining: PAGE_QUERIES[2],
+  nightlife: PAGE_QUERIES[3],
+  cultural: PAGE_QUERIES[4],
   shopping: 'shopping',
-  outdoor: 'outdoor activities',
-  tour: 'guided tours and excursions',
+  outdoor: PAGE_QUERIES[5],
+  tour: PAGE_QUERIES[6],
 }
 
 // ─── Cached fetch ─────────────────────────────────────────────
-// Results are cached per (serpLocation, city, query) for 24 hours server-side.
-// All users loading the same destination within that window share the same
-// cached result — no repeat SerpAPI credits.
 
-const fetchSuggestionsForDestination = unstable_cache(
-  async (serpLocation: string, city: string, query: string): Promise<SuggestionCard[]> => {
+const fetchSuggestionsForQuery = unstable_cache(
+  async (serpLocation: string, query: string): Promise<SuggestionCard[]> => {
     const apiKey = process.env.SERPAPI_KEY
     if (!apiKey) return []
 
@@ -40,18 +58,22 @@ const fetchSuggestionsForDestination = unstable_cache(
     }
 
     const data = await res.json()
-    const results = (data.local_results ?? []).slice(0, 20)
 
-    // Enrich top 10 results with extra photos from google_images in parallel
-    const ENRICH_LIMIT = 10
-    const extraImagesList = await Promise.all(
-      results.slice(0, ENRICH_LIMIT).map((place: any) =>
-        fetchExtraImages(place.title, city, apiKey)
-      )
-    )
+    // SerpAPI search_metadata contains the resolved GPS for the location query
+    const centerLat = data.search_information?.local_map?.gps_coordinates?.latitude
+    const centerLng = data.search_information?.local_map?.gps_coordinates?.longitude
 
-    return results.map((place: any, i: number) => {
-      const imageUrls = extractImageUrls(place, extraImagesList[i] ?? [])
+    // Filter out results too far from the destination (> ~80 km)
+    const MAX_KM = 80
+    const nearby = (data.local_results ?? []).filter((place: any) => {
+      const lat = place.gps_coordinates?.latitude
+      const lng = place.gps_coordinates?.longitude
+      if (!lat || !lng || !centerLat || !centerLng) return true // keep if no coords to compare
+      return haversineKm(centerLat, centerLng, lat, lng) <= MAX_KM
+    }).slice(0, 20)
+
+    return nearby.map((place: any, i: number) => {
+      const imageUrls = extractImageUrls(place)
       return {
         id: `serp-${place.place_id ?? i}`,
         name: place.title,
@@ -82,7 +104,7 @@ export async function GET(req: NextRequest) {
   const destination = searchParams.get('destination')
   const category = searchParams.get('category') ?? 'all'
   const q = searchParams.get('q')
-  const start = parseInt(searchParams.get('start') ?? '0', 10)
+  const page = parseInt(searchParams.get('page') ?? '0', 10)
 
   if (!destination) {
     return NextResponse.json({ error: 'destination required' }, { status: 400 })
@@ -92,62 +114,48 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ suggestions: [], source: 'unconfigured' })
   }
 
-  const query = q ? q : (CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all)
-
-  // Normalise destination to "City, Country" for SerpAPI
   const parts = destination.split(',').map((p) => p.trim())
   const serpLocation = parts.length >= 2 ? `${parts[0]}, ${parts[parts.length - 1]}` : destination
-  const city = parts[0]
 
-  let suggestions = await fetchSuggestionsForDestination(serpLocation, city, query)
+  // Custom search query — single page, no pagination
+  if (q) {
+    const suggestions = await fetchSuggestionsForQuery(serpLocation, q)
+    return NextResponse.json(
+      { suggestions, hasMore: false, nextPage: null, source: 'ok' },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } },
+    )
+  }
 
-  // Apply pagination after cache (start offset is rare; avoid splitting the cache)
-  if (start > 0) suggestions = suggestions.slice(start)
+  // Category-specific — single page
+  if (category !== 'all') {
+    const query = CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all
+    const suggestions = await fetchSuggestionsForQuery(serpLocation, query)
+    return NextResponse.json(
+      { suggestions, hasMore: false, nextPage: null, source: 'ok' },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } },
+    )
+  }
+
+  // Default browse: rotate through category queries per page
+  const query = PAGE_QUERIES[page] ?? null
+  if (!query) {
+    return NextResponse.json(
+      { suggestions: [], hasMore: false, nextPage: null, source: 'ok' },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } },
+    )
+  }
+
+  const suggestions = await fetchSuggestionsForQuery(serpLocation, query)
+  const hasMore = page + 1 < PAGE_QUERIES.length
 
   return NextResponse.json(
-    { suggestions, source: 'ok' },
-    {
-      headers: {
-        // Browser + CDN: serve fresh for 1 hour, stale-while-revalidating for up to 24h
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-      },
-    },
+    { suggestions, hasMore, nextPage: hasMore ? page + 1 : null, source: 'ok' },
+    { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' } },
   )
 }
 
 // ─── Image helpers ────────────────────────────────────────────
 
-/**
- * Fetch extra images for a place using google_images engine.
- * Returns up to 5 `original` source URLs — real web images, not encrypted-tbn thumbnails.
- * Fails silently: if the call errors or returns nothing, the card just shows fewer photos.
- */
-async function fetchExtraImages(name: string, city: string, apiKey: string): Promise<string[]> {
-  try {
-    const url = new URL(SERPAPI_BASE)
-    url.searchParams.set('engine', 'google_images')
-    url.searchParams.set('q', `${name} ${city}`)
-    url.searchParams.set('num', '6')
-    url.searchParams.set('api_key', apiKey)
-
-    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
-    if (!res.ok) return []
-
-    const data = await res.json()
-    return (data.images_results ?? [])
-      .slice(0, 5)
-      .map((img: any) => img.original ?? '')
-      .filter((u: string) => !!u)
-  } catch {
-    return []
-  }
-}
-
-/**
- * Google CDN URLs (lh*.googleusercontent.com) include size params like =w100-h80-n-k-no.
- * The actual photo is full-res — we can request a larger version by replacing those params.
- * encrypted-tbn* URLs are Google's search-crawled micro-thumbnails that can't be upscaled.
- */
 function upscaleThumbnail(url: string): string {
   if (!url) return url
   if (/lh\d*\.googleusercontent\.com/.test(url)) {
@@ -156,16 +164,18 @@ function upscaleThumbnail(url: string): string {
   return url
 }
 
-/**
- * Collect all usable image URLs for a place result, deduplicated and upscaled.
- */
-function extractImageUrls(place: any, extraImages: string[] = []): string[] {
+function extractImageUrls(place: any): string[] {
   const seen = new Set<string>()
   const urls: string[] = []
+  const fallbacks: string[] = []
 
   const push = (raw: string) => {
     if (!raw) return
-    if (raw.includes('encrypted-tbn')) return
+    // Prefer non-encrypted-tbn URLs but keep them as fallback
+    if (raw.includes('encrypted-tbn')) {
+      if (!seen.has(raw)) { seen.add(raw); fallbacks.push(raw) }
+      return
+    }
     const upscaled = upscaleThumbnail(raw)
     if (upscaled && !seen.has(upscaled)) {
       seen.add(upscaled)
@@ -179,15 +189,8 @@ function extractImageUrls(place: any, extraImages: string[] = []): string[] {
     push(p.original ?? p.url ?? p.thumbnail ?? p.image ?? '')
   }
 
-  // Extra images from google_images — already `original` URLs, skip the encrypted-tbn filter
-  for (const u of extraImages) {
-    if (u && !seen.has(u)) {
-      seen.add(u)
-      urls.push(u)
-    }
-  }
-
-  return urls
+  // Use encrypted-tbn thumbnails as last resort so cards always have an image
+  return urls.length > 0 ? urls : fallbacks
 }
 
 // ─── Classifiers ─────────────────────────────────────────────
@@ -210,3 +213,4 @@ function mapPrice(price: string | undefined): number | null {
   const map: Record<string, number> = { '$': 10, '$$': 25, '$$$': 50, '$$$$': 100 }
   return map[price] ?? null
 }
+

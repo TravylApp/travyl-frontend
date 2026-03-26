@@ -132,18 +132,21 @@ export function useYjsSync(
 
   // ── Observe Y.Map deep changes ───────────────────────────
   useEffect(() => {
-    // Initial read
-    setActivities(readAllActivities(activitiesMap))
+    // Initial read — only update if the map has data to avoid clearing the screen
+    // while a fresh Y.Doc (MapB) is being re-hydrated from the DB.
+    const initial = readAllActivities(activitiesMap)
+    if (initial.length > 0) {
+      setActivities(initial)
+    }
     setIsLoading(false)
 
     const observer = (
       events: Y.YEvent<any>[],
       transaction: Y.Transaction,
     ) => {
-      // Only flush local changes — remote changes come from another client that
-      // already owns the write. Flushing them here causes partial-row DB errors
-      // and wrongly transfers user_id ownership.
-      const isRemote = transaction.origin === 'remote'
+      // Only flush local changes. Remote updates (from broadcast) and hydration
+      // transactions (initial DB load) must not be re-persisted here.
+      const isRemote = transaction.origin === 'remote' || transaction.origin === 'hydration'
 
       if (!isRemote) {
         for (const event of events) {

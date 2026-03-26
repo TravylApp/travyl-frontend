@@ -10,10 +10,6 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
-    "FoursquareApiKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "InteractionBus": {
       "arn": string
       "name": string
@@ -42,6 +38,11 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "TravylEmail": {
+      "configSet": string
+      "sender": string
+      "type": "sst.aws.Email"
     }
     "UserInteractions": {
       "name": string

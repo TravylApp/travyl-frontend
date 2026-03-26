@@ -3,6 +3,7 @@ import path from 'path'
 
 export default defineConfig({
   test: {
+    root: __dirname,
     // Anchor to this package only — avoids picking up shared/node_modules tests
     include: [
       'lib/**/__tests__/**/*.test.ts',
