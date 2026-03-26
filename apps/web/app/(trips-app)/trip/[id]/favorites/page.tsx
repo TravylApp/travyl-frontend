@@ -1,15 +1,11 @@
 'use client';
 
-import { use, useState, useCallback } from 'react';
+import { use, useState, useCallback, useMemo } from 'react';
 import {
   Heart, MapPin, Star, Camera, UtensilsCrossed, Building2, Compass,
   Image as ImageIcon,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
-import type { DiscoverItem as DiscoverItemType } from '@travyl/shared';
-
-const MOCK_DISCOVER_ACTIVITIES: DiscoverItemType[] = [];
-const MOCK_DISCOVER_RESTAURANTS: DiscoverItemType[] = [];
 import type { DiscoverItem } from '@travyl/shared';
 import { SplitScreenModal } from '@/components/itinerary';
 
@@ -34,9 +30,8 @@ function FavoritesSkeleton() {
 }
 
 // Pre-populate some sample favorites for demo
-const INITIAL_ACTIVITY_FAVORITES = ['da1', 'da3', 'da6'];
-const INITIAL_RESTAURANT_FAVORITES = ['rb2', 'rd1', 'rd4'];
-const INITIAL_DESTINATION_FAVORITES = ['da2', 'da5', 'da8'];
+// No initial favorites — user adds from explore/itinerary
+const INITIAL_FAVORITES: string[] = [];
 
 function FavoriteCard({
   item,
@@ -132,7 +127,7 @@ function EmptyState() {
       <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#ef444415' }}>
         <Heart size={24} style={{ color: '#ef4444' }} />
       </div>
-      <h3 className="text-[17px] font-bold text-gray-900 mb-1.5">No favorites yet</h3>
+      <h3 className="text-[17px] font-serif font-normal text-gray-900 tracking-wide mb-1.5">No favorites yet</h3>
       <p className="text-[13px] text-gray-500 text-center leading-5 mb-5">
         Save your favorite activities, restaurants, and places to quickly find them later.
       </p>
@@ -156,42 +151,45 @@ function EmptyState() {
 
 export default function TripFavorites({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
+  const { isLoading, trip } = useItineraryScreen(id);
 
-  const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
-  const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>(INITIAL_RESTAURANT_FAVORITES);
-  const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
+  // Get all available items from trip context
+  const allItems: DiscoverItem[] = useMemo(() => {
+    const explore = trip?.trip_context?.explore_items ?? [];
+    return explore.map((item) => ({
+      id: item.id,
+      name: item.title ?? '',
+      description: item.description ?? '',
+      category: item.category ?? 'attraction',
+      location: item.title ?? '',
+      rating: 0,
+      images: item.image ? [item.image] : [],
+      tags: item.tags ?? [],
+    }));
+  }, [trip]);
+
+  const [favorites, setFavorites] = useState<string[]>(INITIAL_FAVORITES);
   const [selectedModal, setSelectedModal] = useState<{ items: DiscoverItem[]; index: number; accentColor: string } | null>(null);
 
-  const favoritedActivities = MOCK_DISCOVER_ACTIVITIES.filter((a) => activityFavorites.includes(a.id));
-  const favoritedRestaurants = MOCK_DISCOVER_RESTAURANTS.filter((r) => restaurantFavorites.includes(r.id));
-  const favoritedDestinations = MOCK_DISCOVER_ACTIVITIES.filter((a) => destinationFavorites.includes(a.id));
+  const favoritedActivities = allItems.filter((a) => favorites.includes(a.id) && !a.category?.toLowerCase().includes('restaurant'));
+  const favoritedRestaurants = allItems.filter((r) => favorites.includes(r.id) && (r.category?.toLowerCase().includes('restaurant') || r.category?.toLowerCase().includes('culinary')));
+  const favoritedDestinations = allItems.filter((a) => favorites.includes(a.id) && (a.category?.toLowerCase().includes('landmark') || a.category?.toLowerCase().includes('destination')));
 
-  const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
+  const totalFavorites = favorites.length;
 
-  const removeActivityFavorite = (id: string) => {
-    setActivityFavorites((prev) => prev.filter((f) => f !== id));
+  const removeFavorite = (itemId: string) => {
+    setFavorites((prev) => prev.filter((f) => f !== itemId));
   };
 
-  const removeRestaurantFavorite = (id: string) => {
-    setRestaurantFavorites((prev) => prev.filter((f) => f !== id));
-  };
-
-  const removeDestinationFavorite = (id: string) => {
-    setDestinationFavorites((prev) => prev.filter((f) => f !== id));
-  };
+  const removeActivityFavorite = removeFavorite;
+  const removeRestaurantFavorite = removeFavorite;
+  const removeDestinationFavorite = removeFavorite;
 
   const toggleFavoriteFromModal = useCallback((itemId: string) => {
-    if (activityFavorites.includes(itemId)) {
-      removeActivityFavorite(itemId);
-    } else if (restaurantFavorites.includes(itemId)) {
-      removeRestaurantFavorite(itemId);
-    } else if (destinationFavorites.includes(itemId)) {
-      removeDestinationFavorite(itemId);
-    }
-  }, [activityFavorites, restaurantFavorites, destinationFavorites]);
+    setFavorites((prev) => prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId]);
+  }, []);
 
-  const allFavoriteIds = [...activityFavorites, ...restaurantFavorites, ...destinationFavorites];
+  const allFavoriteIds = favorites;
 
   if (isLoading) return <FavoritesSkeleton />;
 
@@ -204,7 +202,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
         <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-[#1e3a5f] to-[#2c4f7f] rounded-full mb-3">
           <Heart size={24} className="text-white fill-white" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Your Favorites</h2>
+        <h2 className="text-xl font-serif font-normal text-gray-900 tracking-wide mb-1">Your Favorites</h2>
         <p className="text-sm text-gray-600">{totalFavorites} saved items across all categories</p>
       </div>
 
@@ -216,7 +214,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
               <Camera size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Activities & Attractions</h2>
+              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Activities & Attractions</h2>
               <p className="text-sm text-gray-600">{favoritedActivities.length} saved</p>
             </div>
           </div>
@@ -243,7 +241,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
               <UtensilsCrossed size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Restaurants & Dining</h2>
+              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Restaurants & Dining</h2>
               <p className="text-sm text-gray-600">{favoritedRestaurants.length} saved</p>
             </div>
           </div>
@@ -270,7 +268,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
               <Compass size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Saved Destinations</h2>
+              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Saved Destinations</h2>
               <p className="text-sm text-gray-600">{favoritedDestinations.length} saved</p>
             </div>
           </div>
@@ -296,7 +294,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
             <Building2 size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Hotels & Accommodations</h2>
+            <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Hotels & Accommodations</h2>
             <p className="text-sm text-gray-600">0 saved</p>
           </div>
         </div>

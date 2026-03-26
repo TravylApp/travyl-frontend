@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect, memo } from 'react';
+import { useState, useMemo, useCallback, useEffect, memo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -18,7 +19,103 @@ import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PLACES: PlaceItem[] = [];
+// Use web app as API proxy — it has all the API keys (Foursquare, etc.)
+// In dev: localhost:3000, in production: deeviaje.com
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
+const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+
+const BROWSE_CITIES = [
+  { lat: '48.8566', lng: '2.3522', name: 'Paris' },
+  { lat: '35.6762', lng: '139.6503', name: 'Tokyo' },
+  { lat: '41.9028', lng: '12.4964', name: 'Rome' },
+  { lat: '40.7128', lng: '-74.0060', name: 'New York' },
+  { lat: '41.3874', lng: '2.1686', name: 'Barcelona' },
+  { lat: '-33.8688', lng: '151.2093', name: 'Sydney' },
+  { lat: '13.7563', lng: '100.5018', name: 'Bangkok' },
+  { lat: '25.2048', lng: '55.2708', name: 'Dubai' },
+  { lat: '51.5074', lng: '-0.1278', name: 'London' },
+  { lat: '-8.4095', lng: '115.1889', name: 'Bali' },
+  { lat: '37.9838', lng: '23.7275', name: 'Athens' },
+  { lat: '31.6295', lng: '-7.9811', name: 'Marrakech' },
+  { lat: '37.7749', lng: '-122.4194', name: 'San Francisco' },
+  { lat: '1.3521', lng: '103.8198', name: 'Singapore' },
+];
+
+const ALL_CATEGORIES = [
+  'sightseeing', 'restaurant', 'museum', 'park', 'cafe',
+  'bar', 'shopping', 'nightlife', 'landmark',
+];
+
+// Session seed so each app launch gets different cities
+const SESSION_SEED = Date.now();
+
+// Fast first batch: 2 cities × 1 category = 2 API calls (~1-2s)
+async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
+  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random()) - 0.5);
+  const cities = shuffled.slice(0, 2);
+  const cat = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
+
+  const results = await Promise.all(
+    cities.map(city =>
+      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+        .catch(() => [])
+    )
+  );
+  return dedup(results.flat());
+}
+
+// Slower second batch: more cities + categories + foursquare
+async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
+  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random() + 1) - 0.5);
+  const cities = shuffled.slice(0, 3);
+  const catStart = Math.floor(Math.random() * ALL_CATEGORIES.length);
+
+  const fetches: Promise<PlaceItem[]>[] = [];
+  cities.forEach((city, i) => {
+    const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
+    fetches.push(
+      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+        .catch(() => [])
+    );
+  });
+  // Foursquare for restaurants
+  fetches.push(
+    fetch(`${WEB_API}/api/foursquare?lat=${cities[0].lat}&lng=${cities[0].lng}&category=restaurant&limit=6`)
+      .then(async r => {
+        if (!r.ok) return [];
+        const venues = await r.json();
+        if (!Array.isArray(venues)) return [];
+        return venues
+          .filter((v: any) => v.image && !v.image.includes('categories_v2'))
+          .map((v: any): PlaceItem => ({
+            id: `fs_${v.id}`, name: v.name, image: v.image, type: 'restaurant',
+            rating: v.rating ? v.rating / 2 : 0, tagline: v.address || 'Restaurant',
+            category: v.category || 'Restaurant', description: v.tip || '',
+            latitude: v.lat, longitude: v.lng, tags: [v.category || 'Restaurant'],
+          }));
+      })
+      .catch(() => [])
+  );
+
+  const results = await Promise.all(fetches);
+  return dedup(results.flat());
+}
+
+function dedup(places: PlaceItem[]): PlaceItem[] {
+  const seen = new Set<string>();
+  const seenNames = new Set<string>();
+  return places.filter((p) => {
+    if (!p.name || !p.image || seen.has(p.id)) return false;
+    const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (seenNames.has(norm)) return false;
+    seen.add(p.id);
+    seenNames.add(norm);
+    return true;
+  });
+}
+
 const PAD = 16;
 const GAP = 8;
 const STACK_CARD_W = SCREEN_WIDTH * 0.72;
@@ -183,11 +280,79 @@ export default function FavoritesScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchCity, setSearchCity] = useState('');
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
+
+  // Phase 1: fast initial load (~1-2s)
+  const { data: fastPlaces = [], isLoading: fastLoading } = useQuery({
+    queryKey: ['mobile-places-fast', SESSION_SEED],
+    queryFn: fetchMobilePlacesFast,
+    staleTime: 5 * 60 * 1000,
+  });
+  // Phase 2: more results in background
+  const { data: morePlaces = [] } = useQuery({
+    queryKey: ['mobile-places-more', SESSION_SEED],
+    queryFn: fetchMobilePlacesMore,
+    staleTime: 5 * 60 * 1000,
+    enabled: fastPlaces.length > 0, // only after fast batch loads
+  });
+  // API search — when user types a city/destination name
+  const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
+    queryKey: ['mobile-places-search', searchCity],
+    queryFn: async () => {
+      if (!searchCity) return [];
+      const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'nightlife'];
+      const fetches: Promise<PlaceItem[]>[] = cats.map(cat =>
+        fetch(`${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=8`)
+          .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+          .catch(() => [])
+      );
+      const results = await Promise.all(fetches);
+      const allPlaces = results.flat();
+      // Use first result's coordinates to fetch events
+      const firstWithCoords = allPlaces.find(p => p.latitude && p.longitude);
+      if (firstWithCoords) {
+        try {
+          const evRes = await fetch(`${WEB_API}/api/events?lat=${firstWithCoords.latitude}&lng=${firstWithCoords.longitude}&limit=6`);
+          if (evRes.ok) {
+            const events = await evRes.json();
+            if (Array.isArray(events)) {
+              for (const e of events) {
+                if (e.title) {
+                  allPlaces.push({
+                    id: `ev_${e.id}`, name: e.title, image: e.image || '',
+                    type: 'event', rating: 0,
+                    tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
+                    category: e.category || 'Event', description: e.description || '',
+                    tags: ['Event', e.category].filter(Boolean),
+                  } as PlaceItem);
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+      return dedup(allPlaces);
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!searchCity,
+  });
+
+  // Merge and deduplicate — search results take priority
+  const PLACES = useMemo(() => {
+    if (searchCity && searchPlaces.length > 0) return searchPlaces;
+    const all = [...fastPlaces, ...morePlaces];
+    const seen = new Set<string>();
+    return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+  }, [fastPlaces, morePlaces, searchCity, searchPlaces]);
+  const placesLoading = searchCity ? searchLoading : fastLoading;
+  const placesError = null;
+
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) =>
@@ -195,16 +360,11 @@ export default function FavoritesScreen() {
     );
   }, []);
 
-  // Prefetch images so they're cached when the tab loads
-  useEffect(() => {
-    Image.prefetch(PLACES.map((p) => p.image));
-  }, []);
-
   const tabFiltered = useMemo(() => {
     if (activeTab === 'all') return PLACES;
     if (activeTab === 'favorites') return PLACES.filter((p) => favorites.includes(p.id));
     return PLACES.filter((p) => p.type === activeTab);
-  }, [activeTab, favorites]);
+  }, [activeTab, favorites, PLACES]);
 
   const subcategories = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -219,13 +379,14 @@ export default function FavoritesScreen() {
   const filteredPlaces = useMemo(() => {
     let result = [...tabFiltered];
     if (activeSubcategory) result = result.filter((p) => p.category === activeSubcategory);
-    if (searchQuery.trim()) {
+    // Only apply local text filter when NOT in API search mode
+    if (searchQuery.trim() && !searchCity) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.tagline.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
+          p.name?.toLowerCase().includes(q) ||
+          p.tagline?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
@@ -401,13 +562,26 @@ export default function FavoritesScreen() {
               <FontAwesome name="search" size={12} color={colors.textTertiary} />
               <TextInput
                 value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search places..."
+                onChangeText={(val) => {
+                  setSearchQuery(val);
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  if (val.trim().length >= 2) {
+                    searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400);
+                  } else if (!val.trim()) {
+                    setSearchCity('');
+                  }
+                }}
+                onSubmitEditing={() => {
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  if (searchQuery.trim()) setSearchCity(searchQuery.trim());
+                }}
+                returnKeyType="search"
+                placeholder="Search a city or destination..."
                 placeholderTextColor={colors.textTertiary}
                 style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
               />
               {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery('')}>
+                <Pressable onPress={() => { setSearchQuery(''); setSearchCity(''); if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }}>
                   <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
                 </Pressable>
               )}
@@ -481,8 +655,6 @@ export default function FavoritesScreen() {
                 onToggleFav={toggleFavorite}
                 cardWidth={STACK_CARD_W}
                 cardHeight={STACK_CARD_H}
-                enableMagazine
-                onCardPress={(_place, idx) => setShowcaseIdx(idx)}
               />
             )}
           </View>
@@ -497,7 +669,6 @@ export default function FavoritesScreen() {
           favorites={favorites}
           onToggleFav={toggleFavorite}
           overlay
-          enableMagazine
           onClose={() => setShowcaseIdx(-1)}
         />
       )}

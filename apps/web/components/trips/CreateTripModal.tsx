@@ -176,11 +176,6 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
     setError(null)
     if (!validate()) return
 
-    if (!user?.id) {
-      setError('You must be signed in to create a trip.')
-      return
-    }
-
     setSubmitting(true)
     try {
       const { data, error: insertError } = await supabase
@@ -191,7 +186,8 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
           start_date: startDate,
           end_date: endDate,
           status: 'planning',
-          user_id: user.id,
+          user_id: user?.id || null,
+          visibility: user?.id ? 'private' : 'public',
         })
         .select()
         .single()
@@ -207,11 +203,10 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         const imgRes = await fetch(`/api/destination-image?destination=${encodeURIComponent(shortDest)}`)
         const { url } = await imgRes.json() as { url: string | null }
         if (url) {
-          const { error: imgUpdateError } = await supabase
+          await supabase
             .from('trips')
             .update({ cover_image_url: url })
             .eq('id', data.id)
-          if (imgUpdateError) console.warn('cover_image_url update failed:', imgUpdateError.message)
         }
       } catch {
         // Non-fatal: trip was created, it will show the fallback image
@@ -219,6 +214,19 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
 
       await queryClient.invalidateQueries({ queryKey: ['trips'] })
       indexTrip(data.id)
+      // Track trip ID for anonymous persistence
+      try {
+        const stored = localStorage.getItem('my-trip-ids')
+        const ids: string[] = stored ? JSON.parse(stored) : []
+        if (!ids.includes(data.id)) ids.push(data.id)
+        localStorage.setItem('my-trip-ids', JSON.stringify(ids))
+      } catch {}
+      // Enrich in background
+      fetch('/api/trips/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: data.id }),
+      }).catch(() => {})
       onClose()
       router.push(`/trip/${data.id}`)
     } finally {

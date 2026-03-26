@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   useSensor,
   useSensors,
   PointerSensor,
   KeyboardSensor,
   DragEndEvent,
-  DragOverEvent,
+  DragMoveEvent,
 } from '@dnd-kit/core'
 import { suggestionToCalendarActivity } from '@travyl/shared/utils/suggestionMapper'
 import { HOUR_HEIGHT } from '../constants'
@@ -33,6 +33,23 @@ interface UseCalendarDndOptions {
   timeRangeStartHour: number
 }
 
+/**
+ * Compute the hour on the calendar grid by measuring the actual DOM element.
+ * Queries `[data-day-grid="N"]` for a fresh getBoundingClientRect() — never stale.
+ */
+function cursorToHour(
+  cursorY: number,
+  dayIndex: number,
+  timeRangeStartHour: number,
+): number {
+  const gridEl = document.querySelector(`[data-day-grid="${dayIndex}"]`)
+  if (!gridEl) return timeRangeStartHour
+  const rect = gridEl.getBoundingClientRect()
+  const gridRelativeY = cursorY - rect.top
+  const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
+  return Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+}
+
 export function useCalendarDnd({
   onMoveActivity,
   onAddFromSuggestion,
@@ -49,6 +66,11 @@ export function useCalendarDnd({
     activity: CalendarActivity
   } | null>(null)
 
+  // Track the latest pointer position so we always use the current cursor Y,
+  // not the stale activatorEvent from drag start.
+  const lastPointerY = useRef(0)
+  const cleanupRef = useRef<(() => void) | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -62,15 +84,22 @@ export function useCalendarDnd({
     setActiveId(String(event.active.id))
     const data = event.active.data?.current as DragData | undefined
     setActiveData(data ?? null)
+
+    // Track live pointer position throughout the drag
+    const onPointerMove = (e: PointerEvent) => {
+      lastPointerY.current = e.clientY
+    }
+    window.addEventListener('pointermove', onPointerMove)
+    cleanupRef.current = () => window.removeEventListener('pointermove', onPointerMove)
   }, [])
 
-  const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
-      const { active, over, delta } = event
-      if (!over) {
-        setPendingDrop(null)
-        return
-      }
+  const handleDragMove = useCallback(
+    (event: DragMoveEvent) => {
+      const { active, over } = event
+      // When the pointer is in a dead zone (gap between columns, resize divider,
+      // etc.) `over` is null. Keep the last known pendingDrop so the ghost doesn't
+      // flicker/disappear as the user drags across column boundaries.
+      if (!over) return
 
       const overIdStr = String(over.id)
       let newDay: number | null = null
@@ -78,36 +107,23 @@ export function useCalendarDnd({
         const parsed = parseInt(overIdStr.replace('day-', ''), 10)
         if (!isNaN(parsed)) newDay = parsed
       }
-      if (newDay === null) {
-        setPendingDrop(null)
-        return
-      }
+      if (newDay === null) return
 
-      const dragData = active.data?.current as
-        | { type: 'activity'; activity: CalendarActivity }
-        | { type: 'suggestion'; suggestion: SuggestionCard }
-        | { type: 'note'; note: TripNote }
-        | undefined
-
+      const dragData = active.data?.current as DragData | undefined
       if (!dragData) return
 
       if (dragData.type === 'activity') {
-        const rawHourDelta = delta.y / HOUR_HEIGHT
-        const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
+        const rawHourDelta = event.delta.y / HOUR_HEIGHT
+        const snappedHourDelta = Math.round(rawHourDelta * 4) / 4
         const currentStartHour = dragData.activity.startHour ?? 0
-        const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
+        const newStartHour = Math.max(0, Math.min(23 - dragData.activity.duration, currentStartHour + snappedHourDelta))
         setPendingDrop({
           dayIndex: newDay,
           activity: { ...dragData.activity, day: newDay, startHour: newStartHour },
         })
       } else if (dragData.type === 'suggestion') {
-        const overRect = over.rect
-        const scrollTop = scrollRef.current?.scrollTop ?? 0
-        const pointerY = (event.activatorEvent as PointerEvent)?.clientY ?? 0
-        const dropY = pointerY + delta.y
-        const gridRelativeY = dropY - overRect.top + scrollTop
-        const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
-        const snappedStartHour = Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+        const cursorY = lastPointerY.current || (event.activatorEvent as PointerEvent)?.clientY || 0
+        const snappedStartHour = cursorToHour(cursorY, newDay, timeRangeStartHour)
         setPendingDrop({
           dayIndex: newDay,
           activity: {
@@ -121,13 +137,15 @@ export function useCalendarDnd({
         })
       }
     },
-    [scrollRef, timeRangeStartHour],
+    [timeRangeStartHour],
   )
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null)
     setActiveData(null)
     setPendingDrop(null)
+    cleanupRef.current?.()
+    cleanupRef.current = null
   }, [])
 
   const handleDragEnd = useCallback(
@@ -135,6 +153,9 @@ export function useCalendarDnd({
       setActiveId(null)
       setActiveData(null)
       setPendingDrop(null)
+      cleanupRef.current?.()
+      cleanupRef.current = null
+
       const { active, over, delta } = event
 
       if (!over) return
@@ -149,23 +170,16 @@ export function useCalendarDnd({
 
       if (newDay === null) return
 
-      const dragData = active.data?.current as
-        | { type: 'activity'; activity: CalendarActivity }
-        | { type: 'suggestion'; suggestion: SuggestionCard }
-        | { type: 'note'; note: TripNote }
-        | undefined
-
+      const dragData = active.data?.current as DragData | undefined
       if (!dragData) return
 
       if (dragData.type === 'activity') {
-        // Existing activity move — use delta from current position
         const rawHourDelta = delta.y / HOUR_HEIGHT
-        const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
+        const snappedHourDelta = Math.round(rawHourDelta * 4) / 4
         const currentStartHour = dragData.activity.startHour ?? 0
-        const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
+        const newStartHour = Math.max(0, Math.min(23 - dragData.activity.duration, currentStartHour + snappedHourDelta))
 
         if (marqueeSelectedIds && marqueeSelectedIds.has(String(active.id)) && marqueeSelectedIds.size > 1) {
-          // Group move — compute delta and apply to all selected
           const dayDelta = newDay - dragData.activity.day
           const hourDelta = newStartHour - currentStartHour
           if (onGroupMove) {
@@ -175,15 +189,8 @@ export function useCalendarDnd({
           onMoveActivity(String(active.id), newDay, newStartHour)
         }
       } else if (dragData.type === 'suggestion') {
-        // New activity from suggestion — compute absolute drop position on grid
-        const overRect = over.rect
-        const scrollTop = scrollRef.current?.scrollTop ?? 0
-        const pointerY = (event.activatorEvent as PointerEvent)?.clientY ?? 0
-        const dropY = pointerY + delta.y
-        // Convert from screen Y to grid-relative Y
-        const gridRelativeY = dropY - overRect.top + scrollTop
-        const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
-        const snappedStartHour = Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+        const cursorY = lastPointerY.current || (event.activatorEvent as PointerEvent)?.clientY || 0
+        const snappedStartHour = cursorToHour(cursorY, newDay, timeRangeStartHour)
 
         const newActivity = suggestionToCalendarActivity(
           dragData.suggestion,
@@ -192,18 +199,12 @@ export function useCalendarDnd({
         )
         onAddFromSuggestion(newActivity, dragData.suggestion.id)
       } else if (dragData.type === 'note' && onMoveNote) {
-        // Note move — use same absolute-position logic as suggestion
-        const overRect = over.rect
-        const scrollTop = scrollRef.current?.scrollTop ?? 0
-        const pointerY = (event.activatorEvent as PointerEvent)?.clientY ?? 0
-        const dropY = pointerY + delta.y
-        const gridRelativeY = dropY - overRect.top + scrollTop
-        const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
-        const targetHour = Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+        const cursorY = lastPointerY.current || (event.activatorEvent as PointerEvent)?.clientY || 0
+        const targetHour = cursorToHour(cursorY, newDay, timeRangeStartHour)
         onMoveNote(dragData.note.id, newDay, targetHour)
       }
     },
-    [onMoveActivity, onAddFromSuggestion, onMoveNote, onGroupMove, marqueeSelectedIds, scrollRef, timeRangeStartHour],
+    [onMoveActivity, onAddFromSuggestion, onMoveNote, onGroupMove, marqueeSelectedIds, timeRangeStartHour],
   )
 
   return {
@@ -212,7 +213,7 @@ export function useCalendarDnd({
     activeData,
     pendingDrop,
     handleDragStart,
-    handleDragOver,
+    handleDragMove,
     handleDragEnd,
     handleDragCancel,
   }

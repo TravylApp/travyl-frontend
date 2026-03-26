@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
-import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User } from 'iconoir-react'
+import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User, Clock } from 'iconoir-react'
 import { useAuthStore } from '@travyl/shared'
 import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
@@ -139,6 +139,7 @@ export interface TripNavbarProps {
   onDeleteUnscheduled: (id: string) => void
   /** When true: read-only shared view — hides share, avatar dropdown, and new activity controls */
   isSharedView?: boolean
+  onOpenHistory?: () => void
 }
 
 function getInitials(name: string | undefined): string {
@@ -156,13 +157,14 @@ interface AvatarCircleProps {
 }
 
 function AvatarCircle({ size = 28, avatarUrl, displayName, initials }: AvatarCircleProps) {
+  const [imgError, setImgError] = useState(false)
   return (
     <div
       style={{ width: size, height: size }}
       className="flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-[11px]"
     >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" />
+      {avatarUrl && !imgError ? (
+        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" onError={() => setImgError(true)} />
       ) : (
         initials
       )}
@@ -193,6 +195,7 @@ export function TripNavbar({
   onAssignUnscheduled,
   onDeleteUnscheduled,
   isSharedView = false,
+  onOpenHistory,
 }: TripNavbarProps) {
   const user = useAuthStore((s) => s.user)
   const signOut = useAuthStore((s) => s.signOut)
@@ -236,7 +239,7 @@ export function TripNavbar({
       )}
 
       {/* Main navbar row */}
-      <div className="flex items-center h-11 border-b border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0f1a28] shrink-0">
+      <div className="flex items-center h-11 border-b border-gray-200/60 dark:border-[#1e3a5f]/30 bg-white/70 dark:bg-[#0f1a28]/80 backdrop-blur-xl shrink-0">
 
         {/* Logo */}
         <Link
@@ -380,6 +383,18 @@ export function TripNavbar({
               N
             </kbd>
           </button>
+          )}
+
+          {/* Change history */}
+          {onOpenHistory && !isSharedView && (
+            <button
+              onClick={onOpenHistory}
+              title="Change history"
+              aria-label="Change history"
+              className="p-1.5 rounded-lg text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30 transition-colors"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
           )}
 
           {/* Theme toggle - inline light/dark button */}

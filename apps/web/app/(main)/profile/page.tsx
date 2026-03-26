@@ -93,25 +93,46 @@ function CardGrid({
   }
 
   return (
-    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
-      {items.map((dest, index) => (
-        <div key={dest.name} className="break-inside-avoid mb-6">
-          <DraggableCard
-            id={dest.name}
-            index={index}
-            onMove={onMove}
-            animationDelay={index * 0.05}
-          >
-            <FavoriteCard
-              {...dest}
-              description={descriptions[dest.name] || ""}
-              isFavorited={forceFavorited ?? favoritedNames.has(dest.name)}
-              onToggleFavorite={() => toggleFavorite(dest.name)}
-              onUpdateDescription={(desc) => updateDescription(dest.name, desc)}
-              heightClass={CARD_HEIGHTS[index % CARD_HEIGHTS.length]}
-              nearbyPlaces={NEARBY_PLACES[dest.name]}
-            />
-          </DraggableCard>
+    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="min-h-screen bg-gray-100 flex flex-col flex-1">
+      {/* Profile Header */}
+      <div className="bg-[#1e3a5f]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-5 pb-0">
+          <div className="flex justify-end mb-2">
+            <Link href="/profile/settings" className="flex items-center gap-1.5 text-[12px] text-white/40 hover:text-white/60 transition-colors">
+              <Settings size={14} /> Settings
+            </Link>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <div className="relative mb-3">
+              <div className="w-[88px] h-[88px] rounded-full overflow-hidden border-3 border-white/20 bg-[#2a4d78] flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">{initials}</span>
+              </div>
+              <button className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#3b82f6] border-2 border-[#1e3a5f] flex items-center justify-center cursor-pointer hover:bg-blue-400 transition-colors">
+                <Camera size={12} className="text-white" />
+              </button>
+            </div>
+
+            <h1 className="text-[20px] font-serif font-normal text-white text-center tracking-wide">{displayName}</h1>
+            <p className="text-[14px] text-white/50 text-center max-w-[368px] mt-1 leading-relaxed tracking-tight">
+              Travel enthusiast exploring the world one destination at a time.
+            </p>
+
+            <div className="flex items-center gap-6 mt-4 mb-6">
+              {[
+                { value: '23', label: 'Countries' },
+                { value: '28', label: 'Places' },
+                { value: String(PROFILE_FAVORITES.length), label: 'Favorites' },
+                { value: String(TRAVEL_BOARDS.length), label: 'Boards' },
+              ].map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <p className="text-[18px] text-white tracking-tight">{stat.value}</p>
+                  <p className="text-[10px] text-white/35 tracking-wider">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ))}
     </div>

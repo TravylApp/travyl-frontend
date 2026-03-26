@@ -27,10 +27,7 @@ interface WeekViewProps {
   onContextMenu?: (id: string, x: number, y: number) => void
   polls?: Map<string, Poll>
   pollUserId?: string
-  tripOwnerId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
-  onRestorePoll?: (activityId: string) => void
-  onRemovePollActivity?: (activityId: string) => void
 }
 
 export function WeekView({
@@ -52,10 +49,7 @@ export function WeekView({
   onContextMenu,
   polls,
   pollUserId,
-  tripOwnerId,
   onVotePoll,
-  onRestorePoll,
-  onRemovePollActivity,
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [columnWidths, setColumnWidths] = useState<number[]>([])
@@ -63,8 +57,17 @@ export function WeekView({
   useLayoutEffect(() => {
     const el = containerRef.current
     if (!el || days.length === 0) return
-    const equal = el.clientWidth / days.length
-    setColumnWidths(days.map(() => equal))
+
+    const recalculate = () => {
+      const equal = el.clientWidth / days.length
+      setColumnWidths(days.map(() => equal))
+    }
+
+    recalculate()
+
+    const observer = new ResizeObserver(recalculate)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [days.length])
 
   const handleColumnResize = useCallback((index: number, deltaX: number) => {
@@ -102,7 +105,7 @@ export function WeekView({
           return (
             <Fragment key={dayIndex}>
               <div
-                className="flex flex-col min-w-0 overflow-hidden"
+                className="flex flex-col min-w-0"
                 style={w !== undefined ? { width: w, flexShrink: 0, flexGrow: 0 } : { flex: '1 1 0', minWidth: 0 }}
               >
                 <DayColumn
@@ -125,10 +128,7 @@ export function WeekView({
                   onContextMenu={onContextMenu}
                   polls={polls}
                   pollUserId={pollUserId}
-                  tripOwnerId={tripOwnerId}
                   onVotePoll={onVotePoll}
-                  onRestorePoll={onRestorePoll}
-                  onRemovePollActivity={onRemovePollActivity}
                 />
               </div>
               {i < days.length - 1 && (

@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2 } from 'lucide-react';
-import { formatDateRange } from '@travyl/shared';
+import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2, Plane } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { formatDateRange, formatCurrency } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
@@ -15,9 +16,6 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
   abandoned: { label: 'Cancelled', bg: 'bg-red-500/90', text: 'text-white' },
 };
 
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
-}
 
 interface TripListItemProps {
   trip: MockTripCard;
@@ -26,6 +24,29 @@ interface TripListItemProps {
 export function TripListItem({ trip }: TripListItemProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
+    try {
+      await fetch('/api/trips/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: trip.id }),
+      });
+      try {
+        const stored = localStorage.getItem('my-trip-ids');
+        if (stored) {
+          const ids = JSON.parse(stored).filter((id: string) => id !== trip.id);
+          localStorage.setItem('my-trip-ids', JSON.stringify(ids));
+        }
+      } catch {}
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+    } catch {}
+  };
 
   return (
     <Link
@@ -34,13 +55,20 @@ export function TripListItem({ trip }: TripListItemProps) {
     >
       {/* Thumbnail */}
       <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative">
-        <Image
-          src={trip.image}
-          alt={trip.destination}
-          fill
-          className="object-cover"
-          sizes="80px"
-        />
+        {imgError ? (
+          <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+            <Plane size={24} className="text-blue-300" />
+          </div>
+        ) : (
+          <Image
+            src={trip.image}
+            alt={trip.destination}
+            width={80}
+            height={80}
+            className="w-20 h-20 rounded-lg object-cover"
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
 
       {/* Content */}
@@ -99,6 +127,13 @@ export function TripListItem({ trip }: TripListItemProps) {
           title="Share trip"
         >
           <Share2 size={14} className={copied ? 'text-emerald-500' : 'text-gray-400'} />
+        </button>
+        <button
+          onClick={handleDelete}
+          className="p-1.5 rounded-full hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+          title="Delete trip"
+        >
+          <Trash2 size={14} className="text-gray-400 hover:text-red-500" />
         </button>
         <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
       </div>

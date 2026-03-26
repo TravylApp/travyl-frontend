@@ -6,19 +6,29 @@ import { validateAuth } from './lib/auth'
 
 const ses = new SESv2Client({})
 const SENDER = 'noreply@gotravyl.com'
-const APP_URL = 'https://gotravyl.com'
+const APP_URL = process.env.APP_URL ?? 'https://gotravyl.com'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+}
+
+function respond(statusCode: number, body: Record<string, unknown>) {
+  return { statusCode, headers: corsHeaders, body: JSON.stringify(body) }
+}
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     const userId = await validateAuth(event.headers.authorization)
 
     if (!event.body) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'body required' }) }
+      return respond(400, { error: 'body required' })
     }
 
     const { tripId, email, role } = JSON.parse(event.body)
     if (!tripId || !email || !role) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'tripId, email, role required' }) }
+      return respond(400, { error: 'tripId, email, role required' })
     }
 
     const supabase = createClient(Resource.SupabaseUrl.value, Resource.SupabaseSecretKey.value)
@@ -31,10 +41,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       .single()
 
     if (tripError || !trip) {
-      return { statusCode: 404, body: JSON.stringify({ error: 'Trip not found' }) }
+      return respond(404, { error: 'Trip not found' })
     }
     if (trip.user_id !== userId) {
-      return { statusCode: 403, body: JSON.stringify({ error: 'Forbidden' }) }
+      return respond(403, { error: 'Forbidden' })
     }
 
     // Get inviter display name
@@ -72,22 +82,24 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       if (insertError) throw insertError
     }
 
-    // Send invite email
+    // Send invite email (non-fatal — invite record is already persisted)
     const acceptUrl = `${APP_URL}/invite/accept?token=${inviteToken}`
     const roleLabel = role === 'editor' ? 'edit' : 'view'
 
-    await ses.send(
-      new SendEmailCommand({
-        FromEmailAddress: SENDER,
-        Destination: { ToAddresses: [email] },
-        Content: {
-          Simple: {
-            Subject: {
-              Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl`,
-            },
-            Body: {
-              Html: {
-                Data: `
+    let emailWarning: string | undefined
+    try {
+      await ses.send(
+        new SendEmailCommand({
+          FromEmailAddress: SENDER,
+          Destination: { ToAddresses: [email] },
+          Content: {
+            Simple: {
+              Subject: {
+                Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl`,
+              },
+              Body: {
+                Html: {
+                  Data: `
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:sans-serif;">
@@ -106,22 +118,32 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   </div>
 </body>
 </html>`,
-              },
-              Text: {
-                Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl.\n\nAccept here: ${acceptUrl}`,
+                },
+                Text: {
+                  Data: `${inviterName} invited you to ${roleLabel} "${trip.title}" on Travyl.\n\nAccept here: ${acceptUrl}`,
+                },
               },
             },
           },
-        },
-      }),
-    )
+        }),
+      )
+    } catch (sesErr: any) {
+      // Log the real SES error (visible in CloudWatch) but don't fail the request
+      console.error('SES send failed:', sesErr?.message ?? sesErr)
+      emailWarning = sesErr?.message ?? 'Email could not be sent'
+    }
 
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) }
+    return respond(200, {
+      ok: true,
+      inviteToken,
+      acceptUrl,
+      ...(emailWarning ? { emailWarning } : {}),
+    })
   } catch (err: any) {
     if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
-      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
+      return respond(401, { error: 'Unauthorized' })
     }
     console.error('invite error:', err)
-    return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
+    return respond(500, { error: 'Internal server error' })
   }
 }

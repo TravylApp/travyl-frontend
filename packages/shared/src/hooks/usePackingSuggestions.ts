@@ -2,13 +2,12 @@ import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { fetchPackingSuggestions, updateSuggestionStatus } from '../services/packingService'
-import type { PackingSuggestion, PackingCategory, DbPackingItem } from '../types'
-import { PACKING_CATEGORIES } from '../types'
+import type { PackingSuggestion, DbPackingItem } from '../types'
 
 export function usePackingSuggestions(
   tripId: string | undefined,
   items: DbPackingItem[],
-  addItem: (name: string, category: PackingCategory) => void,
+  addItem: (name: string, category: string) => void,
 ) {
   const queryClient = useQueryClient()
   const hasAttemptedGeneration = useRef(false)
@@ -24,9 +23,9 @@ export function usePackingSuggestions(
 
   const suggestionsByCategory = useMemo(() => {
     const grouped: Record<string, PackingSuggestion[]> = {}
-    for (const cat of PACKING_CATEGORIES) {
-      const catSuggestions = suggestions.filter((s) => s.category === cat)
-      if (catSuggestions.length > 0) grouped[cat] = catSuggestions
+    for (const s of suggestions) {
+      if (!grouped[s.category]) grouped[s.category] = []
+      grouped[s.category].push(s)
     }
     return grouped
   }, [suggestions])
@@ -35,11 +34,15 @@ export function usePackingSuggestions(
     if (!tripId || isGenerating) return
     setIsGenerating(true)
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+      if (!apiUrl) {
+        console.warn('[usePackingSuggestions] NEXT_PUBLIC_RECOMMENDATION_API_URL not set')
+        return
+      }
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
       if (!token) return
 
-      const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
       await fetch(`${apiUrl}/packing-suggest`, {
         method: 'POST',
         headers: {

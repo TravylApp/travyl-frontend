@@ -17,6 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { TextStyles, FontSize, FontFamily, Navy, useAuthStore, supabase } from '@travyl/shared';
+import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlane } from '@/components/icons/PaperPlane';
 import { WebView } from 'react-native-webview';
@@ -142,6 +143,7 @@ export function CreateTripModal({ visible, onClose }: CreateTripModalProps) {
 
       if (insertError) { setError(insertError.message); return; }
 
+      await saveAnonTripId(data.id);
       await queryClient.invalidateQueries({ queryKey: ['trips'] });
       onClose();
       router.push(`/trip/${data.id}` as never);

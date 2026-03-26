@@ -43,7 +43,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace('/');
+      router.replace(searchParams.get('next') || '/');
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {
@@ -215,7 +215,7 @@ function LoginPageInner() {
                 transition={{ duration: 0.15 }}
                 className="mb-7"
               >
-                <h2 className="text-[#1e3a5f] text-[22px] font-black tracking-tight mb-2">
+                <h2 className="text-[#1e3a5f] text-[22px] font-serif font-normal tracking-wide mb-2">
                   {isSignUp ? 'Create your account' : 'Welcome back'}
                 </h2>
                 <p className="text-[#1e3a5f]/50 text-sm">

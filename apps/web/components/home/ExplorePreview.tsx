@@ -3,9 +3,75 @@
 import { useState, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useExploreRows } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 import { PlaceCard } from '@/components/PlaceCard';
+
+const EXPLORE_SECTION_DEFS = [
+  { title: 'Top Attractions', category: 'sightseeing' },
+  { title: 'Best Restaurants', category: 'restaurant' },
+  { title: 'Museums & Culture', category: 'museum' },
+  { title: 'Parks & Nature', category: 'park' },
+  { title: 'Cafes & Coffee', category: 'cafe' },
+  { title: 'Nightlife & Bars', category: 'bar' },
+];
+
+const EXPLORE_CITIES = [
+  { lat: '40.7128', lng: '-74.0060' },  // New York
+  { lat: '48.8566', lng: '2.3522' },    // Paris
+  { lat: '41.9028', lng: '12.4964' },   // Rome
+  { lat: '51.5074', lng: '-0.1278' },   // London
+  { lat: '35.6762', lng: '139.6503' },  // Tokyo
+  { lat: '41.3874', lng: '2.1686' },    // Barcelona
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '37.7749', lng: '-122.4194' }, // San Francisco
+  { lat: '25.2048', lng: '55.2708' },   // Dubai
+];
+
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, n);
+}
+
+async function fetchExploreSections() {
+  // Pick random cities for each section
+  const cities = pickRandom(EXPLORE_CITIES, EXPLORE_SECTION_DEFS.length);
+
+  const results = await Promise.all(
+    EXPLORE_SECTION_DEFS.map(async (section, i) => {
+      const city = cities[i % cities.length];
+      const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${section.category}&limit=10`);
+      if (!res.ok) return { ...section, items: [] as PlaceItem[] };
+      const items = await res.json() as PlaceItem[];
+      return { ...section, items: items.filter((p) => p.image) };
+    })
+  );
+  return results.filter((s) => s.items.length > 0);
+}
+
+function useExploreSections() {
+  const { data: sections = [], isLoading } = useQuery({
+    queryKey: ['explore-sections'],
+    queryFn: fetchExploreSections,
+    staleTime: 10 * 60 * 1000,
+  });
+  const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set([0]));
+  const toggleRow = (i: number) => setExpandedSet((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  const expandAll = () => setExpandedSet(new Set(sections.map((_, i) => i)));
+  const collapseAll = () => setExpandedSet(new Set());
+  const allExpanded = sections.length > 0 && expandedSet.size === sections.length;
+  const rows = sections.map((s, i) => ({
+    title: s.title,
+    items: s.items,
+    isExpanded: expandedSet.has(i),
+  }));
+  return { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading };
+}
 
 // ─── Section Header ──────────────────────────────────────────
 function SectionHeader({
@@ -14,7 +80,6 @@ function SectionHeader({
   onToggle,
 }: {
   title: string;
-  gradient?: { from: string; to: string };
   isExpanded: boolean;
   onToggle: () => void;
 }) {
@@ -134,14 +199,12 @@ function ExploreContainer({
 // ─── Explore Section (header + container) ────────────────────
 function ExploreSection({
   title,
-  gradient,
   isExpanded,
   onToggle,
   items,
   onItemClick,
 }: {
   title: string;
-  gradient: { from: string; to: string };
   isExpanded: boolean;
   onToggle: () => void;
   items: PlaceItem[];
@@ -151,7 +214,6 @@ function ExploreSection({
     <div className="space-y-2">
       <SectionHeader
         title={title}
-        gradient={gradient}
         isExpanded={isExpanded}
         onToggle={onToggle}
       />
@@ -176,7 +238,7 @@ function ExploreSection({
 
 // ─── Main Component ──────────────────────────────────────────
 export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem) => void } = {}) {
-  const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading } = useExploreRows();
+  const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading } = useExploreSections();
 
   if (isLoading) {
     return (
@@ -211,7 +273,6 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
             <ExploreSection
               key={row.title}
               title={row.title}
-              gradient={row.gradient}
               isExpanded={row.isExpanded}
               onToggle={() => toggleRow(i)}
               items={row.items}

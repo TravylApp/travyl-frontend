@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Heart, Star, MapPin, ChevronLeft, ChevronRight, CalendarCheck, TicketPercent, Clock, ExternalLink, PlusCircle, MinusCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { DiscoverItem } from '@travyl/shared';
@@ -98,12 +97,12 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
         {/* Image carousel */}
         <div className={`relative overflow-hidden ${fc.image}`} style={{ height: imgHeight }}>
           {images[0] ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={images[imageIndex] || images[0]}
               alt={item.name}
-              fill
-              className="object-cover group-hover:scale-110 transition-transform duration-500"
-              sizes="(max-width: 640px) 100vw, (max-width: 900px) 50vw, 33vw"
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800" />
@@ -233,8 +232,8 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
             </div>
           )}
 
-          {/* Time display (flat mode) */}
-          {flat && item.bookedTime && (
+          {/* Time display */}
+          {item.bookedTime && (
             <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
               <Clock size={9} className="text-gray-400 dark:text-gray-500" />
               <span>{item.bookedTime}</span>

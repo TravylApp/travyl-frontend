@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'r
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import { MOCK_PACKING_LIST, useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
 import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
@@ -64,13 +64,61 @@ function ProgressBar({
 /*  Page                                                                */
 /* ------------------------------------------------------------------ */
 
+function buildPackingList(trip: any): PackingList {
+  const days = trip?.start_date && trip?.end_date
+    ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
+    : 5;
+  const forecast = (trip?.trip_context as any)?.weather?.forecast ?? [];
+  const avgTemp = forecast.length > 0
+    ? forecast.reduce((sum: number, d: any) => sum + (d.high ?? 20), 0) / forecast.length
+    : 20;
+  const isWarm = avgTemp > 22;
+  const isCold = avgTemp < 12;
+  const hasRain = forecast.some((d: any) => (d.conditions || d.icon || '').toLowerCase().includes('rain'));
+
+  const list: PackingList = {
+    'Essentials': [
+      { item: 'Passport / ID', packed: false },
+      { item: 'Phone & charger', packed: false },
+      { item: 'Wallet & cards', packed: false },
+      { item: 'Travel insurance docs', packed: false },
+      { item: 'Boarding pass / tickets', packed: false },
+    ],
+    'Clothing': [
+      { item: `T-shirts / tops (${Math.min(days + 1, 7)})`, packed: false },
+      { item: `Underwear (${Math.min(days + 1, 7)})`, packed: false },
+      { item: `Socks (${Math.min(days + 1, 7)} pairs)`, packed: false },
+      { item: `Pants / shorts (${Math.min(Math.ceil(days / 2), 4)})`, packed: false },
+      { item: 'Sleepwear', packed: false },
+      ...(isWarm ? [{ item: 'Swimsuit', packed: false }, { item: 'Sunglasses', packed: false }] : []),
+      ...(isCold ? [{ item: 'Warm jacket', packed: false }, { item: 'Scarf & gloves', packed: false }] : []),
+      ...(hasRain ? [{ item: 'Rain jacket / umbrella', packed: false }] : []),
+    ],
+    'Toiletries': [
+      { item: 'Toothbrush & toothpaste', packed: false },
+      { item: 'Shampoo & conditioner', packed: false },
+      { item: 'Deodorant', packed: false },
+      { item: 'Sunscreen', packed: false },
+      { item: 'Medications', packed: false },
+    ],
+    'Electronics': [
+      { item: 'Phone charger', packed: false },
+      { item: 'Power adapter', packed: false },
+      { item: 'Headphones', packed: false },
+      { item: 'Camera', packed: false },
+    ],
+  };
+  return list;
+}
+
 export default function PackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trip } = useItineraryScreen(id);
 
-  const [packingList, setPackingList] = useState<PackingList>({ ...MOCK_PACKING_LIST });
+  const defaultList = buildPackingList(trip);
+  const [packingList, setPackingList] = useState<PackingList>(defaultList);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(Object.keys(MOCK_PACKING_LIST)),
+    new Set(Object.keys(defaultList)),
   );
   const [newItemInputs, setNewItemInputs] = useState<Record<string, string>>({});
   const [isCreatingList, setIsCreatingList] = useState(false);

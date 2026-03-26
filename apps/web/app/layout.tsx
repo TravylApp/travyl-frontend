@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Sora, Lustria } from "next/font/google";
 import Providers from "@/components/providers";
+import { validateEnv } from "@/lib/validateEnv";
 import "./globals.css";
+
+validateEnv();
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -40,11 +43,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="author" content="JPB Developments — https://www.jpbdevelopments.com" />
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://flagcdn.com" />
         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})();`,
+          }}
+        />
       </head>
       <body
         className={`${geistMono.variable} ${sora.variable} ${lustria.variable} antialiased`}

@@ -1,4 +1,4 @@
-import { cacheTable, placeIndex, userInteractions } from './storage'
+import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
 import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels } from './secrets'
 
@@ -35,7 +35,7 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -49,7 +49,7 @@ api.route('GET /suggest', {
 
 api.route('GET /search', {
   handler: 'services/search.handler',
-  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, supabaseSecretKey, supabaseUrl, serpApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -88,12 +88,57 @@ api.route('GET /context-search', {
   ],
 })
 
+api.route('GET /entity-search', {
+  handler: 'services/entity-search.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+})
+
 api.route('GET /recommend', {
   handler: 'services/recommend.handler',
-  link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
 api.route('POST /invite', {
   handler: 'services/invite.handler',
   link: [supabaseSecretKey, supabaseUrl, email],
+  environment: {
+    APP_URL: $app.stage === 'production' ? 'https://gotravyl.com' : 'http://localhost:3000',
+  },
+})
+
+api.route('POST /packing-suggest', {
+  handler: 'services/packing-suggest.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})
+
+api.route('GET /activity-intelligence', {
+  handler: 'services/activity-intelligence.handler',
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
+api.route('GET /discover', {
+  handler: 'services/discover.handler',
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
+api.route('GET /parse-intent', {
+  handler: 'services/parse-intent.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})
+
+api.route('GET /places/search', {
+  handler: 'services/place-search.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
 })

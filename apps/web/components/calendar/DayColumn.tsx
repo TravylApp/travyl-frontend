@@ -32,10 +32,7 @@ interface DayColumnProps {
   onContextMenu?: (id: string, x: number, y: number) => void
   polls?: Map<string, Poll>
   pollUserId?: string
-  tripOwnerId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
-  onRestorePoll?: (activityId: string) => void
-  onRemovePollActivity?: (activityId: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -99,10 +96,7 @@ export function DayColumn({
   onContextMenu,
   polls,
   pollUserId,
-  tripOwnerId,
   onVotePoll,
-  onRestorePoll,
-  onRemovePollActivity,
 }: DayColumnProps) {
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
@@ -210,11 +204,12 @@ export function DayColumn({
       {/* Droppable grid */}
       <div
         ref={setNodeRef}
+        data-day-grid={dayIndex}
         className={[
           'relative flex-1 border-l border-[var(--cal-border-light)]',
           isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
-        style={{ height: hourCount * HOUR_HEIGHT }}
+        style={{ minHeight: hourCount * HOUR_HEIGHT }}
         onClick={handleBackgroundClick}
       >
         {/* Hour grid lines */}
@@ -253,17 +248,11 @@ export function DayColumn({
               poll={polls?.get(activity.id)}
               userId={pollUserId}
               onVote={onVotePoll}
-              onRestorePoll={onRestorePoll}
-              onRemovePollActivity={onRemovePollActivity}
-              canManagePoll={
-                polls?.get(activity.id)
-                  ? polls.get(activity.id)!.startedBy === pollUserId || tripOwnerId === pollUserId
-                  : false
-              }
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
+              columnSpan={layout.columnSpan}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
             />
           )
@@ -283,15 +272,17 @@ export function DayColumn({
           />
         ))}
 
-        {/* Ghost block for pending drag activity */}
+        {/* Ghost block for pending drag activity — always visible during drag */}
         {pendingActivity && (() => {
           const layout = overlapLayout.get(pendingActivity.id)
-          if (!layout || layout.column < 0) return null
+          // Fall back to full-width column 0 when overlap hides it (column -1)
+          const col = layout && layout.column >= 0 ? layout.column : 0
+          const cols = layout ? layout.totalColumns : 1
           const availableWidth = `(100% - ${2 * COLUMN_OUTER_PAD}px)`
-          const colWidth = `(${availableWidth} - ${(layout.totalColumns - 1) * COLUMN_GAP}px) / ${layout.totalColumns}`
-          const leftOffset = layout.column === 0
+          const colWidth = `(${availableWidth} - ${(cols - 1) * COLUMN_GAP}px) / ${cols}`
+          const leftOffset = col === 0
             ? `${COLUMN_OUTER_PAD}px`
-            : `${COLUMN_OUTER_PAD}px + ${layout.column} * (${colWidth} + ${COLUMN_GAP}px)`
+            : `${COLUMN_OUTER_PAD}px + ${col} * (${colWidth} + ${COLUMN_GAP}px)`
           return (
             <div
               className="absolute rounded-md border-2 border-dashed border-blue-400 bg-blue-100/30 pointer-events-none"

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
@@ -23,10 +23,10 @@ import {
   Zap,
   Monitor,
   Info,
-  Plus,
 } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { useItineraryScreen, useFlights } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 
 /* ================================================================
    MOCK DATA — Paris trip: JFK <-> CDG
@@ -40,119 +40,156 @@ const POPULAR_AIRPORTS = [
   { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
 ];
 
-const BOOKED_FLIGHTS = [
-  {
-    id: 'outbound-1',
-    type: 'outbound' as const,
-    flightNumber: 'AA 100',
-    airline: 'American Airlines',
-    airlineLogo: 'AA',
-    aircraft: 'Boeing 777-300ER',
-    date: 'Mar 10, 2026',
-    departure: { time: '7:30 PM', code: 'JFK', terminal: 'T8', gate: 'B44' },
-    arrival: { time: '9:15 AM', code: 'CDG', terminal: 'T2A', gate: 'K26', nextDay: true },
-    duration: '7h 45m',
-    stops: 'Direct',
-    cabinClass: 'Economy',
-    seats: '24A, 24B',
-    baggage: '1 carry-on + 1 checked (23 kg)',
-    meal: 'Dinner + breakfast',
-    wifi: 'Available (complimentary)',
-    confirmation: 'XHGT7K',
-    price: { base: 412, taxes: 86, total: 498 },
-    status: 'Confirmed',
-  },
-  {
-    id: 'return-1',
-    type: 'return' as const,
-    flightNumber: 'AA 101',
-    airline: 'American Airlines',
-    airlineLogo: 'AA',
-    aircraft: 'Boeing 777-300ER',
-    date: 'Mar 16, 2026',
-    departure: { time: '11:00 AM', code: 'CDG', terminal: 'T2A', gate: 'K12' },
-    arrival: { time: '2:30 PM', code: 'JFK', terminal: 'T8', gate: 'B38', nextDay: false },
-    duration: '8h 30m',
-    stops: 'Direct',
-    cabinClass: 'Economy',
-    seats: '26A, 26B',
-    baggage: '1 carry-on + 1 checked (23 kg)',
-    meal: 'Lunch + snack',
-    wifi: 'Available (complimentary)',
-    confirmation: 'XHGT7K',
-    price: { base: 428, taxes: 91, total: 519 },
-    status: 'Confirmed',
-  },
-];
-
-const COMPARISON_FLIGHTS = [
-  {
-    id: 'dl-310',
-    airline: 'Delta Air Lines',
-    airlineLogo: 'DL',
-    flightNumber: 'DL 310',
-    departure: { time: '6:15 PM', airport: 'JFK' },
-    arrival: { time: '8:45 AM', airport: 'CDG', nextDay: true },
-    duration: '8h 30m',
-    stops: 1,
-    layover: 'ATL (1h 40m)',
-    price: 520,
-    fareClass: 'Main Cabin',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 84,
-    co2: 312,
-    badge: null as string | null,
-  },
-  {
-    id: 'ua-57',
-    airline: 'United Airlines',
-    airlineLogo: 'UA',
-    flightNumber: 'UA 57',
-    departure: { time: '9:00 PM', airport: 'EWR' },
-    arrival: { time: '10:30 AM', airport: 'CDG', nextDay: true },
-    duration: '7h 30m',
-    stops: 0,
-    layover: null,
-    price: 485,
-    fareClass: 'Economy',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 81,
-    co2: 278,
-    badge: 'Lowest Price',
-  },
-  {
-    id: 'lh-401',
-    airline: 'Lufthansa',
-    airlineLogo: 'LH',
-    flightNumber: 'LH 401',
-    departure: { time: '5:30 PM', airport: 'JFK' },
-    arrival: { time: '7:15 AM', airport: 'CDG', nextDay: true },
-    duration: '7h 45m',
-    stops: 0,
-    layover: null,
-    price: 610,
-    fareClass: 'Economy',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 88,
-    co2: 265,
-    badge: 'Best Overall',
-    businessAvailable: true,
-  },
-];
-
-const BOOKING_DETAILS = {
-  confirmationNumber: 'XHGT7K',
-  pnr: 'XHGT7K',
-  ticketNumbers: ['001-2345678901', '001-2345678902'],
-  fareClass: 'Y',
-  fareType: 'Economy Flex',
-  baggageAllowance: { carryOn: '1 bag (10 kg)', checked: '1 bag (23 kg)', fees: 0 },
-  cancellationPolicy: 'Free cancellation within 24 hours of booking. After that, a $200 fee per passenger applies.',
-  changePolicy: 'Changes permitted for a $75 fee plus any fare difference. Same-day standby is complimentary for AAdvantage members.',
-  refundPolicy: 'Refundable as travel credit within 12 months. Cash refund available for Flex fares.',
-  checkInUrl: 'https://www.aa.com/checkin',
-  checkInOpens: 'Mar 9, 2026 — 24 hours before departure',
+type BookedFlight = {
+  id: string; type: 'outbound' | 'return'; flightNumber: string; airline: string;
+  airlineLogo: string; aircraft: string; date: string;
+  departure: { time: string; code: string; terminal: string; gate: string };
+  arrival: { time: string; code: string; terminal: string; gate: string; nextDay: boolean };
+  duration: string; stops: string; cabinClass: string; seats: string;
+  baggage: string; meal: string; wifi: string; confirmation: string;
+  price: { base: number; taxes: number; total: number }; status: string;
 };
+
+/** Convert DB flight records into the shape BookedFlightCard expects */
+function dbFlightsToBooked(flights: any[], destination?: string): BookedFlight[] {
+  return flights.map((f: any, i: number) => {
+    const d = f.data ?? {};
+    const dep = d.departure_at ? new Date(d.departure_at) : null;
+    const arr = d.arrival_at ? new Date(d.arrival_at) : null;
+    const depTime = dep ? dep.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const arrTime = arr ? arr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const dateStr = dep ? dep.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const nextDay = dep && arr ? arr.getDate() !== dep.getDate() : false;
+
+    let durationStr = '';
+    if (dep && arr) {
+      const ms = arr.getTime() - dep.getTime();
+      const h = Math.floor(ms / 3600000);
+      const m = Math.round((ms % 3600000) / 60000);
+      durationStr = `${h}h ${m}m`;
+    }
+
+    const originCode = d.origin_iata || '';
+    const destCode = d.dest_iata || (destination ? CITY_AIRPORTS[destination] : '') || '';
+    const airlineCode = (d.airline || '??').slice(0, 2).toUpperCase();
+    const price = d.price ? Math.round(d.price) : 0;
+
+    return {
+      id: f.id,
+      type: i === 0 ? 'outbound' as const : 'return' as const,
+      flightNumber: d.flight_number || `${airlineCode}${100 + i}`,
+      airline: d.airline || 'Airline',
+      airlineLogo: airlineCode,
+      aircraft: d.aircraft || '',
+      date: dateStr,
+      departure: { time: depTime, code: originCode, terminal: '', gate: '' },
+      arrival: { time: arrTime, code: destCode, terminal: '', gate: '', nextDay },
+      duration: durationStr,
+      stops: 'Direct',
+      cabinClass: d.cabin_class || 'Economy',
+      seats: '',
+      baggage: '1 checked bag',
+      meal: '',
+      wifi: '',
+      confirmation: d.booking_ref || '',
+      price: { base: price, taxes: 0, total: price },
+      status: 'Planned',
+    };
+  });
+}
+
+type ComparisonFlight = {
+  id: string; airline: string; airlineLogo: string; flightNumber: string;
+  departure: { time: string; airport: string };
+  arrival: { time: string; airport: string; nextDay: boolean };
+  duration: string; stops: number; layover: string | null;
+  price: number; fareClass: string;
+  amenities: { wifi: boolean; power: boolean; meals: boolean; entertainment: boolean };
+  onTime: number; co2: number; badge: string | null; businessAvailable?: boolean;
+};
+
+function formatDuration(iso: string): string {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!match) return iso;
+  const h = match[1] ?? '0';
+  const m = match[2] ?? '0';
+  return `${h}h ${m}m`;
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+const CITY_AIRPORTS: Record<string, string> = {
+  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+  'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
+  'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
+  'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
+  'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
+};
+
+interface FlightSearchParams {
+  origin: string;
+  destination: string;
+  date: string;
+  passengers: number;
+  cabinClass: string;
+}
+
+function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
+  const { trip } = useItineraryScreen(tripId);
+  const destination = trip?.destination?.split(',')[0]?.trim();
+
+  const cityName = destination?.split(',')[0]?.trim();
+  const destAirport = searchParams?.destination || (cityName ? CITY_AIRPORTS[cityName] : undefined);
+  const originAirport = searchParams?.origin || 'JFK';
+  const departDate = searchParams?.date || trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const passengers = searchParams?.passengers || trip?.travelers || 1;
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['flights-search', originAirport, destAirport, departDate, passengers],
+    queryFn: async (): Promise<ComparisonFlight[]> => {
+      if (!destAirport) return [];
+      const res = await fetch(`/api/flights/search?origin=${originAirport}&destination=${destAirport}&date=${departDate}&passengers=${passengers}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.flights ?? []).map((f: any, i: number): ComparisonFlight | null => {
+        const ob = f.outbound;
+        if (!ob) return null;
+        const depTime = ob.departureTime ? formatTime(ob.departureTime) : '?';
+        const arrTime = ob.arrivalTime ? formatTime(ob.arrivalTime) : '?';
+        const depDate = ob.departureTime ? new Date(ob.departureTime).getDate() : 0;
+        const arrDate = ob.arrivalTime ? new Date(ob.arrivalTime).getDate() : 0;
+        return {
+          id: f.id,
+          airline: ob.airline ?? 'Unknown',
+          airlineLogo: ob.airlineCode ?? '??',
+          flightNumber: ob.flightNumber ?? '',
+          departure: { time: depTime, airport: ob.origin ?? originAirport },
+          arrival: { time: arrTime, airport: ob.destination ?? destAirport, nextDay: arrDate !== depDate },
+          duration: formatDuration(ob.duration ?? ''),
+          stops: ob.stops ?? 0,
+          layover: ob.stops > 0 ? `${ob.segments?.[0]?.destination ?? '?'} layover` : null,
+          price: Math.round(f.price),
+          fareClass: f.cabinClass ?? 'Economy',
+          amenities: { wifi: true, power: true, meals: ob.stops === 0, entertainment: true },
+          onTime: 80 + (i % 15),
+          co2: 250 + ob.stops * 80,
+          badge: i === 0 ? 'Lowest Price' : ob.stops === 0 && i < 3 ? 'Direct' : null,
+        };
+      }).filter((f: ComparisonFlight | null): f is ComparisonFlight => f !== null);
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!destAirport,
+  });
+
+  return { flights: data ?? [], isLoading, destAirport, destination, refetch };
+}
+
+// Booking details are shown only when real booking data is available from the flight record
 
 /* ================================================================
    ANIMATION VARIANTS
@@ -168,12 +205,16 @@ const collapseVariants = {
    FLIGHT SEARCH SECTION
    ================================================================ */
 
-function FlightSearchSection() {
-  const [collapsed, setCollapsed] = useState(true);
+function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearch, defaultOpen }: {
+  defaultFrom?: string; defaultTo?: string; defaultTravelers?: number;
+  onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => void;
+  defaultOpen?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(!defaultOpen);
   const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState('JFK');
-  const [to, setTo] = useState('CDG');
-  const [travelers, setTravelers] = useState(2);
+  const [from, setFrom] = useState(defaultFrom || 'JFK');
+  const [to, setTo] = useState(defaultTo || 'CDG');
+  const [travelers, setTravelers] = useState(defaultTravelers || 2);
   const [cabinClass, setCabinClass] = useState('economy');
   const [nonstopOnly, setNonstopOnly] = useState(false);
   const [maxLayover, setMaxLayover] = useState(12);
@@ -195,7 +236,7 @@ function FlightSearchSection() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
       {/* Header */}
-      <button onClick={() => setCollapsed(!collapsed)} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+      <div role="button" tabIndex={0} onClick={() => setCollapsed(!collapsed)} onKeyDown={(e) => { if (e.key === 'Enter') setCollapsed(!collapsed); }} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#2563eb] flex items-center justify-center">
             <PaperPlane size={14} className="text-white" />
@@ -220,7 +261,7 @@ function FlightSearchSection() {
           )}
           <ChevronDown size={16} className={`text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
         </div>
-      </button>
+      </div>
 
       {/* Expandable body */}
       <AnimatePresence>
@@ -278,7 +319,10 @@ function FlightSearchSection() {
                 </div>
 
                 {/* Search button */}
-                <button className="px-5 py-2.5 text-xs text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors shrink-0 flex items-center gap-1.5 justify-center sm:rounded-r-xl font-medium">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSearch?.({ origin: from, destination: to, passengers: travelers, cabinClass }); }}
+                  className="px-5 py-2.5 text-xs text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors shrink-0 flex items-center gap-1.5 justify-center sm:rounded-r-xl font-medium"
+                >
                   <Search size={13} />
                   Search
                 </button>
@@ -377,7 +421,7 @@ function FlightSearchSection() {
    BOOKED FLIGHT CARD
    ================================================================ */
 
-function BookedFlightCard({ flight }: { flight: typeof BOOKED_FLIGHTS[0] }) {
+function BookedFlightCard({ flight }: { flight: BookedFlight }) {
   const [expanded, setExpanded] = useState(false);
   const isOutbound = flight.type === 'outbound';
   const gradient = isOutbound
@@ -490,13 +534,13 @@ function BookedFlightCard({ flight }: { flight: typeof BOOKED_FLIGHTS[0] }) {
    COMPARISON ALTERNATIVES
    ================================================================ */
 
-function ComparisonAlternatives() {
+function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: ComparisonFlight[] }) {
   const [open, setOpen] = useState(false);
   const [sort, setSort] = useState<'price' | 'duration' | 'value'>('value');
   const [altAirports, setAltAirports] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const sorted = [...COMPARISON_FLIGHTS].sort((a, b) => {
+  const sorted = [...comparisonFlights].sort((a, b) => {
     if (sort === 'price') return a.price - b.price;
     if (sort === 'duration') {
       const toMin = (d: string) => { const p = d.match(/(\d+)h\s*(\d+)m/); return p ? Number(p[1]) * 60 + Number(p[2]) : 0; };
@@ -511,7 +555,7 @@ function ComparisonAlternatives() {
         <div className="flex items-center gap-2">
           <TrendingUp size={16} className="text-emerald-600" />
           <span className="text-sm font-medium text-gray-900">Compare Alternatives</span>
-          <span className="text-[10px] text-gray-400">{COMPARISON_FLIGHTS.length} options</span>
+          <span className="text-[10px] text-gray-400">{comparisonFlights.length} options</span>
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -556,8 +600,8 @@ function ComparisonAlternatives() {
               <div className="flex items-center gap-2 px-1">
                 <Info size={11} className="text-gray-400 shrink-0" />
                 <p className="text-[10px] text-gray-500">
-                  Prices from <span className="font-semibold text-gray-700">${Math.min(...COMPARISON_FLIGHTS.map(f => f.price))}</span> to{' '}
-                  <span className="font-semibold text-gray-700">${Math.max(...COMPARISON_FLIGHTS.map(f => f.price))}</span> per person incl. taxes
+                  Prices from <span className="font-semibold text-gray-700">${Math.min(...comparisonFlights.map(f => f.price))}</span> to{' '}
+                  <span className="font-semibold text-gray-700">${Math.max(...comparisonFlights.map(f => f.price))}</span> per person incl. taxes
                 </p>
               </div>
 
@@ -661,95 +705,6 @@ function ComparisonAlternatives() {
   );
 }
 
-/* ================================================================
-   BOOKING DETAILS SECTION
-   ================================================================ */
-
-function BookingDetailsSection() {
-  const [open, setOpen] = useState(false);
-  const d = BOOKING_DETAILS;
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <button onClick={() => setOpen(!open)}
-        className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${open ? 'bg-blue-50/50' : 'hover:bg-gray-50/50'}`}>
-        <div className="flex items-center gap-2">
-          <FileText size={16} className="text-[#2563eb]" />
-          <span className="text-sm font-medium text-gray-900">Booking Details</span>
-        </div>
-        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
-            <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-2.5">
-              {/* Booking reference */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800 mb-2">Booking Reference</p>
-                <div className="space-y-1.5">
-                  {[{ label: 'Confirmation Number', value: d.confirmationNumber, bold: true }, { label: 'PNR Code', value: d.pnr, mono: true }, { label: 'Fare Class', value: `${d.fareClass} - ${d.fareType}` }].map(row => (
-                    <div key={row.label} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">{row.label}</span>
-                      <span className={`text-xs ${row.bold ? 'font-bold text-[#2563eb]' : row.mono ? 'font-medium font-mono text-gray-800' : 'font-medium text-gray-800'}`}>{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Baggage */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800 mb-2">Baggage Allowance</p>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Carry-on</span><span className="text-xs text-gray-800">{d.baggageAllowance.carryOn}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Checked</span><span className="text-xs text-gray-800">{d.baggageAllowance.checked}</span></div>
-                  <div className="flex items-center justify-between pt-1.5 border-t border-gray-200">
-                    <span className="text-xs text-gray-500">Baggage Fees</span>
-                    <span className="text-xs font-semibold text-emerald-600">{d.baggageAllowance.fees === 0 ? 'Included' : `$${d.baggageAllowance.fees}/person`}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ticket numbers */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800 mb-2">Ticket Numbers</p>
-                <div className="space-y-1">
-                  {d.ticketNumbers.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Passenger {i + 1}</span>
-                      <span className="text-xs font-mono text-gray-800">{t}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Policies */}
-              {[{ title: 'Cancellation Policy', text: d.cancellationPolicy }, { title: 'Change Policy', text: d.changePolicy }, { title: 'Refund Policy', text: d.refundPolicy }].map(p => (
-                <div key={p.title} className="bg-gray-50 rounded-lg px-3 py-2.5">
-                  <p className="text-xs font-semibold text-gray-800 mb-1">{p.title}</p>
-                  <p className="text-xs text-gray-600 leading-relaxed">{p.text}</p>
-                </div>
-              ))}
-
-              {/* Check-in CTA */}
-              <div className="rounded-lg px-3 py-3" style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                <p className="text-xs font-semibold text-white mb-1.5">Check-in Information</p>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/70">Check-in Opens</span>
-                  <span className="text-xs font-medium text-white">{d.checkInOpens}</span>
-                </div>
-                <a href={d.checkInUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-block px-4 py-2 bg-white text-[#2563eb] rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors shadow-sm">
-                  Check-in Online →
-                </a>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 /* ================================================================
    MAIN PAGE
@@ -757,12 +712,76 @@ function BookingDetailsSection() {
 
 export default function Flights({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { flights: flightVMs, isLoading } = useItineraryScreen(id);
+  const { trip, isLoading } = useItineraryScreen(id);
+  const { data: dbFlights = [], isLoading: loadingDbFlights } = useFlights(id);
+  const [searchParams, setSearchParams] = useState<FlightSearchParams | undefined>(undefined);
+  const { flights: searchedFlights, isLoading: searchingFlights } = useFlightSearch(id, searchParams);
 
-  const outbound = BOOKED_FLIGHTS.filter(f => f.type === 'outbound');
-  const returnFlights = BOOKED_FLIGHTS.filter(f => f.type === 'return');
+  const destination = trip?.destination?.split(',')[0]?.trim();
+  const defaultTo = destination ? CITY_AIRPORTS[destination] : undefined;
+  const defaultTravelers = trip?.travelers || 1;
 
-  if (isLoading) {
+  const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => {
+    setSearchParams({
+      origin: params.origin,
+      destination: params.destination,
+      date: trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+      passengers: params.passengers,
+      cabinClass: params.cabinClass,
+    });
+  };
+
+  // Convert DB flights OR trip_context flights into BookedFlightCard format
+  const contextFlights = (trip?.trip_context as any)?.flights as any[] | undefined;
+  const bookedFlights = useMemo(() => {
+    if (dbFlights.length > 0) return dbFlightsToBooked(dbFlights, destination);
+    if (!contextFlights?.length) return [];
+    // Convert trip_context flights (from planner) into BookedFlight shape
+    return contextFlights.map((f: any, i: number): BookedFlight => {
+      const dep = f.departure_time ? new Date(f.departure_time) : null;
+      const arr = f.arrival_time ? new Date(f.arrival_time) : null;
+      const depTime = dep ? dep.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+      const arrTime = arr ? arr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+      const dateStr = dep ? dep.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      const nextDay = dep && arr ? arr.getDate() !== dep.getDate() : false;
+      let durationStr = '';
+      if (f.duration) {
+        const mins = typeof f.duration === 'number' ? f.duration : parseInt(f.duration, 10);
+        if (!isNaN(mins)) durationStr = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+      } else if (dep && arr) {
+        const ms = arr.getTime() - dep.getTime();
+        durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
+      }
+      const originCode = f.origin ?? '';
+      const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+      const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
+      return {
+        id: `ctx-flight-${i}`,
+        type: i === 0 ? 'outbound' : 'return',
+        flightNumber: `${airlineCode}${100 + i}`,
+        airline: f.airline || 'Airline',
+        airlineLogo: airlineCode,
+        aircraft: '',
+        date: dateStr,
+        departure: { time: depTime, code: originCode, terminal: '', gate: '' },
+        arrival: { time: arrTime, code: destCode, terminal: '', gate: '', nextDay },
+        duration: durationStr,
+        stops: f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Direct',
+        cabinClass: 'Economy',
+        seats: '',
+        baggage: '1 checked bag',
+        meal: '',
+        wifi: '',
+        confirmation: '',
+        price: { base: Math.round(f.price ?? 0), taxes: 0, total: Math.round(f.price ?? 0) },
+        status: 'Planned',
+      };
+    });
+  }, [dbFlights, contextFlights, destination]);
+  const outbound = bookedFlights.filter(f => f.type === 'outbound');
+  const returnFlights = bookedFlights.filter(f => f.type === 'return');
+
+  if (isLoading || loadingDbFlights) {
     return (
       <div className="space-y-3 animate-pulse">
         {[0, 1].map(i => (
@@ -785,28 +804,38 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     );
   }
 
+  const hasBookedFlights = bookedFlights.length > 0;
+
   return (
     <div className="space-y-4">
-      {/* 1. Flight Search Section */}
-      <FlightSearchSection />
+      {/* 1. Your Flights — from trip generation / database */}
+      {hasBookedFlights && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {outbound.map(f => <BookedFlightCard key={f.id} flight={f} />)}
+          {returnFlights.map(f => <BookedFlightCard key={f.id} flight={f} />)}
+        </div>
+      )}
 
-      {/* 2. Booked Flight Cards — 2-column on lg */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {outbound.map(f => <BookedFlightCard key={f.id} flight={f} />)}
-        {returnFlights.map(f => <BookedFlightCard key={f.id} flight={f} />)}
-      </div>
-
-      {/* Add flight button */}
-      <button className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#2563eb]/40 hover:text-[#2563eb] transition-colors">
-        <Plus size={16} />
-        <span className="text-[13px] font-medium">Add Flight</span>
-      </button>
+      {/* 2. Flight Search Section — open by default when no flights yet */}
+      <FlightSearchSection
+        defaultFrom="JFK"
+        defaultTo={defaultTo}
+        defaultTravelers={defaultTravelers}
+        onSearch={handleSearch}
+        defaultOpen={!hasBookedFlights}
+      />
 
       {/* 3. Comparison Alternatives */}
-      <ComparisonAlternatives />
+      {searchingFlights ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+          <div className="w-6 h-6 border-2 border-gray-300 border-t-[#2563eb] rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-sm text-gray-400">Searching flights...</p>
+        </div>
+      ) : searchedFlights.length > 0 ? (
+        <ComparisonAlternatives comparisonFlights={searchedFlights} />
+      ) : null}
 
-      {/* 4. Booking Details */}
-      <BookingDetailsSection />
+      {/* Booking details will show when real booking data is available */}
     </div>
   );
 }

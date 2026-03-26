@@ -146,6 +146,26 @@ body::-webkit-scrollbar {
   display: none;
 }
 
+/* Thin scrollbar for panels */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cal-border, #d1d5db) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  display: block;
+  width: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--cal-border, #d1d5db);
+  border-radius: 9999px;
+}
+.scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background: var(--cal-text-tertiary, #9ca3af);
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }

@@ -62,6 +62,7 @@ function planToData(plan: PlanResponse) {
       const activity: ActivityViewModel = {
         id: slot.poi.id || `slot-${day.day}-${i}`,
         name: slot.poi.name,
+        image: slot.poi.photo_url || '',
         category: slot.poi.category,
         locationName: slot.poi.name,
         startTime: start12,
@@ -153,7 +154,7 @@ export default function TripPreview() {
   const currentSlots = slotsByDay.get(currentDay?.dayNumber ?? 0) ?? [];
 
   const handleSave = async () => {
-    if (!plan?.extracted || !user) return;
+    if (!plan?.extracted) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -238,36 +239,18 @@ export default function TripPreview() {
       <div className="relative z-10 rounded-2xl border border-gray-200/80 bg-white mx-2 sm:mx-4 max-w-7xl lg:mx-auto" style={{ boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
         {/* Save CTA Banner */}
         <div className="rounded-t-2xl border-b border-gray-100 px-5 py-3.5 flex items-center justify-between gap-4 bg-gradient-to-r from-[#f0f9ff] to-white">
-          {user ? (
-            <>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Save this trip to your account</p>
-                <p className="text-xs text-gray-500">Edit, share, and access your full itinerary anytime.</p>
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-5 py-2.5 bg-[#1e3a5f] text-white rounded-xl text-sm font-semibold hover:bg-[#162d4a] disabled:opacity-50 transition-colors flex items-center gap-2 shrink-0"
-              >
-                <Sparkles size={14} />
-                {saving ? 'Saving...' : 'Save to My Trips'}
-              </button>
-            </>
-          ) : (
-            <>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Sign in to save this trip</p>
-                <p className="text-xs text-gray-500">Create an account to save, edit, and share your itinerary.</p>
-              </div>
-              <a
-                href="/auth/sign-in"
-                className="px-5 py-2.5 bg-[#1e3a5f] text-white rounded-xl text-sm font-semibold hover:bg-[#162d4a] transition-colors flex items-center gap-2 shrink-0"
-              >
-                <LogIn size={14} />
-                Sign In
-              </a>
-            </>
-          )}
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Save this trip</p>
+            <p className="text-xs text-gray-500">Edit, share, and access your full itinerary anytime.</p>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2.5 bg-[#1e3a5f] text-white rounded-xl text-sm font-semibold hover:bg-[#162d4a] disabled:opacity-50 transition-colors flex items-center gap-2 shrink-0"
+          >
+            <Sparkles size={14} />
+            {saving ? 'Saving...' : 'Save to My Trips'}
+          </button>
         </div>
         {saveError && (
           <div className="mx-5 mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>

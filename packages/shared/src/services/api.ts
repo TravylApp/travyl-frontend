@@ -19,50 +19,60 @@ export async function fetchSavedItems(): Promise<SavedItem[]> {
   return data ?? [];
 }
 
-export async function fetchProfile(userId: string): Promise<Profile> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  if (error) throw error;
-  return data;
+export async function fetchProfile(userId: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error) return null;
+    return data;
+  } catch { return null; }
 }
 
 // ─── Home Page Data ──────────────────────────────────────────
 
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
-  const { data, error } = await supabase
-    .from('mosaic_tiles')
-    .select('*')
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase
+      .from('mosaic_tiles')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) return [];
+    return data ?? [];
+  } catch { return []; }
 }
 
 export async function fetchInspirationCards(): Promise<InspirationCard[]> {
-  const { data, error } = await supabase
-    .from('inspiration_cards')
-    .select('*')
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase
+      .from('inspiration_cards')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) return [];
+    return data ?? [];
+  } catch { return []; }
 }
 
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
-  const { data, error } = await supabase
-    .from('explore_rows')
-    .select('*, items:explore_items(*)');
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase
+      .from('explore_rows')
+      .select('*, items:explore_items(*)');
+    if (error) return [];
+    return data ?? [];
+  } catch { return []; }
 }
 
 export async function fetchHeroConfig(): Promise<HeroConfig | null> {
-  const { data, error } = await supabase
-    .from('hero_config')
-    .select('*, suggestions:hero_suggestions(*)');
-  if (error) throw error;
-  return data?.[0] ?? null;
+  try {
+    const { data, error } = await supabase
+      .from('hero_config')
+      .select('*, suggestions:hero_suggestions(*)');
+    if (error) return null;
+    return data?.[0] ?? null;
+  } catch { return null; }
 }
 
 // ─── Itinerary Data ─────────────────────────────────────────
@@ -79,11 +89,14 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
+// These tables don't exist yet — data lives in trip_context JSONB.
+// Pages already fall back to trip_context when these return empty.
+// TODO: Create these tables when we need per-item CRUD (booking, reordering).
 export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWithActivities[]> {
   const { data, error } = await supabase
     .from('itinerary_days').select('*, activities(*)')
     .eq('trip_id', tripId).order('day_number', { ascending: true });
-  if (error) throw error;
+  if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return (data ?? []).map((day: any) => ({
     ...day,
     activities: (day.activities ?? []).sort(
@@ -96,7 +109,7 @@ export async function fetchFlights(tripId: string): Promise<Flight[]> {
   const { data, error } = await supabase
     .from('flights').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
-  if (error) throw error;
+  if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return data ?? [];
 }
 
@@ -104,7 +117,7 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
   const { data, error } = await supabase
     .from('hotels').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
-  if (error) throw error;
+  if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return data ?? [];
 }
 
@@ -301,11 +314,9 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
     .from('trips')
     .select('*')
     .eq('share_link_token', token)
-    .single();
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw error;
-  }
+    .maybeSingle();
+  if (error || !data) return null;
+  if (data.visibility === 'private') return null;
   return data;
 }
 
@@ -324,6 +335,16 @@ export async function ensureShareLinkToken(tripId: string): Promise<string> {
   const { error: updateError } = await supabase.from('trips').update({ share_link_token: token }).eq('id', tripId)
   if (updateError) throw updateError
   return token
+}
+
+export async function rotateShareLinkToken(tripId: string): Promise<string> {
+  const newToken = crypto.randomUUID()
+  const { error } = await supabase
+    .from('trips')
+    .update({ share_link_token: newToken })
+    .eq('id', tripId)
+  if (error) throw error
+  return newToken
 }
 
 export async function updateTripDetails(
@@ -432,10 +453,10 @@ export async function removeCollaborator(collaboratorId: string): Promise<void> 
   if (error) throw error
 }
 
-export async function acceptInviteByToken(inviteToken: string, userId: string): Promise<{ tripId: string }> {
-  const { data, error } = await supabase.from('trip_collaborators').update({ user_id: userId, invite_status: 'accepted', accepted_at: new Date().toISOString() }).eq('invite_token', inviteToken).eq('invite_status', 'pending').select('trip_id').single()
+export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId: string }> {
+  const { data, error } = await supabase.rpc('accept_invite_by_token', { p_token: inviteToken })
   if (error) throw error
-  return { tripId: data.trip_id }
+  return { tripId: (data as { trip_id: string }).trip_id }
 }
 
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
@@ -473,35 +494,6 @@ export async function inviteCollaborator(tripId: string, email: string, role: Co
 
   if (error) throw error
   return data
-}
-
-// ── Trip Notes ─────────────────────────────────────────
-
-export async function fetchTripNotes(tripId: string): Promise<TripNote[]> {
-  const { data, error } = await supabase.from('trip_notes').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
-  if (error) throw error
-  return data ?? []
-}
-
-export async function createTripNote(tripId: string, userId: string, day: number, hour: number, color: string): Promise<TripNote> {
-  const { data, error } = await supabase.from('trip_notes').insert({ trip_id: tripId, user_id: userId, day, hour, text: '', color }).select().single()
-  if (error) throw error
-  return data
-}
-
-export async function updateTripNote(noteId: string, text: string): Promise<void> {
-  const { error } = await supabase.from('trip_notes').update({ text }).eq('id', noteId)
-  if (error) throw error
-}
-
-export async function moveTripNote(noteId: string, day: number, hour: number): Promise<void> {
-  const { error } = await supabase.from('trip_notes').update({ day, hour }).eq('id', noteId)
-  if (error) throw error
-}
-
-export async function deleteTripNote(noteId: string): Promise<void> {
-  const { error } = await supabase.from('trip_notes').delete().eq('id', noteId)
-  if (error) throw error
 }
 
 // ─── Save AI Plan to Supabase ─────────────────────────────
@@ -552,7 +544,6 @@ export async function savePlanToSupabase(
   onProgress?: (stage: string, pct: number) => void
 ): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('You must be logged in to save a trip. Please sign in and try again.')
 
   const ext = plan.extracted
   const dest = ext.destination
@@ -561,7 +552,8 @@ export async function savePlanToSupabase(
 
   // 1. Create trip
   const tripInsert: Record<string, unknown> = {
-    user_id: user.id,
+    user_id: user?.id || null,
+    visibility: user?.id ? 'private' : 'public',
     title: `${dest.city}, ${dest.country}`,
     destination: `${dest.city}, ${dest.country}`,
     start_date: ext.dates.start,
@@ -572,6 +564,9 @@ export async function savePlanToSupabase(
     status: 'planning',
     is_generated: true,
     trip_context: {
+      lat: dest.lat,
+      lng: dest.lng,
+      hero_image_url: plan.destination_photo_url || null,
       hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
       quick_facts: {
         budget_level: ext.budget_level,
@@ -579,7 +574,59 @@ export async function savePlanToSupabase(
         interests: ext.interests,
         timezone: plan.timezone,
       },
-      weather: plan.itinerary.filter(d => d.weather).map(d => d.weather),
+      weather: {
+        forecast: plan.itinerary.filter((d: any) => d.weather).map((d: any) => ({
+          day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+          date: d.date,
+          high: d.weather?.high_c,
+          low: d.weather?.low_c,
+          condition: d.weather?.condition,
+          icon: d.weather?.icon || '☀️',
+        })),
+        current: plan.itinerary[0]?.weather ? {
+          temp: plan.itinerary[0].weather.high_c,
+          conditions: plan.itinerary[0].weather.condition,
+        } : undefined,
+      },
+      // Hotels from planner
+      hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+        name: h.name, image: h.photo_url, rating: h.rating,
+        price: h.price_per_night, stars: h.stars,
+        amenities: h.amenities, address: h.address, link: h.link,
+        lat: h.lat, lng: h.lng,
+      })),
+      all_hotels: ((plan as any).data?.hotels ?? plan.hotels ?? []).slice(0, 10).map((h: any) => ({
+        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+        name: h.name, image: h.photo_url, rating: h.rating,
+        price: h.price_per_night, stars: h.stars,
+        address: h.address, link: h.link,
+      })),
+      // Flights from planner
+      flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+        airline: f.airline, price: f.price, departure_time: f.departure_time,
+        arrival_time: f.arrival_time, stops: f.stops, duration: f.duration,
+        origin: f.origin, destination: f.destination, dest_iata: f.dest_iata,
+      })),
+      // Itinerary for the itinerary tab
+      itinerary: plan.itinerary.map((day: any) => ({
+        day: day.day, date: day.date, weather: day.weather,
+        slots: (day.slots ?? []).map((slot: any) => ({
+          poi: slot.poi,
+          start_time: slot.start_time, end_time: slot.end_time,
+          start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
+        })),
+      })),
+      // Explore items from itinerary POIs
+      explore_items: plan.itinerary.flatMap((day: any) =>
+        (day.slots ?? []).map((slot: any) => ({
+          id: slot.poi.id, title: slot.poi.name,
+          description: slot.poi.description || slot.poi.category,
+          category: slot.poi.category, image: slot.poi.photo_url,
+          tags: slot.poi.tags,
+        }))
+      ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
+      lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
     },
   }
 
@@ -596,8 +643,9 @@ export async function savePlanToSupabase(
 
   onProgress?.('Building itinerary...', 30)
 
-  // 2. Create itinerary days + activities
-  for (let d = 0; d < plan.itinerary.length; d++) {
+  // 2. Create itinerary days + activities (skip if table doesn't exist)
+  let itineraryTableExists = true
+  for (let d = 0; d < plan.itinerary.length && itineraryTableExists; d++) {
     const day = plan.itinerary[d]
     const pct = 30 + Math.round((d / plan.itinerary.length) * 40)
     onProgress?.(`Day ${day.day}...`, pct)
@@ -609,8 +657,13 @@ export async function savePlanToSupabase(
       .single()
 
     if (dayErr) {
+      // If table doesn't exist (PGRST205/404), stop trying
+      if (dayErr.code === 'PGRST205' || dayErr.code === '42P01' || dayErr.message?.includes('Could not find') || dayErr.message?.includes('does not exist')) {
+        itineraryTableExists = false
+        break
+      }
       console.error('Failed to create itinerary day:', dayErr)
-      continue // don't fail the whole save for one day
+      continue
     }
 
     if (day.slots.length > 0) {
@@ -624,7 +677,7 @@ export async function savePlanToSupabase(
         return {
           trip_id: tripId,
           itinerary_day_id: dayRow.id,
-          user_id: user.id,
+          user_id: user?.id || null,
           activity_name: poi.name,
           activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
           starting_date: day.date,
@@ -656,19 +709,31 @@ export async function savePlanToSupabase(
 
   // 3. Save hotels (best effort)
   if (plan.hotels.length > 0) {
-    const hotelRows = plan.hotels.map(h => ({
-      trip_id: tripId,
-      data: {
-        name: h.name,
-        price_per_night: h.price_per_night,
-        currency: h.currency,
-        rating: h.rating || null,
-        star_rating: h.stars,
-        image_url: h.photo_url || null,
-        check_in: ext.dates.start,
-        check_out: ext.dates.end,
-      },
-    }))
+    const hotelRows = plan.hotels.map(h => {
+      // Backend may return extra fields beyond the TS interface (lat, lng, amenities, link, etc.)
+      const extra = h as Record<string, unknown>
+      return {
+        trip_id: tripId,
+        data: {
+          name: h.name,
+          address: (extra.address as string) || null,
+          latitude: (extra.lat as number) || null,
+          longitude: (extra.lng as number) || null,
+          price_per_night: h.price_per_night,
+          total_price: (extra.total_price as number) || (h.price_per_night ? h.price_per_night * ext.duration_days : null),
+          currency: h.currency,
+          rating: h.rating || null,
+          star_rating: h.stars || null,
+          image_url: h.photo_url || null,
+          check_in: ext.dates.start,
+          check_out: ext.dates.end,
+          booking_ref: null,
+          offer_id: null,
+          amenities: (extra.amenities as string[]) || [],
+          booking_url: h.booking_url || (extra.link as string) || null,
+        },
+      }
+    })
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
     if (hotelErr) console.error('Failed to save hotels:', hotelErr)
   }
@@ -677,14 +742,45 @@ export async function savePlanToSupabase(
 
   // 4. Save flights (best effort)
   if (plan.flights.length > 0) {
-    const flightRows = plan.flights.map(f => ({
+    // City-to-IATA lookup for destination airport
+    const CITY_AIRPORTS: Record<string, string> = {
+      'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+      'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+      'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+      'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
+      'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
+      'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
+      'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
+      'Milan': 'MXP', 'Vienna': 'VIE', 'Zurich': 'ZRH', 'Dublin': 'DUB',
+      'Edinburgh': 'EDI', 'Florence': 'FLR', 'Venice': 'VCE', 'Nice': 'NCE',
+      'Cancun': 'CUN', 'Havana': 'HAV', 'Lima': 'LIM', 'Bogota': 'BOG',
+      'Buenos Aires': 'EZE', 'Santiago': 'SCL', 'Reykjavik': 'KEF',
+      'Oslo': 'OSL', 'Stockholm': 'ARN', 'Copenhagen': 'CPH', 'Helsinki': 'HEL',
+      'Warsaw': 'WAW', 'Budapest': 'BUD', 'Bucharest': 'OTP',
+      'Kuala Lumpur': 'KUL', 'Jakarta': 'CGK', 'Manila': 'MNL',
+      'Taipei': 'TPE', 'Osaka': 'KIX', 'Beijing': 'PEK', 'Shanghai': 'PVG',
+      'Johannesburg': 'JNB', 'Casablanca': 'CMN', 'Doha': 'DOH',
+      'Abu Dhabi': 'AUH', 'Muscat': 'MCT', 'Riyadh': 'RUH',
+    }
+    const destCity = dest.city
+    const destIata = CITY_AIRPORTS[destCity] || ''
+
+    const flightRows = plan.flights.map((f) => ({
       trip_id: tripId,
       data: {
         airline: f.airline,
+        flight_number: null,
+        origin_iata: '',
+        origin_name: null,
+        dest_iata: destIata,
+        dest_name: destCity,
         departure_at: f.departure_time,
         arrival_at: f.arrival_time,
         price: f.price,
         currency: f.currency,
+        cabin_class: null,
+        booking_ref: null,
+        offer_id: null,
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)

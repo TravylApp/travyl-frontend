@@ -2,31 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import * as Y from 'yjs'
 import { supabase, toCalendarActivity, type ActivityRow, type Trip } from '@travyl/shared'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
-
-const CALENDAR_ACTIVITY_KEYS = [
-  'id',
-  'title',
-  'type',
-  'day',
-  'endDay',
-  'startHour',
-  'duration',
-  'location',
-  'image',
-  'rating',
-  'price',
-  'notes',
-  'color',
-  'latitude',
-  'longitude',
-  'sortOrder',
-  'pollResult',
-  'flightNumber',
-  'airline',
-  'checkIn',
-  'checkOut',
-  'bookingRef',
-] as const
+import { CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
 
 interface UseTripActivitiesReturn {
   trip: Trip | null
@@ -42,14 +18,21 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Track whether we've already hydrated for this tripId to avoid re-hydrating
+  // Track which tripId has been hydrated so we don't re-hydrate on re-renders.
   const hydratedRef = useRef<string | null>(null)
+  // Separate ref to track when initial data has loaded, so re-runs of the effect
+  // (e.g. after a refetch) don't re-show the loading skeleton.
+  const loadedTripIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     async function fetchAndHydrate() {
-      setLoading(true)
+      // Show skeleton only when this tripId hasn't loaded yet.
+      // Re-runs caused by activitiesMap changing (MapA → MapB) re-hydrate silently.
+      if (loadedTripIdRef.current !== tripId) {
+        setLoading(true)
+      }
       setError(null)
 
       // Fetch trip
@@ -87,7 +70,8 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
       const rows = (activityData ?? []) as ActivityRow[]
       const tripStartDate = fetchedTrip.start_date
 
-      // Hydrate Y.Map inside a single transaction
+      // Hydrate Y.Map inside a single transaction. Use 'hydration' as the
+      // transaction origin so onUpdate skips broadcasting this initial load.
       if (hydratedRef.current !== tripId) {
         activitiesMap.doc?.transact(() => {
           for (const row of rows) {
@@ -102,10 +86,11 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
               if (val !== undefined) yMap.set(key, val)
             }
           }
-        })
+        }, 'hydration')
         hydratedRef.current = tripId
       }
 
+      loadedTripIdRef.current = tripId
       setLoading(false)
     }
 

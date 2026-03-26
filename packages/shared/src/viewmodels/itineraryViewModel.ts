@@ -1,5 +1,5 @@
 import type { ItineraryDayWithActivities, Activity, Flight, Hotel } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, upscaleGoogleImage } from '../utils';
 
 // ─── Time helpers ──────────────────────────────────────────────
 
@@ -40,6 +40,7 @@ export interface ActivityViewModel {
   costDisplay: string | null;
   bookingUrl: string | null;
   notes: string | null;
+  image: string | null;
   source: Activity['source'];
   timeOfDay: TimeOfDay;
 }
@@ -64,6 +65,7 @@ function buildActivityViewModel(activity: Activity): ActivityViewModel {
       : null,
     bookingUrl: activity.booking_url,
     notes: activity.notes,
+    image: upscaleGoogleImage((activity as any).image) ?? null,
     source: activity.source,
     timeOfDay: getTimeOfDay(activity.start_time),
   };

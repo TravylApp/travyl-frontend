@@ -20,6 +20,7 @@ export interface TripContextData {
   lat?: number;
   lng?: number;
   lede_text?: string;
+  travelers?: TravelerMetadata;
   quick_facts?: {
     currency?: string;
     language?: string;
@@ -32,8 +33,8 @@ export interface TripContextData {
     emergency?: string;
   };
   weather?: {
-    current?: { high: number; low: number; condition: string };
-    forecast?: { day: string; high: number; low: number; icon: string; condition: string }[];
+    current?: { high: number; low: number; condition: string; temp?: number; feelslike?: number; conditions?: string };
+    forecast?: { day: string; date?: string; high: number; low: number; icon: string; condition: string }[];
   };
   explore_items?: {
     id: string;
@@ -54,6 +55,21 @@ export interface TripContextData {
     url?: string;
     image?: string;
   }[];
+  hotels?: any[];
+  foursquare_venues?: any[];
+  events?: any[];
+  cuisine?: any[];
+  phrases?: any[];
+  cost_of_living?: any;
+  nearby_cities?: any[];
+  safety?: any;
+  timezone_info?: any;
+  sunrise?: any;
+  aqi?: any;
+  wiki?: string | { extract?: string };
+  country?: any;
+  holidays?: any[];
+  restaurants?: any[];
 }
 
 export interface Trip {
@@ -331,22 +347,29 @@ export interface BudgetCategoryData {
 // ─── Packing Types ──────────────────────────────────────────
 
 export const PACKING_CATEGORIES = ['clothing', 'toiletries', 'electronics', 'documents', 'accessories', 'essentials'] as const
-export type PackingCategory = (typeof PACKING_CATEGORIES)[number]
+export type StaticPackingCategory = (typeof PACKING_CATEGORIES)[number]
+/** @deprecated Use StaticPackingCategory for static categories, or string for freeform */
+export type PackingCategory = StaticPackingCategory
 
 export interface DbPackingItem {
   id: string
   trip_id: string
   user_id: string
   name: string
-  category: PackingCategory
+  category: string
   is_packed: boolean
   packed_by: string | null
   packed_at: string | null
   sort_order: number
   created_at: string
   updated_at: string
+  owner_id: string | null
+  group_tag: string | null
+  quantity: number
+  packed_count: number
   user_display_name?: string
   user_avatar_url?: string
+  owner_display_name?: string
 }
 
 export interface PackingAuditEntry {
@@ -354,11 +377,13 @@ export interface PackingAuditEntry {
   trip_id: string
   user_id: string
   item_id: string | null
-  action: 'added' | 'packed' | 'unpacked' | 'removed'
+  action: 'added' | 'packed' | 'unpacked' | 'removed' | 'claimed' | 'released' | 'transferred'
   item_name: string
   created_at: string
+  target_user_id: string | null
   user_display_name?: string
   user_avatar_url?: string
+  target_display_name?: string
 }
 
 export interface CatalogItem {
@@ -372,10 +397,17 @@ export interface PackingSuggestion {
   trip_id: string
   user_id: string
   name: string
-  category: PackingCategory
+  category: string
   reason: string
   status: 'pending' | 'accepted' | 'dismissed'
   created_at: string
+}
+
+export interface TravelerMetadata {
+  adults: number
+  children: number
+  infants: number
+  child_ages: number[]
 }
 
 export interface WeatherInfo {
@@ -496,6 +528,7 @@ export interface SuggestionCard {
   name: string
   category: ActivityCategory
   imageUrl: string
+  imageUrls?: string[]
   duration: number        // hours
   price: number | null
   currency: string
@@ -514,6 +547,53 @@ export interface RecommendationSection {
   sectionTitle: string
   sectionSubtitle?: string
   suggestions: SuggestionCard[]
+}
+
+export interface ActivityDetail {
+  id: string
+  name: string
+  category: ActivityCategory
+  imageUrl: string
+  imageUrls?: string[]
+  duration: number
+  price: number | null
+  currency: string
+  rating: number | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+  source: 'ai' | 'search'
+  relevanceScore: number
+  reason?: string
+  meetingPoint?: string
+  availableTimes?: string[]
+  groupSize?: number
+  languages?: string[]
+  included?: string[]
+  notIncluded?: string[]
+  tips?: string[]
+  accessibility?: string[]
+  address?: string
+  phone?: string
+  website?: string
+}
+
+export interface DestinationDetail {
+  name: string
+  country: string
+  description: string
+  language: string
+  currency: string
+  timezone: string
+  bestTimeToVisit: string
+  budgetLevel: 1 | 2 | 3 | 4
+  tags: string[]
+  image: string
+  images?: string[]
+  latitude: number
+  longitude: number
+  population?: string
 }
 
 export interface UserAwareness {
@@ -539,18 +619,6 @@ export interface WeatherForecast {
   low: number;
   icon: string;
   condition: string;
-}
-
-// ─── News / Events ────────────────────────────────────────────
-
-export interface NewsItem {
-  id: string;
-  title: string;
-  snippet: string;
-  category: 'event' | 'advisory' | 'news' | 'tip';
-  source: string;
-  date: string;
-  url?: string;
 }
 
 // ─── Globe / Map Location ────────────────────────────────────
