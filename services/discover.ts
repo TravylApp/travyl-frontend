@@ -94,7 +94,11 @@ function parseQuery(q: string): { destination: string; route?: DiscoverRoute } {
   if (match) {
     const origin = match[1].trim()
     const destination = match[2].trim()
-    return { destination, route: { origin, destination } }
+    // Don't treat as route if the destination contains " in " or " to " —
+    // those are complex phrases like "places to eat in bakersfield", not actual routes.
+    if (!/\s+(?:in|to)\s+/i.test(destination)) {
+      return { destination, route: { origin, destination } }
+    }
   }
   return { destination: q.trim() }
 }

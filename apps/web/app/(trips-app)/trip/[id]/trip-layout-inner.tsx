@@ -10,7 +10,6 @@ import Link from 'next/link';
 import { TripSidebar } from '@/components/trip/TripSidebar';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
-import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
@@ -582,164 +581,125 @@ function TripLayoutContent({
     exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
   };
 
-  // Calendar: full-screen layout with shared sidebar, no hero/card chrome
-  if (isCalendar) {
-    return (
-      <div className="flex h-screen overflow-hidden pb-14 md:pb-0">
-        <div className="hidden md:block">
-          <TripSidebar tripId={tripId} />
-        </div>
-        <div className="flex-1 min-w-0 h-full">
-          {children}
-        </div>
-        <MobileTabBar tripId={tripId} />
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={`pb-14 md:pb-0 ${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
-      style={{ transition: 'background-color 0.5s ease' }}
-    >
-      {/* Hero banner */}
-      {isOverview || isItinerary ? (
-        <TripMagazineHero trip={trip} compact={isItinerary} />
-      ) : (
-        <TripHero tripId={tripId} />
-      )}
-
-      <div className="mx-auto max-w-7xl">
-
-        {/* Suitcase card */}
-        <div
-          className={`relative z-10 ${
-            isOverview || currentSegment === 'itinerary'
-              ? ''
-              : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
-          }`}
-          style={
-            isOverview || currentSegment === 'itinerary'
-              ? undefined
-              : {
-                  boxShadow:
-                    '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)',
-                }
-          }
-        >
-        <div className="flex flex-col md:flex-row">
-          {/* Sidebar — hidden on mobile, replaced by bottom tab bar */}
-          <div className="hidden md:block">
-            <TripSidebar tripId={tripId} />
-          </div>
-
-          {/* Content area */}
-          <div className="flex-1 flex flex-col min-w-0 min-h-[60vh]">
-            <ContentHeader
-              tripId={tripId}
-              mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen(!mapOpen)}
-            />
-
-            <div className="flex flex-1">
-              <div
-                className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-3 sm:px-5 pt-4 pb-5'
-                }`}
-              >
-                {/* Error state — shown when trip data fails to load */}
-                {!isLoading && error && !trip ? (
-                  <TripErrorState onRetry={refetch} />
-                ) : (
-                <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
-                  <motion.div
-                    key={`tab-${currentSegment}`}
-                    initial={pageVariants.initial}
-                    animate={pageVariants.animate}
-                    exit={pageVariants.exit}
-                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                    className="h-full"
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-                )}
-              </div>
-
-              {/* Map side panel */}
-              <AnimatePresence>
-              {mapOpen && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: '35%', opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden rounded-r-2xl"
-                >
-                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
-                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
-                      <div className="flex items-center gap-2">
-                        <Map size={13} className="text-[var(--trip-base)]" />
-                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                          {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Paris, France')}
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleCloseMap}
-                        className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-                      >
-                        <X size={12} className="text-gray-400" />
-                      </button>
-                    </div>
-                    <div className="flex-1 relative">
-                      <Suspense fallback={
-                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-[var(--background)]">
-                          <span className="text-sm text-gray-400">Loading map...</span>
-                        </div>
-                      }>
-                        {hasMarkers ? (
-                          <LeafletMap
-                            locations={mapMarkers}
-                            selectedId={selectedMarkerId}
-                            zoom={13}
-                            height="100%"
-                            className="!rounded-none !border-0"
-                          />
-                        ) : (
-                          <LeafletMap
-                            lat={trip?.trip_context?.lat ?? 0}
-                            lng={trip?.trip_context?.lng ?? 0}
-                            label={trip?.destination || ''}
-                            zoom={13}
-                            height="100%"
-                            className="!rounded-none !border-0"
-                          />
-                        )}
-                      </Suspense>
-                      {!hasMarkers && (
-                        <div className="absolute bottom-0 inset-x-0 flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-black/80 backdrop-blur-md border-t border-gray-100 dark:border-white/[0.06]">
-                          <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
-                          <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate">
-                            {trip?.destination || 'Paris, France'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
+    <div className="flex h-screen overflow-hidden pb-14 md:pb-0">
+      {/* Sidebar — full height, hidden on mobile */}
+      <div className="hidden md:block">
+        <TripSidebar tripId={tripId} />
       </div>
 
-      </div>{/* end max-w-7xl */}
+      {/* Main content area — scrolls independently */}
+      <div
+        className={`flex-1 min-w-0 overflow-y-auto ${useOverviewBg ? 'bg-[var(--magazine-bg)]' : 'bg-white dark:bg-[var(--background)]'}`}
+        style={{ transition: 'background-color 0.5s ease' }}
+      >
+        {/* Hero banner — only for non-calendar tabs */}
+        {!isCalendar && (
+          isOverview || isItinerary ? (
+            <TripMagazineHero trip={trip} compact={isItinerary} />
+          ) : (
+            <TripHero tripId={tripId} />
+          )
+        )}
 
-      {/* Footer — above the hero image */}
-      <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-        <OceanWave />
-        <Footer />
+        {/* Tab content */}
+        <div className="flex flex-1 min-h-0">
+          <div
+            className={`flex-1 min-w-0 relative overflow-hidden ${
+              isCalendar ? 'h-full' : isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-3 sm:px-5 pt-4 pb-5'
+            }`}
+          >
+            {!isCalendar && !isMagazineLayout && (
+              <ContentHeader
+                tripId={tripId}
+                mapOpen={mapOpen}
+                onToggleMap={() => setMapOpen(!mapOpen)}
+              />
+            )}
+
+            {/* Error state — shown when trip data fails to load */}
+            {!isLoading && error && !trip ? (
+              <TripErrorState onRetry={refetch} />
+            ) : (
+            <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
+              <motion.div
+                key={`tab-${currentSegment}`}
+                initial={isCalendar ? undefined : pageVariants.initial}
+                animate={isCalendar ? undefined : pageVariants.animate}
+                exit={isCalendar ? undefined : pageVariants.exit}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className={isCalendar ? 'h-full' : ''}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+            )}
+          </div>
+
+          {/* Map side panel */}
+          <AnimatePresence>
+          {mapOpen && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: '35%', opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden"
+            >
+              <div className="sticky top-0 h-screen flex flex-col bg-white dark:bg-[var(--background)]">
+                <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Map size={13} className="text-[var(--trip-base)]" />
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                      {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Paris, France')}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleCloseMap}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <X size={12} className="text-gray-400" />
+                  </button>
+                </div>
+                <div className="flex-1 relative">
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-[var(--background)]">
+                      <span className="text-sm text-gray-400">Loading map...</span>
+                    </div>
+                  }>
+                    {hasMarkers ? (
+                      <LeafletMap
+                        locations={mapMarkers}
+                        selectedId={selectedMarkerId}
+                        zoom={13}
+                        height="100%"
+                        className="!rounded-none !border-0"
+                      />
+                    ) : (
+                      <LeafletMap
+                        lat={trip?.trip_context?.lat ?? 0}
+                        lng={trip?.trip_context?.lng ?? 0}
+                        label={trip?.destination || ''}
+                        zoom={13}
+                        height="100%"
+                        className="!rounded-none !border-0"
+                      />
+                    )}
+                  </Suspense>
+                  {!hasMarkers && (
+                    <div className="absolute bottom-0 inset-x-0 flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-black/80 backdrop-blur-md border-t border-gray-100 dark:border-white/[0.06]">
+                      <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
+                      <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate">
+                        {trip?.destination || 'Paris, France'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Mobile bottom tab bar */}
