@@ -7,6 +7,7 @@ import { useAuthStore, useTrip, mergeSearchResults, type SpotlightResult } from 
 import { useContextSearch } from './useContextSearch'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { fuzzyMatch } from '@/components/spotlight/fuzzyMatch'
+import { parseQueryIntent, type ParsedIntent } from '@/lib/parseQueryIntent'
 
 const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const PINNED_RESULTS_KEY = 'travyl:pinnedResults'
@@ -179,6 +180,14 @@ export function useSpotlightSearch() {
 
   const shouldSearch = debouncedQuery.length >= 3 && !!token
 
+  // Intent parsing — Phase 1 (sync regex) or Phase 2 (Haiku LLM fallback) before any search fires
+  const { data: parsedIntent, isLoading: intentLoading } = useQuery<ParsedIntent>({
+    queryKey: ['parse-intent', debouncedQuery],
+    queryFn: () => parseQueryIntent(debouncedQuery, token!),
+    enabled: shouldSearch,
+    staleTime: Infinity, // intent for a given query string never changes
+  })
+
   // Existing context-search for trips (vector-powered)
   const { results: tripSearchResults, isLoading: tripSearchLoading } = useContextSearch(query)
 
@@ -190,12 +199,15 @@ export function useSpotlightSearch() {
     staleTime: 30_000,
   })
 
-  // Live discover for destination queries (restaurants, attractions, activities)
+  // Use parsed location if available (e.g. "Bakersfield" from "bakersfield restaurants")
+  const discoverLocation = parsedIntent?.location ?? debouncedQuery
+
+  // Live discover for destination queries — waits for intent to resolve before firing
   const { data: discoverData, isLoading: discoverLoading } = useQuery({
-    queryKey: ['discover', debouncedQuery],
-    queryFn: () => fetchDiscover(debouncedQuery, token!),
-    enabled: shouldSearch && !scope, // only when no scope filter active
-    staleTime: 60_000, // 1 minute (server caches for 1 hour)
+    queryKey: ['discover', discoverLocation],
+    queryFn: () => fetchDiscover(discoverLocation, token!),
+    enabled: shouldSearch && !scope && parsedIntent !== undefined,
+    staleTime: 60_000,
   })
 
   // Client-side filter for navigation items using fuzzy match
@@ -319,50 +331,54 @@ export function useSpotlightSearch() {
     return results
   }, [discoverData, debouncedQuery])
 
-  // Detect route pattern "X to Y" from discover response
-  const routeIntent = useMemo((): SpotlightResult | null => {
-    if (!discoverData?.route) return null
-    const { origin, destination } = discoverData.route
-    return {
-      id: 'create-trip-route',
-      type: 'action' as const,
-      title: `Plan trip: ${origin} to ${destination}`,
-      subtitle: 'Start planning with destinations pre-filled',
-      href: '',
-      score: 100,
-      metadata: { prefillDestination: destination, origin },
-    }
-  }, [discoverData])
+  // Action results derived from parsed intent (replaces createTripIntent + routeIntent memos)
+  const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!parsedIntent) return {}
+    const actions: SpotlightResult[] = []
 
-  // Detect trip creation intent
-  const createTripIntent = useMemo((): SpotlightResult | null => {
-    const q = query.toLowerCase().trim()
-    const createMatch = q.match(/^(?:new|create)\s+trip(?:\s+to\s+(.+))?$/i)
-    const tripToMatch = q.match(/^trip\s+to\s+(.+)$/i)
-
-    if (createMatch || tripToMatch) {
-      const dest = createMatch?.[1] || tripToMatch?.[1] || ''
-      return {
+    if (parsedIntent.intent === 'create-trip') {
+      actions.push({
         id: 'create-trip',
         type: 'action' as const,
-        title: dest ? `Create trip to ${dest.charAt(0).toUpperCase() + dest.slice(1)}` : 'Create New Trip',
+        title: parsedIntent.location
+          ? `Create trip to ${parsedIntent.location}`
+          : 'Create New Trip',
         subtitle: 'Start planning a new adventure',
         href: '',
         score: 100,
-        metadata: { prefillDestination: dest },
-      }
+        metadata: { prefillDestination: parsedIntent.location ?? '' },
+      })
     }
-    return null
-  }, [query])
 
-  // Inject create-trip action into results
-  const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
-    const actions: SpotlightResult[] = []
-    if (createTripIntent) actions.push(createTripIntent)
-    if (routeIntent) actions.push(routeIntent)
-    if (!actions.length) return {}
-    return { action: actions }
-  }, [createTripIntent, routeIntent])
+    if (parsedIntent.intent === 'route' && discoverData?.route) {
+      const { origin, destination } = discoverData.route
+      actions.push({
+        id: 'create-trip-route',
+        type: 'action' as const,
+        title: `Plan trip: ${origin} to ${destination}`,
+        subtitle: 'Start planning with destinations pre-filled',
+        href: '',
+        score: 100,
+        metadata: { prefillDestination: destination, origin },
+      })
+    }
+
+    return actions.length ? { action: actions } : {}
+  }, [parsedIntent, discoverData?.route])
+
+  // Auto-set scope from parsed entity type (only when user hasn't set one manually)
+  const ENTITY_TYPE_TO_SCOPE: Partial<Record<string, SearchScope>> = {
+    restaurant: 'restaurants',
+    activity: 'activities',
+  }
+
+  useEffect(() => {
+    if (parsedIntent?.entityType && scope === null) {
+      const autoScope = ENTITY_TYPE_TO_SCOPE[parsedIntent.entityType]
+      if (autoScope) setScope(autoScope)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedIntent?.entityType, scope])
 
   // Merge all sources (now including commands, actions, and discover)
   const results = useMemo(() => {
@@ -420,7 +436,7 @@ export function useSpotlightSearch() {
     query,
     setQuery,
     results,
-    isLoading: tripSearchLoading || entityLoading || discoverLoading,
+    isLoading: tripSearchLoading || entityLoading || discoverLoading || intentLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,

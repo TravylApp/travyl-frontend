@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Heart, MapPin, Star, X, Share2, ExternalLink, ChevronLeft, ChevronRight,
@@ -919,6 +920,16 @@ function WebOverlayActions({ place }: { place: PlaceItem }) {
           <span className="text-[10px] font-semibold text-white/85">Share</span>
         </button>
       </div>
+
+      {/* View full details link */}
+      <Link
+        href={`/place/${place.id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-white/20 text-[12px] font-semibold text-white/75 hover:bg-white/10 hover:text-white transition-colors"
+      >
+        <ExternalLink size={12} className="text-white/60" />
+        View full details
+      </Link>
     </div>
   );
 }
@@ -1010,6 +1021,16 @@ function WebPlaceActions({ place }: { place: PlaceItem }) {
           <span className="text-[10px] font-semibold text-white/85">Share</span>
         </button>
       </div>
+
+      {/* View full details link */}
+      <Link
+        href={`/place/${place.id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="flex items-center justify-center gap-1 py-2 rounded-lg border bg-white/[0.08] border-white/10 hover:bg-white/[0.15] transition-colors"
+      >
+        <ExternalLink size={11} className="text-sky-300" />
+        <span className="text-[10px] font-semibold text-white/85">View details</span>
+      </Link>
     </div>
   );
 }
