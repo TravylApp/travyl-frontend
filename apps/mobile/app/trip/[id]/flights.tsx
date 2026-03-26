@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { View, ScrollView, Text, Pressable, Linking } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 /* ================================================================
    MOCK DATA — Paris trip: JFK <-> CDG
@@ -1049,16 +1049,31 @@ function FlightSkeleton() {
    MAIN PAGE
    ================================================================ */
 
+const CITY_AIRPORTS: Record<string, string> = {
+  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+  'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
+  'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
+};
+
 export default function FlightsScreen() {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { trip, isLoading: tripLoading } = useItineraryScreen(_id);
 
   const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!tripLoading) setIsLoading(false);
+  }, [tripLoading]);
+
+  // Get destination airport from trip
+  const city = trip?.destination?.split(',')[0]?.trim() ?? '';
+  const destAirport = CITY_AIRPORTS[city] || '';
+
+  // Check if trip has real flight data (from DB or trip_context)
+  const hasFlights = false; // Backend doesn't generate flights yet
 
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
@@ -1068,15 +1083,38 @@ export default function FlightsScreen() {
       {/* 1. Flight Search Section */}
       <FlightSearchSection />
 
-      {/* 2. Booked Flight Cards */}
-      {BOOKED_FLIGHTS.filter((f) => f.type === 'outbound').map((f) => (
+      {/* Flight prompt when no flights booked */}
+      {!hasFlights && destAirport && (
+        <View style={{
+          backgroundColor: `${ACCENT}10`,
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: `${ACCENT}25`,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <FontAwesome name="plane" size={16} color={ACCENT} />
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Find flights to {city}</Text>
+          </View>
+          <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
+            Destination airport: {destAirport}
+          </Text>
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+            Search and compare flights to add to your trip
+          </Text>
+        </View>
+      )}
+
+      {/* Booked Flight Cards — only show if we have real data */}
+      {hasFlights && BOOKED_FLIGHTS.filter((f) => f.type === 'outbound').map((f) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
-      {BOOKED_FLIGHTS.filter((f) => f.type === 'return').map((f) => (
+      {hasFlights && BOOKED_FLIGHTS.filter((f) => f.type === 'return').map((f) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
 
-      {/* 3. Add Flight button */}
+      {/* Add Flight button */}
       <Pressable
         style={{
           flexDirection: 'row',
@@ -1095,11 +1133,11 @@ export default function FlightsScreen() {
         <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary }}>Add Flight</Text>
       </Pressable>
 
-      {/* 4. Comparison Alternatives */}
+      {/* Comparison Alternatives */}
       <ComparisonAlternatives />
 
-      {/* 5. Booking Details */}
-      <BookingDetailsSection />
+      {/* Booking Details */}
+      {hasFlights && <BookingDetailsSection />}
     </ScrollView>
     </PageTransition>
   );

@@ -70,7 +70,7 @@ export function HistoryDrawer({
         await onDelete(activityId)
         break
       case 'delete': {
-        const activity = toCalendarActivity(entry.original_data as ActivityRow, tripStartDate)
+        const activity = toCalendarActivity(entry.original_data as unknown as ActivityRow, tripStartDate)
         await onAdd(activity)
         break
       }

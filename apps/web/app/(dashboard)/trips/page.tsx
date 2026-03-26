@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
@@ -197,9 +197,36 @@ function TripsContent() {
     }
   }, [trips, indexTrip]);
 
-  const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
+  // Dynamically fetch destination photos for trips missing hero images
+  const [fetchedImages, setFetchedImages] = useState<Record<string, string>>({});
+  const fetchMissingImages = useCallback(async (tripList: any[]) => {
+    const missing = tripList.filter(t =>
+      !t.cover_image_url && !t.trip_context?.hero_image_url && !t.trip_context?.hero_images?.[0] && !fetchedImages[t.id]
+    );
+    for (const t of missing.slice(0, 5)) { // Limit to 5 concurrent fetches
+      const city = t.destination?.split(',')[0]?.trim();
+      if (!city) continue;
+      try {
+        const res = await fetch(`/api/images?q=${encodeURIComponent(city)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) setFetchedImages(prev => ({ ...prev, [t.id]: data.url }));
+        }
+      } catch {}
+    }
+  }, [fetchedImages]);
+
+  useEffect(() => {
+    if (trips?.length) fetchMissingImages(trips);
+  }, [trips]);
+
+  const allTrips: MockTripCard[] = (trips ?? []).map((t: any) => ({
     ...t,
-    image: t.cover_image_url ?? FALLBACK_IMAGE,
+    image: t.cover_image_url
+      ?? t.trip_context?.hero_image_url
+      ?? t.trip_context?.hero_images?.[0]
+      ?? fetchedImages[t.id]
+      ?? FALLBACK_IMAGE,
   }))
 
   // Apply filters

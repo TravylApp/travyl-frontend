@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -103,10 +103,51 @@ export default function BudgetScreen() {
   const ACCENT = useTabAccent('budget');
   const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isLoading } = useItineraryScreen(id);
+  const { trip, isLoading } = useItineraryScreen(id);
+
+  // Build budget items from trip_context (cost_of_living + hotels + trip.budget)
+  const initialBudget = useMemo((): BudgetItem[] => {
+    const ctx = trip?.trip_context as any;
+    const cost = ctx?.cost_of_living;
+    const hotel = (ctx?.hotels?.[0] || ctx?.all_hotels?.[0]) as any;
+    const days = trip?.start_date && trip?.end_date
+      ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
+      : 5;
+
+    const items: BudgetItem[] = [];
+
+    // Accommodation
+    const hotelPrice = hotel?.price ?? hotel?.price_per_night ?? 0;
+    items.push({
+      id: 'accommodation',
+      category: 'Accommodation',
+      budgeted: hotelPrice * days,
+      actual: 0,
+      fixed: true,
+      expenses: hotelPrice ? [{ id: 'hotel-1', description: `${hotel?.name || 'Hotel'} (${days} nights × $${hotelPrice})`, amount: hotelPrice * days }] : [],
+    });
+
+    // Food & Dining
+    const mealBudget = cost?.budget_meal ? parseFloat(String(cost.budget_meal).replace(/[^0-9.]/g, '')) : 0;
+    const midMeal = cost?.mid_range_meal ? parseFloat(String(cost.mid_range_meal).replace(/[^0-9.]/g, '')) : 0;
+    const dailyFood = (mealBudget + midMeal) || 40;
+    items.push({ id: 'food', category: 'Food & Dining', budgeted: dailyFood * days, actual: 0, fixed: false, expenses: [] });
+
+    // Transport
+    const transport = cost?.public_transport ? parseFloat(String(cost.public_transport).replace(/[^0-9.]/g, '')) : 0;
+    items.push({ id: 'transport', category: 'Transportation', budgeted: (transport || 5) * days, actual: 0, fixed: false, expenses: [] });
+
+    // Activities
+    items.push({ id: 'activities', category: 'Activities', budgeted: Math.round(days * 25), actual: 0, fixed: false, expenses: [] });
+
+    // Shopping
+    items.push({ id: 'shopping', category: 'Shopping', budgeted: Math.round(days * 15), actual: 0, fixed: false, expenses: [] });
+
+    return items;
+  }, [trip]);
 
   /* ── State ── */
-  const [budgetData, setBudgetData] = useState<BudgetItem[]>(MOCK_BUDGET_ITEMS);
+  const [budgetData, setBudgetData] = useState<BudgetItem[]>(initialBudget);
 
   /* Editing total budget */
   const [isEditingTotal, setIsEditingTotal] = useState(false);

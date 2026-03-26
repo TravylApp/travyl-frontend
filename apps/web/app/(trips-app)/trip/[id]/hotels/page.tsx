@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState, useMemo, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import type { MapLocation } from '@/components/leaflet-map';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
@@ -11,7 +10,8 @@ import {
   Phone, Mail, Map, X, Camera, Shield, CreditCard, Share2,
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, useHotels as useDbHotels } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -61,119 +61,172 @@ interface HotelData {
 /*  Mock Data                                                          */
 /* ------------------------------------------------------------------ */
 
-const MOCK_HOTELS: HotelData[] = [
-  {
-    id: 'h1',
-    name: 'Hotel Le Marais',
-    stars: 4,
-    rating: 8.9,
-    reviews: 1247,
-    price: 189,
-    address: '16 Rue du Temple, 75004 Paris',
-    neighborhood: 'Le Marais',
-    lat: 48.8588,
-    lng: 2.3540,
-    images: [
-      'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
-      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
-      'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast', 'Spa', 'Parking'],
-    roomTypes: [
-      { type: 'Classic Double', beds: '1 Queen Bed', guests: 2, size: '22m²', price: 189, image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400', amenities: ['WiFi', 'AC', 'Minibar'] },
-      { type: 'Superior Suite', beds: '1 King Bed', guests: 2, size: '35m²', price: 259, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Balcony'] },
-    ],
-    checkIn: '3:00 PM',
-    checkOut: '11:00 AM',
-    cancellation: 'Free cancellation until Mar 18',
-    phone: '+33-1-42-72-34-12',
-    email: 'reservations@hotelmarais.fr',
-    guestRatings: { overall: 8.9, label: 'Excellent', cleanliness: 9.1, staff: 9.0, location: 9.4, comfort: 8.7, value: 8.5 },
-  },
-  {
-    id: 'h2',
-    name: 'Grand Hotel du Palais Royal',
-    stars: 5,
-    rating: 9.2,
-    reviews: 863,
-    price: 350,
-    address: '4 Rue de Valois, 75001 Paris',
-    neighborhood: 'Near Louvre',
-    lat: 48.8634,
-    lng: 2.3370,
-    images: [
-      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800',
-      'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast', 'Pool', 'Spa', 'Gym', 'Parking'],
-    roomTypes: [
-      { type: 'Deluxe Room', beds: '1 King Bed', guests: 2, size: '30m²', price: 350, image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Safe'] },
-      { type: 'Prestige Suite', beds: '1 King Bed + Sofa', guests: 3, size: '55m²', price: 520, image: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Lounge', 'Balcony'] },
-    ],
-    checkIn: '2:00 PM',
-    checkOut: '12:00 PM',
-    cancellation: 'Free cancellation until Mar 15',
-    phone: '+33-1-42-96-15-35',
-    email: 'booking@grandhotelpalaisroyal.com',
-    guestRatings: { overall: 9.2, label: 'Superb', cleanliness: 9.5, staff: 9.3, location: 9.6, comfort: 9.1, value: 8.8 },
-  },
-  {
-    id: 'h3',
-    name: 'Hotel des Arts Montmartre',
-    stars: 3,
-    rating: 8.1,
-    reviews: 2034,
-    price: 120,
-    address: '5 Rue Tholoze, 75018 Paris',
-    neighborhood: 'Montmartre',
-    lat: 48.8847,
-    lng: 2.3346,
-    images: [
-      'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800',
-      'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast'],
-    roomTypes: [
-      { type: 'Standard Room', beds: '1 Double Bed', guests: 2, size: '18m²', price: 120, image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400', amenities: ['WiFi', 'AC'] },
-      { type: 'Triple Room', beds: '1 Double + 1 Single', guests: 3, size: '24m²', price: 155, image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=400', amenities: ['WiFi', 'AC', 'Desk'] },
-    ],
-    checkIn: '2:00 PM',
-    checkOut: '10:00 AM',
-    cancellation: 'Free cancellation until Mar 20',
-    phone: '+33-1-46-06-30-52',
-    email: 'info@hoteldesartsmontmartre.fr',
-    guestRatings: { overall: 8.1, label: 'Very Good', cleanliness: 8.3, staff: 8.5, location: 8.8, comfort: 7.9, value: 8.6 },
-  },
-  {
-    id: 'h4',
-    name: 'Pullman Paris Tour Eiffel',
-    stars: 4,
-    rating: 8.6,
-    reviews: 1589,
-    price: 275,
-    address: '18 Avenue de Suffren, 75015 Paris',
-    neighborhood: 'Trocadero',
-    lat: 48.8554,
-    lng: 2.2923,
-    images: [
-      'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800',
-      'https://images.unsplash.com/photo-1586611292717-f828b167408c?w=800',
-      'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800',
-    ],
-    amenities: ['WiFi', 'Breakfast', 'Pool', 'Gym', 'Parking'],
-    roomTypes: [
-      { type: 'Executive Room', beds: '1 King Bed', guests: 2, size: '28m²', price: 275, image: 'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Safe'] },
-      { type: 'Panoramic Suite', beds: '1 King Bed', guests: 2, size: '45m²', price: 420, image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400', amenities: ['WiFi', 'AC', 'Minibar', 'Eiffel View'] },
-    ],
-    checkIn: '3:00 PM',
-    checkOut: '12:00 PM',
-    cancellation: 'Free cancellation until Mar 17',
-    phone: '+33-1-44-38-56-00',
-    email: 'h3714-re@accor.com',
-    guestRatings: { overall: 8.6, label: 'Excellent', cleanliness: 8.9, staff: 8.7, location: 9.2, comfort: 8.5, value: 8.0 },
-  },
+// Hotel images from Unsplash (reliable hotel room/exterior photos)
+const HOTEL_IMAGES = [
+  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800',
+  'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800',
+  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
 ];
+const ROOM_IMAGES = [
+  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400',
+  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400',
+  'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400',
+];
+
+function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {
+  return hotels.map((h: any, i: number) => {
+    const idx = i + idx_offset;
+    // Use REAL data from SerpAPI/planner when available, fallback to estimates
+    const realStars = h.stars ?? (h.price ? Math.min(h.price + 2, 5) : 3);
+    const realPrice = h.price ?? h.price_per_night ?? (realStars >= 4 ? 180 + i * 30 : 100 + i * 20);
+    const realRating = h.rating ?? (8.0 + (i % 5) * 0.15);
+    const realReviews = h.ratingCount ?? h.review_count ?? 0;
+    const realAmenities = h.amenities?.length ? h.amenities : ['WiFi', 'Breakfast'];
+    const mainImage = h.image ?? h.photo_url ?? HOTEL_IMAGES[idx % HOTEL_IMAGES.length];
+
+    return {
+      id: h.id ?? `hotel-${idx}`,
+      name: h.name,
+      stars: realStars,
+      rating: realRating,
+      reviews: realReviews,
+      price: realPrice,
+      address: h.address ?? '',
+      neighborhood: h.category ?? 'City Center',
+      lat: h.lat ?? 0,
+      lng: h.lng ?? 0,
+      images: [
+        mainImage,
+        HOTEL_IMAGES[(idx + 1) % HOTEL_IMAGES.length],
+        HOTEL_IMAGES[(idx + 2) % HOTEL_IMAGES.length],
+      ],
+      amenities: realAmenities,
+      roomTypes: [
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+      ],
+      checkIn: '3:00 PM',
+      checkOut: '11:00 AM',
+      cancellation: 'Free cancellation until 48h before',
+      phone: '',
+      email: h.link ?? '',
+      guestRatings: {
+        overall: realRating,
+        label: realRating >= 4.5 ? 'Superb' : realRating >= 4.0 ? 'Excellent' : realRating >= 3.5 ? 'Very Good' : 'Good',
+        cleanliness: Math.round((realRating + 0.1) * 10) / 10,
+        staff: Math.round((realRating) * 10) / 10,
+        location: Math.round((realRating + 0.2) * 10) / 10,
+        comfort: Math.round((realRating) * 10) / 10,
+        value: Math.round((realRating - 0.1) * 10) / 10,
+      },
+    };
+  });
+}
+
+/** Convert DB hotel records (from hotels table) into local HotelData shape */
+function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
+  return hotels.map((h: any, i: number) => {
+    const d = h.data ?? {};
+    const realStars = d.star_rating ?? (d.rating >= 4.5 ? 5 : d.rating >= 3.5 ? 4 : 3);
+    const realPrice = d.price_per_night ?? 150;
+    const realRating = d.rating ?? 8.0;
+    const mainImage = d.image_url ?? HOTEL_IMAGES[i % HOTEL_IMAGES.length];
+    const realAmenities = d.amenities?.length ? d.amenities.slice(0, 8) : ['WiFi', 'Breakfast'];
+
+    return {
+      id: h.id,
+      name: d.name ?? `Hotel ${i + 1}`,
+      stars: realStars,
+      rating: realRating,
+      reviews: 0,
+      price: realPrice,
+      address: d.address ?? '',
+      neighborhood: 'City Center',
+      lat: d.latitude ?? 0,
+      lng: d.longitude ?? 0,
+      images: [mainImage, HOTEL_IMAGES[(i + 1) % HOTEL_IMAGES.length], HOTEL_IMAGES[(i + 2) % HOTEL_IMAGES.length]],
+      amenities: realAmenities,
+      roomTypes: [
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+      ],
+      checkIn: d.check_in ? new Date(d.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
+      checkOut: d.check_out ? new Date(d.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',
+      cancellation: 'Free cancellation until 48h before',
+      phone: '',
+      email: d.booking_url ?? '',
+      guestRatings: {
+        overall: realRating,
+        label: realRating >= 4.5 ? 'Superb' : realRating >= 4.0 ? 'Excellent' : realRating >= 3.5 ? 'Very Good' : 'Good',
+        cleanliness: Math.round((realRating + 0.1) * 10) / 10,
+        staff: Math.round(realRating * 10) / 10,
+        location: Math.round((realRating + 0.2) * 10) / 10,
+        comfort: Math.round(realRating * 10) / 10,
+        value: Math.round((realRating - 0.1) * 10) / 10,
+      },
+    };
+  });
+}
+
+function useHotels(tripId: string, searchQuery?: string) {
+  const { trip } = useItineraryScreen(tripId);
+  const destination = trip?.destination;
+
+  // 1. DB hotels (saved during trip generation)
+  const { data: dbHotelRows = [] } = useDbHotels(tripId);
+  const fromDb = useMemo(
+    () => dbHotelRows.length ? convertDbHotelsToHotelData(dbHotelRows) : [],
+    [dbHotelRows],
+  );
+
+  // 2. Trip context hotels (from enrichment — SerpAPI / planner)
+  const contextHotels = (trip?.trip_context as any)?.all_hotels?.length
+    ? (trip?.trip_context as any).all_hotels
+    : trip?.trip_context?.hotels;
+
+  const fromContext = useMemo(
+    () => contextHotels?.length ? convertFoursquareToHotelData(contextHotels) : [],
+    [contextHotels],
+  );
+
+  // 3. Foursquare live search — use any available coordinates
+  const firstDbHotel = dbHotelRows[0]?.data;
+  const lat = (contextHotels?.[0] as any)?.lat ?? firstDbHotel?.latitude ?? trip?.trip_context?.lat;
+  const lng = (contextHotels?.[0] as any)?.lng ?? firstDbHotel?.longitude ?? trip?.trip_context?.lng;
+  const trimmedQuery = searchQuery?.trim() || '';
+  const { data: fetchedHotels = [] } = useQuery({
+    queryKey: ['hotels-foursquare', destination, trimmedQuery],
+    queryFn: async () => {
+      if (!lat || !lng) return [];
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lng: String(lng),
+        category: 'hotel',
+        limit: '8',
+      });
+      if (trimmedQuery) params.set('q', trimmedQuery);
+      const res = await fetch(`/api/foursquare?${params}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return convertFoursquareToHotelData(data, fromDb.length + fromContext.length);
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!destination && !!(lat && lng),
+  });
+
+  // Combine: DB first (generated hotels), then context, then Foursquare — deduplicate by name
+  return useMemo(() => {
+    const seen = new Set<string>();
+    return [...fromDb, ...fromContext, ...fetchedHotels].filter((h) => {
+      const key = h.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [fromDb, fromContext, fetchedHotels]);
+}
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,
@@ -217,12 +270,12 @@ function ImageCarousel({
 
   return (
     <div className={`relative w-full ${height} group`}>
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={images[idx]}
         alt={`${alt} ${idx + 1}`}
-        fill
-        className="object-cover"
-        sizes="(max-width:768px) 100vw, 50vw"
+        referrerPolicy="no-referrer"
+        className="absolute inset-0 w-full h-full object-cover"
       />
       {images.length > 1 && (
         <>
@@ -245,36 +298,71 @@ function ImageCarousel({
 /*  Section 1: Search / Filter Bar                                     */
 /* ------------------------------------------------------------------ */
 
+interface HotelFilters {
+  sortBy: string;
+  priceRange: [number, number];
+  starFilter: number[];
+  amenityFilter: string[];
+  brandFilter: string[];
+}
+
 function HotelSearchFilter({
   isOpen,
   onToggle,
+  filters,
+  onFiltersChange,
+  searchQuery,
+  onSearchQueryChange,
+  onSearch,
+  defaultCheckIn,
+  defaultCheckOut,
+  destination,
 }: {
   isOpen: boolean;
   onToggle: () => void;
+  filters: HotelFilters;
+  onFiltersChange: (filters: HotelFilters) => void;
+  searchQuery: string;
+  onSearchQueryChange: (q: string) => void;
+  onSearch: () => void;
+  defaultCheckIn: string;
+  defaultCheckOut: string;
+  destination: string;
 }) {
-  const [checkIn, setCheckIn] = useState('2026-03-22');
-  const [checkOut, setCheckOut] = useState('2026-03-27');
+  const [checkIn, setCheckIn] = useState(defaultCheckIn);
+  const [checkOut, setCheckOut] = useState(defaultCheckOut);
   const [guests, setGuests] = useState(2);
   const [rooms, setRooms] = useState(1);
-  const [sortBy, setSortBy] = useState('recommended');
-  const [priceRange, setPriceRange] = useState([0, 500]);
-  const [starFilter, setStarFilter] = useState<number[]>([]);
-  const [amenityFilter, setAmenityFilter] = useState<string[]>([]);
-  const [brandFilter, setBrandFilter] = useState<string[]>([]);
+  const { sortBy, priceRange, starFilter, amenityFilter, brandFilter } = filters;
+
+  const setSortBy = (v: string) => onFiltersChange({ ...filters, sortBy: v });
+  const setPriceRange = (v: [number, number]) => onFiltersChange({ ...filters, priceRange: v });
+  const setStarFilter = (v: number[]) => onFiltersChange({ ...filters, starFilter: v });
+  const setAmenityFilter = (v: string[]) => onFiltersChange({ ...filters, amenityFilter: v });
+  const setBrandFilter = (v: string[]) => onFiltersChange({ ...filters, brandFilter: v });
 
   const toggleStar = (s: number) =>
-    setStarFilter((prev) => (prev.includes(s) ? prev.filter((v) => v !== s) : [...prev, s]));
+    setStarFilter(starFilter.includes(s) ? starFilter.filter((v) => v !== s) : [...starFilter, s]);
   const toggleAmenity = (a: string) =>
-    setAmenityFilter((prev) => (prev.includes(a) ? prev.filter((v) => v !== a) : [...prev, a]));
+    setAmenityFilter(amenityFilter.includes(a) ? amenityFilter.filter((v) => v !== a) : [...amenityFilter, a]);
   const toggleBrand = (b: string) =>
-    setBrandFilter((prev) => (prev.includes(b) ? prev.filter((v) => v !== b) : [...prev, b]));
+    setBrandFilter(brandFilter.includes(b) ? brandFilter.filter((v) => v !== b) : [...brandFilter, b]);
   const resetFilters = () => {
-    setSortBy('recommended');
-    setPriceRange([0, 500]);
-    setStarFilter([]);
-    setAmenityFilter([]);
-    setBrandFilter([]);
+    onFiltersChange({
+      sortBy: 'recommended',
+      priceRange: [0, 500],
+      starFilter: [],
+      amenityFilter: [],
+      brandFilter: [],
+    });
   };
+
+  const nights = useMemo(() => {
+    const d1 = new Date(checkIn);
+    const d2 = new Date(checkOut);
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 1;
+  }, [checkIn, checkOut]);
 
   return (
     <div className="rounded-xl overflow-hidden bg-white dark:bg-[var(--background)] border border-gray-200 dark:border-white/[0.08] shadow-sm">
@@ -288,7 +376,7 @@ function HotelSearchFilter({
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Update Hotel</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">Paris, France &middot; 5 nights &middot; {guests} guests</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{destination || 'Search hotels'} &middot; {nights} nights &middot; {guests} guests</p>
           </div>
         </div>
         <ChevronDown size={18} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -306,6 +394,17 @@ function HotelSearchFilter({
             <div className="border-t border-gray-100 dark:border-white/[0.06] px-4 py-3 space-y-3">
               {/* Compact search strip */}
               <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[160px]">
+                  <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Search</label>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => onSearchQueryChange(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') onSearch(); }}
+                    placeholder="Hotel name or area..."
+                    className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                  />
+                </div>
                 <div className="flex-1 min-w-[120px]">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-in</label>
                   <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
@@ -330,7 +429,10 @@ function HotelSearchFilter({
                     <button onClick={() => setRooms(rooms + 1)} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Plus size={12} /></button>
                   </div>
                 </div>
-                <button className="flex items-center gap-1.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                <button
+                  onClick={onSearch}
+                  className="flex items-center gap-1.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
                   <Search size={13} /> Search
                 </button>
               </div>
@@ -352,6 +454,36 @@ function HotelSearchFilter({
                     <option value="rating">Guest Rating</option>
                     <option value="stars">Star Rating</option>
                   </select>
+                </div>
+
+                {/* Price range */}
+                <div>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">Price Range (per night)</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-400">&euro;</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={priceRange[0]}
+                        onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        placeholder="Min"
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400">&ndash;</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-400">&euro;</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={priceRange[1]}
+                        onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        placeholder="Max"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Star rating */}
@@ -547,7 +679,8 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   className="w-20 h-20 flex-shrink-0 relative group/thumb cursor-zoom-in"
                                   onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                                 >
-                                  <Image src={room.image} alt={room.type} fill className="object-cover" sizes="80px" />
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                   <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                     <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                   </div>
@@ -581,7 +714,8 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                   <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
-                                      <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={(e) => { e.stopPropagation(); setExpandedRoom(null); }} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -1250,7 +1384,8 @@ function BookedHotelCard({
               return (
                 <div className="rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                   <div className="relative h-40">
-                    <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <div className="flex items-end justify-between">
@@ -1372,7 +1507,8 @@ function BookedHotelCard({
                                 className="w-20 h-20 flex-shrink-0 relative group/thumb cursor-zoom-in"
                                 onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                               >
-                                <Image src={room.image} alt={room.type} fill className="object-cover" sizes="80px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                   <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                 </div>
@@ -1405,7 +1541,8 @@ function BookedHotelCard({
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                   <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
-                                      <Image src={room.image} alt={room.type} fill className="object-cover" sizes="100%" />
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={() => setExpandedRoom(null)} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -1570,13 +1707,77 @@ function BookedHotelCard({
 
 export default function Hotels({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  useItineraryScreen(id);
+  const { trip } = useItineraryScreen(id);
+
+  // Search query state — drives a new Foursquare fetch when submitted
+  const [searchInput, setSearchInput] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
+  const hotels = useHotels(id, activeSearchQuery);
+
+  // Filter state — lifted so filters actually apply
+  const [filters, setFilters] = useState<HotelFilters>({
+    sortBy: 'recommended',
+    priceRange: [0, 500],
+    starFilter: [],
+    amenityFilter: [],
+    brandFilter: [],
+  });
+
+  // Derive trip dates for default check-in/check-out
+  const defaultCheckIn = trip?.start_date ?? new Date().toISOString().slice(0, 10);
+  const defaultCheckOut = trip?.end_date ?? new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+
+  // Apply filters + sort via useMemo
+  const filteredHotels = useMemo(() => {
+    let result = [...hotels];
+
+    // Star filter
+    if (filters.starFilter.length > 0) {
+      result = result.filter((h) => filters.starFilter.includes(h.stars));
+    }
+
+    // Price range filter
+    const [minPrice, maxPrice] = filters.priceRange;
+    if (minPrice > 0 || maxPrice < 500) {
+      result = result.filter((h) => h.price >= minPrice && h.price <= maxPrice);
+    }
+
+    // Amenity filter — hotel must have ALL selected amenities
+    if (filters.amenityFilter.length > 0) {
+      result = result.filter((h) =>
+        filters.amenityFilter.every((a) => h.amenities.includes(a)),
+      );
+    }
+
+    // Sort
+    switch (filters.sortBy) {
+      case 'price_low':
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_high':
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        result.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'stars':
+        result.sort((a, b) => b.stars - a.stars);
+        break;
+      // 'recommended' = default order from API
+    }
+
+    return result;
+  }, [hotels, filters]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [browsingOpen, setBrowsingOpen] = useState(true);
-  const [bookedHotel, setBookedHotel] = useState<HotelData | null>(MOCK_HOTELS[0]);
+  const [bookedHotel, setBookedHotel] = useState<HotelData | null>(null);
   const [justSelected, setJustSelected] = useState(false);
   const bookedRef = useRef<HTMLDivElement>(null);
+
+  const handleSearch = () => {
+    setActiveSearchQuery(searchInput);
+  };
 
   const handleSelect = (hotel: HotelData) => {
     setBookedHotel(hotel);
@@ -1597,11 +1798,22 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
   return (
     <div className="space-y-4">
       {/* Section 1: Search / Filter Bar */}
-      <HotelSearchFilter isOpen={searchOpen} onToggle={() => setSearchOpen(!searchOpen)} />
+      <HotelSearchFilter
+        isOpen={searchOpen}
+        onToggle={() => setSearchOpen(!searchOpen)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        searchQuery={searchInput}
+        onSearchQueryChange={setSearchInput}
+        onSearch={handleSearch}
+        defaultCheckIn={defaultCheckIn}
+        defaultCheckOut={defaultCheckOut}
+        destination={trip?.destination ?? ''}
+      />
 
       {/* Section 2: Browsing Hotels */}
       <BrowsingHotelsSection
-        hotels={MOCK_HOTELS}
+        hotels={filteredHotels}
         isOpen={browsingOpen}
         onToggle={() => setBrowsingOpen(!browsingOpen)}
         onSelect={handleSelect}

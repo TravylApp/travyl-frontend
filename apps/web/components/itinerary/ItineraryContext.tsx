@@ -3,9 +3,10 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-const MOCK_CALENDAR_ACTIVITIES: CalendarActivity[] = [];
-const MOCK_DAYS: { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string }[] = [];
+import { useItineraryScreen } from '@travyl/shared';
 import type { MapLocation } from '@/components/leaflet-map';
+
+type BaseDayData = { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string };
 
 // ─── Conversion: CalendarActivity[] → ItineraryDayViewModel[] ─────
 
@@ -30,6 +31,7 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
     costDisplay: a.price ?? null,
     bookingUrl: null,
     notes: null,
+    image: a.image ?? null,
     source: 'user',
     timeOfDay: getTimeOfDay(a.startHour),
   };
@@ -37,7 +39,7 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
 
 function calendarActivitiesToDayViewModels(
   activities: CalendarActivity[],
-  baseDays: typeof MOCK_DAYS,
+  baseDays: BaseDayData[],
 ): ItineraryDayViewModel[] {
   // Group on-calendar, non-child activities by day
   const onCalendar = activities.filter((a) => a.onCalendar && !a.parentId);
@@ -115,8 +117,146 @@ interface ItineraryContextValue {
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
 
-export function ItineraryProvider({ children }: { children: React.ReactNode }) {
-  const [activities, setActivities] = useState<CalendarActivity[]>(MOCK_CALENDAR_ACTIVITIES);
+// Generate a full itinerary from all trip_context data sources
+function generateFromTripContext(
+  trip: import('@travyl/shared').Trip | null,
+  durationDays: number,
+): { days: BaseDayData[]; activities: CalendarActivity[] } {
+  const ctx = trip?.trip_context;
+  if (!ctx) return { days: [], activities: [] };
+
+  // Collect all available items from every data source
+  type Item = { id: string; title: string; category: string; image?: string; description?: string };
+  const allItems: Item[] = [];
+  const seen = new Set<string>();
+  const add = (item: Item) => { if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); } };
+
+  // 1. Explore items (sightseeing, landmarks, museums)
+  for (const e of ctx.explore_items ?? []) {
+    add({ id: e.id, title: e.title, category: e.category || 'sightseeing', image: e.image, description: e.description });
+  }
+
+  // 2. Foursquare venues (restaurants, nightlife, experiences)
+  for (const v of ctx.foursquare_venues ?? []) {
+    add({ id: v.id, title: v.title || v.name || '', category: v.category || 'venue', image: v.image });
+  }
+
+  // 3. Cuisine dishes → "Try local cuisine" activities
+  for (const c of ctx.cuisine ?? []) {
+    add({ id: `cuisine-${c.id}`, title: `Try ${c.name}`, category: 'dining', image: c.image });
+  }
+
+  // 4. Events (real events happening during travel dates)
+  for (const e of ctx.events ?? []) {
+    add({ id: e.id, title: e.title, category: e.category || 'event', image: e.image });
+  }
+
+  if (allItems.length === 0) return { days: [], activities: [] };
+
+  const startDate = trip.start_date ? new Date(trip.start_date + 'T00:00:00') : new Date();
+
+  const days: BaseDayData[] = [];
+  const activities: CalendarActivity[] = [];
+
+  // Day themes based on category mix
+  const themes = ['Explore & Discover', 'Culture & History', 'Food & Relaxation', 'Adventure', 'Local Life', 'Hidden Gems', 'Off the Beaten Path'];
+
+  // Time slots — fill 4 slots per day for a full itinerary
+  const timeSlots = [
+    { hour: 9,  label: '9:00 AM',  end: '11:00 AM',  duration: 2 },
+    { hour: 12, label: '12:00 PM', end: '1:30 PM',   duration: 1.5 },
+    { hour: 15, label: '3:00 PM',  end: '5:00 PM',   duration: 2 },
+    { hour: 19, label: '7:00 PM',  end: '9:00 PM',   duration: 2 },
+  ];
+
+  // Separate items by type for balanced scheduling
+  const sightseeing = allItems.filter(i => /sight|landmark|museum|monument|historic|architecture|attraction/i.test(i.category));
+  const dining = allItems.filter(i => /dining|restaurant|food|café|cafe|cuisine/i.test(i.category));
+  const nightlife = allItems.filter(i => /nightlife|bar|club|entertainment|event/i.test(i.category));
+  const other = allItems.filter(i => !sightseeing.includes(i) && !dining.includes(i) && !nightlife.includes(i));
+
+  // Round-robin indices for each pool
+  let sIdx = 0, dIdx = 0, nIdx = 0, oIdx = 0;
+
+  const pickFrom = (pool: Item[]): Item | null => {
+    if (pool.length === 0) return null;
+    return pool[pool.length > 0 ? 0 : 0]; // will be shifted below
+  };
+
+  for (let d = 0; d < durationDays; d++) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + d);
+    const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    days.push({
+      id: `day-${d}`,
+      dayNumber: d + 1,
+      dayLabel: `Day ${d + 1}`,
+      dateLabel: dateStr,
+      theme: themes[d % themes.length],
+    });
+
+    // Schedule: Morning=sightseeing, Lunch=dining, Afternoon=sightseeing/other, Evening=dining/nightlife
+    const schedule: (Item | null)[] = [
+      sightseeing[sIdx++ % sightseeing.length] ?? other[oIdx++ % Math.max(other.length, 1)] ?? null,
+      dining[dIdx++ % Math.max(dining.length, 1)] ?? null,
+      (other.length > 0 ? other[oIdx++ % other.length] : sightseeing[sIdx++ % Math.max(sightseeing.length, 1)]) ?? null,
+      nightlife[nIdx++ % Math.max(nightlife.length, 1)] ?? dining[dIdx++ % Math.max(dining.length, 1)] ?? null,
+    ];
+
+    schedule.forEach((item, slotIdx) => {
+      if (!item) return;
+      const slot = timeSlots[slotIdx];
+      activities.push({
+        id: `cal-${d}-${slotIdx}-${item.id}`,
+        title: item.title,
+        type: item.category?.toLowerCase() ?? 'sightseeing',
+        day: d,
+        startHour: slot.hour,
+        duration: slot.duration,
+        startTime: slot.label,
+        endTime: slot.end,
+        location: item.title,
+        image: item.image,
+        color: 'var(--trip-base)',
+        onCalendar: true,
+      });
+    });
+  }
+
+  return { days, activities };
+}
+
+export function ItineraryProvider({ children, tripId }: { children: React.ReactNode; tripId?: string }) {
+  const { trip } = useItineraryScreen(tripId);
+
+  // Generate initial data from trip context
+  const generated = useMemo(() => {
+    if (!trip) return null;
+    // Compute duration from actual dates, fallback to forecast length, then default to 5
+    let duration = 5;
+    if (trip.start_date && trip.end_date) {
+      duration = Math.max(1, Math.ceil(
+        (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
+      ));
+    } else if (trip.trip_context?.weather?.forecast?.length) {
+      duration = trip.trip_context.weather.forecast.length;
+    }
+    return generateFromTripContext(trip, duration);
+  }, [trip]);
+
+  const [activities, setActivities] = useState<CalendarActivity[]>([]);
+  const [baseDays, setBaseDays] = useState<BaseDayData[]>([]);
+
+  // Seed activities from trip context when trip loads (only once)
+  const [seeded, setSeeded] = useState(false);
+  useEffect(() => {
+    if (generated && !seeded && generated.days.length > 0) {
+      setBaseDays(generated.days);
+      setActivities(generated.activities);
+      setSeeded(true);
+    }
+  }, [generated, seeded]);
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);
@@ -155,8 +295,8 @@ export function ItineraryProvider({ children }: { children: React.ReactNode }) {
   }, [collapsedSections, allCollapsedOverride, selectedDayIndex]);
 
   const days = useMemo(
-    () => calendarActivitiesToDayViewModels(activities, MOCK_DAYS),
-    [activities],
+    () => calendarActivitiesToDayViewModels(activities, baseDays),
+    [activities, baseDays],
   );
 
   const addActivity = useCallback((activity: CalendarActivity) => {

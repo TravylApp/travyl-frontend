@@ -1,15 +1,11 @@
 'use client';
 
-import { use, useState, useCallback } from 'react';
+import { use, useState, useCallback, useMemo } from 'react';
 import {
   Heart, MapPin, Star, Camera, UtensilsCrossed, Building2, Compass,
   Image as ImageIcon,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
-import type { DiscoverItem as DiscoverItemType } from '@travyl/shared';
-
-const MOCK_DISCOVER_ACTIVITIES: DiscoverItemType[] = [];
-const MOCK_DISCOVER_RESTAURANTS: DiscoverItemType[] = [];
 import type { DiscoverItem } from '@travyl/shared';
 import { SplitScreenModal } from '@/components/itinerary';
 
@@ -34,9 +30,8 @@ function FavoritesSkeleton() {
 }
 
 // Pre-populate some sample favorites for demo
-const INITIAL_ACTIVITY_FAVORITES = ['da1', 'da3', 'da6'];
-const INITIAL_RESTAURANT_FAVORITES = ['rb2', 'rd1', 'rd4'];
-const INITIAL_DESTINATION_FAVORITES = ['da2', 'da5', 'da8'];
+// No initial favorites — user adds from explore/itinerary
+const INITIAL_FAVORITES: string[] = [];
 
 function FavoriteCard({
   item,
@@ -156,42 +151,45 @@ function EmptyState() {
 
 export default function TripFavorites({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
+  const { isLoading, trip } = useItineraryScreen(id);
 
-  const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
-  const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>(INITIAL_RESTAURANT_FAVORITES);
-  const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
+  // Get all available items from trip context
+  const allItems: DiscoverItem[] = useMemo(() => {
+    const explore = trip?.trip_context?.explore_items ?? [];
+    return explore.map((item) => ({
+      id: item.id,
+      name: item.title ?? '',
+      description: item.description ?? '',
+      category: item.category ?? 'attraction',
+      location: item.title ?? '',
+      rating: 0,
+      images: item.image ? [item.image] : [],
+      tags: item.tags ?? [],
+    }));
+  }, [trip]);
+
+  const [favorites, setFavorites] = useState<string[]>(INITIAL_FAVORITES);
   const [selectedModal, setSelectedModal] = useState<{ items: DiscoverItem[]; index: number; accentColor: string } | null>(null);
 
-  const favoritedActivities = MOCK_DISCOVER_ACTIVITIES.filter((a) => activityFavorites.includes(a.id));
-  const favoritedRestaurants = MOCK_DISCOVER_RESTAURANTS.filter((r) => restaurantFavorites.includes(r.id));
-  const favoritedDestinations = MOCK_DISCOVER_ACTIVITIES.filter((a) => destinationFavorites.includes(a.id));
+  const favoritedActivities = allItems.filter((a) => favorites.includes(a.id) && !a.category?.toLowerCase().includes('restaurant'));
+  const favoritedRestaurants = allItems.filter((r) => favorites.includes(r.id) && (r.category?.toLowerCase().includes('restaurant') || r.category?.toLowerCase().includes('culinary')));
+  const favoritedDestinations = allItems.filter((a) => favorites.includes(a.id) && (a.category?.toLowerCase().includes('landmark') || a.category?.toLowerCase().includes('destination')));
 
-  const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
+  const totalFavorites = favorites.length;
 
-  const removeActivityFavorite = (id: string) => {
-    setActivityFavorites((prev) => prev.filter((f) => f !== id));
+  const removeFavorite = (itemId: string) => {
+    setFavorites((prev) => prev.filter((f) => f !== itemId));
   };
 
-  const removeRestaurantFavorite = (id: string) => {
-    setRestaurantFavorites((prev) => prev.filter((f) => f !== id));
-  };
-
-  const removeDestinationFavorite = (id: string) => {
-    setDestinationFavorites((prev) => prev.filter((f) => f !== id));
-  };
+  const removeActivityFavorite = removeFavorite;
+  const removeRestaurantFavorite = removeFavorite;
+  const removeDestinationFavorite = removeFavorite;
 
   const toggleFavoriteFromModal = useCallback((itemId: string) => {
-    if (activityFavorites.includes(itemId)) {
-      removeActivityFavorite(itemId);
-    } else if (restaurantFavorites.includes(itemId)) {
-      removeRestaurantFavorite(itemId);
-    } else if (destinationFavorites.includes(itemId)) {
-      removeDestinationFavorite(itemId);
-    }
-  }, [activityFavorites, restaurantFavorites, destinationFavorites]);
+    setFavorites((prev) => prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId]);
+  }, []);
 
-  const allFavoriteIds = [...activityFavorites, ...restaurantFavorites, ...destinationFavorites];
+  const allFavoriteIds = favorites;
 
   if (isLoading) return <FavoritesSkeleton />;
 

@@ -33,8 +33,8 @@ export interface TripContextData {
     emergency?: string;
   };
   weather?: {
-    current?: { high: number; low: number; condition: string };
-    forecast?: { day: string; high: number; low: number; icon: string; condition: string }[];
+    current?: { high: number; low: number; condition: string; temp?: number; feelslike?: number; conditions?: string };
+    forecast?: { day: string; date?: string; high: number; low: number; icon: string; condition: string }[];
   };
   explore_items?: {
     id: string;
@@ -55,6 +55,21 @@ export interface TripContextData {
     url?: string;
     image?: string;
   }[];
+  hotels?: any[];
+  foursquare_venues?: any[];
+  events?: any[];
+  cuisine?: any[];
+  phrases?: any[];
+  cost_of_living?: any;
+  nearby_cities?: any[];
+  safety?: any;
+  timezone_info?: any;
+  sunrise?: any;
+  aqi?: any;
+  wiki?: string | { extract?: string };
+  country?: any;
+  holidays?: any[];
+  restaurants?: any[];
 }
 
 export interface Trip {

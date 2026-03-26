@@ -28,7 +28,6 @@ import {
   useHeroConfig,
   Blue,
   hexToRgba,
-  MOCK_PLACES,
   TextStyles,
   FontSize,
   FontFamily,
@@ -298,7 +297,7 @@ export default function HomeScreen() {
   const [selectedPlaceIdx, setSelectedPlaceIdx] = useState(-1);
   const setSelectedPlace = useCallback((place: PlaceItem | null) => {
     if (!place) { setSelectedPlaceIdx(-1); return; }
-    const idx = MOCK_PLACES.findIndex((p) => p.id === place.id);
+    const idx = ([] as PlaceItem[]).findIndex((p) => p.id === place.id);
     setSelectedPlaceIdx(idx >= 0 ? idx : -1);
   }, []);
   useEffect(() => {
@@ -933,7 +932,7 @@ export default function HomeScreen() {
     {/* ─── Place Detail — Magazine Card ─────────────────────────────── */}
     {selectedPlaceIdx >= 0 && (
       <CardStackCarousel
-        places={MOCK_PLACES}
+        places={([] as PlaceItem[])}
         initialIndex={selectedPlaceIdx}
         favorites={[]}
         onToggleFav={() => {}}

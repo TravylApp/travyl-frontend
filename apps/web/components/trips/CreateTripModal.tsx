@@ -219,6 +219,19 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
 
       await queryClient.invalidateQueries({ queryKey: ['trips'] })
       indexTrip(data.id)
+      // Track trip ID for anonymous persistence
+      try {
+        const stored = localStorage.getItem('my-trip-ids')
+        const ids: string[] = stored ? JSON.parse(stored) : []
+        if (!ids.includes(data.id)) ids.push(data.id)
+        localStorage.setItem('my-trip-ids', JSON.stringify(ids))
+      } catch {}
+      // Enrich in background
+      fetch('/api/trips/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: data.id }),
+      }).catch(() => {})
       onClose()
       router.push(`/trip/${data.id}`)
     } finally {

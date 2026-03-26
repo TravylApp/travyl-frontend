@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal,
+  View, Text, Pressable, Share, Modal, ScrollView,
   Platform, PanResponder, Animated, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useIsFocused } from '@react-navigation/native';
 import { withLayoutContext, useLocalSearchParams, useRouter } from 'expo-router';
+import { useTheme, ThemeProvider } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,6 +48,7 @@ type SpinePosition = 'top' | 'bottom' | 'left' | 'right';
 
 // ─── Context ─────────────────────────────────────────────
 const TabCtx = createContext<{
+  tripId: string;
   spinePosition: SpinePosition;
   setSpinePosition: (p: SpinePosition) => void;
   scrubbing: boolean;
@@ -75,6 +76,7 @@ const TabCtx = createContext<{
   heroImageOverride: string | null;
   setHeroImageOverride: (url: string | null) => void;
 }>({
+  tripId: '',
   spinePosition: 'top',
   setSpinePosition: () => {},
   scrubbing: false,
@@ -303,28 +305,71 @@ function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
 
 // ─── Helpers ─────────────────────────────────────────────
 
+function weatherEmoji(icon: string): string {
+  const c = icon.toLowerCase();
+  if (c.includes('clear') && c.includes('night')) return '🌙';
+  if (c.includes('clear') || c.includes('sun')) return '☀️';
+  if (c.includes('partly') || c.includes('cloud')) return '⛅';
+  if (c.includes('rain') || c.includes('shower') || c.includes('drizzle')) return '🌧';
+  if (c.includes('snow')) return '❄️';
+  if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+  if (c.includes('fog') || c.includes('mist')) return '🌫️';
+  return '☁️';
+}
+
 function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: string[]) {
   return state.routes
     .map((route, index) => ({ route, index }))
     .filter(({ route }) => enabledTabs.includes(route.name));
 }
 
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
+
 // ─── Trip Hero ───────────────────────────────────────────
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
   const { theme, essentialsOpen, setEssentialsOpen, heroImageOverride } = useContext(TabCtx);
   const router = useRouter();
-  const coverImage = heroImageOverride || trip?.trip_context?.hero_image_url;
   const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
+
+  // Dynamic hero image: trip_context → override → fetch from Unsplash/Pexels
+  const staticHero = heroImageOverride
+    || trip?.trip_context?.hero_image_url
+    || trip?.trip_context?.hero_images?.[0]
+    || (trip?.trip_context as any)?.destination_photo_url;
+  const [fetchedHero, setFetchedHero] = useState<string | null>(null);
+  useEffect(() => {
+    if (staticHero || fetchedHero || !cityName || cityName === 'Destination') return;
+    const webApi = process.env.EXPO_PUBLIC_WEB_API_URL;
+    if (!webApi) return;
+    fetch(`${webApi}/api/images?q=${encodeURIComponent(cityName)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.url) setFetchedHero(data.url); })
+      .catch(() => {});
+  }, [cityName, staticHero, fetchedHero]);
+  const coverImage = staticHero || fetchedHero;
   const countryName = destination.split(',').slice(1).join(',').trim();
   const weather = trip?.trip_context?.weather?.current;
   const forecast = trip?.trip_context?.weather?.forecast ?? [];
   const qf = trip?.trip_context?.quick_facts;
 
+  // Fetch wiki if not in trip_context
+  const rawWiki = trip?.trip_context?.wiki;
+  const existingWiki = typeof rawWiki === 'string' ? rawWiki : rawWiki?.extract;
+  const [fetchedWiki, setFetchedWiki] = useState<string | null>(null);
+  useEffect(() => {
+    if (existingWiki || !cityName || cityName === 'Destination') return;
+    fetch(`${WEB_API}/api/wiki?q=${encodeURIComponent(cityName)}`)
+      .then(r => r.json())
+      .then(d => { if (d?.extract) setFetchedWiki(d.extract); })
+      .catch(() => {});
+  }, [cityName, existingWiki]);
+  const wikiText = existingWiki || fetchedWiki;
+
   return (
-    <View style={{ position: 'relative' }}>
-      {/* Background image — crossfades when override changes */}
-      <View style={{ height: essentialsOpen ? 340 : 200 }}>
+    <View style={{ position: 'relative', minHeight: essentialsOpen ? 280 : 200 }}>
+      {/* Background image — fills entire hero, content determines height */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         {coverImage ? (
           <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" />
         ) : (
@@ -332,9 +377,11 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
             <FontAwesome name="picture-o" size={32} color="rgba(255,255,255,0.3)" />
           </View>
         )}
+        {/* Flat tint — ensures readability on any photo */}
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.2)' }} pointerEvents="none" />
         <LinearGradient
-          colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)']}
-          locations={[0, 0.4, 1]}
+          colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.75)']}
+          locations={[0, 0.25, 1]}
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
           pointerEvents="none"
         />
@@ -368,8 +415,8 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
         <FontAwesome name="share" size={13} color="#fff" />
       </Pressable>
 
-      {/* Hero text overlay */}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 }}>
+      {/* Hero text — content-driven height, extra bottom padding for tab bleed */}
+      <View style={{ paddingTop: 90, paddingBottom: 100, paddingHorizontal: 16 }}>
         {/* Country + City + Toggle */}
         <Text style={{ ...TextStyles.xs, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
           {countryName || 'Your Trip Guide'}
@@ -399,50 +446,102 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
         {/* Collapsible essentials */}
         {essentialsOpen && trip && (
           <View>
-            {/* Date + travelers */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
-                {formatDateRange(trip.start_date, trip.end_date)}
-              </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.2)' }}>·</Text>
-              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>
-                {trip.travelers} {trip.travelers === 1 ? 'traveler' : 'travelers'}
-              </Text>
+            {/* Date + travelers + currency + timezone */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {[
+                formatDateRange(trip.start_date, trip.end_date),
+                `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
+                qf?.currency ? (qf.currency as string).split(' · ')[0] : null,
+                qf?.language ? (qf.language as string).split(' · ')[0] : null,
+                qf?.timezone ? (qf.timezone as string).split(' · ')[0] : null,
+              ].filter(Boolean).map((text, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)', marginRight: 6 }}>·</Text>}
+                  <Text style={{
+                    ...TextStyles.bodyLg, fontWeight: i >= 2 ? '700' : '600',
+                    color: '#fff',
+                    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+                  }}>{text}</Text>
+                </View>
+              ))}
             </View>
 
-            {/* Quick facts */}
-            {qf && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 }}>
-                {[qf.currency, qf.language, qf.timezone, qf.power].filter(Boolean).map((f, i) => {
-                  const [label, ...rest] = (f as string).split(' · ');
-                  return (
-                    <Text key={i} style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }}>
-                      <Text style={{ fontWeight: '700', color: '#fff' }}>{label}</Text>
-                      {rest.length > 0 ? ` · ${rest.join(' · ')}` : ''}
-                    </Text>
-                  );
-                })}
-              </View>
-            )}
-
             {/* Weather + forecast */}
-            {weather && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <FontAwesome name="cloud" size={12} color="#c8a96a" />
-                  <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a' }}>{weather.high}° / {weather.low}°</Text>
-                  <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)' }}>Now</Text>
-                </View>
-                {forecast.length > 0 && <Text style={{ color: 'rgba(255,255,255,0.2)' }}>|</Text>}
-                {forecast.slice(0, 4).map((d) => (
-                  <View key={d.day} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.6)' }}>{d.day}</Text>
-                    <Text style={{ ...TextStyles.body }}>{d.icon}</Text>
-                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff' }}>{d.high}°</Text>
+            {weather && (() => {
+              const ts = { textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 14 }}>{weatherEmoji((weather as any).icon || weather.conditions || '')}</Text>
+                    <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a', ...ts }}>{(weather as any).temp ?? weather.high ?? ''}°</Text>
+                    <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Now</Text>
                   </View>
-                ))}
+                  {forecast.length > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)' }}>|</Text>}
+                  {forecast.slice(0, 4).map((d: any, idx: number) => {
+                    const dayName = d.day || (d.date ? new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '');
+                    const icon = weatherEmoji(d.icon || d.conditions || '');
+                    return (
+                      <View key={d.date || idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.9)', ...ts }}>{dayName}</Text>
+                        <Text style={{ fontSize: 14 }}>{icon}</Text>
+                        <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff', ...ts }}>{d.high}°</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })()}
+
+            {/* Sunrise / Sunset */}
+            {(() => {
+              const sr = trip?.trip_context?.sunrise as { sunrise?: string; sunset?: string; golden_hour?: string } | undefined;
+              if (!sr?.sunrise || !sr?.sunset) return null;
+              const fmt = (iso: string) => { try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); } catch { return ''; } };
+              const ts = { textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 12 }}>☀️</Text>
+                    <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Sunrise</Text>
+                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff', ...ts }}>{fmt(sr.sunrise)}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 12 }}>🌅</Text>
+                    <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Sunset</Text>
+                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff', ...ts }}>{fmt(sr.sunset)}</Text>
+                  </View>
+                  {sr.golden_hour && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={{ fontSize: 12 }}>📸</Text>
+                      <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Golden Hour</Text>
+                      <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#c8a96a', ...ts }}>{fmt(sr.golden_hour)}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Wiki excerpt — scrollable, 3-line window */}
+            {wikiText ? (
+              <View style={{
+                marginTop: 10, borderRadius: 10,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                height: 19 * 3 + 18, // 3 lines × lineHeight + padding (tight clip)
+              }}>
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}
+                  nestedScrollEnabled
+                >
+                  <Text style={{
+                    ...TextStyles.body, fontFamily: FontFamily.serif,
+                    color: '#fff', lineHeight: 19,
+                  }}>
+                    {wikiText}
+                  </Text>
+                </ScrollView>
               </View>
-            )}
+            ) : null}
           </View>
         )}
       </View>
@@ -822,9 +921,74 @@ function TabPickerModal() {
   );
 }
 
+// ─── Tabs wrapper with transparent navigation theme ──────
+function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
+  trip: Trip | null; refetch: () => void; spinePosition: SpinePosition;
+}) {
+  const parentTheme = useTheme();
+  const transparentTheme = useMemo(() => ({
+    ...parentTheme,
+    colors: { ...parentTheme.colors, background: 'transparent', card: 'transparent' },
+  }), [parentTheme]);
+
+  const coverImage = trip?.trip_context?.hero_image_url;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
+      {/* Full-screen hero image behind everything */}
+      {coverImage && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '70%', zIndex: 0 }}>
+          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
+          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.2)' }} />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']}
+            locations={[0, 0.4, 1]}
+            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+          />
+        </View>
+      )}
+      <TripHero trip={trip} refetch={refetch} />
+      <View style={{ flex: 1, position: 'relative', marginTop: -90 }}>
+        <ThemeProvider value={transparentTheme}>
+          <TopTabs
+            tabBar={(props) => <CustomTabBar {...props} />}
+            style={{ backgroundColor: 'transparent' }}
+            pagerStyle={{ backgroundColor: 'transparent' }}
+            screenOptions={{
+              lazy: true,
+              lazyPlaceholder: () => (
+                <View style={{ flex: 1, backgroundColor: 'transparent' }} />
+              ),
+              swipeEnabled: true,
+              animationEnabled: true,
+              sceneStyle: {
+                paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
+                paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
+                paddingBottom: (spinePosition === 'bottom' || spinePosition === 'top') ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
+                backgroundColor: 'transparent',
+              },
+            }}
+          >
+            <TopTabs.Screen name="index" options={{ title: 'Overview' }} />
+            <TopTabs.Screen name="itinerary" options={{ title: 'Itinerary' }} />
+            <TopTabs.Screen name="hotels" options={{ title: 'Hotels' }} />
+            <TopTabs.Screen name="flights" options={{ title: 'Flights' }} />
+            <TopTabs.Screen name="restaurants" options={{ title: 'Restaurants' }} />
+            <TopTabs.Screen name="activities" options={{ title: 'Explore' }} />
+            <TopTabs.Screen name="packing" options={{ title: 'Packing' }} />
+            <TopTabs.Screen name="budget" options={{ title: 'Budget' }} />
+            <TopTabs.Screen name="cars" options={{ title: 'Car Rental' }} />
+            <TopTabs.Screen name="favorites" options={{ title: 'Favorites' }} />
+            <TopTabs.Screen name="settings" options={{ title: 'Settings' }} />
+          </TopTabs>
+        </ThemeProvider>
+      </View>
+    </View>
+  );
+}
+
 // ─── Main Layout ─────────────────────────────────────────
 export default function TripLayout() {
-  const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trip, refetch } = useItineraryScreen(id);
   const [spinePosition, setSpinePosition] = useState<SpinePosition>('left');
@@ -926,43 +1090,9 @@ export default function TripLayout() {
 
   return (
     <TabCtx.Provider
-      value={{ spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker, essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride }}
+      value={{ tripId: id, spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker, essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride }}
     >
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <TripHero trip={trip} refetch={refetch} />
-
-        <View style={{ flex: 1, position: 'relative' }}>
-          <TopTabs
-            tabBar={(props) => <CustomTabBar {...props} />}
-            screenOptions={{
-              lazy: true,
-              lazyPlaceholder: () => (
-                <View style={{ flex: 1, backgroundColor: colors.cardBackground }} />
-              ),
-              swipeEnabled: true,
-              animationEnabled: true,
-              sceneStyle: {
-                paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
-                paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
-                paddingBottom: (spinePosition === 'bottom' || spinePosition === 'top') ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
-                backgroundColor: colors.cardBackground,
-              },
-            }}
-          >
-            <TopTabs.Screen name="index" options={{ title: 'Overview' }} />
-            <TopTabs.Screen name="itinerary" options={{ title: 'Itinerary' }} />
-            <TopTabs.Screen name="hotels" options={{ title: 'Hotels' }} />
-            <TopTabs.Screen name="flights" options={{ title: 'Flights' }} />
-            <TopTabs.Screen name="restaurants" options={{ title: 'Restaurants' }} />
-            <TopTabs.Screen name="activities" options={{ title: 'Explore' }} />
-            <TopTabs.Screen name="packing" options={{ title: 'Packing' }} />
-            <TopTabs.Screen name="budget" options={{ title: 'Budget' }} />
-            <TopTabs.Screen name="cars" options={{ title: 'Car Rental' }} />
-            <TopTabs.Screen name="favorites" options={{ title: 'Favorites' }} />
-            <TopTabs.Screen name="settings" options={{ title: 'Settings' }} />
-          </TopTabs>
-        </View>
-      </View>
+      <TripTabsWithTransparentTheme trip={trip} refetch={refetch} spinePosition={spinePosition} />
       <TabPickerModal />
     </TabCtx.Provider>
   );

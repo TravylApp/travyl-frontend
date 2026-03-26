@@ -95,7 +95,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   // Hooks
   const { trip, tripStartDate, loading: tripLoading, error: tripError, refetchTrip } = useTripActivities(tripId)
-  const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId, isSharedView)
+  const { activities, connectionStatus, isLoading: syncLoading, error: syncError } = useYjsSync(tripId, tripStartDate, userId)
   const rawMutations = useActivityMutations(tripId, tripStartDate, userId)
   const {
     addActivity, updateActivity, moveActivity, removeActivity, removeActivities, duplicateActivity,

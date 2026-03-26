@@ -6,11 +6,12 @@ import type { MockFlightDetail, PlaceItem } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {
-  ItineraryEmpty, TimeGroupSection, SplitScreenModal,
+  ItineraryEmpty, TimeGroupSection,
   FlightSection,
 } from '@/components/itinerary';
 import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
+import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import {
   ChevronDown, X, Search, Compass, LayoutList, Map, Calendar, RefreshCw,
   Landmark, UtensilsCrossed, Footprints, TreePine, Theater, ShoppingBag,
@@ -75,13 +76,25 @@ function SkeletonItinerary() {
 
 // ─── Glance Search Input ────────────────────────────────────────
 
-function GlanceSearchInput({ query, onChange, onClose, onSelect }: {
+function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: {
   query: string;
   onChange: (q: string) => void;
   onClose: () => void;
   onSelect: (place: import('@travyl/shared').PlaceItem) => void;
+  destination?: string;
 }) {
-  const results: import('@travyl/shared').PlaceItem[] = []; // TODO: wire up real place search API
+  const [results, setResults] = useState<import('@travyl/shared').PlaceItem[]>([]);
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    const timeout = setTimeout(async () => {
+      try {
+        const q = destination ? `${query} ${destination}` : query;
+        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6`);
+        if (res.ok) setResults(await res.json());
+      } catch { /* ignore */ }
+    }, 300); // debounce
+    return () => clearTimeout(timeout);
+  }, [query, destination]);
   return (
     <div className="mt-1">
       <div className="relative">
@@ -121,28 +134,56 @@ function GlanceSearchInput({ query, onChange, onClose, onSelect }: {
 
 
 
+function useDestinationImages(destination?: string, count = 5) {
+  const [images, setImages] = useState<string[]>([]);
+  useEffect(() => {
+    if (!destination) return;
+    fetch(`/api/images?q=${encodeURIComponent(destination)}&per_page=${count}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.images?.length) {
+          setImages(data.images.map((img: any) => img.url || img));
+        } else if (data?.url) {
+          setImages([data.url]);
+        }
+      })
+      .catch(() => {});
+  }, [destination, count]);
+  return images;
+}
+
 function GlanceView({
   days,
   selectedDayIndex,
   onSelectDay,
   arrivalFlight,
   returnFlight,
+  hotel,
+  tripFlight,
+  tripId,
   onActivityClick,
   addActivity,
   removeActivity,
   updateActivity,
   moveActivityBefore,
+  destination,
+  heroImages,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
   onSelectDay: (i: number) => void;
   arrivalFlight?: MockFlightDetail;
   returnFlight?: MockFlightDetail;
+  hotel?: { name: string; image?: string; price?: number; price_per_night?: number; stars?: number };
+  tripFlight?: { destAirport: string; city: string } | null;
+  tripId?: string;
   onActivityClick?: (activityId: string) => void;
   addActivity?: (activity: import('@travyl/shared').CalendarActivity) => void;
   removeActivity?: (id: string) => void;
   updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
   moveActivityBefore?: (dragId: string, targetId: string) => void;
+  destination?: string;
+  heroImages?: string[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -152,6 +193,9 @@ function GlanceView({
   const [searchQuery, setSearchQuery] = useState('');
   const [dragOverTarget, setDragOverTarget] = useState<{ id: string; position: 'above' | 'below' } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  // Fetch destination-specific images from Unsplash/Pexels
+  const destImages = useDestinationImages(destination, Math.max(days.length, 3));
 
   const scrollTo = (idx: number) => {
     const el = scrollRef.current;
@@ -181,10 +225,10 @@ function GlanceView({
   };
 
   return (
-    <div className="w-full" data-no-page-swipe>
+    <div className="w-full -mx-1" data-no-page-swipe>
       {/* Horizontal scroll cards — draggable */}
       <div ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
+        className="flex gap-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
         onScroll={(e) => {
           const el = e.currentTarget;
           const idx = Math.round(el.scrollLeft / ((el.firstElementChild as HTMLElement)?.offsetWidth || 1));
@@ -195,13 +239,22 @@ function GlanceView({
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}>
         {days.map((day, i) => {
-          const heroImg = GLANCE_HERO_IMAGES[i % GLANCE_HERO_IMAGES.length];
+          // Prefer destination-specific images, then trip hero, then generic fallback
+          const heroImg = destImages[i]
+            || heroImages?.[i % (heroImages?.length || 1)]
+            || GLANCE_HERO_IMAGES[i % GLANCE_HERO_IMAGES.length];
           const isFirst = i === 0;
           const isLast = i === days.length - 1;
           return (
-            <div key={day.id} className="flex-shrink-0 w-full rounded-xl overflow-hidden snap-start flex" style={{ minHeight: 280, height: searchSlot?.day === i ? 'auto' : 280 }}>
-              {/* Left — activity list */}
-              <div className="w-[40%] shrink-0 bg-[#1a1a2e] p-4 flex flex-col">
+            <div key={day.id} className="flex-shrink-0 w-full overflow-hidden snap-start relative" style={{ minHeight: 340 }}>
+              {/* Full-bleed destination image */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroImg} alt={day.dayLabel} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+              {/* Gradient overlay — dark on left for text, fading to transparent on right */}
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f0f1e 0%, #0f0f1e 38%, rgba(15,15,30,0.6) 55%, rgba(15,15,30,0.15) 75%, transparent 100%)' }} />
+
+              {/* Content overlay — left-aligned activity list */}
+              <div className="relative z-10 w-[45%] min-w-[280px] px-4 py-3 flex flex-col" style={{ minHeight: 340 }}>
                 {/* Day header */}
                 <div className="mb-2">
                   <p className="text-[9px] tracking-[0.3em] uppercase font-semibold mb-0.5"
@@ -224,6 +277,20 @@ function GlanceView({
                       <span className="text-[10px] font-semibold text-white/80">Arrive — {arrivalFlight.flightNumber}</span>
                       <span className="text-[9px] ml-auto text-white/40">{arrivalFlight.arrivalTime}</span>
                     </div>
+                  )}
+                  {isFirst && !arrivalFlight && tripFlight && (
+                    <a href={tripId ? `/trip/${tripId}/flights` : '#'} className="flex items-center gap-2 mb-1.5 pb-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                      <PaperPlane size={11} className="shrink-0 text-blue-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Flight → {tripFlight.destAirport}</span>
+                      <span className="text-[10px] ml-auto text-blue-400 shrink-0 font-medium group-hover:text-blue-300">Search</span>
+                    </a>
+                  )}
+                  {isFirst && hotel && (
+                    <a href={tripId ? `/trip/${tripId}/hotels` : '#'} className="flex items-center gap-2 mb-1.5 pb-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                      <MapPin size={11} className="shrink-0 text-amber-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Check-in — {hotel.name}</span>
+                      <span className="text-[10px] ml-auto text-amber-400/80 shrink-0 font-medium">{hotel.price ? `$${hotel.price}/n` : ''}</span>
+                    </a>
                   )}
 
                   {(['morning', 'afternoon', 'evening', 'latenight'] as const).map((tod) => {
@@ -263,8 +330,8 @@ function GlanceView({
                           } catch {}
                         }}
                       >
-                        <p className="text-[7px] font-bold tracking-[0.2em] uppercase mb-0.5"
-                          style={{ color: 'var(--magazine-accent, #c8a96a)', opacity: 0.7 }}>
+                        <p className="text-[8px] font-bold tracking-[0.2em] uppercase mb-0.5"
+                          style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
                           {config.label}
                         </p>
                         {group?.activities.map((activity) => {
@@ -334,11 +401,11 @@ function GlanceView({
                               <CatIcon size={9} className="shrink-0" style={{ color: catColor.primary }} />
                               <span
                                 onClick={() => onActivityClick?.(activity.id)}
-                                className="text-[11px] flex-1 truncate font-medium text-white/80 hover:text-white transition-colors cursor-pointer">
+                                className="text-[11px] flex-1 truncate font-semibold text-white hover:text-white transition-colors cursor-pointer">
                                 {activity.name}
                               </span>
                               {activity.timeDisplay && (
-                                <span className="text-[8px] text-white/30 shrink-0 tabular-nums">{activity.timeDisplay}</span>
+                                <span className="text-[9px] text-white/60 shrink-0 tabular-nums font-medium">{activity.timeDisplay}</span>
                               )}
                               <button
                                 onClick={(e) => {
@@ -377,6 +444,7 @@ function GlanceView({
                             query={searchQuery}
                             onChange={setSearchQuery}
                             onClose={() => { setSearchSlot(null); setSearchQuery(''); }}
+                            destination={destination}
                             onSelect={(place) => {
                               addActivity?.({
                                 id: `search-${Date.now()}`,
@@ -439,27 +507,35 @@ function GlanceView({
                     );
                   })}
 
+                  {isLast && hotel && (
+                    <a href={tripId ? `/trip/${tripId}/hotels` : '#'} className="flex items-center gap-2 mt-1.5 pt-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <MapPin size={11} className="shrink-0 text-blue-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Check-out — {hotel.name}</span>
+                      <span className="text-[10px] ml-auto text-white/60 shrink-0 font-medium">11 AM</span>
+                    </a>
+                  )}
                   {isLast && returnFlight && (
-                    <div className="flex items-center gap-2 mt-1 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <PaperPlane size={10} className="shrink-0 rotate-180" style={{ color: '#60a5fa' }} />
-                      <span className="text-[10px] font-semibold text-white/80">Depart — {returnFlight.flightNumber}</span>
-                      <span className="text-[9px] ml-auto text-white/40">{returnFlight.departureTime}</span>
+                    <div className="flex items-center gap-2 mt-1.5 pt-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <PaperPlane size={11} className="shrink-0 rotate-180" style={{ color: '#60a5fa' }} />
+                      <span className="text-[11px] font-semibold text-white">Depart — {returnFlight.flightNumber}</span>
+                      <span className="text-[10px] ml-auto text-white/60 font-medium">{returnFlight.departureTime}</span>
                     </div>
+                  )}
+                  {isLast && !returnFlight && tripFlight && (
+                    <a href={tripId ? `/trip/${tripId}/flights` : '#'} className="flex items-center gap-2 mt-1.5 pt-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <PaperPlane size={11} className="shrink-0 rotate-180 text-blue-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Flight home from {tripFlight.destAirport}</span>
+                      <span className="text-[10px] ml-auto text-blue-400 shrink-0 font-medium group-hover:text-blue-300">Search</span>
+                    </a>
                   )}
                 </div>
               </div>
 
-              {/* Right — destination image 60% */}
-              <div className="flex-1 relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImg} alt={day.dayLabel} className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
-                {/* Day label overlay at bottom */}
-                <div className="absolute bottom-3 right-3">
-                  <p className="text-sm font-bold text-white/60 font-serif" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
-                    {day.dayLabel}
-                  </p>
-                </div>
+              {/* Day label — bottom right over the image */}
+              <div className="absolute bottom-3 right-3 z-10">
+                <p className="text-sm font-bold text-white/60 font-serif" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                  {day.dayLabel}
+                </p>
               </div>
             </div>
           );
@@ -496,19 +572,64 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const selectedDay = days[selectedDayIndex] ?? null;
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [glanceMode, setGlanceMode] = useState(true);
+  const [compactOpen, setCompactOpen] = useState(false);
   const [selectedActivityIndex, setSelectedActivityIndex] = useState<number | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addCategory, setAddCategory] = useState('All');
   const [addSearch, setAddSearch] = useState('');
   const [browseIndex, setBrowseIndex] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
 
-  const arrivalFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
-  const returnFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
+  // Build hotel info from trip_context for itinerary display
+  const contextHotels = trip?.trip_context?.hotels ?? (trip?.trip_context as any)?.all_hotels ?? [];
+  const firstHotel = contextHotels[0] as any | undefined;
+
+  // Build flight info — destination airport from city name
+  const CITY_AIRPORTS: Record<string, string> = {
+    'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+    'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+    'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+    'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
+    'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
+    'Vienna': 'VIE', 'Dublin': 'DUB', 'Cancun': 'CUN', 'Reykjavik': 'KEF',
+  };
+  const city = trip?.destination?.split(',')[0]?.trim() ?? '';
+  const destAirport = CITY_AIRPORTS[city] || '';
+  const tripFlight = destAirport ? { destAirport, city } : null;
+
+  const arrivalFlight: MockFlightDetail | undefined = undefined;
+  const returnFlight: MockFlightDetail | undefined = undefined;
+
+  // Build discover items from trip context (explore_items + foursquare_venues)
+  const discoverItems: DiscoverItem[] = useMemo(() => {
+    const explore = trip?.trip_context?.explore_items ?? [];
+    const venues = trip?.trip_context?.foursquare_venues ?? [];
+    const seen = new Set<string>();
+    const items: DiscoverItem[] = [];
+    for (const item of explore) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      items.push({
+        id: item.id, name: item.title, description: item.description,
+        category: item.category, location: item.title,
+        images: item.image ? [item.image] : [], rating: 0, tags: item.tags ?? [],
+      });
+    }
+    for (const v of venues) {
+      if (seen.has(v.id)) continue;
+      seen.add(v.id);
+      items.push({
+        id: v.id, name: v.title || v.name || '', description: v.description || v.category || '',
+        category: v.category || 'venue', location: v.title || v.name || '',
+        images: v.image ? [v.image] : [], rating: v.rating ?? 0, tags: [],
+      });
+    }
+    return items;
+  }, [trip]);
 
   const filteredDiscoverItems = useMemo(() => {
-    let items: DiscoverItem[] = []; // TODO: wire up real discover/suggestions API
+    let items = discoverItems;
     if (addSearch) {
       const q = addSearch.toLowerCase();
       items = items.filter((i) =>
@@ -521,7 +642,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       items = items.filter((i) => i.category?.toLowerCase().includes(addCategory.toLowerCase()) ?? false);
     }
     return items;
-  }, [addSearch, addCategory]);
+  }, [discoverItems, addSearch, addCategory]);
 
   const handleAddItem = useCallback((item: DiscoverItem, timeOfDay: string) => {
     const todStartHours: Record<string, number> = { morning: 9, afternoon: 13, evening: 19, latenight: 22 };
@@ -587,10 +708,31 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     return items;
   }, [days]);
 
+  // Build map markers from activities, offset from trip center
   const mapLocations: MapLocation[] = useMemo(() => {
-    // TODO: wire up real activity coordinates from API
-    return [];
-  }, [selectedDay]);
+    if (!selectedDay) return [];
+    const locations: MapLocation[] = [];
+    const tripLat = trip?.trip_context?.lat;
+    const tripLng = trip?.trip_context?.lng;
+
+    for (const group of selectedDay.timeGroups) {
+      for (const activity of group.activities) {
+        const catColor = getActivityTypeColor(activity.category);
+        if (tripLat && tripLng) {
+          const offset = locations.length;
+          locations.push({
+            id: activity.id,
+            name: activity.name,
+            lat: tripLat + (Math.sin(offset * 1.2) * 0.008),
+            lng: tripLng + (Math.cos(offset * 1.2) * 0.008),
+            color: catColor.primary,
+            category: activity.category,
+          });
+        }
+      }
+    }
+    return locations;
+  }, [selectedDay, trip]);
 
   // Push markers to layout map
   // Push markers to layout map (but don't auto-open — user toggles via button)
@@ -634,12 +776,35 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     return () => observer.disconnect();
   }, [mapLocations, setSelectedMarkerId]);
 
+  const toPlaceItem = useCallback((item: DiscoverItem): PlaceItem => ({
+    id: item.id,
+    name: item.name,
+    image: item.images?.[0] || '',
+    images: item.images,
+    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
+    rating: item.rating || 0,
+    tagline: item.description || item.category || '',
+    category: item.category || '',
+    description: item.description,
+    tags: item.tags,
+    latitude: trip?.trip_context?.lat,
+    longitude: trip?.trip_context?.lng,
+    address: item.location,
+    website: item.bookingUrl,
+  }), [trip]);
+
   const handleActivityClick = useCallback(
     (activityId: string) => {
-      const idx = allActivities.findIndex((a) => a.id === activityId);
-      if (idx >= 0) setSelectedActivityIndex(idx);
+      const item = allActivities.find((a) => a.id === activityId);
+      if (item) {
+        setSelectedPlace(toPlaceItem(item));
+        if (mapLocations.length > 0) {
+          setRequestMapOpen(true);
+          setSelectedMarkerId(activityId);
+        }
+      }
     },
-    [allActivities],
+    [allActivities, toPlaceItem, mapLocations.length],
   );
 
   const toggleSectionCollapse = useCallback((timeOfDay: string) => {
@@ -647,8 +812,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     setAllCollapsedOverride(null);
   }, []);
 
-  if (isLoading) return <SkeletonItinerary />;
-  if (isEmpty) return <ItineraryEmpty />;
+  if (isLoading && days.length === 0) return <SkeletonItinerary />;
+  if (!isLoading && days.length === 0) return <ItineraryEmpty />;
 
   return (
     <div className="relative overflow-hidden">
@@ -705,14 +870,14 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 <Calendar size={13} className="text-white/70" />
               </a>
               <button
-                onClick={() => setGlanceMode((v) => !v)}
+                onClick={() => setCompactOpen((v) => !v)}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
                 style={{
                   border: '1px solid rgba(255,255,255,0.25)',
-                  backgroundColor: glanceMode ? 'rgba(255,255,255,0.2)' : 'transparent',
-                  color: glanceMode ? 'white' : 'rgba(255,255,255,0.7)',
+                  backgroundColor: compactOpen ? 'rgba(255,255,255,0.2)' : 'transparent',
+                  color: compactOpen ? 'white' : 'rgba(255,255,255,0.7)',
                 }}
-                title={glanceMode ? 'Detailed view' : 'At a glance'}
+                title={compactOpen ? 'Hide day details' : 'Show day details'}
               >
                 <LayoutList size={13} />
               </button>
@@ -732,31 +897,88 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
 
-      {/* Glance View — swipe through days */}
-      {glanceMode && (
+      {/* Glance View — always visible, swipe through days */}
         <GlanceView
           days={days}
           selectedDayIndex={selectedDayIndex}
           onSelectDay={setSelectedDayIndex}
           arrivalFlight={arrivalFlight}
           returnFlight={returnFlight}
+          hotel={firstHotel}
+          tripFlight={tripFlight}
+          tripId={id}
           onActivityClick={handleActivityClick}
           addActivity={addActivity}
           removeActivity={removeActivity}
           updateActivity={updateActivity}
           moveActivityBefore={moveActivityBefore}
+          destination={trip?.destination?.split(',')[0]?.trim()}
+          heroImages={trip?.trip_context?.hero_images}
         />
-      )}
 
       </section>
 
-      {/* Day Content (detailed view) */}
-      {!glanceMode && selectedDay && (
+      {/* ── COMPACT VIEW — detailed day breakdown ── */}
+      {compactOpen && selectedDay && (
+        <section className="mt-8">
+          <div className="mb-4">
+            <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
+              style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+              {selectedDay.dateLabel}
+            </p>
+            <h2 className="text-xl sm:text-2xl font-bold font-serif"
+              style={{ color: 'var(--magazine-heading, #1a1a2e)' }}>
+              {selectedDay.dayLabel} — {selectedDay.theme || 'Your Day'}
+            </h2>
+          </div>
         <div ref={contentRef}>
           {isFirstDay && arrivalFlight && (
             <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
           )}
-          {/* TODO: wire up real hotel check-in data */}
+          {/* Flight placeholder on first day — links to Flights tab */}
+          {isFirstDay && !arrivalFlight && tripFlight && (
+            <section className="mb-3.5">
+              <a href={`/trip/${id}/flights`} className="block rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--trip-base)' }}>
+                    <PaperPlane size={14} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Arrival Flight</p>
+                    <p className="text-sm font-medium text-gray-900">Flight to {tripFlight.city} ({tripFlight.destAirport})</p>
+                    <p className="text-[11px] text-gray-500">Tap to search and select your flight</p>
+                  </div>
+                  <span className="text-[11px] font-medium text-blue-600 group-hover:text-blue-800 shrink-0">Search →</span>
+                </div>
+              </a>
+            </section>
+          )}
+          {/* Hotel check-in on first day */}
+          {isFirstDay && firstHotel && (
+            <section className="mb-3.5">
+              <a href={`/trip/${id}/hotels`} className="block rounded-lg p-3 shadow-sm border border-amber-200/60 bg-gradient-to-r from-amber-50 to-orange-50 hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0">
+                    <MapPin size={14} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Hotel Check-in</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{firstHotel.name}</p>
+                    <p className="text-[11px] text-gray-500">
+                      {firstHotel.price ? `$${firstHotel.price}/night · ` : firstHotel.price_per_night ? `$${firstHotel.price_per_night}/night · ` : ''}
+                      {firstHotel.stars ? `${'★'.repeat(firstHotel.stars)} · ` : ''}
+                      Check-in 3:00 PM
+                    </p>
+                  </div>
+                  {firstHotel.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={firstHotel.image} alt={firstHotel.name} referrerPolicy="no-referrer" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  )}
+                  <span className="text-[11px] font-medium text-amber-600 group-hover:text-amber-800 shrink-0">Change →</span>
+                </div>
+              </a>
+            </section>
+          )}
 
           {selectedDay.timeGroups.map((group) => (
             <div key={group.timeOfDay}>
@@ -838,7 +1060,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                             accentColor="var(--trip-base)"
                             isFavorited={favorites.includes(item.id)}
                             onFavorite={toggleFavorite}
-                            onClick={() => setBrowseIndex(filteredDiscoverItems.indexOf(item))}
+                            onClick={() => setSelectedPlace(toPlaceItem(item))}
                             onAddToItinerary={() => handleAddItem(item, group.timeOfDay)}
                           />
                         ))}
@@ -856,12 +1078,43 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           ))}
 
-          {/* TODO: wire up real hotel data for non-first/non-last days */}
-
+          {/* Hotel checkout + return flight on last day */}
           {isLastDay && (
             <>
-              {/* TODO: wire up real hotel checkout data */}
+              {firstHotel && (
+                <section className="mb-3.5">
+                  <div className="rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+                        <MapPin size={14} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Hotel Check-out</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{firstHotel.name}</p>
+                        <p className="text-[11px] text-gray-500">Check-out 11:00 AM</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
               {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />}
+              {!returnFlight && tripFlight && (
+                <section className="mb-3.5">
+                  <a href={`/trip/${id}/flights`} className="block rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--trip-base)' }}>
+                        <PaperPlane size={14} className="text-white rotate-180" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Return Flight</p>
+                        <p className="text-sm font-medium text-gray-900">Flight home from {tripFlight.city} ({tripFlight.destAirport})</p>
+                        <p className="text-[11px] text-gray-500">Tap to search and select your flight</p>
+                      </div>
+                      <span className="text-[11px] font-medium text-blue-600 group-hover:text-blue-800 shrink-0">Search →</span>
+                    </div>
+                  </a>
+                </section>
+              )}
             </>
           )}
 
@@ -871,29 +1124,16 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           )}
         </div>
+        </section>
       )}
 
-      {/* Split Screen Modal — booked activities */}
-      {selectedActivityIndex !== null && allActivities.length > 0 && (
-        <SplitScreenModal
-          items={allActivities}
-          initialIndex={selectedActivityIndex}
-          accentColor="var(--trip-base)"
-          favorites={favorites}
-          onClose={() => setSelectedActivityIndex(null)}
-          onFavorite={toggleFavorite}
-        />
-      )}
-
-      {/* Split Screen Modal — browse/discover activities */}
-      {browseIndex !== null && filteredDiscoverItems.length > 0 && (
-        <SplitScreenModal
-          items={filteredDiscoverItems}
-          initialIndex={browseIndex}
-          accentColor="var(--trip-base)"
-          favorites={favorites}
-          onClose={() => setBrowseIndex(null)}
-          onFavorite={toggleFavorite}
+      {/* Detail overlay — same as places page */}
+      {selectedPlace && (
+        <PlaceDetailModal
+          place={selectedPlace}
+          isFavorited={favorites.includes(selectedPlace.id)}
+          onToggleFavorite={() => toggleFavorite(selectedPlace.id)}
+          onClose={() => { setSelectedPlace(null); setSelectedActivityIndex(null); setBrowseIndex(null); }}
         />
       )}
       </div>{/* end z-10 */}

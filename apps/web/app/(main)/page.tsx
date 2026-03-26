@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
 import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
-import type { FollowUpQuestion, PlanResponse } from "@travyl/shared";
+import type { FollowUpQuestion, PlanResponse, PlaceItem } from "@travyl/shared";
+import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -257,6 +258,7 @@ export default function Home() {
 
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [takeoffCompleted, setTakeoffCompleted] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const isSaving = useRef(false);
   const user = useAuthStore((s) => s.user);
 
@@ -304,16 +306,194 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — store plan for preview, no save needed yet
+        // Not logged in — save to Supabase with planner data in trip_context
+        // so the overview page has hotels, itinerary, budget immediately
         try {
-          sessionStorage.setItem('pendingPlan', JSON.stringify(plan));
-        } catch (_) {}
-        setTakeoffCompleted(true);
-        await new Promise((r) => setTimeout(r, 800));
-        setShowTakeoff(false);
-        planner.reset();
-        isSaving.current = false;
-        router.push('/trip/preview');
+          const ext = plan.extracted;
+          if (!ext?.destination) throw new Error('No destination extracted');
+          const dest = ext.destination;
+          const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
+
+          // Build explore_items from itinerary slots (attractions + restaurants)
+          const exploreFromPlan = (plan.itinerary ?? []).flatMap((day: any) =>
+            (day.slots ?? []).map((slot: any) => ({
+              id: slot.poi.id,
+              title: slot.poi.name,
+              description: slot.poi.description || slot.poi.category,
+              category: slot.poi.category,
+              image: slot.poi.photo_url,
+              tags: slot.poi.tags,
+            }))
+          );
+          // Deduplicate by id
+          const seenIds = new Set<string>();
+          const uniqueExplore = exploreFromPlan.filter((e: any) => {
+            if (seenIds.has(e.id)) return false;
+            seenIds.add(e.id);
+            return true;
+          });
+
+          // Build weather from itinerary day weather
+          const weatherForecast = (plan.itinerary ?? [])
+            .filter((d: any) => d.weather)
+            .map((d: any) => ({
+              day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+              date: d.date,
+              high: d.weather.high_c,
+              low: d.weather.low_c,
+              condition: d.weather.condition,
+              icon: d.weather.icon || '☀️',
+            }));
+
+          const res = await fetch('/api/trips/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              destination: `${dest.city}, ${dest.country}`,
+              start_date: ext.dates.start,
+              end_date: ext.dates.end,
+              travelers: ext.travelers.count,
+              budget: totalBudget,
+              currency: 'USD',
+              trip_context: {
+                lat: dest.lat,
+                lng: dest.lng,
+                hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+                hero_image_url: plan.destination_photo_url,
+                explore_items: uniqueExplore,
+                // Top 5 curated hotels from planner
+                hotels: (plan.hotels ?? []).map((h: any) => ({
+                  id: `hotel-${h.name.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name,
+                  category: 'Hotel',
+                  image: h.photo_url,
+                  rating: h.rating,
+                  ratingCount: h.review_count,
+                  price: h.price_per_night,
+                  totalPrice: h.total_price,
+                  currency: h.currency,
+                  stars: h.stars,
+                  amenities: h.amenities,
+                  address: h.address,
+                  link: h.link,
+                  lat: h.lat,
+                  lng: h.lng,
+                })),
+                // Full pool of 20 hotels from SerpAPI (Google Hotels)
+                all_hotels: ((plan as any).data?.hotels ?? []).map((h: any) => ({
+                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name,
+                  image: h.photo_url,
+                  rating: h.rating,
+                  ratingCount: h.review_count,
+                  price: h.price_per_night,
+                  totalPrice: h.total_price,
+                  currency: h.currency,
+                  stars: h.stars,
+                  amenities: h.amenities,
+                  address: h.address,
+                  link: h.link,
+                  lat: h.lat,
+                  lng: h.lng,
+                })),
+                // Events from SerpAPI (Google Events)
+                events: ((plan as any).data?.events ?? []).map((e: any) => ({
+                  id: e.id || `event-${e.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  title: e.name,
+                  date: e.date,
+                  time: e.time,
+                  venue: e.venue,
+                  description: e.description,
+                  category: e.category,
+                  image: e.photo_url,
+                  url: e.link,
+                  price: e.price,
+                  lat: e.lat,
+                  lng: e.lng,
+                })),
+                // Full POI pool from SerpAPI (40 places — all source: serpapi/Google)
+                foursquare_venues: ((plan as any).data?.pois ?? [])
+                  .filter((p: any) => !seenIds.has(p.id))
+                  .map((p: any) => ({
+                    id: p.id,
+                    title: p.name,
+                    name: p.name,
+                    description: p.description,
+                    category: p.category,
+                    image: p.photo_url,
+                    rating: p.rating,
+                    tags: p.tags,
+                  })),
+                weather: weatherForecast.length > 0 ? {
+                  forecast: weatherForecast,
+                  current: weatherForecast[0] ? {
+                    high: weatherForecast[0].high,
+                    low: weatherForecast[0].low,
+                    condition: weatherForecast[0].condition,
+                  } : undefined,
+                } : undefined,
+                quick_facts: {
+                  currency: ext.budget_level ? `${ext.budget_level} (~$${ext.daily_estimate_usd}/day)` : undefined,
+                  timezone: (plan as any).timezone,
+                },
+                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+                // Store full itinerary in trip_context so the itinerary page can render it
+                itinerary: (plan.itinerary ?? []).map((day: any) => ({
+                  day: day.day,
+                  date: day.date,
+                  weather: day.weather,
+                  slots: (day.slots ?? []).map((slot: any) => ({
+                    poi: slot.poi,
+                    start_time: slot.start_time,
+                    end_time: slot.end_time,
+                    start_time_12h: slot.start_time_12h,
+                    end_time_12h: slot.end_time_12h,
+                    travel_from_prev_min: slot.travel_from_prev_min,
+                  })),
+                })),
+              },
+              // Pass raw plan data so the API can save hotels/flights/itinerary to their own tables
+              hotels: plan.hotels ?? [],
+              flights: plan.flights ?? [],
+              itinerary: plan.itinerary ?? [],
+            }),
+          });
+          if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+            console.error('[Trip Create] Failed:', res.status, errBody);
+            throw new Error(`Save failed: ${res.status}`);
+          }
+          const trip = await res.json();
+          // Track in localStorage for anonymous persistence
+          try {
+            const stored = localStorage.getItem('my-trip-ids');
+            const ids: string[] = stored ? JSON.parse(stored) : [];
+            if (!ids.includes(trip.id)) ids.push(trip.id);
+            localStorage.setItem('my-trip-ids', JSON.stringify(ids));
+          } catch {}
+          // Enrich in background
+          fetch('/api/trips/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: trip.id }),
+          }).catch(() => {});
+          setTakeoffCompleted(true);
+          await new Promise((r) => setTimeout(r, 800));
+          setShowTakeoff(false);
+          planner.reset();
+          isSaving.current = false;
+          router.push(`/trip/${trip.id}`);
+        } catch (saveErr) {
+          console.error('[Trip Create] Caught:', saveErr);
+          // Fallback to preview if save fails
+          try { sessionStorage.setItem('pendingPlan', JSON.stringify(plan)); } catch {}
+          setTakeoffCompleted(true);
+          await new Promise((r) => setTimeout(r, 800));
+          setShowTakeoff(false);
+          planner.reset();
+          isSaving.current = false;
+          router.push('/trip/preview');
+        }
       }
     })();
   }, [planner.state.phase]);
@@ -552,7 +732,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentTrips.map((trip) => (
+              {recentTrips.map((trip: any) => (
                 <Link
                   key={trip.id}
                   href={`/trip/${trip.id}`}
@@ -652,7 +832,7 @@ export default function Home() {
 
       {/* ─── Static Content Sections ──────────────────────────── */}
       <HowItWorks onCtaPress={() => router.push("/trips")} />
-      <TravelMosaic />
+      <TravelMosaic onTileClick={(place) => setSelectedPlace(place)} />
 
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
       <ParallaxQuoteDivider ref={dividerRef} bgY={dividerBgY} />
@@ -665,6 +845,20 @@ export default function Home() {
 
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />
+
+      {/* ─── Place Detail Overlay ────────────────────────────── */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            isFavorited={false}
+            onToggleFavorite={() => {}}
+            onClose={() => setSelectedPlace(null)}
+            onNavigate={(p) => setSelectedPlace(p)}
+            onSearchTag={() => {}}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition

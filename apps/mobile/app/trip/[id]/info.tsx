@@ -13,41 +13,30 @@ interface InfoSection {
   items: { label: string; value: string; icon?: React.ComponentProps<typeof FontAwesome>['name'] }[];
 }
 
-const TRANSPORT_INFO: InfoSection = {
-  title: 'Getting Around',
-  icon: 'bus',
-  items: [
-    { label: 'Metro', value: 'Lines 1-14, RER A-E', icon: 'subway' },
-    { label: 'Bus', value: '350+ routes, 5:30am-12:30am', icon: 'bus' },
-    { label: 'Taxi', value: 'G7, Uber, Bolt available', icon: 'taxi' },
-    { label: 'Bike Share', value: "Velib' — 1,400+ stations", icon: 'bicycle' },
-  ],
-};
+// Build info sections dynamically from trip_context
+function buildEmergencySection(ctx: any): InfoSection {
+  const emergency = ctx?.quick_facts?.emergency || ctx?.country?.emergency || '112';
+  return {
+    title: 'Emergency Contacts',
+    icon: 'phone',
+    items: [
+      { label: 'Emergency', value: String(emergency), icon: 'exclamation-circle' },
+    ],
+  };
+}
 
-const EMERGENCY_CONTACTS: InfoSection = {
-  title: 'Emergency Contacts',
-  icon: 'phone',
-  items: [
-    { label: 'Emergency (EU)', value: '112', icon: 'exclamation-circle' },
-    { label: 'Police', value: '17', icon: 'shield' },
-    { label: 'Ambulance (SAMU)', value: '15', icon: 'ambulance' },
-    { label: 'Fire Brigade', value: '18', icon: 'fire-extinguisher' },
-    { label: 'US Embassy Paris', value: '+33 1 43 12 22 22', icon: 'flag' },
-  ],
-};
-
-const DESTINATION_TIPS: InfoSection = {
-  title: 'Destination Tips',
-  icon: 'lightbulb-o',
-  items: [
-    { label: 'Currency', value: 'Euro (EUR)', icon: 'eur' },
-    { label: 'Language', value: 'French (English widely spoken in tourist areas)', icon: 'language' },
-    { label: 'Time Zone', value: 'CET (UTC+1) / CEST (UTC+2 summer)', icon: 'clock-o' },
-    { label: 'Tipping', value: 'Service included; round up for good service', icon: 'money' },
-    { label: 'Power', value: 'Type C/E plugs, 230V', icon: 'plug' },
-    { label: 'Water', value: 'Tap water is safe to drink', icon: 'tint' },
-  ],
-};
+function buildDestinationTips(ctx: any): InfoSection {
+  const qf = ctx?.quick_facts;
+  const items: InfoSection['items'] = [];
+  if (qf?.currency) items.push({ label: 'Currency', value: qf.currency, icon: 'money' });
+  if (qf?.language) items.push({ label: 'Language', value: qf.language, icon: 'language' });
+  if (qf?.timezone) items.push({ label: 'Time Zone', value: qf.timezone, icon: 'clock-o' });
+  if (qf?.power) items.push({ label: 'Power', value: qf.power, icon: 'plug' });
+  if (qf?.water) items.push({ label: 'Water', value: qf.water, icon: 'tint' });
+  if (qf?.transport) items.push({ label: 'Transport', value: qf.transport, icon: 'bus' });
+  if (items.length === 0) items.push({ label: 'Info', value: 'Trip data loading...', icon: 'info-circle' });
+  return { title: 'Destination Tips', icon: 'lightbulb-o', items };
+}
 
 function weatherIcon(condition: string): React.ComponentProps<typeof FontAwesome>['name'] {
   const c = condition.toLowerCase();
@@ -120,8 +109,8 @@ function WeatherForecastCard({ forecast }: {
       </View>
       <View style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          {forecast.map((day) => (
-            <View key={day.day} style={{ alignItems: 'center', flex: 1 }}>
+          {forecast.map((day: any, idx: number) => (
+            <View key={day.date || day.day || idx} style={{ alignItems: 'center', flex: 1 }}>
               <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary, marginBottom: 6 }}>{day.day}</Text>
               <FontAwesome name={weatherIcon(day.condition)} size={20} color="#f59e0b" />
               <Text style={{ ...TextStyles.subhead, fontSize: 15, fontWeight: '700', color: ACCENT, marginTop: 4 }}>{day.high}°</Text>
@@ -135,14 +124,15 @@ function WeatherForecastCard({ forecast }: {
   );
 }
 
-function QuickLinksCard() {
+function QuickLinksCard({ city = 'Destination', country = '' }: { city?: string; country?: string }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
+  const dest = encodeURIComponent(`${city}, ${country}`.replace(/,\s*$/, ''));
   const links = [
-    { label: 'Google Maps', icon: 'map' as const, url: 'https://maps.google.com/?q=Paris,France' },
+    { label: 'Google Maps', icon: 'map' as const, url: `https://maps.google.com/?q=${dest}` },
     { label: 'Currency Converter', icon: 'exchange' as const, url: 'https://xe.com' },
-    { label: 'Translate', icon: 'language' as const, url: 'https://translate.google.com/?sl=en&tl=fr' },
-    { label: 'Local Time', icon: 'clock-o' as const, url: 'https://time.is/Paris' },
+    { label: 'Translate', icon: 'language' as const, url: `https://translate.google.com/?sl=en&tl=auto&text=Hello` },
+    { label: 'Local Time', icon: 'clock-o' as const, url: `https://time.is/${encodeURIComponent(city)}` },
   ];
 
   return (
@@ -181,7 +171,14 @@ export default function InfoScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
 
-  const forecast = trip?.trip_context?.weather?.forecast ?? [];
+  const ctx = trip?.trip_context as any;
+  const forecast = (ctx?.weather?.forecast ?? []).map((d: any) => ({
+    ...d,
+    day: d.day || (d.date ? new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : ''),
+    condition: d.condition || d.conditions || '',
+  }));
+  const cityName = trip?.destination?.split(',')[0]?.trim() || 'Destination';
+  const countryName = trip?.destination?.split(',').slice(1).join(',').trim() || '';
 
   if (isLoading) {
     return (
@@ -211,10 +208,9 @@ export default function InfoScreen() {
       </View>
 
       {forecast.length > 0 && <WeatherForecastCard forecast={forecast} />}
-      <InfoSectionCard section={TRANSPORT_INFO} />
-      <InfoSectionCard section={EMERGENCY_CONTACTS} />
-      <InfoSectionCard section={DESTINATION_TIPS} />
-      <QuickLinksCard />
+      <InfoSectionCard section={buildDestinationTips(ctx)} />
+      <InfoSectionCard section={buildEmergencySection(ctx)} />
+      <QuickLinksCard city={cityName} country={countryName} />
     </ScrollView>
   );
 }

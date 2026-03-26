@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { DiscoverItem } from '../types';
 
 // ─── Constants (shared between web + mobile) ──────────────────
@@ -35,12 +35,17 @@ export const RESTAURANT_SORT_OPTIONS: { key: RestaurantSortOption; label: string
 ];
 
 // ─── Hook ─────────────────────────────────────────────────────
-export function useRestaurantFilters() {
-  const allDining: DiscoverItem[] = [];
+export function useRestaurantFilters(externalItems?: DiscoverItem[]) {
+  const allDining: DiscoverItem[] = externalItems ?? [];
   const bookedItems = allDining.filter((d) => d.isBooked);
   const discoverItems = allDining.filter((d) => !d.isBooked);
 
-  const [viewMode, setViewMode] = useState<'booked' | 'discover'>('booked');
+  const [viewMode, setViewMode] = useState<'booked' | 'discover'>('discover');
+
+  // Switch to 'booked' once data loads with booked items
+  useEffect(() => {
+    if (bookedItems.length > 0) setViewMode('booked');
+  }, [bookedItems.length]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<RestaurantCategory>('All');
   const [cuisineSubFilter, setCuisineSubFilter] = useState('');

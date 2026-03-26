@@ -20,7 +20,7 @@ export function SuggestionDetailDrawer({
   const [isImageHovered, setIsImageHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
 
-  const images = (suggestion.imageUrls ?? []).filter((u) => !failedUrls.has(u))
+  const images = (suggestion.imageUrl ? [suggestion.imageUrl] : []).filter((u) => !failedUrls.has(u))
   const hasMultiple = images.length > 1
   const tagColor = getActivityColor(suggestion.category)
 

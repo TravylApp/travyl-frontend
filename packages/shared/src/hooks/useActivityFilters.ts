@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { DiscoverItem } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 
@@ -88,6 +88,11 @@ export function useActivityFilters(days: ItineraryDayViewModel[]) {
   const discoverItems: DiscoverItem[] = [];
 
   const [viewMode, setViewMode] = useState<'booked' | 'discover'>('discover');
+
+  // Switch to 'booked' once itinerary loads with activities
+  useEffect(() => {
+    if (bookedItems.length > 0) setViewMode('booked');
+  }, [bookedItems.length]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ActivityFilterCategory>('All');
   const [activitySubFilter, setActivitySubFilter] = useState('');
