@@ -80,7 +80,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
       <Section icon={<Clock className="w-3.5 h-3.5" />} title="Getting There">
         <p className="text-xs text-gray-600 dark:text-[#cdd9e5]">
           {data.logistics.travelTimeMinutes !== null
-            ? <>~{data.logistics.travelTimeMinutes} min drive from <span className="font-medium">{data.logistics.previousActivityName}</span> ({data.logistics.distanceKm?.toFixed(1)} km)</>
+            ? <>~{data.logistics.travelTimeMinutes} min drive from <span className="font-medium">{data.logistics.previousActivityName}</span> ({data.logistics.distanceKm?.toFixed(1) ?? '?'} km)</>
             : 'First activity of the day'}
         </p>
         {data.conflicts.travelTime && (
@@ -105,7 +105,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
       <Section icon={<Wallet className="w-3.5 h-3.5" />} title="Budget">
         <p className="text-xs text-gray-600 dark:text-[#cdd9e5]">
           {activity.price !== undefined && activity.price !== null
-            ? `Estimated cost: ${activity.price} ${activity.price !== null ? (activity as any).currency ?? '' : ''}`
+            ? `Estimated cost: ${activity.price}`
             : 'No cost estimate'}
         </p>
       </Section>
