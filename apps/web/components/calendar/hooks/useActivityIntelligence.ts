@@ -48,7 +48,7 @@ export function useActivityIntelligence(
   tripId: string,
 ) {
   return useQuery({
-    queryKey: ['activity-intelligence', activityId],
+    queryKey: ['activity-intelligence', activityId, tripId],
     queryFn: () => fetchActivityIntelligence(activityId!, tripId),
     enabled: !!activityId,
     staleTime: STALE_TIME,
