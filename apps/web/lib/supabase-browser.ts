@@ -1,6 +1,11 @@
 import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-export function getSupabaseBrowser() {
+let client: SupabaseClient | null = null
+
+export function getSupabaseBrowser(): SupabaseClient {
+  if (client) return client
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
@@ -13,5 +18,6 @@ export function getSupabaseBrowser() {
     )
   }
 
-  return createBrowserClient(url, key)
+  client = createBrowserClient(url, key)
+  return client
 }

@@ -2,31 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import * as Y from 'yjs'
 import { supabase, toCalendarActivity, type ActivityRow, type Trip } from '@travyl/shared'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
-
-const CALENDAR_ACTIVITY_KEYS = [
-  'id',
-  'title',
-  'type',
-  'day',
-  'endDay',
-  'startHour',
-  'duration',
-  'location',
-  'image',
-  'rating',
-  'price',
-  'notes',
-  'color',
-  'latitude',
-  'longitude',
-  'sortOrder',
-  'pollResult',
-  'flightNumber',
-  'airline',
-  'checkIn',
-  'checkOut',
-  'bookingRef',
-] as const
+import { CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
 
 interface UseTripActivitiesReturn {
   trip: Trip | null

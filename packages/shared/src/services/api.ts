@@ -19,50 +19,60 @@ export async function fetchSavedItems(): Promise<SavedItem[]> {
   return data ?? [];
 }
 
-export async function fetchProfile(userId: string): Promise<Profile> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  if (error) throw error;
-  return data;
+export async function fetchProfile(userId: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error) return null;
+    return data;
+  } catch { return null; }
 }
 
 // ─── Home Page Data ──────────────────────────────────────────
 
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
-  const { data, error } = await supabase
-    .from('mosaic_tiles')
-    .select('*')
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase
+      .from('mosaic_tiles')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) return [];
+    return data ?? [];
+  } catch { return []; }
 }
 
 export async function fetchInspirationCards(): Promise<InspirationCard[]> {
-  const { data, error } = await supabase
-    .from('inspiration_cards')
-    .select('*')
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase
+      .from('inspiration_cards')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) return [];
+    return data ?? [];
+  } catch { return []; }
 }
 
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
-  const { data, error } = await supabase
-    .from('explore_rows')
-    .select('*, items:explore_items(*)');
-  if (error) throw error;
-  return data ?? [];
+  try {
+    const { data, error } = await supabase
+      .from('explore_rows')
+      .select('*, items:explore_items(*)');
+    if (error) return [];
+    return data ?? [];
+  } catch { return []; }
 }
 
 export async function fetchHeroConfig(): Promise<HeroConfig | null> {
-  const { data, error } = await supabase
-    .from('hero_config')
-    .select('*, suggestions:hero_suggestions(*)');
-  if (error) throw error;
-  return data?.[0] ?? null;
+  try {
+    const { data, error } = await supabase
+      .from('hero_config')
+      .select('*, suggestions:hero_suggestions(*)');
+    if (error) return null;
+    return data?.[0] ?? null;
+  } catch { return null; }
 }
 
 // ─── Itinerary Data ─────────────────────────────────────────
@@ -79,11 +89,14 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
+// These tables don't exist yet — data lives in trip_context JSONB.
+// Pages already fall back to trip_context when these return empty.
+// TODO: Create these tables when we need per-item CRUD (booking, reordering).
 export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWithActivities[]> {
   const { data, error } = await supabase
     .from('itinerary_days').select('*, activities(*)')
     .eq('trip_id', tripId).order('day_number', { ascending: true });
-  if (error) throw error;
+  if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return (data ?? []).map((day: any) => ({
     ...day,
     activities: (day.activities ?? []).sort(
@@ -96,7 +109,7 @@ export async function fetchFlights(tripId: string): Promise<Flight[]> {
   const { data, error } = await supabase
     .from('flights').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
-  if (error) throw error;
+  if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return data ?? [];
 }
 
@@ -104,7 +117,7 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
   const { data, error } = await supabase
     .from('hotels').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
-  if (error) throw error;
+  if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return data ?? [];
 }
 
@@ -301,11 +314,9 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
     .from('trips')
     .select('*')
     .eq('share_link_token', token)
-    .single();
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw error;
-  }
+    .maybeSingle();
+  if (error || !data) return null;
+  if (data.visibility === 'private') return null;
   return data;
 }
 
@@ -475,35 +486,6 @@ export async function inviteCollaborator(tripId: string, email: string, role: Co
   return data
 }
 
-// ── Trip Notes ─────────────────────────────────────────
-
-export async function fetchTripNotes(tripId: string): Promise<TripNote[]> {
-  const { data, error } = await supabase.from('trip_notes').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
-  if (error) throw error
-  return data ?? []
-}
-
-export async function createTripNote(tripId: string, userId: string, day: number, hour: number, color: string): Promise<TripNote> {
-  const { data, error } = await supabase.from('trip_notes').insert({ trip_id: tripId, user_id: userId, day, hour, text: '', color }).select().single()
-  if (error) throw error
-  return data
-}
-
-export async function updateTripNote(noteId: string, text: string): Promise<void> {
-  const { error } = await supabase.from('trip_notes').update({ text }).eq('id', noteId)
-  if (error) throw error
-}
-
-export async function moveTripNote(noteId: string, day: number, hour: number): Promise<void> {
-  const { error } = await supabase.from('trip_notes').update({ day, hour }).eq('id', noteId)
-  if (error) throw error
-}
-
-export async function deleteTripNote(noteId: string): Promise<void> {
-  const { error } = await supabase.from('trip_notes').delete().eq('id', noteId)
-  if (error) throw error
-}
-
 // ─── Save AI Plan to Supabase ─────────────────────────────
 
 interface PlanToSave {
@@ -572,6 +554,7 @@ export async function savePlanToSupabase(
     status: 'planning',
     is_generated: true,
     trip_context: {
+      hero_image_url: plan.destination_photo_url || null,
       hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
       quick_facts: {
         budget_level: ext.budget_level,
@@ -656,19 +639,31 @@ export async function savePlanToSupabase(
 
   // 3. Save hotels (best effort)
   if (plan.hotels.length > 0) {
-    const hotelRows = plan.hotels.map(h => ({
-      trip_id: tripId,
-      data: {
-        name: h.name,
-        price_per_night: h.price_per_night,
-        currency: h.currency,
-        rating: h.rating || null,
-        star_rating: h.stars,
-        image_url: h.photo_url || null,
-        check_in: ext.dates.start,
-        check_out: ext.dates.end,
-      },
-    }))
+    const hotelRows = plan.hotels.map(h => {
+      // Backend may return extra fields beyond the TS interface (lat, lng, amenities, link, etc.)
+      const extra = h as Record<string, unknown>
+      return {
+        trip_id: tripId,
+        data: {
+          name: h.name,
+          address: (extra.address as string) || null,
+          latitude: (extra.lat as number) || null,
+          longitude: (extra.lng as number) || null,
+          price_per_night: h.price_per_night,
+          total_price: (extra.total_price as number) || (h.price_per_night ? h.price_per_night * ext.duration_days : null),
+          currency: h.currency,
+          rating: h.rating || null,
+          star_rating: h.stars || null,
+          image_url: h.photo_url || null,
+          check_in: ext.dates.start,
+          check_out: ext.dates.end,
+          booking_ref: null,
+          offer_id: null,
+          amenities: (extra.amenities as string[]) || [],
+          booking_url: h.booking_url || (extra.link as string) || null,
+        },
+      }
+    })
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
     if (hotelErr) console.error('Failed to save hotels:', hotelErr)
   }
@@ -677,14 +672,45 @@ export async function savePlanToSupabase(
 
   // 4. Save flights (best effort)
   if (plan.flights.length > 0) {
-    const flightRows = plan.flights.map(f => ({
+    // City-to-IATA lookup for destination airport
+    const CITY_AIRPORTS: Record<string, string> = {
+      'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+      'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+      'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+      'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
+      'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
+      'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
+      'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
+      'Milan': 'MXP', 'Vienna': 'VIE', 'Zurich': 'ZRH', 'Dublin': 'DUB',
+      'Edinburgh': 'EDI', 'Florence': 'FLR', 'Venice': 'VCE', 'Nice': 'NCE',
+      'Cancun': 'CUN', 'Havana': 'HAV', 'Lima': 'LIM', 'Bogota': 'BOG',
+      'Buenos Aires': 'EZE', 'Santiago': 'SCL', 'Reykjavik': 'KEF',
+      'Oslo': 'OSL', 'Stockholm': 'ARN', 'Copenhagen': 'CPH', 'Helsinki': 'HEL',
+      'Warsaw': 'WAW', 'Budapest': 'BUD', 'Bucharest': 'OTP',
+      'Kuala Lumpur': 'KUL', 'Jakarta': 'CGK', 'Manila': 'MNL',
+      'Taipei': 'TPE', 'Osaka': 'KIX', 'Beijing': 'PEK', 'Shanghai': 'PVG',
+      'Johannesburg': 'JNB', 'Casablanca': 'CMN', 'Doha': 'DOH',
+      'Abu Dhabi': 'AUH', 'Muscat': 'MCT', 'Riyadh': 'RUH',
+    }
+    const destCity = dest.city
+    const destIata = CITY_AIRPORTS[destCity] || ''
+
+    const flightRows = plan.flights.map((f) => ({
       trip_id: tripId,
       data: {
         airline: f.airline,
+        flight_number: null,
+        origin_iata: '',
+        origin_name: null,
+        dest_iata: destIata,
+        dest_name: destCity,
         departure_at: f.departure_time,
         arrival_at: f.arrival_time,
         price: f.price,
         currency: f.currency,
+        cabin_class: null,
+        booking_ref: null,
+        offer_id: null,
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)

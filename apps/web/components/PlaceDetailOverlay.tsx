@@ -448,6 +448,7 @@ export function PlaceDetailOverlay({
                   </div>
                 }>
                   <LeafletMap
+                    key={`detail-map-${currentPlace.latitude}-${currentPlace.longitude}`}
                     lat={currentPlace.latitude!}
                     lng={currentPlace.longitude!}
                     label={currentPlace.name}

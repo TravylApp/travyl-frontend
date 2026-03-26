@@ -1,6 +1,7 @@
 'use client';
 
-import { use } from 'react';
+import React, { use } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const ResponsiveMasonry = dynamic(
@@ -82,7 +83,40 @@ function RestaurantsSkeleton() {
 
 export default function Restaurants({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
+  const router = useRouter();
+  const { trip, isLoading } = useItineraryScreen(id);
+
+  // Build restaurant items from trip_context
+  const diningItems = React.useMemo(() => {
+    const ctx = trip?.trip_context as any;
+    if (!ctx) return [];
+    const items: any[] = [];
+    const seen = new Set<string>();
+    // TripAdvisor restaurants (best data)
+    for (const r of ctx?.restaurants ?? []) {
+      if (r.name && !seen.has(r.name)) {
+        seen.add(r.name);
+        items.push({ id: r.id, name: r.name, description: r.tip || r.category || 'Restaurant', category: 'Restaurant', cuisine: r.cuisines?.[0] || r.category, image: r.image, images: r.images || [], tags: r.cuisines || [r.category || 'Dining'], rating: r.rating, reviewCount: r.reviewCount, priceLevel: r.priceLevel, address: r.address, website: r.website });
+      }
+    }
+    // Foursquare venues that are food-related
+    for (const v of ctx?.foursquare_venues ?? []) {
+      const cat = (v.category || '').toLowerCase();
+      if ((cat.includes('restaurant') || cat.includes('food') || cat.includes('café') || cat.includes('bar')) && v.name && !seen.has(v.name)) {
+        seen.add(v.name);
+        items.push({ id: v.id, name: v.title || v.name, description: v.description || cat, category: 'Restaurant', cuisine: cat, image: v.image, images: [], tags: [cat], rating: v.rating });
+      }
+    }
+    // Explore items that are dining
+    for (const e of ctx?.explore_items ?? []) {
+      const cat = (e.category || '').toLowerCase();
+      if ((cat.includes('culinary') || cat.includes('food') || cat.includes('restaurant') || cat.includes('dining')) && e.title && !seen.has(e.title)) {
+        seen.add(e.title);
+        items.push({ id: e.id, name: e.title, description: e.description || cat, category: 'Restaurant', cuisine: cat, image: e.image, images: [], tags: e.tags || [cat] });
+      }
+    }
+    return items;
+  }, [trip]);
 
   const {
     viewMode, setViewMode,
@@ -95,7 +129,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
     bookedCount,
     discoverCount,
     clearFilters,
-  } = useRestaurantFilters();
+  } = useRestaurantFilters(diningItems);
 
   if (isLoading) return <RestaurantsSkeleton />;
 
@@ -277,6 +311,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
                       accentColor={ACCENT}
                       isFavorited={favorites.includes(item.id)}
                       onFavorite={toggleFavorite}
+                      onClick={() => router.push(`/trip/${id}/restaurants/${item.id}`)}
                       onAddToItinerary={!item.isBooked ? () => {} : undefined}
                       onRemoveFromItinerary={item.isBooked ? () => {} : undefined}
                     />

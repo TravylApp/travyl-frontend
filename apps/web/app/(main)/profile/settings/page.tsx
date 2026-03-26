@@ -15,6 +15,7 @@ import { fetchProfile } from '@travyl/shared';
 import type { Profile } from '@travyl/shared';
 
 // ─── Types ─────────────────────────────────────────────
+import { useSettingsStore } from '@travyl/shared';
 type TabId = 'profile' | 'travel-style' | 'notifications' | 'account';
 
 interface NotificationPreferences {

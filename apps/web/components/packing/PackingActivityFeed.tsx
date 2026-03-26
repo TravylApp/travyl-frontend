@@ -9,6 +9,7 @@ import { stringToColor } from './utils'
 interface PackingActivityFeedProps {
   entries: PackingAuditEntry[]
   defaultCollapsed?: boolean
+  currentUserId?: string
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -38,18 +39,27 @@ function actionLabel(action: PackingAuditEntry['action']): string {
     case 'packed': return 'packed'
     case 'unpacked': return 'unpacked'
     case 'removed': return 'removed'
+    case 'claimed': return 'claimed'
+    case 'released': return 'released'
+    case 'transferred': return 'transferred'
+    default: return action
   }
 }
 
-export function PackingActivityFeed({ entries, defaultCollapsed = false }: PackingActivityFeedProps) {
+export function PackingActivityFeed({ entries, defaultCollapsed = false, currentUserId }: PackingActivityFeedProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+  const [filterMine, setFilterMine] = useState(false)
+
+  const displayEntries = filterMine && currentUserId
+    ? entries.filter((e) => e.user_id === currentUserId)
+    : entries
 
   const content = (
     <div className="flex flex-col gap-2">
-      {entries.length === 0 ? (
+      {displayEntries.length === 0 ? (
         <p className="text-xs text-[var(--cal-text-muted)] py-1">No activity yet.</p>
       ) : (
-        entries.map((entry) => {
+        displayEntries.map((entry) => {
           const displayName = entry.user_display_name ?? 'Someone'
           const avatarColor = stringToColor(displayName)
 
@@ -70,6 +80,9 @@ export function PackingActivityFeed({ entries, defaultCollapsed = false }: Packi
                   <span className="font-medium">{displayName}</span>{' '}
                   <span className="text-[var(--cal-text-muted)]">{actionLabel(entry.action)}</span>{' '}
                   <span className="font-medium">{entry.item_name}</span>
+                  {entry.action === 'transferred' && entry.target_display_name && (
+                    <> → <span className="font-medium">{entry.target_display_name}</span></>
+                  )}
                 </p>
                 <p className="text-[10px] text-[var(--cal-text-muted)] mt-0.5">
                   {formatRelativeTime(entry.created_at)}
@@ -85,9 +98,21 @@ export function PackingActivityFeed({ entries, defaultCollapsed = false }: Packi
   if (!defaultCollapsed) {
     return (
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)] mb-3">
-          Activity
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)]">
+            Activity
+          </h3>
+          <div className="flex gap-1">
+            <button onClick={() => setFilterMine(false)}
+              className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+              All
+            </button>
+            <button onClick={() => setFilterMine(true)}
+              className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+              Mine
+            </button>
+          </div>
+        </div>
         {content}
       </div>
     )
@@ -96,19 +121,31 @@ export function PackingActivityFeed({ entries, defaultCollapsed = false }: Packi
   return (
     <div>
       {/* Collapsible toggle */}
-      <button
-        onClick={() => setIsCollapsed((v) => !v)}
-        className="flex items-center gap-1.5 w-full text-left mb-2"
-      >
-        {isCollapsed ? (
-          <NavArrowRight width={13} height={13} className="text-[var(--cal-text-muted)] shrink-0" />
-        ) : (
-          <NavArrowDown width={13} height={13} className="text-[var(--cal-text-muted)] shrink-0" />
-        )}
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)]">
-          Activity Feed
-        </span>
-      </button>
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={() => setIsCollapsed((v) => !v)}
+          className="flex items-center gap-1.5 text-left"
+        >
+          {isCollapsed ? (
+            <NavArrowRight width={13} height={13} className="text-[var(--cal-text-muted)] shrink-0" />
+          ) : (
+            <NavArrowDown width={13} height={13} className="text-[var(--cal-text-muted)] shrink-0" />
+          )}
+          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)]">
+            Activity Feed
+          </span>
+        </button>
+        <div className="flex gap-1">
+          <button onClick={() => setFilterMine(false)}
+            className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+            All
+          </button>
+          <button onClick={() => setFilterMine(true)}
+            className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+            Mine
+          </button>
+        </div>
+      </div>
 
       <AnimatePresence initial={false}>
         {!isCollapsed && (

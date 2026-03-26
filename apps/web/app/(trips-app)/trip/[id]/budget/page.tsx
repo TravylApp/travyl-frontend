@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import {
   Plane, Building2, UtensilsCrossed, Compass, Car, ShoppingBag,
   MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
@@ -214,12 +214,54 @@ function categoryHealthBg(pct: number): { className: string; style?: React.CSSPr
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+function generateBudgetFromTrip(trip: any): BudgetItem[] {
+  if (!trip) return INITIAL_BUDGET;
+  const ctx = trip.trip_context as any;
+  const cost = ctx?.cost_of_living;
+  const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
+  const duration = trip.start_date && trip.end_date
+    ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
+    : ctx?.weather?.forecast?.length ?? 5;
+  const travelers = trip.travelers ?? 1;
+
+  // Use real prices from enrichment where available
+  const hotelPrice = (hotel?.price ?? hotel?.price_per_night ?? 0) * duration;
+  const mealBudget = cost?.budget_meal ? parseFloat(String(cost.budget_meal).replace(/[^0-9.]/g, '')) : 0;
+  const midMeal = cost?.mid_range_meal ? parseFloat(String(cost.mid_range_meal).replace(/[^0-9.]/g, '')) : 0;
+  const dailyFood = (mealBudget + midMeal) || 40;
+  const transport = cost?.public_transport ? parseFloat(String(cost.public_transport).replace(/[^0-9.]/g, '')) : 5;
+  const totalBudget = trip.budget ?? (hotelPrice + dailyFood * duration + transport * duration + 200);
+
+  return [
+    { id: 'flights', category: 'Flights', budgeted: Math.round(totalBudget * 0.25), actual: 0, fixed: true, expenses: [] },
+    { id: 'hotels', category: 'Hotels', budgeted: hotelPrice || Math.round(totalBudget * 0.30), actual: 0, fixed: true, expenses: hotelPrice ? [
+      { id: 'h1', description: `${hotel?.name || 'Hotel'} (${duration} nights × $${hotel?.price ?? hotel?.price_per_night ?? 0})`, amount: hotelPrice },
+    ] : [] },
+    { id: 'food', category: 'Food & Dining', budgeted: Math.round(dailyFood * duration * travelers), actual: 0, fixed: false, expenses: [
+      { id: 'fd1', description: `~$${Math.round(dailyFood)}/day × ${duration} days`, amount: 0 },
+    ] },
+    { id: 'activities', category: 'Activities', budgeted: Math.round(duration * 25 * travelers), actual: 0, fixed: false, expenses: [] },
+    { id: 'transportation', category: 'Transportation', budgeted: Math.round(transport * duration * travelers), actual: 0, fixed: false, expenses: [
+      { id: 't1', description: `~$${Math.round(transport)}/day × ${duration} days`, amount: 0 },
+    ] },
+    { id: 'shopping', category: 'Shopping', budgeted: Math.round(duration * 15), actual: 0, fixed: false, expenses: [] },
+    { id: 'other', category: 'Other', budgeted: 50, actual: 0, fixed: false, expenses: [] },
+  ];
+}
+
 export default function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading } = useItineraryScreen(id);
+  const { isLoading, trip } = useItineraryScreen(id);
 
   /* ---- state ---- */
-  const [budgetData, setBudgetData] = useState<BudgetItem[]>(INITIAL_BUDGET);
+  const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (trip && !seeded.current) {
+      setBudgetData(generateBudgetFromTrip(trip));
+      seeded.current = true;
+    }
+  }, [trip]);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotal, setTempTotal] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);

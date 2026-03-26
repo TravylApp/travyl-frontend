@@ -62,6 +62,7 @@ function planToData(plan: PlanResponse) {
       const activity: ActivityViewModel = {
         id: slot.poi.id || `slot-${day.day}-${i}`,
         name: slot.poi.name,
+        image: slot.poi.photo_url || '',
         category: slot.poi.category,
         locationName: slot.poi.name,
         startTime: start12,

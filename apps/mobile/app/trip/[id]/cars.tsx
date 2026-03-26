@@ -786,8 +786,8 @@ export default function CarRentalScreen() {
   const ACCENT = useTabAccent('cars');
   const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [booked, setBooked] = useState(true);
-  const [confirmationNumber, setConfirmationNumber] = useState(BOOKED_RENTAL.confirmation);
+  const [booked, setBooked] = useState(false);
+  const [confirmationNumber, setConfirmationNumber] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CarCategory>('All');
 
   const booking = BOOKED_RENTAL;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, ITINERARY_COLORS, TextStyles, FontFamily } from '@travyl/shared';
+import { Navy, ITINERARY_COLORS, TextStyles, FontFamily, formatCurrency } from '@travyl/shared';
 import type { FlightViewModel } from '@travyl/shared';
 import type { MockFlightDetail } from '@travyl/shared';
 
@@ -26,9 +26,6 @@ function statusColor(status: MockFlightDetail['status']) {
   }
 }
 
-function formatCurrency(amount: number, currency: string) {
-  return `${currency === 'USD' ? '$' : currency + ' '}${amount.toLocaleString()}`;
-}
 
 /* ── component ───────────────────────────────────────────── */
 

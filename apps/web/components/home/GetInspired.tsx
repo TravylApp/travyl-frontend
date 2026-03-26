@@ -2,15 +2,72 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion, type PanInfo } from "motion/react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
 import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
-import type { PlaceItem as PlaceItemType } from '@travyl/shared';
-
-const MOCK_PLACES: PlaceItemType[] = [];
 import type { PlaceItem } from "@travyl/shared";
+import { useQuery } from "@tanstack/react-query";
 
-const INSPIRED_PLACES = MOCK_PLACES.slice(0, 8);
+const ALL_INSPIRE_CITIES = [
+  { lat: '48.8566', lng: '2.3522' },   // Paris
+  { lat: '35.6762', lng: '139.6503' }, // Tokyo
+  { lat: '41.9028', lng: '12.4964' },  // Rome
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '41.3874', lng: '2.1686' },   // Barcelona
+  { lat: '51.5074', lng: '-0.1278' },  // London
+  { lat: '40.7128', lng: '-74.0060' }, // New York
+  { lat: '25.2048', lng: '55.2708' },  // Dubai
+  { lat: '-8.4095', lng: '115.1889' }, // Bali
+  { lat: '37.9838', lng: '23.7275' },  // Athens
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '37.7749', lng: '-122.4194' }, // San Francisco
+  { lat: '-22.9068', lng: '-43.1729' }, // Rio
+  { lat: '38.7223', lng: '-9.1393' },  // Lisbon
+  { lat: '52.3676', lng: '4.9041' },   // Amsterdam
+  { lat: '55.6761', lng: '12.5683' },  // Copenhagen
+  { lat: '19.4326', lng: '-99.1332' }, // Mexico City
+  { lat: '1.3521', lng: '103.8198' },  // Singapore
+  { lat: '-33.9249', lng: '18.4241' }, // Cape Town
+  { lat: '31.6295', lng: '-7.9811' },  // Marrakech
+];
+
+const INSPIRE_CATEGORIES = ['sightseeing', 'restaurant', 'museum', 'park', 'landmark', 'cafe'];
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+async function fetchInspiredPlaces(): Promise<PlaceItem[]> {
+  // Pick 6 random cities and 3 random categories each time
+  const cities = shuffle(ALL_INSPIRE_CITIES).slice(0, 6);
+  const cats = shuffle(INSPIRE_CATEGORIES).slice(0, 3);
+
+  const results = await Promise.all(
+    cities.flatMap((city) =>
+      cats.map(async (cat) => {
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=3`);
+        if (!res.ok) return [];
+        return res.json() as Promise<PlaceItem[]>;
+      })
+    )
+  );
+
+  // Deduplicate and filter out places with no image
+  const seen = new Set<string>();
+  const places = results.flat().filter((p) => {
+    if (!p.name || !p.image || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+
+  // Shuffle and return up to 20
+  return shuffle(places).slice(0, 20);
+}
+
 const SWIPE_THRESHOLD = 80;
 
 function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolean }) {
@@ -22,13 +79,12 @@ function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolea
 
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden bg-black relative group">
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={images[imgIdx]}
         alt={place.name}
-        fill
-        className="object-cover"
-        sizes="(max-width: 640px) 85vw, 380px"
-        priority={isFront}
+        referrerPolicy="no-referrer"
+        className="absolute inset-0 w-full h-full object-cover"
       />
 
       {/* Gradient */}
@@ -209,9 +265,11 @@ export function GetInspired() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const cards = INSPIRED_PLACES;
-
-  if (cards.length === 0) return null;
+  const { data: cards = [] } = useQuery({
+    queryKey: ['inspired-places'],
+    queryFn: fetchInspiredPlaces,
+    staleTime: 10 * 60 * 1000,
+  });
 
   // Reset flip when card changes
   useEffect(() => {
@@ -242,6 +300,8 @@ export function GetInspired() {
     if (info.offset.x < -SWIPE_THRESHOLD) goNext();
     else if (info.offset.x > SWIPE_THRESHOLD) goPrev();
   };
+
+  if (cards.length === 0) return null;
 
   const prevIdx = currentIdx === 0 ? cards.length - 1 : currentIdx - 1;
   const nextIdx = (currentIdx + 1) % cards.length;
@@ -281,10 +341,9 @@ export function GetInspired() {
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
-            className="text-2xl md:text-3xl text-foreground mb-1"
+            className="text-2xl md:text-3xl font-serif font-normal text-foreground mb-1 tracking-wide"
           >
-            <span className="font-extrabold">Get</span>{" "}
-            <span className="font-normal italic">Inspired</span>
+            Get <span className="italic">Inspired</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 10 }}

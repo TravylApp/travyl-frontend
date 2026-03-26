@@ -19,10 +19,7 @@ export interface DayViewProps {
   onContextMenu?: (id: string, x: number, y: number) => void
   polls?: Map<string, Poll>
   pollUserId?: string
-  tripOwnerId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
-  onRestorePoll?: (activityId: string) => void
-  onRemovePollActivity?: (activityId: string) => void
 }
 
 export function DayView({
@@ -40,10 +37,7 @@ export function DayView({
   onContextMenu,
   polls,
   pollUserId,
-  tripOwnerId,
   onVotePoll,
-  onRestorePoll,
-  onRemovePollActivity,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -67,10 +61,7 @@ export function DayView({
           onContextMenu={onContextMenu}
           polls={polls}
           pollUserId={pollUserId}
-          tripOwnerId={tripOwnerId}
           onVotePoll={onVotePoll}
-          onRestorePoll={onRestorePoll}
-          onRemovePollActivity={onRemovePollActivity}
         />
       </div>
     </div>

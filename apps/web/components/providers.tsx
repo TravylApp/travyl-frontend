@@ -1,10 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { useAuthStore, configureSupabase } from '@travyl/shared';
+import { useEffect, useState, useRef } from 'react';
+import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
-import { GlobalCommandPalette } from './GlobalCommandPalette';
+import { SpotlightSearch } from './spotlight/SpotlightSearch';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -33,10 +33,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, [initialize]);
 
+  const user = useAuthStore((s) => s.user);
+  const hydrateSettings = useSettingsStore((s) => s.hydrate);
+
+  useEffect(() => {
+    if (!user) {
+      hydrateSettings({});
+      return;
+    }
+    const sb = getSupabaseBrowser();
+    sb.from('profiles')
+      .select('preferences')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.preferences) {
+          hydrateSettings(data.preferences as Record<string, unknown>);
+        }
+      });
+  }, [user, hydrateSettings]);
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <GlobalCommandPalette />
+      <SpotlightSearch />
     </QueryClientProvider>
   );
 }

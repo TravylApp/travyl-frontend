@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -72,6 +72,18 @@ export function MosaicTile({
           tileStyle,
         ]}
       >
+        {/* Background image */}
+        {tile.image_url && (
+          <Image
+            source={{ uri: tile.image_url }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        )}
+
+        {/* Gradient overlay for text readability */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '60%', backgroundColor: 'rgba(0,0,0,0.3)' }} />
+
         {/* Dark overlay on press */}
         <Animated.View
           style={[

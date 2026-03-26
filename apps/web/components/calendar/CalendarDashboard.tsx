@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
@@ -27,6 +27,7 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
+import { DetailPanel } from './DetailPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -35,12 +36,14 @@ import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
+import { HistoryDrawer } from './HistoryDrawer'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
 import { usePollMutations } from './hooks/usePollMutations'
 import { usePollObserver } from './hooks/usePollObserver'
 import { usePollSync } from './hooks/usePollSync'
+import { fetchActivityIntelligence } from './hooks/useActivityIntelligence'
 
 // ─── Module-level constants ────────────────────────────────────
 
@@ -83,6 +86,7 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName, isSharedView = false }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
@@ -164,6 +168,20 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   // useCalendarDnd is called below after marquee selection hook is instantiated
 
+  const queryClient = useQueryClient()
+
+  // Background-prefetch intelligence for all visible activities
+  useEffect(() => {
+    if (!scheduledActivities.length) return
+    for (const a of scheduledActivities) {
+      queryClient.prefetchQuery({
+        queryKey: ['activity-intelligence', a.id, tripId],
+        queryFn: () => fetchActivityIntelligence(a.id, tripId),
+        staleTime: 60 * 60 * 1000,
+      })
+    }
+  }, [scheduledActivities, tripId, queryClient])
+
   const { theme, toggleTheme } = useCalendarTheme()
   const {
     width: forYouWidth,
@@ -235,11 +253,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
     for (const act of selected) {
       moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
+      queryClient.invalidateQueries({ queryKey: ['activity-intelligence', act.id] })
     }
-  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays])
+  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays, queryClient])
+
+  const handleMoveActivity = useCallback((id: string, day: number, startHour: number) => {
+    moveActivity(id, day, startHour)
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
+  }, [moveActivity, queryClient])
 
   const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
+    onMoveActivity: handleMoveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     onGroupMove: handleGroupMove,
     marqueeSelectedIds,
@@ -319,7 +343,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     canRedo,
   })
 
-  // Publish commands to global store so GlobalCommandPalette can show them
+  // Publish commands to global store so SpotlightSearch can show them
   const setCommands = useCalendarCommandsStore((s) => s.setCommands)
   const clearCommands = useCalendarCommandsStore((s) => s.clearCommands)
   useEffect(() => {
@@ -347,8 +371,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     } else {
       updateActivity(id, patch)
     }
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
     setEditingActivityId(null)
-  }, [moveActivity, updateActivity])
+  }, [moveActivity, updateActivity, queryClient])
 
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
@@ -397,6 +422,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       startPoll(activityId, userId)
     } else if (actionId === 'close-poll') {
       closePoll(activityId)
+    } else if (actionId === 'restore-poll') {
+      restoreActivity(activityId)
+    } else if (actionId === 'remove-activity') {
+      // Same effect as 'delete' — removes from calendar and restores to ForYou panel
+      handleRemoveActivity(activityId)
     }
   }
 
@@ -424,6 +454,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   }
 
   const handleBack = () => {
+    if (isSharedView) { router.push('/'); return }
     router.push('/trips')
   }
 
@@ -437,6 +468,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   const handleResizeEvent = (id: string, newStartHour: number, newDuration: number) => {
     updateActivity(id, { startHour: newStartHour, duration: newDuration })
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
   }
 
   /** Format a date range string like "Mar 10 - Mar 16, 2026". */
@@ -500,6 +532,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           }
           onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
+          onOpenHistory={() => setIsHistoryOpen(true)}
         />
 
         {/* Grid area */}
@@ -550,10 +583,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   ) : (
@@ -580,10 +610,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   )}
@@ -626,6 +653,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                 />
               </>
             )}
+
+            {/* Detail panel — slides in when activity is selected */}
+            <DetailPanel
+              activity={selectedActivity}
+              viewers={collaborators}
+              onClose={() => selectEvent(null)}
+              onRemove={handleRemoveActivity}
+              onUpdateActivity={updateActivity}
+              onEdit={(id) => setEditingActivityId(id)}
+              tripId={tripId}
+            />
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -680,7 +718,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   strokeLinecap="round"
                 />
               </svg>
-              <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
+              <p className="text-sm text-gray-500">{isSharedView ? 'No activities planned yet' : 'No activities yet — add one to get started'}</p>
             </div>
           )}
         </DndContext>
@@ -722,10 +760,23 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         onSettingsChange={refetchTrip}
       />
     )}
+    <HistoryDrawer
+      tripId={tripId}
+      isOpen={isHistoryOpen}
+      onClose={() => setIsHistoryOpen(false)}
+      onMove={moveActivity}
+      onEdit={updateActivity}
+      onDelete={removeActivity}
+      onAdd={addActivity}
+      tripStartDate={tripStartDate}
+      userId={userId}
+    />
     {contextMenu && (() => {
       const poll = polls.get(contextMenu.activityId)
       const hasActivePoll = poll?.status === 'active'
-      const canClosePoll = hasActivePoll && (poll.startedBy === userId || trip?.user_id === userId)
+      const isResolvedPoll = poll?.status === 'resolved'
+      const canManagePoll = poll ? (poll.startedBy === userId || trip?.user_id === userId) : false
+      const canClosePoll = hasActivePoll && canManagePoll
       return (
         <ActivityContextMenu
           x={contextMenu.x}
@@ -734,9 +785,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
             { id: 'edit', label: 'Edit' },
             { id: 'duplicate', label: 'Duplicate' },
             { id: 'separator', label: '', separator: true },
-            hasActivePoll
-              ? { id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }
-              : { id: 'start-poll', label: 'Start Poll' },
+            ...(isResolvedPoll && canManagePoll
+              ? [
+                  { id: 'restore-poll', label: 'Restore Poll' },
+                  { id: 'remove-activity', label: 'Remove from Calendar', danger: true },
+                ]
+              : isResolvedPoll
+                ? [] // non-managers see no poll action on a resolved poll
+                : hasActivePoll
+                  ? [{ id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }]
+                  : [{ id: 'start-poll', label: 'Start Poll' }]
+            ),
             { id: 'separator2', label: '', separator: true },
             { id: 'delete', label: 'Delete', danger: true },
           ]}

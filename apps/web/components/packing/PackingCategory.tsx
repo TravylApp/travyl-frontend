@@ -3,17 +3,20 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { NavArrowDown, NavArrowRight } from 'iconoir-react'
-import type { DbPackingItem, PackingCategory as PackingCategoryType, PackingSuggestion } from '@travyl/shared'
-import { CATEGORY_LABELS } from './utils'
+import type { DbPackingItem, PackingSuggestion } from '@travyl/shared'
+import { getCategoryLabel, isStaticCategory } from './utils'
 import { PackingItem } from './PackingItem'
 import { SuggestionChip } from './SuggestionChip'
 
 interface PackingCategoryProps {
-  category: PackingCategoryType
+  category: string
   items: DbPackingItem[]
   suggestions?: PackingSuggestion[]
   onToggle: (id: string) => void
   onRemove: (id: string) => void
+  onClaim?: (id: string) => void
+  onRelease?: (id: string) => void
+  currentUserId?: string
   onAcceptSuggestion?: (id: string) => void
   onDismissSuggestion?: (id: string) => void
   defaultExpanded?: boolean
@@ -25,6 +28,9 @@ export function PackingCategory({
   suggestions = [],
   onToggle,
   onRemove,
+  onClaim,
+  onRelease,
+  currentUserId,
   onAcceptSuggestion,
   onDismissSuggestion,
   defaultExpanded = true,
@@ -56,7 +62,10 @@ export function PackingCategory({
         )}
 
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)] flex-1 text-left">
-          {CATEGORY_LABELS[category]}
+          {getCategoryLabel(category)}
+          {!isStaticCategory(category) && (
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 ml-1">✦ AI</span>
+          )}
         </span>
 
         <span className="text-xs tabular-nums text-[var(--cal-text-muted)]">
@@ -83,6 +92,9 @@ export function PackingCategory({
                     item={item}
                     onToggle={onToggle}
                     onRemove={onRemove}
+                    onClaim={onClaim}
+                    onRelease={onRelease}
+                    currentUserId={currentUserId}
                   />
                 ))}
                 {suggestions.map((suggestion) => (

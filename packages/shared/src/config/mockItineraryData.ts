@@ -16,7 +16,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$25',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'morning',
   },
   {
@@ -30,7 +30,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$18',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'morning',
   },
   {
@@ -44,7 +44,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$45',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'afternoon',
   },
   {
@@ -58,7 +58,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$17',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'afternoon',
   },
   {
@@ -72,7 +72,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$120',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'evening',
   },
   {
@@ -86,7 +86,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: null,
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'evening',
   },
   {
@@ -100,7 +100,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$15',
     bookingUrl: null,
     notes: 'Historic jazz club in the Latin Quarter',
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'latenight',
   },
   {
@@ -114,7 +114,7 @@ const MOCK_ACTIVITIES: ActivityViewModel[] = [
     costDisplay: '$18',
     bookingUrl: null,
     notes: 'See Paris illuminated from the water',
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'latenight',
   },
 ];
@@ -132,7 +132,7 @@ const MOCK_ACTIVITIES_DAY2: ActivityViewModel[] = [
     costDisplay: '$22',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'morning',
   },
   {
@@ -146,7 +146,7 @@ const MOCK_ACTIVITIES_DAY2: ActivityViewModel[] = [
     costDisplay: null,
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'afternoon',
   },
   {
@@ -160,7 +160,7 @@ const MOCK_ACTIVITIES_DAY2: ActivityViewModel[] = [
     costDisplay: '$200',
     bookingUrl: null,
     notes: null,
-    source: 'agent',
+    image: '', source: 'agent',
     timeOfDay: 'afternoon',
   },
 ];

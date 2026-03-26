@@ -40,6 +40,7 @@ interface UseSuggestionsReturn {
   error: string | null
   searchQuery: string
   setSearchQuery: (query: string) => void
+  commitSearch: () => void
   activeFilter: FilterCategory
   setActiveFilter: (filter: FilterCategory) => void
   filterCategories: readonly FilterCategory[]
@@ -48,11 +49,12 @@ interface UseSuggestionsReturn {
   refetch: () => void
 }
 
-async function fetchSuggestions(destination: string): Promise<SuggestionCard[]> {
+async function fetchSuggestions(destination: string, q?: string): Promise<SuggestionCard[]> {
   if (!destination) return []
 
   try {
     const params = new URLSearchParams({ destination })
+    if (q) params.set('q', q)
     const res = await fetch(`/api/suggest?${params}`)
     if (!res.ok) return []
 
@@ -68,13 +70,20 @@ export function useSuggestions({
   scheduledActivityIds = [],
 }: UseSuggestionsOptions): UseSuggestionsReturn {
   const [searchQuery, setSearchQuery] = useState('')
+  const [committedQuery, setCommittedQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All')
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
 
+  const commitSearch = useCallback(() => {
+    setCommittedQuery(searchQuery.trim())
+  }, [searchQuery])
+
   const { data: allSuggestions = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['suggestions', destination],
-    queryFn: () => fetchSuggestions(destination),
+    queryKey: ['suggestions', destination, committedQuery],
+    queryFn: () => fetchSuggestions(destination, committedQuery || undefined),
     enabled: !!destination,
+    staleTime: 30 * 60 * 1000,  // treat data as fresh for 30 min — no refetch on remount
+    gcTime: 2 * 60 * 60 * 1000, // keep in memory for 2 hours after last subscriber
   })
 
   const removeSuggestion = useCallback((id: string) => {
@@ -121,6 +130,7 @@ export function useSuggestions({
     error: error ? (error as Error).message : null,
     searchQuery,
     setSearchQuery,
+    commitSearch,
     activeFilter,
     setActiveFilter,
     filterCategories: FILTER_CATEGORIES,

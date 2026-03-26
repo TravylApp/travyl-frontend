@@ -1,156 +1,86 @@
 'use client'
 
-import type { Poll, UserAwareness } from '@travyl/shared'
+import { ThumbsUp, ThumbsDown } from 'iconoir-react'
+import type { Poll } from '@travyl/shared'
 
-interface PollBarProps {
+interface FloatingVoteButtonsProps {
   poll: Poll
   userId: string
   onVote: (vote: 'yes' | 'no') => void
-  collaborators: UserAwareness[]
-  compact?: boolean // true when card height < 40px
+  compact?: boolean
+  isResolved: boolean
 }
 
-interface ResolvedBarProps {
-  onRestore: () => void
-  onRemove: () => void
-}
+export function FloatingVoteButtons({
+  poll,
+  userId,
+  onVote,
+  compact,
+  isResolved,
+}: FloatingVoteButtonsProps) {
+  if (isResolved) return null
 
-// ─── Active vote bar ──────────────────────────────────────────
-
-function ActivePollBar({ poll, userId, onVote, collaborators, compact }: PollBarProps) {
   const myVote = poll.votes[userId] as 'yes' | 'no' | undefined
   const yesCount = Object.values(poll.votes).filter((v) => v === 'yes').length
   const noCount = Object.values(poll.votes).filter((v) => v === 'no').length
 
-  // Voter avatars (non-compact only)
-  const voterIds = Object.keys(poll.votes)
+  const positionClass = compact ? 'top-1' : 'top-1/2 -translate-y-1/2'
 
   return (
     <div
-      className="flex items-center gap-2 px-2 py-1 border-t border-white/10 bg-black/20"
+      className={[
+        'absolute left-full ml-1.5 flex flex-col gap-1 z-20',
+        'opacity-0 group-hover:opacity-100 transition-opacity duration-150',
+        'pointer-events-none group-hover:pointer-events-auto',
+        positionClass,
+      ].join(' ')}
       onClick={(e) => e.stopPropagation()}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onVote('yes')
-        }}
-        className={[
-          'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors',
-          myVote === 'yes'
-            ? 'bg-emerald-500/30 text-emerald-300'
-            : 'text-white/60 hover:text-emerald-300 hover:bg-emerald-500/10',
-        ].join(' ')}
-      >
-        <span className="text-sm">👍</span>
-        <span>{yesCount}</span>
-      </button>
+      <div className="flex flex-col items-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onVote('yes')
+          }}
+          className={[
+            'w-7 h-7 rounded-md flex items-center justify-center transition-colors duration-150',
+            myVote === 'yes'
+              ? 'bg-emerald-500/80 text-white hover:bg-emerald-500/60'
+              : 'bg-black/60 backdrop-blur-sm text-white/60 hover:text-white hover:bg-black/80',
+          ].join(' ')}
+          aria-label="Vote yes"
+        >
+          <ThumbsUp width={13} height={13} />
+        </button>
+        {yesCount > 0 && (
+          <span className="text-[9px] text-white/70 text-center leading-none mt-0.5">
+            {yesCount}
+          </span>
+        )}
+      </div>
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onVote('no')
-        }}
-        className={[
-          'flex items-center gap-1 text-xs rounded px-1.5 py-0.5 transition-colors',
-          myVote === 'no'
-            ? 'bg-red-500/30 text-red-300'
-            : 'text-white/60 hover:text-red-300 hover:bg-red-500/10',
-        ].join(' ')}
-      >
-        <span className="text-sm">👎</span>
-        <span>{noCount}</span>
-      </button>
-
-      {!compact && voterIds.length > 0 && (
-        <div className="ml-auto flex -space-x-1">
-          {voterIds.slice(0, 5).map((voterId) => {
-            const collab = collaborators.find((c) => c.userId === voterId)
-            const initial = collab?.avatarInitial ?? voterId.charAt(0).toUpperCase()
-            const color = collab?.color ?? '#6366f1'
-            return (
-              <div
-                key={voterId}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white border border-[#1e3a5f]"
-                style={{ backgroundColor: color }}
-                title={collab?.name ?? voterId}
-              >
-                {initial}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <div className="flex flex-col items-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onVote('no')
+          }}
+          className={[
+            'w-7 h-7 rounded-md flex items-center justify-center transition-colors duration-150',
+            myVote === 'no'
+              ? 'bg-red-500/80 text-white hover:bg-red-500/60'
+              : 'bg-black/60 backdrop-blur-sm text-white/60 hover:text-white hover:bg-black/80',
+          ].join(' ')}
+          aria-label="Vote no"
+        >
+          <ThumbsDown width={13} height={13} />
+        </button>
+        {noCount > 0 && (
+          <span className="text-[9px] text-white/70 text-center leading-none mt-0.5">
+            {noCount}
+          </span>
+        )}
+      </div>
     </div>
-  )
-}
-
-// ─── Resolved "remove" bar ────────────────────────────────────
-
-function ResolvedRemoveBar({ onRestore, onRemove }: ResolvedBarProps) {
-  return (
-    <div
-      className="flex items-center justify-center gap-3 px-2 py-1 border-t border-white/10 bg-black/20"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onRestore()
-        }}
-        className="flex items-center gap-1 text-xs text-white/60 hover:text-emerald-300 transition-colors"
-      >
-        <span>↩</span> Restore
-      </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onRemove()
-        }}
-        className="flex items-center gap-1 text-xs text-white/60 hover:text-red-300 transition-colors"
-      >
-        <span>✕</span> Remove
-      </button>
-    </div>
-  )
-}
-
-// ─── Exported PollBar ─────────────────────────────────────────
-
-export interface PollBarExportProps extends PollBarProps {
-  isResolved: boolean
-  canManage: boolean // true if user is poll starter or trip owner
-  onRestore: () => void
-  onRemove: () => void
-}
-
-export function PollBar({
-  poll,
-  userId,
-  onVote,
-  collaborators,
-  compact,
-  isResolved,
-  canManage,
-  onRestore,
-  onRemove,
-}: PollBarExportProps) {
-  if (isResolved && canManage) {
-    return <ResolvedRemoveBar onRestore={onRestore} onRemove={onRemove} />
-  }
-
-  if (isResolved) {
-    // Other collaborators see no bar — just the grayed-out card
-    return null
-  }
-
-  return (
-    <ActivePollBar
-      poll={poll}
-      userId={userId}
-      onVote={onVote}
-      collaborators={collaborators}
-      compact={compact}
-    />
   )
 }
