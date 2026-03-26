@@ -99,17 +99,9 @@ export function getCyclicGradient(index: number) {
 // ─── Footer ──────────────────────────────────────────────────
 export const FOOTER_COLUMNS = [
   {
-    heading: 'Products',
-    links: [
-      { label: 'Download App', href: '/download' },
-      { label: 'Help Center', href: '/help' },
-    ],
-  },
-  {
     heading: 'Company',
     links: [
       { label: 'About Us', href: '/about' },
-      { label: 'Careers', href: '/careers' },
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
     ],
