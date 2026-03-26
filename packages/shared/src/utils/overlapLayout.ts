@@ -1,6 +1,7 @@
 export interface OverlapLayoutItem {
-  column: number       // 0, 1, 2, or -1 (hidden)
-  totalColumns: number // 1, 2, or 3
+  column: number       // 0-based column index, or -1 (hidden when > MAX_VISIBLE_COLUMNS)
+  totalColumns: number // total columns in this overlap group
+  columnSpan: number   // how many columns this event spans (1 to totalColumns - column)
 }
 
 const MAX_VISIBLE_COLUMNS = 3
@@ -11,6 +12,22 @@ interface LayoutInput {
   duration: number
 }
 
+function overlaps(a: LayoutInput, b: LayoutInput): boolean {
+  return a.startHour < b.startHour + b.duration && b.startHour < a.startHour + a.duration
+}
+
+/**
+ * Bin-packing overlap layout.
+ *
+ * 1. Sort by startHour, then by id for stability.
+ * 2. First-fit bin-packing: each activity gets the first column whose last
+ *    event has ended.
+ * 3. Per-event totalCols: for each event, find the max column index among
+ *    all directly overlapping events.
+ * 4. Propagate totalCols across overlap pairs so transitively connected
+ *    events share the same value.
+ * 5. Column span: each event expands rightward into adjacent empty columns.
+ */
 export function computeOverlapLayout(
   activities: LayoutInput[],
 ): Map<string, OverlapLayoutItem> {
@@ -22,51 +39,78 @@ export function computeOverlapLayout(
     return b.duration - a.duration
   })
 
-  const clusters: LayoutInput[][] = []
-  let currentCluster: LayoutInput[] = [sorted[0]]
-  let clusterEnd = sorted[0].startHour + sorted[0].duration
+  // Step 1: Bin-packing column assignment
+  const columns: { endHour: number }[] = []
+  const assignments = new Map<string, number>()
 
-  for (let i = 1; i < sorted.length; i++) {
-    const act = sorted[i]
-    if (act.startHour < clusterEnd) {
-      currentCluster.push(act)
-      clusterEnd = Math.max(clusterEnd, act.startHour + act.duration)
-    } else {
-      clusters.push(currentCluster)
-      currentCluster = [act]
-      clusterEnd = act.startHour + act.duration
+  for (const act of sorted) {
+    let placed = false
+    for (let c = 0; c < columns.length; c++) {
+      if (act.startHour >= columns[c].endHour) {
+        columns[c].endHour = act.startHour + act.duration
+        assignments.set(act.id, c)
+        placed = true
+        break
+      }
+    }
+    if (!placed) {
+      columns.push({ endHour: act.startHour + act.duration })
+      assignments.set(act.id, columns.length - 1)
     }
   }
-  clusters.push(currentCluster)
 
-  for (const cluster of clusters) {
-    const byPriority = [...cluster].sort((a, b) => b.duration - a.duration)
-    const assignments: { act: LayoutInput; column: number }[] = []
+  // Step 2: Per-event totalCols — max column index among overlapping events
+  const totalColsMap = new Map<string, number>()
+  for (const act of sorted) {
+    const col = assignments.get(act.id)!
+    let maxCol = col + 1
+    for (const other of sorted) {
+      if (other.id === act.id) continue
+      if (overlaps(act, other)) {
+        maxCol = Math.max(maxCol, assignments.get(other.id)! + 1)
+      }
+    }
+    totalColsMap.set(act.id, maxCol)
+  }
 
-    for (const act of byPriority) {
-      let assignedCol = -1
-      for (let col = 0; col < MAX_VISIBLE_COLUMNS; col++) {
-        const conflict = assignments.some(
-          (a) =>
-            a.column === col &&
-            a.act.startHour < act.startHour + act.duration &&
-            act.startHour < a.act.startHour + a.act.duration,
-        )
-        if (!conflict) {
-          assignedCol = col
-          break
+  // Step 3: Propagate totalCols across overlap groups
+  // Single pass is sufficient for pairwise propagation in sorted order,
+  // but we do a second pass to catch reverse-direction propagation.
+  for (let pass = 0; pass < 2; pass++) {
+    for (const act of sorted) {
+      for (const other of sorted) {
+        if (other.id === act.id) continue
+        if (overlaps(act, other)) {
+          const shared = Math.max(totalColsMap.get(act.id)!, totalColsMap.get(other.id)!)
+          totalColsMap.set(act.id, shared)
+          totalColsMap.set(other.id, shared)
         }
       }
-      assignments.push({ act, column: assignedCol })
+    }
+  }
+
+  // Step 4: Build result with column span
+  for (const act of sorted) {
+    let col = assignments.get(act.id)!
+    const totalCols = Math.min(totalColsMap.get(act.id) ?? 1, MAX_VISIBLE_COLUMNS)
+
+    // Hide events beyond the visible column cap
+    if (col >= MAX_VISIBLE_COLUMNS) {
+      result.set(act.id, { column: -1, totalColumns: totalCols, columnSpan: 1 })
+      continue
     }
 
-    const maxCol = Math.max(...assignments.map((a) => a.column))
-    const visibleUsed = maxCol === -1 ? 0 : maxCol + 1
-    const totalColumns = Math.min(Math.max(visibleUsed, cluster.length, 1), MAX_VISIBLE_COLUMNS)
-
-    for (const { act, column } of assignments) {
-      result.set(act.id, { column, totalColumns })
+    // Compute column span: expand rightward into empty columns
+    let span = 1
+    for (let c = col + 1; c < totalCols; c++) {
+      const blocked = sorted.some(
+        (other) => other.id !== act.id && assignments.get(other.id) === c && overlaps(act, other),
+      )
+      if (blocked) break
+      span++
     }
+
+    result.set(act.id, { column: col, totalColumns: totalCols, columnSpan: span })
   }
 
   return result

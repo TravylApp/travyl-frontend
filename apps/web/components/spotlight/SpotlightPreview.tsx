@@ -322,9 +322,15 @@ function DestinationPreview({ result }: { result: SpotlightResult }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-950 dark:to-orange-950 flex items-center justify-center">
-        <MapPin className="w-8 h-8 text-rose-400" />
-      </div>
+      {result.imageUrl ? (
+        <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-950 dark:to-orange-950 flex items-center justify-center">
+          <MapPin className="w-8 h-8 text-rose-400" />
+        </div>
+      )}
       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
         {result.title}
       </h3>
@@ -336,6 +342,15 @@ function DestinationPreview({ result }: { result: SpotlightResult }) {
           <LeafletMap lat={lat} lng={lng} label={result.title} height={120} zoom={10} />
         </div>
       )}
+      <div className="mt-auto pt-4">
+        <a
+          href={result.href}
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors"
+        >
+          Explore Destination
+          <ArrowRight className="w-3 h-3" />
+        </a>
+      </div>
     </div>
   )
 }

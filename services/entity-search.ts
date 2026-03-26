@@ -34,7 +34,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const entityTypes = typesParam
       ? typesParam.split(',').filter(Boolean)
-      : ['hotel', 'flight', 'restaurant', 'activity', 'destination']
+      : ['restaurant', 'activity', 'destination']
 
     const supabase = createClient(
       Resource.SupabaseUrl.value,
