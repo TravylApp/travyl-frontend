@@ -33,7 +33,6 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start center", "end center"],
-    layoutEffect: false,
   });
 
   // Update step indicator at the midpoint of each crossfade

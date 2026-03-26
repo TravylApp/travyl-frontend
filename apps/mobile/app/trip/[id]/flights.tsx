@@ -14,26 +14,43 @@ const POPULAR_AIRPORTS = [
   { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
 ];
 
-const BOOKED_FLIGHTS: any[] = [];
-
-const COMPARISON_FLIGHTS: any[] = [];
-
-const BOOKING_DETAILS = {
-  confirmationNumber: 'XHGT7K',
-  pnr: 'XHGT7K',
-  ticketNumbers: ['001-2345678901', '001-2345678902'],
-  fareClass: 'Y',
-  fareType: 'Economy Flex',
-  baggageAllowance: { carryOn: '1 bag (10 kg)', checked: '1 bag (23 kg)', fees: 0 },
-  cancellationPolicy:
-    'Free cancellation within 24 hours of booking. After that, a $200 fee per passenger applies.',
-  changePolicy:
-    'Changes permitted for a $75 fee plus any fare difference. Same-day standby is complimentary for AAdvantage members.',
-  refundPolicy:
-    'Refundable as travel credit within 12 months. Cash refund available for Flex fares.',
-  checkInUrl: 'https://www.aa.com/checkin',
-  checkInOpens: 'Mar 9, 2026 — 24 hours before departure',
-};
+// Convert trip_context.flights into the shape BookedFlightCard expects
+function contextFlightsToBooked(flights: any[], destination?: string): any[] {
+  return (flights ?? []).map((f: any, i: number) => {
+    const dep = f.departure_time ? new Date(f.departure_time) : null;
+    const arr = f.arrival_time ? new Date(f.arrival_time) : null;
+    const depTime = dep ? dep.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const arrTime = arr ? arr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const dateStr = dep ? dep.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+    const nextDay = dep && arr ? arr.getDate() !== dep.getDate() : false;
+    let durationStr = '';
+    if (f.duration) {
+      const mins = typeof f.duration === 'number' ? f.duration : parseInt(f.duration, 10);
+      if (!isNaN(mins)) durationStr = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+    } else if (dep && arr) {
+      const ms = arr.getTime() - dep.getTime();
+      durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
+    }
+    const originCode = f.origin ?? '';
+    const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+    const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
+    return {
+      id: `ctx-flight-${i}`,
+      type: i === 0 ? 'outbound' : 'return',
+      flightNumber: `${airlineCode}${100 + i}`,
+      airline: f.airline || 'Airline',
+      airlineLogo: airlineCode,
+      date: dateStr,
+      departure: { time: depTime, code: originCode, terminal: '', gate: '' },
+      arrival: { time: arrTime, code: destCode, terminal: '', gate: '', nextDay },
+      duration: durationStr,
+      stops: f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Direct',
+      cabinClass: 'Economy',
+      status: 'Planned',
+      price: { total: Math.round(f.price ?? 0) },
+    };
+  });
+}
 
 /* ================================================================
    HELPER: toggle value in array
@@ -970,8 +987,12 @@ export default function FlightsScreen() {
   const city = trip?.destination?.split(',')[0]?.trim() ?? '';
   const destAirport = CITY_AIRPORTS[city] || '';
 
-  // Check if trip has real flight data (from DB or trip_context)
-  const hasFlights = !!((trip?.trip_context as any)?.flights?.length);
+  // Convert trip_context flights to display format
+  const bookedFlights = useMemo(
+    () => contextFlightsToBooked((trip?.trip_context as any)?.flights, city),
+    [trip, city],
+  );
+  const hasFlights = bookedFlights.length > 0;
 
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
@@ -1004,11 +1025,11 @@ export default function FlightsScreen() {
         </View>
       )}
 
-      {/* Booked Flight Cards — only show if we have real data */}
-      {hasFlights && BOOKED_FLIGHTS.filter((f) => f.type === 'outbound').map((f) => (
+      {/* Booked Flight Cards from trip_context */}
+      {bookedFlights.filter((f: any) => f.type === 'outbound').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
-      {hasFlights && BOOKED_FLIGHTS.filter((f) => f.type === 'return').map((f) => (
+      {bookedFlights.filter((f: any) => f.type === 'return').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
 
