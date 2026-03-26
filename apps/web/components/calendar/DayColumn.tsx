@@ -252,6 +252,7 @@ export function DayColumn({
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
+              columnSpan={layout.columnSpan}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
             />
           )
