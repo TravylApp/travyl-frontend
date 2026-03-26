@@ -15,3 +15,27 @@
 [     674ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/images?q=Tokyo:0
 [     889ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/images?q=Bali:0
 [     891ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/images?q=Barcelona:0
+[ 1832785ms] [ERROR] ./apps/web/components/GlobalNavbar.tsx:111:1
+Parsing ecmascript source code failed
+  109 | =======
+  110 |   if (isAuthPage || isCalendarTab) return null;
+> 111 | >>>>>>> Stashed changes
+      | ^^^^^^^
+  112 |
+  113 |   return (
+  114 |     <>
+
+Merge conflict marker encountered.
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/GlobalNavbar.tsx [Client Component Browser]
+    ./apps/web/components/providers.tsx [Client Component Browser]
+    ./apps/web/components/providers.tsx [Server Component]
+    ./apps/web/app/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/GlobalNavbar.tsx [Client Component SSR]
+    ./apps/web/components/providers.tsx [Client Component SSR]
+    ./apps/web/components/providers.tsx [Server Component]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127

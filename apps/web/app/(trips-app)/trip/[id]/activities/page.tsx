@@ -7,7 +7,7 @@ import {
   X, ChevronRight,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 import { PinCard } from '@/components/PinCard';
 
@@ -29,12 +29,6 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 type SortKey = 'default' | 'rating' | 'name';
-
-const IMAGE_FALLBACKS = [
-  'photo-1488646953014-85cb44e25828', 'photo-1507525428034-b723cf961d3e',
-  'photo-1476514525535-07fb3b4ae5f1', 'photo-1469854523086-cc02fe5d8800',
-  'photo-1530789253388-582c481c54b0', 'photo-1502602898657-3e91760cbb34',
-];
 
 // ─── Data fetching ──────────────────────────────────────────
 
@@ -122,8 +116,7 @@ async function fetchExplorePage(
     } catch {}
   }
 
-  // Deduplicate and ensure images
-  let fallbackIdx = pageParam * 3;
+  // Deduplicate
   const seen = new Set<string>();
   const seenNames = new Set<string>();
   return results.flat().filter((p) => {
@@ -133,11 +126,6 @@ async function fetchExplorePage(
     seen.add(p.id);
     seenNames.add(norm);
     return true;
-  }).map((p) => {
-    if (!p.image) {
-      return { ...p, image: `https://images.unsplash.com/${IMAGE_FALLBACKS[fallbackIdx++ % IMAGE_FALLBACKS.length]}?w=500&fit=crop&q=75` };
-    }
-    return p;
   });
 }
 
@@ -152,22 +140,35 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
   const destination = trip?.destination?.split(',')[0]?.trim() || 'Destination';
   const hasCoords = lat !== 0 || lng !== 0;
 
-  // Infinite scroll data
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = useInfiniteQuery({
-    queryKey: ['trip-explore', id, lat, lng],
-    queryFn: ({ pageParam }) => fetchExplorePage(lat, lng, pageParam),
-    initialPageParam: 0,
-    getNextPageParam: (_last, _all, lastParam) =>
-      lastParam < 20 ? lastParam + 1 : undefined,
+  // Paginated data — accumulate pages manually to avoid useInfiniteQuery internal bug
+  const [page, setPage] = useState(0);
+  const [allPlaces, setAllPlaces] = useState<PlaceItem[]>([]);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['trip-explore', id, lat, lng, page],
+    queryFn: () => fetchExplorePage(lat, lng, page),
     staleTime: 15 * 60 * 1000,
     enabled: hasCoords,
   });
+
+  useEffect(() => {
+    if (pageData && pageData.length > 0) {
+      setAllPlaces((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const newItems = pageData.filter((p) => !seen.has(p.id));
+        return newItems.length > 0 ? [...prev, ...newItems] : prev;
+      });
+      setIsFetchingNextPage(false);
+    }
+  }, [pageData]);
+
+  const hasNextPage = page < 20;
+
+  const fetchNextPage = useCallback(() => {
+    setIsFetchingNextPage(true);
+    setPage((p) => p + 1);
+  }, []);
 
   // Infinite scroll observer
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -206,16 +207,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     setFavorites((prev) => prev.includes(fid) ? prev.filter((f) => f !== fid) : [...prev, fid]);
   }, []);
 
-  // Merge pages + deduplicate
-  const places = useMemo(() => {
-    if (!data?.pages) return [];
-    const seen = new Set<string>();
-    return data.pages.flat().filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-  }, [data]);
+  const places = allPlaces;
 
   // Filter by tab
   const tabFiltered = useMemo(() => {

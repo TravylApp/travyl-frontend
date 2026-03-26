@@ -1,0 +1,95 @@
+[    1926ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T03:54:05.944Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    2734ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 1065640ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:11:49.660Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1066189ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.fc858466-bfe0-4493-b549-b6c06fcd31d4&order=day_number.asc:0
+[ 1071085ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:11:55.106Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1071701ms] [WARNING] Image with src "https://images.unsplash.com/photo-1744219524841-244c5c301abe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4ODM3MTN8MHwxfHNlYXJjaHwxfHxQYXJpcyUyMEZyYW5jZSUyMHRyYXZlbHxlbnwwfDB8fHwxNzc0NDc1MTg5fDA&ixlib=rb-4.1.0&q=80&w=1080" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2138089ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:29:42.108Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2138386ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.fc858466-bfe0-4493-b549-b6c06fcd31d4&order=day_number.asc:0
+[ 2202102ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/suggest?destination=Rome%2C+Italy:0
+[ 2264007ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:31:48.028Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2264421ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 2269150ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:31:53.171Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2269391ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 2270055ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/suggest?destination=Barcelona%2C+Spain:0
+[ 2599404ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:37:23.424Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2599671ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 2600321ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/suggest?destination=Barcelona%2C+Spain:0
+[ 2602946ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:37:26.967Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2603176ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 2682237ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/suggest?destination=Barcelona%2C+Spain:0
+[ 2712956ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:39:16.976Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2713201ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 2816218ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:41:00.238Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 2816460ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 3080900ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:45:24.920Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 3081199ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 3439950ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:51:23.971Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 3440279ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 3498303ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:52:22.323Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 3498671ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0
+[ 3577776ms] [ERROR] In HTML, %s cannot be a descendant of <%s>.
+This will cause a hydration error.%s <button> button 
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:true, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="flights/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/trip/73e5..." tree={[...]} params={{id:"73e556..."}} ...>
+                  <SegmentViewNode type="page" pagePath="/apps/web/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function Flights} serverProvidedParams={{...}}>
+                      <Flights params={Promise} searchParams={Promise}>
+                        <div className="space-y-4">
+                          <FlightSearchSection defaultFrom="JFK" defaultTo="BCN" defaultTravelers={2} ...>
+                            <div className="bg-white r...">
+>                             <button
+>                               onClick={function onClick}
+>                               className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 tran..."
+>                             >
+                                <div>
+                                <div className="flex items...">
+>                                 <button
+>                                   onClick={function onClick}
+>                                   className="text-[11px] px-2.5 py-1 rounded-full border flex items-center gap-1 tra..."
+>                                 >
+                                  ...
+                              ...
+                          ...
+                  ...
+                ...
+      ...
+ @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[ 3577776ms] [ERROR] <%s> cannot contain a nested %s.
+See this log for the ancestor stack trace. button <button> @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[ 3665270ms] [ERROR] ./apps/web/app/(trips-app)/trip/[id]/flights/page.tsx:276:16
+Parsing ecmascript source code failed
+  274 |           <ChevronDown size={16} className={`text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+  275 |         </div>
+> 276 |       </button>
+      |                ^
+> 277 |
+      | ^
+> 278 |       {/* Expandable body */}
+      | ^^^^^^^
+  279 |       <AnimatePresence>
+  280 |         {!collapsed && (
+  281 |           <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
+
+Expected '</', got 'jsx text'
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/app/(trips-app)/trip/[id]/flights/page.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/flights/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/app/(trips-app)/trip/[id]/flights/page.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/flights/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[ 3787343ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/suggest?destination=Barcelona%2C+Spain:0
+[ 3800425ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.98.0) 2026-03-26T04:57:24.445Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 3800864ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.73e55665-64b1-462b-a72a-f26b152afd46&order=day_number.asc:0

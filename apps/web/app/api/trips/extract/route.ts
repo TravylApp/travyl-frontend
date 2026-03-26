@@ -4,7 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 export async function POST(req: NextRequest) {
   if (!API_URL) {
-    return NextResponse.json({ items: [] })
+    return NextResponse.json({ error: 'Trip extraction API not configured' }, { status: 503 })
   }
 
   const body = await req.json()

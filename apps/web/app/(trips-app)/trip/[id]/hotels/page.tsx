@@ -63,19 +63,7 @@ interface HotelData {
 /*  Mock Data                                                          */
 /* ------------------------------------------------------------------ */
 
-// Hotel images from Unsplash (reliable hotel room/exterior photos)
-const HOTEL_IMAGES = [
-  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&fm=webp&q=75',
-];
-const ROOM_IMAGES = [
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400&fm=webp&q=75',
-];
+// No mock images — hotels use real photos from APIs or show a placeholder
 
 function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {
   return hotels.map((h: any, i: number) => {
@@ -86,7 +74,8 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
     const realRating = h.rating ?? (8.0 + (i % 5) * 0.15);
     const realReviews = h.ratingCount ?? h.review_count ?? 0;
     const realAmenities = h.amenities?.length ? h.amenities : ['WiFi', 'Breakfast'];
-    const mainImage = h.image ?? h.photo_url ?? HOTEL_IMAGES[idx % HOTEL_IMAGES.length];
+    const mainImage = h.image ?? h.photo_url ?? '';
+    const realImages = [mainImage, ...(h.images ?? [])].filter(Boolean);
 
     return {
       id: h.id ?? `hotel-${idx}`,
@@ -99,15 +88,11 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
       neighborhood: h.category ?? 'City Center',
       lat: h.lat ?? 0,
       lng: h.lng ?? 0,
-      images: [
-        mainImage,
-        HOTEL_IMAGES[(idx + 1) % HOTEL_IMAGES.length],
-        HOTEL_IMAGES[(idx + 2) % HOTEL_IMAGES.length],
-      ],
+      images: realImages.length > 0 ? realImages : [],
       amenities: realAmenities,
       roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
-        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: '', amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: '', amenities: ['WiFi', 'AC', 'Minibar'] },
       ],
       checkIn: '3:00 PM',
       checkOut: '11:00 AM',
@@ -134,7 +119,8 @@ function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
     const realStars = d.star_rating ?? (d.rating >= 4.5 ? 5 : d.rating >= 3.5 ? 4 : 3);
     const realPrice = d.price_per_night ?? 150;
     const realRating = d.rating ?? 8.0;
-    const mainImage = d.image_url ?? HOTEL_IMAGES[i % HOTEL_IMAGES.length];
+    const mainImage = d.image_url ?? '';
+    const realImages = [mainImage].filter(Boolean);
     const realAmenities = d.amenities?.length ? d.amenities.slice(0, 8) : ['WiFi', 'Breakfast'];
 
     return {
@@ -148,11 +134,11 @@ function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
       neighborhood: 'City Center',
       lat: d.latitude ?? 0,
       lng: d.longitude ?? 0,
-      images: [mainImage, HOTEL_IMAGES[(i + 1) % HOTEL_IMAGES.length], HOTEL_IMAGES[(i + 2) % HOTEL_IMAGES.length]],
+      images: realImages,
       amenities: realAmenities,
       roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
-        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: '', amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: '', amenities: ['WiFi', 'AC', 'Minibar'] },
       ],
       checkIn: d.check_in ? new Date(d.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
       checkOut: d.check_out ? new Date(d.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',

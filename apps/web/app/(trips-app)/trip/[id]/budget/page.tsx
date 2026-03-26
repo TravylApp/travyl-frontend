@@ -30,90 +30,17 @@ interface BudgetItem {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock data — Paris trip, $3 000 total                               */
+/*  Default empty budget categories                                    */
 /* ------------------------------------------------------------------ */
 
-const INITIAL_BUDGET: BudgetItem[] = [
-  {
-    id: 'flights',
-    category: 'Flights',
-    budgeted: 800,
-    actual: 750,
-    fixed: true,
-    expenses: [
-      { id: 'f1', description: 'Round-trip CDG — JFK', amount: 680 },
-      { id: 'f2', description: 'Seat upgrade', amount: 70 },
-    ],
-  },
-  {
-    id: 'hotels',
-    category: 'Hotels',
-    budgeted: 900,
-    actual: 850,
-    fixed: true,
-    expenses: [
-      { id: 'h1', description: 'Hotel Le Marais (5 nights)', amount: 750 },
-      { id: 'h2', description: 'Late checkout fee', amount: 100 },
-    ],
-  },
-  {
-    id: 'food',
-    category: 'Food & Dining',
-    budgeted: 500,
-    actual: 420,
-    fixed: true,
-    expenses: [
-      { id: 'd1', description: 'Bistro dinners', amount: 220 },
-      { id: 'd2', description: 'Bakeries & cafes', amount: 120 },
-      { id: 'd3', description: 'Wine tasting', amount: 80 },
-    ],
-  },
-  {
-    id: 'activities',
-    category: 'Activities',
-    budgeted: 400,
-    actual: 280,
-    fixed: true,
-    expenses: [
-      { id: 'a1', description: 'Louvre Museum tickets', amount: 40 },
-      { id: 'a2', description: 'Seine river cruise', amount: 90 },
-      { id: 'a3', description: 'Eiffel Tower summit', amount: 50 },
-      { id: 'a4', description: 'Cooking class', amount: 100 },
-    ],
-  },
-  {
-    id: 'transportation',
-    category: 'Transportation',
-    budgeted: 200,
-    actual: 150,
-    fixed: true,
-    expenses: [
-      { id: 't1', description: 'Metro pass (5 days)', amount: 75 },
-      { id: 't2', description: 'Airport shuttle', amount: 50 },
-      { id: 't3', description: 'Uber rides', amount: 25 },
-    ],
-  },
-  {
-    id: 'shopping',
-    category: 'Shopping',
-    budgeted: 150,
-    actual: 80,
-    fixed: false,
-    expenses: [
-      { id: 's1', description: 'Souvenirs', amount: 50 },
-      { id: 's2', description: 'Macarons gift box', amount: 30 },
-    ],
-  },
-  {
-    id: 'other',
-    category: 'Other',
-    budgeted: 50,
-    actual: 30,
-    fixed: false,
-    expenses: [
-      { id: 'o1', description: 'Travel insurance', amount: 30 },
-    ],
-  },
+const EMPTY_BUDGET: BudgetItem[] = [
+  { id: 'flights', category: 'Flights', budgeted: 0, actual: 0, fixed: true, expenses: [] },
+  { id: 'hotels', category: 'Hotels', budgeted: 0, actual: 0, fixed: true, expenses: [] },
+  { id: 'food', category: 'Food & Dining', budgeted: 0, actual: 0, fixed: false, expenses: [] },
+  { id: 'activities', category: 'Activities', budgeted: 0, actual: 0, fixed: false, expenses: [] },
+  { id: 'transportation', category: 'Transportation', budgeted: 0, actual: 0, fixed: false, expenses: [] },
+  { id: 'shopping', category: 'Shopping', budgeted: 0, actual: 0, fixed: false, expenses: [] },
+  { id: 'other', category: 'Other', budgeted: 0, actual: 0, fixed: false, expenses: [] },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -215,7 +142,7 @@ function categoryHealthBg(pct: number): { className: string; style?: React.CSSPr
 /* ------------------------------------------------------------------ */
 
 function generateBudgetFromTrip(trip: any): BudgetItem[] {
-  if (!trip) return INITIAL_BUDGET;
+  if (!trip) return EMPTY_BUDGET;
   const ctx = trip.trip_context as any;
   const cost = ctx?.cost_of_living;
   const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
