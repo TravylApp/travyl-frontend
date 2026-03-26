@@ -86,7 +86,10 @@ export function parseQueryIntentSync(rawQuery: string): ParsedIntent | null {
   const entityInCity = matchEntityInCity(q)
   if (entityInCity) return { intent: 'entity-search', ...entityInCity, rawQuery }
 
-  // Pattern 4: "things to do in [city]" — must come before generic "X to Y"
+  // Pattern 4: "things to do in [city]"
+  // Must come before Pattern 6 (X to Y) to prevent "things to do in nyc" being classified as route.
+  // Safe to run after Pattern 3 only because "things" and "do" are not entity synonyms.
+  // If the synonym table expands to include multi-word synonyms, re-evaluate ordering.
   const thingsToDo = q.match(/^things?\s+to\s+do\s+in\s+(.+)$/)
   if (thingsToDo) return { intent: 'entity-search', entityType: 'activity', location: toTitleCase(thingsToDo[1].trim()), rawQuery }
 

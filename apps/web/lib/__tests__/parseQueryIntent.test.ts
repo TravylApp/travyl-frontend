@@ -156,6 +156,7 @@ describe('parseQueryIntentSync — no match → null (Phase 2)', () => {
   })
 
   it('returns null for "somewhere to eat in bakersfield"', () => {
+    // Pattern 6 fires but the guard filters it (destination contains " in ") — falls through to Phase 2
     expect(parseQueryIntentSync('somewhere to eat in bakersfield')).toBeNull()
   })
 })
