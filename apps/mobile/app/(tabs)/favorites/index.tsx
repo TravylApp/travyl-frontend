@@ -379,13 +379,14 @@ export default function FavoritesScreen() {
   const filteredPlaces = useMemo(() => {
     let result = [...tabFiltered];
     if (activeSubcategory) result = result.filter((p) => p.category === activeSubcategory);
-    if (searchQuery.trim()) {
+    // Only apply local text filter when NOT in API search mode
+    if (searchQuery.trim() && !searchCity) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.tagline.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
+          p.name?.toLowerCase().includes(q) ||
+          p.tagline?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
