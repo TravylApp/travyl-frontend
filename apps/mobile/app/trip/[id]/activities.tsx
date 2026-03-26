@@ -1010,7 +1010,7 @@ function SkeletonCard() {
 export default function ActivitiesScreen() {
   const ACCENT = useTabAccent('activities');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { days, isLoading } = useItineraryScreen(id);
+  const { trip, days, isLoading } = useItineraryScreen(id);
 
   const {
     viewMode, setViewMode,
@@ -1024,7 +1024,7 @@ export default function ActivitiesScreen() {
     bookedItems,
     discoverItems,
     clearFilters,
-  } = useActivityFilters(days);
+  } = useActivityFilters(days, trip?.trip_context);
 
   const colors = useThemeColors();
   const [showSortDropdown, setShowSortDropdown] = useState(false);

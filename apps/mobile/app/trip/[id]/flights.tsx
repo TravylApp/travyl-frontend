@@ -1073,7 +1073,7 @@ export default function FlightsScreen() {
   const destAirport = CITY_AIRPORTS[city] || '';
 
   // Check if trip has real flight data (from DB or trip_context)
-  const hasFlights = false; // Backend doesn't generate flights yet
+  const hasFlights = !!((trip?.trip_context as any)?.flights?.length);
 
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 

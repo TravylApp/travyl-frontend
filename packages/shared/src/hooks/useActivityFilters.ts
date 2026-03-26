@@ -83,9 +83,38 @@ export function buildBookedActivities(days: ItineraryDayViewModel[]): DiscoverIt
 }
 
 // ─── Hook ─────────────────────────────────────────────────────
-export function useActivityFilters(days: ItineraryDayViewModel[]) {
+export function useActivityFilters(days: ItineraryDayViewModel[], tripContext?: any) {
   const bookedItems = useMemo(() => buildBookedActivities(days), [days]);
-  const discoverItems: DiscoverItem[] = [];
+
+  // Build discover items from trip_context (explore_items, foursquare, restaurants)
+  const discoverItems = useMemo<DiscoverItem[]>(() => {
+    if (!tripContext) return [];
+    const items: DiscoverItem[] = [];
+    const seen = new Set<string>();
+    // Explore items (attractions, landmarks)
+    for (const e of tripContext.explore_items ?? []) {
+      if (e.title && !seen.has(e.title)) {
+        seen.add(e.title);
+        items.push({ id: e.id, name: e.title, location: '', description: e.description || '', category: mapActivityCategory(e.category || 'Sightseeing'), images: e.image ? [e.image] : [], rating: e.rating || 0, reviewCount: e.reviewCount || 0, tags: e.tags || [e.category || 'Sightseeing'] });
+      }
+    }
+    // Foursquare venues
+    for (const v of tripContext.foursquare_venues ?? []) {
+      const name = v.title || v.name;
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        items.push({ id: v.id, name, location: '', description: v.description || '', category: mapActivityCategory(v.category || 'Sightseeing'), images: v.image ? [v.image] : [], rating: v.rating || 0, tags: [v.category || 'Sightseeing'] });
+      }
+    }
+    // Restaurants
+    for (const r of tripContext.restaurants ?? []) {
+      if (r.name && !seen.has(r.name)) {
+        seen.add(r.name);
+        items.push({ id: r.id, name: r.name, location: '', description: r.tip || r.category || '', category: 'Tours', images: r.image ? [r.image] : r.images || [], rating: r.rating || 0, reviewCount: r.reviewCount || 0, tags: r.cuisines || [r.category || 'Restaurant'] });
+      }
+    }
+    return items;
+  }, [tripContext]);
 
   const [viewMode, setViewMode] = useState<'booked' | 'discover'>('discover');
 

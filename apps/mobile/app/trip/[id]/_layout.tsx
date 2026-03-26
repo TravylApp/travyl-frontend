@@ -30,7 +30,6 @@ const ALL_TABS = [
   { name: 'itinerary',   title: 'Itinerary',   icon: 'calendar'    },
   { name: 'hotels',      title: 'Hotels',      icon: 'building-o'  },
   { name: 'flights',     title: 'Flights',     icon: 'plane'       },
-  { name: 'restaurants', title: 'Restaurants',  icon: 'cutlery'     },
   { name: 'activities',  title: 'Explore',     icon: 'compass'     },
   { name: 'packing',     title: 'Packing',     icon: 'suitcase'    },
   { name: 'budget',      title: 'Budget',      icon: 'pie-chart'   },
