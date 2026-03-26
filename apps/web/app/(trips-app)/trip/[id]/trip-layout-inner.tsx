@@ -268,7 +268,7 @@ function TripLayoutContent({
 
   return (
     <div
-      className={`pb-14 md:pb-0 ${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
+      className={`pb-14 md:pb-0 ${useOverviewBg ? '-mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
       style={{ transition: 'background-color 0.5s ease' }}
     >
       {/* Hero banner — only on overview + itinerary; skip on calendar and content tabs */}
