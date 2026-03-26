@@ -26,12 +26,14 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useHomeScreen,
   useHeroConfig,
+  useTripPlanner,
   Blue,
   hexToRgba,
   TextStyles,
   FontSize,
   FontFamily,
 } from '@travyl/shared';
+import { savePlanToSupabase } from '@travyl/shared/src/services/api';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
@@ -288,6 +290,7 @@ export default function HomeScreen() {
     showEmptyState,
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
+  const planner = useTripPlanner();
 
   // Cycling hero slideshow
   const heroSlides = heroConfig?.background_image_url
@@ -380,7 +383,9 @@ export default function HomeScreen() {
     setTripQuery(query);
     setButtonLayout(buttonLayoutRef.current);
     setShowTakeoff(true);
-  }, [setTripQuery]);
+    // Start planning in background
+    planner.plan(query);
+  }, [setTripQuery, planner]);
 
   const handleConvReset = useCallback(() => {
     setConvStep(-1);
@@ -920,7 +925,22 @@ export default function HomeScreen() {
     <TakeoffTransition
       visible={showTakeoff}
       buttonLayout={buttonLayout}
-      onComplete={() => {
+      onComplete={async () => {
+        // Wait for plan to complete if still running
+        const state = planner.state;
+        if (state.phase === 'complete' && state.plan) {
+          try {
+            const tripId = await savePlanToSupabase(state.plan as any);
+            planner.reset();
+            setShowTakeoff(false);
+            router.push(`/trip/${tripId}` as any);
+            return;
+          } catch (err) {
+            console.error('Failed to save trip:', err);
+          }
+        }
+        // Fallback: go to trips page
+        planner.reset();
         setShowTakeoff(false);
         router.push('/(tabs)/trips');
       }}
