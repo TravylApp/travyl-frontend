@@ -3,6 +3,7 @@ import * as Y from 'yjs'
 import { supabase, toActivityRow, toCalendarActivity, type ActivityRow } from '@travyl/shared'
 import type { CalendarActivity } from '../types'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
+import { yMapToCalendarActivity, CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
 
 type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected'
 
@@ -14,44 +15,6 @@ interface UseYjsSyncReturn {
 }
 
 // ─── Helpers ────────────────────────────────────────────────
-
-const CALENDAR_ACTIVITY_KEYS: (keyof CalendarActivity)[] = [
-  'id',
-  'title',
-  'type',
-  'day',
-  'endDay',
-  'startHour',
-  'duration',
-  'location',
-  'image',
-  'rating',
-  'price',
-  'notes',
-  'color',
-  'latitude',
-  'longitude',
-  'sortOrder',
-  'pollResult',
-  'unscheduled',
-  'flightNumber',
-  'airline',
-  'checkIn',
-  'checkOut',
-  'bookingRef',
-]
-
-function yMapToCalendarActivity(
-  id: string,
-  yMap: Y.Map<unknown>,
-): CalendarActivity {
-  const obj: Record<string, unknown> = { id }
-  for (const key of CALENDAR_ACTIVITY_KEYS) {
-    const val = yMap.get(key)
-    if (val !== undefined) obj[key] = val
-  }
-  return obj as unknown as CalendarActivity
-}
 
 function readAllActivities(
   activitiesMap: Y.Map<Y.Map<unknown>>,
