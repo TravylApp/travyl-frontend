@@ -115,3 +115,68 @@ export async function searchPlaces(
     return []
   }
 }
+
+interface SerpMapsResult {
+  title?: string
+  address?: string
+  rating?: number
+  price?: string    // '$' | '$$' | '$$$$' etc.
+  photos?: Array<{ image?: string; thumbnail?: string }>
+  hours?: {
+    schedule?: Array<{ day: string; opens: string; closes: string }>
+  }
+}
+
+interface SerpMapsResponse {
+  place_results?: SerpMapsResult
+}
+
+export interface PlaceDetails {
+  name: string
+  address: string
+  rating: number | null
+  priceTier: string | null
+  photos: string[]
+  openingHours: Array<{ day: string; opens: string; closes: string }> | null
+}
+
+/**
+ * Fetch place details for a specific location by name + coordinates.
+ * Uses SerpAPI google_maps engine (single-place detail, different from google_local).
+ * Opening hours are best-effort — absent from many results.
+ */
+export async function getPlaceDetails(
+  name: string,
+  lat: number,
+  lng: number,
+): Promise<PlaceDetails | null> {
+  const url = new URL(SERPAPI_BASE)
+  url.searchParams.set('engine', 'google_maps')
+  url.searchParams.set('q', name)
+  url.searchParams.set('ll', `@${lat},${lng},14z`)
+  url.searchParams.set('api_key', getApiKey())
+
+  try {
+    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+    if (!res.ok) return null
+    const data = (await res.json()) as SerpMapsResponse
+    const place = data.place_results
+    if (!place) return null
+
+    const photos = (place.photos ?? [])
+      .slice(0, 3)
+      .map((p) => p.image ?? p.thumbnail ?? '')
+      .filter(Boolean)
+
+    return {
+      name: place.title ?? name,
+      address: place.address ?? '',
+      rating: place.rating ?? null,
+      priceTier: place.price ?? null,
+      photos,
+      openingHours: place.hours?.schedule ?? null,
+    }
+  } catch {
+    return null
+  }
+}

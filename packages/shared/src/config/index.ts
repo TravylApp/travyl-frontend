@@ -9,8 +9,6 @@ export {
   Violet,
   Indigo,
   Cyan,
-  Teal,
-  Slate,
   Navy,
   Brand,
   TripStatusColors,
@@ -44,8 +42,6 @@ export { PAPER_PLANE_VIEWBOX, PAPER_PLANE_PATHS } from './logo';
 export * from './itineraryData';
 
 export * from './activityDetails';
-
-export * from './exploreData';
 
 export * from './placeCardSizes';
 

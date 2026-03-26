@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
@@ -9,6 +9,7 @@ import { Plus } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { Footer, OceanWave } from '@/components/home';
 import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
+import { useIndexTrip } from '@/hooks/useIndexTrip';
 
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
@@ -185,6 +186,16 @@ function TripsContent() {
   const [modalOpen, setModalOpen] = useState(false)
 
   const { data: trips, isLoading, isError } = useTrips();
+  const { indexTrip } = useIndexTrip();
+  const hasIndexedRef = useRef(false);
+
+  // Index any trips that haven't been indexed yet so they appear in spotlight search
+  useEffect(() => {
+    if (!hasIndexedRef.current && trips && trips.length > 0) {
+      hasIndexedRef.current = true;
+      trips.forEach((trip) => indexTrip(trip.id));
+    }
+  }, [trips, indexTrip]);
 
   const allTrips: MockTripCard[] = (trips ?? []).map((t) => ({
     ...t,

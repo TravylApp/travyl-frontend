@@ -90,15 +90,6 @@ export const Cyan = {
   500: '#06B6D4',
 } as const;
 
-export const Teal = {
-  500: '#0D9488',
-  600: '#0F766E',
-} as const;
-
-export const Slate = {
-  500: '#475569',
-} as const;
-
 export const Navy = {
   DEFAULT: '#1e3a5f',
   light: '#2d4a6f',

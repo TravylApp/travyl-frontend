@@ -88,6 +88,11 @@ api.route('GET /context-search', {
   ],
 })
 
+api.route('GET /entity-search', {
+  handler: 'services/entity-search.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+})
+
 api.route('GET /recommend', {
   handler: 'services/recommend.handler',
   link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
@@ -99,4 +104,20 @@ api.route('POST /invite', {
   environment: {
     APP_URL: $app.stage === 'production' ? 'https://gotravyl.com' : 'http://localhost:3000',
   },
+})
+
+api.route('POST /packing-suggest', {
+  handler: 'services/packing-suggest.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})
+
+api.route('GET /activity-intelligence', {
+  handler: 'services/activity-intelligence.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })

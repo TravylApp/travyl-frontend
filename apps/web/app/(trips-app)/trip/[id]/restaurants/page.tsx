@@ -1,6 +1,7 @@
 'use client';
 
 import { use } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const ResponsiveMasonry = dynamic(
@@ -82,6 +83,7 @@ function RestaurantsSkeleton() {
 
 export default function Restaurants({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const { isLoading } = useItineraryScreen(id);
 
   const {
@@ -277,6 +279,7 @@ export default function Restaurants({ params }: { params: Promise<{ id: string }
                       accentColor={ACCENT}
                       isFavorited={favorites.includes(item.id)}
                       onFavorite={toggleFavorite}
+                      onClick={() => router.push(`/trip/${id}/restaurants/${item.id}`)}
                       onAddToItinerary={!item.isBooked ? () => {} : undefined}
                       onRemoveFromItinerary={item.isBooked ? () => {} : undefined}
                     />

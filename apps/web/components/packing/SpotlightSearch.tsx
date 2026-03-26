@@ -2,18 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Search } from 'iconoir-react'
-import type { DbPackingItem, PackingCategory } from '@travyl/shared'
+import type { DbPackingItem } from '@travyl/shared'
 import { PACKING_CATALOG, PACKING_CATEGORIES } from '@travyl/shared'
-import { CATEGORY_LABELS } from './utils'
+import { getCategoryLabel } from './utils'
 
 interface SpotlightSearchProps {
   existingItems: DbPackingItem[]
-  onAddItem: (name: string, category: PackingCategory) => void
+  onAddItem: (name: string, category: string) => void
 }
 
 interface ResultItem {
   name: string
-  category: PackingCategory
+  category: string
   alreadyAdded: boolean
   isCustom?: boolean
 }
@@ -22,7 +22,7 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
-  const [customCategory, setCustomCategory] = useState<PackingCategory>('essentials')
+  const [customCategory, setCustomCategory] = useState<string>('essentials')
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -155,7 +155,7 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
                   <span className="text-xs text-[var(--cal-text-muted)]">already added</span>
                 ) : (
                   <span className="text-xs text-[var(--cal-text-muted)]">
-                    {CATEGORY_LABELS[item.category]}
+                    {getCategoryLabel(item.category)}
                   </span>
                 )}
 
@@ -165,14 +165,14 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
                     value={customCategory}
                     onChange={(e) => {
                       e.stopPropagation()
-                      setCustomCategory(e.target.value as PackingCategory)
+                      setCustomCategory(e.target.value)
                     }}
                     onClick={(e) => e.stopPropagation()}
                     className="text-xs border border-[var(--cal-border)] rounded px-1 py-0.5 bg-[var(--cal-bg)] text-[var(--cal-text)] outline-none"
                   >
                     {PACKING_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
-                        {CATEGORY_LABELS[cat]}
+                        {getCategoryLabel(cat)}
                       </option>
                     ))}
                   </select>

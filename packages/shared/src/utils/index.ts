@@ -9,6 +9,7 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
@@ -89,3 +90,6 @@ export { isVoteKey, userIdFromVoteKey, parseVotesFromYMap, resolveVotes } from '
 // Rescoper utilities
 export { detectOperation, getConflictingActivities, computeNewTotalDays } from './rescoper'
 export type { RescoperOperation } from './rescoper'
+
+export { mergeSearchResults, deduplicateResults } from './entitySearch'
+export type { SpotlightResult } from './entitySearch'

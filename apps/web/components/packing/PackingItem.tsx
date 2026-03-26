@@ -9,9 +9,12 @@ interface PackingItemProps {
   item: DbPackingItem
   onToggle: (id: string) => void
   onRemove: (id: string) => void
+  onClaim?: (id: string) => void
+  onRelease?: (id: string) => void
+  currentUserId?: string
 }
 
-export function PackingItem({ item, onToggle, onRemove }: PackingItemProps) {
+export function PackingItem({ item, onToggle, onRemove, onClaim, onRelease, currentUserId }: PackingItemProps) {
   const displayName = item.user_display_name ?? 'User'
   const avatarColor = stringToColor(displayName)
 
@@ -58,6 +61,21 @@ export function PackingItem({ item, onToggle, onRemove }: PackingItemProps) {
         {item.name}
       </span>
 
+      {/* Ownership pill */}
+      {item.group_tag ? (
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 dark:bg-pink-900/20 dark:text-pink-400 shrink-0">
+          {item.group_tag === 'kids' ? 'Kids' : 'Adults'}
+        </span>
+      ) : item.owner_id ? (
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 shrink-0">
+          {item.owner_display_name || 'Claimed'}
+        </span>
+      ) : (
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 shrink-0">
+          Shared
+        </span>
+      )}
+
       {/* User avatar */}
       <span
         className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
@@ -66,6 +84,20 @@ export function PackingItem({ item, onToggle, onRemove }: PackingItemProps) {
       >
         {displayName[0].toUpperCase()}
       </span>
+
+      {/* Claim/Release buttons — appear on hover */}
+      {!item.owner_id && !item.group_tag && onClaim && (
+        <button onClick={() => onClaim(item.id)}
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 hover:text-blue-800 transition-opacity">
+          Claim
+        </button>
+      )}
+      {item.owner_id === currentUserId && onRelease && (
+        <button onClick={() => onRelease(item.id)}
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-gray-500 hover:text-gray-700 transition-opacity">
+          Release
+        </button>
+      )}
 
       {/* Remove button — appears on hover */}
       <button

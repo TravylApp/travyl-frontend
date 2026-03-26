@@ -117,7 +117,8 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
 }
 
 export default function ExplorePage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get('q') ?? '');
 
   const { data: trips, isLoading, error } = useQuery({
     queryKey: ['publicTrips'],
