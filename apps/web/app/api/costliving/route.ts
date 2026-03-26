@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getRequiredParams, errorResponse, CACHE_24H } from '@/lib/api-utils'
 
 // ---------------------------------------------------------------------------
 // Cost-of-living estimates by country/region, scaled from a US-dollar baseline.
@@ -9,29 +10,26 @@ import { NextRequest, NextResponse } from 'next/server'
 // ---------------------------------------------------------------------------
 
 const BASE_PRICES = {
-  meal_cheap: 15,          // inexpensive restaurant meal (USD)
-  meal_mid: 50,            // mid-range restaurant, 2 people
-  coffee: 5,               // cappuccino
-  beer: 6,                 // domestic draft beer (0.5L)
-  taxi_km: 2.0,            // taxi per km
-  public_transport: 2.75,  // one-way local transit ticket
-  water_bottle: 1.5,       // 0.33L bottled water
+  meal_cheap: 15,
+  meal_mid: 50,
+  coffee: 5,
+  beer: 6,
+  taxi_km: 2.0,
+  public_transport: 2.75,
+  water_bottle: 1.5,
   daily_budget_low: 80,
   daily_budget_mid: 180,
   daily_budget_high: 400,
-}
+} as const
 
 // ---------------------------------------------------------------------------
-// Country-level multipliers — top 60+ travel destinations
-// Source: Numbeo Cost of Living Index (US = 100) mapped to a multiplier,
-// then sanity-checked with Nomad List / Budget Your Trip averages.
+// Country-level multipliers -- top 60+ travel destinations
 // ---------------------------------------------------------------------------
 const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   // North America
   US: { m: 1.0, currency: 'USD' },
   CA: { m: 0.95, currency: 'CAD' },
   MX: { m: 0.40, currency: 'MXN' },
-
   // Central America & Caribbean
   CR: { m: 0.55, currency: 'CRC' },
   PA: { m: 0.55, currency: 'PAB' },
@@ -40,7 +38,6 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   CU: { m: 0.40, currency: 'CUP' },
   DO: { m: 0.40, currency: 'DOP' },
   JM: { m: 0.50, currency: 'JMD' },
-
   // South America
   BR: { m: 0.45, currency: 'BRL' },
   AR: { m: 0.30, currency: 'ARS' },
@@ -50,7 +47,6 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   EC: { m: 0.35, currency: 'USD' },
   BO: { m: 0.30, currency: 'BOB' },
   UY: { m: 0.55, currency: 'UYU' },
-
   // Western Europe
   GB: { m: 1.10, currency: 'GBP' },
   FR: { m: 1.05, currency: 'EUR' },
@@ -69,7 +65,6 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   FI: { m: 1.10, currency: 'EUR' },
   LU: { m: 1.15, currency: 'EUR' },
   IS: { m: 1.40, currency: 'ISK' },
-
   // Eastern Europe
   PL: { m: 0.50, currency: 'PLN' },
   CZ: { m: 0.55, currency: 'CZK' },
@@ -82,7 +77,6 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   TR: { m: 0.35, currency: 'TRY' },
   UA: { m: 0.30, currency: 'UAH' },
   GE: { m: 0.35, currency: 'GEL' },
-
   // Middle East
   AE: { m: 0.85, currency: 'AED' },
   IL: { m: 1.10, currency: 'ILS' },
@@ -90,7 +84,6 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   QA: { m: 0.80, currency: 'QAR' },
   JO: { m: 0.55, currency: 'JOD' },
   OM: { m: 0.65, currency: 'OMR' },
-
   // East Asia
   JP: { m: 0.85, currency: 'JPY' },
   KR: { m: 0.80, currency: 'KRW' },
@@ -98,7 +91,6 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   TW: { m: 0.55, currency: 'TWD' },
   HK: { m: 0.95, currency: 'HKD' },
   MO: { m: 0.80, currency: 'MOP' },
-
   // Southeast Asia
   TH: { m: 0.35, currency: 'THB' },
   VN: { m: 0.28, currency: 'VND' },
@@ -109,17 +101,14 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
   KH: { m: 0.28, currency: 'KHR' },
   LA: { m: 0.28, currency: 'LAK' },
   MM: { m: 0.25, currency: 'MMK' },
-
   // South Asia
   IN: { m: 0.25, currency: 'INR' },
   LK: { m: 0.25, currency: 'LKR' },
   NP: { m: 0.22, currency: 'NPR' },
-
   // Oceania
   AU: { m: 1.05, currency: 'AUD' },
   NZ: { m: 0.95, currency: 'NZD' },
   FJ: { m: 0.60, currency: 'FJD' },
-
   // Africa
   ZA: { m: 0.40, currency: 'ZAR' },
   MA: { m: 0.35, currency: 'MAD' },
@@ -135,37 +124,35 @@ const COUNTRY_MULTIPLIERS: Record<string, { m: number; currency: string }> = {
 
 // ---------------------------------------------------------------------------
 // Regional fallbacks when a specific country code isn't in the lookup.
-// Keys match the `subregion` field returned by REST Countries API v3.1.
 // ---------------------------------------------------------------------------
 const REGION_FALLBACKS: Record<string, { m: number; currency: string }> = {
-  'Western Europe':            { m: 1.00, currency: 'EUR' },
-  'Northern Europe':           { m: 1.15, currency: 'EUR' },
-  'Southern Europe':           { m: 0.80, currency: 'EUR' },
-  'Eastern Europe':            { m: 0.45, currency: 'EUR' },
-  'Central America':           { m: 0.45, currency: 'USD' },
-  'Caribbean':                 { m: 0.55, currency: 'USD' },
-  'South America':             { m: 0.40, currency: 'USD' },
-  'North America':             { m: 1.00, currency: 'USD' },
-  'Central Asia':              { m: 0.35, currency: 'USD' },
-  'Eastern Asia':              { m: 0.75, currency: 'USD' },
-  'South-Eastern Asia':        { m: 0.35, currency: 'USD' },
-  'Southern Asia':             { m: 0.25, currency: 'USD' },
-  'Western Asia':              { m: 0.65, currency: 'USD' },
-  'Australia and New Zealand':  { m: 1.00, currency: 'AUD' },
-  'Melanesia':                 { m: 0.60, currency: 'USD' },
-  'Polynesia':                 { m: 0.70, currency: 'USD' },
-  'Northern Africa':           { m: 0.30, currency: 'USD' },
-  'Western Africa':            { m: 0.30, currency: 'USD' },
-  'Eastern Africa':            { m: 0.30, currency: 'USD' },
-  'Southern Africa':           { m: 0.40, currency: 'ZAR' },
-  'Middle Africa':             { m: 0.35, currency: 'USD' },
+  'Western Europe':           { m: 1.00, currency: 'EUR' },
+  'Northern Europe':          { m: 1.15, currency: 'EUR' },
+  'Southern Europe':          { m: 0.80, currency: 'EUR' },
+  'Eastern Europe':           { m: 0.45, currency: 'EUR' },
+  'Central America':          { m: 0.45, currency: 'USD' },
+  'Caribbean':                { m: 0.55, currency: 'USD' },
+  'South America':            { m: 0.40, currency: 'USD' },
+  'North America':            { m: 1.00, currency: 'USD' },
+  'Central Asia':             { m: 0.35, currency: 'USD' },
+  'Eastern Asia':             { m: 0.75, currency: 'USD' },
+  'South-Eastern Asia':       { m: 0.35, currency: 'USD' },
+  'Southern Asia':            { m: 0.25, currency: 'USD' },
+  'Western Asia':             { m: 0.65, currency: 'USD' },
+  'Australia and New Zealand': { m: 1.00, currency: 'AUD' },
+  'Melanesia':                { m: 0.60, currency: 'USD' },
+  'Polynesia':                { m: 0.70, currency: 'USD' },
+  'Northern Africa':          { m: 0.30, currency: 'USD' },
+  'Western Africa':           { m: 0.30, currency: 'USD' },
+  'Eastern Africa':           { m: 0.30, currency: 'USD' },
+  'Southern Africa':          { m: 0.40, currency: 'ZAR' },
+  'Middle Africa':            { m: 0.35, currency: 'USD' },
 }
 
-// Default when nothing else matches
 const DEFAULT_ENTRY = { m: 0.60, currency: 'USD' }
 
 // ---------------------------------------------------------------------------
-// REST Countries API — resolve country name → alpha-2 code + subregion
+// REST Countries API -- resolve country name to alpha-2 code + subregion
 // ---------------------------------------------------------------------------
 interface RestCountryResult {
   cca2: string
@@ -174,100 +161,66 @@ interface RestCountryResult {
 }
 
 async function resolveCountry(
-  country: string
+  country: string,
 ): Promise<{ code: string; subregion: string; currencyCode: string | null }> {
+  const empty = { code: '', subregion: '', currencyCode: null }
   try {
     const res = await fetch(
       `https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fields=cca2,subregion,currencies`,
-      { next: { revalidate: 86400 } } // cache 24 h
+      CACHE_24H,
     )
-    if (!res.ok) return { code: '', subregion: '', currencyCode: null }
+    if (!res.ok) return empty
 
     const data: RestCountryResult[] = await res.json()
-    if (!data.length) return { code: '', subregion: '', currencyCode: null }
+    if (!data.length) return empty
 
     const best = data[0]
-    const currencyCode = best.currencies
-      ? Object.keys(best.currencies)[0]
-      : null
-
     return {
       code: best.cca2,
       subregion: best.subregion ?? '',
-      currencyCode,
+      currencyCode: best.currencies ? Object.keys(best.currencies)[0] : null,
     }
   } catch {
-    return { code: '', subregion: '', currencyCode: null }
+    return empty
   }
 }
 
 // ---------------------------------------------------------------------------
-// Scale base prices by a multiplier and round nicely
+// Scale base prices by a multiplier and round to 2 decimal places
 // ---------------------------------------------------------------------------
 function scalePrices(multiplier: number) {
   const round = (v: number) => Math.round(v * 100) / 100
-  return {
-    meal_cheap: round(BASE_PRICES.meal_cheap * multiplier),
-    meal_mid: round(BASE_PRICES.meal_mid * multiplier),
-    coffee: round(BASE_PRICES.coffee * multiplier),
-    beer: round(BASE_PRICES.beer * multiplier),
-    taxi_km: round(BASE_PRICES.taxi_km * multiplier),
-    public_transport: round(BASE_PRICES.public_transport * multiplier),
-    water_bottle: round(BASE_PRICES.water_bottle * multiplier),
-    daily_budget_low: round(BASE_PRICES.daily_budget_low * multiplier),
-    daily_budget_mid: round(BASE_PRICES.daily_budget_mid * multiplier),
-    daily_budget_high: round(BASE_PRICES.daily_budget_high * multiplier),
-  }
+  return Object.fromEntries(
+    Object.entries(BASE_PRICES).map(([key, base]) => [key, round(base * multiplier)]),
+  ) as Record<keyof typeof BASE_PRICES, number>
 }
 
 // ---------------------------------------------------------------------------
 // GET /api/costliving?city=Tokyo&country=Japan
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
-  const city = req.nextUrl.searchParams.get('city')
-  const country = req.nextUrl.searchParams.get('country')
-
-  if (!city || !country) {
-    return NextResponse.json(
-      { error: 'Missing required parameters: city, country' },
-      { status: 400 }
-    )
-  }
+  const params = getRequiredParams(req, 'city', 'country')
+  if (params instanceof NextResponse) return params
 
   try {
-    const { code, subregion, currencyCode } = await resolveCountry(country)
+    const { code, subregion, currencyCode } = await resolveCountry(params.country)
 
-    // 1. Try exact country code
-    let entry = code ? COUNTRY_MULTIPLIERS[code] : undefined
+    const entry =
+      (code ? COUNTRY_MULTIPLIERS[code] : undefined) ??
+      (subregion ? REGION_FALLBACKS[subregion] : undefined) ??
+      DEFAULT_ENTRY
 
-    // 2. Fallback to subregion
-    if (!entry && subregion) {
-      entry = REGION_FALLBACKS[subregion]
-    }
-
-    // 3. Ultimate fallback
-    if (!entry) {
-      entry = DEFAULT_ENTRY
-    }
-
-    // Prefer the currency from our lookup (more relevant for travelers),
-    // but fall back to REST Countries if the country wasn't in our table.
     const currency = entry.currency ?? currencyCode ?? 'USD'
 
-    const prices = scalePrices(entry.m)
-
     return NextResponse.json({
-      city,
-      country,
+      city: params.city,
+      country: params.country,
       country_code: code || null,
-      ...prices,
+      ...scalePrices(entry.m),
       currency,
       source: code && COUNTRY_MULTIPLIERS[code] ? 'estimated' : 'regional_estimate',
     })
   } catch {
-    return NextResponse.json(
-      { error: 'Cost of living service unavailable' },
-      { status: 500 }
-    )
+    return errorResponse('Cost of living service unavailable', 500)
   }
 }

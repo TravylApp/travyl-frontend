@@ -1,46 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getRequiredParams, getOptionalParam, errorResponse, CACHE_1H } from '@/lib/api-utils'
+
+interface SunriseResponse {
+  sunrise: string
+  sunset: string
+  golden_hour: string
+  day_length: string
+  solar_noon: string
+}
 
 export async function GET(req: NextRequest) {
-  const lat = req.nextUrl.searchParams.get('lat')
-  const lng = req.nextUrl.searchParams.get('lng')
-  const date =
-    req.nextUrl.searchParams.get('date') ??
-    new Date().toISOString().split('T')[0]
+  const params = getRequiredParams(req, 'lat', 'lng')
+  if (params instanceof NextResponse) return params
 
-  if (!lat || !lng) {
-    return NextResponse.json(
-      { error: 'Missing lat or lng parameter' },
-      { status: 400 }
-    )
-  }
+  const date = getOptionalParam(req, 'date', new Date().toISOString().split('T')[0])
 
   try {
     const res = await fetch(
-      `https://api.sunrise-sunset.org/json?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&date=${encodeURIComponent(date)}&formatted=0`,
-      { next: { revalidate: 3600 } }
+      `https://api.sunrise-sunset.org/json?lat=${encodeURIComponent(params.lat)}&lng=${encodeURIComponent(params.lng)}&date=${encodeURIComponent(date)}&formatted=0`,
+      CACHE_1H,
     )
 
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: 'Sunrise-sunset fetch failed' },
-        { status: res.status }
-      )
-    }
+    if (!res.ok) return errorResponse('Sunrise-sunset fetch failed', res.status)
 
     const data = await res.json()
-
     if (data.status !== 'OK') {
-      return NextResponse.json(
-        { error: `Sunrise-sunset API returned status: ${data.status}` },
-        { status: 502 }
-      )
+      return errorResponse(`Sunrise-sunset API returned status: ${data.status}`, 502)
     }
 
-    const results = data.results
+    const { results } = data
     const sunsetDate = new Date(results.sunset)
     const goldenHour = new Date(sunsetDate.getTime() - 60 * 60 * 1000)
 
-    return NextResponse.json({
+    return NextResponse.json<SunriseResponse>({
       sunrise: results.sunrise,
       sunset: results.sunset,
       golden_hour: goldenHour.toISOString(),
@@ -48,9 +40,6 @@ export async function GET(req: NextRequest) {
       solar_noon: results.solar_noon,
     })
   } catch {
-    return NextResponse.json(
-      { error: 'Sunrise-sunset service unavailable' },
-      { status: 500 }
-    )
+    return errorResponse('Sunrise-sunset service unavailable', 500)
   }
 }

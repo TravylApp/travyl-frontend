@@ -1,52 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '../lib/response'
+
+// ─── Response types ──────────────────────────────────────────────────────────
+
+interface SafetyAdvisory {
+  score: number
+  message: string
+  source: string
+  updated: string
+}
+
+// ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  const country = req.nextUrl.searchParams.get('country')
-
-  if (!country) {
-    return NextResponse.json(
-      { error: 'Missing country parameter (2-letter ISO code)' },
-      { status: 400 }
-    )
-  }
-
   try {
+    const country = requireParam(req.nextUrl.searchParams, 'country', '2-letter ISO code')
+    const countryCode = country.toUpperCase()
+
     const res = await fetch(
-      `https://www.travel-advisory.info/api?countrycode=${encodeURIComponent(country.toUpperCase())}`,
-      { next: { revalidate: 3600 } }
+      `https://www.travel-advisory.info/api?countrycode=${encodeURIComponent(countryCode)}`,
+      CACHE_1H
     )
 
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: 'Travel advisory fetch failed' },
-        { status: res.status }
-      )
-    }
+    if (!res.ok) return errorResponse('Travel advisory fetch failed', res.status)
 
     const data = await res.json()
-
-    const countryCode = country.toUpperCase()
     const entry = data?.data?.[countryCode]
 
-    if (!entry) {
-      return NextResponse.json(
-        { error: `No advisory data found for country: ${countryCode}` },
-        { status: 404 }
-      )
-    }
+    if (!entry) return errorResponse(`No advisory data found for country: ${countryCode}`, 404)
 
     const advisory = entry.advisory
-
-    return NextResponse.json({
+    const result: SafetyAdvisory = {
       score: advisory.score ?? 0,
       message: advisory.message ?? '',
       source: advisory.source ?? '',
       updated: advisory.updated ?? '',
-    })
-  } catch {
-    return NextResponse.json(
-      { error: 'Travel advisory service unavailable' },
-      { status: 500 }
-    )
+    }
+
+    return jsonResponse(result)
+  } catch (err) {
+    if (err instanceof MissingParamError) return errorResponse(err.message, 400)
+    return errorResponse('Travel advisory service unavailable', 500)
   }
 }

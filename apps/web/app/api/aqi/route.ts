@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getRequiredParams, errorResponse, CACHE_1H } from '@/lib/api-utils'
 
 type AqiLevel =
   | 'Good'
@@ -7,6 +8,13 @@ type AqiLevel =
   | 'Unhealthy'
   | 'Very Unhealthy'
   | 'Hazardous'
+
+interface AqiResponse {
+  aqi: number
+  level: AqiLevel
+  pm25: number
+  pm10: number
+}
 
 function getUsAqiLevel(aqi: number): AqiLevel {
   if (aqi <= 50) return 'Good'
@@ -18,44 +26,30 @@ function getUsAqiLevel(aqi: number): AqiLevel {
 }
 
 export async function GET(req: NextRequest) {
-  const lat = req.nextUrl.searchParams.get('lat')
-  const lon = req.nextUrl.searchParams.get('lon')
+  const params = getRequiredParams(req, 'lat', 'lon')
+  if (params instanceof NextResponse) return params
 
-  if (!lat || !lon) {
-    return NextResponse.json({ error: 'Missing lat and lon parameters' }, { status: 400 })
-  }
-
-  const latitude = parseFloat(lat)
-  const longitude = parseFloat(lon)
-
-  if (isNaN(latitude) || isNaN(longitude)) {
-    return NextResponse.json({ error: 'Invalid lat or lon values' }, { status: 400 })
+  const latitude = parseFloat(params.lat)
+  const longitude = parseFloat(params.lon)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return errorResponse('Invalid lat or lon values', 400)
   }
 
   try {
-    // Use Open-Meteo Air Quality API (free, no key required)
     const res = await fetch(
       `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi,pm10,pm2_5`,
-      { next: { revalidate: 3600 } } // Cache for 1 hour
+      CACHE_1H,
     )
 
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Air quality fetch failed' }, { status: res.status })
-    }
+    if (!res.ok) return errorResponse('Air quality fetch failed', res.status)
 
     const data = await res.json()
-
     const aqi = data.current?.us_aqi ?? 0
     const pm25 = data.current?.pm2_5 ?? 0
     const pm10 = data.current?.pm10 ?? 0
 
-    return NextResponse.json({
-      aqi,
-      level: getUsAqiLevel(aqi),
-      pm25,
-      pm10,
-    })
+    return NextResponse.json<AqiResponse>({ aqi, level: getUsAqiLevel(aqi), pm25, pm10 })
   } catch {
-    return NextResponse.json({ error: 'Air quality service unavailable' }, { status: 500 })
+    return errorResponse('Air quality service unavailable', 500)
   }
 }
