@@ -1,7 +1,7 @@
 // ─── Supabase ────────────────────────────────────────────────
 export const supabaseSecretKey = new sst.Secret('SupabaseSecretKey')
 export const supabaseUrl = new sst.Secret('SupabaseUrl')
-export const supabaseAnonKey = new sst.Secret('SupabaseAnonKey')
+export const supabasePublishableKey = new sst.Secret('SupabasePublishableKey')
 
 // ─── Search & Location ──────────────────────────────────────
 export const serpApiKey = new sst.Secret('SerpApiKey')

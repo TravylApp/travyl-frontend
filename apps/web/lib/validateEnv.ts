@@ -10,7 +10,7 @@ const REQUIRED_PUBLIC = [
 ] as const
 
 const REQUIRED_SERVER = [
-  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SECRET_KEY',
 ] as const
 
 export function validateEnv() {
