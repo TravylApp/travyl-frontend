@@ -1,0 +1,122 @@
+[     193ms] [ERROR] ./apps/web/components/calendar/providers/YjsTripProvider.tsx:13:1
+Module not found: Can't resolve '@supabase-labs/y-supabase'
+  11 | } from 'react'
+  12 | import * as Y from 'yjs'
+> 13 | import { SupabaseProvider } from '@supabase-labs/y-supabase'
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { supabase } from '@travyl/shared'
+  15 |
+  16 | interface YjsTripContextValue {
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[     308ms] [ERROR] ./apps/web/components/calendar/providers/YjsTripProvider.tsx:13:1
+Module not found: Can't resolve '@supabase-labs/y-supabase'
+  11 | } from 'react'
+  12 | import * as Y from 'yjs'
+> 13 | import { SupabaseProvider } from '@supabase-labs/y-supabase'
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { supabase } from '@travyl/shared'
+  15 |
+  16 | interface YjsTripContextValue {
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[     314ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trip/5c9031cd-d302-49fc-a2f6-b83061f5a617/calendar:0
+[     421ms] Error: ./apps/web/components/calendar/providers/YjsTripProvider.tsx:13:1
+Module not found: Can't resolve '@supabase-labs/y-supabase'
+  11 | } from 'react'
+  12 | import * as Y from 'yjs'
+> 13 | import { SupabaseProvider } from '@supabase-labs/y-supabase'
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { supabase } from '@travyl/shared'
+  15 |
+  16 | interface YjsTripContextValue {
+
+
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (Error: ./apps/web/components/calendar/providers/YjsTripProvider.tsx:13:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[     423ms] [ERROR] ./apps/web/components/calendar/providers/YjsTripProvider.tsx:13:1
+Module not found: Can't resolve '@supabase-labs/y-supabase'
+  11 | } from 'react'
+  12 | import * as Y from 'yjs'
+> 13 | import { SupabaseProvider } from '@supabase-labs/y-supabase'
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { supabase } from '@travyl/shared'
+  15 |
+  16 | interface YjsTripContextValue {
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[     477ms] [ERROR] ./apps/web/components/calendar/providers/YjsTripProvider.tsx:13:1
+Module not found: Can't resolve '@supabase-labs/y-supabase'
+  11 | } from 'react'
+  12 | import * as Y from 'yjs'
+> 13 | import { SupabaseProvider } from '@supabase-labs/y-supabase'
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { supabase } from '@travyl/shared'
+  15 |
+  16 | interface YjsTripContextValue {
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component Browser]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/calendar/providers/YjsTripProvider.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Client Component SSR]
+    ./apps/web/app/(trips-app)/trip/[id]/calendar/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920

@@ -1,0 +1,23 @@
+[    3307ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:53:12.945Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    4175ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:53:13.815Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    4488ms] [ERROR] TypeError: Failed to fetch
+    at http://localhost:3000/_next/static/chunks/node_modules_%40supabase_auth-js_dist_module_e6c70351._.js:598:23
+    at _handleRequest (http://localhost:3000/_next/static/chunks/node_modules_%40supabase_auth-js_dist_module_e6c70351._.js:952:24)
+    at _request (http://localhost:3000/_next/static/chunks/node_modules_%40supabase_auth-js_dist_module_e6c70351._.js:939:24)
+    at SupabaseAuthClient.signInWithPassword (http://localhost:3000/_next/static/chunks/node_modules_%40supabase_auth-js_dist_module_e6c70351._.js:3667:219)
+    at signIn (http://localhost:3000/_next/static/chunks/_38d5db8b._.js:1677:203)
+    at handleSubmit (http://localhost:3000/_next/static/chunks/apps_web_f28fc2aa._.js:421:23)
+    at executeDispatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:10314:13)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:965:74)
+    at processDispatchQueue (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:10340:41)
+    at http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:10615:13
+    at batchedUpdates$1 (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:2253:44)
+    at dispatchEventForPluginEventSystem (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:10416:9)
+    at dispatchEvent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:12935:37)
+    at dispatchDiscreteEvent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:12917:64) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    4559ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:53:14.199Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    5096ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/itinerary_days?select=*%2Cactivities%28*%29&trip_id=eq.5c9031cd-d302-49fc-a2f6-b83061f5a617&order=day_number.asc:0
+[    5230ms] [ERROR] Failed to load resource: the server responded with a status of 406 () @ https://mfhcdxnzzxuyfkcptoyh.supabase.co/rest/v1/trips?select=*&id=eq.5c9031cd-d302-49fc-a2f6-b83061f5a617:0
+[   13942ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:53:23.581Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   15076ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:53:24.715Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   21113ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:53:30.753Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297

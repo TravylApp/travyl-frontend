@@ -3,18 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap } from 'lucide-react';
-import { toast } from 'sonner';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
 import Navbar from '@/components/navbar';
 import { Footer, OceanWave } from '@/components/home';
-import { useAuthStore, supabase } from '@travyl/shared';
-import { fetchProfile } from '@travyl/shared';
+import { useAuthStore, useSettingsStore, supabase, fetchProfile } from '@travyl/shared';
 import type { Profile } from '@travyl/shared';
-
-import { useSettingsStore, useAuthStore } from '@travyl/shared';
 
 interface NotificationPreferences {
   email: boolean;

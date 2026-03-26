@@ -135,7 +135,8 @@ function CardGrid({
             </div>
           </div>
         </div>
-      ))}
+      </div>
+    </div>
     </div>
   );
 }

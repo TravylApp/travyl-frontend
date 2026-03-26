@@ -1,0 +1,1113 @@
+[     243ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T20:58:23.771Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    1179ms] [WARNING] Image with src "https://images.unsplash.com/photo-1656677476420-7159cac2366a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4ODM3MTN8MHwxfHNlYXJjaHwxfHxTYW50b3JpbmklMjBHcmVlY2UlMjB0cmF2ZWx8ZW58MHwwfHx8MTc3NDU1ODAxNXww&ixlib=rb-4.1.0&q=80&w=1080" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  442652ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T21:05:46.182Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  444379ms] [WARNING] Image with src "https://images.unsplash.com/photo-1656677476420-7159cac2366a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4ODM3MTN8MHwxfHNlYXJjaHwxfHxTYW50b3JpbmklMjBHcmVlY2UlMjB0cmF2ZWx8ZW58MHwwfHx8MTc3NDU1ODAxNXww&ixlib=rb-4.1.0&q=80&w=1080" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1327388ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 1327481ms] Error: ./apps/web/app/layout.tsx:54:4
+Parsing ecmascript source code failed
+  52 |         <link rel="dns-prefetch" href="https://flagcdn.com" />
+  53 |         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+> 54 | <<<<<<< HEAD
+     |    ^^
+  55 |         <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
+  56 |         <script
+  57 |           dangerouslySetInnerHTML={{
+
+Expression expected
+
+
+    at <unknown> (Error: ./apps/web/app/layout.tsx:54:4)
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 1327511ms] [ERROR] ./apps/web/app/layout.tsx:54:4
+Parsing ecmascript source code failed
+  52 |         <link rel="dns-prefetch" href="https://flagcdn.com" />
+  53 |         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+> 54 | <<<<<<< HEAD
+     |    ^^
+  55 |         <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
+  56 |         <script
+  57 |           dangerouslySetInnerHTML={{
+
+Expression expected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1327539ms] [ERROR] ./apps/web/app/layout.tsx:54:4
+Parsing ecmascript source code failed
+  52 |         <link rel="dns-prefetch" href="https://flagcdn.com" />
+  53 |         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+> 54 | <<<<<<< HEAD
+     |    ^^
+  55 |         <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
+  56 |         <script
+  57 |           dangerouslySetInnerHTML={{
+
+Expression expected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1327550ms] [ERROR] ./apps/web/app/layout.tsx:54:4
+Parsing ecmascript source code failed
+  52 |         <link rel="dns-prefetch" href="https://flagcdn.com" />
+  53 |         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+> 54 | <<<<<<< HEAD
+     |    ^^
+  55 |         <link href="https://fonts.googleapis.com/css2?family=Lustria&display=swap" rel="stylesheet" />
+  56 |         <script
+  57 |           dangerouslySetInnerHTML={{
+
+Expression expected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1353751ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T21:20:57.280Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1356227ms] [WARNING] Image with src "https://images.unsplash.com/photo-1656677476420-7159cac2366a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4ODM3MTN8MHwxfHNlYXJjaHwxfHxTYW50b3JpbmklMjBHcmVlY2UlMjB0cmF2ZWx8ZW58MHwwfHx8MTc3NDU1ODAxNXww&ixlib=rb-4.1.0&q=80&w=1080" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1390909ms] [WARNING] GoTrueClient@sb-mfhcdxnzzxuyfkcptoyh-auth-token:1 (2.100.0) 2026-03-26T21:21:34.438Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1391991ms] [WARNING] Image with src "https://images.unsplash.com/photo-1656677476420-7159cac2366a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4ODM3MTN8MHwxfHNlYXJjaHwxfHxTYW50b3JpbmklMjBHcmVlY2UlMjB0cmF2ZWx8ZW58MHwwfHx8MTc3NDU1ODAxNXww&ixlib=rb-4.1.0&q=80&w=1080" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1395379ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3000/api/images?q=Tokyo:0
+[ 1395380ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/api/images?q=Test%20City:0
+[ 1399926ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 1400012ms] Error: ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1
+
+
+    at <unknown> (Error: ./apps/web/package.json:30:1)
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:997:55)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 1400015ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400015ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400015ms] [ERROR] ./apps/web/app/layout.tsx:49:4
+Parsing ecmascript source code failed
+  47 |       <head>
+  48 |         <meta name="author" content="JPB Developments — https://www.jpbdevelopments.com" />
+> 49 | <<<<<<< HEAD
+     |    ^^
+  50 |         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+  51 | =======
+  52 |         <link rel="preconnect" href="https://images.unsplash.com" />
+
+Expression expected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400015ms] [ERROR] ./apps/web/components/home/GetInspired.tsx:9:1
+Parsing ecmascript source code failed
+   7 | import { useState, useCallback, useEffect } from "react";
+   8 | import Image from "next/image";
+>  9 | >>>>>>> origin/develop
+     | ^^^^^^^
+  10 | import { AnimatePresence, motion, type PanInfo } from "motion/react";
+  11 | import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
+  12 | import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
+
+Merge conflict marker encountered.
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/home/GetInspired.tsx [Client Component Browser]
+    ./apps/web/components/home/index.ts [Client Component Browser]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Client Component Browser]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/home/GetInspired.tsx [Client Component SSR]
+    ./apps/web/components/home/index.ts [Client Component SSR]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Client Component SSR]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400015ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400016ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400016ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400061ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400061ms] [ERROR] ./apps/web/app/layout.tsx:49:4
+Parsing ecmascript source code failed
+  47 |       <head>
+  48 |         <meta name="author" content="JPB Developments — https://www.jpbdevelopments.com" />
+> 49 | <<<<<<< HEAD
+     |    ^^
+  50 |         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+  51 | =======
+  52 |         <link rel="preconnect" href="https://images.unsplash.com" />
+
+Expression expected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1400061ms] [ERROR] ./apps/web/components/home/GetInspired.tsx:9:1
+Parsing ecmascript source code failed
+   7 | import { useState, useCallback, useEffect } from "react";
+   8 | import Image from "next/image";
+>  9 | >>>>>>> origin/develop
+     | ^^^^^^^
+  10 | import { AnimatePresence, motion, type PanInfo } from "motion/react";
+  11 | import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
+  12 | import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
+
+Merge conflict marker encountered.
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/home/GetInspired.tsx [Client Component Browser]
+    ./apps/web/components/home/index.ts [Client Component Browser]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Client Component Browser]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/home/GetInspired.tsx [Client Component SSR]
+    ./apps/web/components/home/index.ts [Client Component SSR]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Client Component SSR]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1438283ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1438283ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1438283ms] [ERROR] ./apps/web/components/home/GetInspired.tsx:9:1
+Parsing ecmascript source code failed
+   7 | import { useState, useCallback, useEffect } from "react";
+   8 | import Image from "next/image";
+>  9 | >>>>>>> origin/develop
+     | ^^^^^^^
+  10 | import { AnimatePresence, motion, type PanInfo } from "motion/react";
+  11 | import { ChevronLeft, ChevronRight, Heart, Star, MapPin, Repeat, Clock, Globe, Lightbulb } from "lucide-react";
+  12 | import { EASE_OUT_EXPO, Navy } from "@travyl/shared";
+
+Merge conflict marker encountered.
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/components/home/GetInspired.tsx [Client Component Browser]
+    ./apps/web/components/home/index.ts [Client Component Browser]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Client Component Browser]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/components/home/GetInspired.tsx [Client Component SSR]
+    ./apps/web/components/home/index.ts [Client Component SSR]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Client Component SSR]
+    ./apps/web/app/(dashboard)/trips/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1483136ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1483136ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1508554ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1508554ms] [ERROR] ./apps/web/package.json:30:1
+Error parsing package.json file
+  28 |     "react-dom": "^19.2.3",
+  29 |     "react-responsive-masonry": "^2.7.1",
+> 30 | <<<<<<< HEAD
+     | ^
+  31 | =======
+  32 |     "sharp": "^0.34.5",
+  33 | >>>>>>> origin/develop
+
+package.json is not parseable: invalid JSON: key must be a string at line 30 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1508866ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 1508900ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 1508902ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1508934ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1516790ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575675ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 1575714ms] Error: ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1
+
+
+    at <unknown> (Error: ./apps/web/package.json:40:1)
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:997:55)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 1575717ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575717ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575717ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575717ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575717ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575717ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575754ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1575754ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1592325ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1592325ms] [ERROR] ./apps/web/package.json:40:1
+Error parsing package.json file
+  38 |     "motion": "^12.0.0",
+  39 |     "next": "16.1.6",
+> 40 | <<<<<<< HEAD
+     | ^
+  41 |     "next-themes": "^0.4.6",
+  42 |     "prop-types": "^15.8.1",
+  43 | =======
+
+package.json is not parseable: invalid JSON: key must be a string at line 40 column 1 @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1592487ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 1592527ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 1592528ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1592561ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1600569ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1688673ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 1712855ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2389909ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 2389950ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 2389952ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2390000ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2461367ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2485982ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2495154ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2540325ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2589805ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 2589841ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 2589878ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2590013ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2627933ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2974127ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 2974170ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 2974173ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2974204ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 2982887ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3013847ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 3014177ms] Error: ./apps/web/middleware.ts:32:1
+Parsing ecmascript source code failed
+  30 |       process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  31 |       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+> 32 | >>>>>>> origin/develop
+     | ^^^^^^^
+  33 |       {
+  34 |         cookies: {
+  35 |           getAll() {
+
+Merge conflict marker encountered.
+
+
+    at <unknown> (Error: ./apps/web/middleware.ts:32:1)
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:997:55)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 3014184ms] [ERROR] ./apps/web/middleware.ts:32:1
+Parsing ecmascript source code failed
+  30 |       process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  31 |       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+> 32 | >>>>>>> origin/develop
+     | ^^^^^^^
+  33 |       {
+  34 |         cookies: {
+  35 |           getAll() {
+
+Merge conflict marker encountered. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3014188ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/favicon.ico:0
+[ 3014603ms] [ERROR] ./apps/web/middleware.ts:32:1
+Parsing ecmascript source code failed
+  30 |       process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  31 |       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+> 32 | >>>>>>> origin/develop
+     | ^^^^^^^
+  33 |       {
+  34 |         cookies: {
+  35 |           getAll() {
+
+Merge conflict marker encountered. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3014603ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3014750ms] [ERROR] ./apps/web/middleware.ts:32:1
+Parsing ecmascript source code failed
+  30 |       process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  31 |       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+> 32 | >>>>>>> origin/develop
+     | ^^^^^^^
+  33 |       {
+  34 |         cookies: {
+  35 |           getAll() {
+
+Merge conflict marker encountered. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3014750ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3036432ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3036638ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 3036674ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 3036676ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3036676ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 3036709ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 7137399ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 7137500ms] Error: ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1008:59)
+    at DevBundlerService.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/lib/dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:706:42)
+    at DevServer.findPageComponents (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/dev/next-dev-server.js:676:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/next/dist/server/base-server.js:1733:26)
+[ 7137544ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 7137826ms] [ERROR] ./apps/web/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/app/globals.css:1:1: /home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/apps/web/package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 758 (line 30 column 1)
+    [at Input.error (turbopack:///[project]/node_modules/postcss/lib/input.js:106:16)]
+    [at Root.error (turbopack:///[project]/node_modules/postcss/lib/node.js:145:32)]
+    [at Object.Once (/home/noah-gallego/Dropbox/Desktop/travyl-combined/travyl-frontend/node_modules/@tailwindcss/postcss/dist/index.js:10:6911)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+    [at async LazyResult.runAsync (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:261:11)]
+    [at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34)]
+    [at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23)]
+
+Import trace:
+  Client Component Browser:
+    ./apps/web/app/globals.css [Client Component Browser]
+    ./apps/web/app/layout.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1920
+[ 7142601ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1206
+[ 7142608ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_b3fb3b5f._.js:1206
+[ 7142699ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/trips:0
+[ 7142706ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
