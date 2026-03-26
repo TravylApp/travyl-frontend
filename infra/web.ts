@@ -1,7 +1,7 @@
 import { api } from './api'
 import {
   supabaseUrl,
-  supabaseAnonKey,
+  supabasePublishableKey,
   supabaseSecretKey,
   serpApiKey,
   pexels,
@@ -32,11 +32,10 @@ export const web = new sst.x.DevCommand('TravylWeb', {
     // Public (browser-safe)
     NEXT_PUBLIC_RECOMMENDATION_API_URL: api.url,
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseAnonKey.value,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey.value,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey.value,
 
     // Server-only — Supabase
-    SUPABASE_SERVICE_ROLE_KEY: supabaseSecretKey.value,
+    SUPABASE_SECRET_KEY: supabaseSecretKey.value,
 
     // Server-only — Search & Location
     SERPAPI_KEY: serpApiKey.value,
