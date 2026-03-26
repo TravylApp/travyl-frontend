@@ -1,20 +1,20 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient({
+export default function Providers({ children }: { children: React.ReactNode }) {
+  const queryClientRef = useRef(new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
+        staleTime: 5 * 60 * 1000, // 5 min — cached data served instantly, no background refetch
+        gcTime: 10 * 60 * 1000,   // 10 min — keep unused cache longer
         refetchOnWindowFocus: false,
-        refetchOnMount: false,
+        refetchOnMount: false,     // Don't refetch when component remounts (tab switches)
         retry: false,
       },
     },
@@ -24,10 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Configure synchronously during render so child component effects see the
   // cookie-based client. useEffect fires after child effects, which is too late.
-  const supabaseClient = getSupabaseBrowser();
-  if (supabaseClient) {
-    configureSupabase(supabaseClient);
-  }
+  configureSupabase(getSupabaseBrowser());
 
   useEffect(() => {
     const unsubscribe = initialize();
@@ -55,12 +52,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClientRef.current}>
       <GlobalNavbar />
       {children}
       <SpotlightSearch />
     </QueryClientProvider>
   );
 }
-
-export default Providers;
