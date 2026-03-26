@@ -431,11 +431,13 @@ function TripLayoutContent({
         </div>
       )}
 
-      {/* Footer — above the hero image */}
-      <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-        <OceanWave />
-        <Footer />
-      </div>
+      {/* Footer — only on overview */}
+      {isOverview && (
+        <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
+          <OceanWave />
+          <Footer />
+        </div>
+      )}
     </div>
   );
 }
