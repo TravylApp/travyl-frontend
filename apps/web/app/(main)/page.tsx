@@ -13,16 +13,40 @@ import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
-import {
-  HowItWorks,
-  GetInspired,
-  TravelMosaic,
-  TagUs,
-  OceanWave,
-  TakeoffTransition,
-  Footer,
-  ParallaxQuoteDivider,
-} from "@/components/home";
+import dynamic from "next/dynamic";
+
+const HowItWorks = dynamic(
+  () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
+  { ssr: false }
+);
+const GetInspired = dynamic(
+  () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
+  { ssr: false }
+);
+const TravelMosaic = dynamic(
+  () => import("@/components/home/TravelMosaic").then((m) => ({ default: m.TravelMosaic })),
+  { ssr: false }
+);
+const TagUs = dynamic(
+  () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
+  { ssr: false }
+);
+const OceanWave = dynamic(
+  () => import("@/components/home/OceanWave").then((m) => ({ default: m.OceanWave })),
+  { ssr: false }
+);
+const TakeoffTransition = dynamic(
+  () => import("@/components/home/TakeoffTransition").then((m) => ({ default: m.TakeoffTransition })),
+  { ssr: false }
+);
+const Footer = dynamic(
+  () => import("@/components/home/Footer").then((m) => ({ default: m.Footer })),
+  { ssr: false }
+);
+const ParallaxQuoteDivider = dynamic(
+  () => import("@/components/home/ParallaxQuoteDivider").then((m) => ({ default: m.ParallaxQuoteDivider })),
+  { ssr: false }
+);
 import { memo } from "react";
 
 const PLACEHOLDER_PHRASES = [
