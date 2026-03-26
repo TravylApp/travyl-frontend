@@ -33,3 +33,13 @@ CREATE POLICY "Collaborators can read itinerary edits"
 CREATE POLICY "Users insert own edits"
   ON itinerary_edits FOR INSERT
   WITH CHECK (user_id = auth.uid());
+
+-- Audit records are immutable — prevent updates
+CREATE POLICY "No updates to itinerary edits"
+  ON itinerary_edits FOR UPDATE
+  USING (false);
+
+-- Audit records are immutable — prevent deletes
+CREATE POLICY "No deletes to itinerary edits"
+  ON itinerary_edits FOR DELETE
+  USING (false);
