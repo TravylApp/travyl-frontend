@@ -34,6 +34,7 @@ import {
   FontFamily,
 } from '@travyl/shared';
 import { savePlanToSupabase } from '@travyl/shared/src/services/api';
+import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
@@ -374,6 +375,7 @@ export default function HomeScreen() {
       (async () => {
         try {
           const tripId = await savePlanToSupabase(s.plan as any);
+          await saveAnonTripId(tripId);
           planner.reset();
           setShowTakeoff(false);
           router.push(`/trip/${tripId}` as any);
