@@ -564,6 +564,8 @@ export async function savePlanToSupabase(
     status: 'planning',
     is_generated: true,
     trip_context: {
+      lat: dest.lat,
+      lng: dest.lng,
       hero_image_url: plan.destination_photo_url || null,
       hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
       quick_facts: {
@@ -572,7 +574,59 @@ export async function savePlanToSupabase(
         interests: ext.interests,
         timezone: plan.timezone,
       },
-      weather: plan.itinerary.filter(d => d.weather).map(d => d.weather),
+      weather: {
+        forecast: plan.itinerary.filter((d: any) => d.weather).map((d: any) => ({
+          day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+          date: d.date,
+          high: d.weather?.high_c,
+          low: d.weather?.low_c,
+          condition: d.weather?.condition,
+          icon: d.weather?.icon || '☀️',
+        })),
+        current: plan.itinerary[0]?.weather ? {
+          temp: plan.itinerary[0].weather.high_c,
+          conditions: plan.itinerary[0].weather.condition,
+        } : undefined,
+      },
+      // Hotels from planner
+      hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+        name: h.name, image: h.photo_url, rating: h.rating,
+        price: h.price_per_night, stars: h.stars,
+        amenities: h.amenities, address: h.address, link: h.link,
+        lat: h.lat, lng: h.lng,
+      })),
+      all_hotels: ((plan as any).data?.hotels ?? plan.hotels ?? []).slice(0, 10).map((h: any) => ({
+        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+        name: h.name, image: h.photo_url, rating: h.rating,
+        price: h.price_per_night, stars: h.stars,
+        address: h.address, link: h.link,
+      })),
+      // Flights from planner
+      flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+        airline: f.airline, price: f.price, departure_time: f.departure_time,
+        arrival_time: f.arrival_time, stops: f.stops, duration: f.duration,
+        origin: f.origin, destination: f.destination, dest_iata: f.dest_iata,
+      })),
+      // Itinerary for the itinerary tab
+      itinerary: plan.itinerary.map((day: any) => ({
+        day: day.day, date: day.date, weather: day.weather,
+        slots: (day.slots ?? []).map((slot: any) => ({
+          poi: slot.poi,
+          start_time: slot.start_time, end_time: slot.end_time,
+          start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
+        })),
+      })),
+      // Explore items from itinerary POIs
+      explore_items: plan.itinerary.flatMap((day: any) =>
+        (day.slots ?? []).map((slot: any) => ({
+          id: slot.poi.id, title: slot.poi.name,
+          description: slot.poi.description || slot.poi.category,
+          category: slot.poi.category, image: slot.poi.photo_url,
+          tags: slot.poi.tags,
+        }))
+      ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
+      lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
     },
   }
 
