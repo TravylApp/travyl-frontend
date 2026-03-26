@@ -260,8 +260,21 @@ export function CardStackCarousel({
   const navRow = (
     <View style={{
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: 20, marginTop: 12, paddingBottom: 4,
+      gap: 14, marginTop: 12, paddingBottom: 4,
     }}>
+      {/* Map toggle */}
+      {hasCoords && (
+        <Pressable onPress={overlay ? toggleMap : () => setSelfOverlay(true)} style={{
+          width: 40, height: 40, borderRadius: 20,
+          backgroundColor: showMap ? (overlay ? 'rgba(255,255,255,0.3)' : '#1e3a5f') : navBtnBg,
+          borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+        }}>
+          <FontAwesome name="map" size={13} color={showMap ? '#fff' : navIconColor} />
+        </Pressable>
+      )}
+
       <Pressable onPress={goPrev} style={{
         width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
         borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
@@ -281,6 +294,17 @@ export function CardStackCarousel({
       }}>
         <FontAwesome name="chevron-right" size={14} color={navIconColor} />
       </Pressable>
+
+      {/* Close */}
+      {overlay && (
+        <Pressable onPress={onClose} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)',
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+        }}>
+          <FontAwesome name="times" size={16} color="#fff" />
+        </Pressable>
+      )}
     </View>
   );
 
@@ -360,35 +384,6 @@ export function CardStackCarousel({
         </View>
       </RNAnimated.View>
 
-      {/* Map toolbar — between map and card */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: 12, paddingVertical: 8, marginHorizontal: 16,
-      }}>
-        <Pressable onPress={() => {
-          if (place.latitude != null && place.longitude != null) {
-            mapRef.current?.animateToRegion({
-              latitude: place.latitude, longitude: place.longitude,
-              latitudeDelta: 0.02, longitudeDelta: 0.02,
-            }, 400);
-          }
-        }} style={{
-          width: 32, height: 32, borderRadius: 16,
-          backgroundColor: overlay ? 'rgba(255,255,255,0.15)' : '#f3f4f6',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <FontAwesome name="crosshairs" size={13} color={overlay ? '#fff' : '#666'} />
-        </Pressable>
-
-        <Pressable onPress={toggleMap} style={{
-          flexDirection: 'row', alignItems: 'center', gap: 6,
-          paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
-          backgroundColor: overlay ? 'rgba(255,255,255,0.15)' : '#f3f4f6',
-        }}>
-          <FontAwesome name="map" size={11} color={overlay ? '#fff' : '#666'} />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: overlay ? '#fff' : '#666' }}>{showMap ? 'Hide Map' : 'Show Map'}</Text>
-        </Pressable>
-      </View>
     </>
   );
 

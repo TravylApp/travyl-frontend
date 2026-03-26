@@ -248,7 +248,7 @@ function useHotels(tripId: string, searchQuery?: string) {
         cancellation: 'See hotel policy',
         phone: '',
         email: '',
-        guestRatings: { overall: h.rating, cleanliness: 0, comfort: 0, location: 0, facilities: 0, staff: 0, value: 0 },
+        guestRatings: { overall: h.rating, label: 'Good', cleanliness: 0, comfort: 0, location: 0, staff: 0, value: 0 },
       }));
     },
     staleTime: 15 * 60 * 1000,
