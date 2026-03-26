@@ -76,7 +76,7 @@ async function fetchEntitySearch(
       imageUrl: item.image_url ?? undefined,
       tripId: item.trip_id ?? undefined,
       tripTitle: item.trip_title ?? undefined,
-      href: buildHref(item.entity_type, item.entity_id, item.trip_id),
+      href: buildHref(item.entity_type, item.entity_id, item.trip_id, item.entity_name),
       score: item.score,
       metadata: {
         ...item.metadata,
@@ -89,8 +89,8 @@ async function fetchEntitySearch(
 }
 
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
-  // Destinations don't have a tripId — link to explore page filtered by destination
-  if (type === 'destination') return `/explore?q=${encodeURIComponent(entityName ?? '')}`
+  // Destinations link to the destination showcase page
+  if (type === 'destination') return `/destination/${encodeURIComponent(entityName ?? '')}`
   if (!tripId) return '/'
   switch (type) {
     case 'hotel': return `/trip/${tripId}/hotels/${entityId}`
