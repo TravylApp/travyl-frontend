@@ -21,7 +21,8 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Use web app as API proxy — it has all the API keys (Foursquare, etc.)
 // In dev: localhost:3000, in production: deeviaje.com
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
+const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
 const BROWSE_CITIES = [
   { lat: '48.8566', lng: '2.3522', name: 'Paris' },

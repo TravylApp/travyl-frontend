@@ -119,8 +119,8 @@ interface BackendPlace {
 }
 
 export async function GET(req: NextRequest) {
-  const lat = req.nextUrl.searchParams.get('lat') ?? '48.8566'
-  const lng = req.nextUrl.searchParams.get('lng') ?? '2.3522'
+  const lat = req.nextUrl.searchParams.get('lat') ?? ''
+  const lng = req.nextUrl.searchParams.get('lng') ?? ''
   const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
   const limit = req.nextUrl.searchParams.get('limit') ?? '20'
   const q = req.nextUrl.searchParams.get('q')
@@ -130,11 +130,64 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // If search query provided, geocode it first to get coordinates
     let searchLat = lat
     let searchLng = lng
+
+    // Natural language search — use SerpAPI google_local directly
+    const SERPAPI_KEY = process.env.SERPAPI_KEY
+    if (q && SERPAPI_KEY) {
+      // Try SerpAPI local search first (handles "best tacos in Oaxaca" etc.)
+      const serpQuery = category === 'sightseeing' ? q : `${category} ${q}`
+      const serpParams = new URLSearchParams({
+        engine: 'google_local',
+        q: serpQuery,
+        api_key: SERPAPI_KEY,
+      })
+      // If it looks like a city name (short, no spaces beyond one), also check known cities
+      const knownCity = KNOWN_CITIES[q.toLowerCase()]
+      if (knownCity) {
+        serpParams.set('ll', `@${knownCity.lat},${knownCity.lng},14z`)
+      }
+
+      try {
+        const serpRes = await fetch(`https://serpapi.com/search.json?${serpParams}`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(8000),
+        })
+        if (serpRes.ok) {
+          const serpData = await serpRes.json()
+          const localResults = serpData.local_results ?? []
+          if (localResults.length > 0) {
+            const places = localResults.slice(0, parseInt(limit)).map((place: any, idx: number) => ({
+              id: `serp_${place.place_id ?? idx}`,
+              name: place.title,
+              image: upscaleGoogleImage(place.thumbnail) ?? getFallbackImage(place.title, idx),
+              type: mapType(place.type, category),
+              rating: place.rating ?? 0,
+              tagline: place.description?.split('.')[0] ?? place.type ?? category,
+              category: mapCategory(place.type, undefined),
+              description: place.description ?? '',
+              latitude: place.gps_coordinates?.latitude ?? 0,
+              longitude: place.gps_coordinates?.longitude ?? 0,
+              reviewCount: place.reviews,
+              address: place.address,
+              website: place.website,
+              hours: place.hours ? (typeof place.hours === 'string' ? place.hours : place.hours[0]) : undefined,
+              tags: mapTags(place.type, [], undefined),
+            }))
+
+            const res_out = NextResponse.json(places)
+            res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+            return res_out
+          }
+        }
+      } catch (serpErr) {
+        console.warn('[places] SerpAPI local search failed, falling back to backend:', serpErr)
+      }
+    }
+
+    // Fallback: geocode + backend nearby search
     if (q) {
-      // Check if the query matches a known city first (instant, no API call)
       const knownCity = KNOWN_CITIES[q.toLowerCase()]
       if (knownCity) {
         searchLat = knownCity.lat
@@ -144,10 +197,7 @@ export async function GET(req: NextRequest) {
           const geoRes = await fetch(
             `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
             {
-              headers: {
-                'Accept-Language': 'en',
-                'User-Agent': 'Travyl/1.0 (travel planning app)',
-              },
+              headers: { 'Accept-Language': 'en', 'User-Agent': 'Travyl/1.0' },
               signal: AbortSignal.timeout(5000),
             }
           )
@@ -156,9 +206,7 @@ export async function GET(req: NextRequest) {
             searchLat = geoData[0].lat
             searchLng = geoData[0].lon
           }
-        } catch (err) {
-          console.warn('[places] Geocoding failed for query:', q, err)
-        }
+        } catch {}
       }
     }
 
