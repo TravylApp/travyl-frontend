@@ -1,6 +1,7 @@
 'use client'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   getActivityColor,
   getActivityColorDark,
@@ -13,6 +14,7 @@ import { useResizeHandles } from './hooks/useResizeHandles'
 import type { CalendarActivity, UserAwareness } from './types'
 import type { Poll } from '@travyl/shared'
 import { FloatingVoteButtons } from './PollBar'
+import type { ActivityIntelligence } from './hooks/useActivityIntelligence'
 
 interface EventBlockProps {
   activity: CalendarActivity
@@ -73,6 +75,20 @@ export function EventBlock({
   })
 
   const { isDark } = useCalendarThemeContext()
+
+  const queryClient = useQueryClient()
+  const cachedResults = queryClient.getQueriesData<ActivityIntelligence>({
+    queryKey: ['activity-intelligence', activity.id],
+  })
+  const intel = cachedResults[0]?.[1] ?? null
+  const hasConflict = intel ? (intel.conflicts.hours || intel.conflicts.travelTime) : false
+  const conflictTooltip = intel?.conflicts.hours && intel?.conflicts.travelTime
+    ? 'Two scheduling issues'
+    : intel?.conflicts.hours
+    ? 'Opening hours conflict'
+    : intel?.conflicts.travelTime
+    ? 'Not enough travel time'
+    : null
 
   const color = getActivityColor(activity.type)
   const hasImage = !!(activity.image && activity.duration >= 1)
@@ -155,6 +171,13 @@ export function EventBlock({
       }}
       onKeyDown={handleKeyDown}
     >
+      {hasConflict && conflictTooltip && (
+        <div
+          title={conflictTooltip}
+          className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white dark:ring-[#0f1a28] z-10"
+        />
+      )}
+
       {/* Inner clip wrapper — provides overflow-hidden and rounded corners for card content */}
       <div className="absolute inset-0 rounded-md overflow-hidden">
         {hasImage ? (

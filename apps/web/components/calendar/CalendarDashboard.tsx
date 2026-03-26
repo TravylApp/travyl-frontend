@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
@@ -42,6 +42,7 @@ import { useUndoRedo } from './hooks/useUndoRedo'
 import { usePollMutations } from './hooks/usePollMutations'
 import { usePollObserver } from './hooks/usePollObserver'
 import { usePollSync } from './hooks/usePollSync'
+import { fetchActivityIntelligence } from './hooks/useActivityIntelligence'
 
 // ─── Module-level constants ────────────────────────────────────
 
@@ -165,6 +166,20 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   // useCalendarDnd is called below after marquee selection hook is instantiated
 
+  const queryClient = useQueryClient()
+
+  // Background-prefetch intelligence for all visible activities
+  useEffect(() => {
+    if (!activities.length) return
+    for (const a of scheduledActivities) {
+      queryClient.prefetchQuery({
+        queryKey: ['activity-intelligence', a.id, tripId],
+        queryFn: () => fetchActivityIntelligence(a.id, tripId),
+        staleTime: 60 * 60 * 1000,
+      })
+    }
+  }, [activities, scheduledActivities, tripId, queryClient])
+
   const { theme, toggleTheme } = useCalendarTheme()
   const {
     width: forYouWidth,
@@ -236,11 +251,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
     for (const act of selected) {
       moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
+      queryClient.invalidateQueries({ queryKey: ['activity-intelligence', act.id] })
     }
-  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays])
+  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays, queryClient])
+
+  const handleMoveActivity = useCallback((id: string, day: number, startHour: number) => {
+    moveActivity(id, day, startHour)
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
+  }, [moveActivity, queryClient])
 
   const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
+    onMoveActivity: handleMoveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     onGroupMove: handleGroupMove,
     marqueeSelectedIds,
@@ -348,8 +369,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     } else {
       updateActivity(id, patch)
     }
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
     setEditingActivityId(null)
-  }, [moveActivity, updateActivity])
+  }, [moveActivity, updateActivity, queryClient])
 
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
@@ -444,6 +466,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   const handleResizeEvent = (id: string, newStartHour: number, newDuration: number) => {
     updateActivity(id, { startHour: newStartHour, duration: newDuration })
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
   }
 
   /** Format a date range string like "Mar 10 - Mar 16, 2026". */
