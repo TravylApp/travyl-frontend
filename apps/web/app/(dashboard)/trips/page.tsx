@@ -14,7 +14,7 @@ import { useIndexTrip } from '@/hooks/useIndexTrip';
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fm=webp&q=75'
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -152,15 +152,12 @@ function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
   });
 
   const rows = buildRows(items);
-  let globalIdx = 0;
 
   return (
     <div className="flex flex-col gap-3">
       {rows.map((row, rowIdx) => {
         const maxDays = Math.max(...row.map((r) => r.duration));
         const height = getRowHeight(maxDays);
-        const startIdx = globalIdx;
-        globalIdx += row.length;
 
         return (
           <div key={rowIdx} className="flex gap-3" style={{ height }}>

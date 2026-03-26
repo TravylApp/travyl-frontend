@@ -34,7 +34,6 @@ import { useQuery } from '@tanstack/react-query';
 
 const POPULAR_AIRPORTS: { code: string; name: string; city: string }[] = [];
 
-<<<<<<< Updated upstream
 type BookedFlight = {
   id: string; type: 'outbound' | 'return'; flightNumber: string; airline: string;
   airlineLogo: string; aircraft: string; date: string;

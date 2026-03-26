@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import {
   Heart, Star, MapPin, ChevronLeft, ChevronRight,
   Plus, X, CalendarCheck, Clock, Images, ExternalLink, TicketPercent,
@@ -79,10 +80,12 @@ export function DiscoverCard({
       {/* Image Section */}
       <div className={`relative ${compact ? 'h-[220px]' : 'h-[260px]'} overflow-hidden`}>
         {hasImages ? (
-          <img
+          <Image
             src={item.images[imgIndex]}
             alt={item.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, 300px"
             onError={() => setImgError(true)}
           />
         ) : (
