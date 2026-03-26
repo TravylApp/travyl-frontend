@@ -58,19 +58,22 @@ function useIsMobile(breakpoint = 768) {
 }
 
 interface TravelDestination {
+  id: string;
   name: string;
   images: string[];
   category: string;
   places: string[];
   highlights: string[];
   duration: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface GlobeViewProps {
   destinations: TravelDestination[];
   descriptions: Record<string, string>;
   favoritedNames: Set<string>;
-  toggleFavorite: (name: string) => void;
+  toggleFavorite: (id: string) => void;
 }
 
 /* ─── Sidebar Trip Card (postcard mini) ─── */
@@ -806,9 +809,12 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
   const updatePreviewPosition = useCallback((dest: TravelDestination) => {
     const map = mapRef.current;
     if (!map) return;
-    const coords = DESTINATION_COORDS[dest.name];
+    // Use lat/lng from destination, or fall back to DESTINATION_COORDS
+    const coords = (dest.lat && dest.lng)
+      ? [dest.lat, dest.lng] as [number, number]
+      : DESTINATION_COORDS[dest.name];
     if (!coords) return;
-    const point = map.latLngToContainerPoint(coords);
+    const point = map.latLngToContainerPoint(L.latLng(coords[0], coords[1]));
     setPreviewPos({ x: point.x, y: point.y });
   }, []);
 
@@ -817,10 +823,10 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
       markerClickedRef.current = true;
       setTimeout(() => { markerClickedRef.current = false; }, 100);
 
-      setActiveSidebarDest(dest.name);
+      setActiveSidebarDest(dest.id);
       setNearbyFocusDest(null);
       setPreviewDest((prev) => {
-        if (prev?.name === dest.name) {
+        if (prev?.id === dest.id) {
           setSelectedDest(dest);
           return null;
         }
@@ -829,7 +835,10 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
       });
       setSelectedDest(null);
 
-      const coords = DESTINATION_COORDS[dest.name];
+      // Use lat/lng from destination, or fall back to DESTINATION_COORDS
+      const coords = (dest.lat && dest.lng)
+        ? [dest.lat, dest.lng] as [number, number]
+        : DESTINATION_COORDS[dest.name];
       if (coords && mapRef.current) {
         const nearby = NEARBY_PLACES[dest.name] || [];
         if (nearby.length > 0) {
@@ -848,7 +857,7 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
         }
       }
 
-      const cardEl = cardRefs.current[dest.name];
+      const cardEl = cardRefs.current[dest.id];
       if (cardEl && sidebarScrollRef.current) {
         cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -858,10 +867,13 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
 
   const handleSidebarCardClick = useCallback(
     (dest: TravelDestination) => {
-      const coords = DESTINATION_COORDS[dest.name];
+      // Use lat/lng from destination, or fall back to DESTINATION_COORDS
+      const coords = (dest.lat && dest.lng)
+        ? [dest.lat, dest.lng] as [number, number]
+        : DESTINATION_COORDS[dest.name];
       if (!coords || !mapRef.current) return;
 
-      setActiveSidebarDest(dest.name);
+      setActiveSidebarDest(dest.id);
       setSelectedDest(null);
 
       const map = mapRef.current;
@@ -931,7 +943,9 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
     const nearbyPlaces = NEARBY_PLACES[focusDest.name];
     if (!nearbyPlaces || nearbyPlaces.length === 0) return;
 
-    const destCoords = DESTINATION_COORDS[focusDest.name];
+    const destCoords = (focusDest.lat && focusDest.lng)
+      ? [focusDest.lat, focusDest.lng] as [number, number]
+      : DESTINATION_COORDS[focusDest.name];
     if (!destCoords) return;
 
     const layerGroup = L.layerGroup();
@@ -1100,7 +1114,9 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
     const markerCategoryMap = new Map<L.Marker, string>();
 
     destinations.forEach((dest) => {
-      const coords = DESTINATION_COORDS[dest.name];
+      const coords = (dest.lat && dest.lng)
+        ? [dest.lat, dest.lng] as [number, number]
+        : DESTINATION_COORDS[dest.name];
       if (!coords) return;
       const color = getCategoryColor(dest.category);
       const pinSize = isMobile ? 24 : 16;
@@ -1256,12 +1272,12 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
       <div ref={sidebarScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {filteredDests.length > 0 ? (
           filteredDests.map((dest) => (
-            <div key={dest.name} ref={(el) => { cardRefs.current[dest.name] = el; }}>
+            <div key={dest.id} ref={(el) => { cardRefs.current[dest.id] = el; }}>
               <SidebarTripCard
                 dest={dest}
-                description={descriptions[dest.name] || ""}
-                isFavorited={favoritedNames.has(dest.name)}
-                isActive={activeSidebarDest === dest.name}
+                description={descriptions[dest.id] || ""}
+                isFavorited={favoritedNames.has(dest.id)}
+                isActive={activeSidebarDest === dest.id}
                 onClick={() => handleSidebarCardClick(dest)}
               />
             </div>
@@ -1390,7 +1406,9 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
                     onClick={() => {
                       const map = mapRef.current;
                       if (!map || !nearbyActiveDest) return;
-                      const destCoords = DESTINATION_COORDS[nearbyActiveDest.name];
+                      const destCoords = (nearbyActiveDest.lat && nearbyActiveDest.lng)
+                        ? [nearbyActiveDest.lat, nearbyActiveDest.lng] as [number, number]
+                        : DESTINATION_COORDS[nearbyActiveDest.name];
                       const allCoords: [number, number][] = nearbyPlacesForPreview.map((p) => p.coords);
                       if (destCoords) allCoords.push(destCoords);
                       if (allCoords.length === 0) return;
@@ -1437,7 +1455,9 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
                       onClick={() => {
                         const map = mapRef.current;
                         if (!map || !nearbyActiveDest) return;
-                        const destCoords = DESTINATION_COORDS[nearbyActiveDest.name];
+                        const destCoords = (nearbyActiveDest.lat && nearbyActiveDest.lng)
+                          ? [nearbyActiveDest.lat, nearbyActiveDest.lng] as [number, number]
+                          : DESTINATION_COORDS[nearbyActiveDest.name];
                         const allCoords: [number, number][] = nearbyPlacesForPreview.map((p) => p.coords);
                         if (destCoords) allCoords.push(destCoords);
                         map.flyToBounds(L.latLngBounds(allCoords), { padding: [60, 60], duration: 1, maxZoom: 14 });
@@ -1480,13 +1500,13 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
 
       <AnimatePresence>
         {previewDest && previewPos && (
-          <div key={previewDest.name + "-wrapper"} className="absolute z-[1100] pointer-events-none" style={{ left: `${previewPos.x}px`, top: `${previewPos.y - 56}px`, transform: "translate(-50%, -100%)" }}>
+          <div key={previewDest.id + "-wrapper"} className="absolute z-[1100] pointer-events-none" style={{ left: `${previewPos.x}px`, top: `${previewPos.y - 56}px`, transform: "translate(-50%, -100%)" }}>
             <motion.div initial={{ opacity: 0, y: 12, scale: 0.92 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.25, ease: "easeOut" }} className="pointer-events-auto">
               {(() => {
                 const dest = previewDest;
                 const accentColor2 = getCategoryColor(dest.category);
-                const isFav = favoritedNames.has(dest.name);
-                const desc = descriptions[dest.name] || "";
+                const isFav = favoritedNames.has(dest.id);
+                const desc = descriptions[dest.id] || "";
                 const pDate = (() => {
                   const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
                   const hash = dest.name.length * 7 + dest.category.length * 13;
@@ -1582,20 +1602,20 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
             </div>
           </div>
           <div className="relative">
-            {mobileStripIndex > 0 && <button onClick={() => { const newIdx = Math.max(0, mobileStripIndex - 1); setMobileStripIndex(newIdx); setActiveSidebarDest(destinations[newIdx]?.name ?? null); stripCardRefs.current[destinations[newIdx]?.name ?? ""]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); }} className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-[#0d1b2a]/90 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform"><ChevronLeft size={14} className="text-white/80" /></button>}
-            {mobileStripIndex < destinations.length - 1 && <button onClick={() => { const newIdx = Math.min(destinations.length - 1, mobileStripIndex + 1); setMobileStripIndex(newIdx); setActiveSidebarDest(destinations[newIdx]?.name ?? null); stripCardRefs.current[destinations[newIdx]?.name ?? ""]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); }} className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-[#0d1b2a]/90 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform"><ChevronRight size={14} className="text-white/80" /></button>}
+            {mobileStripIndex > 0 && <button onClick={() => { const newIdx = Math.max(0, mobileStripIndex - 1); setMobileStripIndex(newIdx); setActiveSidebarDest(destinations[newIdx]?.id ?? null); stripCardRefs.current[destinations[newIdx]?.id ?? ""]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); }} className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-[#0d1b2a]/90 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform"><ChevronLeft size={14} className="text-white/80" /></button>}
+            {mobileStripIndex < destinations.length - 1 && <button onClick={() => { const newIdx = Math.min(destinations.length - 1, mobileStripIndex + 1); setMobileStripIndex(newIdx); setActiveSidebarDest(destinations[newIdx]?.id ?? null); stripCardRefs.current[destinations[newIdx]?.id ?? ""]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); }} className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-[#0d1b2a]/90 backdrop-blur-md border border white/10 flex items-center justify-center active:scale-90 transition-transform"><ChevronRight size={14} className="text-white/80" /></button>}
             <div ref={stripScrollRef} className="flex gap-2.5 overflow-x-auto px-3 pb-3 pt-1 snap-x snap-mandatory hide-scrollbar" style={{ WebkitOverflowScrolling: "touch" }}>
               {destinations.map((dest, idx) => {
                 const color = getCategoryColor(dest.category);
                 const isActive = mobileStripIndex === idx;
                 return (
-                  <div key={dest.name} ref={(el) => { stripCardRefs.current[dest.name] = el; }} className="snap-center shrink-0" style={{ width: "200px" }}>
-                    <div onClick={() => { setMobileStripIndex(idx); setActiveSidebarDest(dest.name); stripCardRefs.current[dest.name]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); }} className={`w-full rounded-xl overflow-hidden transition-all duration-200 active:scale-[0.97] cursor-pointer ${isActive ? "shadow-lg" : "shadow-md"}`} style={{ border: isActive ? `2px solid ${color}` : "1px solid rgba(255,255,255,0.08)", background: "rgba(13, 27, 42, 0.92)", backdropFilter: "blur(12px)" }}>
+                  <div key={dest.id} ref={(el) => { stripCardRefs.current[dest.id] = el; }} className="snap-center shrink-0" style={{ width: "200px" }}>
+                    <div onClick={() => { setMobileStripIndex(idx); setActiveSidebarDest(dest.id); stripCardRefs.current[dest.id]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); }} className={`w-full rounded-xl overflow-hidden transition-all duration-200 active:scale-[0.97] cursor-pointer ${isActive ? "shadow-lg" : "shadow-md"}`} style={{ border: isActive ? `2px solid ${color}` : "1px solid rgba(255,255,255,0.08)", background: "rgba(13, 27, 42, 0.92)", backdropFilter: "blur(12px)" }}>
                       <div className="relative h-[72px] overflow-hidden rounded-t-xl">
                         <img src={dest.images[0]} alt={dest.name} className="w-full h-full object-cover" draggable={false} />
                         <div className="absolute inset-x-0 bottom-0 h-10 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)" }} />
                         <div className="absolute top-2 left-2 rounded-full" style={{ width: 8, height: 8, backgroundColor: color, border: "1.5px solid white", boxShadow: `0 0 6px ${color}88` }} />
-                        {favoritedNames.has(dest.name) && <Heart size={10} className="absolute top-2 right-2 text-red-500 fill-red-500 drop-shadow" />}
+                        {favoritedNames.has(dest.id) && <Heart size={10} className="absolute top-2 right-2 text-red-500 fill-red-500 drop-shadow" />}
                       </div>
                       <div className="px-2.5 py-2 text-left">
                         <h5 className="text-white truncate" style={{ fontSize: "12px", fontWeight: 700 }}>{dest.name}</h5>
@@ -1621,10 +1641,10 @@ export function GlobeView({ destinations, descriptions, favoritedNames, toggleFa
       {selectedDest && (
         <PostcardPopup
           dest={selectedDest}
-          description={descriptions[selectedDest.name] || ""}
-          isFavorited={favoritedNames.has(selectedDest.name)}
+          description={descriptions[selectedDest.id] || ""}
+          isFavorited={favoritedNames.has(selectedDest.id)}
           onClose={() => setSelectedDest(null)}
-          onToggleFavorite={() => toggleFavorite(selectedDest.name)}
+          onToggleFavorite={() => toggleFavorite(selectedDest.id)}
         />
       )}
     </div>

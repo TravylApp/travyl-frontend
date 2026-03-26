@@ -32,14 +32,9 @@ import { useQuery } from '@tanstack/react-query';
    MOCK DATA — Paris trip: JFK <-> CDG
    ================================================================ */
 
-const POPULAR_AIRPORTS = [
-  { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
-  { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-  { code: 'EWR', name: 'Newark Liberty Intl', city: 'Newark' },
-  { code: 'LGA', name: 'LaGuardia', city: 'New York' },
-  { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
-];
+const POPULAR_AIRPORTS: { code: string; name: string; city: string }[] = [];
 
+<<<<<<< Updated upstream
 type BookedFlight = {
   id: string; type: 'outbound' | 'return'; flightNumber: string; airline: string;
   airlineLogo: string; aircraft: string; date: string;
@@ -189,18 +184,21 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   return { flights: data ?? [], isLoading, destAirport, destination, refetch };
 }
 
+const BOOKED_FLIGHTS: any[] = [];
+const COMPARISON_FLIGHTS: any[] = [];
+
 const BOOKING_DETAILS = {
-  confirmationNumber: 'XHGT7K',
-  pnr: 'XHGT7K',
-  ticketNumbers: ['001-2345678901', '001-2345678902'],
-  fareClass: 'Y',
-  fareType: 'Economy Flex',
-  baggageAllowance: { carryOn: '1 bag (10 kg)', checked: '1 bag (23 kg)', fees: 0 },
-  cancellationPolicy: 'Free cancellation within 24 hours of booking. After that, a $200 fee per passenger applies.',
-  changePolicy: 'Changes permitted for a $75 fee plus any fare difference. Same-day standby is complimentary for AAdvantage members.',
-  refundPolicy: 'Refundable as travel credit within 12 months. Cash refund available for Flex fares.',
-  checkInUrl: 'https://www.aa.com/checkin',
-  checkInOpens: 'Mar 9, 2026 — 24 hours before departure',
+  confirmationNumber: '',
+  pnr: '',
+  ticketNumbers: [],
+  fareClass: '',
+  fareType: '',
+  baggageAllowance: { carryOn: '', checked: '', fees: 0 },
+  cancellationPolicy: '',
+  changePolicy: '',
+  refundPolicy: '',
+  checkInUrl: '',
+  checkInOpens: '',
 };
 
 /* ================================================================

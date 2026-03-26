@@ -34,6 +34,8 @@ export interface TravelDestination {
   highlights: string[];
   duration: string;
   trip?: Trip;
+  lat?: number;
+  lng?: number;
 }
 
 const allDestinations: TravelDestination[] = [];
@@ -55,8 +57,8 @@ function CardGrid({
   items: TravelDestination[];
   descriptions: Record<string, string>;
   favoritedNames: Set<string>;
-  toggleFavorite: (name: string) => void;
-  updateDescription: (name: string, desc: string) => void;
+  toggleFavorite: (id: string) => void;
+  updateDescription: (id: string, desc: string) => void;
   forceFavorited?: boolean;
   onMove: (dragIndex: number, hoverIndex: number) => void;
   viewMode: "grid" | "list";
@@ -70,18 +72,18 @@ function CardGrid({
       }>
         {items.map((dest, index) => (
           <DraggableCard
-            key={dest.name}
-            id={dest.name}
+            key={dest.id}
+            id={dest.id}
             index={index}
             onMove={onMove}
             animationDelay={index * 0.03}
           >
             <FavoriteCard
               {...dest}
-              description={descriptions[dest.name] || ""}
-              isFavorited={forceFavorited ?? favoritedNames.has(dest.name)}
-              onToggleFavorite={() => toggleFavorite(dest.name)}
-              onUpdateDescription={(desc) => updateDescription(dest.name, desc)}
+              description={descriptions[dest.id] || ""}
+              isFavorited={forceFavorited ?? favoritedNames.has(dest.id)}
+              onToggleFavorite={() => toggleFavorite(dest.id)}
+              onUpdateDescription={(desc) => updateDescription(dest.id, desc)}
               variant="list"
               listDensity={listDensity}
               nearbyPlaces={NEARBY_PLACES[dest.name]}
@@ -95,19 +97,19 @@ function CardGrid({
   return (
     <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
       {items.map((dest, index) => (
-        <div key={dest.name} className="break-inside-avoid mb-6">
+        <div key={dest.id} className="break-inside-avoid mb-6">
           <DraggableCard
-            id={dest.name}
+            id={dest.id}
             index={index}
             onMove={onMove}
             animationDelay={index * 0.05}
           >
             <FavoriteCard
               {...dest}
-              description={descriptions[dest.name] || ""}
-              isFavorited={forceFavorited ?? favoritedNames.has(dest.name)}
-              onToggleFavorite={() => toggleFavorite(dest.name)}
-              onUpdateDescription={(desc) => updateDescription(dest.name, desc)}
+              description={descriptions[dest.id] || ""}
+              isFavorited={forceFavorited ?? favoritedNames.has(dest.id)}
+              onToggleFavorite={() => toggleFavorite(dest.id)}
+              onUpdateDescription={(desc) => updateDescription(dest.id, desc)}
               heightClass={CARD_HEIGHTS[index % CARD_HEIGHTS.length]}
               nearbyPlaces={NEARBY_PLACES[dest.name]}
             />
@@ -136,24 +138,9 @@ export default function ProfilePage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Get auth state
-  const { user, loading: authLoading } = useAuthStore();
-
   // Fetch trips on mount
   useEffect(() => {
     async function loadTrips() {
-      // Wait for auth to finish loading
-      if (authLoading) {
-        return;
-      }
-
-      // Check if user is authenticated
-      if (!user) {
-        setError("You must be signed in to view your profile");
-        setIsLoading(false);
-        return;
-      }
-
       // Check if Supabase is configured
       if (!supabase) {
         setError("Supabase is not configured. Please add your credentials to .env.local");
@@ -184,6 +171,8 @@ export default function ProfilePage() {
             highlights: trip.trip_context?.explore_items?.slice(0, 3).map(item => item.title) || [],
             duration: `${days} days`,
             trip,
+            lat: trip.trip_context?.lat,
+            lng: trip.trip_context?.lng,
           };
         });
 
@@ -204,17 +193,17 @@ export default function ProfilePage() {
     }
 
     loadTrips();
-  }, [authLoading, user]);
+  }, []);
 
-  const toggleFavorite = (name: string) => {
+  const toggleFavorite = (id: string) => {
     setFavoritedNames((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-        setFavOrder((o) => o.filter((n) => n !== name));
+      if (next.has(id)) {
+        next.delete(id);
+        setFavOrder((o) => o.filter((n) => n !== id));
       } else {
-        next.add(name);
-        setFavOrder((o) => (o.includes(name) ? o : [...o, name]));
+        next.add(id);
+        setFavOrder((o) => (o.includes(id) ? o : [...o, id]));
       }
       return next;
     });
@@ -243,6 +232,8 @@ export default function ProfilePage() {
         highlights: trip.trip_context?.explore_items?.slice(0, 3).map(item => item.title) || [],
         duration: `${days} days`,
         trip,
+        lat: trip.trip_context?.lat,
+        lng: trip.trip_context?.lng,
       }
     ];
   }));
@@ -338,41 +329,6 @@ export default function ProfilePage() {
     });
   }, []);
 
-  // Check authentication before showing content
-  if (authLoading || isLoading) {
-    return (
-      <DndProvider backend={HTML5Backend}>
-        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
-          <Loader2 size={48} className="text-[#1e3a5f] animate-spin" />
-        </div>
-      </DndProvider>
-    );
-  }
-
-  if (!user && !authLoading) {
-    return (
-      <DndProvider backend={HTML5Backend}>
-        <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] flex items-center justify-center p-6">
-          <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <User size={40} className="text-blue-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-[#1e3a5f] mb-3">Sign In to View Your Profile</h2>
-            <p className="text-gray-600 mb-8">
-              You need to be logged in to view your trips, favorites, and profile settings.
-            </p>
-            <a
-              href="/login"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
-            >
-              Sign In
-            </a>
-          </div>
-        </div>
-      </DndProvider>
-    );
-  }
-
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-[#f8fafc]">
@@ -409,7 +365,7 @@ export default function ProfilePage() {
                     </button>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-3 shrink-0 h-[58px]">
                   <button className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 h-full bg-[#1e3a5f] text-white rounded-2xl hover:bg-[#2a4a6f] transition-all shadow-md hover:shadow-xl active:scale-95 text-base font-bold">
                     <Plus size={20} />
@@ -452,7 +408,7 @@ export default function ProfilePage() {
 
                 <div className="flex items-center gap-5 shrink-0">
                   <div className="h-8 w-px bg-gray-200 hidden md:block" />
-                  
+
                   {/* View toggles */}
                   <div className="flex items-center bg-gray-100/80 rounded-xl p-1.5 shadow-inner">
                     <button
@@ -511,7 +467,7 @@ export default function ProfilePage() {
               {/* Status indicator */}
               <AnimatePresence>
                 {isFiltering && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
@@ -519,18 +475,18 @@ export default function ProfilePage() {
                   >
                     <div className="flex items-center gap-3 px-4 py-2 bg-[#1e3a5f]/5 text-[#1e3a5f] rounded-xl border border-[#1e3a5f]/10 shadow-sm">
                       <span className="text-sm font-bold">
-                        Found {currentResults.length} {currentResults.length === 1 ? 'trip' : 'trips'} 
+                        Found {currentResults.length} {currentResults.length === 1 ? 'trip' : 'trips'}
                         {searchQuery && <span className="text-[#1e3a5f]/60 font-medium italic"> for "{searchQuery}"</span>}
                         {selectedCategory && <span className="text-[#1e3a5f]/60 font-medium italic"> in {selectedCategory}</span>}
                       </span>
-                      <button 
+                      <button
                         onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
                         className="hover:bg-[#1e3a5f]/10 p-1 rounded-full transition-colors"
                       >
                         <X size={14} />
                       </button>
                     </div>
-                    <button 
+                    <button
                       onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
                       className="text-sm font-bold text-[#1e3a5f] hover:underline hover:text-[#2a4a6f] transition-all"
                     >
@@ -619,7 +575,7 @@ export default function ProfilePage() {
                     <p className="text-gray-400 max-w-sm mx-auto mb-10 text-base">
                       Try adjusting your search or category filters to find the travel boards you're looking for.
                     </p>
-                    <button 
+                    <button
                       onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
                       className="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl transition-all font-bold text-base shadow-sm"
                     >
@@ -661,7 +617,7 @@ export default function ProfilePage() {
                         <p className="text-gray-400 max-w-sm mx-auto mb-10 text-base">
                           Your search or filter criteria didn't match any of your favorited destinations.
                         </p>
-                        <button 
+                        <button
                           onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
                           className="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl transition-all font-bold text-base shadow-sm"
                         >
@@ -726,7 +682,7 @@ export default function ProfilePage() {
             )}
           </AnimatePresence>
         </div>
-        
+
         <OceanWave />
         <Footer />
       </div>

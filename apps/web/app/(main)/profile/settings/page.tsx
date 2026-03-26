@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap } from 'lucide-react';
+import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
-import Navbar from '@/components/navbar';
-import { Footer, OceanWave } from '@/components/home';
 import { useAuthStore, supabase } from '@travyl/shared';
 import { fetchProfile } from '@travyl/shared';
 import type { Profile } from '@travyl/shared';
@@ -191,6 +190,7 @@ function CounterInline({ label, value, onChange, min = 0 }: { label: string; val
 export default function ProfileSettings() {
   // Auth state
   const { user, session, loading: authLoading } = useAuthStore();
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [isSaving, setIsSaving] = useState(false);
@@ -536,11 +536,19 @@ export default function ProfileSettings() {
 
   // ─── Render ────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <Navbar />
+    <div className="min-h-screen bg-white">
       <LoadingBar isLoading={isLoading || isTabLoading || isSaving} />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-12">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push('/profile')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back to Profile</span>
+        </button>
+
         {/* Header — Matches Main Layout */}
         <div className="flex items-end justify-between mb-8">
           <div>
@@ -594,7 +602,7 @@ export default function ProfileSettings() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"><Skeleton /></div>
         ) : (
           <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden divide-y divide-gray-100">
-            
+
             {/* ═══════ PROFILE ═══════ */}
             {activeTab === 'profile' && (
               <div className="p-6 sm:p-10 space-y-8">
@@ -795,7 +803,7 @@ export default function ProfileSettings() {
                              <SettingsInput id="cpw" label="CURRENT PASSWORD" value={formData.currentPassword} onChange={v => updateForm('currentPassword', v)} type={showCurrentPassword ? 'text' : 'password'} suffix={<button onClick={() => setShowCurrentPassword(!showCurrentPassword)}><Eye size={18} className="text-gray-300 hover:text-gray-500 transition-colors" /></button>} />
                              <SettingsInput id="npw" label="NEW PASSWORD" value={formData.newPassword} onChange={v => updateForm('newPassword', v)} type={showNewPassword ? 'text' : 'password'} placeholder="min. 8 characters" suffix={<button onClick={() => setShowNewPassword(!showNewPassword)}><Eye size={18} className="text-gray-300 hover:text-gray-500 transition-colors" /></button>} />
                              {formData.newPassword && <PasswordStrengthMeter password={formData.newPassword} />}
-                             
+
                              <div className="pt-8 mt-8 border-t border-gray-100 flex items-center justify-between">
                                 <div className="flex items-center gap-3"><Shield size={20} className="text-blue-500" /><span className="text-base font-bold text-gray-900 uppercase tracking-tight">2FA Protection</span></div>
                                 <Toggle checked={twoFactorEnabled} onChange={() => setTwoFactorEnabled(!twoFactorEnabled)} />
@@ -804,7 +812,7 @@ export default function ProfileSettings() {
                              {/* Linked Accounts & Devices Dropdown - Dependent on 2FA */}
                              {twoFactorEnabled && (
                                 <div className="mt-4 border border-gray-100 rounded-2xl overflow-hidden transition-all shadow-sm">
-                                   <button 
+                                   <button
                                       onClick={() => setShowLinkedAccountsDropdown(!showLinkedAccountsDropdown)}
                                       className="w-full flex items-center justify-between p-5 bg-gray-50/50 hover:bg-gray-50 transition-colors"
                                    >
@@ -814,10 +822,10 @@ export default function ProfileSettings() {
                                       </div>
                                       <ChevronDown size={18} className={`text-gray-400 transition-transform duration-300 ${showLinkedAccountsDropdown ? 'rotate-180' : ''}`} />
                                    </button>
-                                   
+
                                    <AnimatePresence>
                                       {showLinkedAccountsDropdown && (
-                                         <motion.div 
+                                         <motion.div
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
@@ -826,7 +834,7 @@ export default function ProfileSettings() {
                                          >
                                             <div className="p-6 space-y-6">
                                                <SubTabs tabs={[{ id: 'password', label: 'OAuth Profiles' }, { id: 'sessions', label: 'Active Sessions' }]} active={accountSecurityTab} onChange={setAccountSecurityTab} />
-                                               
+
                                                {accountSecurityTab === 'password' ? (
                                                   <div className="space-y-3 mt-2">
                                                      {[
@@ -952,9 +960,6 @@ export default function ProfileSettings() {
         isSaving={isSaving}
         targetLabel={pendingTabChange ? tabLabels[pendingTabChange] : undefined}
       />
-
-      <OceanWave />
-      <Footer />
     </div>
   );
 }

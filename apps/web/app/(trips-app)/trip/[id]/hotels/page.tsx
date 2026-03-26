@@ -61,6 +61,7 @@ interface HotelData {
 /*  Mock Data                                                          */
 /* ------------------------------------------------------------------ */
 
+<<<<<<< Updated upstream
 // Hotel images from Unsplash (reliable hotel room/exterior photos)
 const HOTEL_IMAGES = [
   'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
@@ -227,6 +228,8 @@ function useHotels(tripId: string, searchQuery?: string) {
     });
   }, [fromDb, fromContext, fetchedHotels]);
 }
+
+const MOCK_HOTELS: HotelData[] = [];
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,

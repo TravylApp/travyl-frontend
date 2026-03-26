@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap } from 'lucide-react';
+import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
@@ -188,6 +189,7 @@ function CounterInline({ label, value, onChange, min = 0 }: { label: string; val
 export default function ProfileSettings() {
   // Auth state
   const { user, session, loading: authLoading } = useAuthStore();
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [isSaving, setIsSaving] = useState(false);
@@ -537,6 +539,15 @@ export default function ProfileSettings() {
       <LoadingBar isLoading={isLoading || isTabLoading || isSaving} />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-12">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push('/profile')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back to Profile</span>
+        </button>
+
         {/* Header — Matches Main Layout */}
         <div className="flex items-end justify-between mb-8">
           <div>

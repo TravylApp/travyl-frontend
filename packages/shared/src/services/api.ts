@@ -25,8 +25,24 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
-    if (error) return null;
+      .maybeSingle();
+
+    // If profile doesn't exist yet, create a default one
+    if (error || !data) {
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          display_name: null,
+          avatar_url: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) return null;
+      return newProfile;
+    }
+
     return data;
   } catch { return null; }
 }

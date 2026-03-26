@@ -164,19 +164,59 @@ export function ProfileHeader() {
             </div>
           </div>
 
-          {/* Stats - moved to the right on desktop */}
-          <div className="grid grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 shrink-0 py-6 md:py-0 w-full md:w-auto md:min-w-[200px] lg:min-w-[280px]">
-            {[
-              { value: '32', label: 'Countries' },
-              { value: '148', label: 'Places' },
-              { value: '12', label: 'Boards' },
-              { value: '85', label: 'Favorites' },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center md:text-left bg-white/5 backdrop-blur-sm border border-white/5 hover:border-white/10 hover:bg-white/10 p-4 rounded-2xl transition-all group cursor-default shadow-lg">
-                <p className="text-white font-bold transition-transform group-hover:scale-110 duration-200 inline-block md:block" style={{ fontSize: "24px" }}>{stat.value}</p>
-                <p className="text-white/40 uppercase tracking-widest font-semibold mt-1" style={{ fontSize: "11px" }}>{stat.label}</p>
+          {/* Stats - Level, Trips, Cities, XP */}
+          <div className="flex flex-col items-center md:items-end gap-6 lg:gap-8 shrink-0 py-6 md:py-0">
+            {/* Level Badge */}
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl shadow-lg">
+                <span className="text-white font-black text-sm uppercase tracking-wider">Level 3</span>
               </div>
-            ))}
+              <div className="text-right">
+                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Status</p>
+                <p className="text-white font-bold text-sm">Verified Explorer</p>
+              </div>
+            </div>
+
+            {/* Trip & City Stats */}
+            <div className="flex gap-6 lg:gap-8">
+              <div className="text-center md:text-right">
+                <p className="text-white font-black text-3xl lg:text-4xl">24</p>
+                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-1">Trips</p>
+              </div>
+              <div className="w-px bg-white/10"></div>
+              <div className="text-center md:text-right">
+                <p className="text-white font-black text-3xl lg:text-4xl">112</p>
+                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-1">Cities</p>
+              </div>
+            </div>
+
+            {/* XP Progress Bar */}
+            <div className="w-full max-w-[280px]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Progress</span>
+                <span className="text-blue-300 text-[10px] font-black uppercase tracking-widest">620/1000 XP</span>
+              </div>
+              <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden shadow-inner">
+                <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: "62%" }}></div>
+              </div>
+            </div>
+
+            {/* Travel DNA Tags */}
+            <div className="flex flex-wrap gap-2 justify-center md:justify-end max-w-[280px]">
+              {[
+                { label: 'Beach', color: 'from-cyan-400 to-blue-500' },
+                { label: 'Adventure', color: 'from-emerald-400 to-teal-500' },
+                { label: 'Foodie', color: 'from-orange-400 to-red-500' },
+                { label: 'Culture', color: 'from-purple-400 to-pink-500' },
+              ].map((tag) => (
+                <div
+                  key={tag.label}
+                  className={`px-3 py-1.5 bg-gradient-to-r ${tag.color} rounded-full text-white text-xs font-bold shadow-md`}
+                >
+                  {tag.label}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
