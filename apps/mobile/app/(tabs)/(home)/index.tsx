@@ -292,32 +292,6 @@ export default function HomeScreen() {
   const { data: heroConfig } = useHeroConfig();
   const planner = useTripPlanner();
 
-  // When planner completes, save trip and navigate
-  useEffect(() => {
-    if (!showTakeoff) return;
-    const s = planner.state;
-    if (s.phase === 'complete' && s.plan) {
-      (async () => {
-        try {
-          const tripId = await savePlanToSupabase(s.plan as any);
-          planner.reset();
-          setShowTakeoff(false);
-          router.push(`/trip/${tripId}` as any);
-        } catch (err) {
-          console.error('Failed to save trip:', err);
-          planner.reset();
-          setShowTakeoff(false);
-          router.push('/(tabs)/trips');
-        }
-      })();
-    } else if (s.phase === 'error') {
-      console.error('Trip planning failed:', s.message);
-      planner.reset();
-      setShowTakeoff(false);
-      router.push('/(tabs)/trips');
-    }
-  }, [planner.state.phase, showTakeoff]);
-
   // Cycling hero slideshow
   const heroSlides = heroConfig?.background_image_url
     ? [heroConfig.background_image_url]
@@ -391,6 +365,32 @@ export default function HomeScreen() {
     width: number;
     height: number;
   } | null>(null);
+
+  // When planner completes, save trip and navigate
+  useEffect(() => {
+    if (!showTakeoff) return;
+    const s = planner.state;
+    if (s.phase === 'complete' && s.plan) {
+      (async () => {
+        try {
+          const tripId = await savePlanToSupabase(s.plan as any);
+          planner.reset();
+          setShowTakeoff(false);
+          router.push(`/trip/${tripId}` as any);
+        } catch (err) {
+          console.error('Failed to save trip:', err);
+          planner.reset();
+          setShowTakeoff(false);
+          router.push('/(tabs)/trips');
+        }
+      })();
+    } else if (s.phase === 'error') {
+      console.error('Trip planning failed:', s.message);
+      planner.reset();
+      setShowTakeoff(false);
+      router.push('/(tabs)/trips');
+    }
+  }, [planner.state.phase, showTakeoff]);
 
   const onButtonLayout = useCallback(() => {
     sendButtonRef.current?.measureInWindow((x, y, width, height) => {
