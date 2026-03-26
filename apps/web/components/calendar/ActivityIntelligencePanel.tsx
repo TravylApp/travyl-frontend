@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { MapPin, Clock, Cloud, Wallet, NavArrowDown, NavArrowRight } from 'iconoir-react'
 import { useActivityIntelligence } from './hooks/useActivityIntelligence'
 import { getWmoWeather } from './utils/wmoWeatherCode'
@@ -10,12 +11,14 @@ interface Props {
   tripId: string
 }
 
-function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true)
   return (
     <div className="border-t border-gray-100 dark:border-[#1e3a5f]/30">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={`${title} section`}
         className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
       >
         {icon}
@@ -104,7 +107,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
       {/* Budget Impact */}
       <Section icon={<Wallet className="w-3.5 h-3.5" />} title="Budget">
         <p className="text-xs text-gray-600 dark:text-[#cdd9e5]">
-          {activity.price !== undefined && activity.price !== null
+          {activity.price
             ? `Estimated cost: ${activity.price}`
             : 'No cost estimate'}
         </p>
