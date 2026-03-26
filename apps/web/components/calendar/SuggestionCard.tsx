@@ -47,7 +47,8 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
   const [isHovered, setIsHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
 
-  const images = (suggestion.imageUrl ? [suggestion.imageUrl] : []).filter(u => !failedUrls.has(u))
+  const rawImages = suggestion.imageUrls?.length ? suggestion.imageUrls : suggestion.imageUrl ? [suggestion.imageUrl] : []
+  const images = rawImages.filter(u => !failedUrls.has(u))
   const hasMultiple = images.length > 1
 
   useEffect(() => {
@@ -114,19 +115,19 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
         className="relative w-full overflow-hidden"
         style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
       >
-        {images.length === 0 ? (
-          /* Placeholder when no usable photos are available */
-          <div
-            className="absolute inset-0"
-            style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
-          />
-        ) : (
+        {/* Always show gradient behind images as fallback for broken loads */}
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
+        />
+        {images.length === 0 ? null : (
           images.map((url, idx) => (
             <Image
               key={url}
               src={url}
               alt=""
               fill
+              loading="lazy"
               className="object-cover transition-opacity duration-700"
               style={{ opacity: idx === activeIdx ? 1 : 0 }}
               draggable={false}

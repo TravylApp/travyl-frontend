@@ -1,44 +1,91 @@
 'use client'
 
-import { Pencil, Trash2, Share2, Heart } from 'lucide-react'
+import { useState } from 'react'
+import Link from 'next/link'
+import { Plus, Heart, HeartSolid, ShareAndroid } from 'iconoir-react'
+import { useAuthStore } from '@travyl/shared'
 
 interface Props {
-  onEdit?: () => void
-  onRemove?: () => void
-  onShare?: () => void
-  isFavorited?: boolean
-  onToggleFavorite?: () => void
+  entityId: string
+  entityType: 'place' | 'hotel' | 'activity' | 'destination'
+  entityName: string
+  variant?: 'default' | 'destination'
 }
 
-export function EntityActionsBar({ onEdit, onRemove, onShare, isFavorited, onToggleFavorite }: Props) {
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700">
-      <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {onEdit && (
-            <button onClick={onEdit} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              <Pencil className="w-3.5 h-3.5" /> Edit
-            </button>
-          )}
-          {onRemove && (
-            <button onClick={onRemove} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors">
-              <Trash2 className="w-3.5 h-3.5" /> Remove
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {onShare && (
-            <button onClick={onShare} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              <Share2 className="w-3.5 h-3.5" /> Share
-            </button>
-          )}
-          {onToggleFavorite && (
-            <button onClick={onToggleFavorite} className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              <Heart className={`w-4 h-4 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} />
-            </button>
-          )}
-        </div>
+export function EntityActionsBar({ entityId, entityType, entityName, variant = 'default' }: Props) {
+  const user = useAuthStore((s) => s.user)
+  const [favorited, setFavorited] = useState(false)
+  const [shared, setShared] = useState(false)
+
+  const handleShare = async () => {
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: entityName, url })
+      } catch {
+        // user cancelled or error — silent
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setShared(true)
+      setTimeout(() => setShared(false), 2000)
+    }
+  }
+
+  const handleFavorite = () => {
+    setFavorited((f) => !f)
+  }
+
+  if (!user) {
+    return (
+      <div className="px-6 md:px-10 py-4 border-b border-gray-100">
+        <p className="text-sm text-gray-500">
+          <Link href="/login" className="text-[#003594] hover:text-[#002B7A] font-medium underline-offset-2 hover:underline">
+            Sign in
+          </Link>{' '}
+          to save this {entityType}
+        </p>
       </div>
+    )
+  }
+
+  return (
+    <div className="px-6 md:px-10 py-4 border-b border-gray-100 flex items-center gap-3">
+      {/* Primary CTA */}
+      <button className="inline-flex items-center gap-2 bg-[#003594] hover:bg-[#002B7A] text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+        <Plus className="w-4 h-4" />
+        {variant === 'destination' ? 'Plan a Trip' : 'Add to Trip'}
+      </button>
+
+      {/* Favorite */}
+      <button
+        onClick={handleFavorite}
+        aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+        className={`inline-flex items-center justify-center w-10 h-10 rounded-xl border transition-colors ${
+          favorited
+            ? 'bg-red-50 border-red-200 text-red-500'
+            : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+        }`}
+      >
+        {favorited ? (
+          <HeartSolid className="w-4 h-4 text-red-500" />
+        ) : (
+          <Heart className="w-4 h-4" />
+        )}
+      </button>
+
+      {/* Share */}
+      <button
+        onClick={handleShare}
+        aria-label="Share"
+        className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-500 hover:border-gray-300 transition-colors"
+      >
+        <ShareAndroid className="w-4 h-4" />
+      </button>
+
+      {shared && (
+        <span className="text-xs text-gray-500 animate-in fade-in duration-200">Link copied!</span>
+      )}
     </div>
   )
 }

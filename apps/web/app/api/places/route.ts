@@ -130,45 +130,39 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // If search query provided, geocode it first to get coordinates
-    let searchLat = lat
-    let searchLng = lng
-    if (q) {
-      // Check if the query matches a known city first (instant, no API call)
-      const knownCity = KNOWN_CITIES[q.toLowerCase()]
-      if (knownCity) {
-        searchLat = knownCity.lat
-        searchLng = knownCity.lng
+    let data: BackendPlace[]
+
+    // Natural language queries go through the NLP search endpoint (SerpAPI google_local).
+    // Known city names still use geocode + nearby for structured backend results.
+    const isNlpQuery = q && !KNOWN_CITIES[q.toLowerCase()]
+
+    if (isNlpQuery) {
+      const nlpRes = await fetch(
+        `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      if (nlpRes.ok) {
+        const nlpData = await nlpRes.json()
+        data = (nlpData.results ?? []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          lat: r.latitude,
+          lng: r.longitude,
+          category: r.category,
+          rating: r.rating ?? 0,
+          description: r.description,
+          photo_url: r.imageUrl,
+          address: r.location,
+          price_level: r.price != null
+            ? (r.price <= 15 ? '$' : r.price <= 35 ? '$$' : r.price <= 60 ? '$$$' : '$$$$')
+            : null,
+        }))
       } else {
-        try {
-          const geoRes = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-            {
-              headers: {
-                'Accept-Language': 'en',
-                'User-Agent': 'Travyl/1.0 (travel planning app)',
-              },
-              signal: AbortSignal.timeout(5000),
-            }
-          )
-          const geoData = await geoRes.json()
-          if (geoData.length > 0) {
-            searchLat = geoData[0].lat
-            searchLng = geoData[0].lon
-          }
-        } catch (err) {
-          console.warn('[places] Geocoding failed for query:', q, err)
-        }
+        data = await fetchNearby(q, lat, lng, category, limit)
       }
+    } else {
+      data = await fetchNearby(q, lat, lng, category, limit)
     }
-
-    const res = await fetch(
-      `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
-      { headers: { Accept: 'application/json' } }
-    )
-    if (!res.ok) return NextResponse.json([])
-
-    const data: BackendPlace[] = await res.json()
 
     // Map to PlaceItem format (categories must match PLACE_COLLECTIONS in shared)
     const requestedCat = category
@@ -200,6 +194,45 @@ export async function GET(req: NextRequest) {
     console.error('[places] Route error:', err)
     return NextResponse.json([])
   }
+}
+
+async function fetchNearby(
+  q: string | null,
+  defaultLat: string,
+  defaultLng: string,
+  category: string,
+  limit: string,
+): Promise<BackendPlace[]> {
+  let searchLat = defaultLat
+  let searchLng = defaultLng
+  if (q) {
+    const knownCity = KNOWN_CITIES[q.toLowerCase()]
+    if (knownCity) {
+      searchLat = knownCity.lat
+      searchLng = knownCity.lng
+    } else {
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+          {
+            headers: { 'Accept-Language': 'en', 'User-Agent': 'Travyl/1.0 (travel planning app)' },
+            signal: AbortSignal.timeout(5000),
+          }
+        )
+        const geoData = await geoRes.json()
+        if (geoData.length > 0) {
+          searchLat = geoData[0].lat
+          searchLng = geoData[0].lon
+        }
+      } catch {}
+    }
+  }
+  const res = await fetch(
+    `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
+    { headers: { Accept: 'application/json' } }
+  )
+  if (!res.ok) return []
+  return res.json()
 }
 
 function upscaleGoogleImage(url: string | null | undefined): string | null {

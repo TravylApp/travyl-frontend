@@ -176,11 +176,6 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
     setError(null)
     if (!validate()) return
 
-    if (!user?.id) {
-      setError('You must be signed in to create a trip.')
-      return
-    }
-
     setSubmitting(true)
     try {
       const { data, error: insertError } = await supabase
@@ -191,7 +186,8 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
           start_date: startDate,
           end_date: endDate,
           status: 'planning',
-          user_id: user.id,
+          user_id: user?.id || null,
+          visibility: user?.id ? 'private' : 'public',
         })
         .select()
         .single()

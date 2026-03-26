@@ -126,3 +126,19 @@ api.route('GET /discover', {
   handler: 'services/discover.handler',
   link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
+
+api.route('GET /parse-intent', {
+  handler: 'services/parse-intent.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})
+
+api.route('GET /places/search', {
+  handler: 'services/place-search.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+})

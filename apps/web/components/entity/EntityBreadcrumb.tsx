@@ -1,21 +1,35 @@
-'use client'
-
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { NavArrowRight } from 'iconoir-react'
 
-interface Props {
+interface BreadcrumbItem {
   label: string
   href: string
 }
 
-export function EntityBreadcrumb({ label, href }: Props) {
+interface Props {
+  items: BreadcrumbItem[]
+  current: string
+}
+
+export function EntityBreadcrumb({ items, current }: Props) {
   return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors mb-4"
-    >
-      <ChevronLeft className="w-4 h-4" />
-      Back to {label}
-    </Link>
+    <nav aria-label="Breadcrumb" className="px-6 md:px-10 py-3">
+      <ol className="flex items-center gap-1 flex-wrap">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-center gap-1">
+            <Link
+              href={item.href}
+              className="text-sm text-gray-500 hover:text-[#003594] transition-colors"
+            >
+              {item.label}
+            </Link>
+            <NavArrowRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          </li>
+        ))}
+        <li>
+          <span className="text-sm text-gray-900 font-medium truncate">{current}</span>
+        </li>
+      </ol>
+    </nav>
   )
 }

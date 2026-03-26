@@ -39,9 +39,12 @@ export default function HotelDetailPage({
 
   if (!hotel) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <EntityBreadcrumb label="Hotels" href={`/trip/${tripId}/hotels`} />
-        <p className="text-gray-500 dark:text-gray-400">Hotel not found.</p>
+      <div className="max-w-3xl mx-auto py-6">
+        <EntityBreadcrumb
+          items={[{ label: 'Trip', href: `/trip/${tripId}` }]}
+          current="Hotel not found"
+        />
+        <p className="text-gray-500 dark:text-gray-400 px-6 py-4">Hotel not found.</p>
       </div>
     )
   }
@@ -60,17 +63,27 @@ export default function HotelDetailPage({
     data.latitude !== null && data.longitude !== null
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
-      <EntityBreadcrumb label="Hotels" href={`/trip/${tripId}/hotels`} />
+    <div className="max-w-3xl mx-auto pb-24">
+      <EntityBreadcrumb
+        items={[{ label: 'Trip', href: `/trip/${tripId}` }, { label: 'Hotels', href: `/trip/${tripId}/hotels` }]}
+        current={data.name}
+      />
 
-      <EntityHero images={images} alt={data.name} />
+      <EntityHero
+        images={images}
+        title={data.name}
+        overline="Hotel"
+        rating={data.rating ?? null}
+      />
+
+      <EntityActionsBar
+        entityId={hotelId}
+        entityType="hotel"
+        entityName={data.name}
+      />
 
       {/* Overview */}
-      <div className="mt-5 mb-2">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-          {data.name}
-        </h1>
-
+      <div className="px-6 md:px-10 py-6 border-b border-gray-100">
         {data.star_rating !== null && (
           <div className="flex items-center gap-0.5 mb-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -84,12 +97,6 @@ export default function HotelDetailPage({
               />
             ))}
           </div>
-        )}
-
-        {data.rating !== null && (
-          <span className="inline-block bg-blue-600 text-white text-sm font-semibold px-2 py-0.5 rounded mb-2">
-            {data.rating.toFixed(1)}
-          </span>
         )}
 
         {data.address && (
@@ -162,19 +169,13 @@ export default function HotelDetailPage({
 
       {/* Location */}
       {hasCoordinates && (
-        <EntitySection title="Location">
-          <EntityMap
-            latitude={data.latitude!}
-            longitude={data.longitude!}
-            label={data.name}
-          />
-        </EntitySection>
+        <EntityMap
+          latitude={data.latitude!}
+          longitude={data.longitude!}
+          address={data.address ?? null}
+          name={data.name}
+        />
       )}
-
-      <EntityActionsBar
-        onEdit={() => {}}
-        onRemove={() => {}}
-      />
     </div>
   )
 }

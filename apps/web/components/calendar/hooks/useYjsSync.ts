@@ -132,18 +132,22 @@ export function useYjsSync(
 
   // ── Observe Y.Map deep changes ───────────────────────────
   useEffect(() => {
-    // Initial read
-    setActivities(readAllActivities(activitiesMap))
+    // Initial read — only update if the map has data to avoid clearing the screen
+    // while a fresh Y.Doc (MapB) is being re-hydrated from the DB.
+    const initial = readAllActivities(activitiesMap)
+    if (initial.length > 0) {
+      setActivities(initial)
+    }
     setIsLoading(false)
 
     const observer = (
       events: Y.YEvent<any>[],
       transaction: Y.Transaction,
     ) => {
-      // Only flush local changes — remote changes come from another client that
-      // already owns the write. Flushing them here causes partial-row DB errors
-      // and wrongly transfers user_id ownership.
-      const isRemote = transaction.origin === 'remote'
+      // Only flush local changes to Supabase. Remote updates from y-supabase
+      // (origin='remote') and persistence hydration (origin=SupabasePersistence
+      // instance) have non-null origins. Local user edits have origin=null.
+      const isRemote = transaction.origin !== null && transaction.origin !== undefined
 
       if (!isRemote) {
         for (const event of events) {
@@ -198,6 +202,49 @@ export function useYjsSync(
     }
   }, [activitiesMap, scheduleFlush, flush])
 
+  // ── Supabase Realtime Postgres Changes ──────────────────
+  // Receive activity changes persisted by OTHER clients.
+  // Uses application-level activity.id (UUID) to update our local Yjs map,
+  // bypassing the Y.Map internal-ID incompatibility that breaks Yjs delta sync.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`activity-pg:${tripId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'activity', filter: `trip_id=eq.${tripId}` },
+        (payload) => {
+          const id: string | undefined =
+            (payload.new as any)?.id ?? (payload.old as any)?.id
+          if (!id) return
+          // Skip activities with pending local edits to avoid overwriting unsaved changes
+          if (dirtyRef.current.has(id)) return
+
+          activitiesMap.doc?.transact(() => {
+            if (payload.eventType === 'DELETE') {
+              activitiesMap.delete(id)
+              return
+            }
+            const row = payload.new as ActivityRow
+            const cal = toCalendarActivity(row, tripStartDateRef.current)
+            let yMap = activitiesMap.get(cal.id)
+            if (!yMap) {
+              yMap = new Y.Map<unknown>()
+              activitiesMap.set(cal.id, yMap)
+            }
+            for (const key of CALENDAR_ACTIVITY_KEYS) {
+              const val = (cal as any)[key]
+              if (val !== undefined) yMap.set(key, val)
+            }
+          }, 'remote')
+        },
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [tripId, activitiesMap])
+
   // ── Tab refocus reconciliation ───────────────────────────
   useEffect(() => {
     if (readOnly) return
@@ -246,7 +293,7 @@ export function useYjsSync(
             activitiesMap.delete(key)
           }
         })
-      })
+      }, 'remote')
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)

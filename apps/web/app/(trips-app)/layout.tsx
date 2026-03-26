@@ -1,3 +1,3 @@
 export default function TripsAppLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return <div className="pt-14">{children}</div>
 }

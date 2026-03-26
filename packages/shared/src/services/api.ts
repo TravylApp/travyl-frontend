@@ -453,10 +453,10 @@ export async function removeCollaborator(collaboratorId: string): Promise<void> 
   if (error) throw error
 }
 
-export async function acceptInviteByToken(inviteToken: string, userId: string): Promise<{ tripId: string }> {
-  const { data, error } = await supabase.from('trip_collaborators').update({ user_id: userId, invite_status: 'accepted', accepted_at: new Date().toISOString() }).eq('invite_token', inviteToken).eq('invite_status', 'pending').select('trip_id').single()
+export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId: string }> {
+  const { data, error } = await supabase.rpc('accept_invite_by_token', { p_token: inviteToken })
   if (error) throw error
-  return { tripId: data.trip_id }
+  return { tripId: (data as { trip_id: string }).trip_id }
 }
 
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
@@ -544,7 +544,6 @@ export async function savePlanToSupabase(
   onProgress?: (stage: string, pct: number) => void
 ): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('You must be logged in to save a trip. Please sign in and try again.')
 
   const ext = plan.extracted
   const dest = ext.destination
@@ -553,7 +552,8 @@ export async function savePlanToSupabase(
 
   // 1. Create trip
   const tripInsert: Record<string, unknown> = {
-    user_id: user.id,
+    user_id: user?.id || null,
+    visibility: user?.id ? 'private' : 'public',
     title: `${dest.city}, ${dest.country}`,
     destination: `${dest.city}, ${dest.country}`,
     start_date: ext.dates.start,
@@ -617,7 +617,7 @@ export async function savePlanToSupabase(
         return {
           trip_id: tripId,
           itinerary_day_id: dayRow.id,
-          user_id: user.id,
+          user_id: user?.id || null,
           activity_name: poi.name,
           activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
           starting_date: day.date,

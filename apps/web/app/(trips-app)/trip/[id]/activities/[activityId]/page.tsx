@@ -63,8 +63,11 @@ export default function ActivityDetailPage({
   if (!result) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
-        <EntityBreadcrumb label="Activities" href={`/trip/${tripId}/activities`} />
-        <p className="text-gray-500 dark:text-gray-400">Activity not found.</p>
+        <EntityBreadcrumb
+          items={[{ label: 'Trip', href: `/trip/${tripId}` }]}
+          current="Activity not found"
+        />
+        <p className="text-gray-500 dark:text-gray-400 px-6 py-4">Activity not found.</p>
       </div>
     )
   }
@@ -93,11 +96,20 @@ export default function ActivityDetailPage({
       : null
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
-      <EntityBreadcrumb label="Activities" href={`/trip/${tripId}/activities`} />
+    <div className="max-w-3xl mx-auto pb-24">
+      <EntityBreadcrumb
+        items={[{ label: 'Trip', href: `/trip/${tripId}` }, { label: 'Activities', href: `/trip/${tripId}/activities` }]}
+        current={activity.name}
+      />
+
+      <EntityActionsBar
+        entityId={activityId}
+        entityType="activity"
+        entityName={activity.name}
+      />
 
       {/* Overview */}
-      <div className="mb-6">
+      <div className="px-6 md:px-10 py-6 border-b border-gray-100">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
           {activity.name}
         </h1>
@@ -173,19 +185,13 @@ export default function ActivityDetailPage({
 
       {/* Location map */}
       {hasCoordinates && (
-        <EntitySection title="Location">
-          <EntityMap
-            latitude={activity.latitude!}
-            longitude={activity.longitude!}
-            label={activity.location_name ?? activity.name}
-          />
-        </EntitySection>
+        <EntityMap
+          latitude={activity.latitude!}
+          longitude={activity.longitude!}
+          address={activity.location_name}
+          name={activity.name}
+        />
       )}
-
-      <EntityActionsBar
-        onEdit={() => {}}
-        onRemove={() => {}}
-      />
     </div>
   )
 }
