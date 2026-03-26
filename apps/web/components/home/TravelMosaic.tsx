@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import type React from "react";
 import { motion } from "motion/react";
 import {
   TILE_CATEGORY_GRADIENTS,
@@ -81,6 +82,22 @@ async function fetchMosaicTiles(): Promise<MosaicTile[]> {
   return shuffle(tiles).slice(0, 12);
 }
 
+function useInView(rootMargin = "200px"): [React.RefObject<HTMLElement | null>, boolean] {
+  const ref = useRef<HTMLElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); observer.disconnect(); } },
+      { rootMargin }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rootMargin]);
+  return [ref, inView];
+}
+
 // Mobile: 7 tiles, hero + pairs
 const MOBILE_SPANS =   [12, 7, 5, 5, 7, 6, 6];
 const MOBILE_HEIGHTS = [240, 200, 200, 200, 200, 200, 200];
@@ -90,10 +107,12 @@ const DESKTOP_SPANS =   [12, 7, 5, 4, 4, 4, 5, 7, 6, 6];
 const DESKTOP_HEIGHTS = [320, 260, 260, 200, 200, 200, 260, 260, 220, 220];
 
 export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => void } = {}) {
+  const [sectionRef, inView] = useInView();
   const { data: fetchedTiles = [] } = useQuery({
     queryKey: ['mosaic-tiles'],
     queryFn: fetchMosaicTiles,
     staleTime: 10 * 60 * 1000,
+    enabled: inView,
   });
   const tiles = fetchedTiles;
   const [isDesktop, setIsDesktop] = useState(false);
@@ -113,7 +132,7 @@ export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => vo
   const tileCount = isDesktop ? 10 : 7;
 
   return (
-    <section className="py-16 px-6">
+    <section ref={sectionRef as React.RefObject<HTMLElement>} className="py-16 px-6">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-2xl md:text-3xl font-serif font-normal text-foreground text-center mb-10 tracking-wide">
           Moments That <span className="italic">Move You</span>
