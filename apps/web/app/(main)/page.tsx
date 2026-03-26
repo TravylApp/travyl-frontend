@@ -193,6 +193,7 @@ export default function Home() {
   const { scrollYProgress: heroScroll } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
+    layoutEffect: false,
   });
   const heroTextY = useTransform(heroScroll, [0, 1], [0, 150]);
   const heroTextOpacity = useTransform(heroScroll, [0, 0.6], [1, 0]);
@@ -204,6 +205,7 @@ export default function Home() {
   const { scrollYProgress: dividerScroll } = useScroll({
     target: dividerRef,
     offset: ["start end", "end start"],
+    layoutEffect: false,
   });
   const dividerBgY = useTransform(dividerScroll, [0, 1], [-80, 80]);
 
