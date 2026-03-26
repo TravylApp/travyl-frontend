@@ -464,7 +464,7 @@ export function useSpotlightSearch() {
     query,
     setQuery,
     results,
-    isLoading: tripSearchLoading || entityLoading || discoverLoading || intentLoading,
+    isLoading: tripSearchLoading || entityLoading || discoverLoading || intentLoading || fsqLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,
