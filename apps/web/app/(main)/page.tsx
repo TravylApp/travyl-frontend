@@ -188,14 +188,14 @@ export default function Home() {
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
 
-  // Parallax transforms — use document scroll (no target ref) to avoid hydration error
+  // Parallax transforms — document-level scroll (no target ref to avoid hydration error)
   const { scrollYProgress: heroScroll } = useScroll();
   const heroTextY = useTransform(heroScroll, [0, 0.35], [0, 150]);
   const heroTextOpacity = useTransform(heroScroll, [0, 0.2], [1, 0]);
   const heroBgY = useTransform(heroScroll, [0, 0.35], [0, -120]);
   const heroBgScale = useTransform(heroScroll, [0, 0.35], [1, 1.15]);
 
-  // Parallax divider — uses CSS background-attachment instead of motion ref
+  // Parallax divider
   const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
 
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
