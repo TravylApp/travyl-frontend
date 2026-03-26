@@ -178,11 +178,6 @@ function generateFromTripContext(
   // Round-robin indices for each pool
   let sIdx = 0, dIdx = 0, nIdx = 0, oIdx = 0;
 
-  const pickFrom = (pool: Item[]): Item | null => {
-    if (pool.length === 0) return null;
-    return pool[pool.length > 0 ? 0 : 0]; // will be shifted below
-  };
-
   for (let d = 0; d < durationDays; d++) {
     const date = new Date(startDate);
     date.setDate(date.getDate() + d);

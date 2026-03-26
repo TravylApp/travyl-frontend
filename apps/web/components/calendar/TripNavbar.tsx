@@ -157,13 +157,14 @@ interface AvatarCircleProps {
 }
 
 function AvatarCircle({ size = 28, avatarUrl, displayName, initials }: AvatarCircleProps) {
+  const [imgError, setImgError] = useState(false)
   return (
     <div
       style={{ width: size, height: size }}
       className="flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-[11px]"
     >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" />
+      {avatarUrl && !imgError ? (
+        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" onError={() => setImgError(true)} />
       ) : (
         initials
       )}

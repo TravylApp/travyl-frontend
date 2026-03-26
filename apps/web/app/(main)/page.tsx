@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
 import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
-import type { FollowUpQuestion, PlanResponse, PlaceItem } from "@travyl/shared";
+import type { FollowUpQuestion, PlaceItem } from "@travyl/shared";
 import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
@@ -148,7 +148,7 @@ export default function Home() {
   const planner = useTripPlanner();
   const [currentQIdx, setCurrentQIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
-  const planRef = useRef<PlanResponse | null>(null);
+
 
   const isClarifying = planner.state.phase === 'clarifying';
   const isExtracting = planner.state.phase === 'extracting';
@@ -330,7 +330,6 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — save to Supabase with planner data in trip_context
         // Not logged in — save to Supabase with planner data in trip_context
         // so the overview page has hotels, itinerary, budget immediately
         try {
@@ -536,6 +535,7 @@ export default function Home() {
               alt=""
               width={1600}
               height={900}
+              loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "low"}
               decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"

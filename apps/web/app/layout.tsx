@@ -46,7 +46,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="author" content="JPB Developments — https://www.jpbdevelopments.com" />
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://flagcdn.com" />
         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
       </head>
       <body

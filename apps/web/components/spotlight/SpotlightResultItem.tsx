@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef } from 'react'
+import { forwardRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { Building2, Plane, UtensilsCrossed, MapPin, Compass, ArrowRight, Settings, Terminal, Star, Calendar, Pin, Sparkles } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
@@ -42,6 +42,7 @@ interface Props {
 
 export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
   function SpotlightResultItem({ result, isActive, onClick, query, isPinned }, ref) {
+    const [imgError, setImgError] = useState(false)
     const Icon = TYPE_ICONS[result.type] ?? MapPin
     const iconColor = TYPE_ICON_COLORS[result.type] ?? TYPE_ICON_COLORS.navigation
 
@@ -90,11 +91,12 @@ export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
 
         {/* Icon / Image */}
         <div className="relative z-10 flex-shrink-0">
-          {result.imageUrl && isRichType ? (
+          {result.imageUrl && isRichType && !imgError ? (
             <img
               src={result.imageUrl}
               alt=""
               className="w-10 h-10 rounded-lg object-cover"
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconColor}`}>

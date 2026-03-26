@@ -67,7 +67,6 @@ function useExploreSections() {
   const allExpanded = sections.length > 0 && expandedSet.size === sections.length;
   const rows = sections.map((s, i) => ({
     title: s.title,
-    gradient: { from: '#1e3a5f', to: '#2563eb' },
     items: s.items,
     isExpanded: expandedSet.has(i),
   }));
@@ -81,7 +80,6 @@ function SectionHeader({
   onToggle,
 }: {
   title: string;
-  gradient?: { from: string; to: string };
   isExpanded: boolean;
   onToggle: () => void;
 }) {
@@ -201,14 +199,12 @@ function ExploreContainer({
 // ─── Explore Section (header + container) ────────────────────
 function ExploreSection({
   title,
-  gradient,
   isExpanded,
   onToggle,
   items,
   onItemClick,
 }: {
   title: string;
-  gradient: { from: string; to: string };
   isExpanded: boolean;
   onToggle: () => void;
   items: PlaceItem[];
@@ -218,7 +214,6 @@ function ExploreSection({
     <div className="space-y-2">
       <SectionHeader
         title={title}
-        gradient={gradient}
         isExpanded={isExpanded}
         onToggle={onToggle}
       />
@@ -278,7 +273,6 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
             <ExploreSection
               key={row.title}
               title={row.title}
-              gradient={row.gradient}
               isExpanded={row.isExpanded}
               onToggle={() => toggleRow(i)}
               items={row.items}

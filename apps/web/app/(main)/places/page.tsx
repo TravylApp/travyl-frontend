@@ -246,7 +246,7 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   }).map(p => {
     // Ensure every place has an image
     if (!p.image || p.image === '') {
-      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=500&fit=crop&q=75` }
+      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=500&fit=crop&q=75&fm=webp` }
     }
     return p
   })
@@ -277,7 +277,7 @@ const EVENT_FALLBACK_IMAGES: Record<string, string> = {
 
 function getEventFallbackImage(category?: string): string {
   const id = EVENT_FALLBACK_IMAGES[category || ''] || 'photo-1492684223f0-e3b763ece0e4'
-  return `https://images.unsplash.com/${id}?w=500&fit=crop&q=75`
+  return `https://images.unsplash.com/${id}?w=500&fit=crop&q=75&fm=webp`
 }
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
