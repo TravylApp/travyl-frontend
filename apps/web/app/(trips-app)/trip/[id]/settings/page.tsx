@@ -1,11 +1,11 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Save, Trash2, AlertTriangle, Share2,
   Check, X, Globe, GitFork, Copy,
   Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
-  Luggage, PieChart, Heart, Car, Settings2, LogOut,
+  Luggage, PieChart, Heart, Car, Settings2, LogOut, Minus, Plus, Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ThemePicker } from '@/components/trip/ThemePicker';
@@ -13,9 +13,9 @@ import { useTripTheme } from '@/components/trip/TripThemeContext';
 import {
   useItineraryScreen, useAuthStore, isTripOwner,
   updateTripDetails, updateTripVisibility, updateTripThemeSettings,
-  ensureShareLinkToken, deleteTrip, leaveTrip,
+  ensureShareLinkToken, deleteTrip, leaveTrip, supabase,
 } from '@travyl/shared';
-import type { Trip } from '@travyl/shared';
+import type { Trip, TravelerMetadata } from '@travyl/shared';
 import { useRouter } from 'next/navigation';
 
 // ─── Tab definitions ─────────────────────────────────────────
@@ -401,6 +401,216 @@ function DangerZoneSection({
   );
 }
 
+// ─── Travelers Section ────────────────────────────────────────
+
+const DEFAULT_TRAVELERS: TravelerMetadata = {
+  adults: 1,
+  children: 0,
+  infants: 0,
+  child_ages: [],
+};
+
+function Stepper({
+  value,
+  min,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  min: number;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        disabled={disabled || value <= min}
+        className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Minus size={14} />
+      </button>
+      <span className="w-6 text-center text-sm font-semibold text-gray-900 tabular-nums">{value}</span>
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        disabled={disabled}
+        className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Plus size={14} />
+      </button>
+    </div>
+  );
+}
+
+function TravelersSection({
+  tripId,
+  initialValue,
+  disabled,
+}: {
+  tripId: string;
+  initialValue: TravelerMetadata;
+  disabled: boolean;
+}) {
+  const [travelers, setTravelers] = useState<TravelerMetadata>(initialValue);
+  const [saving, setSaving] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync when initialValue changes (e.g. trip loaded)
+  useEffect(() => {
+    setTravelers(initialValue);
+  }, [initialValue]);
+
+  const save = useCallback(async (next: TravelerMetadata) => {
+    setSaving(true);
+    try {
+      // Fetch the current trip_context to merge travelers in without clobbering other fields
+      const { data: current } = await supabase
+        .from('trips')
+        .select('trip_context')
+        .eq('id', tripId)
+        .single();
+
+      const existingContext = (current?.trip_context as Record<string, unknown>) ?? {};
+      const { error: updateError } = await supabase
+        .from('trips')
+        .update({
+          travelers: next.adults + next.children + next.infants,
+          trip_context: { ...existingContext, travelers: next },
+        })
+        .eq('id', tripId);
+      if (updateError) throw updateError;
+    } catch (err) {
+      console.error('Failed to save traveler metadata:', err);
+    } finally {
+      setSaving(false);
+    }
+  }, [tripId]);
+
+  const handleChange = (patch: Partial<TravelerMetadata>) => {
+    setTravelers((prev) => {
+      const next = { ...prev, ...patch };
+
+      // Keep child_ages array in sync with children count
+      if (patch.children !== undefined) {
+        const count = patch.children;
+        const ages = prev.child_ages.slice(0, count);
+        while (ages.length < count) ages.push(0);
+        next.child_ages = ages;
+      }
+
+      // Debounce auto-save
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => save(next), 500);
+
+      return next;
+    });
+  };
+
+  const handleChildAge = (index: number, age: number) => {
+    setTravelers((prev) => {
+      const ages = [...prev.child_ages];
+      ages[index] = age;
+      const next = { ...prev, child_ages: ages };
+
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => save(next), 500);
+
+      return next;
+    });
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <SectionHeading>Travelers</SectionHeading>
+        {saving && <span className="text-xs text-gray-400 mb-3.5">Saving…</span>}
+      </div>
+
+      <div className="space-y-3">
+        {/* Adults */}
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
+              <Users size={16} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Adults</p>
+              <p className="text-xs text-gray-500 mt-0.5">Age 18+</p>
+            </div>
+          </div>
+          <Stepper value={travelers.adults} min={1} onChange={(v) => handleChange({ adults: v })} disabled={disabled} />
+        </div>
+
+        {/* Children */}
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50">
+              <Users size={16} className="text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Children</p>
+              <p className="text-xs text-gray-500 mt-0.5">Ages 2–17</p>
+            </div>
+          </div>
+          <Stepper value={travelers.children} min={0} onChange={(v) => handleChange({ children: v })} disabled={disabled} />
+        </div>
+
+        {/* Child ages — shown only when children > 0 */}
+        {travelers.children > 0 && (
+          <div className="rounded-xl border border-gray-200 p-4 bg-gray-50 space-y-3">
+            <p className="text-xs font-medium text-gray-600">Child ages (optional)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {Array.from({ length: travelers.children }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <label className="text-xs text-gray-500 shrink-0">Child {i + 1}</label>
+                  <input
+                    type="number"
+                    min={2}
+                    max={17}
+                    placeholder="Age"
+                    value={travelers.child_ages[i] !== undefined && travelers.child_ages[i] > 0 ? travelers.child_ages[i] : ''}
+                    onChange={(e) => handleChildAge(i, e.target.value ? Number(e.target.value) : 0)}
+                    disabled={disabled}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-100 disabled:text-gray-400"
+                    style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Infants */}
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-pink-50">
+              <Users size={16} className="text-pink-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Infants</p>
+              <p className="text-xs text-gray-500 mt-0.5">Under 2</p>
+            </div>
+          </div>
+          <Stepper value={travelers.infants} min={0} onChange={(v) => handleChange({ infants: v })} disabled={disabled} />
+        </div>
+      </div>
+
+      <p className="mt-3 text-xs text-gray-400">
+        Total: {travelers.adults + travelers.children + travelers.infants} traveler{travelers.adults + travelers.children + travelers.infants === 1 ? '' : 's'}
+      </p>
+    </div>
+  );
+}
+
 // ─── Main page component ──────────────────────────────────────
 
 export default function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -631,6 +841,17 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       <section className="py-8">
         <TripDetailsSection details={details} onChange={updateDetails} disabled={!isOwner} />
       </section>
+
+      {/* Travelers */}
+      {trip && (
+        <section className="py-8">
+          <TravelersSection
+            tripId={trip.id}
+            initialValue={trip.trip_context?.travelers ?? DEFAULT_TRAVELERS}
+            disabled={!isOwner}
+          />
+        </section>
+      )}
 
       {/* Trip Sharing — owner only */}
       {isOwner && (

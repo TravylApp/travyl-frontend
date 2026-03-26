@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, Calendar, Users, Clock,
@@ -10,6 +10,7 @@ import {
   Phone, ShieldAlert, Ambulance,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 
 // ─── Collapsible Section ────────────────────────────────────────
 
@@ -123,122 +124,89 @@ function DetailCard({
   );
 }
 
-// ─── Data ───────────────────────────────────────────────────────
+// ─── Dynamic Data Hooks ──────────────────────────────────────────
 
-const TRANSPORT_OPTIONS = [
-  {
-    icon: <Train size={16} className="text-purple-600" />,
-    name: 'Metro',
-    subtitle: '3 lines, stations every 500m',
-    detail:
-      'The Paris Metro is the fastest way to get around. Line 1, 4, and 7 serve major tourist areas. Buy a carnet of 10 tickets for savings. The RER suburban trains connect to airports and Versailles. Runs 5:30 AM - 1:15 AM.',
-  },
-  {
-    icon: <Bus size={16} className="text-purple-600" />,
-    name: 'Buses & Tram',
-    subtitle: 'Scenic routes, night buses after metro closes',
-    detail:
-      'Buses are slower but offer great views. The 69 bus route passes many landmarks. Noctilien night buses run 12:30 AM - 5:30 AM on major routes. Same ticket as metro.',
-  },
-  {
-    icon: <Footprints size={16} className="text-purple-600" />,
-    name: 'Walking',
-    subtitle: 'Most attractions within 30 min walk',
-    detail:
-      'Walking is the best way to discover Paris. The banks of the Seine, Le Marais, and Montmartre are especially pleasant on foot. Wear comfortable shoes on cobblestones!',
-  },
-  {
-    icon: <Navigation size={16} className="text-purple-600" />,
-    name: 'Taxis',
-    subtitle: 'Widely available, expect 15-40 EUR',
-    detail:
-      'Official taxis are beige/cream colored. Uber and Bolt operate in Paris. From CDG airport: expect 50-70 EUR flat rate. Tipping is not required but appreciated (5-10%).',
-  },
-];
+function useInfoData(tripId: string) {
+  const { trip } = useItineraryScreen(tripId);
+  const destination = trip?.destination?.split(',')[0]?.trim() ?? '';
+  const country = trip?.destination?.split(',')[1]?.trim() ?? '';
+  const exploreItems = trip?.trip_context?.explore_items ?? [];
 
-const RESTAURANTS = [
-  {
-    name: 'Le Comptoir du Pantheon',
-    subtitle: 'Classic French Bistro',
-    detail:
-      'Traditional zinc-bar bistro near the Pantheon. Must-try: duck confit and creme brulee. Reservations recommended for dinner. Moderate pricing.',
-  },
-  {
-    name: 'Breizh Cafe',
-    subtitle: 'Le Marais, Crepes & Galettes',
-    detail:
-      'Organic Brittany-style creperie in Le Marais. Try the "Complete" galette (ham, cheese, egg). Artisanal cider available. Budget-friendly.',
-  },
-  {
-    name: 'Le Bouillon Chartier',
-    subtitle: 'Traditional French, Budget',
-    detail:
-      'Historic canteen since 1896. Incredible value 3-course meals in a stunning Belle Epoque dining room. No reservations - expect a short queue.',
-  },
-];
+  // Fetch restaurants from Foursquare
+  const lat = (trip?.trip_context?.hotels as any)?.[0]?.lat ?? (trip?.trip_context?.explore_items as any)?.[0]?.lat;
+  const lng = (trip?.trip_context?.hotels as any)?.[0]?.lng ?? (trip?.trip_context?.explore_items as any)?.[0]?.lng;
 
-const TRANSPORT_PASSES = [
-  {
-    name: 'Navigo Easy',
-    subtitle: '2 EUR/ride, rechargeable metro/bus card',
-    detail:
-      'Available at any metro station. Load individual tickets (t+ tickets at 2.10 EUR) or 10-packs. Works on metro, bus, and tram within Paris.',
-  },
-  {
-    name: 'Navigo Week',
-    subtitle: '30 EUR/week, unlimited zones 1-5 (Mon-Sun)',
-    detail:
-      'Best value if staying 5+ days. Covers metro, bus, RER, and tram in ALL zones including airports. Requires a passport photo. Runs Monday to Sunday only.',
-  },
-  {
-    name: 'Paris Visite Pass',
-    subtitle: '13.95 EUR/day, tourist pass with discounts',
-    detail:
-      'Available for 1, 2, 3, or 5 days. Includes unlimited public transport plus discounts at Arc de Triomphe, Montparnasse Tower, and more. Available for zones 1-3 or 1-5.',
-  },
-];
+  const { data: restaurants = [] } = useQuery({
+    queryKey: ['info-restaurants', destination],
+    queryFn: async () => {
+      if (!lat || !lng) {
+        // Geocode destination
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trip?.destination ?? '')}&format=json&limit=1`);
+        const geo = await geoRes.json();
+        if (!geo[0]) return [];
+        const res = await fetch(`/api/foursquare?lat=${geo[0].lat}&lng=${geo[0].lon}&category=restaurant&limit=4`);
+        return res.ok ? res.json() : [];
+      }
+      const res = await fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=restaurant&limit=4`);
+      return res.ok ? res.json() : [];
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!destination,
+  });
 
-const EXPERIENCES = [
-  {
-    name: 'Eiffel Tower Summit',
-    subtitle: 'Landmark, best at sunset',
-    detail:
-      'Book summit tickets 2 months in advance online. Allow 2-3 hours. South pillar has the shortest queue. Stunning views over all of Paris.',
-  },
-  {
-    name: 'Louvre Museum Tour',
-    subtitle: 'Museum, closed Tuesdays',
-    detail:
-      'Enter via Carrousel du Louvre (shorter line). Focus on Denon wing for Mona Lisa and Venus de Milo. Allow 3-4 hours minimum.',
-  },
-  {
-    name: 'Montmartre Walking Tour',
-    subtitle: 'Tour, start at Abbesses metro',
-    detail:
-      'Visit Sacre-Coeur, Place du Tertre artists, and Moulin Rouge. Best in morning before crowds arrive. Allow 2-3 hours.',
-  },
-  {
-    name: 'Seine River Jazz Cruise',
-    subtitle: 'Experience, evening departures',
-    detail:
-      'Departs from Port de la Bourdonnais. Live jazz with champagne and stunning views of illuminated monuments. Book 1 week ahead.',
-  },
-];
+  // Generate transport info based on destination
+  const transportOptions = useMemo(() => [
+    { icon: <Train size={16} className="text-purple-600" />, name: 'Public Transit', subtitle: `Metro, bus, and tram systems in ${destination}`, detail: `Use local public transit apps to navigate ${destination}. Purchase day passes at stations for the best value. Most systems run from early morning until midnight.` },
+    { icon: <Bus size={16} className="text-purple-600" />, name: 'Buses & Shuttles', subtitle: 'City buses and airport shuttles', detail: `Local buses cover most areas in ${destination}. Airport shuttle services are usually available. Check schedules online or at tourist information centers.` },
+    { icon: <Footprints size={16} className="text-purple-600" />, name: 'Walking', subtitle: 'Best way to explore the city center', detail: `Many attractions in ${destination} are walkable. Wear comfortable shoes and carry a water bottle. Use the directions feature in the app for walking routes between spots.` },
+    { icon: <Navigation size={16} className="text-purple-600" />, name: 'Ride-hailing', subtitle: 'Uber, Bolt, or local services', detail: `Ride-hailing apps are widely available in ${destination}. Compare prices between services. Official taxis are also available at stands and can be hailed on the street.` },
+  ], [destination]);
 
-const EMERGENCY_NUMBERS = [
-  { label: 'Police, Fire, Ambulance', number: '112' },
-  { label: 'Police', number: '17' },
-  { label: 'Fire Brigade (Pompiers)', number: '18' },
-  { label: 'SAMU (Medical Emergency)', number: '15' },
-];
+  // Generate experiences from explore items
+  const experiences = useMemo(() =>
+    exploreItems.slice(0, 4).map((item: { title: string; category: string; description: string }) => ({
+      name: item.title,
+      subtitle: item.category,
+      detail: item.description || `A must-visit ${item.category.toLowerCase()} in ${destination}. Check opening hours and book in advance when possible.`,
+    })),
+  [exploreItems, destination]);
 
-const SAFETY_TIPS = [
-  'Keep valuables in hotel safe. Use front pockets in crowded areas.',
-  'Watch for pickpockets at Eiffel Tower, metro, and tourist hotspots.',
-  'Avoid unlicensed taxis. Use official taxi stands or apps.',
-  'Keep a photocopy of your passport separate from the original.',
-  'Beware of common scams (fake petitions, friendship bracelets).',
-];
+  // Emergency numbers — 112 is universal in EU, generate based on country
+  const emergencyNumbers = useMemo(() => {
+    const base = [{ label: 'International Emergency', number: '112' }];
+    const countryNumbers: Record<string, { label: string; number: string }[]> = {
+      'France': [{ label: 'Police', number: '17' }, { label: 'Fire', number: '18' }, { label: 'Medical', number: '15' }],
+      'Spain': [{ label: 'Police', number: '091' }, { label: 'Fire', number: '080' }, { label: 'Medical', number: '061' }],
+      'Italy': [{ label: 'Carabinieri', number: '112' }, { label: 'Police', number: '113' }, { label: 'Medical', number: '118' }],
+      'Japan': [{ label: 'Police', number: '110' }, { label: 'Fire/Ambulance', number: '119' }],
+      'USA': [{ label: 'All Emergencies', number: '911' }],
+      'UK': [{ label: 'All Emergencies', number: '999' }],
+      'Australia': [{ label: 'All Emergencies', number: '000' }],
+      'Indonesia': [{ label: 'Police', number: '110' }, { label: 'Ambulance', number: '118' }, { label: 'Fire', number: '113' }],
+      'Turkey': [{ label: 'Police', number: '155' }, { label: 'Ambulance', number: '112' }, { label: 'Fire', number: '110' }],
+      'Thailand': [{ label: 'Tourist Police', number: '1155' }, { label: 'Police', number: '191' }, { label: 'Ambulance', number: '1669' }],
+    };
+    return [...base, ...(countryNumbers[country] ?? [{ label: 'Local Police', number: 'Ask hotel' }])];
+  }, [country]);
+
+  const safetyTips = useMemo(() => [
+    `Keep valuables in your hotel safe. Use front pockets in crowded areas of ${destination}.`,
+    'Keep a photocopy of your passport separate from the original.',
+    'Avoid unlicensed taxis. Use official taxi stands or ride-hailing apps.',
+    `Be aware of common tourist scams in ${destination}. Research before your trip.`,
+    'Share your itinerary with someone at home. Check in regularly.',
+  ], [destination]);
+
+  const restaurantData = useMemo(() =>
+    restaurants.map((r: any) => ({
+      name: r.name,
+      subtitle: r.category ?? 'Restaurant',
+      detail: r.tip ?? `Located at ${r.address ?? destination}. ${r.rating ? `Rated ${r.rating}/10.` : ''} Check hours before visiting.`,
+    })),
+  [restaurants, destination]);
+
+  return { transportOptions, restaurantData, experiences, emergencyNumbers, safetyTips, destination, country };
+}
 
 // ─── Page ───────────────────────────────────────────────────────
 
@@ -246,6 +214,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const { isLoading, trip: liveTrip } = useItineraryScreen(id);
   const trip = liveTrip;
+  const { transportOptions, restaurantData, experiences, emergencyNumbers, safetyTips } = useInfoData(id);
 
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
@@ -302,7 +271,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             badgeColor="bg-purple-100 text-purple-700"
             defaultOpen
           >
-            {TRANSPORT_OPTIONS.map((t) => (
+            {transportOptions.map((t) => (
               <DetailCard
                 key={t.name}
                 icon={t.icon}
@@ -323,7 +292,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             badge="3 spots"
             badgeColor="bg-red-100 text-red-700"
           >
-            {RESTAURANTS.map((r) => (
+            {restaurantData.map((r: { name: string; subtitle: string; detail: string }) => (
               <DetailCard
                 key={r.name}
                 icon={<Utensils size={16} className="text-red-600" />}
@@ -344,10 +313,10 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
           <CollapsibleSection
             title="Transportation Passes"
             icon={<CreditCard size={18} className="text-blue-600" />}
-            badge="3 passes"
+            badge={`${transportOptions.length} options`}
             badgeColor="bg-blue-100 text-blue-700"
           >
-            {TRANSPORT_PASSES.map((p) => (
+            {transportOptions.map((p) => (
               <DetailCard
                 key={p.name}
                 icon={<CreditCard size={16} className="text-blue-600" />}
@@ -365,11 +334,11 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
           <CollapsibleSection
             title="Must-Do Experiences"
             icon={<Camera size={18} className="text-green-600" />}
-            badge="4 experiences"
+            badge={`${experiences.length} experiences`}
             badgeColor="bg-green-100 text-green-700"
             defaultOpen
           >
-            {EXPERIENCES.map((e) => (
+            {experiences.map((e: { name: string; subtitle: string; detail: string }) => (
               <DetailCard
                 key={e.name}
                 icon={<Camera size={16} className="text-green-600" />}
@@ -401,7 +370,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
                 <p className="text-sm font-semibold text-gray-900">Emergency Numbers</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {EMERGENCY_NUMBERS.map((e) => (
+                {emergencyNumbers.map((e) => (
                   <a
                     key={e.number}
                     href={`tel:${e.number}`}
@@ -441,7 +410,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             <div className="bg-white p-3 rounded-lg border border-amber-300">
               <p className="text-xs font-semibold text-gray-900 mb-2">Important Safety Tips</p>
               <ul className="text-xs text-gray-700 space-y-1">
-                {SAFETY_TIPS.map((tip, i) => (
+                {safetyTips.map((tip, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     <span className="text-amber-500 shrink-0 mt-px">&#x2022;</span>
                     <span>{tip}</span>

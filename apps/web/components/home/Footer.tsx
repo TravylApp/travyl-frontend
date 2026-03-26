@@ -38,7 +38,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-sm font-medium bg-[#d4bc94] hover:bg-[#c4a882] dark:bg-white/10 dark:hover:bg-white/20 text-[#5c4a3a] dark:text-[var(--magazine-text)]"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-sm font-medium bg-[#d4bc94] hover:bg-[#c4a882] dark:bg-white/10 dark:hover:bg-white/20 text-[#2a1f17] dark:text-[var(--magazine-text)]"
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {isDark ? <Sun size={14} /> : <Moon size={14} />}
@@ -130,7 +130,7 @@ function LanguageSelector() {
                   <svg
                     width="14" height="14" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    className="ml-auto text-[#5c4a3a] dark:text-[var(--magazine-text)]"
+                    className="ml-auto text-[#2a1f17] dark:text-[var(--magazine-text)]"
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -241,7 +241,7 @@ export function Footer() {
                   className="w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-[#d4bc94] hover:bg-[#c4a882] dark:bg-white/10 dark:hover:bg-white/20"
                   title={link.platform}
                 >
-                  <SocialIcon platform={link.platform} size={16} className="text-[#5c4a3a] dark:text-[var(--magazine-text)]" />
+                  <SocialIcon platform={link.platform} size={16} className="text-[#2a1f17] dark:text-[var(--magazine-text)]" />
                 </a>
               ))}
               <LanguageSelector />
@@ -251,7 +251,7 @@ export function Footer() {
 
         {/* Copyright + Theme toggle */}
         <div className="mt-8 pt-6 flex items-center justify-between border-t border-[#c4a882] dark:border-white/[0.06]">
-          <p className="text-xs text-[#5c4a3a] dark:text-[var(--magazine-text)]">
+          <p className="text-xs text-[#2a1f17] dark:text-[var(--magazine-text)]">
             &copy; {new Date().getFullYear()} Travyl. All rights reserved.
           </p>
           <ThemeToggle />

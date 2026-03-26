@@ -90,28 +90,54 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
           willChange: 'max-height, opacity',
         }}
       >
-        <div className={`mt-2.5 ${cardStyle === 'pin' ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}`}>
-          {group.activities.map((activity, i) => (
-            <div key={activity.id} data-activity-id={activity.id}>
-              <ActivityCardRenderer
-                activity={activity}
-                cardStyle={cardStyle}
-                index={i}
-                onClick={() => onActivityClick?.(activity.id)}
-              />
+        {cardStyle === 'pin' ? (
+          /* Horizontal scrollable tinder cards */
+          <div className="mt-2.5">
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              {group.activities.map((activity, i) => (
+                <div key={activity.id} data-activity-id={activity.id} className="shrink-0 w-[200px]">
+                  <ActivityCardRenderer
+                    activity={activity}
+                    cardStyle={cardStyle}
+                    index={i}
+                    onClick={() => onActivityClick?.(activity.id)}
+                  />
+                </div>
+              ))}
+              {/* Inline add button */}
+              <button
+                onClick={() => onAddActivity?.(group.timeOfDay)}
+                className="shrink-0 w-[200px] h-full min-h-[200px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors"
+                style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)', color: 'var(--trip-base)', backgroundColor: 'var(--magazine-bg, rgba(255,255,255,0.85))' }}
+              >
+                <Plus size={20} style={{ opacity: 0.5 }} />
+                <span className="text-[11px] font-medium" style={{ opacity: 0.7 }}>Add {config.label} Activity</span>
+              </button>
             </div>
-          ))}
-
-          {/* Add Activity button */}
-          <button
-            onClick={() => onAddActivity?.(group.timeOfDay)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-trip-base/40 transition-colors backdrop-blur-md"
-            style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)', color: 'var(--trip-base)', backgroundColor: 'var(--magazine-bg, rgba(255,255,255,0.85))' }}
-          >
-            <Plus size={14} />
-            <span className="text-[12px] font-medium">Add {config.label} Activity</span>
-          </button>
-        </div>
+          </div>
+        ) : (
+          /* Vertical stack for other card styles */
+          <div className="mt-2.5 space-y-2.5">
+            {group.activities.map((activity, i) => (
+              <div key={activity.id} data-activity-id={activity.id}>
+                <ActivityCardRenderer
+                  activity={activity}
+                  cardStyle={cardStyle}
+                  index={i}
+                  onClick={() => onActivityClick?.(activity.id)}
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => onAddActivity?.(group.timeOfDay)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-trip-base/40 transition-colors backdrop-blur-md"
+              style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)', color: 'var(--trip-base)', backgroundColor: 'var(--magazine-bg, rgba(255,255,255,0.85))' }}
+            >
+              <Plus size={14} />
+              <span className="text-[12px] font-medium">Add {config.label} Activity</span>
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -6,22 +6,47 @@ import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
 import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
-import type { FollowUpQuestion, PlanResponse } from "@travyl/shared";
+import type { FollowUpQuestion, PlaceItem } from "@travyl/shared";
+import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
-import {
-  HowItWorks,
-  GetInspired,
-  TravelMosaic,
-  TagUs,
-  OceanWave,
-  TakeoffTransition,
-  Footer,
-  ParallaxQuoteDivider,
-} from "@/components/home";
+import dynamic from "next/dynamic";
+
+const HowItWorks = dynamic(
+  () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
+  { ssr: false }
+);
+const GetInspired = dynamic(
+  () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
+  { ssr: false }
+);
+const TravelMosaic = dynamic(
+  () => import("@/components/home/TravelMosaic").then((m) => ({ default: m.TravelMosaic })),
+  { ssr: false }
+);
+const TagUs = dynamic(
+  () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
+  { ssr: false }
+);
+const OceanWave = dynamic(
+  () => import("@/components/home/OceanWave").then((m) => ({ default: m.OceanWave })),
+  { ssr: false }
+);
+const TakeoffTransition = dynamic(
+  () => import("@/components/home/TakeoffTransition").then((m) => ({ default: m.TakeoffTransition })),
+  { ssr: false }
+);
+const Footer = dynamic(
+  () => import("@/components/home/Footer").then((m) => ({ default: m.Footer })),
+  { ssr: false }
+);
+const ParallaxQuoteDivider = dynamic(
+  () => import("@/components/home/ParallaxQuoteDivider").then((m) => ({ default: m.ParallaxQuoteDivider })),
+  { ssr: false }
+);
 import { memo } from "react";
 
 const PLACEHOLDER_PHRASES = [
@@ -112,7 +137,6 @@ export default function Home() {
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
-  const heroRef = useRef<HTMLElement>(null);
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
@@ -123,7 +147,7 @@ export default function Home() {
   const planner = useTripPlanner();
   const [currentQIdx, setCurrentQIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
-  const planRef = useRef<PlanResponse | null>(null);
+
 
   const isClarifying = planner.state.phase === 'clarifying';
   const isExtracting = planner.state.phase === 'extracting';
@@ -164,23 +188,15 @@ export default function Home() {
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
 
-  // Parallax transforms
-  const { scrollYProgress: heroScroll } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const heroTextY = useTransform(heroScroll, [0, 1], [0, 150]);
-  const heroTextOpacity = useTransform(heroScroll, [0, 0.6], [1, 0]);
-  const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
-  const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
+  // Parallax transforms — document-level scroll (no target ref to avoid hydration error)
+  const { scrollYProgress: heroScroll } = useScroll();
+  const heroTextY = useTransform(heroScroll, [0, 0.35], [0, 150]);
+  const heroTextOpacity = useTransform(heroScroll, [0, 0.2], [1, 0]);
+  const heroBgY = useTransform(heroScroll, [0, 0.35], [0, -120]);
+  const heroBgScale = useTransform(heroScroll, [0, 0.35], [1, 1.15]);
 
   // Parallax divider
-  const dividerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress: dividerScroll } = useScroll({
-    target: dividerRef,
-    offset: ["start end", "end start"],
-  });
-  const dividerBgY = useTransform(dividerScroll, [0, 1], [-80, 80]);
+  const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
 
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
@@ -257,6 +273,7 @@ export default function Home() {
 
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [takeoffCompleted, setTakeoffCompleted] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const isSaving = useRef(false);
   const user = useAuthStore((s) => s.user);
 
@@ -288,7 +305,7 @@ export default function Home() {
       }
 
       if (user) {
-        // Logged in — save to Supabase, then redirect to trip page
+        // Logged in — save to Supabase via shared helper, then redirect
         try {
           const tripId = await savePlanToSupabase(plan as any);
           setTakeoffCompleted(true);
@@ -304,16 +321,191 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — store plan for preview, no save needed yet
+        // Not logged in — save to Supabase with planner data in trip_context
+        // so the overview page has hotels, itinerary, budget immediately
         try {
-          sessionStorage.setItem('pendingPlan', JSON.stringify(plan));
-        } catch (_) {}
-        setTakeoffCompleted(true);
-        await new Promise((r) => setTimeout(r, 800));
-        setShowTakeoff(false);
-        planner.reset();
-        isSaving.current = false;
-        router.push('/trip/preview');
+          const ext = plan.extracted;
+          if (!ext?.destination) throw new Error('No destination extracted');
+          const dest = ext.destination;
+          const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
+
+          // Build explore_items from itinerary slots (attractions + restaurants)
+          const exploreFromPlan = (plan.itinerary ?? []).flatMap((day: any) =>
+            (day.slots ?? []).map((slot: any) => ({
+              id: slot.poi.id,
+              title: slot.poi.name,
+              description: slot.poi.description || slot.poi.category,
+              category: slot.poi.category,
+              image: slot.poi.photo_url,
+              tags: slot.poi.tags,
+            }))
+          );
+          // Deduplicate by id
+          const seenIds = new Set<string>();
+          const uniqueExplore = exploreFromPlan.filter((e: any) => {
+            if (seenIds.has(e.id)) return false;
+            seenIds.add(e.id);
+            return true;
+          });
+
+          // Build weather from itinerary day weather
+          const weatherForecast = (plan.itinerary ?? [])
+            .filter((d: any) => d.weather)
+            .map((d: any) => ({
+              day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+              date: d.date,
+              high: d.weather.high_c,
+              low: d.weather.low_c,
+              condition: d.weather.condition,
+              icon: d.weather.icon || '☀️',
+            }));
+
+          const res = await fetch('/api/trips/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              destination: `${dest.city}, ${dest.country}`,
+              start_date: ext.dates.start,
+              end_date: ext.dates.end,
+              travelers: ext.travelers.count,
+              budget: totalBudget,
+              currency: 'USD',
+              trip_context: {
+                lat: dest.lat,
+                lng: dest.lng,
+                hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+                hero_image_url: plan.destination_photo_url,
+                explore_items: uniqueExplore,
+                // Top 5 curated hotels from planner
+                hotels: (plan.hotels ?? []).map((h: any) => ({
+                  id: `hotel-${h.name.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name,
+                  category: 'Hotel',
+                  image: h.photo_url,
+                  rating: h.rating,
+                  ratingCount: h.review_count,
+                  price: h.price_per_night,
+                  totalPrice: h.total_price,
+                  currency: h.currency,
+                  stars: h.stars,
+                  amenities: h.amenities,
+                  address: h.address,
+                  link: h.link,
+                  lat: h.lat,
+                  lng: h.lng,
+                })),
+                // Top 8 hotels (trimmed to keep payload under CloudFront limit)
+                all_hotels: ((plan as any).data?.hotels ?? []).slice(0, 8).map((h: any) => ({
+                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name,
+                  image: h.photo_url,
+                  rating: h.rating,
+                  price: h.price_per_night,
+                  stars: h.stars,
+                  address: h.address,
+                  link: h.link,
+                })),
+                // Top 5 events
+                events: ((plan as any).data?.events ?? []).slice(0, 5).map((e: any) => ({
+                  id: e.id || `event-${e.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  title: e.name,
+                  date: e.date,
+                  venue: e.venue,
+                  image: e.photo_url,
+                })),
+                // Top 10 POIs (trimmed from 40)
+                foursquare_venues: ((plan as any).data?.pois ?? [])
+                  .filter((p: any) => !seenIds.has(p.id))
+                  .slice(0, 10)
+                  .map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    category: p.category,
+                    image: p.photo_url,
+                    rating: p.rating,
+                  })),
+                weather: weatherForecast.length > 0 ? {
+                  forecast: weatherForecast,
+                  current: weatherForecast[0] ? {
+                    high: weatherForecast[0].high,
+                    low: weatherForecast[0].low,
+                    condition: weatherForecast[0].condition,
+                  } : undefined,
+                } : undefined,
+                quick_facts: {
+                  currency: ext.budget_level ? `${ext.budget_level} (~$${ext.daily_estimate_usd}/day)` : undefined,
+                  timezone: (plan as any).timezone,
+                },
+                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+                // Store full itinerary in trip_context so the itinerary page can render it
+                itinerary: (plan.itinerary ?? []).map((day: any) => ({
+                  day: day.day,
+                  date: day.date,
+                  weather: day.weather,
+                  slots: (day.slots ?? []).map((slot: any) => ({
+                    poi: slot.poi,
+                    start_time: slot.start_time,
+                    end_time: slot.end_time,
+                    start_time_12h: slot.start_time_12h,
+                    end_time_12h: slot.end_time_12h,
+                    travel_from_prev_min: slot.travel_from_prev_min,
+                  })),
+                })),
+              },
+              // Pass trimmed plan data for API to save
+              hotels: (plan.hotels ?? []).slice(0, 5),
+              flights: (plan.flights ?? []).slice(0, 5),
+            }),
+          });
+          if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+            console.error('[Trip Create] Failed:', res.status, errBody);
+            throw new Error(`Save failed: ${res.status}`);
+          }
+          const trip = await res.json();
+          // Track in localStorage for anonymous persistence
+          try {
+            const stored = localStorage.getItem('my-trip-ids');
+            const ids: string[] = stored ? JSON.parse(stored) : [];
+            if (!ids.includes(trip.id)) ids.push(trip.id);
+            localStorage.setItem('my-trip-ids', JSON.stringify(ids));
+          } catch {}
+          // Enrich in background
+          fetch('/api/trips/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: trip.id }),
+          }).catch(() => {});
+          setTakeoffCompleted(true);
+          await new Promise((r) => setTimeout(r, 800));
+          setShowTakeoff(false);
+          planner.reset();
+          isSaving.current = false;
+          router.push(`/trip/${trip.id}`);
+        } catch (saveErr) {
+          console.error('[Trip Create] API route failed, falling back to direct save:', saveErr);
+          // Fallback: save directly to Supabase (bypasses CloudFront)
+          try {
+            const tripId = await savePlanToSupabase(plan as any);
+            // Enrich in background (weather, wiki, cuisine, etc.)
+            fetch('/api/trips/enrich', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tripId }),
+            }).catch(() => {});
+            setTakeoffCompleted(true);
+            await new Promise((r) => setTimeout(r, 800));
+            setShowTakeoff(false);
+            planner.reset();
+            isSaving.current = false;
+            router.push(`/trip/${tripId}`);
+          } catch (fallbackErr) {
+            console.error('[Trip Create] Fallback also failed:', fallbackErr);
+            setLoadingError(fallbackErr instanceof Error ? fallbackErr.message : 'Failed to save trip');
+            setShowTakeoff(false);
+            isSaving.current = false;
+          }
+        }
       }
     })();
   }, [planner.state.phase]);
@@ -330,16 +522,17 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section ref={heroRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+      <section className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
             <img
-              key={src}
+              key={`hero-${i}`}
               src={src}
               alt=""
               width={1600}
               height={900}
+              loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "low"}
               decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"
@@ -358,7 +551,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-normal text-white mb-4 leading-tight tracking-wide"
           >
             {heroConfig?.title ?? "Explore the world from one place."}
           </motion.h1>
@@ -528,8 +721,8 @@ export default function Home() {
               <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
                 <AnimatedCounter value={item.value} suffix={item.suffix} decimals={item.decimals} />
               </p>
-              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#5c4a3a]">{item.label}</p>
-              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#3d2f23]">{item.desc}</p>
+              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#1e3a5f]">{item.label}</p>
+              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#2a1f17]">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -540,7 +733,7 @@ export default function Home() {
         <section className="py-12 px-6">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
+              <h2 className="text-2xl font-serif font-normal text-foreground tracking-wide">
                 Your Recent Trips
               </h2>
               <Link
@@ -552,7 +745,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentTrips.map((trip) => (
+              {recentTrips.map((trip: any) => (
                 <Link
                   key={trip.id}
                   href={`/trip/${trip.id}`}
@@ -632,7 +825,7 @@ export default function Home() {
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <PaperPlane className="text-primary -rotate-12" size={28} />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">
+            <h2 className="text-xl font-serif font-normal text-foreground mb-2 tracking-wide">
               No trips yet
             </h2>
             <p className="text-muted-foreground mb-6">
@@ -652,10 +845,10 @@ export default function Home() {
 
       {/* ─── Static Content Sections ──────────────────────────── */}
       <HowItWorks onCtaPress={() => router.push("/trips")} />
-      <TravelMosaic />
+      <TravelMosaic onTileClick={(place) => setSelectedPlace(place)} />
 
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
-      <ParallaxQuoteDivider ref={dividerRef} bgY={dividerBgY} />
+      <ParallaxQuoteDivider bgY={dividerBgY} />
 
       <GetInspired />
       <TagUs />
@@ -665,6 +858,20 @@ export default function Home() {
 
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />
+
+      {/* ─── Place Detail Overlay ────────────────────────────── */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            isFavorited={false}
+            onToggleFavorite={() => {}}
+            onClose={() => setSelectedPlace(null)}
+            onNavigate={(p) => setSelectedPlace(p)}
+            onSearchTag={() => {}}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition

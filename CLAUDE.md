@@ -50,3 +50,13 @@ Each Linear issue has a planning file at `planning/TRA-XXX.md`. When starting a 
 3. Name the branch `feature/tra-XXX`
 
 The planning file tracks: goal, completed work, known issues, and links to Linear + PR.
+
+## SST deployment rules
+
+**Only deploy to the `production` stage. No other stage is allowed.**
+
+- Always use `--stage production` explicitly when running `sst deploy`
+- Always use `AWS_PROFILE=525610233002_AdministratorAccess`
+- Never deploy to personal stages (e.g. `justinjusti` or any other dev stage)
+- If `.sst/stage` contains anything other than `production`, fix it before deploying
+- Production API URL: `https://yqtl1xdcea.execute-api.us-east-1.amazonaws.com`

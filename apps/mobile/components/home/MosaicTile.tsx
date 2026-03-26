@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,6 +16,7 @@ interface MosaicTileProps {
   nameSize?: number;
   padInner?: number;
   isFeature?: boolean;
+  onPress?: () => void;
 }
 
 export function MosaicTile({
@@ -27,6 +28,7 @@ export function MosaicTile({
   nameSize = 14,
   padInner = 16,
   isFeature = false,
+  onPress,
 }: MosaicTileProps) {
   const pressed = useSharedValue(0);
 
@@ -55,7 +57,7 @@ export function MosaicTile({
   const radius = isFeature ? 20 : 16;
 
   return (
-    <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
+    <Pressable onPressIn={onPressIn} onPressOut={onPressOut} onPress={onPress}>
       <Animated.View
         style={[
           {
@@ -72,6 +74,16 @@ export function MosaicTile({
           tileStyle,
         ]}
       >
+        {/* Background image */}
+        {tile.image_url && (
+          <Image
+            source={{ uri: tile.image_url }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        )}
+
+
         {/* Dark overlay on press */}
         <Animated.View
           style={[
@@ -96,14 +108,14 @@ export function MosaicTile({
             left: 0,
             right: 0,
             paddingHorizontal: padInner,
-            paddingBottom: (padInner + 4) * 2,
+            paddingBottom: padInner,
             paddingTop: 8,
             zIndex: 2,
           }}
         >
           {/* Name */}
           <Animated.View style={nameStyle}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: nameSize }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: nameSize, textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
               {tile.name}
             </Text>
           </Animated.View>

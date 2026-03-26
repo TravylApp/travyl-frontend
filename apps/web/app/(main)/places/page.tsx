@@ -4,26 +4,281 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 
-const ResponsiveMasonry = dynamic(
-  () => import('react-responsive-masonry').then((m) => m.ResponsiveMasonry),
-  { ssr: false },
-);
-const Masonry = dynamic(
-  () => import('react-responsive-masonry').then((m) => m.default),
-  { ssr: false },
-);
-import Image from 'next/image';
 import {
   Search, Globe, Landmark, UtensilsCrossed, Compass, CalendarDays, Heart,
   MapPin, ArrowUpDown, Star, X, ChevronLeft, ChevronRight,
   LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { groupPlacesByCollection, useSimilarPlaces } from '@travyl/shared';
-import type { PlaceItem as PlaceItemType } from '@travyl/shared';
+import { useSimilarPlaces } from '@travyl/shared';
+import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
-const MOCK_PLACES: PlaceItemType[] = [];
-import type { PlaceItem } from '@travyl/shared';
+const BROWSE_CITIES = [
+  // Europe
+  { name: 'Paris', lat: '48.8566', lng: '2.3522' },
+  { name: 'London', lat: '51.5074', lng: '-0.1278' },
+  { name: 'Rome', lat: '41.9028', lng: '12.4964' },
+  { name: 'Barcelona', lat: '41.3874', lng: '2.1686' },
+  { name: 'Amsterdam', lat: '52.3676', lng: '4.9041' },
+  { name: 'Prague', lat: '50.0755', lng: '14.4378' },
+  { name: 'Lisbon', lat: '38.7223', lng: '-9.1393' },
+  { name: 'Istanbul', lat: '41.0082', lng: '28.9784' },
+  { name: 'Vienna', lat: '48.2082', lng: '16.3738' },
+  { name: 'Berlin', lat: '52.5200', lng: '13.4050' },
+  { name: 'Athens', lat: '37.9838', lng: '23.7275' },
+  { name: 'Budapest', lat: '47.4979', lng: '19.0402' },
+  { name: 'Dublin', lat: '53.3498', lng: '-6.2603' },
+  { name: 'Edinburgh', lat: '55.9533', lng: '-3.1883' },
+  { name: 'Florence', lat: '43.7696', lng: '11.2558' },
+  { name: 'Santorini', lat: '36.3932', lng: '25.4615' },
+  { name: 'Dubrovnik', lat: '42.6507', lng: '18.0944' },
+  { name: 'Copenhagen', lat: '55.6761', lng: '12.5683' },
+  { name: 'Stockholm', lat: '59.3293', lng: '18.0686' },
+  { name: 'Reykjavik', lat: '64.1466', lng: '-21.9426' },
+  // Asia
+  { name: 'Tokyo', lat: '35.6762', lng: '139.6503' },
+  { name: 'Bangkok', lat: '13.7563', lng: '100.5018' },
+  { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
+  { name: 'Singapore', lat: '1.3521', lng: '103.8198' },
+  { name: 'Seoul', lat: '37.5665', lng: '126.9780' },
+  { name: 'Kyoto', lat: '35.0116', lng: '135.7681' },
+  { name: 'Hong Kong', lat: '22.3193', lng: '114.1694' },
+  { name: 'Hanoi', lat: '21.0278', lng: '105.8342' },
+  { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
+  { name: 'Jaipur', lat: '26.9124', lng: '75.7873' },
+  { name: 'Petra', lat: '30.3285', lng: '35.4444' },
+  { name: 'Kuala Lumpur', lat: '3.1390', lng: '101.6869' },
+  { name: 'Taipei', lat: '25.0330', lng: '121.5654' },
+  { name: 'Siem Reap', lat: '13.3633', lng: '103.8564' },
+  // Americas
+  { name: 'New York', lat: '40.7128', lng: '-74.0060' },
+  { name: 'Rio de Janeiro', lat: '-22.9068', lng: '-43.1729' },
+  { name: 'Mexico City', lat: '19.4326', lng: '-99.1332' },
+  { name: 'Buenos Aires', lat: '-34.6037', lng: '-58.3816' },
+  { name: 'Havana', lat: '23.1136', lng: '-82.3666' },
+  { name: 'San Francisco', lat: '37.7749', lng: '-122.4194' },
+  { name: 'Cartagena', lat: '10.3910', lng: '-75.5364' },
+  { name: 'Cusco', lat: '-13.5319', lng: '-71.9675' },
+  { name: 'Los Angeles', lat: '34.0522', lng: '-118.2437' },
+  { name: 'Miami', lat: '25.7617', lng: '-80.1918' },
+  { name: 'Nashville', lat: '36.1627', lng: '-86.7816' },
+  { name: 'Tulum', lat: '20.2114', lng: '-87.4654' },
+  // Africa & Middle East
+  { name: 'Cape Town', lat: '-33.9249', lng: '18.4241' },
+  { name: 'Marrakech', lat: '31.6295', lng: '-7.9811' },
+  { name: 'Cairo', lat: '30.0444', lng: '31.2357' },
+  { name: 'Zanzibar', lat: '-6.1659', lng: '39.1989' },
+  { name: 'Nairobi', lat: '-1.2921', lng: '36.8219' },
+  // Oceania
+  { name: 'Sydney', lat: '-33.8688', lng: '151.2093' },
+  { name: 'Melbourne', lat: '-37.8136', lng: '144.9631' },
+  { name: 'Queenstown', lat: '-45.0312', lng: '168.6626' },
+  { name: 'Auckland', lat: '-36.8485', lng: '174.7633' },
+]
+
+const BROWSE_CATEGORIES = [
+  'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
+  'shopping', 'nightlife', 'beach', 'landmark', 'garden', 'market',
+]
+
+async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
+  // 2 cities × 3 categories = 6 API calls per page (was 15)
+  // Reduced to cut load time from ~4s to ~1.5s per page
+  const citiesPerPage = 2
+  const catsPerPage = 3
+  const startCity = (pageParam * citiesPerPage) % BROWSE_CITIES.length
+  const startCat = (pageParam * catsPerPage) % BROWSE_CATEGORIES.length
+
+  const cities: typeof BROWSE_CITIES = []
+  for (let i = 0; i < citiesPerPage; i++) {
+    cities.push(BROWSE_CITIES[(startCity + i) % BROWSE_CITIES.length])
+  }
+  const cats: string[] = []
+  for (let i = 0; i < catsPerPage; i++) {
+    cats.push(BROWSE_CATEGORIES[(startCat + i) % BROWSE_CATEGORIES.length])
+  }
+
+  const results = await Promise.all(
+    cities.flatMap((city) =>
+      cats.map(async (cat) => {
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
+        if (!res.ok) return []
+        return res.json() as Promise<PlaceItemType[]>
+      })
+    )
+  )
+  return results.flat()
+}
+
+async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
+  // Step 1: geocode ONCE via a single API call (the route handles geocoding)
+  const geoProbe = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=sightseeing&limit=1`)
+  if (!geoProbe.ok) return []
+  const probeData = await geoProbe.json() as PlaceItemType[]
+  const lat = probeData[0]?.latitude
+  const lng = probeData[0]?.longitude
+  if (lat == null || lng == null) {
+    // Fallback: use q param for all
+    const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
+    const results = await Promise.all(
+      categories.map(async (cat) => {
+        const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
+        if (!res.ok) return []
+        return res.json() as Promise<PlaceItemType[]>
+      })
+    )
+    const seen = new Set<string>()
+    return results.flat().filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+  }
+
+  // Step 2: fetch key categories from center + one offset neighborhood
+  // Reduced from 43 API calls to ~14 for much faster search (~2s vs ~8s)
+  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'landmark']
+
+  const fetches: Promise<PlaceItemType[]>[] = []
+
+  // Center: key categories, limit 15
+  for (const cat of categories) {
+    fetches.push(
+      fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=15`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+        .catch(() => [])
+    )
+  }
+  // One offset neighborhood for variety (northeast, +2km)
+  const offsetCats = ['sightseeing', 'restaurant', 'park']
+  for (const cat of offsetCats) {
+    fetches.push(
+      fetch(`/api/places?lat=${lat + 0.02}&lng=${lng + 0.015}&category=${cat}&limit=10`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+        .catch(() => [])
+    )
+  }
+
+  // Foursquare: only restaurants and attractions (best photo quality)
+  const fsCats = ['restaurant', 'attraction']
+  for (const cat of fsCats) {
+    fetches.push(
+      fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
+        .then(async r => {
+          if (!r.ok) return []
+          const venues = await r.json()
+          if (venues.error) return []
+          // Map Foursquare venues to PlaceItem shape
+          return (venues as any[])
+            // Filter out venues that only have generic category icons (not real photos)
+            .filter((v: any) => v.image && !v.image.includes('categories_v2') && !v.image.includes('_bg_'))
+            .map((v: any) => {
+              // Filter out icon URLs from images array too
+              const realImages = (v.images || []).filter((img: string) => !img.includes('categories_v2') && !img.includes('_bg_'))
+              return {
+                id: `fs_${v.id}`,
+                name: v.name,
+                image: realImages[0] || v.image,
+                images: realImages.length > 1 ? realImages : undefined,
+                type: mapFoursquareType(cat),
+                rating: v.rating ? v.rating / 2 : 0,
+                tagline: v.address || v.category || cat,
+                category: v.category || toTitleCase(cat),
+                description: v.tip || '',
+                latitude: v.lat,
+                longitude: v.lng,
+                address: v.address,
+                website: v.url,
+                priceLevel: v.price && v.price >= 1 && v.price <= 4 ? v.price : undefined,
+                hours: v.hours,
+                reviewCount: v.ratingCount,
+                tags: [toTitleCase(cat)],
+              }
+            }) as PlaceItemType[]
+        })
+        .catch(() => [])
+    )
+  }
+
+  // Events — single call (was 5 OpenTripMap + 1 events = 6 slow calls)
+  fetches.push(
+    fetch(`/api/events?lat=${lat}&lng=${lng}&limit=8`)
+      .then(async r => {
+        if (!r.ok) return []
+        const events = await r.json()
+        if (events.error || !Array.isArray(events)) return []
+        return events.filter((e: any) => e.title).map((e: any) => ({
+          id: `ev_${e.id}`,
+          name: e.title,
+          image: e.image || getEventFallbackImage(e.category),
+          type: 'event' as const,
+          rating: 0,
+          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || e.category || 'Event',
+          category: e.category || 'Event',
+          description: e.description || '',
+          latitude: parseFloat(lat as any),
+          longitude: parseFloat(lng as any),
+          tags: ['Event', e.category].filter(Boolean),
+          website: e.url,
+        })) as PlaceItemType[]
+      })
+      .catch(() => [])
+  )
+
+  const results = await Promise.all(fetches)
+
+  // Deduplicate by id, then by name (cross-source dedup)
+  // Also ensure every place has an image (fallback to Unsplash)
+  const seen = new Set<string>()
+  const seenNames = new Set<string>()
+  const FALLBACKS = [
+    'photo-1488646953014-85cb44e25828', 'photo-1507525428034-b723cf961d3e',
+    'photo-1476514525535-07fb3b4ae5f1', 'photo-1469854523086-cc02fe5d8800',
+    'photo-1530789253388-582c481c54b0', 'photo-1502602898657-3e91760cbb34',
+    'photo-1493976040374-85c8e12f0c0e', 'photo-1504150558240-0b4fd8946624',
+  ]
+  let fallbackIdx = 0
+  return results.flat().filter((p) => {
+    if (!p.name) return false
+    if (seen.has(p.id)) return false
+    const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (seenNames.has(normName)) return false
+    seen.add(p.id)
+    seenNames.add(normName)
+    return true
+  }).map(p => {
+    // Ensure every place has an image
+    if (!p.image || p.image === '') {
+      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=500&fit=crop&q=75&fm=webp` }
+    }
+    return p
+  })
+}
+
+function mapFoursquareType(cat: string): 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' {
+  if (['restaurant', 'cafe', 'nightlife'].includes(cat)) return 'restaurant'
+  if (['museum', 'attraction'].includes(cat)) return 'attraction'
+  if (['park'].includes(cat)) return 'experience'
+  return 'destination'
+}
+
+function toTitleCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
+
+const EVENT_FALLBACK_IMAGES: Record<string, string> = {
+  'Concert': 'photo-1470229722913-7c0e2dbbafd3',
+  'Music': 'photo-1470229722913-7c0e2dbbafd3',
+  'Festival': 'photo-1533174072545-7a4b6ad7a6c3',
+  'Performance': 'photo-1507676184212-d03ab07a01bf',
+  'Sports': 'photo-1461896836934-bd45ba2a0907',
+  'Food & Drink': 'photo-1555939594-58d7cb561ad1',
+  'Exhibition': 'photo-1531058020387-3be344556be6',
+  'Community': 'photo-1511795409834-ef04bbd61622',
+  'Conference': 'photo-1540575467063-178a50c2df87',
+}
+
+function getEventFallbackImage(category?: string): string {
+  const id = EVENT_FALLBACK_IMAGES[category || ''] || 'photo-1492684223f0-e3b763ece0e4'
+  return `https://images.unsplash.com/${id}?w=500&fit=crop&q=75&fm=webp`
+}
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 
@@ -51,16 +306,75 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
-const ITEMS_PER_PAGE = 16;
-
 export default function PlacesPage() {
+  const [searchCity, setSearchCity] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Browse mode: infinite scroll through cities × categories
+  const {
+    data: browseData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: browseLoading,
+  } = useInfiniteQuery({
+    queryKey: ['places-browse'],
+    queryFn: ({ pageParam }) => fetchBrowsePage(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (_lastPage, _allPages, lastPageParam) =>
+      lastPageParam < 99 ? lastPageParam + 1 : undefined, // endless scrolling — cycles through all cities
+    staleTime: 30 * 60 * 1000,  // Data stays fresh for 30 min
+    gcTime: 60 * 60 * 1000,     // Keep in cache for 1 hour
+    enabled: !searchCity,
+  });
+
+  // Search mode: single query across categories
+  const { data: searchData = [], isLoading: searchLoading } = useQuery({
+    queryKey: ['places-search', searchCity],
+    queryFn: () => fetchSearchPlaces(searchCity),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    enabled: !!searchCity,
+  });
+
+  // Merge browse pages, deduplicate
+  const places = useMemo(() => {
+    if (searchCity) return searchData;
+    if (!browseData?.pages) return [];
+    const seen = new Set<string>();
+    return browseData.pages.flat().filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [searchCity, searchData, browseData]);
+
+  const placesLoading = searchCity ? searchLoading : browseLoading;
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    if (searchCity || !hasNextPage) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '800px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [searchCity, hasNextPage, isFetchingNextPage, fetchNextPage]);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [selectedPlace, _setSelectedPlace] = useState<PlaceItem | null>(null);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [viewMode, setViewMode] = useState<'grid' | 'stack'>('grid');
   const [columnCount, setColumnCount] = useState(4);
   const [showFilters, setShowFilters] = useState(false);
@@ -81,21 +395,16 @@ export default function PlacesPage() {
   useEffect(() => {
     const w = window.innerWidth;
     if (w < 550) setColumnCount(1);
-    else if (w < 900) setColumnCount(2);
-    else if (w < 1200) setColumnCount(3);
+    else if (w < 768) setColumnCount(2);
+    else if (w < 900) setColumnCount(3);
   }, []);
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setVisibleCount(ITEMS_PER_PAGE);
-  }, [activeTab, activeSubcategory, searchQuery, sortBy]);
 
   // Filter by tab
   const tabFiltered = useMemo(() => {
-    if (activeTab === 'all') return MOCK_PLACES;
-    if (activeTab === 'favorites') return MOCK_PLACES.filter((p) => favorites.includes(p.id));
-    return MOCK_PLACES.filter((p) => p.type === activeTab);
-  }, [activeTab, favorites]);
+    if (activeTab === 'all') return places;
+    if (activeTab === 'favorites') return places.filter((p) => favorites.includes(p.id));
+    return places.filter((p) => p.type === activeTab);
+  }, [activeTab, favorites, places]);
 
   // Compute subcategories from current tab
   const subcategories = useMemo(() => {
@@ -108,7 +417,7 @@ export default function PlacesPage() {
       .map(([cat, count]) => ({ label: cat, count }));
   }, [tabFiltered]);
 
-  // Filter by subcategory + search
+  // Filter by subcategory + local search (skip local filter when API search is active)
   const filtered = useMemo(() => {
     let items = tabFiltered;
 
@@ -116,7 +425,8 @@ export default function PlacesPage() {
       items = items.filter((p) => p.category === activeSubcategory);
     }
 
-    if (searchQuery) {
+    // Only apply local text filter when NOT in API search mode
+    if (searchQuery && !searchCity) {
       const q = searchQuery.toLowerCase();
       items = items.filter(
         (p) =>
@@ -133,10 +443,7 @@ export default function PlacesPage() {
     else if (sortBy === 'name') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
     return items;
-  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
-
-  const visibleItems = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  }, [tabFiltered, activeSubcategory, searchQuery, searchCity, sortBy]);
 
   // Reset showcase when filters/view change
   useEffect(() => {
@@ -181,36 +488,8 @@ export default function PlacesPage() {
     if (gridTimerRef.current) clearTimeout(gridTimerRef.current);
   }, []);
 
-  // Height-balanced column distribution for a given set of items
-  const balanceIntoCols = useCallback((items: PlaceItem[], maxCols?: number) => {
-    const colCount = maxCols ?? columnCount;
-    if (colCount <= 0) return null;
-    const cols: PlaceItem[][] = Array.from({ length: colCount }, () => []);
-    const heights = new Array(colCount).fill(0);
-    for (const item of items) {
-      const hash = (() => { let h = 0; for (let i = 0; i < (item.id + 'ar').length; i++) h = ((h << 5) - h + (item.id + 'ar').charCodeAt(i)) | 0; return Math.abs(h); })();
-      const ar = 0.95 + (hash % 20) / 100;
-      const imgH = 1 / ar;
-      const contentH = 0.3;
-      const h = imgH + contentH;
-      const shortest = heights.indexOf(Math.min(...heights));
-      cols[shortest].push(item);
-      heights[shortest] += h;
-    }
-    return cols;
-  }, [columnCount]);
 
-  const distributeRoundRobin = useCallback((items: PlaceItem[], maxCols?: number) => {
-    const colCount = Math.min(maxCols ?? columnCount, items.length);
-    if (colCount <= 0) return null;
-    const cols: PlaceItem[][] = Array.from({ length: colCount }, () => []);
-    items.forEach((item, i) => cols[i % colCount].push(item));
-    return cols;
-  }, [columnCount]);
 
-  const balancedCols = useMemo(() => balanceIntoCols(visibleItems), [visibleItems, balanceIntoCols]);
-
-  const themedSections = useMemo(() => groupPlacesByCollection(filtered), [filtered]);
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
@@ -242,14 +521,41 @@ export default function PlacesPage() {
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search places..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search a city or destination..."
+                value={searchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchInput(val);
+                  // Debounce API search — triggers after 300ms of no typing
+                  if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  if (val.trim().length >= 2) {
+                    searchDebounceRef.current = setTimeout(() => {
+                      setSearchCity(val.trim());
+                      setSearchQuery('');
+                    }, 300);
+                  } else if (!val.trim()) {
+                    setSearchCity('');
+                    setSearchQuery('');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchInput.trim()) {
+                    // Instant search on Enter
+                    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                    setSearchCity(searchInput.trim());
+                    setSearchQuery('');
+                  }
+                }}
                 className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
               />
-              {searchQuery && (
+              {searchInput && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearchQuery('');
+                    setSearchCity('');
+                    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X size={12} />
@@ -456,14 +762,36 @@ export default function PlacesPage() {
       </div>
 
       {/* Content: Grid or Stack */}
-      {viewMode === 'grid' ? (
+      {placesLoading && places.length === 0 ? (
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 xl:px-14 py-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="mb-4 break-inside-avoid">
+                <div
+                  className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-200 to-gray-100 dark:from-white/10 dark:to-white/5 animate-pulse"
+                  style={{ height: 320 + (i % 4) * 30 }}
+                >
+                  <div className="h-full flex flex-col justify-end p-4">
+                    <div className="h-3 bg-white/20 rounded w-16 mb-3" />
+                    <div className="h-5 bg-white/30 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-white/15 rounded w-1/2 mb-3" />
+                    <div className="flex gap-1.5">
+                      <div className="h-4 bg-white/10 rounded-full w-12" />
+                      <div className="h-4 bg-white/10 rounded-full w-10" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : viewMode === 'grid' ? (
         <div
           className={`mx-auto px-6 lg:px-10 xl:px-14 py-4 transition-all duration-300 ${
-            columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : ''
+            columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : 'max-w-7xl'
           }`}
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l40 40M40 0L0 40' stroke='%23000' stroke-width='0.3' opacity='0.03'/%3E%3C/svg%3E")`,
-          }}
+          style={{}}
+          // Removed crosshatch SVG background pattern — causes visual noise during scroll
         >
           {/* Grid idle showcase curtain */}
           <AnimatePresence>
@@ -513,7 +841,8 @@ export default function PlacesPage() {
                               onClick={gridGoPrev}
                             >
                               <div className="relative w-full h-full">
-                                <Image src={prevP.image} alt={prevP.name} fill className="object-cover" sizes="280px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={prevP.image} alt={prevP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{prevP.type}</p>
@@ -543,14 +872,16 @@ export default function PlacesPage() {
                                 className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none"
                                 style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                               >
-                                <Image src={nextNextP.image} alt="" fill className="object-cover" sizes="380px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={nextNextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Back card 1 */}
                               <div
                                 className="absolute inset-0 rounded-2xl overflow-hidden shadow-md pointer-events-none"
                                 style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                               >
-                                <Image src={nextP.image} alt="" fill className="object-cover" sizes="380px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={nextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Active card — shuffle animation */}
                               <AnimatePresence mode="popLayout" custom={gridDirection}>
@@ -566,7 +897,8 @@ export default function PlacesPage() {
                                   style={{ zIndex: 10 }}
                                 >
                                   <div className="relative w-full h-full bg-black">
-                                    <Image src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} fill className="object-cover" sizes="400px" priority />
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                                     {/* Favorite button */}
@@ -612,7 +944,8 @@ export default function PlacesPage() {
                               onClick={gridGoNext}
                             >
                               <div className="relative w-full h-full">
-                                <Image src={nextP.image} alt={nextP.name} fill className="object-cover" sizes="280px" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={nextP.image} alt={nextP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{nextP.type}</p>
@@ -674,81 +1007,84 @@ export default function PlacesPage() {
             )}
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
+
             {!gridShowcase && (
-            <motion.div
-              key={`${activeTab}-${activeSubcategory}-${searchQuery}-${sortBy}`}
-              initial={{ opacity: 0.4 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.12 } }}
-              transition={{ duration: 0.08 }}
-            >
+            <div>
               {filtered.length > 0 ? (
                 <>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-gray-400">
-                      {filtered.length} places
-                    </p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">
+                        {searchCity ? `Results for "${searchCity}"` : 'Explore'}
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        {filtered.length} places {searchCity ? 'found' : 'from around the world'}
+                      </p>
+                    </div>
+                    {searchCity && (
+                      <button
+                        onClick={() => { setSearchInput(''); setSearchCity(''); setSearchQuery(''); }}
+                        className="text-xs text-[#1e3a5f] hover:underline"
+                      >
+                        Clear search
+                      </button>
+                    )}
                   </div>
 
-                  {themedSections.sections.map(({ collection, places: sectionPlaces }) => {
-                    const cols = distributeRoundRobin(sectionPlaces);
-                    const gapClass = columnCount === 2 ? 'gap-5' : columnCount === 3 ? 'gap-4' : 'gap-5';
-                    return (
-                      <div key={collection.key} className="mb-6">
-                        <div className="border-t border-gray-100 pt-5 pb-4 mt-2">
-                          <h3 className="text-lg font-extrabold text-[#1e3a5f]">{collection.label}</h3>
-                          <p className="text-xs text-gray-400 mt-0.5">{sectionPlaces.length} places</p>
-                        </div>
-                        {cols ? (
-                          <div className={`flex ${gapClass}`}>
-                            {cols.map((col, colIdx) => (
-                              <div key={colIdx} className={`flex-1 flex flex-col ${gapClass}`}>
-                                {col.map((item, i) => (
-                                  <PinCard
-                                    key={item.id}
-                                    item={item}
-                                    index={i}
-                                    isFavorited={favorites.includes(item.id)}
-                                    onFavorite={toggleFavorite}
-                                    onClick={(id) => openGridShowcase(id)}
-                                  />
-                                ))}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 550: 2, 900: 3, 1400: 4 }}>
-                            <Masonry gutter="20px">
-                              {sectionPlaces.map((item, i) => (
-                                <PinCard
-                                  key={item.id}
-                                  item={item}
-                                  index={i}
-                                  isFavorited={favorites.includes(item.id)}
-                                  onFavorite={toggleFavorite}
-                                  onClick={(id) => openGridShowcase(id)}
-                                />
-                              ))}
-                            </Masonry>
-                          </ResponsiveMasonry>
-                        )}
+                  {/* Search loading overlay */}
+                  {searchLoading && (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center gap-3">
+                        <div className="w-5 h-5 border-2 border-gray-300 border-t-[#1e3a5f] rounded-full animate-spin" />
+                        <span className="text-sm text-gray-500">Searching {searchCity}...</span>
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
 
+                  {!searchLoading && (
+                    <div
+                      className="gap-4"
+                      style={{
+                        columnCount,
+                        columnGap: '1rem',
+                      }}
+                    >
+                      {filtered.map((item, i) => (
+                        <div
+                          key={item.id}
+                          className="mb-4"
+                          style={{
+                            breakInside: 'avoid',
+                            contentVisibility: 'auto',
+                            containIntrinsicBlockSize: '380px',
+                          }}
+                        >
+                          <PinCard
+                            item={item}
+                            index={i}
+                            isFavorited={favorites.includes(item.id)}
+                            onFavorite={toggleFavorite}
+                            onClick={(id) => openGridShowcase(id)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-20">
                   <Search size={32} className="mx-auto text-gray-300 mb-3" />
                   <p className="text-sm text-gray-500">
-                    {activeTab === 'favorites' ? 'No favorites yet. Heart places to save them here.' : 'No places match your search.'}
+                    {activeTab === 'favorites'
+                      ? 'No favorites yet. Heart places to save them here.'
+                      : searchCity
+                        ? `No places found for "${searchCity}". Try a different city or destination.`
+                        : 'No places match your filters.'}
                   </p>
                 </div>
               )}
-            </motion.div>
+            </div>
             )}
-          </AnimatePresence>
         </div>
       ) : (
         <CardStack
@@ -759,6 +1095,24 @@ export default function PlacesPage() {
           showPostcard={showPostcard}
           setShowPostcard={setShowPostcard}
         />
+      )}
+      {/* Infinite scroll sentinel */}
+      {!searchCity && hasNextPage && (
+        <div ref={loadMoreRef} className="flex justify-center py-10">
+          {isFetchingNextPage && (
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="text-xs text-gray-400 font-medium tracking-wide">Discovering more places...</span>
+            </div>
+          )}
+          {!isFetchingNextPage && (
+            <div className="h-4" />
+          )}
+        </div>
       )}
       </div>
       <OceanWave />
@@ -832,7 +1186,8 @@ function MagazineCurtain({
             transition={{ duration: 0.3 }}
             className="absolute inset-0"
           >
-            <Image src={images[imgIdx]} alt={place.name} fill className="object-cover" sizes="65vw" priority />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={images[imgIdx]} alt={place.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
           </motion.div>
         </AnimatePresence>
 
@@ -1007,7 +1362,7 @@ function MagazineCurtain({
         className="flex-1 relative overflow-hidden rounded-2xl"
       >
         {place.latitude != null && place.longitude != null ? (
-          <LeafletMap lat={place.latitude} lng={place.longitude} label={place.name} zoom={11} height="100%" className="!rounded-2xl !border-0" />
+          <LeafletMap key={`map-${place.latitude}-${place.longitude}`} lat={place.latitude} lng={place.longitude} label={place.name} zoom={11} height="100%" className="!rounded-2xl !border-0" />
         ) : (
           <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center">
             <div className="text-center text-gray-400">
@@ -1055,7 +1410,7 @@ function CardStack({
   const images = place?.images?.length ? place.images : [place?.image];
   const isFav = place ? favorites.includes(place.id) : false;
 
-  const similarPlaces = useSimilarPlaces(place, MOCK_PLACES, 10);
+  const similarPlaces = useSimilarPlaces(place, items, 10);
 
   // Reset when items change (filter/tab switch)
   useEffect(() => {
@@ -1153,7 +1508,8 @@ function CardStack({
                 onClick={goPrev}
               >
                 <div className="relative w-full h-full">
-                  <Image src={items[prevIdx].image} alt={items[prevIdx].name} fill className="object-cover" sizes="280px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[prevIdx].image} alt={items[prevIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[prevIdx].type}</p>
@@ -1186,7 +1542,8 @@ function CardStack({
                 onClick={goNext}
               >
                 <div className="relative w-full h-full">
-                  <Image src={items[nextIdx].image} alt={items[nextIdx].name} fill className="object-cover" sizes="280px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[nextIdx].image} alt={items[nextIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[nextIdx].type}</p>
@@ -1219,7 +1576,8 @@ function CardStack({
                   className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none"
                   style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                 >
-                  <Image src={items[nextNextIdx].image} alt="" fill className="object-cover" sizes="(max-width: 640px) 85vw, 380px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[nextNextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Back card 1 */}
@@ -1227,7 +1585,8 @@ function CardStack({
                   className="absolute inset-0 rounded-2xl overflow-hidden shadow-md pointer-events-none"
                   style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                 >
-                  <Image src={items[nextIdx].image} alt="" fill className="object-cover" sizes="(max-width: 640px) 85vw, 380px" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={items[nextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Active card */}
@@ -1256,13 +1615,12 @@ function CardStack({
                     >
                       {/* ── Front ── */}
                       <div className="absolute inset-0 rounded-2xl overflow-hidden bg-black" style={{ backfaceVisibility: 'hidden' }}>
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={images[imgIdx]}
                           alt={place.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 85vw, 380px"
-                          priority
+                          referrerPolicy="no-referrer"
+                          className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
@@ -1338,7 +1696,8 @@ function CardStack({
 
                       {/* ── Back ── */}
                       <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                        <Image src={images[0]} alt="" fill className="object-cover" sizes="(max-width: 640px) 85vw, 380px" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={images[0]} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <div className="relative h-full flex flex-col p-5 text-white overflow-y-auto">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300 mb-1 block">
@@ -1478,12 +1837,12 @@ function CardStack({
                   className="shrink-0 w-36 group text-left"
                 >
                   <div className="relative w-36 h-24 rounded-xl overflow-hidden mb-1.5">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={sp.images?.[0] || sp.image}
                       alt={sp.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="144px"
+                      referrerPolicy="no-referrer"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     {sp.rating != null && (

@@ -1,6 +1,7 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
+// Use our own Next.js API proxy to avoid CORS issues
+// (previously called API_URL directly which gets blocked by browser CORS)
 
 interface PlaceImageResult {
   url: string;
@@ -24,7 +25,7 @@ function dequeue() {
 }
 
 async function fetchPlaceImage(name: string, city?: string): Promise<PlaceImageResult | null> {
-  if (!API_URL || !name) return null;
+  if (!name) return null;
 
   // Wait for a slot
   await new Promise<void>((resolve) => {
@@ -33,11 +34,13 @@ async function fetchPlaceImage(name: string, city?: string): Promise<PlaceImageR
   });
 
   try {
-    const params = new URLSearchParams({ name });
-    if (city) params.set('city', city);
-    const res = await fetch(`${API_URL}/api/trips/places/image?${params}`);
+    // Route through our own API proxy to avoid CORS
+    const q = city ? `${name} ${city}` : name;
+    const res = await fetch(`/api/images?q=${encodeURIComponent(q)}`);
     if (!res.ok) return null;
-    return await res.json() as PlaceImageResult;
+    const data = await res.json() as { url?: string };
+    if (!data?.url) return null;
+    return { url: data.url, thumbnail: data.url, title: name, source: 'unsplash', width: 800, height: 600 };
   } finally {
     inFlight--;
     dequeue();

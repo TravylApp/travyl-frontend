@@ -15,8 +15,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { CalendarActivity, CollaboratorPresence } from '@travyl/shared';
-const MOCK_COLLABORATORS: CollaboratorPresence[] = [];
-const MOCK_DAYS: { dayLabel: string; dateLabel: string; theme?: string }[] = [];
+const PLACEHOLDER_COLLABORATORS: CollaboratorPresence[] = [];
+const PLACEHOLDER_DAYS: { dayLabel: string; dateLabel: string; theme?: string }[] = [];
 import { useItineraryContext } from './ItineraryContext';
 
 // ─── Constants ──────────────────────────────────────────────
@@ -43,30 +43,8 @@ interface DiscoverPlace {
   duration: number; // hours
 }
 
-const DISCOVER_PLACES: DiscoverPlace[] = [
-  // Food
-  { id: 'disc-1', name: 'Le Bouillon Chartier', category: 'food', type: 'dining', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300', rating: 4.5, priceLevel: '$$', distance: '0.8 mi', location: '7 Rue du Faubourg Montmartre', description: 'Historic Parisian brasserie with Belle Epoque decor', duration: 1.5 },
-  { id: 'disc-2', name: 'Breizh Cafe', category: 'food', type: 'dining', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300', rating: 4.6, priceLevel: '$$', distance: '1.2 mi', location: 'Le Marais', description: 'Upscale Breton crepes and artisan cider', duration: 1 },
-  { id: 'disc-3', name: 'Chez Janou', category: 'food', type: 'dining', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300', rating: 4.7, priceLevel: '$$$', distance: '0.5 mi', location: '2 Rue Roger Verlomme', description: 'Famous for 80+ chocolate mousse and Provencal cuisine', duration: 1.5 },
-  { id: 'disc-4', name: 'L\'As du Fallafel', category: 'food', type: 'dining', image: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=300', rating: 4.4, priceLevel: '$', distance: '1.0 mi', location: '34 Rue des Rosiers', description: 'Legendary falafel in the heart of Le Marais', duration: 0.75 },
-  { id: 'disc-5', name: 'Pink Mamma', category: 'food', type: 'dining', image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300', rating: 4.3, priceLevel: '$$', distance: '1.5 mi', location: '20bis Rue de la Folie-Mericourt', description: '4-story Italian restaurant with rooftop terrace', duration: 1.5 },
-
-  // Things to do
-  { id: 'disc-6', name: 'Musee de l\'Orangerie', category: 'things-to-do', type: 'museum', image: 'https://images.unsplash.com/photo-1499426600726-ac29ced5e5b8?w=300', rating: 4.8, priceLevel: '$', distance: '0.3 mi', location: 'Jardin des Tuileries', description: 'Monet\'s Water Lilies in oval galleries', duration: 2 },
-  { id: 'disc-7', name: 'Palais Garnier Opera Tour', category: 'things-to-do', type: 'cultural', image: 'https://images.unsplash.com/photo-1580809361436-42a7ec204889?w=300', rating: 4.7, priceLevel: '$$', distance: '0.6 mi', location: 'Place de l\'Opera', description: 'Self-guided tour of the legendary opera house', duration: 1.5 },
-  { id: 'disc-8', name: 'Marche aux Puces de Saint-Ouen', category: 'things-to-do', type: 'shopping', image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=300', rating: 4.3, priceLevel: 'Free', distance: '3.2 mi', location: 'Porte de Clignancourt', description: 'World\'s largest antique market, 2,500+ vendors', duration: 3 },
-  { id: 'disc-9', name: 'Seine Riverbank Walk', category: 'things-to-do', type: 'outdoor', image: 'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=300', rating: 4.6, priceLevel: 'Free', distance: '0.1 mi', location: 'Quai de la Tournelle', description: 'Stroll past bookstalls and bridges at golden hour', duration: 1.5 },
-  { id: 'disc-10', name: 'Cooking Class at La Cuisine Paris', category: 'things-to-do', type: 'tour', image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=300', rating: 4.9, priceLevel: '$$$', distance: '0.7 mi', location: '80 Quai de l\'Hotel de Ville', description: 'Learn croissants and macarons from local chefs', duration: 3 },
-
-  // Nightlife
-  { id: 'disc-11', name: 'Le Caveau de la Huchette', category: 'nightlife', type: 'nightlife', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', rating: 4.5, priceLevel: '$$', distance: '0.4 mi', location: '5 Rue de la Huchette', description: 'Live jazz and swing in a medieval cellar since 1946', duration: 3 },
-  { id: 'disc-12', name: 'Le Perchoir Menilmontant', category: 'nightlife', type: 'nightlife', image: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=300', rating: 4.4, priceLevel: '$$', distance: '2.1 mi', location: '14 Rue Crespin du Gast', description: 'Rooftop cocktails with panoramic city views', duration: 2 },
-  { id: 'disc-13', name: 'Harry\'s New York Bar', category: 'nightlife', type: 'nightlife', image: 'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=300', rating: 4.6, priceLevel: '$$$', distance: '0.5 mi', location: '5 Rue Daunou', description: 'Legendary cocktail bar — birthplace of the Bloody Mary', duration: 2 },
-
-  // Coffee
-  { id: 'disc-14', name: 'Cafe de Flore', category: 'coffee', type: 'dining', image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=300', rating: 4.3, priceLevel: '$$', distance: '0.6 mi', location: '172 Boulevard Saint-Germain', description: 'Iconic literary cafe, Sartre and de Beauvoir\'s hangout', duration: 1 },
-  { id: 'disc-15', name: 'Boot Cafe', category: 'coffee', type: 'dining', image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300', rating: 4.7, priceLevel: '$', distance: '0.9 mi', location: '19 Rue du Pont aux Choux', description: 'Tiny specialty coffee shop in a former cobbler\'s shop', duration: 0.75 },
-];
+// Discover places populated from real trip data (API results)
+const DISCOVER_PLACES: DiscoverPlace[] = [];
 
 const DISCOVER_CATEGORIES = [
   { id: 'food', label: 'Food', icon: Utensils },
@@ -579,7 +557,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
   const [selectedActivity, setSelectedActivity] = useState<CalendarActivity | null>(null);
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
-  const [collaborators] = useState<CollaboratorPresence[]>(MOCK_COLLABORATORS);
+  const [collaborators] = useState<CollaboratorPresence[]>(PLACEHOLDER_COLLABORATORS);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   // Notes
@@ -590,7 +568,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
   const [discoverCategory, setDiscoverCategory] = useState<string>('food');
   const [discoverSearch, setDiscoverSearch] = useState('');
 
-  const dayMetas = MOCK_DAYS.map((d) => ({
+  const dayMetas = PLACEHOLDER_DAYS.map((d) => ({
     dayLabel: d.dayLabel, dateLabel: d.dateLabel, theme: d.theme ?? '',
   }));
 

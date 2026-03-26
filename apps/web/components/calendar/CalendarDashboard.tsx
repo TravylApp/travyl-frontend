@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
-import { DndContext, DragOverlay } from '@dnd-kit/core'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { DndContext, DragOverlay, pointerWithin, closestCenter, type CollisionDetection } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { fetchCollaborators } from '@travyl/shared'
@@ -29,18 +29,19 @@ import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
-import type { FlightBanner, HotelBanner } from './AllDayRow'
 import type { CalendarActivity } from './types'
 import { useCalendarTheme } from './hooks/useCalendarTheme'
 import { CalendarThemeContext } from './CalendarThemeContext'
 import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
+import { HistoryDrawer } from './HistoryDrawer'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
 import { usePollMutations } from './hooks/usePollMutations'
 import { usePollObserver } from './hooks/usePollObserver'
 import { usePollSync } from './hooks/usePollSync'
+import { fetchActivityIntelligence } from './hooks/useActivityIntelligence'
 
 // ─── Module-level constants ────────────────────────────────────
 
@@ -70,6 +71,16 @@ function formatDurationLabel(hours: number): string {
   return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m`
 }
 
+// Pointer-based collision detection with closest-center fallback.
+// `pointerWithin` alone has dead zones (e.g. 5px ResizeDivider gaps between
+// columns) where no droppable contains the pointer → `over` becomes null and
+// the ghost flickers. The fallback ensures we always resolve to the nearest
+// column.
+const calendarCollision: CollisionDetection = (args) => {
+  const collisions = pointerWithin(args)
+  return collisions.length > 0 ? collisions : closestCenter(args)
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 interface CalendarDashboardProps {
@@ -83,6 +94,7 @@ interface CalendarDashboardProps {
 export function CalendarDashboard({ tripId, userId, userName, isSharedView = false }: CalendarDashboardProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
@@ -100,7 +112,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     ...rawMutations,
     getActivity: (id) => activities.find((a) => a.id === id),
   })
-  const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, disabled: isSharedView })
+  const { collaborators, setSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, disabled: isSharedView })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
@@ -164,6 +176,20 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   // useCalendarDnd is called below after marquee selection hook is instantiated
 
+  const queryClient = useQueryClient()
+
+  // Background-prefetch intelligence for all visible activities
+  useEffect(() => {
+    if (!scheduledActivities.length) return
+    for (const a of scheduledActivities) {
+      queryClient.prefetchQuery({
+        queryKey: ['activity-intelligence', a.id, tripId],
+        queryFn: () => fetchActivityIntelligence(a.id, tripId),
+        staleTime: 60 * 60 * 1000,
+      })
+    }
+  }, [scheduledActivities, tripId, queryClient])
+
   const { theme, toggleTheme } = useCalendarTheme()
   const {
     width: forYouWidth,
@@ -173,10 +199,27 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     handleDragEnd: handlePanelDragEnd,
   } = useResizablePanel()
 
+  // Navigate to today's position in the trip on first load.
+  useEffect(() => {
+    if (!trip) return
+    const today = new Date()
+    const tripStart = new Date(trip.start_date + 'T00:00:00Z')
+    const diffDays = Math.floor((today.getTime() - tripStart.getTime()) / (1000 * 60 * 60 * 24))
+    const dayIndex = Math.max(0, Math.min(diffDays, tripTotalDays - 1))
+    selectDay(dayIndex)
+  // Run once when the trip first loads (trip?.id changes from undefined → id).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip?.id])
+
   // Sync view mode to presence
   useEffect(() => {
     setCurrentView(viewMode)
   }, [viewMode, setCurrentView])
+
+  // Sync selected activity to presence
+  useEffect(() => {
+    setSelectedEvent(selectedEventId ?? null)
+  }, [selectedEventId, setSelectedEvent])
 
   // Sync selected day to presence
   useEffect(() => {
@@ -235,23 +278,23 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
     for (const act of selected) {
       moveActivity(act.id, act.day + clampedDayDelta, act.startHour + clampedHourDelta)
+      queryClient.invalidateQueries({ queryKey: ['activity-intelligence', act.id] })
     }
-  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays])
+  }, [scheduledActivities, marqueeSelectedIds, moveActivity, tripTotalDays, queryClient])
 
-  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
-    onMoveActivity: moveActivity,
+  const handleMoveActivity = useCallback((id: string, day: number, startHour: number) => {
+    moveActivity(id, day, startHour)
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
+  }, [moveActivity, queryClient])
+
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragMove, handleDragEnd, handleDragCancel } = useCalendarDnd({
+    onMoveActivity: handleMoveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     onGroupMove: handleGroupMove,
     marqueeSelectedIds,
     scrollRef,
     timeRangeStartHour: timeRange.startHour,
   })
-
-  // ─── Derive flight banners ────────────────────────────────────
-  const FLIGHT_BANNERS: FlightBanner[] = []
-
-  // ─── Derive hotel banners ─────────────────────────────────────
-  const HOTEL_BANNERS: HotelBanner[] = []
 
   const selectedActivity = useMemo(
     () => scheduledActivities.find((a) => a.id === selectedEventId) ?? null,
@@ -319,7 +362,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     canRedo,
   })
 
-  // Publish commands to global store so GlobalCommandPalette can show them
+  // Publish commands to global store so SpotlightSearch can show them
   const setCommands = useCalendarCommandsStore((s) => s.setCommands)
   const clearCommands = useCalendarCommandsStore((s) => s.clearCommands)
   useEffect(() => {
@@ -347,8 +390,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     } else {
       updateActivity(id, patch)
     }
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
     setEditingActivityId(null)
-  }, [moveActivity, updateActivity])
+  }, [moveActivity, updateActivity, queryClient])
 
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <CalendarSkeleton />
@@ -397,6 +441,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       startPoll(activityId, userId)
     } else if (actionId === 'close-poll') {
       closePoll(activityId)
+    } else if (actionId === 'restore-poll') {
+      restoreActivity(activityId)
+    } else if (actionId === 'remove-activity') {
+      // Same effect as 'delete' — removes from calendar and restores to ForYou panel
+      handleRemoveActivity(activityId)
     }
   }
 
@@ -424,6 +473,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   }
 
   const handleBack = () => {
+    if (isSharedView) { router.push('/'); return }
     router.push('/trips')
   }
 
@@ -437,6 +487,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   const handleResizeEvent = (id: string, newStartHour: number, newDuration: number) => {
     updateActivity(id, { startHour: newStartHour, duration: newDuration })
+    queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
   }
 
   /** Format a date range string like "Mar 10 - Mar 16, 2026". */
@@ -500,13 +551,15 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           }
           onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
+          onOpenHistory={() => setIsHistoryOpen(true)}
         />
 
         {/* Grid area */}
         <DndContext
           sensors={isSharedView ? [] : sensors}
+          collisionDetection={calendarCollision}
           onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
+          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
@@ -516,8 +569,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
               {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
               <AllDayRow
                 days={visibleDays}
-                flights={FLIGHT_BANNERS}
-                hotels={HOTEL_BANNERS}
               />
               {/* Scrollable time grid */}
               <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
@@ -550,10 +601,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   ) : (
@@ -580,10 +628,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         onContextMenu={handleContextMenu}
                         polls={polls}
                         pollUserId={userId}
-                        tripOwnerId={trip?.user_id}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        onRestorePoll={restoreActivity}
-                        onRemovePollActivity={handleRemoveActivity}
                       />
                     </motion.div>
                   )}
@@ -626,6 +671,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                 />
               </>
             )}
+
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
@@ -680,7 +726,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   strokeLinecap="round"
                 />
               </svg>
-              <p className="text-sm text-gray-500">No activities yet — add one to get started</p>
+              <p className="text-sm text-gray-500">{isSharedView ? 'No activities planned yet' : 'No activities yet — add one to get started'}</p>
             </div>
           )}
         </DndContext>
@@ -722,10 +768,23 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         onSettingsChange={refetchTrip}
       />
     )}
+    <HistoryDrawer
+      tripId={tripId}
+      isOpen={isHistoryOpen}
+      onClose={() => setIsHistoryOpen(false)}
+      onMove={moveActivity}
+      onEdit={updateActivity}
+      onDelete={removeActivity}
+      onAdd={addActivity}
+      tripStartDate={tripStartDate}
+      userId={userId}
+    />
     {contextMenu && (() => {
       const poll = polls.get(contextMenu.activityId)
       const hasActivePoll = poll?.status === 'active'
-      const canClosePoll = hasActivePoll && (poll.startedBy === userId || trip?.user_id === userId)
+      const isResolvedPoll = poll?.status === 'resolved'
+      const canManagePoll = poll ? (poll.startedBy === userId || trip?.user_id === userId) : false
+      const canClosePoll = hasActivePoll && canManagePoll
       return (
         <ActivityContextMenu
           x={contextMenu.x}
@@ -734,9 +793,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
             { id: 'edit', label: 'Edit' },
             { id: 'duplicate', label: 'Duplicate' },
             { id: 'separator', label: '', separator: true },
-            hasActivePoll
-              ? { id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }
-              : { id: 'start-poll', label: 'Start Poll' },
+            ...(isResolvedPoll && canManagePoll
+              ? [
+                  { id: 'restore-poll', label: 'Restore Poll' },
+                  { id: 'remove-activity', label: 'Remove from Calendar', danger: true },
+                ]
+              : isResolvedPoll
+                ? [] // non-managers see no poll action on a resolved poll
+                : hasActivePoll
+                  ? [{ id: 'close-poll', label: 'Close Poll', disabled: !canClosePoll }]
+                  : [{ id: 'start-poll', label: 'Start Poll' }]
+            ),
             { id: 'separator2', label: '', separator: true },
             { id: 'delete', label: 'Delete', danger: true },
           ]}

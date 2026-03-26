@@ -1,6 +1,10 @@
 'use client';
 
-import { MapPin, LogIn, LogOut, Star, Image as ImageIcon, Building2 } from 'lucide-react';
+import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useParams } from 'next/navigation';
+import { MapPin, LogIn, LogOut, Star, Image as ImageIcon, Building2, Hotel } from 'lucide-react';
 import type { HotelViewModel } from '@travyl/shared';
 
 interface HotelCardProps {
@@ -8,7 +12,12 @@ interface HotelCardProps {
 }
 
 export function HotelCard({ hotel }: HotelCardProps) {
+  const params = useParams();
+  const tripId = params?.id as string;
+  const [imgError, setImgError] = useState(false);
+
   return (
+    <Link href={`/trip/${tripId}/hotels/${hotel.id}`} className="block">
     <div className="rounded-xl bg-white overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-3">
       {/* Navy gradient header band */}
       <div
@@ -39,9 +48,9 @@ export function HotelCard({ hotel }: HotelCardProps) {
       </div>
 
       {/* Image */}
-      {hotel.imageUrl ? (
-        <div className="relative">
-          <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-[160px] object-cover" />
+      {hotel.imageUrl && !imgError ? (
+        <div className="relative h-[160px]">
+          <Image src={hotel.imageUrl} alt={hotel.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 300px" onError={() => setImgError(true)} />
           {hotel.rating != null && (
             <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
               <Star size={10} className="text-amber-400 fill-amber-400" />
@@ -50,8 +59,8 @@ export function HotelCard({ hotel }: HotelCardProps) {
           )}
         </div>
       ) : (
-        <div className="h-[120px] bg-blue-50 flex items-center justify-center">
-          <ImageIcon size={28} style={{ color: 'rgb(var(--trip-base-rgb) / 0.2)' }} />
+        <div className="h-[120px] bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+          <Hotel size={28} className="text-blue-300" />
         </div>
       )}
 
@@ -80,7 +89,17 @@ export function HotelCard({ hotel }: HotelCardProps) {
         <button className="w-full mt-3 py-2.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-[13px] font-semibold rounded-xl shadow-md hover:shadow-lg transition-all">
           Book Hotel
         </button>
+
+        {/* View full details */}
+        <Link
+          href={`/hotel/${hotel.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center mt-2 py-2 text-[12px] font-medium text-gray-400 hover:text-[#1e3a5f] transition-colors"
+        >
+          View full details
+        </Link>
       </div>
     </div>
+    </Link>
   );
 }

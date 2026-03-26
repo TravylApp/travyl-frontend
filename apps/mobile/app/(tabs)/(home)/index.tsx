@@ -26,13 +26,15 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useHomeScreen,
   useHeroConfig,
+  useTripPlanner,
   Blue,
   hexToRgba,
-  MOCK_PLACES,
   TextStyles,
   FontSize,
   FontFamily,
 } from '@travyl/shared';
+import { savePlanToSupabase } from '@travyl/shared/src/services/api';
+import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
@@ -289,6 +291,7 @@ export default function HomeScreen() {
     showEmptyState,
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
+  const planner = useTripPlanner();
 
   // Cycling hero slideshow
   const heroSlides = heroConfig?.background_image_url
@@ -298,7 +301,7 @@ export default function HomeScreen() {
   const [selectedPlaceIdx, setSelectedPlaceIdx] = useState(-1);
   const setSelectedPlace = useCallback((place: PlaceItem | null) => {
     if (!place) { setSelectedPlaceIdx(-1); return; }
-    const idx = MOCK_PLACES.findIndex((p) => p.id === place.id);
+    const idx = ([] as PlaceItem[]).findIndex((p) => p.id === place.id);
     setSelectedPlaceIdx(idx >= 0 ? idx : -1);
   }, []);
   useEffect(() => {
@@ -364,6 +367,33 @@ export default function HomeScreen() {
     height: number;
   } | null>(null);
 
+  // When planner completes, save trip and navigate
+  useEffect(() => {
+    if (!showTakeoff) return;
+    const s = planner.state;
+    if (s.phase === 'complete' && s.plan) {
+      (async () => {
+        try {
+          const tripId = await savePlanToSupabase(s.plan as any);
+          await saveAnonTripId(tripId);
+          planner.reset();
+          setShowTakeoff(false);
+          router.push(`/trip/${tripId}` as any);
+        } catch (err) {
+          console.error('Failed to save trip:', err);
+          planner.reset();
+          setShowTakeoff(false);
+          router.push('/(tabs)/trips');
+        }
+      })();
+    } else if (s.phase === 'error') {
+      console.error('Trip planning failed:', s.message);
+      planner.reset();
+      setShowTakeoff(false);
+      router.push('/(tabs)/trips');
+    }
+  }, [planner.state.phase, showTakeoff]);
+
   const onButtonLayout = useCallback(() => {
     sendButtonRef.current?.measureInWindow((x, y, width, height) => {
       buttonLayoutRef.current = { x, y, width, height };
@@ -381,7 +411,9 @@ export default function HomeScreen() {
     setTripQuery(query);
     setButtonLayout(buttonLayoutRef.current);
     setShowTakeoff(true);
-  }, [setTripQuery]);
+    // Start planning in background
+    planner.submitPrompt(query);
+  }, [setTripQuery, planner]);
 
   const handleConvReset = useCallback(() => {
     setConvStep(-1);
@@ -909,9 +941,6 @@ export default function HomeScreen() {
         <TagUs />
       </FadeInOnScroll>
 
-      <FadeInOnScroll scrollY={scrollY}>
-        <ExplorePreview />
-      </FadeInOnScroll>
 
       {/* ─── Ocean Wave + Footer ──────────────────────────────── */}
       <OceanWave />
@@ -925,15 +954,15 @@ export default function HomeScreen() {
       visible={showTakeoff}
       buttonLayout={buttonLayout}
       onComplete={() => {
-        setShowTakeoff(false);
-        router.push('/(tabs)/trips');
+        // Animation done — keep overlay visible while planner works
+        // The useEffect below handles navigation when plan completes
       }}
     />
 
     {/* ─── Place Detail — Magazine Card ─────────────────────────────── */}
     {selectedPlaceIdx >= 0 && (
       <CardStackCarousel
-        places={MOCK_PLACES}
+        places={([] as PlaceItem[])}
         initialIndex={selectedPlaceIdx}
         favorites={[]}
         onToggleFav={() => {}}

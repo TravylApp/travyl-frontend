@@ -1,53 +1,6 @@
 'use client';
 
-import { Car, Plus, Users, Settings, Snowflake } from 'lucide-react';
-
-function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`rounded bg-gray-200 ${className}`} style={style} />;
-}
-
-function SkeletonCarCard() {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="h-[130px] bg-gray-100 flex items-center justify-center">
-        <Car size={32} className="text-gray-300" />
-      </div>
-      <div className="p-3.5">
-        <Skeleton style={{ width: '60%', height: 16 }} className="mb-1.5" />
-        <Skeleton style={{ width: '40%', height: 12 }} className="mb-3" />
-        <div className="flex gap-3 mb-3">
-          <div className="flex items-center gap-1">
-            <Users size={10} className="text-gray-400" />
-            <Skeleton style={{ width: 20, height: 10 }} />
-          </div>
-          <div className="flex items-center gap-1">
-            <Settings size={10} className="text-gray-400" />
-            <Skeleton style={{ width: 40, height: 10 }} />
-          </div>
-          <div className="flex items-center gap-1">
-            <Snowflake size={10} className="text-gray-400" />
-            <Skeleton style={{ width: 20, height: 10 }} />
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <Skeleton style={{ width: 70, height: 20 }} />
-          <div className="px-4 py-2 rounded-lg" style={{ backgroundColor: '#475569' }}>
-            <Skeleton style={{ width: 60, height: 12 }} className="bg-white/30" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CarsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <SkeletonCarCard />
-      <SkeletonCarCard />
-    </div>
-  );
-}
+import { Car, Plus } from 'lucide-react';
 
 function EmptyState() {
   return (

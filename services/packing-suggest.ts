@@ -11,9 +11,17 @@ const MAX_SUGGESTIONS = 15
 
 const bedrockClient = new BedrockRuntimeClient({})
 
-const SYSTEM_PROMPT = `You are a travel packing assistant. Given a trip itinerary, suggest practical items to pack. Return ONLY a JSON array of objects with keys: name (string), category (one of: clothing, toiletries, electronics, documents, accessories, essentials), reason (short phrase explaining why, referencing specific activities or conditions). Suggest 10-15 items. Be specific and practical — prefer "Rain jacket" over "Outerwear". Do not suggest items the user already has.`
+const SYSTEM_PROMPT = `You are a travel packing assistant. Given trip details, suggest packing items as a JSON array.
 
-function buildUserMessage(trip: any, activities: any[], packedNames: string[], suggestedNames: string[]): string {
+Each item: { "name": "Item Name", "category": "category_name", "reason": "Brief reason" }
+
+Use these standard categories when appropriate: clothing, toiletries, electronics, documents, accessories, essentials.
+
+When the trip involves specific activities (beach, skiing, hiking, etc.), create descriptive categories for that gear (e.g., "beach gear", "ski equipment", "hiking gear"). Keep dynamic category names lowercase and descriptive.
+
+Return ONLY a JSON array, no markdown.`
+
+function buildUserMessage(trip: any, activities: any[], packedNames: string[], suggestedNames: string[], travelers?: any): string {
   const start = new Date(trip.start_date)
   const end = new Date(trip.end_date)
   const duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
@@ -23,7 +31,18 @@ function buildUserMessage(trip: any, activities: any[], packedNames: string[], s
     return a.notes ? `${base} — ${a.notes}` : base
   }).join('\n')
 
-  let message = `Trip to ${trip.destination}\nDates: ${trip.start_date} to ${trip.end_date} (${duration} days)\nTravelers: ${trip.travelers ?? 1}`
+  let message = `Trip to ${trip.destination}\nDates: ${trip.start_date} to ${trip.end_date} (${duration} days)`
+
+  if (travelers) {
+    const parts = []
+    if (travelers.adults) parts.push(`${travelers.adults} adult${travelers.adults > 1 ? 's' : ''}`)
+    if (travelers.children) {
+      const ages = travelers.child_ages?.length ? ` (ages ${travelers.child_ages.join(', ')})` : ''
+      parts.push(`${travelers.children} child${travelers.children > 1 ? 'ren' : ''}${ages}`)
+    }
+    if (travelers.infants) parts.push(`${travelers.infants} infant${travelers.infants > 1 ? 's' : ''}`)
+    if (parts.length) message += `\nTravelers: ${parts.join(', ')}`
+  }
 
   if (activityLines) {
     message += `\n\nActivities:\n${activityLines}`
@@ -38,23 +57,18 @@ function buildUserMessage(trip: any, activities: any[], packedNames: string[], s
   return message
 }
 
-function parseBedrockResponse(responseBody: string): { name: string; category: string; reason: string }[] {
+function parseBedrockResponse(body: string): { name: string; category: string; reason: string }[] {
   try {
-    const parsed = JSON.parse(responseBody)
+    const parsed = JSON.parse(body)
     const text: string = parsed.content?.[0]?.text ?? ''
-
-    // Strip markdown code fences if present
-    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const items = JSON.parse(cleaned)
     if (!Array.isArray(items)) return []
-
     return items
       .filter((item: any) =>
         typeof item.name === 'string' &&
         typeof item.category === 'string' &&
-        typeof item.reason === 'string' &&
-        PACKING_CATEGORIES.includes(item.category)
+        typeof item.reason === 'string'
       )
       .slice(0, MAX_SUGGESTIONS)
   } catch {
@@ -110,7 +124,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // Fetch trip context
     const { data: trip, error: tripError } = await supabase
       .from('trips')
-      .select('destination, start_date, end_date, travelers')
+      .select('destination, start_date, end_date, travelers, trip_context')
       .eq('id', tripId)
       .single()
 
@@ -136,7 +150,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const packedNames = (packedItems ?? []).map((i) => i.name)
     const suggestedNames = (existingSuggestions ?? []).map((s) => s.name)
 
-    const userMessage = buildUserMessage(trip, activities ?? [], packedNames, suggestedNames)
+    const travelers = trip.trip_context?.travelers ?? null
+    const userMessage = buildUserMessage(trip, activities ?? [], packedNames, suggestedNames, travelers)
 
     console.log('[packing-suggest] calling Bedrock for trip:', tripId)
 

@@ -1,340 +1,425 @@
 'use client';
 
-import { use, useState } from 'react';
-import dynamic from 'next/dynamic';
-
-const ResponsiveMasonry = dynamic(
-  () => import('react-responsive-masonry').then((m) => m.ResponsiveMasonry),
-  { ssr: false },
-);
-const Masonry = dynamic(
-  () => import('react-responsive-masonry').then((m) => m.default),
-  { ssr: false },
-);
+import { use, useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  Search, CalendarCheck, Star, X, ArrowUpDown,
-  Map, Landmark, TreePine, Compass, CalendarDays, Camera,
-  ImageIcon,
+  Search, Globe, Landmark, UtensilsCrossed, Compass, CalendarDays, Heart,
+  X, ChevronRight,
 } from 'lucide-react';
-import {
-  useItineraryScreen,
-  useActivityFilters,
-  ACTIVITY_CATEGORIES,
-  ACTIVITY_SUBFILTERS,
-  ACTIVITY_SORT_OPTIONS,
-} from '@travyl/shared';
-import { SplitScreenModal } from '@/components/itinerary';
-import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
+import { useItineraryScreen } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
+import type { PlaceItem } from '@travyl/shared';
+import { PinCard } from '@/components/PinCard';
 
-const ACCENT = 'var(--trip-base)';
-const ACCENT_BG_08 = 'rgb(var(--trip-base-rgb) / 0.08)';
-const ACCENT_BG_19 = 'rgb(var(--trip-base-rgb) / 0.19)';
-const ACCENT_RING = 'rgb(var(--trip-base-rgb) / 0.3)';
+// ─── Config ─────────────────────────────────────────────────
 
-const categoryIcons: Record<string, React.ReactNode> = {
-  All: <Compass size={13} />,
-  Tours: <Map size={13} />,
-  Museums: <Landmark size={13} />,
-  Monuments: <Landmark size={13} />,
-  Sightseeing: <Camera size={13} />,
-  Nature: <TreePine size={13} />,
-  Events: <CalendarDays size={13} />,
-};
+const CATEGORIES = [
+  'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
+  'shopping', 'nightlife', 'landmark',
+];
 
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`rounded-md bg-gray-200 ${className}`} />;
-}
+const TABS = [
+  { key: 'all', label: 'All', icon: Globe },
+  { key: 'attraction', label: 'Attractions', icon: Landmark },
+  { key: 'restaurant', label: 'Restaurants', icon: UtensilsCrossed },
+  { key: 'experience', label: 'Experiences', icon: Compass },
+  { key: 'event', label: 'Events', icon: CalendarDays },
+  { key: 'favorites', label: 'Favorites', icon: Heart },
+] as const;
 
-function SkeletonActivityCard() {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="relative h-[120px] bg-gray-100">
-        <ImageIcon size={24} className="text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-      </div>
-      <div className="flex items-center gap-4 px-3 py-2.5">
-        <Skeleton className="h-2.5 w-12" />
-        <Skeleton className="h-2.5 w-20" />
-        <Skeleton className="h-2.5 w-10 ml-auto" />
-      </div>
-    </div>
+type TabKey = (typeof TABS)[number]['key'];
+type SortKey = 'default' | 'rating' | 'name';
+
+// ─── Data fetching ──────────────────────────────────────────
+
+async function fetchExplorePage(
+  lat: number, lng: number, pageParam: number,
+): Promise<PlaceItem[]> {
+  const catsPerPage = 3;
+  const startCat = (pageParam * catsPerPage) % CATEGORIES.length;
+  const cats: string[] = [];
+  for (let i = 0; i < catsPerPage; i++) {
+    cats.push(CATEGORIES[(startCat + i) % CATEGORIES.length]);
+  }
+
+  // Center + slight offset for variety
+  const offsets = [
+    { lat, lng },
+    { lat: lat + 0.015, lng: lng + 0.01 },
+  ];
+  const offset = offsets[pageParam % offsets.length];
+
+  const results = await Promise.all(
+    cats.map(async (cat) => {
+      try {
+        const res = await fetch(
+          `/api/places?lat=${offset.lat}&lng=${offset.lng}&category=${cat}&limit=12`,
+        );
+        if (!res.ok) return [];
+        return (await res.json()) as PlaceItem[];
+      } catch {
+        return [];
+      }
+    }),
   );
+
+  // Also fetch from Foursquare for restaurant variety
+  if (cats.includes('restaurant') || cats.includes('cafe')) {
+    try {
+      const fsRes = await fetch(
+        `/api/foursquare?lat=${lat}&lng=${lng}&category=restaurant&limit=8`,
+      );
+      if (fsRes.ok) {
+        const venues = await fsRes.json();
+        if (Array.isArray(venues)) {
+          const mapped = venues
+            .filter((v: any) => v.image && !v.image.includes('categories_v2'))
+            .map((v: any) => ({
+              id: `fs_${v.id}`,
+              name: v.name,
+              image: v.image,
+              images: (v.images || []).filter((img: string) => !img.includes('categories_v2')),
+              type: 'restaurant' as const,
+              rating: v.rating ? v.rating / 2 : 0,
+              tagline: v.address || v.category || 'Restaurant',
+              category: v.category || 'Restaurant',
+              description: v.tip || '',
+              latitude: v.lat,
+              longitude: v.lng,
+              address: v.address,
+              reviewCount: v.ratingCount,
+              tags: [v.category || 'Restaurant'],
+            }));
+          results.push(mapped);
+        }
+      }
+    } catch {}
+  }
+
+  // Fetch events (Eventbrite + PredictHQ) on first page
+  if (pageParam === 0) {
+    try {
+      const evRes = await fetch(`/api/events?lat=${lat}&lng=${lng}&limit=6`);
+      if (evRes.ok) {
+        const events = await evRes.json();
+        if (Array.isArray(events)) {
+          const mapped = events.filter((e: any) => e.title).map((e: any) => ({
+            id: `ev_${e.id}`, name: e.title, image: e.image || '',
+            type: 'event' as const, rating: 0,
+            tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
+            category: e.category || 'Event', description: e.description || '',
+            tags: ['Event', e.category].filter(Boolean),
+          }));
+          results.push(mapped);
+        }
+      }
+    } catch {}
+  }
+
+  // Deduplicate
+  const seen = new Set<string>();
+  const seenNames = new Set<string>();
+  return results.flat().filter((p) => {
+    if (!p.name || seen.has(p.id)) return false;
+    const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (seenNames.has(norm)) return false;
+    seen.add(p.id);
+    seenNames.add(norm);
+    return true;
+  });
 }
 
-function ActivitiesSkeleton() {
-  return (
-    <div>
-      <div className="flex gap-2 mb-4">
-        {['All', 'Sightseeing', 'Dining', 'Cultural'].map((label, i) => (
-          <div key={label} className={`rounded-full px-3.5 py-1.5 ${i === 0 ? 'text-white' : 'bg-gray-100'}`} style={i === 0 ? { backgroundColor: ACCENT } : undefined}>
-            <Skeleton className={`h-3 w-16 ${i === 0 ? 'bg-white/30' : ''}`} />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <SkeletonActivityCard />
-        <SkeletonActivityCard />
-        <SkeletonActivityCard />
-        <SkeletonActivityCard />
-      </div>
-    </div>
-  );
-}
+// ─── Component ──────────────────────────────────────────────
 
-export default function Activities({ params }: { params: Promise<{ id: string }> }) {
+export default function ExplorePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { days, isLoading } = useItineraryScreen(id);
+  const { trip, isLoading: tripLoading } = useItineraryScreen(id);
 
-  const {
-    viewMode, setViewMode,
-    searchQuery, setSearchQuery,
-    categoryFilter, handleCategoryChange,
-    activitySubFilter, setActivitySubFilter,
-    sortBy, setSortBy,
-    favorites, toggleFavorite,
-    sourceItems,
-    filteredItems,
-    bookedItems,
-    discoverItems,
-    clearFilters,
-  } = useActivityFilters(days);
+  const lat = trip?.trip_context?.lat ?? 0;
+  const lng = trip?.trip_context?.lng ?? 0;
+  const destination = trip?.destination?.split(',')[0]?.trim() || 'Destination';
+  const hasCoords = lat !== 0 || lng !== 0;
 
-  const [minRating, setMinRating] = useState(0);
+  // Paginated data — accumulate pages manually to avoid useInfiniteQuery internal bug
+  const [page, setPage] = useState(0);
+  const [allPlaces, setAllPlaces] = useState<PlaceItem[]>([]);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['trip-explore', id, lat, lng, page],
+    queryFn: () => fetchExplorePage(lat, lng, page),
+    staleTime: 15 * 60 * 1000,
+    enabled: hasCoords,
+  });
+
+  useEffect(() => {
+    if (pageData && pageData.length > 0) {
+      setAllPlaces((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const newItems = pageData.filter((p) => !seen.has(p.id));
+        return newItems.length > 0 ? [...prev, ...newItems] : prev;
+      });
+      setIsFetchingNextPage(false);
+    }
+  }, [pageData]);
+
+  const hasNextPage = page < 20;
+
+  const fetchNextPage = useCallback(() => {
+    setIsFetchingNextPage(true);
+    setPage((p) => p + 1);
+  }, []);
+
+  // Infinite scroll observer
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasNextPage) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
+      },
+      { rootMargin: '600px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // State
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<SortKey>('default');
   const [showFilters, setShowFilters] = useState(false);
-  const [showSort, setShowSort] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [activeSubcategory, setActiveSubcategory] = useState('');
+  const [columnCount, setColumnCount] = useState(3);
 
-  const activeFilterCount = (minRating > 0 ? 1 : 0) + (categoryFilter !== 'All' ? 1 : 0) + (activitySubFilter ? 1 : 0);
+  useEffect(() => {
+    const w = window.innerWidth;
+    if (w < 550) setColumnCount(1);
+    else if (w < 768) setColumnCount(2);
+    else if (w < 1100) setColumnCount(3);
+    else setColumnCount(4);
+  }, []);
 
-  const clearAllFilters = () => {
-    setMinRating(0);
-    clearFilters();
-  };
+  const toggleFavorite = useCallback((fid: string) => {
+    setFavorites((prev) => prev.includes(fid) ? prev.filter((f) => f !== fid) : [...prev, fid]);
+  }, []);
 
-  // Apply local minRating filter on top of shared filtered items
-  const displayItems = minRating > 0
-    ? filteredItems.filter((item) => item.rating >= minRating)
-    : filteredItems;
+  const places = allPlaces;
 
-  if (isLoading) return <ActivitiesSkeleton />;
+  // Filter by tab
+  const tabFiltered = useMemo(() => {
+    if (activeTab === 'all') return places;
+    if (activeTab === 'favorites') return places.filter((p) => favorites.includes(p.id));
+    return places.filter((p) => p.type === activeTab);
+  }, [activeTab, favorites, places]);
+
+  // Subcategories
+  const subcategories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of tabFiltered) counts[item.category] = (counts[item.category] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([cat, count]) => ({ label: cat, count }));
+  }, [tabFiltered]);
+
+  // Filter + sort
+  const filtered = useMemo(() => {
+    let items = tabFiltered;
+    if (activeSubcategory) items = items.filter((p) => p.category === activeSubcategory);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.tagline.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.tags?.some((t) => t.toLowerCase().includes(q)),
+      );
+    }
+    if (sortBy === 'rating') items = [...items].sort((a, b) => b.rating - a.rating);
+    else if (sortBy === 'name') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    return items;
+  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
+
+  // ─── Render ─────────────────────────────────────────────────
 
   return (
-    <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
-      {/* View Mode Toggle */}
-      <div className="flex border-b border-gray-200 dark:border-white/[0.08] px-4 pt-3">
-        <button
-          onClick={() => setViewMode('booked')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-medium transition-all border-b-2 ${
-            viewMode === 'booked'
-              ? 'border-current'
-              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-          }`}
-          style={viewMode === 'booked' ? { color: ACCENT } : undefined}
-        >
-          <CalendarCheck size={14} />
-          Booked
-          <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${!viewMode || viewMode !== 'booked' ? 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400' : ''}`} style={viewMode === 'booked' ? { backgroundColor: ACCENT_BG_08, color: ACCENT } : undefined}>
-            {bookedItems.length}
-          </span>
-        </button>
-        <button
-          onClick={() => setViewMode('discover')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-medium transition-all border-b-2 ${
-            viewMode === 'discover'
-              ? 'border-current'
-              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-          }`}
-          style={viewMode === 'discover' ? { color: ACCENT } : undefined}
-        >
-          <Search size={14} />
-          Discover
-          <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${viewMode !== 'discover' ? 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400' : ''}`} style={viewMode === 'discover' ? { backgroundColor: ACCENT_BG_08, color: ACCENT } : undefined}>
-            {discoverItems.length}
-          </span>
-        </button>
-      </div>
-
-      {/* Search Bar -- always visible */}
-      <div className="flex items-center gap-2 px-4">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent"
-            style={{ '--tw-ring-color': ACCENT_RING } as React.CSSProperties}
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <div className="relative">
-              <button
-                onClick={() => { setShowSort(!showSort); setShowFilters(false); }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <ArrowUpDown size={14} className="text-gray-400" />
-              </button>
-              {showSort && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50">
-                  {ACTIVITY_SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => { setSortBy(opt.key); setShowSort(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${sortBy === opt.key ? 'font-medium' : 'text-gray-600'}`}
-                      style={sortBy === opt.key ? { color: ACCENT } : undefined}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+    <div className="flex flex-col min-h-[60vh]">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b border-gray-100 dark:border-white/10">
+        {/* Row 1: Tabs + Search */}
+        <div className="px-4 pt-2 pb-0">
+          <div className="flex items-center gap-2">
+            <div className="shrink-0 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-0 -mb-px">
+                {TABS.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
+                      activeTab === key
+                        ? 'font-semibold'
+                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                    }`}
+                    style={activeTab === key ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
+                  >
+                    <Icon size={13} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="relative flex-1 min-w-0">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={`Search ${destination}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all"
+                style={{ '--tw-ring-color': 'var(--trip-base)' } as any}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={12} />
+                </button>
               )}
             </div>
           </div>
         </div>
-        <span className="text-[12px] text-gray-400 shrink-0">{displayItems.length}</span>
-      </div>
 
-      {/* Filter Panel */}
-      {showFilters && (
-        <div className="mx-4 bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
-          <div>
-            <div className="text-[11px] text-gray-500 uppercase tracking-wider mb-2">Minimum Rating</div>
-            <div className="flex gap-2">
-              {[0, 3.5, 4.0, 4.5].map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setMinRating(r)}
-                  className={`flex-1 py-2 rounded-lg text-xs border transition-all flex items-center justify-center gap-1 ${
-                    minRating === r ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                  }`}
-                  style={{ backgroundColor: minRating === r ? ACCENT : undefined }}
-                >
-                  {r === 0 ? 'Any' : <><Star size={10} fill={minRating === r ? '#fff' : '#f59e0b'} className={minRating === r ? 'text-white' : 'text-amber-500'} />{r}+</>}
-                </button>
-              ))}
-            </div>
-          </div>
-          {activeFilterCount > 0 && (
-            <button onClick={clearAllFilters} className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              <X size={12} />
-              Clear all filters
+        {/* Row 2: Filters + Sort */}
+        <div className="px-4 py-1.5 flex items-center gap-2">
+          {subcategories.length > 1 && (
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all shrink-0 ${
+                showFilters || activeSubcategory ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              style={showFilters || activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
+            >
+              <span>Filters</span>
+              <motion.div animate={{ rotate: showFilters ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronRight size={11} />
+              </motion.div>
             </button>
           )}
-        </div>
-      )}
 
-      {/* Category Tabs (underline style) */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-sm px-4">
-      <div className="flex gap-0.5 overflow-x-auto pb-0 scrollbar-hide border-b border-gray-100 dark:border-white/[0.06]">
-        {ACTIVITY_CATEGORIES.map((f) => {
-          const count = sourceItems.filter((i) => f === 'All' || i.category === f).length;
-          if (count === 0 && f !== 'All') return null;
-          return (
-            <button
-              key={f}
-              onClick={() => handleCategoryChange(f)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all ${
-                categoryFilter === f
-                  ? 'font-semibold border-current'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-200'
-              }`}
-              style={categoryFilter === f ? { color: ACCENT } : undefined}
-            >
-              {categoryIcons[f]}
-              <span>{f}</span>
-              <span className={`text-[10px] ${categoryFilter === f ? 'opacity-60' : 'text-gray-400 dark:text-gray-500'}`}>
-                {f === 'All' ? sourceItems.length : count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      </div>
-
-      {/* Sub-filters */}
-      {categoryFilter !== 'All' && ACTIVITY_SUBFILTERS[categoryFilter]?.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-          {ACTIVITY_SUBFILTERS[categoryFilter].map((sub) => {
-            const isAll = sub.startsWith('All ');
-            const isActive = isAll ? !activitySubFilter : activitySubFilter === sub;
-            return (
-              <button
-                key={sub}
-                onClick={() => setActivitySubFilter(isAll ? '' : sub)}
-                className={`px-3 py-1.5 rounded-full text-[11px] whitespace-nowrap transition-all border ${
-                  isActive ? 'border-transparent shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-                style={{
-                  backgroundColor: isActive ? ACCENT_BG_08 : undefined,
-                  color: isActive ? ACCENT : undefined,
-                  borderColor: isActive ? ACCENT_BG_19 : undefined,
-                  fontWeight: isActive ? 500 : 400,
-                }}
+          <AnimatePresence>
+            {showFilters && subcategories.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0 flex-1"
               >
-                {sub}
-              </button>
-            );
-          })}
+                <button
+                  onClick={() => setActiveSubcategory('')}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap shrink-0 transition-all ${
+                    !activeSubcategory ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                  style={!activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                >
+                  All
+                </button>
+                {subcategories.slice(0, 12).map(({ label, count }) => (
+                  <button
+                    key={label}
+                    onClick={() => setActiveSubcategory(activeSubcategory === label ? '' : label)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap shrink-0 transition-all ${
+                      activeSubcategory === label ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                    style={activeSubcategory === label ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                  >
+                    {label} <span className="opacity-50 ml-0.5">{count}</span>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="text-[10px] px-2 py-1 rounded-md border border-gray-200 bg-white text-gray-600 focus:outline-none"
+            >
+              <option value="default">Default</option>
+              <option value="rating">Top Rated</option>
+              <option value="name">A–Z</option>
+            </select>
+            <span className="text-[10px] text-gray-400 tabular-nums">{filtered.length} places</span>
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Title */}
+      <div className="px-4 pt-4 pb-2">
+        <h2 className="text-lg font-bold text-gray-900" style={{ color: 'var(--trip-base)' }}>
+          Explore {destination}
+        </h2>
+        <p className="text-[12px] text-gray-400">
+          {filtered.length} places to discover
+        </p>
+      </div>
 
       {/* Masonry Grid */}
-      <div className="px-4 pb-4">
-      <div
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l40 40M40 0L0 40' stroke='%23000' stroke-width='0.3' opacity='0.03'/%3E%3C/svg%3E")`,
-        }}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${viewMode}-${categoryFilter}-${activitySubFilter}-${searchQuery}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      <div className="px-4 pb-8">
+        {(isLoading || tripLoading) ? (
+          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="rounded-2xl bg-gray-100 animate-pulse" style={{ height: 320 + (i % 3) * 40 }} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Search size={32} className="text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">No places found</p>
+            <button
+              onClick={() => { setSearchQuery(''); setActiveSubcategory(''); setActiveTab('all'); }}
+              className="text-xs mt-2 hover:underline"
+              style={{ color: 'var(--trip-base)' }}
+            >
+              Clear all filters
+            </button>
+          </div>
+        ) : (
+          <div
+            className="gap-3"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
+            }}
           >
-            {displayItems.length > 0 ? (
-              <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 520: 2, 900: 3 }}>
-                <Masonry gutter="8px">
-                  {displayItems.map((item, i) => (
-                    <ItineraryPinCard
-                      key={item.id}
-                      item={item}
-                      index={i}
-                      accentColor={item.category === 'Events' ? 'var(--trip-base)' : ACCENT}
-                      isFavorited={favorites.includes(item.id)}
-                      onFavorite={toggleFavorite}
-                      onClick={() => setSelectedIndex(displayItems.indexOf(item))}
-                      onAddToItinerary={() => {}}
-                      onRemoveFromItinerary={() => {}}
-                    />
-                  ))}
-                </Masonry>
-              </ResponsiveMasonry>
-            ) : (
-              <div className="text-center py-12">
-                <Search size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-sm text-gray-500">No results match your filters</p>
-                <button onClick={clearAllFilters} className="text-xs mt-2 hover:underline" style={{ color: ACCENT }}>
-                  Clear all filters
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-      </div>
+            <AnimatePresence mode="popLayout">
+              {filtered.map((place, i) => (
+                <motion.div
+                  key={place.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3, delay: Math.min(i * 0.03, 0.3) }}
+                >
+                  <PinCard
+                    item={place}
+                    index={i}
+                    isFavorited={favorites.includes(place.id)}
+                    onFavorite={toggleFavorite}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
 
-      {selectedIndex !== null && (
-        <SplitScreenModal
-          items={displayItems}
-          initialIndex={selectedIndex}
-          accentColor={ACCENT}
-          favorites={favorites}
-          onClose={() => setSelectedIndex(null)}
-          onFavorite={toggleFavorite}
-        />
-      )}
+        {/* Infinite scroll sentinel */}
+        <div ref={loadMoreRef} className="h-1" />
+        {isFetchingNextPage && (
+          <div className="flex justify-center py-6">
+            <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--trip-base)', borderTopColor: 'transparent' }} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

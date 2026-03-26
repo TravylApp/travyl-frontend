@@ -1,37 +1,44 @@
 'use client'
 
-import { useMemo } from 'react'
 import type { DbPackingItem, PackingSuggestion } from '@travyl/shared'
-import { PACKING_CATEGORIES } from '@travyl/shared'
 import { PackingCategory } from './PackingCategory'
 
 interface PackingCategoryListProps {
+  orderedCategories: string[]
   itemsByCategory: Record<string, DbPackingItem[]>
   suggestionsByCategory?: Record<string, PackingSuggestion[]>
   onToggle: (id: string) => void
+  onIncrementPacked: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
   onRemove: (id: string) => void
+  onClaim?: (id: string) => void
+  onRelease?: (id: string) => void
+  currentUserId?: string
   onAcceptSuggestion?: (id: string) => void
   onDismissSuggestion?: (id: string) => void
   isGenerating?: boolean
 }
 
 export function PackingCategoryList({
+  orderedCategories,
   itemsByCategory,
   suggestionsByCategory = {},
   onToggle,
+  onIncrementPacked,
+  onUpdateQuantity,
   onRemove,
+  onClaim,
+  onRelease,
+  currentUserId,
   onAcceptSuggestion,
   onDismissSuggestion,
   isGenerating = false,
 }: PackingCategoryListProps) {
-  const visibleCategories = useMemo(() =>
-    PACKING_CATEGORIES.filter(
-      (cat) => (itemsByCategory[cat]?.length ?? 0) > 0 || (suggestionsByCategory[cat]?.length ?? 0) > 0
-    ),
-    [itemsByCategory, suggestionsByCategory]
+  const hasAnyVisible = orderedCategories.some(
+    (cat) => (itemsByCategory[cat]?.length ?? 0) > 0 || (suggestionsByCategory[cat]?.length ?? 0) > 0
   )
 
-  if (visibleCategories.length === 0) {
+  if (!hasAnyVisible) {
     if (isGenerating) {
       return (
         <div className="flex flex-col gap-3 py-6 px-2">
@@ -51,19 +58,29 @@ export function PackingCategoryList({
 
   return (
     <div className="flex flex-col">
-      {visibleCategories.map((category) => (
-        <PackingCategory
-          key={category}
-          category={category}
-          items={itemsByCategory[category] ?? []}
-          suggestions={suggestionsByCategory[category]}
-          onToggle={onToggle}
-          onRemove={onRemove}
-          onAcceptSuggestion={onAcceptSuggestion}
-          onDismissSuggestion={onDismissSuggestion}
-          defaultExpanded
-        />
-      ))}
+      {orderedCategories.map((category) => {
+        const categoryItems = itemsByCategory[category] || []
+        const categorySuggestions = suggestionsByCategory?.[category] || []
+        if (categoryItems.length === 0 && categorySuggestions.length === 0) return null
+        return (
+          <PackingCategory
+            key={category}
+            category={category}
+            items={categoryItems}
+            suggestions={categorySuggestions}
+            onToggle={onToggle}
+            onIncrementPacked={onIncrementPacked}
+            onUpdateQuantity={onUpdateQuantity}
+            onRemove={onRemove}
+            onClaim={onClaim}
+            onRelease={onRelease}
+            currentUserId={currentUserId}
+            onAcceptSuggestion={onAcceptSuggestion}
+            onDismissSuggestion={onDismissSuggestion}
+            defaultExpanded
+          />
+        )
+      })}
     </div>
   )
 }

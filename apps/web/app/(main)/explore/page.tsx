@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Calendar, Users, GitFork, Search, Filter, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Users, GitFork, Search, Loader2 } from 'lucide-react';
 import { fetchPublicTrips, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
@@ -43,9 +42,21 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
       <Link href={`/trip/${trip.id}`} className="block">
         {/* Image Header */}
         <div className="relative h-40 overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <MapPin size={32} className="text-white/50" />
-          </div>
+          {trip.trip_context?.hero_image_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={trip.trip_context.hero_image_url.includes('googleusercontent.com')
+                ? trip.trip_context.hero_image_url.replace(/=w\d+-h\d+[^&]*/, '=w600-h400-k-no')
+                : trip.trip_context.hero_image_url}
+              alt={trip.destination}
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <MapPin size={32} className="text-white/50" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
           {/* Fork count badge */}
@@ -84,7 +95,8 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
               <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 {trip.profiles.avatar_url ? (
-                  <Image src={trip.profiles.avatar_url} alt="" width={24} height={24} className="object-cover" />
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={trip.profiles.avatar_url} alt="" width={24} height={24} referrerPolicy="no-referrer" className="object-cover" />
                 ) : (
                   <span className="text-xs font-medium text-gray-500">
                     {(trip.profiles.display_name || 'U')[0].toUpperCase()}
@@ -117,7 +129,8 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
 }
 
 export default function ExplorePage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get('q') ?? '');
 
   const { data: trips, isLoading, error } = useQuery({
     queryKey: ['publicTrips'],
@@ -139,7 +152,7 @@ export default function ExplorePage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] text-white py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">Explore Trips</h1>
+          <h1 className="text-3xl font-serif font-normal mb-2 tracking-wide">Explore Trips</h1>
           <p className="text-white/80">Discover and fork amazing travel itineraries from the community</p>
 
           {/* Search bar */}

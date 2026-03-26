@@ -9,10 +9,10 @@ import { PageTransition, useTabAccent } from './_layout';
 
 /* ─── Constants ─────────────────────────────────────────────── */
 
-// Pre-populate some sample favorites for demo
-const INITIAL_ACTIVITY_FAVORITES = ['da1', 'da3', 'da6'];
-const INITIAL_RESTAURANT_FAVORITES = ['rb2', 'rd1', 'rd4'];
-const INITIAL_DESTINATION_FAVORITES = ['da2', 'da5', 'da8'];
+// Start empty — user adds favorites as they browse
+const INITIAL_ACTIVITY_FAVORITES: string[] = [];
+const INITIAL_RESTAURANT_FAVORITES: string[] = [];
+const INITIAL_DESTINATION_FAVORITES: string[] = [];
 
 // Category config with icons
 const CATEGORIES = [
@@ -357,7 +357,7 @@ function FavoritesSkeleton() {
 export default function FavoritesScreen() {
   const ACCENT = useTabAccent('favorites');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isLoading } = useItineraryScreen(id);
+  const { trip, isLoading } = useItineraryScreen(id);
 
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
   const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
@@ -369,9 +369,15 @@ export default function FavoritesScreen() {
     setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const favoritedActivities = MOCK_DISCOVER_ACTIVITIES.filter((a) => activityFavorites.includes(a.id));
-  const favoritedRestaurants = MOCK_DISCOVER_RESTAURANTS.filter((r) => restaurantFavorites.includes(r.id));
-  const favoritedDestinations = MOCK_DISCOVER_ACTIVITIES.filter((a) => destinationFavorites.includes(a.id));
+  // Build from trip_context instead of mock data
+  const ctx = trip?.trip_context as any;
+  const allDiscoverItems: DiscoverItem[] = useMemo(() => [
+    ...(ctx?.explore_items ?? []).map((e: any) => ({ id: e.id, name: e.title || e.name, description: e.description || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [] })),
+    ...(ctx?.foursquare_venues ?? []).map((v: any) => ({ id: v.id, name: v.title || v.name, description: v.description || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [] })),
+  ], [ctx]);
+  const favoritedActivities = allDiscoverItems.filter((a) => activityFavorites.includes(a.id));
+  const favoritedRestaurants = allDiscoverItems.filter((r) => restaurantFavorites.includes(r.id));
+  const favoritedDestinations = allDiscoverItems.filter((a) => destinationFavorites.includes(a.id));
 
   const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
 

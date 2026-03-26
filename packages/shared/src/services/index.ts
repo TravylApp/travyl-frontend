@@ -18,6 +18,7 @@ export {
   fetchTripByShareToken,
   updateTripVisibility,
   ensureShareLinkToken,
+  rotateShareLinkToken,
   addToItinerary,
   removeFromItinerary,
   toggleFavorite,
@@ -29,6 +30,11 @@ export {
   leaveTrip,
   inviteCollaborator,
   fetchCollaborators,
+  updateCollaboratorRole,
+  removeCollaborator,
+  acceptInviteByToken,
+  joinTripViaLink,
+  findPendingInviteByEmail,
 } from './api';
 export {
   fetchBudgetCategories,

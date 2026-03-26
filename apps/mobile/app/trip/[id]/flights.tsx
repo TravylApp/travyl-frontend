@@ -1,141 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { View, ScrollView, Text, Pressable, Linking } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-/* ================================================================
-   MOCK DATA — Paris trip: JFK <-> CDG
-   ================================================================ */
-
 const POPULAR_AIRPORTS = [
   { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
+  { code: 'LAX', name: 'Los Angeles Intl', city: 'Los Angeles' },
+  { code: 'ORD', name: "O'Hare Intl", city: 'Chicago' },
+  { code: 'LHR', name: 'Heathrow', city: 'London' },
   { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-  { code: 'EWR', name: 'Newark Liberty Intl', city: 'Newark' },
-  { code: 'LGA', name: 'LaGuardia', city: 'New York' },
-  { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
 ];
 
-const BOOKED_FLIGHTS = [
-  {
-    id: 'outbound-1',
-    type: 'outbound' as const,
-    flightNumber: 'AA 100',
-    airline: 'American Airlines',
-    airlineLogo: 'AA',
-    aircraft: 'Boeing 777-300ER',
-    date: 'Mar 10, 2026',
-    departure: { time: '7:30 PM', code: 'JFK', terminal: 'T8', gate: 'B44' },
-    arrival: { time: '9:15 AM', code: 'CDG', terminal: 'T2A', gate: 'K26', nextDay: true },
-    duration: '7h 45m',
-    stops: 'Direct',
-    cabinClass: 'Economy',
-    seats: '24A, 24B',
-    baggage: '1 carry-on + 1 checked (23 kg)',
-    meal: 'Dinner + breakfast',
-    wifi: 'Available (complimentary)',
-    confirmation: 'XHGT7K',
-    price: { base: 412, taxes: 86, total: 498 },
-    status: 'Confirmed',
-  },
-  {
-    id: 'return-1',
-    type: 'return' as const,
-    flightNumber: 'AA 101',
-    airline: 'American Airlines',
-    airlineLogo: 'AA',
-    aircraft: 'Boeing 777-300ER',
-    date: 'Mar 16, 2026',
-    departure: { time: '11:00 AM', code: 'CDG', terminal: 'T2A', gate: 'K12' },
-    arrival: { time: '2:30 PM', code: 'JFK', terminal: 'T8', gate: 'B38', nextDay: false },
-    duration: '8h 30m',
-    stops: 'Direct',
-    cabinClass: 'Economy',
-    seats: '26A, 26B',
-    baggage: '1 carry-on + 1 checked (23 kg)',
-    meal: 'Lunch + snack',
-    wifi: 'Available (complimentary)',
-    confirmation: 'XHGT7K',
-    price: { base: 428, taxes: 91, total: 519 },
-    status: 'Confirmed',
-  },
-];
-
-const COMPARISON_FLIGHTS = [
-  {
-    id: 'dl-310',
-    airline: 'Delta Air Lines',
-    airlineLogo: 'DL',
-    flightNumber: 'DL 310',
-    departure: { time: '6:15 PM', airport: 'JFK' },
-    arrival: { time: '8:45 AM', airport: 'CDG', nextDay: true },
-    duration: '8h 30m',
-    stops: 1,
-    layover: 'ATL (1h 40m)',
-    price: 520,
-    fareClass: 'Main Cabin',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 84,
-    co2: 312,
-    badge: null as string | null,
-    businessAvailable: false,
-  },
-  {
-    id: 'ua-57',
-    airline: 'United Airlines',
-    airlineLogo: 'UA',
-    flightNumber: 'UA 57',
-    departure: { time: '9:00 PM', airport: 'EWR' },
-    arrival: { time: '10:30 AM', airport: 'CDG', nextDay: true },
-    duration: '7h 30m',
-    stops: 0,
-    layover: null,
-    price: 485,
-    fareClass: 'Economy',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 81,
-    co2: 278,
-    badge: 'Lowest Price',
-    businessAvailable: false,
-  },
-  {
-    id: 'lh-401',
-    airline: 'Lufthansa',
-    airlineLogo: 'LH',
-    flightNumber: 'LH 401',
-    departure: { time: '5:30 PM', airport: 'JFK' },
-    arrival: { time: '7:15 AM', airport: 'CDG', nextDay: true },
-    duration: '7h 45m',
-    stops: 0,
-    layover: null,
-    price: 610,
-    fareClass: 'Economy',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 88,
-    co2: 265,
-    badge: 'Best Overall',
-    businessAvailable: true,
-  },
-];
-
-const BOOKING_DETAILS = {
-  confirmationNumber: 'XHGT7K',
-  pnr: 'XHGT7K',
-  ticketNumbers: ['001-2345678901', '001-2345678902'],
-  fareClass: 'Y',
-  fareType: 'Economy Flex',
-  baggageAllowance: { carryOn: '1 bag (10 kg)', checked: '1 bag (23 kg)', fees: 0 },
-  cancellationPolicy:
-    'Free cancellation within 24 hours of booking. After that, a $200 fee per passenger applies.',
-  changePolicy:
-    'Changes permitted for a $75 fee plus any fare difference. Same-day standby is complimentary for AAdvantage members.',
-  refundPolicy:
-    'Refundable as travel credit within 12 months. Cash refund available for Flex fares.',
-  checkInUrl: 'https://www.aa.com/checkin',
-  checkInOpens: 'Mar 9, 2026 — 24 hours before departure',
-};
+// Convert trip_context.flights into the shape BookedFlightCard expects
+function contextFlightsToBooked(flights: any[], destination?: string): any[] {
+  return (flights ?? []).map((f: any, i: number) => {
+    const dep = f.departure_time ? new Date(f.departure_time) : null;
+    const arr = f.arrival_time ? new Date(f.arrival_time) : null;
+    const depTime = dep ? dep.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const arrTime = arr ? arr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const dateStr = dep ? dep.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+    const nextDay = dep && arr ? arr.getDate() !== dep.getDate() : false;
+    let durationStr = '';
+    if (f.duration) {
+      const mins = typeof f.duration === 'number' ? f.duration : parseInt(f.duration, 10);
+      if (!isNaN(mins)) durationStr = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+    } else if (dep && arr) {
+      const ms = arr.getTime() - dep.getTime();
+      durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
+    }
+    const originCode = f.origin ?? '';
+    const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+    const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
+    return {
+      id: `ctx-flight-${i}`,
+      type: i === 0 ? 'outbound' : 'return',
+      flightNumber: `${airlineCode}${100 + i}`,
+      airline: f.airline || 'Airline',
+      airlineLogo: airlineCode,
+      date: dateStr,
+      departure: { time: depTime, code: originCode, terminal: '', gate: '' },
+      arrival: { time: arrTime, code: destCode, terminal: '', gate: '', nextDay },
+      duration: durationStr,
+      stops: f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Direct',
+      cabinClass: 'Economy',
+      status: 'Planned',
+      price: { total: Math.round(f.price ?? 0) },
+    };
+  });
+}
 
 /* ================================================================
    HELPER: toggle value in array
@@ -1049,16 +964,35 @@ function FlightSkeleton() {
    MAIN PAGE
    ================================================================ */
 
+const CITY_AIRPORTS: Record<string, string> = {
+  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+  'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
+  'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
+};
+
 export default function FlightsScreen() {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { trip, isLoading: tripLoading } = useItineraryScreen(_id);
 
   const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!tripLoading) setIsLoading(false);
+  }, [tripLoading]);
+
+  // Get destination airport from trip
+  const city = trip?.destination?.split(',')[0]?.trim() ?? '';
+  const destAirport = CITY_AIRPORTS[city] || '';
+
+  // Convert trip_context flights to display format
+  const bookedFlights = useMemo(
+    () => contextFlightsToBooked((trip?.trip_context as any)?.flights, city),
+    [trip, city],
+  );
+  const hasFlights = bookedFlights.length > 0;
 
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
@@ -1068,15 +1002,38 @@ export default function FlightsScreen() {
       {/* 1. Flight Search Section */}
       <FlightSearchSection />
 
-      {/* 2. Booked Flight Cards */}
-      {BOOKED_FLIGHTS.filter((f) => f.type === 'outbound').map((f) => (
+      {/* Flight prompt when no flights booked */}
+      {!hasFlights && destAirport && (
+        <View style={{
+          backgroundColor: `${ACCENT}10`,
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: `${ACCENT}25`,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <FontAwesome name="plane" size={16} color={ACCENT} />
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Find flights to {city}</Text>
+          </View>
+          <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
+            Destination airport: {destAirport}
+          </Text>
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+            Search and compare flights to add to your trip
+          </Text>
+        </View>
+      )}
+
+      {/* Booked Flight Cards from trip_context */}
+      {bookedFlights.filter((f: any) => f.type === 'outbound').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
-      {BOOKED_FLIGHTS.filter((f) => f.type === 'return').map((f) => (
+      {bookedFlights.filter((f: any) => f.type === 'return').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
 
-      {/* 3. Add Flight button */}
+      {/* Add Flight button */}
       <Pressable
         style={{
           flexDirection: 'row',
@@ -1095,11 +1052,11 @@ export default function FlightsScreen() {
         <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary }}>Add Flight</Text>
       </Pressable>
 
-      {/* 4. Comparison Alternatives */}
+      {/* Comparison Alternatives */}
       <ComparisonAlternatives />
 
-      {/* 5. Booking Details */}
-      <BookingDetailsSection />
+      {/* Booking Details */}
+      {hasFlights && <BookingDetailsSection />}
     </ScrollView>
     </PageTransition>
   );

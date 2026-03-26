@@ -15,7 +15,7 @@ interface PackingPanelProps {
 export function PackingPanel({ tripId }: PackingPanelProps) {
   const router = useRouter()
   const { user } = useAuthStore()
-  const { items, itemsByCategory, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem } = usePackingList(tripId, user?.id)
+  const { items, itemsByCategory, orderedCategories, auditLog, progress, isLoading, error, addItem, togglePacked, incrementPacked, updateQuantity, removeItem, claimItem, releaseItem } = usePackingList(tripId, user?.id)
   const {
     suggestionsByCategory,
     isGenerating,
@@ -23,7 +23,7 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
     generateSuggestions,
     acceptSuggestion,
     dismissSuggestion,
-  } = usePackingSuggestions(tripId, items, addItem)
+  } = usePackingSuggestions(tripId, items, addItem as (name: string, category: string) => void)
 
   if (isLoading) {
     return (
@@ -53,14 +53,20 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
           <Expand width={14} height={14} />
         </button>
       </div>
-      <SpotlightSearch existingItems={items} onAddItem={addItem} />
+      <SpotlightSearch existingItems={items} onAddItem={addItem as (name: string, category: string) => void} />
       <PackingProgress packed={progress.packed} total={progress.total} percent={progress.percent} compact />
       <div className="flex-1 overflow-auto">
         <PackingCategoryList
+          orderedCategories={orderedCategories}
           itemsByCategory={itemsByCategory}
           suggestionsByCategory={suggestionsByCategory}
           onToggle={togglePacked}
+          onIncrementPacked={incrementPacked}
+          onUpdateQuantity={updateQuantity}
           onRemove={removeItem}
+          onClaim={claimItem}
+          onRelease={releaseItem}
+          currentUserId={user?.id}
           onAcceptSuggestion={acceptSuggestion}
           onDismissSuggestion={dismissSuggestion}
           isGenerating={isGenerating}

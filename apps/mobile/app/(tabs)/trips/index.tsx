@@ -386,9 +386,7 @@ export default function TripsScreen() {
     trips && trips.length > 0
       ? trips.map((t) => ({
           ...t,
-          image:
-            t.trip_context?.hero_image_url ??
-            'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
+          image: t.trip_context?.hero_image_url ?? '',
         }))
       : [];
 

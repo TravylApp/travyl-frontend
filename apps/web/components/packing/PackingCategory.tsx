@@ -3,17 +3,22 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { NavArrowDown, NavArrowRight } from 'iconoir-react'
-import type { DbPackingItem, PackingCategory as PackingCategoryType, PackingSuggestion } from '@travyl/shared'
-import { CATEGORY_LABELS } from './utils'
+import type { DbPackingItem, PackingSuggestion } from '@travyl/shared'
+import { getCategoryLabel, isStaticCategory } from './utils'
 import { PackingItem } from './PackingItem'
 import { SuggestionChip } from './SuggestionChip'
 
 interface PackingCategoryProps {
-  category: PackingCategoryType
+  category: string
   items: DbPackingItem[]
   suggestions?: PackingSuggestion[]
   onToggle: (id: string) => void
+  onIncrementPacked: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
   onRemove: (id: string) => void
+  onClaim?: (id: string) => void
+  onRelease?: (id: string) => void
+  currentUserId?: string
   onAcceptSuggestion?: (id: string) => void
   onDismissSuggestion?: (id: string) => void
   defaultExpanded?: boolean
@@ -24,15 +29,20 @@ export function PackingCategory({
   items,
   suggestions = [],
   onToggle,
+  onIncrementPacked,
+  onUpdateQuantity,
   onRemove,
+  onClaim,
+  onRelease,
+  currentUserId,
   onAcceptSuggestion,
   onDismissSuggestion,
   defaultExpanded = true,
 }: PackingCategoryProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
-  const packedCount = items.filter((i) => i.is_packed).length
-  const totalCount = items.length
+  const packedUnits = items.reduce((s, i) => s + i.packed_count, 0)
+  const totalUnits = items.reduce((s, i) => s + i.quantity, 0)
 
   return (
     <div className="mb-1">
@@ -56,11 +66,14 @@ export function PackingCategory({
         )}
 
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)] flex-1 text-left">
-          {CATEGORY_LABELS[category]}
+          {getCategoryLabel(category)}
+          {!isStaticCategory(category) && (
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 ml-1">✦ AI</span>
+          )}
         </span>
 
         <span className="text-xs tabular-nums text-[var(--cal-text-muted)]">
-          {packedCount}/{totalCount}
+          {packedUnits}/{totalUnits}
         </span>
       </button>
 
@@ -82,7 +95,12 @@ export function PackingCategory({
                     key={item.id}
                     item={item}
                     onToggle={onToggle}
+                    onIncrementPacked={onIncrementPacked}
+                    onUpdateQuantity={onUpdateQuantity}
                     onRemove={onRemove}
+                    onClaim={onClaim}
+                    onRelease={onRelease}
+                    currentUserId={currentUserId}
                   />
                 ))}
                 {suggestions.map((suggestion) => (

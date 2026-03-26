@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Star, Calendar, MapPin, Heart, LayoutGrid, Globe, RotateCcw } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
@@ -129,8 +130,8 @@ export function PostcardDetail({ data, onClose }: PostcardDetailProps) {
                     <div style={{ position: 'absolute', inset: 0, borderRadius: 6, opacity: 0.04, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)', pointerEvents: 'none' }} />
 
                     {/* Photo */}
-                    <div style={{ border: '3px solid #fff', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', overflow: 'hidden', position: 'relative' }}>
-                      <img src={data.imageUrl} alt={data.name} className="w-full object-cover" style={{ height: '200px' }} />
+                    <div style={{ border: '3px solid #fff', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', overflow: 'hidden', position: 'relative', height: '200px' }}>
+                      <Image src={data.imageUrl} alt={data.name} fill className="object-cover" sizes="100vw" />
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,220,150,0.08) 0%, transparent 40%, rgba(0,0,0,0.06) 100%)' }} />
                       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(58,40,16,0.6) 0%, transparent 100%)' }} />
                       <div style={{ position: 'absolute', bottom: 8, left: 10, right: 10, zIndex: 2 }}>
