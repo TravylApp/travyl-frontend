@@ -365,6 +365,8 @@ export interface DbPackingItem {
   updated_at: string
   owner_id: string | null
   group_tag: string | null
+  quantity: number
+  packed_count: number
   user_display_name?: string
   user_avatar_url?: string
   owner_display_name?: string
