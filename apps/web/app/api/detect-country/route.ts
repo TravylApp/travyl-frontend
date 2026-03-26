@@ -1,29 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { errorResponse, CACHE_1H } from '@/lib/api-utils'
 
-// CountryIS — detect user's country from IP
-// Free, unlimited, no API key
-// Used to auto-set currency and language preferences
+interface DetectCountryResponse {
+  country: string
+  countryCode: string
+  region: string
+  city: string
+  timezone: string
+  currency: string
+  lat: number
+  lng: number
+}
 
 export async function GET(req: NextRequest) {
   try {
-    // Try to get IP from headers (works behind proxies/Vercel)
     const forwarded = req.headers.get('x-forwarded-for')
     const ip = forwarded?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || null
 
-    // Use ip-api.com (free, 45 req/min, no key needed for non-commercial)
     const url = ip
       ? `http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,city,timezone,currency,lat,lon`
       : `http://ip-api.com/json/?fields=status,country,countryCode,region,city,timezone,currency,lat,lon`
 
-    const res = await fetch(url, { next: { revalidate: 3600 } })
-    if (!res.ok) throw new Error('Geo detection failed')
+    const res = await fetch(url, CACHE_1H)
+    if (!res.ok) return errorResponse('Geo detection failed', res.status)
 
     const data = await res.json()
     if (data.status !== 'success') {
-      return NextResponse.json({ error: 'Could not detect location' }, { status: 404 })
+      return errorResponse('Could not detect location', 404)
     }
 
-    return NextResponse.json({
+    return NextResponse.json<DetectCountryResponse>({
       country: data.country,
       countryCode: data.countryCode,
       region: data.region,
@@ -34,6 +40,6 @@ export async function GET(req: NextRequest) {
       lng: data.lon,
     })
   } catch {
-    return NextResponse.json({ error: 'Country detection unavailable' }, { status: 500 })
+    return errorResponse('Country detection unavailable', 500)
   }
 }

@@ -1,29 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '../lib/response'
+
+// ─── Response types ──────────────────────────────────────────────────────────
+
+interface Holiday {
+  date: string
+  name: string
+  localName: string
+  fixed: boolean
+  global: boolean
+}
+
+interface NagerHoliday {
+  date: string
+  name: string
+  localName: string
+  fixed: boolean
+  global: boolean
+}
+
+// ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  const country = req.nextUrl.searchParams.get('country')
-  const year = req.nextUrl.searchParams.get('year')
-
-  if (!country || !year) {
-    return NextResponse.json(
-      { error: 'Missing country or year parameter' },
-      { status: 400 }
-    )
-  }
-
   try {
+    const sp = req.nextUrl.searchParams
+    const country = requireParam(sp, 'country')
+    const year = requireParam(sp, 'year')
+
     const res = await fetch(
       `https://date.nager.at/api/v3/publicholidays/${encodeURIComponent(year)}/${encodeURIComponent(country)}`,
-      { next: { revalidate: 3600 } }
+      CACHE_1H
     )
 
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Holidays fetch failed' }, { status: res.status })
-    }
+    if (!res.ok) return errorResponse('Holidays fetch failed', res.status)
 
-    const data = await res.json()
+    const data: NagerHoliday[] = await res.json()
 
-    const holidays = (data ?? []).map((h: any) => ({
+    const holidays: Holiday[] = (data ?? []).map((h) => ({
       date: h.date,
       name: h.name,
       localName: h.localName,
@@ -31,8 +44,9 @@ export async function GET(req: NextRequest) {
       global: h.global,
     }))
 
-    return NextResponse.json(holidays)
-  } catch {
-    return NextResponse.json({ error: 'Holidays service unavailable' }, { status: 500 })
+    return jsonResponse(holidays)
+  } catch (err) {
+    if (err instanceof MissingParamError) return errorResponse(err.message, 400)
+    return errorResponse('Holidays service unavailable', 500)
   }
 }
