@@ -153,6 +153,7 @@ export async function GET(req: NextRequest) {
         const serpRes = await fetch(`https://serpapi.com/search.json?${serpParams}`, {
           headers: { Accept: 'application/json' },
           signal: AbortSignal.timeout(8000),
+          next: { revalidate: 3600 } as any,
         })
         if (serpRes.ok) {
           const serpData = await serpRes.json()
@@ -160,13 +161,13 @@ export async function GET(req: NextRequest) {
           if (localResults.length > 0) {
             const sliced = localResults.slice(0, parseInt(limit))
 
-            // Fetch high-res images for top results in parallel
+            // Fetch high-res images for top 5 results only (balance speed vs quality)
             const imageResults = await Promise.all(
-              sliced.slice(0, 10).map(async (place: any) => {
+              sliced.slice(0, 5).map(async (place: any) => {
                 try {
                   const imgRes = await fetch(
                     `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(place.title + ' ' + (place.address?.split(',')[0] || ''))}&num=4&api_key=${SERPAPI_KEY}`,
-                    { signal: AbortSignal.timeout(5000) }
+                    { signal: AbortSignal.timeout(4000) }
                   )
                   if (!imgRes.ok) return []
                   const imgData = await imgRes.json()
