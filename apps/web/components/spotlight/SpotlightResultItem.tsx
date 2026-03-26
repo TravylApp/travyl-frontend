@@ -47,7 +47,7 @@ export const SpotlightResultItem = forwardRef<HTMLButtonElement, Props>(
 
     // Type-specific rendering
     const isActionType = result.type === 'action'
-    const isRichType = ['trip', 'hotel', 'flight', 'restaurant'].includes(result.type)
+    const isRichType = ['trip', 'hotel', 'flight', 'restaurant', 'activity', 'destination'].includes(result.type)
     const isSimpleType = ['navigation', 'command', 'setting'].includes(result.type)
     const meta = result.metadata as Record<string, unknown> | undefined
 
@@ -211,9 +211,39 @@ function MetadataRow({ result, meta }: { result: SpotlightResult; meta?: Record<
     }
     case 'restaurant': {
       const priceLevel = meta?.priceLevel as string | undefined
-      return priceLevel ? (
+      const rating = meta?.rating as number | undefined
+      const category = meta?.category as string | undefined
+      return (priceLevel || rating || category) ? (
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">{priceLevel}</span>
+          {typeof rating === 'number' && (
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+              <Star className="w-2.5 h-2.5 fill-current" />
+              {rating.toFixed(1)}
+            </span>
+          )}
+          {priceLevel && (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{priceLevel}</span>
+          )}
+          {category && (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500 capitalize">{category}</span>
+          )}
+        </div>
+      ) : null
+    }
+    case 'activity': {
+      const rating = meta?.rating as number | undefined
+      const category = meta?.category as string | undefined
+      return (rating || category) ? (
+        <div className="flex items-center gap-2 mt-0.5">
+          {typeof rating === 'number' && (
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+              <Star className="w-2.5 h-2.5 fill-current" />
+              {rating.toFixed(1)}
+            </span>
+          )}
+          {category && (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500 capitalize">{category}</span>
+          )}
         </div>
       ) : null
     }

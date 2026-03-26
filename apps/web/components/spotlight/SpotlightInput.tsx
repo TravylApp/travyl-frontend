@@ -4,11 +4,9 @@ import { Search, X, Loader2 } from 'lucide-react'
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { SearchScope } from '@/hooks/useSpotlightSearch'
 
-const KNOWN_PREFIXES: SearchScope[] = ['hotels', 'flights', 'trips', 'restaurants', 'activities', 'commands']
+const KNOWN_PREFIXES: SearchScope[] = ['trips', 'restaurants', 'activities', 'commands']
 
 const SCOPE_COLORS: Record<string, string> = {
-  hotels: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300',
-  flights: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300',
   trips: 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300',
   restaurants: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
   activities: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
@@ -55,7 +53,7 @@ export function SpotlightInput({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value
 
-      // Detect scope prefix: @hotels, @flights, etc.
+      // Detect scope prefix: @trips, @restaurants, etc.
       if (!scope && value.startsWith('@')) {
         const match = value.match(/^@(\w+)\s/)
         if (match) {
@@ -128,7 +126,7 @@ export function SpotlightInput({
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder={scope ? `Search ${scope}...` : 'Search trips, hotels, flights...'}
+        placeholder={scope ? `Search ${scope}...` : 'Search trips, activities, restaurants...'}
         className="flex-1 bg-transparent text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none"
       />
       {query && (

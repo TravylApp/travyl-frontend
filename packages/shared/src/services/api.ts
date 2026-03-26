@@ -337,6 +337,16 @@ export async function ensureShareLinkToken(tripId: string): Promise<string> {
   return token
 }
 
+export async function rotateShareLinkToken(tripId: string): Promise<string> {
+  const newToken = crypto.randomUUID()
+  const { error } = await supabase
+    .from('trips')
+    .update({ share_link_token: newToken })
+    .eq('id', tripId)
+  if (error) throw error
+  return newToken
+}
+
 export async function updateTripDetails(
   tripId: string,
   updates: Partial<Pick<Trip, 'title' | 'destination' | 'start_date' | 'end_date' | 'budget' | 'currency' | 'travelers' | 'status'>>

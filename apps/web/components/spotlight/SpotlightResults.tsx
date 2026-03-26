@@ -6,7 +6,7 @@ import { AnimatePresence } from 'motion/react'
 import type { SpotlightResult } from '@travyl/shared'
 import { SpotlightResultGroup } from './SpotlightResultGroup'
 
-const CATEGORY_ORDER = ['trip', 'hotel', 'flight', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
+const CATEGORY_ORDER = ['trip', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
 
 interface Props {
   results: Record<string, SpotlightResult[]>
@@ -30,7 +30,7 @@ export const SpotlightResults = forwardRef<HTMLDivElement, Props>(
         <div className="px-4 py-8 text-center">
           <p className="text-sm text-gray-400">No results found</p>
           <p className="text-xs text-gray-400/70 mt-1">
-            Try searching for trips, hotels, flights, or places
+            Try searching for trips, activities, restaurants, or places
           </p>
         </div>
       )

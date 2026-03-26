@@ -204,11 +204,12 @@ export function DayColumn({
       {/* Droppable grid */}
       <div
         ref={setNodeRef}
+        data-day-grid={dayIndex}
         className={[
           'relative flex-1 border-l border-[var(--cal-border-light)]',
           isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
-        style={{ height: hourCount * HOUR_HEIGHT }}
+        style={{ minHeight: hourCount * HOUR_HEIGHT }}
         onClick={handleBackgroundClick}
       >
         {/* Hour grid lines */}
@@ -251,6 +252,7 @@ export function DayColumn({
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}
               totalColumns={layout.totalColumns}
+              columnSpan={layout.columnSpan}
               hiddenCount={hiddenByCluster.get(activity.id) ?? 0}
             />
           )
@@ -270,15 +272,17 @@ export function DayColumn({
           />
         ))}
 
-        {/* Ghost block for pending drag activity */}
+        {/* Ghost block for pending drag activity — always visible during drag */}
         {pendingActivity && (() => {
           const layout = overlapLayout.get(pendingActivity.id)
-          if (!layout || layout.column < 0) return null
+          // Fall back to full-width column 0 when overlap hides it (column -1)
+          const col = layout && layout.column >= 0 ? layout.column : 0
+          const cols = layout ? layout.totalColumns : 1
           const availableWidth = `(100% - ${2 * COLUMN_OUTER_PAD}px)`
-          const colWidth = `(${availableWidth} - ${(layout.totalColumns - 1) * COLUMN_GAP}px) / ${layout.totalColumns}`
-          const leftOffset = layout.column === 0
+          const colWidth = `(${availableWidth} - ${(cols - 1) * COLUMN_GAP}px) / ${cols}`
+          const leftOffset = col === 0
             ? `${COLUMN_OUTER_PAD}px`
-            : `${COLUMN_OUTER_PAD}px + ${layout.column} * (${colWidth} + ${COLUMN_GAP}px)`
+            : `${COLUMN_OUTER_PAD}px + ${col} * (${colWidth} + ${COLUMN_GAP}px)`
           return (
             <div
               className="absolute rounded-md border-2 border-dashed border-blue-400 bg-blue-100/30 pointer-events-none"

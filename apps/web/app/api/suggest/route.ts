@@ -50,22 +50,26 @@ const fetchSuggestionsForDestination = unstable_cache(
       )
     )
 
-    return results.map((place: any, i: number) => ({
-      id: `serp-${place.place_id ?? i}`,
-      name: place.title,
-      category: inferCategory(place.type, 'sightseeing'),
-      imageUrls: extractImageUrls(place, extraImagesList[i] ?? []),
-      duration: 2,
-      price: mapPrice(place.price),
-      currency: 'USD',
-      rating: place.rating ?? null,
-      location: place.address ?? '',
-      latitude: place.gps_coordinates?.latitude ?? 0,
-      longitude: place.gps_coordinates?.longitude ?? 0,
-      description: place.description ?? '',
-      source: 'ai' as const,
-      relevanceScore: Math.max(0, 1 - i * 0.05),
-    }))
+    return results.map((place: any, i: number) => {
+      const imageUrls = extractImageUrls(place, extraImagesList[i] ?? [])
+      return {
+        id: `serp-${place.place_id ?? i}`,
+        name: place.title,
+        category: inferCategory(place.type, 'sightseeing'),
+        imageUrl: imageUrls[0] ?? '',
+        imageUrls,
+        duration: 2,
+        price: mapPrice(place.price),
+        currency: 'USD',
+        rating: place.rating ?? null,
+        location: place.address ?? '',
+        latitude: place.gps_coordinates?.latitude ?? 0,
+        longitude: place.gps_coordinates?.longitude ?? 0,
+        description: place.description ?? '',
+        source: 'ai' as const,
+        relevanceScore: Math.max(0, 1 - i * 0.05),
+      }
+    })
   },
   ['suggestions'],
   { revalidate: 60 * 60 * 24 }, // 24 hours
@@ -147,7 +151,7 @@ async function fetchExtraImages(name: string, city: string, apiKey: string): Pro
 function upscaleThumbnail(url: string): string {
   if (!url) return url
   if (/lh\d*\.googleusercontent\.com/.test(url)) {
-    return url.replace(/=([whs]\d+(-[a-zA-Z0-9]+)*)$/, '=w600')
+    return url.replace(/=([whs]\d+(-[a-zA-Z0-9]+)*)$/, '=w800-h600')
   }
   return url
 }
