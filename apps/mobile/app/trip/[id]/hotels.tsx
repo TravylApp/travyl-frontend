@@ -1042,7 +1042,7 @@ export default function HotelsScreen() {
   const ctx = trip?.trip_context as any;
   const realHotels = useMemo(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
-    if (source.length === 0) return BROWSE_HOTELS;
+    if (source.length === 0) return [];
     return source.map((h: any, i: number) => ({
       id: h.id || `hotel-${i}`,
       name: h.name,

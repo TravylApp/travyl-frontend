@@ -603,8 +603,8 @@ export async function savePlanToSupabase(
       .single()
 
     if (dayErr) {
-      // If table doesn't exist (404/42P01), stop trying
-      if (dayErr.code === '42P01' || dayErr.message?.includes('does not exist') || dayErr.code === 'PGRST204') {
+      // If table doesn't exist (PGRST205/404), stop trying
+      if (dayErr.code === 'PGRST205' || dayErr.code === '42P01' || dayErr.message?.includes('Could not find') || dayErr.message?.includes('does not exist')) {
         itineraryTableExists = false
         break
       }
