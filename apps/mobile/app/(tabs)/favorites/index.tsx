@@ -279,6 +279,8 @@ export default function FavoritesScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchCity, setSearchCity] = useState('');
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -298,13 +300,33 @@ export default function FavoritesScreen() {
     staleTime: 5 * 60 * 1000,
     enabled: fastPlaces.length > 0, // only after fast batch loads
   });
-  // Merge and deduplicate
+  // API search — when user types a city/destination name
+  const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
+    queryKey: ['mobile-places-search', searchCity],
+    queryFn: async () => {
+      if (!searchCity) return [];
+      const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
+      const results = await Promise.all(
+        cats.map(cat =>
+          fetch(`${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=10`)
+            .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+            .catch(() => [])
+        )
+      );
+      return dedup(results.flat());
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!searchCity,
+  });
+
+  // Merge and deduplicate — search results take priority
   const PLACES = useMemo(() => {
+    if (searchCity && searchPlaces.length > 0) return searchPlaces;
     const all = [...fastPlaces, ...morePlaces];
     const seen = new Set<string>();
     return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-  }, [fastPlaces, morePlaces]);
-  const placesLoading = fastLoading;
+  }, [fastPlaces, morePlaces, searchCity, searchPlaces]);
+  const placesLoading = searchCity ? searchLoading : fastLoading;
   const placesError = null;
 
 
@@ -515,13 +537,26 @@ export default function FavoritesScreen() {
               <FontAwesome name="search" size={12} color={colors.textTertiary} />
               <TextInput
                 value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search places..."
+                onChangeText={(val) => {
+                  setSearchQuery(val);
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  if (val.trim().length >= 2) {
+                    searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400);
+                  } else if (!val.trim()) {
+                    setSearchCity('');
+                  }
+                }}
+                onSubmitEditing={() => {
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  if (searchQuery.trim()) setSearchCity(searchQuery.trim());
+                }}
+                returnKeyType="search"
+                placeholder="Search a city or destination..."
                 placeholderTextColor={colors.textTertiary}
                 style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
               />
               {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery('')}>
+                <Pressable onPress={() => { setSearchQuery(''); setSearchCity(''); if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }}>
                   <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
                 </Pressable>
               )}
