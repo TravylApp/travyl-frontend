@@ -158,23 +158,48 @@ export async function GET(req: NextRequest) {
           const serpData = await serpRes.json()
           const localResults = serpData.local_results ?? []
           if (localResults.length > 0) {
-            const places = localResults.slice(0, parseInt(limit)).map((place: any, idx: number) => ({
-              id: `serp_${place.place_id ?? idx}`,
-              name: place.title,
-              image: upscaleGoogleImage(place.thumbnail) ?? getFallbackImage(place.title, idx),
-              type: mapType(place.type, category),
-              rating: place.rating ?? 0,
-              tagline: place.description?.split('.')[0] ?? place.type ?? category,
-              category: mapCategory(place.type, undefined),
-              description: place.description ?? '',
-              latitude: place.gps_coordinates?.latitude ?? 0,
-              longitude: place.gps_coordinates?.longitude ?? 0,
-              reviewCount: place.reviews,
-              address: place.address,
-              website: place.website,
-              hours: place.hours ? (typeof place.hours === 'string' ? place.hours : place.hours[0]) : undefined,
-              tags: mapTags(place.type, [], undefined),
-            }))
+            const sliced = localResults.slice(0, parseInt(limit))
+
+            // Fetch high-res images for top results in parallel
+            const imageResults = await Promise.all(
+              sliced.slice(0, 10).map(async (place: any) => {
+                try {
+                  const imgRes = await fetch(
+                    `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(place.title + ' ' + (place.address?.split(',')[0] || ''))}&num=4&api_key=${SERPAPI_KEY}`,
+                    { signal: AbortSignal.timeout(5000) }
+                  )
+                  if (!imgRes.ok) return []
+                  const imgData = await imgRes.json()
+                  return (imgData.images_results ?? [])
+                    .slice(0, 4)
+                    .map((img: any) => img.original ?? '')
+                    .filter((u: string) => !!u && !u.includes('encrypted-tbn'))
+                } catch { return [] }
+              })
+            )
+
+            const places = sliced.map((place: any, idx: number) => {
+              const extraImages = imageResults[idx] ?? []
+              const mainImage = extraImages[0] || upscaleGoogleImage(place.thumbnail) || getFallbackImage(place.title, idx)
+              return {
+                id: `serp_${place.place_id ?? idx}`,
+                name: place.title,
+                image: mainImage,
+                images: extraImages.length > 1 ? extraImages : undefined,
+                type: mapType(place.type, category),
+                rating: place.rating ?? 0,
+                tagline: place.description?.split('.')[0] ?? place.type ?? category,
+                category: mapCategory(place.type, undefined),
+                description: place.description ?? '',
+                latitude: place.gps_coordinates?.latitude ?? 0,
+                longitude: place.gps_coordinates?.longitude ?? 0,
+                reviewCount: place.reviews,
+                address: place.address,
+                website: place.website,
+                hours: place.hours ? (typeof place.hours === 'string' ? place.hours : place.hours[0]) : undefined,
+                tags: mapTags(place.type, [], undefined),
+              }
+            })
 
             const res_out = NextResponse.json(places)
             res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
