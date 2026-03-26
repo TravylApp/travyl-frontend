@@ -9,10 +9,10 @@ import { PageTransition, useTabAccent } from './_layout';
 
 /* ─── Constants ─────────────────────────────────────────────── */
 
-// Pre-populate some sample favorites for demo
-const INITIAL_ACTIVITY_FAVORITES = ['da1', 'da3', 'da6'];
-const INITIAL_RESTAURANT_FAVORITES = ['rb2', 'rd1', 'rd4'];
-const INITIAL_DESTINATION_FAVORITES = ['da2', 'da5', 'da8'];
+// Start empty — user adds favorites as they browse
+const INITIAL_ACTIVITY_FAVORITES: string[] = [];
+const INITIAL_RESTAURANT_FAVORITES: string[] = [];
+const INITIAL_DESTINATION_FAVORITES: string[] = [];
 
 // Category config with icons
 const CATEGORIES = [

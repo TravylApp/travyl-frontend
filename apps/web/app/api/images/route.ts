@@ -17,33 +17,28 @@ export async function GET(req: NextRequest) {
   const isFood = type === 'restaurant'
   const isActivity = type === 'activity'
   const searchSuffix = isFood ? ' restaurant food' : isActivity ? ' travel activity' : ' landmark city'
+  const perPage = Math.min(parseInt(req.nextUrl.searchParams.get('per_page') || '0', 10) || (isFood || isActivity ? 3 : 1), 10)
 
   // 1. Unsplash API — best for destinations, good for food too
   if (UNSPLASH_ACCESS_KEY) {
     try {
       const res = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + searchSuffix)}&per_page=${isFood || isActivity ? 3 : 1}&orientation=landscape`,
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + searchSuffix)}&per_page=${perPage}&orientation=landscape`,
         { headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` }, next: { revalidate: 86400 } }
       )
       const data = await res.json()
       const photos = data.results
       if (photos?.length > 0) {
-        if (isFood || isActivity) {
-          // Return multiple images for restaurants/activities
-          return NextResponse.json({
-            images: photos.map((p: any) => ({
-              url: p.urls.regular,
-              thumb: p.urls.small,
-              credit: p.user.name,
-            })),
-            url: photos[0].urls.regular,
-          })
-        }
         return NextResponse.json({
+          images: photos.map((p: any) => ({
+            url: p.urls.regular,
+            thumb: p.urls.small,
+            credit: p.user.name,
+          })),
           url: photos[0].urls.regular,
           thumb: photos[0].urls.small,
           credit: photos[0].user.name,
-          creditUrl: photos[0].user.links.html,
+          creditUrl: photos[0].user.links?.html,
         })
       }
     } catch {}

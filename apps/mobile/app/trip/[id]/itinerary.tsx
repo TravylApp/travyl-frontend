@@ -62,14 +62,24 @@ function findDiscoverMatch(activityName: string, discoverPool: any[]): any | und
 }
 
 // Build discover items from trip_context data
+function upscaleImg(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (url.includes('googleusercontent.com')) {
+    return url
+      .replace(/=w\d+-h\d+[^&\s]*/, '=w600-h400-k-no')
+      .replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w600-h400-k-no');
+  }
+  return url;
+}
+
 function buildDiscoverItems(trip: any): any[] {
   const ctx = trip?.trip_context;
   if (!ctx) return [];
   const items: any[] = [];
   const seen = new Set<string>();
   const add = (e: any) => { if (e?.id && !seen.has(e.id)) { seen.add(e.id); items.push(e); } };
-  for (const e of ctx?.explore_items ?? []) add({ id: e.id, name: e.title || e.name, description: e.description || e.category || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [], rating: e.rating || 0 });
-  for (const v of ctx?.foursquare_venues ?? []) add({ id: v.id, name: v.title || v.name, description: v.description || v.category || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [], rating: v.rating || 0 });
+  for (const e of ctx?.explore_items ?? []) { const img = upscaleImg(e.image); add({ id: e.id, name: e.title || e.name, description: e.description || e.category || '', category: e.category || '', image: img, images: img ? [img] : [], tags: e.tags || [], rating: e.rating || 0 }); }
+  for (const v of ctx?.foursquare_venues ?? []) { const img = upscaleImg(v.image); add({ id: v.id, name: v.title || v.name, description: v.description || v.category || '', category: v.category || '', image: img, images: img ? [img] : [], tags: v.tags || [], rating: v.rating || 0 }); }
   return items;
 }
 
@@ -991,7 +1001,7 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
     if (collapsed !== undefined) setExpanded(!collapsed);
   }, [collapsed]);
 
-  const roomPrice = hotel.rooms.find((r) => r.isSelected)?.pricePerNight ?? hotel.rooms[0]?.pricePerNight ?? 0;
+  const roomPrice = hotel.rooms?.find((r: any) => r.isSelected)?.pricePerNight ?? hotel.rooms?.[0]?.pricePerNight ?? (hotel as any).price ?? (hotel as any).price_per_night ?? 0;
   const isConfirmed = hotel.confirmationNumber && hotel.isBooked;
 
   return (
@@ -1112,8 +1122,8 @@ function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; lab
             </View>
 
             {/* Room info */}
-            {hotel.rooms.length > 0 && (() => {
-              const selectedRoom = hotel.rooms.find((r) => r.isSelected) ?? hotel.rooms[0];
+            {hotel.rooms?.length > 0 && (() => {
+              const selectedRoom = hotel.rooms.find((r: any) => r.isSelected) ?? hotel.rooms[0];
               return (
                 <View style={{
                   backgroundColor: colors.surface,
@@ -1993,7 +2003,7 @@ function GlancePager({
 export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: id } = useContext(TabCtx);
   const { trip, days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
   const centerLat = trip?.trip_context?.lat ?? 0;
@@ -2311,18 +2321,36 @@ export default function ItineraryScreen() {
   }, [effectiveDays, discoverMatchMap]);
 
   // Update hero image when selected day changes — clear when tab loses focus
+  // Prefer trip's own hero image (destination-specific from enrichment), fall back to generic
+  const tripHeroImages = useMemo(() => {
+    const ctx = trip?.trip_context as any;
+    const heroes: string[] = [];
+    // Enrichment hero image (Unsplash, destination-specific)
+    if (ctx?.hero_image_url) heroes.push(ctx.hero_image_url);
+    // Additional hero images from enrichment
+    if (ctx?.hero_images?.length) {
+      for (const img of ctx.hero_images) {
+        if (img && !heroes.includes(img)) heroes.push(img);
+      }
+    }
+    // Only fall back to generic if we have nothing destination-specific
+    if (heroes.length === 0) {
+      heroes.push(...GLANCE_HERO_IMAGES);
+    }
+    return heroes;
+  }, [trip]);
+
   useEffect(() => {
     if (!isFocused) {
       setHeroImageOverride(null);
       return;
     }
-    // Glance mode: use curated per-day hero images; detailed: use activity-matched images
     const img = viewMode === 'glance'
-      ? GLANCE_HERO_IMAGES[selectedDayIndex % GLANCE_HERO_IMAGES.length]
-      : dayHeroImages[selectedDayIndex];
+      ? tripHeroImages[selectedDayIndex % tripHeroImages.length]
+      : dayHeroImages[selectedDayIndex] || tripHeroImages[0];
     if (img) setHeroImageOverride(img);
     return () => setHeroImageOverride(null);
-  }, [selectedDayIndex, dayHeroImages, isFocused, viewMode]);
+  }, [selectedDayIndex, dayHeroImages, isFocused, viewMode, tripHeroImages]);
 
   // Build PlaceItem for tapped activity — try matching DiscoverItem first, fall back to ActivityViewModel
   // Capture place data once when activity is selected — stable reference for the modal
@@ -2361,8 +2389,24 @@ export default function ItineraryScreen() {
     [],
   );
 
-  if ((isLoading || isEmpty) && !calendarOpen && !mapOpen) {
+  // Show skeleton only while trip is loading
+  if (isLoading && !calendarOpen && !mapOpen) {
     return <PageTransition><ItinerarySkeleton /></PageTransition>;
+  }
+
+  // Empty state — trip loaded but no itinerary data
+  if (days.length === 0 && !calendarOpen && !mapOpen) {
+    return (
+      <PageTransition>
+        <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <FontAwesome name="calendar-o" size={40} color={colors.textTertiary} />
+          <Text style={{ ...TextStyles.title, color: colors.text, marginTop: 16, textAlign: 'center' }}>No itinerary yet</Text>
+          <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 8, textAlign: 'center' }}>
+            Generate a new trip to get a day-by-day itinerary with activities, hotels, and flights.
+          </Text>
+        </View>
+      </PageTransition>
+    );
   }
 
   return (

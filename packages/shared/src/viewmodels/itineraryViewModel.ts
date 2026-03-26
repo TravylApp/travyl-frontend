@@ -1,5 +1,5 @@
 import type { ItineraryDayWithActivities, Activity, Flight, Hotel } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, upscaleGoogleImage } from '../utils';
 
 // ─── Time helpers ──────────────────────────────────────────────
 
@@ -65,7 +65,7 @@ function buildActivityViewModel(activity: Activity): ActivityViewModel {
       : null,
     bookingUrl: activity.booking_url,
     notes: activity.notes,
-    image: (activity as any).image ?? null,
+    image: upscaleGoogleImage((activity as any).image) ?? null,
     source: activity.source,
     timeOfDay: getTimeOfDay(activity.start_time),
   };

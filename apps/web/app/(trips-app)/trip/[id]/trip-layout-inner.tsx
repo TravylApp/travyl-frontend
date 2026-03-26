@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import type { SpinePosition } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
-import { ExplorePreview, OceanWave, Footer } from '@/components/home';
+import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { ForkButton } from '@/components/trip/ForkButton';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
@@ -51,14 +51,28 @@ function TripHero({
     { icon: Share2, label: 'Share', onClick: handleShare },
   ];
 
-  // Upscale Google Places hero image for full-width banner
-  const rawImage = trip?.trip_context?.hero_image_url;
-  const tripImage = rawImage?.includes('googleusercontent.com')
+  // Get hero image — try trip_context first, then fetch dynamically from Unsplash/Pexels
+  const rawImage = trip?.trip_context?.hero_image_url
+    ?? trip?.trip_context?.hero_images?.[0]
+    ?? (trip?.trip_context as any)?.destination_photo_url;
+  const staticImage = rawImage?.includes('googleusercontent.com')
     ? rawImage.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no')
     : rawImage;
 
   const city = trip?.destination?.split(',')[0]?.trim() ?? '';
   const country = trip?.destination?.split(',')[1]?.trim() ?? '';
+
+  // Fetch destination image dynamically if none exists
+  const [fetchedImage, setFetchedImage] = useState<string | null>(null);
+  useEffect(() => {
+    if (staticImage || !city || fetchedImage) return;
+    fetch(`/api/images?q=${encodeURIComponent(city)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.url) setFetchedImage(data.url); })
+      .catch(() => {});
+  }, [city, staticImage, fetchedImage]);
+
+  const tripImage = staticImage || fetchedImage;
   const ctx = trip?.trip_context;
   const weather = ctx?.weather?.current;
   const forecast = ctx?.weather?.forecast;
@@ -492,9 +506,8 @@ function TripLayoutContent({
       className={`pb-14 md:pb-0 ${useOverviewBg ? 'bg-[var(--magazine-bg)] -mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
       style={{ transition: 'background-color 0.5s ease' }}
     >
-      {/* Hero banner */}
-      {isOverview || isItinerary ? (
-        /* Magazine hero — image bleeds behind content below */
+      {/* Hero banner — skip on calendar (goes straight to calendar view) */}
+      {isCalendar ? null : isOverview || isItinerary ? (
         <TripMagazineHero trip={trip} compact={isItinerary} />
       ) : (
         <TripHero tripId={tripId} />
@@ -505,12 +518,12 @@ function TripLayoutContent({
         {/* Suitcase card */}
         <div
           className={`relative z-10 ${
-            isOverview || currentSegment === 'itinerary'
+            isOverview || currentSegment === 'itinerary' || isCalendar
               ? ''
               : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
           }`}
           style={
-            isOverview || currentSegment === 'itinerary'
+            isOverview || currentSegment === 'itinerary' || isCalendar
               ? undefined
               : {
                   boxShadow:
@@ -529,23 +542,22 @@ function TripLayoutContent({
 
           {/* Content area */}
           <div
-            className={`${useOverviewBg ? 'bg-[var(--magazine-bg)]' : 'bg-white dark:bg-[var(--background)]'}`}
+            className={`flex-1 min-w-0 ${useOverviewBg ? 'bg-[var(--magazine-bg)]' : 'bg-white dark:bg-[var(--background)]'}`}
             style={{ transition: 'background-color 0.5s ease' }}
           >
             <div className="mx-auto max-w-7xl">
-              {/* Hero banner — hidden on overview (the cover replaces it) */}
-              {!isOverview && currentSegment !== 'itinerary' && <TripHero tripId={tripId} />}
-              {!isOverview && currentSegment !== 'itinerary' && <div className="h-2" />}
 
               {/* Content card */}
               <div
                 className={`relative z-10 ${
                   isMagazineLayout
                     ? ''
-                    : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
+                    : isCalendar
+                      ? 'bg-white dark:bg-[var(--background)]'
+                      : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
                 }`}
                 style={
-                  isMagazineLayout
+                  isMagazineLayout || isCalendar
                     ? undefined
                     : { boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)' }
                 }
@@ -642,14 +654,6 @@ function TripLayoutContent({
               </div>
             </div>
 
-            {/* Explore + Footer */}
-            <div className="w-full bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-              <div className="max-w-7xl mx-auto px-3 py-3">
-                <ExplorePreview />
-              </div>
-              <OceanWave />
-              <Footer />
-            </div>
           </div>
         </div>
       </div>

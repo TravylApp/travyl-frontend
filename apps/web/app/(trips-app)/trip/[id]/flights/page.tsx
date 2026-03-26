@@ -23,7 +23,6 @@ import {
   Zap,
   Monitor,
   Info,
-  Plus,
 } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { useItineraryScreen, useFlights } from '@travyl/shared';
@@ -41,8 +40,7 @@ const POPULAR_AIRPORTS = [
   { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
 ];
 
-// No booked flights initially — user searches and selects
-const BOOKED_FLIGHTS: {
+type BookedFlight = {
   id: string; type: 'outbound' | 'return'; flightNumber: string; airline: string;
   airlineLogo: string; aircraft: string; date: string;
   departure: { time: string; code: string; terminal: string; gate: string };
@@ -50,7 +48,55 @@ const BOOKED_FLIGHTS: {
   duration: string; stops: string; cabinClass: string; seats: string;
   baggage: string; meal: string; wifi: string; confirmation: string;
   price: { base: number; taxes: number; total: number }; status: string;
-}[] = [];
+};
+
+/** Convert DB flight records into the shape BookedFlightCard expects */
+function dbFlightsToBooked(flights: any[], destination?: string): BookedFlight[] {
+  return flights.map((f: any, i: number) => {
+    const d = f.data ?? {};
+    const dep = d.departure_at ? new Date(d.departure_at) : null;
+    const arr = d.arrival_at ? new Date(d.arrival_at) : null;
+    const depTime = dep ? dep.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const arrTime = arr ? arr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+    const dateStr = dep ? dep.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const nextDay = dep && arr ? arr.getDate() !== dep.getDate() : false;
+
+    let durationStr = '';
+    if (dep && arr) {
+      const ms = arr.getTime() - dep.getTime();
+      const h = Math.floor(ms / 3600000);
+      const m = Math.round((ms % 3600000) / 60000);
+      durationStr = `${h}h ${m}m`;
+    }
+
+    const originCode = d.origin_iata || '';
+    const destCode = d.dest_iata || (destination ? CITY_AIRPORTS[destination] : '') || '';
+    const airlineCode = (d.airline || '??').slice(0, 2).toUpperCase();
+    const price = d.price ? Math.round(d.price) : 0;
+
+    return {
+      id: f.id,
+      type: i === 0 ? 'outbound' as const : 'return' as const,
+      flightNumber: d.flight_number || `${airlineCode}${100 + i}`,
+      airline: d.airline || 'Airline',
+      airlineLogo: airlineCode,
+      aircraft: d.aircraft || '',
+      date: dateStr,
+      departure: { time: depTime, code: originCode, terminal: '', gate: '' },
+      arrival: { time: arrTime, code: destCode, terminal: '', gate: '', nextDay },
+      duration: durationStr,
+      stops: 'Direct',
+      cabinClass: d.cabin_class || 'Economy',
+      seats: '',
+      baggage: '1 checked bag',
+      meal: '',
+      wifi: '',
+      confirmation: d.booking_ref || '',
+      price: { base: price, taxes: 0, total: price },
+      status: 'Planned',
+    };
+  });
+}
 
 type ComparisonFlight = {
   id: string; airline: string; airlineLogo: string; flightNumber: string;
@@ -171,11 +217,12 @@ const collapseVariants = {
    FLIGHT SEARCH SECTION
    ================================================================ */
 
-function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearch }: {
+function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearch, defaultOpen }: {
   defaultFrom?: string; defaultTo?: string; defaultTravelers?: number;
   onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => void;
+  defaultOpen?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(!defaultOpen);
   const [showFilters, setShowFilters] = useState(false);
   const [from, setFrom] = useState(defaultFrom || 'JFK');
   const [to, setTo] = useState(defaultTo || 'CDG');
@@ -201,7 +248,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
       {/* Header */}
-      <button onClick={() => setCollapsed(!collapsed)} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+      <div role="button" tabIndex={0} onClick={() => setCollapsed(!collapsed)} onKeyDown={(e) => { if (e.key === 'Enter') setCollapsed(!collapsed); }} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#2563eb] flex items-center justify-center">
             <PaperPlane size={14} className="text-white" />
@@ -226,7 +273,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
           )}
           <ChevronDown size={16} className={`text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
         </div>
-      </button>
+      </div>
 
       {/* Expandable body */}
       <AnimatePresence>
@@ -386,7 +433,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
    BOOKED FLIGHT CARD
    ================================================================ */
 
-function BookedFlightCard({ flight }: { flight: typeof BOOKED_FLIGHTS[0] }) {
+function BookedFlightCard({ flight }: { flight: BookedFlight }) {
   const [expanded, setExpanded] = useState(false);
   const isOutbound = flight.type === 'outbound';
   const gradient = isOutbound
@@ -766,9 +813,10 @@ function BookingDetailsSection() {
 
 export default function Flights({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { trip, flights: flightVMs, isLoading } = useItineraryScreen(id);
+  const { trip, isLoading } = useItineraryScreen(id);
+  const { data: dbFlights = [], isLoading: loadingDbFlights } = useFlights(id);
   const [searchParams, setSearchParams] = useState<FlightSearchParams | undefined>(undefined);
-  const { flights: searchedFlights, isLoading: searchingFlights, destAirport } = useFlightSearch(id, searchParams);
+  const { flights: searchedFlights, isLoading: searchingFlights } = useFlightSearch(id, searchParams);
 
   const destination = trip?.destination?.split(',')[0]?.trim();
   const defaultTo = destination ? CITY_AIRPORTS[destination] : undefined;
@@ -784,10 +832,12 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     });
   };
 
-  const outbound = BOOKED_FLIGHTS.filter(f => f.type === 'outbound');
-  const returnFlights = BOOKED_FLIGHTS.filter(f => f.type === 'return');
+  // Convert DB flights into the shape BookedFlightCard expects
+  const bookedFlights = useMemo(() => dbFlightsToBooked(dbFlights, destination), [dbFlights, destination]);
+  const outbound = bookedFlights.filter(f => f.type === 'outbound');
+  const returnFlights = bookedFlights.filter(f => f.type === 'return');
 
-  if (isLoading) {
+  if (isLoading || loadingDbFlights) {
     return (
       <div className="space-y-3 animate-pulse">
         {[0, 1].map(i => (
@@ -810,27 +860,26 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     );
   }
 
+  const hasBookedFlights = bookedFlights.length > 0;
+
   return (
     <div className="space-y-4">
-      {/* 1. Flight Search Section */}
+      {/* 1. Your Flights — from trip generation / database */}
+      {hasBookedFlights && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {outbound.map(f => <BookedFlightCard key={f.id} flight={f} />)}
+          {returnFlights.map(f => <BookedFlightCard key={f.id} flight={f} />)}
+        </div>
+      )}
+
+      {/* 2. Flight Search Section — open by default when no flights yet */}
       <FlightSearchSection
         defaultFrom="JFK"
         defaultTo={defaultTo}
         defaultTravelers={defaultTravelers}
         onSearch={handleSearch}
+        defaultOpen={!hasBookedFlights}
       />
-
-      {/* 2. Booked Flight Cards — 2-column on lg */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {outbound.map(f => <BookedFlightCard key={f.id} flight={f} />)}
-        {returnFlights.map(f => <BookedFlightCard key={f.id} flight={f} />)}
-      </div>
-
-      {/* Add flight button */}
-      <button className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#2563eb]/40 hover:text-[#2563eb] transition-colors">
-        <Plus size={16} />
-        <span className="text-[13px] font-medium">Add Flight</span>
-      </button>
 
       {/* 3. Comparison Alternatives */}
       {searchingFlights ? (
@@ -838,12 +887,12 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
           <div className="w-6 h-6 border-2 border-gray-300 border-t-[#2563eb] rounded-full animate-spin mx-auto mb-2" />
           <p className="text-sm text-gray-400">Searching flights...</p>
         </div>
-      ) : (
+      ) : searchedFlights.length > 0 ? (
         <ComparisonAlternatives comparisonFlights={searchedFlights} />
-      )}
+      ) : null}
 
-      {/* 4. Booking Details */}
-      <BookingDetailsSection />
+      {/* 4. Booking Details — only show when there are booked flights */}
+      {hasBookedFlights && <BookingDetailsSection />}
     </div>
   );
 }

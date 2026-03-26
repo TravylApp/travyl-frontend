@@ -1079,7 +1079,48 @@ export default function HotelsScreen() {
     return result;
   }, [starFilter, amenityFilter, brandFilter, sortBy]);
 
-  const hotel = SELECTED_HOTEL;
+  // Use first real hotel from trip_context, fall back to mock
+  const hotel = useMemo<HotelData>(() => {
+    const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
+    const h = source[0];
+    if (!h) return SELECTED_HOTEL;
+    const price = h.price ?? h.price_per_night ?? 100;
+    const stars = h.stars ?? (h.rating >= 4.5 ? 5 : h.rating >= 3.5 ? 4 : 3);
+    return {
+      id: h.id || 'h1',
+      name: h.name,
+      stars,
+      rating: h.rating ?? 8.0,
+      reviews: h.ratingCount ?? h.review_count ?? 0,
+      price,
+      address: h.address || '',
+      neighborhood: h.address?.split(',')[0] || 'City Center',
+      images: [h.image ?? h.photo_url ?? 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'].filter(Boolean),
+      amenities: (h.amenities ?? ['WiFi', 'Breakfast']).slice(0, 8),
+      amenityCategories: [
+        { category: 'Room', items: (h.amenities ?? []).filter((a: string) => /wifi|tv|ac|air|heat|iron|kitchen/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
+        { category: 'Services', items: (h.amenities ?? []).filter((a: string) => /park|shuttle|elevator|pet|smoke|wheel/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
+      ].filter(c => c.items.length > 0),
+      roomTypes: [
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price, image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400', amenities: ['WiFi', 'AC'] },
+        { type: stars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: stars >= 4 ? '35m²' : '26m²', price: Math.round(price * 1.4), image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400', amenities: ['WiFi', 'AC', 'Minibar'] },
+      ],
+      checkIn: trip?.start_date ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
+      checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',
+      cancellation: 'Free cancellation until 48h before',
+      phone: '',
+      email: h.link ?? '',
+      guestRatings: {
+        overall: h.rating ?? 8.0,
+        label: (h.rating ?? 8) >= 4.5 ? 'Superb' : (h.rating ?? 8) >= 4 ? 'Excellent' : 'Very Good',
+        cleanliness: Math.round(((h.rating ?? 8) + 0.1) * 10) / 10,
+        staff: Math.round((h.rating ?? 8) * 10) / 10,
+        location: Math.round(((h.rating ?? 8) + 0.2) * 10) / 10,
+        comfort: Math.round((h.rating ?? 8) * 10) / 10,
+        value: Math.round(((h.rating ?? 8) - 0.1) * 10) / 10,
+      },
+    };
+  }, [ctx, trip]);
   const currentRoom = hotel.roomTypes[selectedRoom];
 
   const handleBook = () => {

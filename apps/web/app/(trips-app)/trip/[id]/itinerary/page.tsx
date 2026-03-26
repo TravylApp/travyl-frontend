@@ -134,12 +134,33 @@ function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: 
 
 
 
+function useDestinationImages(destination?: string, count = 5) {
+  const [images, setImages] = useState<string[]>([]);
+  useEffect(() => {
+    if (!destination) return;
+    fetch(`/api/images?q=${encodeURIComponent(destination)}&per_page=${count}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.images?.length) {
+          setImages(data.images.map((img: any) => img.url || img));
+        } else if (data?.url) {
+          setImages([data.url]);
+        }
+      })
+      .catch(() => {});
+  }, [destination, count]);
+  return images;
+}
+
 function GlanceView({
   days,
   selectedDayIndex,
   onSelectDay,
   arrivalFlight,
   returnFlight,
+  hotel,
+  tripFlight,
+  tripId,
   onActivityClick,
   addActivity,
   removeActivity,
@@ -153,6 +174,9 @@ function GlanceView({
   onSelectDay: (i: number) => void;
   arrivalFlight?: MockFlightDetail;
   returnFlight?: MockFlightDetail;
+  hotel?: { name: string; image?: string; price?: number; price_per_night?: number; stars?: number };
+  tripFlight?: { destAirport: string; city: string } | null;
+  tripId?: string;
   onActivityClick?: (activityId: string) => void;
   addActivity?: (activity: import('@travyl/shared').CalendarActivity) => void;
   removeActivity?: (id: string) => void;
@@ -169,6 +193,9 @@ function GlanceView({
   const [searchQuery, setSearchQuery] = useState('');
   const [dragOverTarget, setDragOverTarget] = useState<{ id: string; position: 'above' | 'below' } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  // Fetch destination-specific images from Unsplash/Pexels
+  const destImages = useDestinationImages(destination, Math.max(days.length, 3));
 
   const scrollTo = (idx: number) => {
     const el = scrollRef.current;
@@ -198,10 +225,10 @@ function GlanceView({
   };
 
   return (
-    <div className="w-full" data-no-page-swipe>
+    <div className="w-full -mx-1" data-no-page-swipe>
       {/* Horizontal scroll cards — draggable */}
       <div ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
+        className="flex gap-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
         onScroll={(e) => {
           const el = e.currentTarget;
           const idx = Math.round(el.scrollLeft / ((el.firstElementChild as HTMLElement)?.offsetWidth || 1));
@@ -212,20 +239,22 @@ function GlanceView({
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}>
         {days.map((day, i) => {
-          // Use the first activity image for this day, then trip hero images, then fallback
-          const firstActivityImage = day.timeGroups
-            .flatMap(g => g.activities)
-            .map(a => a.image)
-            .find(Boolean);
-          const heroImg = firstActivityImage
+          // Prefer destination-specific images, then trip hero, then generic fallback
+          const heroImg = destImages[i]
             || heroImages?.[i % (heroImages?.length || 1)]
             || GLANCE_HERO_IMAGES[i % GLANCE_HERO_IMAGES.length];
           const isFirst = i === 0;
           const isLast = i === days.length - 1;
           return (
-            <div key={day.id} className="flex-shrink-0 w-full rounded-xl overflow-hidden snap-start flex" style={{ height: 'auto' }}>
-              {/* Left — activity list */}
-              <div className="w-[40%] shrink-0 bg-[#1a1a2e] px-4 py-3 flex flex-col">
+            <div key={day.id} className="flex-shrink-0 w-full overflow-hidden snap-start relative" style={{ minHeight: 340 }}>
+              {/* Full-bleed destination image */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroImg} alt={day.dayLabel} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+              {/* Gradient overlay — dark on left for text, fading to transparent on right */}
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f0f1e 0%, #0f0f1e 38%, rgba(15,15,30,0.6) 55%, rgba(15,15,30,0.15) 75%, transparent 100%)' }} />
+
+              {/* Content overlay — left-aligned activity list */}
+              <div className="relative z-10 w-[45%] min-w-[280px] px-4 py-3 flex flex-col" style={{ minHeight: 340 }}>
                 {/* Day header */}
                 <div className="mb-2">
                   <p className="text-[9px] tracking-[0.3em] uppercase font-semibold mb-0.5"
@@ -248,6 +277,20 @@ function GlanceView({
                       <span className="text-[10px] font-semibold text-white/80">Arrive — {arrivalFlight.flightNumber}</span>
                       <span className="text-[9px] ml-auto text-white/40">{arrivalFlight.arrivalTime}</span>
                     </div>
+                  )}
+                  {isFirst && !arrivalFlight && tripFlight && (
+                    <a href={tripId ? `/trip/${tripId}/flights` : '#'} className="flex items-center gap-2 mb-1.5 pb-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                      <PaperPlane size={11} className="shrink-0 text-blue-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Flight → {tripFlight.destAirport}</span>
+                      <span className="text-[10px] ml-auto text-blue-400 shrink-0 font-medium group-hover:text-blue-300">Search</span>
+                    </a>
+                  )}
+                  {isFirst && hotel && (
+                    <a href={tripId ? `/trip/${tripId}/hotels` : '#'} className="flex items-center gap-2 mb-1.5 pb-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                      <MapPin size={11} className="shrink-0 text-amber-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Check-in — {hotel.name}</span>
+                      <span className="text-[10px] ml-auto text-amber-400/80 shrink-0 font-medium">{hotel.price ? `$${hotel.price}/n` : ''}</span>
+                    </a>
                   )}
 
                   {(['morning', 'afternoon', 'evening', 'latenight'] as const).map((tod) => {
@@ -287,8 +330,8 @@ function GlanceView({
                           } catch {}
                         }}
                       >
-                        <p className="text-[7px] font-bold tracking-[0.2em] uppercase mb-0.5"
-                          style={{ color: 'var(--magazine-accent, #c8a96a)', opacity: 0.7 }}>
+                        <p className="text-[8px] font-bold tracking-[0.2em] uppercase mb-0.5"
+                          style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
                           {config.label}
                         </p>
                         {group?.activities.map((activity) => {
@@ -358,11 +401,11 @@ function GlanceView({
                               <CatIcon size={9} className="shrink-0" style={{ color: catColor.primary }} />
                               <span
                                 onClick={() => onActivityClick?.(activity.id)}
-                                className="text-[11px] flex-1 truncate font-medium text-white/80 hover:text-white transition-colors cursor-pointer">
+                                className="text-[11px] flex-1 truncate font-semibold text-white hover:text-white transition-colors cursor-pointer">
                                 {activity.name}
                               </span>
                               {activity.timeDisplay && (
-                                <span className="text-[8px] text-white/30 shrink-0 tabular-nums">{activity.timeDisplay}</span>
+                                <span className="text-[9px] text-white/60 shrink-0 tabular-nums font-medium">{activity.timeDisplay}</span>
                               )}
                               <button
                                 onClick={(e) => {
@@ -464,27 +507,35 @@ function GlanceView({
                     );
                   })}
 
+                  {isLast && hotel && (
+                    <a href={tripId ? `/trip/${tripId}/hotels` : '#'} className="flex items-center gap-2 mt-1.5 pt-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <MapPin size={11} className="shrink-0 text-blue-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Check-out — {hotel.name}</span>
+                      <span className="text-[10px] ml-auto text-white/60 shrink-0 font-medium">11 AM</span>
+                    </a>
+                  )}
                   {isLast && returnFlight && (
-                    <div className="flex items-center gap-2 mt-1 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <PaperPlane size={10} className="shrink-0 rotate-180" style={{ color: '#60a5fa' }} />
-                      <span className="text-[10px] font-semibold text-white/80">Depart — {returnFlight.flightNumber}</span>
-                      <span className="text-[9px] ml-auto text-white/40">{returnFlight.departureTime}</span>
+                    <div className="flex items-center gap-2 mt-1.5 pt-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <PaperPlane size={11} className="shrink-0 rotate-180" style={{ color: '#60a5fa' }} />
+                      <span className="text-[11px] font-semibold text-white">Depart — {returnFlight.flightNumber}</span>
+                      <span className="text-[10px] ml-auto text-white/60 font-medium">{returnFlight.departureTime}</span>
                     </div>
+                  )}
+                  {isLast && !returnFlight && tripFlight && (
+                    <a href={tripId ? `/trip/${tripId}/flights` : '#'} className="flex items-center gap-2 mt-1.5 pt-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <PaperPlane size={11} className="shrink-0 rotate-180 text-blue-400" />
+                      <span className="text-[11px] font-semibold text-white truncate">Flight home from {tripFlight.destAirport}</span>
+                      <span className="text-[10px] ml-auto text-blue-400 shrink-0 font-medium group-hover:text-blue-300">Search</span>
+                    </a>
                   )}
                 </div>
               </div>
 
-              {/* Right — destination image fills full height */}
-              <div className="flex-1 relative min-h-[300px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImg} alt={day.dayLabel} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e]/40 to-transparent" />
-                {/* Day label overlay at bottom */}
-                <div className="absolute bottom-3 right-3">
-                  <p className="text-sm font-bold text-white/60 font-serif" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
-                    {day.dayLabel}
-                  </p>
-                </div>
+              {/* Day label — bottom right over the image */}
+              <div className="absolute bottom-3 right-3 z-10">
+                <p className="text-sm font-bold text-white/60 font-serif" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                  {day.dayLabel}
+                </p>
               </div>
             </div>
           );
@@ -530,8 +581,25 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const [browseIndex, setBrowseIndex] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
 
-  const arrivalFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
-  const returnFlight: MockFlightDetail | undefined = undefined; // TODO: wire up real flight data
+  // Build hotel info from trip_context for itinerary display
+  const contextHotels = trip?.trip_context?.hotels ?? (trip?.trip_context as any)?.all_hotels ?? [];
+  const firstHotel = contextHotels[0] as any | undefined;
+
+  // Build flight info — destination airport from city name
+  const CITY_AIRPORTS: Record<string, string> = {
+    'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
+    'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
+    'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
+    'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
+    'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
+    'Vienna': 'VIE', 'Dublin': 'DUB', 'Cancun': 'CUN', 'Reykjavik': 'KEF',
+  };
+  const city = trip?.destination?.split(',')[0]?.trim() ?? '';
+  const destAirport = CITY_AIRPORTS[city] || '';
+  const tripFlight = destAirport ? { destAirport, city } : null;
+
+  const arrivalFlight: MockFlightDetail | undefined = undefined;
+  const returnFlight: MockFlightDetail | undefined = undefined;
 
   // Build discover items from trip context (explore_items + foursquare_venues)
   const discoverItems: DiscoverItem[] = useMemo(() => {
@@ -836,6 +904,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           onSelectDay={setSelectedDayIndex}
           arrivalFlight={arrivalFlight}
           returnFlight={returnFlight}
+          hotel={firstHotel}
+          tripFlight={tripFlight}
+          tripId={id}
           onActivityClick={handleActivityClick}
           addActivity={addActivity}
           removeActivity={removeActivity}
@@ -864,7 +935,50 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           {isFirstDay && arrivalFlight && (
             <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
           )}
-          {/* TODO: wire up real hotel check-in data */}
+          {/* Flight placeholder on first day — links to Flights tab */}
+          {isFirstDay && !arrivalFlight && tripFlight && (
+            <section className="mb-3.5">
+              <a href={`/trip/${id}/flights`} className="block rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--trip-base)' }}>
+                    <PaperPlane size={14} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Arrival Flight</p>
+                    <p className="text-sm font-medium text-gray-900">Flight to {tripFlight.city} ({tripFlight.destAirport})</p>
+                    <p className="text-[11px] text-gray-500">Tap to search and select your flight</p>
+                  </div>
+                  <span className="text-[11px] font-medium text-blue-600 group-hover:text-blue-800 shrink-0">Search →</span>
+                </div>
+              </a>
+            </section>
+          )}
+          {/* Hotel check-in on first day */}
+          {isFirstDay && firstHotel && (
+            <section className="mb-3.5">
+              <a href={`/trip/${id}/hotels`} className="block rounded-lg p-3 shadow-sm border border-amber-200/60 bg-gradient-to-r from-amber-50 to-orange-50 hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0">
+                    <MapPin size={14} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Hotel Check-in</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{firstHotel.name}</p>
+                    <p className="text-[11px] text-gray-500">
+                      {firstHotel.price ? `$${firstHotel.price}/night · ` : firstHotel.price_per_night ? `$${firstHotel.price_per_night}/night · ` : ''}
+                      {firstHotel.stars ? `${'★'.repeat(firstHotel.stars)} · ` : ''}
+                      Check-in 3:00 PM
+                    </p>
+                  </div>
+                  {firstHotel.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={firstHotel.image} alt={firstHotel.name} referrerPolicy="no-referrer" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  )}
+                  <span className="text-[11px] font-medium text-amber-600 group-hover:text-amber-800 shrink-0">Change →</span>
+                </div>
+              </a>
+            </section>
+          )}
 
           {selectedDay.timeGroups.map((group) => (
             <div key={group.timeOfDay}>
@@ -964,12 +1078,43 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             </div>
           ))}
 
-          {/* TODO: wire up real hotel data for non-first/non-last days */}
-
+          {/* Hotel checkout + return flight on last day */}
           {isLastDay && (
             <>
-              {/* TODO: wire up real hotel checkout data */}
+              {firstHotel && (
+                <section className="mb-3.5">
+                  <div className="rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+                        <MapPin size={14} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Hotel Check-out</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{firstHotel.name}</p>
+                        <p className="text-[11px] text-gray-500">Check-out 11:00 AM</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
               {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />}
+              {!returnFlight && tripFlight && (
+                <section className="mb-3.5">
+                  <a href={`/trip/${id}/flights`} className="block rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--trip-base)' }}>
+                        <PaperPlane size={14} className="text-white rotate-180" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Return Flight</p>
+                        <p className="text-sm font-medium text-gray-900">Flight home from {tripFlight.city} ({tripFlight.destAirport})</p>
+                        <p className="text-[11px] text-gray-500">Tap to search and select your flight</p>
+                      </div>
+                      <span className="text-[11px] font-medium text-blue-600 group-hover:text-blue-800 shrink-0">Search →</span>
+                    </div>
+                  </a>
+                </section>
+              )}
             </>
           )}
 

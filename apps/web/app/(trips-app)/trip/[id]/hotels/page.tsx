@@ -10,7 +10,7 @@ import {
   Phone, Mail, Map, X, Camera, Shield, CreditCard, Share2,
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, useHotels as useDbHotels } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 
 /* ------------------------------------------------------------------ */
@@ -125,23 +125,76 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
   });
 }
 
+/** Convert DB hotel records (from hotels table) into local HotelData shape */
+function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
+  return hotels.map((h: any, i: number) => {
+    const d = h.data ?? {};
+    const realStars = d.star_rating ?? (d.rating >= 4.5 ? 5 : d.rating >= 3.5 ? 4 : 3);
+    const realPrice = d.price_per_night ?? 150;
+    const realRating = d.rating ?? 8.0;
+    const mainImage = d.image_url ?? HOTEL_IMAGES[i % HOTEL_IMAGES.length];
+    const realAmenities = d.amenities?.length ? d.amenities.slice(0, 8) : ['WiFi', 'Breakfast'];
+
+    return {
+      id: h.id,
+      name: d.name ?? `Hotel ${i + 1}`,
+      stars: realStars,
+      rating: realRating,
+      reviews: 0,
+      price: realPrice,
+      address: d.address ?? '',
+      neighborhood: 'City Center',
+      lat: d.latitude ?? 0,
+      lng: d.longitude ?? 0,
+      images: [mainImage, HOTEL_IMAGES[(i + 1) % HOTEL_IMAGES.length], HOTEL_IMAGES[(i + 2) % HOTEL_IMAGES.length]],
+      amenities: realAmenities,
+      roomTypes: [
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+      ],
+      checkIn: d.check_in ? new Date(d.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
+      checkOut: d.check_out ? new Date(d.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',
+      cancellation: 'Free cancellation until 48h before',
+      phone: '',
+      email: d.booking_url ?? '',
+      guestRatings: {
+        overall: realRating,
+        label: realRating >= 4.5 ? 'Superb' : realRating >= 4.0 ? 'Excellent' : realRating >= 3.5 ? 'Very Good' : 'Good',
+        cleanliness: Math.round((realRating + 0.1) * 10) / 10,
+        staff: Math.round(realRating * 10) / 10,
+        location: Math.round((realRating + 0.2) * 10) / 10,
+        comfort: Math.round(realRating * 10) / 10,
+        value: Math.round((realRating - 0.1) * 10) / 10,
+      },
+    };
+  });
+}
+
 function useHotels(tripId: string, searchQuery?: string) {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination;
-  // Prefer all_hotels (full 20 from SerpAPI planner) over hotels (top 5)
+
+  // 1. DB hotels (saved during trip generation)
+  const { data: dbHotelRows = [] } = useDbHotels(tripId);
+  const fromDb = useMemo(
+    () => dbHotelRows.length ? convertDbHotelsToHotelData(dbHotelRows) : [],
+    [dbHotelRows],
+  );
+
+  // 2. Trip context hotels (from enrichment — SerpAPI / planner)
   const contextHotels = (trip?.trip_context as any)?.all_hotels?.length
     ? (trip?.trip_context as any).all_hotels
     : trip?.trip_context?.hotels;
 
-  // If trip_context has hotels, use those
   const fromContext = useMemo(
     () => contextHotels?.length ? convertFoursquareToHotelData(contextHotels) : [],
     [contextHotels],
   );
 
-  // Also fetch more from Foursquare if we have coordinates
-  const lat = (contextHotels?.[0] as any)?.lat ?? trip?.trip_context?.lat;
-  const lng = (contextHotels?.[0] as any)?.lng ?? trip?.trip_context?.lng;
+  // 3. Foursquare live search — use any available coordinates
+  const firstDbHotel = dbHotelRows[0]?.data;
+  const lat = (contextHotels?.[0] as any)?.lat ?? firstDbHotel?.latitude ?? trip?.trip_context?.lat;
+  const lng = (contextHotels?.[0] as any)?.lng ?? firstDbHotel?.longitude ?? trip?.trip_context?.lng;
   const trimmedQuery = searchQuery?.trim() || '';
   const { data: fetchedHotels = [] } = useQuery({
     queryKey: ['hotels-foursquare', destination, trimmedQuery],
@@ -157,22 +210,22 @@ function useHotels(tripId: string, searchQuery?: string) {
       const res = await fetch(`/api/foursquare?${params}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return convertFoursquareToHotelData(data, fromContext.length);
+      return convertFoursquareToHotelData(data, fromDb.length + fromContext.length);
     },
     staleTime: 10 * 60 * 1000,
     enabled: !!destination && !!(lat && lng),
   });
 
-  // Combine and deduplicate by name
+  // Combine: DB first (generated hotels), then context, then Foursquare — deduplicate by name
   return useMemo(() => {
     const seen = new Set<string>();
-    return [...fromContext, ...fetchedHotels].filter((h) => {
+    return [...fromDb, ...fromContext, ...fetchedHotels].filter((h) => {
       const key = h.name.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [fromContext, fetchedHotels]);
+  }, [fromDb, fromContext, fetchedHotels]);
 }
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {

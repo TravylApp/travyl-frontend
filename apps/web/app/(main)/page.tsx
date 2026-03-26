@@ -437,7 +437,25 @@ export default function Home() {
                   timezone: (plan as any).timezone,
                 },
                 lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+                // Store full itinerary in trip_context so the itinerary page can render it
+                itinerary: (plan.itinerary ?? []).map((day: any) => ({
+                  day: day.day,
+                  date: day.date,
+                  weather: day.weather,
+                  slots: (day.slots ?? []).map((slot: any) => ({
+                    poi: slot.poi,
+                    start_time: slot.start_time,
+                    end_time: slot.end_time,
+                    start_time_12h: slot.start_time_12h,
+                    end_time_12h: slot.end_time_12h,
+                    travel_from_prev_min: slot.travel_from_prev_min,
+                  })),
+                })),
               },
+              // Pass raw plan data so the API can save hotels/flights/itinerary to their own tables
+              hotels: plan.hotels ?? [],
+              flights: plan.flights ?? [],
+              itinerary: plan.itinerary ?? [],
             }),
           });
           if (!res.ok) {
