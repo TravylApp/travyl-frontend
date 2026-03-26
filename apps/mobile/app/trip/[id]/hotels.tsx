@@ -1121,6 +1121,17 @@ export default function HotelsScreen() {
       },
     };
   }, [ctx, trip]);
+  if (!hotel) {
+    return (
+      <PageTransition>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 32 }}>
+          <FontAwesome name="building-o" size={28} color={colors.textTertiary} />
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 12 }}>No Hotels Yet</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>Hotel recommendations will appear once the trip is enriched.</Text>
+        </View>
+      </PageTransition>
+    );
+  }
   const currentRoom = hotel.roomTypes[selectedRoom];
 
   const handleBook = () => {
