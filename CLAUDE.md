@@ -60,3 +60,4 @@ The planning file tracks: goal, completed work, known issues, and links to Linea
 - Never deploy to personal stages (e.g. `justinjusti` or any other dev stage)
 - If `.sst/stage` contains anything other than `production`, fix it before deploying
 - Production API URL: `https://yqtl1xdcea.execute-api.us-east-1.amazonaws.com`
+# Updated for GitHub conflict refresh
