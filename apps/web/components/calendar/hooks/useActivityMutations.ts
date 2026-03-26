@@ -4,32 +4,7 @@ import { supabase, toActivityRow } from '@travyl/shared'
 import type { CalendarActivity } from '../types'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
 import { useIndexTrip } from '@/hooks/useIndexTrip'
-
-const CALENDAR_ACTIVITY_KEYS = [
-  'id',
-  'title',
-  'type',
-  'day',
-  'endDay',
-  'startHour',
-  'duration',
-  'location',
-  'image',
-  'rating',
-  'price',
-  'notes',
-  'color',
-  'latitude',
-  'longitude',
-  'sortOrder',
-  'pollResult',
-  'unscheduled',
-  'flightNumber',
-  'airline',
-  'checkIn',
-  'checkOut',
-  'bookingRef',
-] as const
+import { CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
 
 interface UseActivityMutationsReturn {
   addActivity: (activity: CalendarActivity) => Promise<void>
