@@ -170,7 +170,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   // Background-prefetch intelligence for all visible activities
   useEffect(() => {
-    if (!activities.length) return
+    if (!scheduledActivities.length) return
     for (const a of scheduledActivities) {
       queryClient.prefetchQuery({
         queryKey: ['activity-intelligence', a.id, tripId],
@@ -178,7 +178,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         staleTime: 60 * 60 * 1000,
       })
     }
-  }, [activities, scheduledActivities, tripId, queryClient])
+  }, [scheduledActivities, tripId, queryClient])
 
   const { theme, toggleTheme } = useCalendarTheme()
   const {
