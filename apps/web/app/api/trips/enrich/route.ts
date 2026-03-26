@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Use service role key if available (bypasses RLS), otherwise fall back to anon key
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Lazy-init to avoid crashing at build time when env vars aren't set
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  return createClient(url, key)
+}
 
 const COUNTRY_CUISINE: Record<string, string> = {
   France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
@@ -16,6 +18,7 @@ const COUNTRY_CUISINE: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = getSupabase()
   const { tripId } = await req.json()
   if (!tripId) return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
