@@ -113,6 +113,9 @@ export type { OverlapLayoutItem } from './overlapLayout'
 export { mapActivityToBudgetCategory } from './budgetMapping'
 export { convertToTripCurrency, formatBudgetAmount } from './currency'
 
+// Packing utilities
+export { computePackingProgress, clampPackedCount } from './packingUtils'
+
 // Poll utilities
 export { isVoteKey, userIdFromVoteKey, parseVotesFromYMap, resolveVotes } from './pollHelpers'
 
