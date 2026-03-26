@@ -262,12 +262,11 @@ export function CardStackCarousel({
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
       gap: 14, marginTop: 12, paddingBottom: 4,
     }}>
-      {/* Map toggle */}
-      {hasCoords && (
-        <Pressable onPress={overlay ? toggleMap : () => setSelfOverlay(true)} style={{
+      {/* Map toggle — only in overlay mode */}
+      {overlay && hasCoords && (
+        <Pressable onPress={toggleMap} style={{
           width: 40, height: 40, borderRadius: 20,
-          backgroundColor: showMap ? (overlay ? 'rgba(255,255,255,0.3)' : '#1e3a5f') : navBtnBg,
-          borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
+          backgroundColor: showMap ? 'rgba(255,255,255,0.3)' : navBtnBg,
           alignItems: 'center', justifyContent: 'center',
           shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
         }}>

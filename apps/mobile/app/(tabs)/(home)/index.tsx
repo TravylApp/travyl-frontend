@@ -908,9 +908,6 @@ export default function HomeScreen() {
         <TagUs />
       </FadeInOnScroll>
 
-      <FadeInOnScroll scrollY={scrollY}>
-        <ExplorePreview />
-      </FadeInOnScroll>
 
       {/* ─── Ocean Wave + Footer ──────────────────────────────── */}
       <OceanWave />
