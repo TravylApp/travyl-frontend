@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Calendar, Users, GitFork, Search, Filter, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Users, GitFork, Search, Loader2 } from 'lucide-react';
 import { fetchPublicTrips, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 

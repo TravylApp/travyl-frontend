@@ -21,7 +21,6 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 interface TripCardProps {
   trip: MockTripCard;
-  index?: number;
   className?: string;
   style?: React.CSSProperties;
 }

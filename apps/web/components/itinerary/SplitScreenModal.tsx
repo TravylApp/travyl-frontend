@@ -28,7 +28,6 @@ interface SplitScreenModalProps {
   favorites: string[];
   onClose: () => void;
   onFavorite: (id: string) => void;
-  onNavigate?: (index: number) => void;
 }
 
 // ─── Filter Section ─────────────────────────────────────────────
