@@ -22,6 +22,11 @@ const SCOPE_TO_TYPES: Record<string, string[]> = {
   commands: ['command'],
 }
 
+const ENTITY_TYPE_TO_SCOPE: Partial<Record<string, SearchScope>> = {
+  restaurant: 'restaurants',
+  activity: 'activities',
+}
+
 // Static navigation items
 const NAV_ITEMS: SpotlightResult[] = [
   { id: 'nav-home', type: 'navigation', title: 'Home', subtitle: 'Discover destinations', href: '/', score: 1 },
@@ -367,18 +372,12 @@ export function useSpotlightSearch() {
   }, [parsedIntent, discoverData?.route])
 
   // Auto-set scope from parsed entity type (only when user hasn't set one manually)
-  const ENTITY_TYPE_TO_SCOPE: Partial<Record<string, SearchScope>> = {
-    restaurant: 'restaurants',
-    activity: 'activities',
-  }
-
   useEffect(() => {
     if (parsedIntent?.entityType && scope === null) {
       const autoScope = ENTITY_TYPE_TO_SCOPE[parsedIntent.entityType]
       if (autoScope) setScope(autoScope)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parsedIntent?.entityType, scope])
+  }, [parsedIntent?.entityType, scope, setScope])
 
   // Merge all sources (now including commands, actions, and discover)
   const results = useMemo(() => {
