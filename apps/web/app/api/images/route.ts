@@ -29,17 +29,19 @@ export async function GET(req: NextRequest) {
       const data = await res.json()
       const photos = data.results
       if (photos?.length > 0) {
-        return NextResponse.json({
+        const res_out = NextResponse.json({
           images: photos.map((p: any) => ({
-            url: p.urls.regular,
-            thumb: p.urls.small,
+            url: appendWebP(p.urls.regular),
+            thumb: appendWebP(p.urls.small),
             credit: p.user.name,
           })),
-          url: photos[0].urls.regular,
-          thumb: photos[0].urls.small,
+          url: appendWebP(photos[0].urls.regular),
+          thumb: appendWebP(photos[0].urls.small),
           credit: photos[0].user.name,
           creditUrl: photos[0].user.links?.html,
         })
+        res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+        return res_out
       }
     } catch {}
   }
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
       const photos = data.photos
       if (photos?.length > 0) {
         if (isFood || isActivity) {
-          return NextResponse.json({
+          const res_out = NextResponse.json({
             images: photos.map((p: any) => ({
               url: p.src.large,
               thumb: p.src.medium,
@@ -63,12 +65,16 @@ export async function GET(req: NextRequest) {
             })),
             url: photos[0].src.large,
           })
+          res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+          return res_out
         }
-        return NextResponse.json({
+        const res_out = NextResponse.json({
           url: photos[0].src.large2x || photos[0].src.large,
           thumb: photos[0].src.medium,
           credit: photos[0].photographer,
         })
+        res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+        return res_out
       }
     } catch {}
   }
@@ -91,7 +97,9 @@ export async function GET(req: NextRequest) {
           const places = await placesRes.json()
           if (places[0]?.photo_url) {
             const url = places[0].photo_url.replace(/=w\d+-h\d+/, '=w1200-h800')
-            return NextResponse.json({ url })
+            const res_out = NextResponse.json({ url })
+            res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+            return res_out
           }
         }
       }
@@ -109,7 +117,9 @@ export async function GET(req: NextRequest) {
         const wikiData = await wikiRes.json()
         const img = wikiData.originalimage?.source || wikiData.thumbnail?.source
         if (img) {
-          return NextResponse.json({ url: img })
+          const res_out = NextResponse.json({ url: img })
+          res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+          return res_out
         }
       }
     } catch {}
@@ -117,7 +127,16 @@ export async function GET(req: NextRequest) {
 
   // 5. Last resort — generic travel/food image
   const fallback = isFood
-    ? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&fit=crop&q=80'
-    : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&fit=crop&q=80'
-  return NextResponse.json({ url: fallback })
+    ? 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&fit=crop&q=80&fm=webp'
+    : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&fit=crop&q=80&fm=webp'
+  const res_out = NextResponse.json({ url: fallback })
+  res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+  return res_out
+}
+
+/** Append WebP format params to an Unsplash URL if not already present */
+function appendWebP(url: string): string {
+  if (!url.includes('unsplash.com')) return url
+  if (url.includes('fm=webp')) return url
+  return url.includes('?') ? `${url}&fm=webp&q=75` : `${url}?fm=webp&q=75`
 }

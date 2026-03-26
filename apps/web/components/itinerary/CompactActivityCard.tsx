@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Heart, Clock, MapPin, Star, ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react';
 import { getActivityTypeColor, Navy } from '@travyl/shared';
 import type { ActivityViewModel } from '@travyl/shared';
@@ -45,10 +46,12 @@ export function CompactActivityCard({
       {/* Image section */}
       <div className="relative h-40 overflow-hidden" style={{ backgroundColor: typeColor.bg }}>
         {hasImages ? (
-          <img
+          <Image
             src={images[currentImage]}
             alt={activity.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, 300px"
             onError={() => setImgError(true)}
           />
         ) : (

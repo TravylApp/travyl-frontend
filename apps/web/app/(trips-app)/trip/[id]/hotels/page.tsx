@@ -63,16 +63,16 @@ interface HotelData {
 
 // Hotel images from Unsplash (reliable hotel room/exterior photos)
 const HOTEL_IMAGES = [
-  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800',
-  'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800',
-  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
+  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&fm=webp&q=75',
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&fm=webp&q=75',
+  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&fm=webp&q=75',
+  'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800&fm=webp&q=75',
+  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&fm=webp&q=75',
 ];
 const ROOM_IMAGES = [
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400',
-  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400',
-  'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400',
+  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&fm=webp&q=75',
+  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&fm=webp&q=75',
+  'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400&fm=webp&q=75',
 ];
 
 function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {

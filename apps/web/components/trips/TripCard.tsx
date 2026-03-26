@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical } from 'lucide-react';
+import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
@@ -28,6 +28,7 @@ interface TripCardProps {
 
 export function TripCard({ trip, className, style }: TripCardProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
+  const [imgError, setImgError] = useState(false);
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -113,13 +114,20 @@ export function TripCard({ trip, className, style }: TripCardProps) {
       >
         {/* Full-bleed image */}
         <div className="relative h-full min-h-[220px]">
-          <Image
-            src={trip.image}
-            alt={trip.destination}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-700"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
+          {imgError ? (
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+              <Plane size={32} className="text-blue-300" />
+            </div>
+          ) : (
+            <Image
+              src={trip.image}
+              alt={trip.destination}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-700"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              onError={() => setImgError(true)}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/5" />
 
           {/* Status Badge - Top Left */}

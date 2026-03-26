@@ -257,7 +257,7 @@ function getFallbackImage(name: string, idx: number): string {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0
   const photoIdx = (Math.abs(hash) + idx) % FALLBACK_PHOTOS.length
-  return `https://images.unsplash.com/${FALLBACK_PHOTOS[photoIdx]}?w=500&fit=crop&q=75`
+  return `https://images.unsplash.com/${FALLBACK_PHOTOS[photoIdx]}?w=500&fit=crop&q=75&fm=webp`
 }
 
 function formatHours(hours?: Record<string, string>): string | undefined {

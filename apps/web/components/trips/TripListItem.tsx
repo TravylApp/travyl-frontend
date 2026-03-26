@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2 } from 'lucide-react';
+import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
@@ -24,6 +24,7 @@ interface TripListItemProps {
 export function TripListItem({ trip }: TripListItemProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -54,13 +55,20 @@ export function TripListItem({ trip }: TripListItemProps) {
     >
       {/* Thumbnail */}
       <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={trip.image}
-          alt={trip.destination}
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        {imgError ? (
+          <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+            <Plane size={24} className="text-blue-300" />
+          </div>
+        ) : (
+          <Image
+            src={trip.image}
+            alt={trip.destination}
+            width={80}
+            height={80}
+            className="w-20 h-20 rounded-lg object-cover"
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
 
       {/* Content */}

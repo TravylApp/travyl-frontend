@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Building2, Plane, MapPin, Calendar, Star, DollarSign, Users, ArrowRight } from 'lucide-react'
+import { Building2, Plane, MapPin, Calendar, Star, DollarSign, Users, ArrowRight, Image as ImageIcon } from 'lucide-react'
 import type { SpotlightResult } from '@travyl/shared'
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
@@ -36,6 +37,7 @@ export function SpotlightPreview({ result }: Props) {
 }
 
 function TripPreview({ result }: { result: SpotlightResult }) {
+  const [imgError, setImgError] = useState(false)
   const meta = result.metadata as Record<string, unknown> | undefined
   const startDate = meta?.startDate as string | undefined
   const endDate = meta?.endDate as string | undefined
@@ -44,9 +46,9 @@ function TripPreview({ result }: { result: SpotlightResult }) {
 
   return (
     <div className="flex flex-col h-full">
-      {result.imageUrl ? (
+      {result.imageUrl && !imgError ? (
         <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
-          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" onError={() => setImgError(true)} />
         </div>
       ) : (
         <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center">
@@ -90,6 +92,7 @@ function TripPreview({ result }: { result: SpotlightResult }) {
 }
 
 function HotelPreview({ result }: { result: SpotlightResult }) {
+  const [imgError, setImgError] = useState(false)
   const meta = result.metadata as Record<string, unknown> | undefined
   const stars = meta?.stars as number | undefined
   const pricePerNight = meta?.pricePerNight as string | undefined
@@ -102,9 +105,9 @@ function HotelPreview({ result }: { result: SpotlightResult }) {
 
   return (
     <div className="flex flex-col h-full">
-      {result.imageUrl ? (
+      {result.imageUrl && !imgError ? (
         <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
-          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" onError={() => setImgError(true)} />
         </div>
       ) : (
         <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-950 dark:to-blue-950 flex items-center justify-center">
@@ -218,6 +221,7 @@ function FlightPreview({ result }: { result: SpotlightResult }) {
 }
 
 function RestaurantPreview({ result }: { result: SpotlightResult }) {
+  const [imgError, setImgError] = useState(false)
   const meta = result.metadata as Record<string, unknown> | undefined
   const cuisine = meta?.cuisine as string | undefined
   const priceLevel = meta?.priceLevel as string | undefined
@@ -227,9 +231,9 @@ function RestaurantPreview({ result }: { result: SpotlightResult }) {
 
   return (
     <div className="flex flex-col h-full">
-      {result.imageUrl ? (
+      {result.imageUrl && !imgError ? (
         <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
-          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" onError={() => setImgError(true)} />
         </div>
       ) : (
         <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-purple-100 to-violet-100 dark:from-purple-950 dark:to-violet-950 flex items-center justify-center">
@@ -270,6 +274,7 @@ function RestaurantPreview({ result }: { result: SpotlightResult }) {
 }
 
 function ActivityPreview({ result }: { result: SpotlightResult }) {
+  const [imgError, setImgError] = useState(false)
   const meta = result.metadata as Record<string, unknown> | undefined
   const category = meta?.category as string | undefined
   const rating = meta?.rating as number | undefined
@@ -278,9 +283,9 @@ function ActivityPreview({ result }: { result: SpotlightResult }) {
 
   return (
     <div className="flex flex-col h-full">
-      {result.imageUrl ? (
+      {result.imageUrl && !imgError ? (
         <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
-          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" onError={() => setImgError(true)} />
         </div>
       ) : (
         <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-950 dark:to-teal-950 flex items-center justify-center">
@@ -316,15 +321,16 @@ function ActivityPreview({ result }: { result: SpotlightResult }) {
 }
 
 function DestinationPreview({ result }: { result: SpotlightResult }) {
+  const [imgError, setImgError] = useState(false)
   const meta = result.metadata as Record<string, unknown> | undefined
   const lat = meta?.latitude as number | undefined
   const lng = meta?.longitude as number | undefined
 
   return (
     <div className="flex flex-col h-full">
-      {result.imageUrl ? (
+      {result.imageUrl && !imgError ? (
         <div className="w-full h-32 overflow-hidden rounded-lg mb-3">
-          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" />
+          <img src={result.imageUrl} alt="" className="w-full h-full object-cover" onError={() => setImgError(true)} />
         </div>
       ) : (
         <div className="w-full h-32 rounded-lg mb-3 bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-950 dark:to-orange-950 flex items-center justify-center">

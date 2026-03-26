@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Cloud, Droplets, Sun, ChevronDown, Shield } from 'lucide-react';
 import { formatDateRange, useExchangeRates } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
@@ -58,7 +59,7 @@ function useQuote() {
 }
 
 export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean }) {
-  const bgRef = useRef<HTMLImageElement>(null);
+  const bgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = bgRef.current;
@@ -151,9 +152,10 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
       {/* Background image — bleeds behind nav and all content */}
       {coverImage && (
         <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '130vh' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={bgRef} src={coverImage} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover"
-            style={{ objectPosition: 'center 30%', willChange: 'transform' }} />
+          <div ref={bgRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
+            <Image src={coverImage} alt="" fill referrerPolicy="no-referrer" className="object-cover"
+              style={{ objectPosition: 'center 30%' }} sizes="100vw" priority />
+          </div>
           {/* Gradient overlay — image visible at top, darkens for text readability, fades to bg */}
           <div className="absolute inset-0"
             style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 15%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0.65) 60%, var(--magazine-bg, var(--background)) 78%, var(--magazine-bg, var(--background)) 100%)' }} />
@@ -164,8 +166,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
       <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-4">
         <p className="flex items-center gap-2 text-[10px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
           {flagUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={flagUrl} alt="" width={24} height={18} className="rounded-[2px] shadow-sm" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
+            <Image src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px] shadow-sm" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
           )}
           <span>{countryName || 'Your Trip Guide'}</span>
         </p>
