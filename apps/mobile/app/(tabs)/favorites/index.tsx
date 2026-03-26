@@ -48,59 +48,64 @@ const ALL_CATEGORIES = [
 // Session seed so each app launch gets different cities
 const SESSION_SEED = Date.now();
 
-async function fetchMobilePlaces(): Promise<PlaceItem[]> {
-  // Pick 4 random cities × 2 categories each = 8 API calls for variety
+// Fast first batch: 2 cities × 1 category = 2 API calls (~1-2s)
+async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
   const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random()) - 0.5);
-  const cities = shuffled.slice(0, 4);
+  const cities = shuffled.slice(0, 2);
+  const cat = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
+
+  const results = await Promise.all(
+    cities.map(city =>
+      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+        .catch(() => [])
+    )
+  );
+  return dedup(results.flat());
+}
+
+// Slower second batch: more cities + categories + foursquare
+async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
+  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random() + 1) - 0.5);
+  const cities = shuffled.slice(0, 3);
   const catStart = Math.floor(Math.random() * ALL_CATEGORIES.length);
 
   const fetches: Promise<PlaceItem[]>[] = [];
-
   cities.forEach((city, i) => {
-    const cat1 = ALL_CATEGORIES[(catStart + i * 2) % ALL_CATEGORIES.length];
-    const cat2 = ALL_CATEGORIES[(catStart + i * 2 + 1) % ALL_CATEGORIES.length];
-    for (const cat of [cat1, cat2]) {
-      fetches.push(
-        fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`)
-          .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
-          .catch(() => [])
-      );
-    }
-  });
-
-  // Also fetch from foursquare for restaurant variety
-  const fsCities = cities.slice(0, 2);
-  for (const city of fsCities) {
+    const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
     fetches.push(
-      fetch(`${WEB_API}/api/foursquare?lat=${city.lat}&lng=${city.lng}&category=restaurant&limit=6`)
-        .then(async r => {
-          if (!r.ok) return [];
-          const venues = await r.json();
-          if (!Array.isArray(venues)) return [];
-          return venues
-            .filter((v: any) => v.image && !v.image.includes('categories_v2'))
-            .map((v: any): PlaceItem => ({
-              id: `fs_${v.id}`,
-              name: v.name,
-              image: v.image,
-              type: 'restaurant',
-              rating: v.rating ? v.rating / 2 : 0,
-              tagline: v.address || v.category || 'Restaurant',
-              category: v.category || 'Restaurant',
-              description: v.tip || '',
-              latitude: v.lat,
-              longitude: v.lng,
-              tags: [v.category || 'Restaurant'],
-            }));
-        })
+      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
+        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
         .catch(() => [])
     );
-  }
+  });
+  // Foursquare for restaurants
+  fetches.push(
+    fetch(`${WEB_API}/api/foursquare?lat=${cities[0].lat}&lng=${cities[0].lng}&category=restaurant&limit=6`)
+      .then(async r => {
+        if (!r.ok) return [];
+        const venues = await r.json();
+        if (!Array.isArray(venues)) return [];
+        return venues
+          .filter((v: any) => v.image && !v.image.includes('categories_v2'))
+          .map((v: any): PlaceItem => ({
+            id: `fs_${v.id}`, name: v.name, image: v.image, type: 'restaurant',
+            rating: v.rating ? v.rating / 2 : 0, tagline: v.address || 'Restaurant',
+            category: v.category || 'Restaurant', description: v.tip || '',
+            latitude: v.lat, longitude: v.lng, tags: [v.category || 'Restaurant'],
+          }));
+      })
+      .catch(() => [])
+  );
 
   const results = await Promise.all(fetches);
+  return dedup(results.flat());
+}
+
+function dedup(places: PlaceItem[]): PlaceItem[] {
   const seen = new Set<string>();
   const seenNames = new Set<string>();
-  return results.flat().filter((p) => {
+  return places.filter((p) => {
     if (!p.name || !p.image || seen.has(p.id)) return false;
     const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (seenNames.has(norm)) return false;
@@ -280,12 +285,27 @@ export default function FavoritesScreen() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
-  const { data: PLACES = [], isLoading: placesLoading, error: placesError } = useQuery({
-    queryKey: ['mobile-places', SESSION_SEED],
-    queryFn: fetchMobilePlaces,
+  // Phase 1: fast initial load (~1-2s)
+  const { data: fastPlaces = [], isLoading: fastLoading } = useQuery({
+    queryKey: ['mobile-places-fast', SESSION_SEED],
+    queryFn: fetchMobilePlacesFast,
     staleTime: 5 * 60 * 1000,
-    retry: 2,
   });
+  // Phase 2: more results in background
+  const { data: morePlaces = [] } = useQuery({
+    queryKey: ['mobile-places-more', SESSION_SEED],
+    queryFn: fetchMobilePlacesMore,
+    staleTime: 5 * 60 * 1000,
+    enabled: fastPlaces.length > 0, // only after fast batch loads
+  });
+  // Merge and deduplicate
+  const PLACES = useMemo(() => {
+    const all = [...fastPlaces, ...morePlaces];
+    const seen = new Set<string>();
+    return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+  }, [fastPlaces, morePlaces]);
+  const placesLoading = fastLoading;
+  const placesError = null;
 
 
   const toggleFavorite = useCallback((id: string) => {
