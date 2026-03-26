@@ -1042,7 +1042,7 @@ export default function HotelsScreen() {
   const ctx = trip?.trip_context as any;
   const realHotels = useMemo(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
-    if (source.length === 0) return BROWSE_HOTELS;
+    if (source.length === 0) return [];
     return source.map((h: any, i: number) => ({
       id: h.id || `hotel-${i}`,
       name: h.name,
@@ -1080,10 +1080,10 @@ export default function HotelsScreen() {
   }, [starFilter, amenityFilter, brandFilter, sortBy]);
 
   // Use first real hotel from trip_context, fall back to mock
-  const hotel = useMemo<HotelData>(() => {
+  const hotel = useMemo<HotelData | null>(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
     const h = source[0];
-    if (!h) return SELECTED_HOTEL;
+    if (!h) return null;
     const price = h.price ?? h.price_per_night ?? 100;
     const stars = h.stars ?? (h.rating >= 4.5 ? 5 : h.rating >= 3.5 ? 4 : 3);
     return {
@@ -1121,6 +1121,17 @@ export default function HotelsScreen() {
       },
     };
   }, [ctx, trip]);
+  if (!hotel) {
+    return (
+      <PageTransition>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 32 }}>
+          <FontAwesome name="building-o" size={28} color={colors.textTertiary} />
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 12 }}>No Hotels Yet</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>Hotel recommendations will appear once the trip is enriched.</Text>
+        </View>
+      </PageTransition>
+    );
+  }
   const currentRoom = hotel.roomTypes[selectedRoom];
 
   const handleBook = () => {

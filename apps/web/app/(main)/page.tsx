@@ -137,7 +137,6 @@ export default function Home() {
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
-  const heroRef = useRef<HTMLElement>(null);
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
@@ -189,25 +188,15 @@ export default function Home() {
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
 
-  // Parallax transforms
-  const { scrollYProgress: heroScroll } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-    layoutEffect: false,
-  });
-  const heroTextY = useTransform(heroScroll, [0, 1], [0, 150]);
-  const heroTextOpacity = useTransform(heroScroll, [0, 0.6], [1, 0]);
-  const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
-  const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
+  // Parallax transforms — document-level scroll (no target ref to avoid hydration error)
+  const { scrollYProgress: heroScroll } = useScroll();
+  const heroTextY = useTransform(heroScroll, [0, 0.35], [0, 150]);
+  const heroTextOpacity = useTransform(heroScroll, [0, 0.2], [1, 0]);
+  const heroBgY = useTransform(heroScroll, [0, 0.35], [0, -120]);
+  const heroBgScale = useTransform(heroScroll, [0, 0.35], [1, 1.15]);
 
   // Parallax divider
-  const dividerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress: dividerScroll } = useScroll({
-    target: dividerRef,
-    offset: ["start end", "end start"],
-    layoutEffect: false,
-  });
-  const dividerBgY = useTransform(dividerScroll, [0, 1], [-80, 80]);
+  const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
 
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
@@ -498,6 +487,12 @@ export default function Home() {
           // Fallback: save directly to Supabase (bypasses CloudFront)
           try {
             const tripId = await savePlanToSupabase(plan as any);
+            // Enrich in background (weather, wiki, cuisine, etc.)
+            fetch('/api/trips/enrich', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tripId }),
+            }).catch(() => {});
             setTakeoffCompleted(true);
             await new Promise((r) => setTimeout(r, 800));
             setShowTakeoff(false);
@@ -527,7 +522,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section ref={heroRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+      <section className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
@@ -853,7 +848,7 @@ export default function Home() {
       <TravelMosaic onTileClick={(place) => setSelectedPlace(place)} />
 
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
-      <ParallaxQuoteDivider ref={dividerRef} bgY={dividerBgY} />
+      <ParallaxQuoteDivider bgY={dividerBgY} />
 
       <GetInspired />
       <TagUs />

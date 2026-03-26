@@ -39,48 +39,42 @@ interface Props {
 
 export function RestaurantDetailClient({ restaurant, id }: Props) {
   if (!restaurant) {
-    return <EntityError message="Restaurant not found" backHref="/" backLabel="Go home" />
+    return <EntityError type="place" variant="404" />
   }
 
   const location = [restaurant.city, restaurant.region, restaurant.country].filter(Boolean).join(', ')
   const priceLabel = restaurant.price ? '$'.repeat(Math.max(1, Math.min(restaurant.price, 4))) : null
 
   const quickInfoItems = [
-    restaurant.hours ? { label: 'Hours', value: restaurant.hours } : null,
-    restaurant.phone ? { label: 'Phone', value: restaurant.phone } : null,
-    restaurant.address ? { label: 'Address', value: restaurant.address } : null,
-    priceLabel ? { label: 'Price', value: priceLabel } : null,
-  ].filter(Boolean) as { label: string; value: string }[]
-
-  const links = [
-    restaurant.website ? { label: 'Website', href: restaurant.website } : null,
-    restaurant.menuUrl ? { label: 'Menu', href: restaurant.menuUrl } : null,
-  ].filter(Boolean) as { label: string; href: string }[]
+    restaurant.hours ? { icon: null, label: 'Hours', value: restaurant.hours } : null,
+    restaurant.phone ? { icon: null, label: 'Phone', value: restaurant.phone } : null,
+    restaurant.address ? { icon: null, label: 'Address', value: restaurant.address } : null,
+    priceLabel ? { icon: null, label: 'Price', value: priceLabel } : null,
+  ].filter(Boolean) as { icon: null; label: string; value: string }[]
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <EntityBreadcrumb
-        crumbs={[
+        items={[
           { label: 'Home', href: '/' },
           ...(restaurant.city ? [{ label: restaurant.city, href: `/destination/${encodeURIComponent(restaurant.city)}` }] : []),
-          { label: restaurant.name },
         ]}
+        current={restaurant.name}
       />
 
       <EntityHero
-        name={restaurant.name}
-        subtitle={location}
+        title={restaurant.name}
+        overline={location}
         images={restaurant.images ?? (restaurant.image_url ? [restaurant.image_url] : [])}
         rating={restaurant.rating ?? undefined}
         reviewCount={restaurant.reviewCount ?? undefined}
-        badge={priceLabel ?? undefined}
+        priceLevel={restaurant.price ?? undefined}
       />
 
       <EntityActionsBar
-        name={restaurant.name}
-        links={links}
+        entityName={restaurant.name}
         entityId={id}
-        entityType="restaurant"
+        entityType="place"
       />
 
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">

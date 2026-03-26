@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
-const serviceSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SECRET_KEY!
-)
+function getServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!
+  )
+}
 
 export async function GET(req: NextRequest) {
   // Try to get user session from cookies
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
   const tripIds = ids.split(',').filter(Boolean).slice(0, 50)
   if (tripIds.length === 0) return NextResponse.json([])
 
-  const { data, error } = await serviceSupabase
+  const { data, error } = await getServiceSupabase()
     .from('trips')
     .select('*')
     .in('id', tripIds)

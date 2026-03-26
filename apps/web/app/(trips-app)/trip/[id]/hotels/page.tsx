@@ -11,7 +11,9 @@ import {
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
 import { useItineraryScreen, useHotels as useDbHotels } from '@travyl/shared';
+import type { PlaceItem } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
+import { PinCard } from '@/components/PinCard';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -61,19 +63,7 @@ interface HotelData {
 /*  Mock Data                                                          */
 /* ------------------------------------------------------------------ */
 
-// Hotel images from Unsplash (reliable hotel room/exterior photos)
-const HOTEL_IMAGES = [
-  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=800&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&fm=webp&q=75',
-];
-const ROOM_IMAGES = [
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&fm=webp&q=75',
-  'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=400&fm=webp&q=75',
-];
+// No mock images — hotels use real photos from APIs or show a placeholder
 
 function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {
   return hotels.map((h: any, i: number) => {
@@ -84,7 +74,8 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
     const realRating = h.rating ?? (8.0 + (i % 5) * 0.15);
     const realReviews = h.ratingCount ?? h.review_count ?? 0;
     const realAmenities = h.amenities?.length ? h.amenities : ['WiFi', 'Breakfast'];
-    const mainImage = h.image ?? h.photo_url ?? HOTEL_IMAGES[idx % HOTEL_IMAGES.length];
+    const mainImage = h.image ?? h.photo_url ?? '';
+    const realImages = [mainImage, ...(h.images ?? [])].filter(Boolean);
 
     return {
       id: h.id ?? `hotel-${idx}`,
@@ -97,15 +88,11 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
       neighborhood: h.category ?? 'City Center',
       lat: h.lat ?? 0,
       lng: h.lng ?? 0,
-      images: [
-        mainImage,
-        HOTEL_IMAGES[(idx + 1) % HOTEL_IMAGES.length],
-        HOTEL_IMAGES[(idx + 2) % HOTEL_IMAGES.length],
-      ],
+      images: realImages.length > 0 ? realImages : [],
       amenities: realAmenities,
       roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
-        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: '', amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: '', amenities: ['WiFi', 'AC', 'Minibar'] },
       ],
       checkIn: '3:00 PM',
       checkOut: '11:00 AM',
@@ -132,7 +119,8 @@ function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
     const realStars = d.star_rating ?? (d.rating >= 4.5 ? 5 : d.rating >= 3.5 ? 4 : 3);
     const realPrice = d.price_per_night ?? 150;
     const realRating = d.rating ?? 8.0;
-    const mainImage = d.image_url ?? HOTEL_IMAGES[i % HOTEL_IMAGES.length];
+    const mainImage = d.image_url ?? '';
+    const realImages = [mainImage].filter(Boolean);
     const realAmenities = d.amenities?.length ? d.amenities.slice(0, 8) : ['WiFi', 'Breakfast'];
 
     return {
@@ -146,11 +134,11 @@ function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
       neighborhood: 'City Center',
       lat: d.latitude ?? 0,
       lng: d.longitude ?? 0,
-      images: [mainImage, HOTEL_IMAGES[(i + 1) % HOTEL_IMAGES.length], HOTEL_IMAGES[(i + 2) % HOTEL_IMAGES.length]],
+      images: realImages,
       amenities: realAmenities,
       roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: ROOM_IMAGES[0], amenities: ['WiFi', 'AC'] },
-        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: ROOM_IMAGES[1], amenities: ['WiFi', 'AC', 'Minibar'] },
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: '', amenities: ['WiFi', 'AC'] },
+        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: '', amenities: ['WiFi', 'AC', 'Minibar'] },
       ],
       checkIn: d.check_in ? new Date(d.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
       checkOut: d.check_out ? new Date(d.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',
@@ -216,16 +204,74 @@ function useHotels(tripId: string, searchQuery?: string) {
     enabled: !!destination && !!(lat && lng),
   });
 
-  // Combine: DB first (generated hotels), then context, then Foursquare — deduplicate by name
+  // 4. SerpAPI Google Hotels search
+  const { data: serpHotels = [] } = useQuery({
+    queryKey: ['hotels-serp', destination, trip?.start_date, trip?.end_date],
+    queryFn: async () => {
+      if (!destination) return [];
+      const params = new URLSearchParams({ destination });
+      if (trip?.start_date) params.set('check_in', trip.start_date);
+      if (trip?.end_date) params.set('check_out', trip.end_date);
+      const res = await fetch(`/api/hotels/search?${params}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.hotels ?? []).map((h: any, i: number): HotelData => ({
+        id: h.id || `serp-${i}`,
+        name: h.name,
+        stars: h.stars,
+        rating: h.rating,
+        reviews: h.reviews,
+        price: h.price ?? 0,
+        address: h.address,
+        neighborhood: h.neighborhood,
+        lat: h.lat,
+        lng: h.lng,
+        images: h.images ?? [],
+        amenities: h.amenities ?? [],
+        roomTypes: [],
+        checkIn: h.checkIn ?? '3:00 PM',
+        checkOut: h.checkOut ?? '11:00 AM',
+        cancellation: 'See hotel policy',
+        phone: '',
+        email: '',
+        guestRatings: { overall: h.rating, label: 'Good', cleanliness: 0, comfort: 0, location: 0, staff: 0, value: 0 },
+      }));
+    },
+    staleTime: 15 * 60 * 1000,
+    enabled: !!destination,
+  });
+
+  // Combine: DB first, then context, then Foursquare, then SerpAPI — deduplicate by name
   return useMemo(() => {
     const seen = new Set<string>();
-    return [...fromDb, ...fromContext, ...fetchedHotels].filter((h) => {
+    return [...fromDb, ...fromContext, ...fetchedHotels, ...serpHotels].filter((h) => {
       const key = h.name.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [fromDb, fromContext, fetchedHotels]);
+  }, [fromDb, fromContext, fetchedHotels, serpHotels]);
+}
+
+function hotelToPlaceItem(h: HotelData): PlaceItem {
+  const priceTag = h.price ? `€${h.price}/night` : '';
+  const starTag = h.stars ? '★'.repeat(h.stars) : '';
+  return {
+    id: h.id,
+    name: h.name,
+    image: h.images[0] || '',
+    images: h.images,
+    type: 'destination',
+    rating: h.rating > 5 ? h.rating / 2 : h.rating,
+    tagline: [priceTag, h.neighborhood].filter(Boolean).join(' · '),
+    category: starTag ? `${starTag} Hotel` : 'Hotel',
+    description: [h.address, h.cancellation].filter(Boolean).join(' · '),
+    tags: h.amenities.slice(0, 4),
+    latitude: h.lat,
+    longitude: h.lng,
+    address: h.address,
+    reviewCount: h.reviews,
+  };
 }
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
@@ -1261,17 +1307,19 @@ function BrowsingHotelsSection({
               </div>
 
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {hotels.map((hotel) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {hotels.map((hotel, i) => (
                     <div
                       key={hotel.id}
                       onMouseEnter={() => handleHover(hotel.id)}
                       onMouseLeave={() => handleHover(null)}
+                      onClick={() => setDetailHotel(detailHotel?.id === hotel.id ? null : hotel)}
                     >
-                      <BrowsingHotelGridCard
-                        hotel={hotel}
-                        onViewDetails={() => setDetailHotel(detailHotel?.id === hotel.id ? null : hotel)}
-                        isActive={detailHotel?.id === hotel.id}
+                      <PinCard
+                        item={hotelToPlaceItem(hotel)}
+                        index={i}
+                        isFavorited={false}
+                        onFavorite={() => {}}
                       />
                     </div>
                   ))}

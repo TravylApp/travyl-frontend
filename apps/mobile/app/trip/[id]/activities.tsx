@@ -77,6 +77,13 @@ function MinRatingFilter({ value, onChange }: { value: number | null; onChange: 
 }
 
 // ---- Activity Card with expandable details ----
+// Deterministic card height from ID (matches web PinCard)
+function cardHeight(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  return 220 + (Math.abs(hash) % 60);
+}
+
 function ActivityCard({
   item,
   isFavorited,
@@ -91,414 +98,140 @@ function ActivityCard({
   const colors = useThemeColors();
   const ACCENT = useTabAccent('activities');
   const [imgError, setImgError] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [imgIdx, setImgIdx] = useState(0);
   const hasImage = item.images.length > 0 && !imgError;
+  const height = cardHeight(item.id);
+  const categoryLabel = item.category || 'Activity';
 
   return (
-    <Pressable onPress={() => setExpanded(!expanded)}>
+    <Pressable onPress={() => {}}>
       <View
         style={{
-          backgroundColor: colors.cardBackground,
           borderRadius: 16,
           overflow: 'hidden',
-          borderWidth: item.isBooked ? 2 : 1,
-          borderColor: item.isBooked ? ACCENT : colors.border,
-          shadowColor: colors.shadow,
+          height,
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.08,
+          shadowOpacity: 0.15,
           shadowRadius: 12,
-          elevation: 4,
+          elevation: 6,
         }}
       >
-        {/* Image Section with Carousel */}
-        <View style={{ height: 180, position: 'relative' }}>
-          {hasImage && item.images.length > 1 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={(e) => {
-                const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_IMG_W);
-                setImgIdx(idx);
-              }}
-              scrollEventThrottle={16}
-              style={{ width: CARD_IMG_W, height: 180 }}
-            >
-              {item.images.map((uri, i) => (
-                <Image
-                  key={i}
-                  source={{ uri }}
-                  style={{ width: CARD_IMG_W, height: 180 }}
-                  resizeMode="cover"
-                  onError={() => setImgError(true)}
-                />
-              ))}
-            </ScrollView>
-          ) : hasImage ? (
-            <Image
-              source={{ uri: item.images[0] }}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <View
-              style={{
-                width: '100%',
-                height: '100%',
-                backgroundColor: placeholderColor(item.id),
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <FontAwesome name="image" size={32} color={colors.border} />
-            </View>
-          )}
-
-          {/* Gradient overlay */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 80,
-            }}
-          >
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' }} />
-          </View>
-
-          {/* Rating badge */}
+        {/* Full-bleed image */}
+        {hasImage ? (
+          <Image
+            source={{ uri: item.images[0] }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            resizeMode="cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
           <View
             style={{
-              position: 'absolute',
-              bottom: 10,
-              left: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-              backgroundColor: 'rgba(255,255,255,0.9)',
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 8,
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: placeholderColor(item.id),
+              alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name="star" size={11} color="#fbbf24" />
-            <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{item.rating.toFixed(1)}</Text>
-            {item.reviewCount != null && (
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()})</Text>
-            )}
-          </View>
-
-          {/* Favorite heart */}
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation?.();
-              onFavorite(item.id);
-            }}
-            style={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              backgroundColor: 'rgba(255,255,255,0.95)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.15,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
-          >
-            <FontAwesome
-              name={isFavorited ? 'heart' : 'heart-o'}
-              size={15}
-              color={isFavorited ? '#ef4444' : colors.border}
-            />
-          </Pressable>
-
-          {/* Booked badge */}
-          {item.isBooked && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                backgroundColor: '#10b981',
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 8,
-              }}
-            >
-              <FontAwesome name="calendar-check-o" size={11} color="#fff" />
-              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>
-                Day {item.bookedDay}
-              </Text>
-            </View>
-          )}
-
-          {/* Price badge (non-booked) */}
-          {item.price && !item.isBooked && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                backgroundColor: ACCENT,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{item.price}</Text>
-            </View>
-          )}
-
-          {/* Category badge */}
-          {item.category && (
-            <View
-              style={{
-                position: 'absolute',
-                bottom: 10,
-                right: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                backgroundColor: 'rgba(0,0,0,0.55)',
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <FontAwesome
-                name={(ACTIVITY_CATEGORY_ICONS[item.category] || 'compass') as any}
-                size={9}
-                color="rgba(255,255,255,0.9)"
-              />
-              <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.9)' }}>
-                {item.category}
-              </Text>
-            </View>
-          )}
-
-          {/* Deal badge */}
-          {item.dealPrice && item.originalPrice && (
-            <View
-              style={{
-                position: 'absolute',
-                top: item.isBooked || item.price ? 44 : 10,
-                left: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                backgroundColor: '#ef4444',
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <FontAwesome name="tag" size={9} color="#fff" />
-              <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.7)', textDecorationLine: 'line-through' }}>
-                {item.originalPrice}
-              </Text>
-              <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{item.dealPrice}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Dot indicators */}
-        {hasImage && item.images.length > 1 && (
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, paddingVertical: 8 }}>
-            {item.images.map((_, i) => (
-              <View key={i} style={{
-                width: imgIdx === i ? 16 : 6, height: 6, borderRadius: 3,
-                backgroundColor: imgIdx === i ? ACCENT : colors.border,
-              }} />
-            ))}
+            <FontAwesome name="image" size={32} color={colors.border} />
           </View>
         )}
 
-        {/* Content Section */}
-        <View style={{ padding: 14 }}>
-          {/* Location + Distance */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
-              <FontAwesome name="map-marker" size={11} color={colors.textTertiary} />
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }} numberOfLines={1}>{item.location}</Text>
-            </View>
-            {item.distance && (
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 8 }}>{item.distance}</Text>
-            )}
-          </View>
+        {/* Gradient overlay — bottom half */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6,
+            backgroundColor: 'transparent',
+          }}
+        >
+          <View style={{ flex: 1, opacity: 0.7, backgroundColor: 'black' }} />
+        </View>
 
-          {/* Title */}
-          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }} numberOfLines={1}>
-            {item.name}
+        {/* Category badge — top left */}
+        <View style={{
+          position: 'absolute', top: 10, left: 10,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+        }}>
+          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {categoryLabel}
           </Text>
+        </View>
 
-          {/* Stars + Reviews */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <RatingStars rating={item.rating} size={12} />
-            {item.reviewCount != null && (
-              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{item.reviewCount.toLocaleString()} reviews</Text>
-            )}
-          </View>
+        {/* Favorite heart — top right */}
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onFavorite(item.id);
+          }}
+          style={{
+            position: 'absolute', top: 10, right: 10,
+            width: 32, height: 32, borderRadius: 16,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <FontAwesome
+            name={isFavorited ? 'heart' : 'heart-o'}
+            size={14}
+            color={isFavorited ? '#ef4444' : '#fff'}
+          />
+        </Pressable>
 
-          {/* Price + Open Status Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            {item.price && (
-              <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{item.price}</Text>
-            )}
-            {item.isOpen !== undefined && (
-              <>
-                {item.price && <Text style={{ ...TextStyles.caption, color: colors.border }}>|</Text>}
-                <Text style={{ ...TextStyles.captionEm, color: item.isOpen ? '#059669' : '#ef4444' }}>
-                  {item.isOpen ? 'Open Now' : 'Closed'}
+        {/* Bottom content overlay */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 }}>
+          {/* Rating row */}
+          {item.rating > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+              <FontAwesome name="star" size={11} color="#fbbf24" />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{item.rating.toFixed(1)}</Text>
+              {item.reviewCount != null && item.reviewCount > 0 && (
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>
+                  ({item.reviewCount >= 1000 ? `${(item.reviewCount / 1000).toFixed(1)}k` : item.reviewCount})
                 </Text>
-              </>
-            )}
-          </View>
-
-          {/* Description */}
-          <Text
-            style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 10 }}
-            numberOfLines={expanded ? undefined : 2}
-          >
-            {item.description}
-          </Text>
-
-          {/* Tags */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {item.tags.slice(0, expanded ? item.tags.length : 3).map((tag, i) => (
-              <View
-                key={i}
-                style={{
-                  backgroundColor: ACCENT + '12',
-                  borderWidth: 1,
-                  borderColor: ACCENT + '25',
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 20,
-                }}
-              >
-                <Text style={{ ...TextStyles.caption, color: ACCENT }}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Expandable details section */}
-          {expanded && (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderRadius: 10,
-                padding: 12,
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: colors.borderLight,
-              }}
-            >
-              {item.bookedTime && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <FontAwesome name="clock-o" size={12} color={colors.textSecondary} />
-                  <Text style={{ ...TextStyles.body, color: colors.text }}>Scheduled: {item.bookedTime}</Text>
-                </View>
-              )}
-              {item.distance && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <FontAwesome name="road" size={12} color={colors.textSecondary} />
-                  <Text style={{ ...TextStyles.body, color: colors.text }}>Distance: {item.distance}</Text>
-                </View>
-              )}
-              {item.price && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <FontAwesome name="money" size={12} color={colors.textSecondary} />
-                  <Text style={{ ...TextStyles.body, color: colors.text }}>Price: {item.price}</Text>
-                </View>
-              )}
-              {item.category && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <FontAwesome name={(ACTIVITY_CATEGORY_ICONS[item.category] || 'compass') as any} size={12} color={colors.textSecondary} />
-                  <Text style={{ ...TextStyles.body, color: colors.text }}>Category: {item.category}</Text>
-                </View>
               )}
             </View>
           )}
 
-          {/* Expand / Collapse hint */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-            <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={10} color={colors.textTertiary} />
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 4 }}>
-              {expanded ? 'Show less' : 'Show more'}
+          {/* Name */}
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 2 }} numberOfLines={2}>
+            {item.name}
+          </Text>
+
+          {/* Description / tagline */}
+          {item.description ? (
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginBottom: 6 }} numberOfLines={1}>
+              {item.description}
             </Text>
-          </View>
+          ) : null}
 
-          {/* Action Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 12 }}>
-            {item.isBooked ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  backgroundColor: '#10b981',
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                }}
-              >
-                <FontAwesome name="check" size={11} color="#fff" />
-                <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Booked</Text>
-              </View>
-            ) : onAddToItinerary ? (
-              <Pressable
-                onPress={() => onAddToItinerary(item.id)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  borderWidth: 1.5,
-                  borderColor: ACCENT + '40',
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                }}
-              >
-                <FontAwesome name="plus" size={11} color={ACCENT} />
-                <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Add to Itinerary</Text>
-              </Pressable>
-            ) : null}
-
-            <View style={{ flex: 1 }} />
-
-            {item.bookingUrl && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  backgroundColor: '#10b981',
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                }}
-              >
-                <FontAwesome name="external-link" size={10} color="#fff" />
-                <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>
-                  {item.bookingLabel || 'Book Now'}
-                </Text>
-              </View>
-            )}
-          </View>
+          {/* Tags */}
+          {item.tags.length > 0 && (
+            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+              {item.tags.slice(0, 3).map((tag) => (
+                <View key={tag} style={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '600' }}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
+
+        {/* Booked badge — bottom of category badge area */}
+        {item.isBooked && (
+          <View style={{
+            position: 'absolute', top: 10, left: 10,
+            flexDirection: 'row', alignItems: 'center', gap: 4,
+            backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+            marginTop: 26,
+          }}>
+            <FontAwesome name="calendar-check-o" size={9} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Day {item.bookedDay}</Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -1010,7 +743,7 @@ function SkeletonCard() {
 export default function ActivitiesScreen() {
   const ACCENT = useTabAccent('activities');
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { days, isLoading } = useItineraryScreen(id);
+  const { trip, days, isLoading } = useItineraryScreen(id);
 
   const {
     viewMode, setViewMode,
@@ -1024,7 +757,7 @@ export default function ActivitiesScreen() {
     bookedItems,
     discoverItems,
     clearFilters,
-  } = useActivityFilters(days);
+  } = useActivityFilters(days, trip?.trip_context);
 
   const colors = useThemeColors();
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -1310,35 +1043,33 @@ export default function ActivitiesScreen() {
         </Text>
       </View>
 
-        {/* ---- Activity Cards ---- */}
+        {/* ---- Activity Cards — 2-column masonry grid ---- */}
         {displayItems.length > 0 ? (
-          <View style={{ gap: 14 }}>
-            {displayItems.map((item) => (
-              <View key={item.id}>
-                <ActivityCard
-                  item={item}
-                  isFavorited={favorites.includes(item.id)}
-                  onFavorite={toggleFavorite}
-                  onAddToItinerary={!item.isBooked ? () => {} : undefined}
-                />
-                <Pressable
-                  onPress={() => setSelectedItem(item)}
-                  style={{
-                    alignItems: 'center',
-                    paddingVertical: 8,
-                    marginTop: -4,
-                    backgroundColor: colors.cardBackground,
-                    borderBottomLeftRadius: 16,
-                    borderBottomRightRadius: 16,
-                    borderWidth: 1,
-                    borderTopWidth: 0,
-                    borderColor: colors.border,
-                  }}
-                >
-                  <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>View Details</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {/* Left column */}
+            <View style={{ flex: 1, gap: 10 }}>
+              {displayItems.filter((_, i) => i % 2 === 0).map((item) => (
+                <Pressable key={item.id} onPress={() => setSelectedItem(item)}>
+                  <ActivityCard
+                    item={item}
+                    isFavorited={favorites.includes(item.id)}
+                    onFavorite={toggleFavorite}
+                  />
                 </Pressable>
-              </View>
-            ))}
+              ))}
+            </View>
+            {/* Right column */}
+            <View style={{ flex: 1, gap: 10 }}>
+              {displayItems.filter((_, i) => i % 2 === 1).map((item) => (
+                <Pressable key={item.id} onPress={() => setSelectedItem(item)}>
+                  <ActivityCard
+                    item={item}
+                    isFavorited={favorites.includes(item.id)}
+                    onFavorite={toggleFavorite}
+                  />
+                </Pressable>
+              ))}
+            </View>
           </View>
         ) : (
           /* ---- Empty / No Results State ---- */
