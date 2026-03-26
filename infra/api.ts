@@ -116,3 +116,8 @@ api.route('POST /packing-suggest', {
     },
   ],
 })
+
+api.route('GET /activity-intelligence', {
+  handler: 'services/activity-intelligence.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
