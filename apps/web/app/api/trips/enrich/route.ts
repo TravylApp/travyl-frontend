@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 // Lazy-init to avoid crashing at build time when env vars aren't set
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SECRET_KEY!
+  const key = (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!
   return createClient(url, key)
 }
 

@@ -35,6 +35,7 @@ export {
   acceptInviteByToken,
   joinTripViaLink,
   findPendingInviteByEmail,
+  savePlanToSupabase,
 } from './api';
 export {
   fetchBudgetCategories,

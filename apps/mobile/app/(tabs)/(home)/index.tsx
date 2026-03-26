@@ -33,8 +33,7 @@ import {
   FontSize,
   FontFamily,
 } from '@travyl/shared';
-import { savePlanToSupabase } from '@travyl/shared/src/services/api';
-import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
+import { savePlanToSupabase, saveAnonTripId } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
