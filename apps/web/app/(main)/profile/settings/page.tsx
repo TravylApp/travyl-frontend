@@ -152,7 +152,6 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
   tabs: { id: T; label: string; icon?: React.ReactNode; description?: string }[];
   active: T;
   onChange: (id: T) => void;
-}) {
   return (
     <div className="flex gap-4 mb-6 border-b border-gray-100">
       {tabs.map(tab => (
@@ -1014,5 +1013,7 @@ export default function ProfileSettings() {
         targetLabel={pendingTabChange ? tabLabels[pendingTabChange] : undefined}
       />
     </div>
+  );
+}
   );
 }
