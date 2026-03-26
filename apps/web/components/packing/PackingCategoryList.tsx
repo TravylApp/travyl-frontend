@@ -8,6 +8,8 @@ interface PackingCategoryListProps {
   itemsByCategory: Record<string, DbPackingItem[]>
   suggestionsByCategory?: Record<string, PackingSuggestion[]>
   onToggle: (id: string) => void
+  onIncrementPacked: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
   onRemove: (id: string) => void
   onClaim?: (id: string) => void
   onRelease?: (id: string) => void
@@ -22,6 +24,8 @@ export function PackingCategoryList({
   itemsByCategory,
   suggestionsByCategory = {},
   onToggle,
+  onIncrementPacked,
+  onUpdateQuantity,
   onRemove,
   onClaim,
   onRelease,
@@ -65,6 +69,8 @@ export function PackingCategoryList({
             items={categoryItems}
             suggestions={categorySuggestions}
             onToggle={onToggle}
+            onIncrementPacked={onIncrementPacked}
+            onUpdateQuantity={onUpdateQuantity}
             onRemove={onRemove}
             onClaim={onClaim}
             onRelease={onRelease}

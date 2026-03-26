@@ -1,0 +1,33 @@
+name: Expo Preview
+on:
+  push:
+    branches:
+      - RB24-7
+
+jobs:
+  update:
+    name: EAS Update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-cache: true
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Publish Update
+        run: npx eas update --branch preview --message "Auto-update from GitHub RB24-7"
+        working-directory: apps/mobile

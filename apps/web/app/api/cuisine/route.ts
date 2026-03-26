@@ -1,41 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getRequiredParams, errorResponse, CACHE_1H } from '@/lib/api-utils'
+
+interface Meal {
+  id: string
+  name: string
+  image: string
+}
 
 export async function GET(req: NextRequest) {
-  const area = req.nextUrl.searchParams.get('area')
-
-  if (!area) {
-    return NextResponse.json(
-      { error: 'Missing area parameter (e.g. "Japanese", "Italian", "Spanish")' },
-      { status: 400 }
-    )
-  }
+  const params = getRequiredParams(req, 'area')
+  if (params instanceof NextResponse) return params
 
   try {
     const res = await fetch(
-      `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(area)}`,
-      { next: { revalidate: 3600 } }
+      `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(params.area)}`,
+      CACHE_1H,
     )
 
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: 'TheMealDB fetch failed' },
-        { status: res.status }
-      )
-    }
+    if (!res.ok) return errorResponse('TheMealDB fetch failed', res.status)
 
     const data = await res.json()
-
-    const meals = (data?.meals ?? []).map((meal: any) => ({
-      id: meal.idMeal,
-      name: meal.strMeal,
-      image: meal.strMealThumb,
-    }))
+    const meals: Meal[] = (data?.meals ?? []).map(
+      (meal: { idMeal: string; strMeal: string; strMealThumb: string }) => ({
+        id: meal.idMeal,
+        name: meal.strMeal,
+        image: meal.strMealThumb,
+      }),
+    )
 
     return NextResponse.json(meals)
   } catch {
-    return NextResponse.json(
-      { error: 'Cuisine service unavailable' },
-      { status: 500 }
-    )
+    return errorResponse('Cuisine service unavailable', 500)
   }
 }

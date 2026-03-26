@@ -19,50 +19,12 @@ import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { RatingStars } from '@/components/ui/RatingStars';
 
 
-/* -- Menu highlights mock data (keyed by restaurant id) -------- */
-const MENU_HIGHLIGHTS: Record<string, string[]> = {
-  rb1: ['Duck Confit', 'Cr\u00e8me Br\u00fbl\u00e9e', 'Steak Tartare', 'Escargot'],
-  rb2: ['Tasting Menu (7 courses)', 'Lobster Thermidor', 'Chocolate Souffl\u00e9'],
-  rb3: ['Artisan Cheese', 'Charcuterie', 'Cr\u00eapes', 'Wine Pairing'],
-  rd1: ['Buckwheat Galette Compl\u00e8te', 'Caramel Beurre Sal\u00e9 Cr\u00eape', 'Artisanal Cider'],
-  rd2: ['Wild Strawberry Sorbet', 'Salted Caramel', 'Chocolate Noir', 'Pistachio'],
-  rd3: ['Natural Wine Flight', 'Charcuterie Board', 'Comt\u00e9 Cheese'],
-  rd4: ['Bordeaux Tasting', 'Champagne Flight', 'Burgundy Pinot Noir'],
-  rd5: ['Croissant Making', 'Macaron Workshop', 'Take-home Pastries'],
-  rd6: ['Onion Soup Gratin\u00e9e', 'Boeuf Bourguignon', 'Cr\u00e8me Caramel'],
-  rd7: ['Pain des Amis', 'Escargot Pastry', 'Pistachio Swirl'],
-  rd8: ['Falafel Pita Special', 'Grilled Aubergine', 'Tahini Plate'],
-};
+const MENU_HIGHLIGHTS: Record<string, string[]> = {};
 
-const RESTAURANT_HOURS: Record<string, string> = {
-  rb1: '12:00 PM \u2013 10:30 PM',
-  rb2: '12:00 PM \u2013 1:30 PM, 7:00 PM \u2013 9:30 PM',
-  rb3: 'Tours at 10:00 AM & 2:00 PM',
-  rd1: '11:30 AM \u2013 11:00 PM',
-  rd2: '10:00 AM \u2013 8:00 PM (Wed\u2013Sun)',
-  rd3: '5:00 PM \u2013 12:00 AM',
-  rd4: 'Sessions at 12:00 PM, 4:00 PM & 7:00 PM',
-  rd5: 'Classes at 9:00 AM & 2:00 PM (Mon\u2013Sat)',
-  rd6: '11:30 AM \u2013 12:00 AM',
-  rd7: '6:45 AM \u2013 8:00 PM (Mon\u2013Fri)',
-  rd8: '11:00 AM \u2013 12:00 AM (Closed Sat)',
-};
+const RESTAURANT_HOURS: Record<string, string> = {};
 
-const RESERVATION_INFO: Record<string, string> = {
-  rb1: 'Reservation confirmed \u00b7 Party of 2',
-  rb2: 'Reservation confirmed \u00b7 Party of 2 \u00b7 Dress code: Smart casual',
-  rb3: 'Booking confirmed \u00b7 2 participants',
-  rd1: 'Walk-in only \u00b7 Expect 20\u201340 min wait',
-  rd3: 'Reservations recommended',
-  rd4: 'Online booking required',
-  rd5: 'Online booking required \u00b7 Min 2 participants',
-  rd6: 'No reservations \u00b7 First come, first served',
-};
-
-const RESTAURANT_DISTANCES: Record<string, string> = {
-  rb1: '0.3 km', rb2: '0.8 km', rb3: '1.2 km',
-  rd1: '0.5 km', rd2: '1.5 km', rd3: '0.7 km', rd4: '2.1 km', rd5: '0.4 km',
-};
+const RESERVATION_INFO: Record<string, string> = {};
+const RESTAURANT_DISTANCES: Record<string, string> = {};
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

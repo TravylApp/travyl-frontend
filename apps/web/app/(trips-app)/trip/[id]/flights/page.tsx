@@ -183,22 +183,7 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   return { flights: data ?? [], isLoading, destAirport, destination, refetch };
 }
 
-const BOOKED_FLIGHTS: any[] = [];
-const COMPARISON_FLIGHTS: any[] = [];
-
-const BOOKING_DETAILS = {
-  confirmationNumber: '',
-  pnr: '',
-  ticketNumbers: [],
-  fareClass: '',
-  fareType: '',
-  baggageAllowance: { carryOn: '', checked: '', fees: 0 },
-  cancellationPolicy: '',
-  changePolicy: '',
-  refundPolicy: '',
-  checkInUrl: '',
-  checkInOpens: '',
-};
+// Booking details are shown only when real booking data is available from the flight record
 
 /* ================================================================
    ANIMATION VARIANTS
@@ -714,95 +699,6 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
   );
 }
 
-/* ================================================================
-   BOOKING DETAILS SECTION
-   ================================================================ */
-
-function BookingDetailsSection() {
-  const [open, setOpen] = useState(false);
-  const d = BOOKING_DETAILS;
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <button onClick={() => setOpen(!open)}
-        className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${open ? 'bg-blue-50/50' : 'hover:bg-gray-50/50'}`}>
-        <div className="flex items-center gap-2">
-          <FileText size={16} className="text-[#2563eb]" />
-          <span className="text-sm font-medium text-gray-900">Booking Details</span>
-        </div>
-        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
-            <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-2.5">
-              {/* Booking reference */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800 mb-2">Booking Reference</p>
-                <div className="space-y-1.5">
-                  {[{ label: 'Confirmation Number', value: d.confirmationNumber, bold: true }, { label: 'PNR Code', value: d.pnr, mono: true }, { label: 'Fare Class', value: `${d.fareClass} - ${d.fareType}` }].map(row => (
-                    <div key={row.label} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">{row.label}</span>
-                      <span className={`text-xs ${row.bold ? 'font-bold text-[#2563eb]' : row.mono ? 'font-medium font-mono text-gray-800' : 'font-medium text-gray-800'}`}>{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Baggage */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800 mb-2">Baggage Allowance</p>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Carry-on</span><span className="text-xs text-gray-800">{d.baggageAllowance.carryOn}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Checked</span><span className="text-xs text-gray-800">{d.baggageAllowance.checked}</span></div>
-                  <div className="flex items-center justify-between pt-1.5 border-t border-gray-200">
-                    <span className="text-xs text-gray-500">Baggage Fees</span>
-                    <span className="text-xs font-semibold text-emerald-600">{d.baggageAllowance.fees === 0 ? 'Included' : `$${d.baggageAllowance.fees}/person`}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ticket numbers */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800 mb-2">Ticket Numbers</p>
-                <div className="space-y-1">
-                  {d.ticketNumbers.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Passenger {i + 1}</span>
-                      <span className="text-xs font-mono text-gray-800">{t}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Policies */}
-              {[{ title: 'Cancellation Policy', text: d.cancellationPolicy }, { title: 'Change Policy', text: d.changePolicy }, { title: 'Refund Policy', text: d.refundPolicy }].map(p => (
-                <div key={p.title} className="bg-gray-50 rounded-lg px-3 py-2.5">
-                  <p className="text-xs font-semibold text-gray-800 mb-1">{p.title}</p>
-                  <p className="text-xs text-gray-600 leading-relaxed">{p.text}</p>
-                </div>
-              ))}
-
-              {/* Check-in CTA */}
-              <div className="rounded-lg px-3 py-3" style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                <p className="text-xs font-semibold text-white mb-1.5">Check-in Information</p>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/70">Check-in Opens</span>
-                  <span className="text-xs font-medium text-white">{d.checkInOpens}</span>
-                </div>
-                <a href={d.checkInUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-block px-4 py-2 bg-white text-[#2563eb] rounded-lg text-xs font-semibold hover:bg-gray-50 transition-colors shadow-sm">
-                  Check-in Online →
-                </a>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 /* ================================================================
    MAIN PAGE
@@ -829,8 +725,53 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     });
   };
 
-  // Convert DB flights into the shape BookedFlightCard expects
-  const bookedFlights = useMemo(() => dbFlightsToBooked(dbFlights, destination), [dbFlights, destination]);
+  // Convert DB flights OR trip_context flights into BookedFlightCard format
+  const contextFlights = (trip?.trip_context as any)?.flights as any[] | undefined;
+  const bookedFlights = useMemo(() => {
+    if (dbFlights.length > 0) return dbFlightsToBooked(dbFlights, destination);
+    if (!contextFlights?.length) return [];
+    // Convert trip_context flights (from planner) into BookedFlight shape
+    return contextFlights.map((f: any, i: number): BookedFlight => {
+      const dep = f.departure_time ? new Date(f.departure_time) : null;
+      const arr = f.arrival_time ? new Date(f.arrival_time) : null;
+      const depTime = dep ? dep.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+      const arrTime = arr ? arr.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '—';
+      const dateStr = dep ? dep.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      const nextDay = dep && arr ? arr.getDate() !== dep.getDate() : false;
+      let durationStr = '';
+      if (f.duration) {
+        const mins = typeof f.duration === 'number' ? f.duration : parseInt(f.duration, 10);
+        if (!isNaN(mins)) durationStr = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+      } else if (dep && arr) {
+        const ms = arr.getTime() - dep.getTime();
+        durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
+      }
+      const originCode = f.origin ?? '';
+      const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+      const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
+      return {
+        id: `ctx-flight-${i}`,
+        type: i === 0 ? 'outbound' : 'return',
+        flightNumber: `${airlineCode}${100 + i}`,
+        airline: f.airline || 'Airline',
+        airlineLogo: airlineCode,
+        aircraft: '',
+        date: dateStr,
+        departure: { time: depTime, code: originCode, terminal: '', gate: '' },
+        arrival: { time: arrTime, code: destCode, terminal: '', gate: '', nextDay },
+        duration: durationStr,
+        stops: f.stops ? `${f.stops} stop${f.stops > 1 ? 's' : ''}` : 'Direct',
+        cabinClass: 'Economy',
+        seats: '',
+        baggage: '1 checked bag',
+        meal: '',
+        wifi: '',
+        confirmation: '',
+        price: { base: Math.round(f.price ?? 0), taxes: 0, total: Math.round(f.price ?? 0) },
+        status: 'Planned',
+      };
+    });
+  }, [dbFlights, contextFlights, destination]);
   const outbound = bookedFlights.filter(f => f.type === 'outbound');
   const returnFlights = bookedFlights.filter(f => f.type === 'return');
 
@@ -888,8 +829,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
         <ComparisonAlternatives comparisonFlights={searchedFlights} />
       ) : null}
 
-      {/* 4. Booking Details — only show when there are booked flights */}
-      {hasBookedFlights && <BookingDetailsSection />}
+      {/* Booking details will show when real booking data is available */}
     </div>
   );
 }

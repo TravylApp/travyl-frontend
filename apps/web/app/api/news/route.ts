@@ -1,33 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '../lib/response'
 
-export async function GET(req: NextRequest) {
-  const destination = req.nextUrl.searchParams.get('destination')
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10')
+// ─── Response types ──────────────────────────────────────────────────────────
 
-  if (!destination) {
-    return NextResponse.json({ error: 'Missing destination parameter' }, { status: 400 })
-  }
-
-  try {
-    // Google News RSS — free, no API key needed
-    const query = `${destination} travel`
-    const res = await fetch(
-      `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`,
-      { next: { revalidate: 3600 } } // Cache 1 hour
-    )
-
-    if (!res.ok) {
-      return NextResponse.json({ error: 'News fetch failed' }, { status: res.status })
-    }
-
-    const xml = await res.text()
-    const articles = parseRSS(xml, limit)
-
-    return NextResponse.json(articles)
-  } catch {
-    return NextResponse.json({ error: 'News service unavailable' }, { status: 500 })
-  }
-}
+type ArticleCategory = 'news' | 'advisory' | 'event' | 'tip'
 
 interface NewsArticle {
   id: string
@@ -36,54 +12,29 @@ interface NewsArticle {
   date: string
   url: string
   snippet: string
-  category: 'news' | 'advisory' | 'event' | 'tip'
+  category: ArticleCategory
 }
 
-function parseRSS(xml: string, limit: number): NewsArticle[] {
-  const articles: NewsArticle[] = []
-  // Simple XML parsing without external deps
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g
-  let match
+// ─── RSS parsing helpers ─────────────────────────────────────────────────────
 
-  while ((match = itemRegex.exec(xml)) !== null && articles.length < limit) {
-    const item = match[1]
-    const title = extractTag(item, 'title')
-    const link = extractTag(item, 'link')
-    const pubDate = extractTag(item, 'pubDate')
-    const source = extractTag(item, 'source')
-    const description = extractTag(item, 'description')
+const CATEGORY_PATTERNS: Array<[RegExp, ArticleCategory]> = [
+  [/warning|advisory|alert|danger|avoid|scam|safety/, 'advisory'],
+  [/festival|event|concert|celebration|parade|opening/, 'event'],
+  [/tip|guide|best|must|secret|hidden|how to|budget/, 'tip'],
+]
 
-    if (!title) continue
-
-    // Categorize based on keywords
-    const lower = title.toLowerCase()
-    let category: NewsArticle['category'] = 'news'
-    if (lower.match(/warning|advisory|alert|danger|avoid|scam|safety/)) category = 'advisory'
-    else if (lower.match(/festival|event|concert|celebration|parade|opening/)) category = 'event'
-    else if (lower.match(/tip|guide|best|must|secret|hidden|how to|budget/)) category = 'tip'
-
-    articles.push({
-      id: `news-${articles.length}-${Date.now()}`,
-      title: decodeHTMLEntities(title),
-      source: source || 'Google News',
-      date: pubDate || new Date().toISOString(),
-      url: link || '',
-      snippet: description ? decodeHTMLEntities(description).replace(/<[^>]*>/g, '').slice(0, 200) : '',
-      category,
-    })
-  }
-
-  return articles
+function categorize(title: string): ArticleCategory {
+  const lower = title.toLowerCase()
+  return CATEGORY_PATTERNS.find(([re]) => re.test(lower))?.[1] ?? 'news'
 }
 
 function extractTag(xml: string, tag: string): string {
-  // Handle CDATA
-  const cdataRegex = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`)
-  const cdataMatch = xml.match(cdataRegex)
+  const cdataRe = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`)
+  const cdataMatch = xml.match(cdataRe)
   if (cdataMatch) return cdataMatch[1].trim()
 
-  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`)
-  const match = xml.match(regex)
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`)
+  const match = xml.match(re)
   return match ? match[1].trim() : ''
 }
 
@@ -93,6 +44,54 @@ function decodeHTMLEntities(text: string): string {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
+    .replace(/&#39;|&#x27;/g, "'")
+}
+
+function parseRSS(xml: string, limit: number): NewsArticle[] {
+  const articles: NewsArticle[] = []
+  const itemRe = /<item>([\s\S]*?)<\/item>/g
+  let match
+
+  while ((match = itemRe.exec(xml)) !== null && articles.length < limit) {
+    const item = match[1]
+    const title = extractTag(item, 'title')
+    if (!title) continue
+
+    const description = extractTag(item, 'description')
+
+    articles.push({
+      id: `news-${articles.length}-${Date.now()}`,
+      title: decodeHTMLEntities(title),
+      source: extractTag(item, 'source') || 'Google News',
+      date: extractTag(item, 'pubDate') || new Date().toISOString(),
+      url: extractTag(item, 'link') || '',
+      snippet: description ? decodeHTMLEntities(description).replace(/<[^>]*>/g, '').slice(0, 200) : '',
+      category: categorize(title),
+    })
+  }
+
+  return articles
+}
+
+// ─── Route handler ───────────────────────────────────────────────────────────
+
+export async function GET(req: NextRequest) {
+  try {
+    const destination = requireParam(req.nextUrl.searchParams, 'destination')
+    const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10', 10)
+
+    const query = `${destination} travel`
+    const res = await fetch(
+      `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`,
+      CACHE_1H
+    )
+
+    if (!res.ok) return errorResponse('News fetch failed', res.status)
+
+    const xml = await res.text()
+    return jsonResponse(parseRSS(xml, limit))
+  } catch (err) {
+    if (err instanceof MissingParamError) return errorResponse(err.message, 400)
+    return errorResponse('News service unavailable', 500)
+  }
 }

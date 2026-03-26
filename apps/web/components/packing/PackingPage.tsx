@@ -18,7 +18,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
   const [filterBy, setFilterBy] = useState<string>('all')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const { items, itemsByCategory, orderedCategories, filteredItems, auditLog, progress, isLoading, error, addItem, togglePacked, removeItem, claimItem, releaseItem, transferItem } = usePackingList(tripId, userId, filterBy)
+  const { items, itemsByCategory, orderedCategories, filteredItems, auditLog, progress, isLoading, error, addItem, togglePacked, incrementPacked, updateQuantity, removeItem, claimItem, releaseItem, transferItem } = usePackingList(tripId, userId, filterBy)
   const {
     suggestionsByCategory,
     isGenerating,
@@ -90,6 +90,8 @@ export function PackingPage({ tripId }: PackingPageProps) {
               itemsByCategory={filteredItemsByCategory}
               suggestionsByCategory={suggestionsByCategory}
               onToggle={togglePacked}
+              onIncrementPacked={incrementPacked}
+              onUpdateQuantity={updateQuantity}
               onRemove={removeItem}
               onAcceptSuggestion={acceptSuggestion}
               onDismissSuggestion={dismissSuggestion}

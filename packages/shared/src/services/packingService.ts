@@ -22,7 +22,7 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
   const { data, error } = await supabase
     .from('packing_audit_log')
-    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name, email), target:profiles!packing_audit_log_target_user_id_fkey(display_name, email)')
+    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name,email), target:profiles!packing_audit_log_target_user_id_fkey(display_name,email)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -44,6 +44,7 @@ export async function insertPackingItem(
     .from('packing_items')
     .insert({
       trip_id: tripId, user_id: userId, name, category, sort_order: sortOrder,
+      quantity: 1, packed_count: 0,
       ...(ownerId !== undefined && { owner_id: ownerId }),
       ...(groupTag !== undefined && { group_tag: groupTag }),
     })
@@ -92,8 +93,29 @@ export async function insertAuditEntry(
   if (error) throw error
 }
 
-export async function updatePackingItemPacked(itemId: string, isPacked: boolean, packedBy: string | null): Promise<void> {
-  const { error } = await supabase.from('packing_items').update({ is_packed: isPacked, packed_by: isPacked ? packedBy : null, packed_at: isPacked ? new Date().toISOString() : null }).eq('id', itemId)
+export async function updatePackingItemPacked(itemId: string, isPacked: boolean, packedBy: string | null, quantity: number): Promise<void> {
+  const { error } = await supabase.from('packing_items').update({
+    is_packed: isPacked,
+    packed_count: isPacked ? quantity : 0,
+    packed_by: isPacked ? packedBy : null,
+    packed_at: isPacked ? new Date().toISOString() : null,
+  }).eq('id', itemId)
+  if (error) throw error
+}
+
+export async function updatePackingQuantity(itemId: string, quantity: number, currentPackedCount: number): Promise<void> {
+  const update = quantity <= currentPackedCount
+    ? { quantity, packed_count: quantity, is_packed: true }
+    : { quantity, is_packed: false }
+  const { error } = await supabase.from('packing_items').update(update).eq('id', itemId)
+  if (error) throw error
+}
+
+export async function updatePackedCount(itemId: string, packedCount: number, quantity: number): Promise<void> {
+  const { error } = await supabase.from('packing_items').update({
+    packed_count: packedCount,
+    is_packed: packedCount >= quantity,
+  }).eq('id', itemId)
   if (error) throw error
 }
 

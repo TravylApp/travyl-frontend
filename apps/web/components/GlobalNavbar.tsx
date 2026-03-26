@@ -21,7 +21,6 @@ function getInitials(name: string | undefined): string {
 }
 
 const AUTH_PAGES = ["/login", "/signup"];
-const DASHBOARD_PAGES = ["/trips"];
 
 export default function GlobalNavbar() {
   const pathname = usePathname();
@@ -44,7 +43,7 @@ export default function GlobalNavbar() {
     : baseNavLinks;
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isDashboardPage = DASHBOARD_PAGES.some((p) => pathname.startsWith(p));
+  const isCalendarTab = /\/trip\/[^/]+\/calendar$/.test(pathname);
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
@@ -100,7 +99,7 @@ export default function GlobalNavbar() {
     await signOut();
   }, [signOut]);
 
-  if (isAuthPage || isDashboardPage) return null;
+  if (isAuthPage || isCalendarTab) return null;
 
   return (
     <>

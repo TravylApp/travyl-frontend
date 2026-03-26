@@ -239,7 +239,7 @@ export function TripNavbar({
       )}
 
       {/* Main navbar row */}
-      <div className="flex items-center h-11 border-b border-gray-200 dark:border-[#1e3a5f]/30 bg-white dark:bg-[#0f1a28] shrink-0">
+      <div className="flex items-center h-11 border-b border-gray-200/60 dark:border-[#1e3a5f]/30 bg-white/70 dark:bg-[#0f1a28]/80 backdrop-blur-xl shrink-0">
 
         {/* Logo */}
         <Link

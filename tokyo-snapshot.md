@@ -1,0 +1,926 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e658]:
+    - generic [ref=e659]:
+      - paragraph [ref=e660]:
+        - generic [ref=e661]: Japan
+      - generic [ref=e662]:
+        - heading "TOKYO" [level=1] [ref=e663]
+        - button "Hide Info" [ref=e664]:
+          - generic [ref=e665]: Hide Info
+          - img [ref=e666]
+    - generic [ref=e669]:
+      - generic [ref=e670]:
+        - generic [ref=e671]: Apr 15 – Apr 19, 2026
+        - generic [ref=e672]: ·
+        - generic [ref=e673]: 1 traveler
+      - generic [ref=e674]:
+        - generic [ref=e675]: moderate (~$105/day)
+        - generic [ref=e676]:
+          - button "1" [ref=e677] [cursor=pointer]
+          - text: USD · = ¥158.96 JPY
+        - generic [ref=e678]: Asia/Tokyo
+        - 'generic "PM2.5: 48.3 · PM10: 62.6" [ref=e679]': Air Moderate
+      - generic [ref=e680]:
+        - generic [ref=e681]:
+          - img [ref=e682]
+          - generic [ref=e688]: °
+        - generic [ref=e689]: "|"
+        - generic [ref=e690]:
+          - generic [ref=e691]: Wed
+          - generic [ref=e692]: ☀️
+          - generic [ref=e693]: °
+        - generic [ref=e694]:
+          - generic [ref=e695]: Thu
+          - generic [ref=e696]: ☀️
+          - generic [ref=e697]: °
+        - generic [ref=e698]:
+          - generic [ref=e699]: Fri
+          - generic [ref=e700]: ☀️
+          - generic [ref=e701]: °
+        - generic [ref=e702]:
+          - generic [ref=e703]: Sat
+          - generic [ref=e704]: ☀️
+          - generic [ref=e705]: °
+        - generic [ref=e706]:
+          - generic [ref=e707]: Sun
+          - generic [ref=e708]: ☀️
+          - generic [ref=e709]: °
+        - generic [ref=e710]: "|"
+        - generic [ref=e711]:
+          - generic [ref=e712]:
+            - img [ref=e713]
+            - generic [ref=e719]: Sunrise
+            - generic [ref=e720]: 1:35 PM
+          - generic [ref=e721]:
+            - img [ref=e722]
+            - generic [ref=e728]: Sunset
+            - generic [ref=e729]: 1:58 AM
+      - generic [ref=e730]:
+        - paragraph [ref=e731]: Tokyo, officially the Tokyo Metropolis, is the capital and most populous city of Japan. With a population of over 14 million in the city proper in 2023, it is one of the most populous urban areas in the world. The Greater Tokyo Area, which includes Tokyo and parts of six neighboring prefectures, is the most populous metropolitan area in the world, with 41 million residents as of 2024.
+        - blockquote [ref=e732]:
+          - paragraph [ref=e733]: “The journey of a thousand miles begins with a single step.”
+          - generic [ref=e734]: — Lao Tzu
+    - generic [ref=e737]:
+      - generic [ref=e739]:
+        - generic "Drag to reposition" [ref=e740]:
+          - img [ref=e741]
+        - link "Overview" [ref=e748] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076
+          - img [ref=e749]
+          - generic: Overview
+        - link "Itinerary" [ref=e752] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/itinerary
+          - img [ref=e753]
+          - generic: Itinerary
+        - link "Calendar" [ref=e755] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/calendar
+          - img [ref=e756]
+          - generic: Calendar
+        - link "Hotels" [ref=e758] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/hotels
+          - img [ref=e759]
+          - generic: Hotels
+        - link "Flights" [ref=e763] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/flights
+          - img [ref=e764]
+          - generic: Flights
+        - link "Restaurants" [ref=e766] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/restaurants
+          - img [ref=e767]
+          - generic: Restaurants
+        - link "Explore" [ref=e772] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/activities
+          - img [ref=e773]
+          - generic: Explore
+        - link "Packing" [ref=e776] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/packing
+          - img [ref=e777]
+          - generic: Packing
+        - link "Budget" [ref=e782] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/budget
+          - img [ref=e783]
+          - generic: Budget
+        - link "Car Rental" [ref=e786] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/cars
+          - img [ref=e787]
+          - generic: Car Rental
+        - link "Favorites" [ref=e791] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/favorites
+          - img [ref=e792]
+          - generic: Favorites
+        - link "Settings" [ref=e794] [cursor=pointer]:
+          - /url: /trip/7ff8459b-7e68-468f-aa65-adf610ae0076/settings
+          - img [ref=e795]
+          - generic: Settings
+        - button "Customize tabs" [ref=e798]:
+          - img [ref=e799]
+      - generic [ref=e809]:
+        - generic [ref=e811]:
+          - generic [ref=e813]:
+            - generic [ref=e814]:
+              - generic [ref=e815]:
+                - generic [ref=e816]: Explore
+                - heading "Things to Do" [level=2] [ref=e817]
+              - generic [ref=e818]:
+                - generic [ref=e819]: 1 / 16
+                - button [disabled] [ref=e820]:
+                  - img [ref=e821]
+                - button [ref=e823]:
+                  - img [ref=e824]
+            - generic [ref=e826]:
+              - generic [ref=e827] [cursor=pointer]:
+                - img "Tokyo Skytree" [ref=e828]
+                - generic [ref=e830]: Landmark
+                - generic [ref=e831]:
+                  - heading "Tokyo Skytree" [level=3] [ref=e832]
+                  - paragraph [ref=e833]: Huge tower with an observation deck. World's tallest freestanding broadcasting tower with an observation deck boasting 360-degree views.
+                  - button "Add to trip" [ref=e834]:
+                    - img [ref=e835]
+                    - generic [ref=e836]: Add to trip
+              - generic [ref=e837] [cursor=pointer]:
+                - img "Ueno Park" [ref=e838]
+                - generic [ref=e840]: Nature
+                - generic [ref=e841]:
+                  - heading "Ueno Park" [level=3] [ref=e842]
+                  - paragraph [ref=e843]: Large park with a zoo, a lake & museums. Popular city park featuring ample walking paths, a lake with boat rentals, a zoo & several museums.
+                  - button "Add to trip" [ref=e844]:
+                    - img [ref=e845]
+                    - generic [ref=e846]: Add to trip
+              - generic [ref=e847] [cursor=pointer]:
+                - img "small worlds" [ref=e848]
+                - generic [ref=e850]: Nature
+                - generic [ref=e851]:
+                  - heading "small worlds" [level=3] [ref=e852]
+                  - paragraph [ref=e853]: Moving miniature theme park of 5 worlds. Indoor theme park featuring moving miniature attractions of space center, airport, Evangelion, more.
+                  - button "Add to trip" [ref=e854]:
+                    - img [ref=e855]
+                    - generic [ref=e856]: Add to trip
+              - generic [ref=e857] [cursor=pointer]:
+                - img "Tokyo Metropolitan Government Building No.1" [ref=e858]
+                - generic [ref=e860]: Landmark
+                - generic [ref=e861]:
+                  - heading "Tokyo Metropolitan Government Building No.1" [level=3] [ref=e862]
+                  - paragraph [ref=e863]: City Hall complex with observatories. Kenzo Tange-designed City Hall complex with views from the tallest building's observation decks.
+                  - button "Add to trip" [ref=e864]:
+                    - img [ref=e865]
+                    - generic [ref=e866]: Add to trip
+              - generic [ref=e867] [cursor=pointer]:
+                - img "Wagyu (Halal) Ramen & Sukiyaki Shinjuku Kabuki Restaurant" [ref=e868]
+                - generic [ref=e870]: Culinary
+                - generic [ref=e871]:
+                  - heading "Wagyu (Halal) Ramen & Sukiyaki Shinjuku Kabuki Restaurant" [level=3] [ref=e872]
+                  - paragraph [ref=e873]: Culinary
+                  - button "Add to trip" [ref=e874]:
+                    - img [ref=e875]
+                    - generic [ref=e876]: Add to trip
+              - generic [ref=e877] [cursor=pointer]:
+                - img "Bagus Southeast Asian Restaurant" [ref=e878]
+                - generic [ref=e880]: Culinary
+                - generic [ref=e881]:
+                  - heading "Bagus Southeast Asian Restaurant" [level=3] [ref=e882]
+                  - paragraph [ref=e883]: Culinary
+                  - button "Add to trip" [ref=e884]:
+                    - img [ref=e885]
+                    - generic [ref=e886]: Add to trip
+              - generic [ref=e887] [cursor=pointer]:
+                - img "Wagyu Halal Japanese Food Shinjuku Restaurant" [ref=e888]
+                - generic [ref=e890]: Culinary
+                - generic [ref=e891]:
+                  - heading "Wagyu Halal Japanese Food Shinjuku Restaurant" [level=3] [ref=e892]
+                  - paragraph [ref=e893]: Culinary
+                  - button "Add to trip" [ref=e894]:
+                    - img [ref=e895]
+                    - generic [ref=e896]: Add to trip
+              - generic [ref=e897] [cursor=pointer]:
+                - img "Trattoria Mari e Monti" [ref=e898]
+                - generic [ref=e900]: Culinary
+                - generic [ref=e901]:
+                  - heading "Trattoria Mari e Monti" [level=3] [ref=e902]
+                  - paragraph [ref=e903]: Culinary
+                  - button "Add to trip" [ref=e904]:
+                    - img [ref=e905]
+                    - generic [ref=e906]: Add to trip
+              - generic [ref=e907] [cursor=pointer]:
+                - img "Brewman Tokyo - GINZA" [ref=e908]
+                - generic [ref=e910]: Culinary
+                - generic [ref=e911]:
+                  - heading "Brewman Tokyo - GINZA" [level=3] [ref=e912]
+                  - paragraph [ref=e913]: Culinary
+                  - button "Add to trip" [ref=e914]:
+                    - img [ref=e915]
+                    - generic [ref=e916]: Add to trip
+              - generic [ref=e917] [cursor=pointer]:
+                - img "POSS COFFEE - Shinjuku Store" [ref=e918]
+                - generic [ref=e920]: Culinary
+                - generic [ref=e921]:
+                  - heading "POSS COFFEE - Shinjuku Store" [level=3] [ref=e922]
+                  - paragraph [ref=e923]: Culinary
+                  - button "Add to trip" [ref=e924]:
+                    - img [ref=e925]
+                    - generic [ref=e926]: Add to trip
+              - generic [ref=e927] [cursor=pointer]:
+                - img "KIELO COFFEE Akihabara" [ref=e928]
+                - generic [ref=e930]: Culinary
+                - generic [ref=e931]:
+                  - heading "KIELO COFFEE Akihabara" [level=3] [ref=e932]
+                  - paragraph [ref=e933]: Culinary
+                  - button "Add to trip" [ref=e934]:
+                    - img [ref=e935]
+                    - generic [ref=e936]: Add to trip
+              - generic [ref=e937] [cursor=pointer]:
+                - img "EIGHT COFFEE Shinjuku" [ref=e938]
+                - generic [ref=e940]: Culinary
+                - generic [ref=e941]:
+                  - heading "EIGHT COFFEE Shinjuku" [level=3] [ref=e942]
+                  - paragraph [ref=e943]: Culinary
+                  - button "Add to trip" [ref=e944]:
+                    - img [ref=e945]
+                    - generic [ref=e946]: Add to trip
+              - generic [ref=e947] [cursor=pointer]:
+                - img "Shibuya MODI" [ref=e948]
+                - generic [ref=e950]: Cultural
+                - generic [ref=e951]:
+                  - heading "Shibuya MODI" [level=3] [ref=e952]
+                  - paragraph [ref=e953]: Chic mall with a rooftop restaurant. Upscale, multi-floor mall featuring stylish fashion stores & a leafy roof terrace restaurant.
+                  - button "Add to trip" [ref=e954]:
+                    - img [ref=e955]
+                    - generic [ref=e956]: Add to trip
+              - generic [ref=e957] [cursor=pointer]:
+                - img "LUMINE Yūrakuchō" [ref=e958]
+                - generic [ref=e960]: Cultural
+                - generic [ref=e961]:
+                  - heading "LUMINE Yūrakuchō" [level=3] [ref=e962]
+                  - paragraph [ref=e963]: Cultural
+                  - button "Add to trip" [ref=e964]:
+                    - img [ref=e965]
+                    - generic [ref=e966]: Add to trip
+              - generic [ref=e967] [cursor=pointer]:
+                - img "atré Akihabara 1" [ref=e968]
+                - generic [ref=e970]: Cultural
+                - generic [ref=e971]:
+                  - heading "atré Akihabara 1" [level=3] [ref=e972]
+                  - paragraph [ref=e973]: Cultural
+                  - button "Add to trip" [ref=e974]:
+                    - img [ref=e975]
+                    - generic [ref=e976]: Add to trip
+              - generic [ref=e977] [cursor=pointer]:
+                - img "Kinshichō PARCO" [ref=e978]
+                - generic [ref=e980]: Cultural
+                - generic [ref=e981]:
+                  - heading "Kinshichō PARCO" [level=3] [ref=e982]
+                  - paragraph [ref=e983]: Chic department store with a food hall. Trendy department store for fashion, accessories, food & cosmetics, plus groceries & dining.
+                  - button "Add to trip" [ref=e984]:
+                    - img [ref=e985]
+                    - generic [ref=e986]: Add to trip
+            - generic [ref=e987]:
+              - button [ref=e988]
+              - button [ref=e989]
+              - button [ref=e990]
+              - button [ref=e991]
+              - button [ref=e992]
+              - button [ref=e993]
+              - button [ref=e994]
+              - button [ref=e995]
+              - button [ref=e996]
+              - button [ref=e997]
+              - button [ref=e998]
+              - button [ref=e999]
+              - button [ref=e1000]
+              - button [ref=e1001]
+              - button [ref=e1002]
+              - button [ref=e1003]
+          - generic [ref=e1004]:
+            - generic [ref=e1005]:
+              - generic [ref=e1006]: Local Cuisine
+              - heading "Must-Try Dishes" [level=3] [ref=e1007]
+            - generic [ref=e1008]:
+              - generic [ref=e1009]:
+                - img "Chicken Karaage" [ref=e1010]
+                - heading "Chicken Karaage" [level=3] [ref=e1013]
+              - generic [ref=e1014]:
+                - img "Honey Teriyaki Salmon" [ref=e1015]
+                - heading "Honey Teriyaki Salmon" [level=3] [ref=e1018]
+              - generic [ref=e1019]:
+                - img "Japanese gohan rice" [ref=e1020]
+                - heading "Japanese gohan rice" [level=3] [ref=e1023]
+              - generic [ref=e1024]:
+                - img "Japanese Katsudon" [ref=e1025]
+                - heading "Japanese Katsudon" [level=3] [ref=e1028]
+              - generic [ref=e1029]:
+                - img "Katsu Chicken curry" [ref=e1030]
+                - heading "Katsu Chicken curry" [level=3] [ref=e1033]
+              - generic [ref=e1034]:
+                - img "Sushi" [ref=e1035]
+                - heading "Sushi" [level=3] [ref=e1038]
+        - generic [ref=e1040]:
+          - generic [ref=e1042]:
+            - generic [ref=e1043]: Latest
+            - heading "News" [level=2] [ref=e1044]
+            - generic [ref=e1046]:
+              - link "news · go tokyo Cheap Tickets & IC Cards - go tokyo Cheap Tickets & IC Cards&nbsp;&nbsp;go tokyo" [ref=e1047] [cursor=pointer]:
+                - /url: https://news.google.com/rss/articles/CBMic0FVX3lxTE5Sc0diVGQxNW1WQnZFN1hyU2txZGhzV2NZb1dEUkd1ZGdVaFNXS0RQYmZVY2ktMER2VXVPeTJzSzI0OGRIczBMSkFBYUtjM2JWaVpMVDdtNGMwZFN4RDdYZzlibVo4VFpJWnp2eHhxeUFkUGM?oc=5
+                - generic [ref=e1048]:
+                  - generic [ref=e1049]: news
+                  - generic [ref=e1050]: · go tokyo
+                - heading "Cheap Tickets & IC Cards - go tokyo" [level=3] [ref=e1051]
+                - paragraph [ref=e1052]: Cheap Tickets & IC Cards&nbsp;&nbsp;go tokyo
+              - link "news · Travel Weekly Making the most of a Tokyo stopover - Travel Weekly Making the most of a Tokyo stopover&nbsp;&nbsp;Travel Weekly" [ref=e1053] [cursor=pointer]:
+                - /url: https://news.google.com/rss/articles/CBMihgFBVV95cUxOMlY4d2ZGc2JBQUJFS2M2NzkyNDVqZ0FXVlZub29lczNiM0JQNnZrQmJNRllvdTNrdXdoZVAzaXBvUVlOLVVRN0d4aVlxNFN2YlhlbDI0THRmN2NtRi15YjB3OGxkOXBxN2tIak9MYVBQUUhZWEZEZlU0X2ItMElsYXRFa2phZw?oc=5
+                - generic [ref=e1054]:
+                  - generic [ref=e1055]: news
+                  - generic [ref=e1056]: · Travel Weekly
+                - heading "Making the most of a Tokyo stopover - Travel Weekly" [level=3] [ref=e1057]
+                - paragraph [ref=e1058]: Making the most of a Tokyo stopover&nbsp;&nbsp;Travel Weekly
+              - link "news · The AI Journal Travel eSIM Speeds Reach 272 Mbps at Tokyo’s Major Cherry Blossom Viewing Sites - The AI Journal Travel eSIM Speeds Reach 272 Mbps at Tokyo’s Major Cherry Blossom Viewing Sites&nbsp;&nbsp;The AI Journal" [ref=e1059] [cursor=pointer]:
+                - /url: https://news.google.com/rss/articles/CBMioAFBVV95cUxQWFQxVGE5amhiQUhXcU9TcmwxUzcyemlVdzVZV1EtU1ZXRVRFZHh6eDJyc2lvUXZPU0k3ZTZCSUh4d2hEWS1nVlE4NVJUNV9Bd0ZOaUhTSVlRUUY3ZUo3eE5uSlB3NkxwUWxtZkZOUjQzODNhUEZ3MHNVRXNDNzRKN0hmMkFzUndRMFI3WFVkWG00ZnBIR0YtUWdER190emRj?oc=5
+                - generic [ref=e1060]:
+                  - generic [ref=e1061]: news
+                  - generic [ref=e1062]: · The AI Journal
+                - heading "Travel eSIM Speeds Reach 272 Mbps at Tokyo’s Major Cherry Blossom Viewing Sites - The AI Journal" [level=3] [ref=e1063]
+                - paragraph [ref=e1064]: Travel eSIM Speeds Reach 272 Mbps at Tokyo’s Major Cherry Blossom Viewing Sites&nbsp;&nbsp;The AI Journal
+              - link "news · Business Insider I visited popular spots like Tokyo and Kyoto during my trip to Japan, but my favorite stop was a town I'd never heard of - Business Insider I visited popular spots like Tokyo and Kyoto during my trip to Japan, but my favorite stop was a town I'd never heard of&nbsp;&nbsp;Business Insider" [ref=e1065] [cursor=pointer]:
+                - /url: https://news.google.com/rss/articles/CBMiiwFBVV95cUxQZG01cnFoVVpUN1VjbU1sSVpuZnYybUJLUGpaRXo0MWV4MndVbDc4eDhJc2NlcFBwOU93bE9NOXhOS2RocmozOTNvVUlOZ3dsci1GVHNtaWpBY1pad2NfSFI0Wkl5akRDUmRHMEV3RV9FTVFIMF9FMzBXVHoxc0R2cGpWM3VPMUYzb0FV?oc=5
+                - generic [ref=e1066]:
+                  - generic [ref=e1067]: news
+                  - generic [ref=e1068]: · Business Insider
+                - heading "I visited popular spots like Tokyo and Kyoto during my trip to Japan, but my favorite stop was a town I'd never heard of - Business Insider" [level=3] [ref=e1069]
+                - paragraph [ref=e1070]: I visited popular spots like Tokyo and Kyoto during my trip to Japan, but my favorite stop was a town I'd never heard of&nbsp;&nbsp;Business Insider
+              - link "news · ELLE Kim Kardashian and Lewis Hamilton Enjoy Trip to Tokyo - ELLE Kim Kardashian and Lewis Hamilton Enjoy Trip to Tokyo&nbsp;&nbsp;ELLE" [ref=e1071] [cursor=pointer]:
+                - /url: https://news.google.com/rss/articles/CBMimAFBVV95cUxOMlh5ejkxWklsYlJ4U0pKUkxudjE1WnhUX21qMnhKQk16eU40WDZReWs3TmhHeEFPNXhIUVZSdnlPTFpGRUlNbWpvNU5qTlNHWnZXdV9yLU9kRlowQ0Uwd1NfeUR4cmRZQlZmMW1wNWZOUXdGcW5VQUpmbjk3LUsxbVd1WnBodTlaSEJfMWtfOHByYnZxWnRvRg?oc=5
+                - generic [ref=e1072]:
+                  - generic [ref=e1073]: news
+                  - generic [ref=e1074]: · ELLE
+                - heading "Kim Kardashian and Lewis Hamilton Enjoy Trip to Tokyo - ELLE" [level=3] [ref=e1075]
+                - paragraph [ref=e1076]: Kim Kardashian and Lewis Hamilton Enjoy Trip to Tokyo&nbsp;&nbsp;ELLE
+              - 'link "advisory · Vancouver Is Awesome Hot deal alert: Fly direct from Vancouver to Tokyo for $323 - Vancouver Is Awesome Hot deal alert: Fly direct from Vancouver to Tokyo for $323&nbsp;&nbsp;Vancouver Is Awesome" [ref=e1077] [cursor=pointer]':
+                - /url: https://news.google.com/rss/articles/CBMipAFBVV95cUxORWJpbVBZR1N1bW80akI2ZWRhQkt5SFN3Xy0xUVBWT0tvZkQ4OElUSjVnMGNKLTdwbFhpbFhXYzZRWnJPYWNtSi1nU3NaVG5HQk5oWmE4SlRub3hGU2tEVUFoZDJZSnFVWUdHYXBOT1dINVZFVGRJYnZBY1d5UlhnZFI2cThYMlpXRXFUT1ZibkdVLWJ2MzhIaGh6RDB6VldBTUh5Yw?oc=5
+                - generic [ref=e1078]:
+                  - generic [ref=e1079]: advisory
+                  - generic [ref=e1080]: · Vancouver Is Awesome
+                - 'heading "Hot deal alert: Fly direct from Vancouver to Tokyo for $323 - Vancouver Is Awesome" [level=3] [ref=e1081]'
+                - paragraph [ref=e1082]: "Hot deal alert: Fly direct from Vancouver to Tokyo for $323&nbsp;&nbsp;Vancouver Is Awesome"
+              - link "news · TMZ Kim Kardashian and Lewis Hamilton Travel to Tokyo Amid New Relationship - TMZ Kim Kardashian and Lewis Hamilton Travel to Tokyo Amid New Relationship&nbsp;&nbsp;TMZ" [ref=e1083] [cursor=pointer]:
+                - /url: https://news.google.com/rss/articles/CBMiigFBVV95cUxQZzRraXdDcmRWTW9Jc0g3ZS1BczdMRmVWbEYteE0xczhQUXRnRnNIZ3hfdUJIXzZfZi16OHRkekhqdlNfZU1sM3pYb3prOEtETEhNYm1JNlVfR205cEJBZm9JVkFKY1RfaVZmSlFEOG5ESl81YlNpXzJHS2N1WHl4M2pVNUVUbnRHZmc?oc=5
+                - generic [ref=e1084]:
+                  - generic [ref=e1085]: news
+                  - generic [ref=e1086]: · TMZ
+                - heading "Kim Kardashian and Lewis Hamilton Travel to Tokyo Amid New Relationship - TMZ" [level=3] [ref=e1087]
+                - paragraph [ref=e1088]: Kim Kardashian and Lewis Hamilton Travel to Tokyo Amid New Relationship&nbsp;&nbsp;TMZ
+          - generic [ref=e1090]:
+            - generic [ref=e1091]:
+              - generic [ref=e1092]:
+                - generic [ref=e1093]: What's Happening
+                - heading "What's Going On" [level=2] [ref=e1094]
+              - generic [ref=e1095]:
+                - generic [ref=e1096]: 1 / 6
+                - button [disabled] [ref=e1097]:
+                  - img [ref=e1098]
+                - button [ref=e1100]:
+                  - img [ref=e1101]
+            - generic [ref=e1103]:
+              - generic [ref=e1104]:
+                - img "GASCA Japan Tokyo International Music / Speech Competition | Tokyo Japan" [ref=e1105]
+                - generic [ref=e1107]: Performance
+                - generic [ref=e1108]:
+                  - heading "GASCA Japan Tokyo International Music / Speech Competition | Tokyo Japan" [level=3] [ref=e1109]
+                  - paragraph [ref=e1110]: Dec 25
+                  - button "Add to trip" [ref=e1111]:
+                    - img [ref=e1112]
+                    - generic [ref=e1113]: Add to trip
+              - generic [ref=e1114]:
+                - img "Katsura Sunshine's Rakugo in Asakusa, Tokyo" [ref=e1115]
+                - generic [ref=e1117]: Performance
+                - generic [ref=e1118]:
+                  - heading "Katsura Sunshine's Rakugo in Asakusa, Tokyo" [level=3] [ref=e1119]
+                  - paragraph [ref=e1120]: Dec 25 · Katsura Sunshine's Rakugo in Asakusa, Tokyo
+                  - button "Add to trip" [ref=e1121]:
+                    - img [ref=e1122]
+                    - generic [ref=e1123]: Add to trip
+              - generic [ref=e1124]:
+                - img "moreru" [ref=e1125]
+                - generic [ref=e1127]: Community
+                - generic [ref=e1128]:
+                  - heading "moreru" [level=3] [ref=e1129]
+                  - paragraph [ref=e1130]: Dec 25 · moreru
+                  - button "Add to trip" [ref=e1131]:
+                    - img [ref=e1132]
+                    - generic [ref=e1133]: Add to trip
+              - generic [ref=e1134]:
+                - img "WHY SO SERIOUS COMEDY ( Stand-up comedy in English & Open Mic)" [ref=e1135]
+                - generic [ref=e1137]: Performance
+                - generic [ref=e1138]:
+                  - heading "WHY SO SERIOUS COMEDY ( Stand-up comedy in English & Open Mic)" [level=3] [ref=e1139]
+                  - paragraph [ref=e1140]: Dec 26
+                  - button "Add to trip" [ref=e1141]:
+                    - img [ref=e1142]
+                    - generic [ref=e1143]: Add to trip
+              - generic [ref=e1144]:
+                - img "Black Rams Tokyo vs Mie Honda Heat" [ref=e1145]
+                - generic [ref=e1147]: Sports
+                - generic [ref=e1148]:
+                  - heading "Black Rams Tokyo vs Mie Honda Heat" [level=3] [ref=e1149]
+                  - paragraph [ref=e1150]: Dec 27 · Black Rams Tokyo
+                  - button "Add to trip" [ref=e1151]:
+                    - img [ref=e1152]
+                    - generic [ref=e1153]: Add to trip
+              - generic [ref=e1154]:
+                - img "Kubota Spears vs Tokyo Sungoliath" [ref=e1155]
+                - generic [ref=e1157]: Sports
+                - generic [ref=e1158]:
+                  - heading "Kubota Spears vs Tokyo Sungoliath" [level=3] [ref=e1159]
+                  - paragraph [ref=e1160]: Dec 27 · Kubota Spears
+                  - button "Add to trip" [ref=e1161]:
+                    - img [ref=e1162]
+                    - generic [ref=e1163]: Add to trip
+            - generic [ref=e1164]:
+              - button [ref=e1165]
+              - button [ref=e1166]
+              - button [ref=e1167]
+              - button [ref=e1168]
+              - button [ref=e1169]
+              - button [ref=e1170]
+        - generic [ref=e1172]:
+          - generic [ref=e1174]:
+            - generic [ref=e1175]:
+              - img [ref=e1176]
+              - text: Japanese
+            - heading "Essential Phrases" [level=3] [ref=e1180]
+            - generic [ref=e1181]:
+              - button "No いいえ" [ref=e1182] [cursor=pointer]:
+                - generic [ref=e1183]: "No"
+                - generic [ref=e1184]: いいえ
+                - img [ref=e1185]
+              - button "Yes はい" [ref=e1189] [cursor=pointer]:
+                - generic [ref=e1190]: "Yes"
+                - generic [ref=e1191]: はい
+                - img [ref=e1192]
+              - button "Hello こんにちは" [ref=e1196] [cursor=pointer]:
+                - generic [ref=e1197]: Hello
+                - generic [ref=e1198]: こんにちは
+                - img [ref=e1199]
+              - button "Help! 助けてください！" [ref=e1203] [cursor=pointer]:
+                - generic [ref=e1204]: Help!
+                - generic [ref=e1205]: 助けてください！
+                - img [ref=e1206]
+              - button "Please お願いします" [ref=e1210] [cursor=pointer]:
+                - generic [ref=e1211]: Please
+                - generic [ref=e1212]: お願いします
+                - img [ref=e1213]
+              - button "Goodbye さようなら" [ref=e1217] [cursor=pointer]:
+                - generic [ref=e1218]: Goodbye
+                - generic [ref=e1219]: さようなら
+                - img [ref=e1220]
+            - button "Show 6 more phrases" [ref=e1224]
+          - generic [ref=e1226]:
+            - generic [ref=e1227]: Budget
+            - heading "Cost of Living" [level=3] [ref=e1228]
+            - generic [ref=e1229]:
+              - generic [ref=e1230]:
+                - img [ref=e1231]
+                - paragraph [ref=e1236]: ¥13
+                - paragraph [ref=e1237]: Budget meal
+              - generic [ref=e1238]:
+                - img [ref=e1239]
+                - paragraph [ref=e1244]: ¥43
+                - paragraph [ref=e1245]: Mid-range meal
+              - generic [ref=e1246]:
+                - img [ref=e1247]
+                - paragraph [ref=e1249]: ¥4
+                - paragraph [ref=e1250]: Coffee
+              - generic [ref=e1251]:
+                - img [ref=e1252]
+                - paragraph [ref=e1256]: ¥5
+                - paragraph [ref=e1257]: Beer
+              - generic [ref=e1258]:
+                - img [ref=e1259]
+                - paragraph [ref=e1263]: ¥2
+                - paragraph [ref=e1264]: Public transport
+              - generic [ref=e1265]:
+                - img [ref=e1266]
+                - paragraph [ref=e1269]: ¥1
+                - paragraph [ref=e1270]: Water bottle
+            - generic [ref=e1271]:
+              - generic [ref=e1272]:
+                - paragraph [ref=e1273]: Budget
+                - paragraph [ref=e1274]: ¥68/day
+              - generic [ref=e1275]:
+                - paragraph [ref=e1276]: Mid-range
+                - paragraph [ref=e1277]: ¥153/day
+              - generic [ref=e1278]:
+                - paragraph [ref=e1279]: Luxury
+                - paragraph [ref=e1280]: ¥340/day
+        - img "Tokyo, Japan" [ref=e1282]
+    - generic [ref=e1284]:
+      - heading "Explore Tokyo" [level=2] [ref=e1285]
+      - generic [ref=e1286]:
+        - generic [ref=e1287]:
+          - generic [ref=e1288]:
+            - heading "Famous Attractions" [level=3] [ref=e1289]
+            - generic [ref=e1290]: 30 places
+          - generic [ref=e1291]:
+            - generic [ref=e1292] [cursor=pointer]:
+              - img "GYOPAO Gyoza Roppongi" [ref=e1293]
+              - button [ref=e1295]:
+                - img [ref=e1296]
+              - generic [ref=e1298]:
+                - paragraph [ref=e1299]: restaurant
+                - paragraph [ref=e1300]: GYOPAO Gyoza Roppongi
+                - paragraph [ref=e1301]: Tiny nook for specialty dumplings. Soup dumplings, fried gyoza & Chinese-style dim sum in a compact, lantern-strung venue.
+            - generic [ref=e1302] [cursor=pointer]:
+              - img "Tokyo Tower" [ref=e1303]
+              - button [ref=e1305]:
+                - img [ref=e1306]
+              - generic [ref=e1308]:
+                - paragraph [ref=e1309]: attraction
+                - paragraph [ref=e1310]: Tokyo Tower
+                - paragraph [ref=e1311]: Well-known tower with observation areas. Reminiscent of the Eiffel Tower, this landmark features observation areas & other attractions.
+            - generic [ref=e1312] [cursor=pointer]:
+              - img "Maple Waterfall" [ref=e1313]
+              - button [ref=e1315]:
+                - img [ref=e1316]
+              - generic [ref=e1318]:
+                - paragraph [ref=e1319]: attraction
+                - paragraph [ref=e1320]: Maple Waterfall
+                - paragraph [ref=e1321]: Woodland cascade & autumn maple trees. Small woodland waterfall in a landscaped park known for vivid fall foliage & Tokyo Tower views.
+            - generic [ref=e1322] [cursor=pointer]:
+              - img "Gyukatsu Ichinisan" [ref=e1323]
+              - button [ref=e1325]:
+                - img [ref=e1326]
+              - generic [ref=e1328]:
+                - paragraph [ref=e1329]: restaurant
+                - paragraph [ref=e1330]: Gyukatsu Ichinisan
+                - paragraph [ref=e1331]: restaurant
+            - generic [ref=e1332] [cursor=pointer]:
+              - img "Kikyō-mon Gate" [ref=e1333]
+              - button [ref=e1335]:
+                - img [ref=e1336]
+              - generic [ref=e1338]:
+                - paragraph [ref=e1339]: attraction
+                - paragraph [ref=e1340]: Kikyō-mon Gate
+                - paragraph [ref=e1341]: attraction
+            - generic [ref=e1342] [cursor=pointer]:
+              - img "Hamarikyu Gardens" [ref=e1343]
+              - button [ref=e1345]:
+                - img [ref=e1346]
+              - generic [ref=e1348]:
+                - paragraph [ref=e1349]: attraction
+                - paragraph [ref=e1350]: Hamarikyu Gardens
+                - paragraph [ref=e1351]: Former Imperial gardens open to public. Public park with a pond, laid out in the Edo-period style, on the site of 17th-century Shogun villa.
+            - generic [ref=e1352] [cursor=pointer]:
+              - img "Halal Wagyu Yakiniku Panga" [ref=e1353]
+              - button [ref=e1355]:
+                - img [ref=e1356]
+              - generic [ref=e1358]:
+                - paragraph [ref=e1359]: restaurant
+                - paragraph [ref=e1360]: Halal Wagyu Yakiniku Panga
+                - paragraph [ref=e1361]: Halal eatery for Japanese grilled meats. Elegant venue serving halal beef strips grilled Japanese-style at the table, plus Korean sides.
+            - generic [ref=e1362] [cursor=pointer]:
+              - img "Koishikawa Korakuen" [ref=e1363]
+              - button [ref=e1365]:
+                - img [ref=e1366]
+              - generic [ref=e1368]:
+                - paragraph [ref=e1369]: attraction
+                - paragraph [ref=e1370]: Koishikawa Korakuen
+                - paragraph [ref=e1371]: Traditional Edo-period landscape garden. Tranquil, scenic landscape garden dating to the 17th century, with walking paths, a pond & bridges.
+            - generic [ref=e1372] [cursor=pointer]:
+              - img "Ninja Trick House In Tokyo" [ref=e1373]
+              - button [ref=e1375]:
+                - img [ref=e1376]
+              - generic [ref=e1378]:
+                - paragraph [ref=e1379]: attraction
+                - paragraph [ref=e1380]: Ninja Trick House In Tokyo
+                - paragraph [ref=e1381]: Interactive ninja-themed amusements. Playful, interactive amusement center with ninja-themed activities like star throwing & sword play.
+            - generic [ref=e1382] [cursor=pointer]:
+              - img "Downtown B's Indian Kitchen, Tokyo" [ref=e1383]
+              - button [ref=e1385]:
+                - img [ref=e1386]
+              - generic [ref=e1388]:
+                - paragraph [ref=e1389]: restaurant
+                - paragraph [ref=e1390]: Downtown B's Indian Kitchen, Tokyo
+                - paragraph [ref=e1391]: Cozy hangout for Indian cooking. Casual, homey nook whipping up familiar Indian dishes such as curries & tandoori chicken.
+            - generic [ref=e1392] [cursor=pointer]:
+              - img "Tokyo Tower" [ref=e1393]
+              - button [ref=e1395]:
+                - img [ref=e1396]
+              - generic [ref=e1398]:
+                - paragraph [ref=e1399]: attraction
+                - paragraph [ref=e1400]: Tokyo Tower
+                - paragraph [ref=e1401]: attraction
+            - generic [ref=e1402] [cursor=pointer]:
+              - img "Mo-Mo-Paradise Asakusa Kaminarimon" [ref=e1403]
+              - button [ref=e1405]:
+                - img [ref=e1406]
+              - generic [ref=e1408]:
+                - paragraph [ref=e1409]: restaurant
+                - paragraph [ref=e1410]: Mo-Mo-Paradise Asakusa Kaminarimon
+                - paragraph [ref=e1411]: Casual Japanese restaurant for shabu-shabu & sukiyaki. Relaxed Japanese-style restaurant offering 4 types of hot pot dishes made with thoughtfully sourced meat & vegetables.
+            - generic [ref=e1412] [cursor=pointer]:
+              - img "Sensō-ji" [ref=e1413]
+              - button [ref=e1415]:
+                - img [ref=e1416]
+              - generic [ref=e1418]:
+                - paragraph [ref=e1419]: attraction
+                - paragraph [ref=e1420]: Sensō-ji
+                - paragraph [ref=e1421]: Historic temple to the goddess of mercy. Completed in 645, this temple, Tokyo's oldest, was built to honor Kannon, the goddess of mercy.
+            - generic [ref=e1422] [cursor=pointer]:
+              - img "Tokyo Skytree" [ref=e1423]
+              - button [ref=e1425]:
+                - img [ref=e1426]
+              - generic [ref=e1428]:
+                - paragraph [ref=e1429]: attraction
+                - paragraph [ref=e1430]: Tokyo Skytree
+                - paragraph [ref=e1431]: Huge tower with an observation deck. World's tallest freestanding broadcasting tower with an observation deck boasting 360-degree views.
+            - generic [ref=e1432] [cursor=pointer]:
+              - img "Edo-Tokyo Museum" [ref=e1433]
+              - button [ref=e1435]:
+                - img [ref=e1436]
+              - generic [ref=e1438]:
+                - paragraph [ref=e1439]: attraction
+                - paragraph [ref=e1440]: Edo-Tokyo Museum
+                - paragraph [ref=e1441]: Contemporary museum charting Edo period. Major museum opened in 1993 & displaying artifacts from Tokyo's Edo period & one-off exhibits.
+            - generic [ref=e1442] [cursor=pointer]:
+              - img "Ueno Park" [ref=e1443]
+              - button [ref=e1445]:
+                - img [ref=e1446]
+              - generic [ref=e1448]:
+                - paragraph [ref=e1449]: attraction
+                - paragraph [ref=e1450]: Ueno Park
+                - paragraph [ref=e1451]: Large park with a zoo, a lake & museums. Popular city park featuring ample walking paths, a lake with boat rentals, a zoo & several museums.
+            - generic [ref=e1452] [cursor=pointer]:
+              - img "Ninja Tokyo" [ref=e1453]
+              - button [ref=e1455]:
+                - img [ref=e1456]
+              - generic [ref=e1458]:
+                - paragraph [ref=e1459]: restaurant
+                - paragraph [ref=e1460]: Ninja Tokyo
+                - paragraph [ref=e1461]: Sushi & steak in a ninja-themed eatery. Artfully presented Japanese dishes, plus magic tricks, in a space replicating a ninja hideout.
+            - generic [ref=e1462] [cursor=pointer]:
+              - img "MO-MO-PARADISE Kabukicho" [ref=e1463]
+              - button [ref=e1465]:
+                - img [ref=e1466]
+              - generic [ref=e1468]:
+                - paragraph [ref=e1469]: restaurant
+                - paragraph [ref=e1470]: MO-MO-PARADISE Kabukicho
+                - paragraph [ref=e1471]: restaurant
+            - generic [ref=e1472] [cursor=pointer]:
+              - img "Shinjuku Sushi Hatsume" [ref=e1473]
+              - button [ref=e1475]:
+                - img [ref=e1476]
+              - generic [ref=e1478]:
+                - paragraph [ref=e1479]: restaurant
+                - paragraph [ref=e1480]: Shinjuku Sushi Hatsume
+                - paragraph [ref=e1481]: restaurant
+            - generic [ref=e1482] [cursor=pointer]:
+              - img "Godzilla Head" [ref=e1483]
+              - button [ref=e1485]:
+                - img [ref=e1486]
+              - generic [ref=e1488]:
+                - paragraph [ref=e1489]: attraction
+                - paragraph [ref=e1490]: Godzilla Head
+                - paragraph [ref=e1491]: attraction
+            - generic [ref=e1492] [cursor=pointer]:
+              - img "Shinjuku Gyoen National Garden" [ref=e1493]
+              - button [ref=e1495]:
+                - img [ref=e1496]
+              - generic [ref=e1498]:
+                - paragraph [ref=e1499]: attraction
+                - paragraph [ref=e1500]: Shinjuku Gyoen National Garden
+                - paragraph [ref=e1501]: Sizable park with gardens & a greenhouse. This former estate is now a 144-acre park with diverse garden areas, grassy expanses & a greenhouse.
+            - generic [ref=e1502] [cursor=pointer]:
+              - img "Tokyo Metropolitan Government Building No.1" [ref=e1503]
+              - button [ref=e1505]:
+                - img [ref=e1506]
+              - generic [ref=e1508]:
+                - paragraph [ref=e1509]: attraction
+                - paragraph [ref=e1510]: Tokyo Metropolitan Government Building No.1
+                - paragraph [ref=e1511]: City Hall complex with observatories. Kenzo Tange-designed City Hall complex with views from the tallest building's observation decks.
+            - generic [ref=e1512] [cursor=pointer]:
+              - img "Shibuya Crossing" [ref=e1513]
+              - button [ref=e1515]:
+                - img [ref=e1516]
+              - generic [ref=e1518]:
+                - paragraph [ref=e1519]: attraction
+                - paragraph [ref=e1520]: Shibuya Crossing
+                - paragraph [ref=e1521]: attraction
+            - generic [ref=e1522] [cursor=pointer]:
+              - img "Sushi no Midori" [ref=e1523]
+              - button [ref=e1525]:
+                - img [ref=e1526]
+              - generic [ref=e1528]:
+                - paragraph [ref=e1529]: restaurant
+                - paragraph [ref=e1530]: Sushi no Midori
+                - paragraph [ref=e1531]: Compact sushi joint with a buzzy vibe. Popular place with a cozy setup, known for its creatively presented sushi & sashimi.
+            - generic [ref=e1532] [cursor=pointer]:
+              - img "Kokyo Gaien National Garden" [ref=e1533]
+              - button [ref=e1535]:
+                - img [ref=e1536]
+              - generic [ref=e1538]:
+                - paragraph [ref=e1539]: attraction
+                - paragraph [ref=e1540]: Kokyo Gaien National Garden
+                - paragraph [ref=e1541]: Scenic, grassy park with palace views. This grassy park with flowers with views of the Imperial Palace is a popular place to walk & relax.
+            - generic [ref=e1542] [cursor=pointer]:
+              - img "Imperial Palace East National Gardens" [ref=e1543]
+              - button [ref=e1545]:
+                - img [ref=e1546]
+              - generic [ref=e1548]:
+                - paragraph [ref=e1549]: attraction
+                - paragraph [ref=e1550]: Imperial Palace East National Gardens
+                - paragraph [ref=e1551]: Palace gardens & Edo castle ruins. Large landscaped gardens in the grounds of a palace first built in 1888, with some Edo castle ruins.
+            - generic [ref=e1552] [cursor=pointer]:
+              - img "Tokyo Dome City Attractions" [ref=e1553]
+              - button [ref=e1555]:
+                - img [ref=e1556]
+              - generic [ref=e1558]:
+                - paragraph [ref=e1559]: attraction
+                - paragraph [ref=e1560]: Tokyo Dome City Attractions
+                - paragraph [ref=e1561]: Entertainment complex with rides & shops. Urban entertainment complex boasting a dome-shaped baseball stadium, roller coasters & a mall.
+            - generic [ref=e1562] [cursor=pointer]:
+              - img "Tokyo Dome City" [ref=e1563]
+              - button [ref=e1565]:
+                - img [ref=e1566]
+              - generic [ref=e1568]:
+                - paragraph [ref=e1569]: attraction
+                - paragraph [ref=e1570]: Tokyo Dome City
+                - paragraph [ref=e1571]: attraction
+            - generic [ref=e1572] [cursor=pointer]:
+              - img "Japanese food Wagyu Restaurant (Halal) Steak&Burger-Ramen 5W-Tokyo AkihabaraUeno Beef Dining" [ref=e1573]
+              - button [ref=e1575]:
+                - img [ref=e1576]
+              - generic [ref=e1578]:
+                - paragraph [ref=e1579]: restaurant
+                - paragraph [ref=e1580]: Japanese food Wagyu Restaurant (Halal) Steak&Burger-Ramen 5W-Tokyo AkihabaraUeno Beef Dining
+                - paragraph [ref=e1581]: restaurant
+            - generic [ref=e1582] [cursor=pointer]:
+              - img "Tokyo Skytree Town" [ref=e1583]
+              - button [ref=e1585]:
+                - img [ref=e1586]
+              - generic [ref=e1588]:
+                - paragraph [ref=e1589]: attraction
+                - paragraph [ref=e1590]: Tokyo Skytree Town
+                - paragraph [ref=e1591]: attraction
+        - generic [ref=e1592]:
+          - generic [ref=e1593]:
+            - heading "Top Restaurants" [level=3] [ref=e1594]
+            - generic [ref=e1595]: 6 places
+          - generic [ref=e1596]:
+            - generic [ref=e1597] [cursor=pointer]:
+              - img "Annam Indian Restaurant Ginza Tokyo" [ref=e1598]
+              - button [ref=e1600]:
+                - img [ref=e1601]
+              - generic [ref=e1603]:
+                - paragraph [ref=e1604]: pakistani
+                - paragraph [ref=e1605]: Annam Indian Restaurant Ginza Tokyo
+                - generic [ref=e1606]:
+                  - img [ref=e1607]
+                  - generic [ref=e1609]: "4.4"
+                  - generic [ref=e1610]: (625)
+            - generic [ref=e1611] [cursor=pointer]:
+              - img "Ninja Tokyo" [ref=e1612]
+              - button [ref=e1614]:
+                - img [ref=e1615]
+              - generic [ref=e1617]:
+                - paragraph [ref=e1618]: japanese
+                - paragraph [ref=e1619]: Ninja Tokyo
+                - generic [ref=e1620]:
+                  - img [ref=e1621]
+                  - generic [ref=e1623]: "4.3"
+                  - generic [ref=e1624]: (1227)
+            - generic [ref=e1625] [cursor=pointer]:
+              - img "Rokurinsha, Tokyo Ramen Street" [ref=e1626]
+              - button [ref=e1628]:
+                - img [ref=e1629]
+              - generic [ref=e1631]:
+                - paragraph [ref=e1632]: japanese
+                - paragraph [ref=e1633]: Rokurinsha, Tokyo Ramen Street
+                - generic [ref=e1634]:
+                  - img [ref=e1635]
+                  - generic [ref=e1637]: "4.1"
+                  - generic [ref=e1638]: (666)
+            - generic [ref=e1639] [cursor=pointer]:
+              - img "T's TanTan Tokyostation" [ref=e1640]
+              - button [ref=e1642]:
+                - img [ref=e1643]
+              - generic [ref=e1645]:
+                - paragraph [ref=e1646]: japanese
+                - paragraph [ref=e1647]: T's TanTan Tokyostation
+                - generic [ref=e1648]:
+                  - img [ref=e1649]
+                  - generic [ref=e1651]: "4.6"
+                  - generic [ref=e1652]: (643)
+            - generic [ref=e1653] [cursor=pointer]:
+              - img "Tokyo Station Buffet Chisozammai, Daimaru Tokyo" [ref=e1654]
+              - button [ref=e1656]:
+                - img [ref=e1657]
+              - generic [ref=e1659]:
+                - paragraph [ref=e1660]: japanese
+                - paragraph [ref=e1661]: Tokyo Station Buffet Chisozammai, Daimaru Tokyo
+                - generic [ref=e1662]:
+                  - img [ref=e1663]
+                  - generic [ref=e1665]: "3.5"
+                  - generic [ref=e1666]: (67)
+            - generic [ref=e1667] [cursor=pointer]:
+              - img "Kyubey Ginza Honten" [ref=e1668]
+              - button [ref=e1670]:
+                - img [ref=e1671]
+              - generic [ref=e1673]:
+                - paragraph [ref=e1674]: japanese
+                - paragraph [ref=e1675]: Kyubey Ginza Honten
+                - generic [ref=e1676]:
+                  - img [ref=e1677]
+                  - generic [ref=e1679]: "4.4"
+                  - generic [ref=e1680]: (908)
+        - generic [ref=e1681]:
+          - generic [ref=e1682]:
+            - heading "Hotels in Tokyo" [level=3] [ref=e1683]
+            - generic [ref=e1684]: 5 places
+          - generic [ref=e1685]:
+            - generic [ref=e1686] [cursor=pointer]:
+              - img "波浮とみや" [ref=e1687]
+              - button [ref=e1689]:
+                - img [ref=e1690]
+              - generic [ref=e1692]:
+                - paragraph [ref=e1693]: Hotel
+                - paragraph [ref=e1694]: 波浮とみや
+                - paragraph [ref=e1695]: Hotel
+            - generic [ref=e1696] [cursor=pointer]:
+              - img "Galaxy Guest House" [ref=e1697]
+              - button [ref=e1699]:
+                - img [ref=e1700]
+              - generic [ref=e1702]:
+                - paragraph [ref=e1703]: Hotel
+                - paragraph [ref=e1704]: Galaxy Guest House
+                - paragraph [ref=e1705]: Hotel
+            - generic [ref=e1706] [cursor=pointer]:
+              - img "Wild Cherry Blossom - HOSTEL, TOKYO KOGANEI -" [ref=e1707]
+              - button [ref=e1709]:
+                - img [ref=e1710]
+              - generic [ref=e1712]:
+                - paragraph [ref=e1713]: Hotel
+                - paragraph [ref=e1714]: Wild Cherry Blossom - HOSTEL, TOKYO KOGANEI -
+                - paragraph [ref=e1715]: Hotel
+            - generic [ref=e1716] [cursor=pointer]:
+              - img "SANDBOX" [ref=e1717]
+              - button [ref=e1719]:
+                - img [ref=e1720]
+              - generic [ref=e1722]:
+                - paragraph [ref=e1723]: Hotel
+                - paragraph [ref=e1724]: SANDBOX
+                - paragraph [ref=e1725]: Hotel
+            - generic [ref=e1726] [cursor=pointer]:
+              - img "STAY TOMARIYA" [ref=e1727]
+              - button [ref=e1729]:
+                - img [ref=e1730]
+              - generic [ref=e1732]:
+                - paragraph [ref=e1733]: Hotel
+                - paragraph [ref=e1734]: STAY TOMARIYA
+                - paragraph [ref=e1735]: Hotel
+    - generic [ref=e1737]:
+      - img [ref=e1739]
+      - contentinfo [ref=e1743]:
+        - generic [ref=e1744]:
+          - generic [ref=e1745]:
+            - generic [ref=e1746]:
+              - generic [ref=e1747]:
+                - generic [ref=e1748]: TRAVYL
+                - img [ref=e1749]
+              - paragraph [ref=e1754]: Discover and plan your perfect trip from one place. Explore destinations, find the best hotels and flights, and create unforgettable itineraries.
+            - generic [ref=e1755]:
+              - heading "Products" [level=4] [ref=e1756]
+              - list [ref=e1757]:
+                - listitem [ref=e1758]:
+                  - link "Download App" [ref=e1759] [cursor=pointer]:
+                    - /url: /download
+                - listitem [ref=e1760]:
+                  - link "Help Center" [ref=e1761] [cursor=pointer]:
+                    - /url: /help
+            - generic [ref=e1762]:
+              - heading "Company" [level=4] [ref=e1763]
+              - list [ref=e1764]:
+                - listitem [ref=e1765]:
+                  - link "About Us" [ref=e1766] [cursor=pointer]:
+                    - /url: /about
+                - listitem [ref=e1767]:
+                  - link "Careers" [ref=e1768] [cursor=pointer]:
+                    - /url: /careers
+                - listitem [ref=e1769]:
+                  - link "Privacy Policy" [ref=e1770] [cursor=pointer]:
+                    - /url: /privacy
+                - listitem [ref=e1771]:
+                  - link "Terms of Service" [ref=e1772] [cursor=pointer]:
+                    - /url: /terms
+            - generic [ref=e1773]:
+              - heading "Follow Us" [level=4] [ref=e1774]
+              - generic [ref=e1775]:
+                - link "instagram" [ref=e1776] [cursor=pointer]:
+                  - /url: https://instagram.com/travyl
+                  - img [ref=e1777]
+                - button "🇺🇸" [ref=e1782]
+          - generic [ref=e1783]:
+            - paragraph [ref=e1784]: © 2026 Travyl. All rights reserved.
+            - button "Dark" [ref=e1785]:
+              - img [ref=e1786]
+              - generic [ref=e1788]: Dark
+  - button "Open Next.js Dev Tools" [ref=e292] [cursor=pointer]:
+    - img [ref=e293]
+  - alert [ref=e544]
+  - img [ref=e547]

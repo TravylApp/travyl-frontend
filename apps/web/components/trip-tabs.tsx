@@ -4,7 +4,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Calendar, CalendarDays, Plane, Building2, UtensilsCrossed, Compass,
+  Home, Calendar, CalendarDays, Plane, Building2, Compass,
   Luggage, PieChart, Heart, Car, Settings,
   GripVertical, GripHorizontal,
   SlidersHorizontal, Check, X,
@@ -30,8 +30,7 @@ const ALL_TABS: TabDef[] = [
   { segment: "calendar",    label: "Calendar",      subtitle: "Visual calendar & For You",          icon: CalendarDays,      color: DEFAULT_COLOR },
   { segment: "hotels",      label: "Hotels",        subtitle: "Accommodation & stays",              icon: Building2,         color: DEFAULT_COLOR },
   { segment: "flights",     label: "Flights",       subtitle: "Flight bookings & details",          icon: Plane,             color: DEFAULT_COLOR },
-  { segment: "restaurants", label: "Restaurants",    subtitle: "Dining reservations & discoveries",  icon: UtensilsCrossed,   color: DEFAULT_COLOR },
-  { segment: "activities",  label: "Explore",       subtitle: "Activities, tours & events",         icon: Compass,           color: DEFAULT_COLOR },
+  { segment: "activities",  label: "Explore",       subtitle: "Restaurants, activities & more",     icon: Compass,           color: DEFAULT_COLOR },
   { segment: "packing",     label: "Packing",       subtitle: "What to bring",                      icon: Luggage,           color: DEFAULT_COLOR },
   { segment: "budget",      label: "Budget",        subtitle: "Trip expenses & spending",            icon: PieChart,          color: DEFAULT_COLOR },
   { segment: "cars",        label: "Car Rental",    subtitle: "Vehicle rentals & transport",         icon: Car,               color: DEFAULT_COLOR },

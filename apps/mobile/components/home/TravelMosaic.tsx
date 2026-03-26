@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -9,10 +9,12 @@ import {
   TILE_CATEGORY_GRADIENTS,
   TILE_CATEGORY_COLORS,
 } from '@travyl/shared';
+import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import type { MosaicTile, TileCategory } from '@travyl/shared';
 import { TileFadeIn } from './TileFadeIn';
 import { MosaicTile as Tile } from './MosaicTile';
+import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const GAP = 10;
 const PADDING = 24;
@@ -44,34 +46,52 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
   const contentWidth = width - PADDING * 2;
   const containerY = useSharedValue(99999);
   const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
-  const { data: fetchedTiles } = useQuery({
+  const { data: fetchedData } = useQuery({
     queryKey: ['mobile-mosaic'],
-    queryFn: async (): Promise<MosaicTile[]> => {
+    queryFn: async (): Promise<{ tiles: MosaicTile[]; places: PlaceItem[] }> => {
       const cities = [
         { lat: '48.8566', lng: '2.3522' },
         { lat: '41.9028', lng: '12.4964' },
         { lat: '35.6762', lng: '139.6503' },
+        { lat: '40.7128', lng: '-74.0060' },
       ];
+      const shuffled = [...cities].sort(() => Math.random() - 0.5).slice(0, 3);
       const results = await Promise.all(
-        cities.map(async (c) => {
+        shuffled.map(async (c) => {
           try {
             const res = await fetch(`${WEB_API}/api/places?lat=${c.lat}&lng=${c.lng}&category=sightseeing&limit=3`);
             if (!res.ok) return [];
-            return res.json();
+            return res.json() as Promise<PlaceItem[]>;
           } catch { return []; }
         })
       );
       const seen = new Set<string>();
-      return results.flat().filter((p: any) => p.name && p.image && !seen.has(p.id) && (seen.add(p.id), true))
-        .map((p: any) => ({ id: p.id, name: p.name, category: 'destination' as const, tagline: p.tagline || '', image_url: p.image, gridSpan: [2, 1] as [number, number] }));
+      const places = results.flat().filter((p) => p.name && p.image && !seen.has(p.id) && (seen.add(p.id), true));
+      const tiles = places.map((p) => ({
+        id: p.id, name: p.name, category: 'destination' as const,
+        tagline: p.tagline || '', image_url: p.image, gridSpan: [2, 1] as [number, number],
+      }));
+      return { tiles, places };
     },
     staleTime: 10 * 60 * 1000,
   });
+  const fetchedTiles = fetchedData?.tiles;
+  const fetchedPlaces = fetchedData?.places ?? [];
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+
   const allTiles = fetchedTiles?.length ? fetchedTiles : PLACEHOLDER_TILES;
 
   const tiles = allTiles.slice(0, 8);
   const featured = tiles[0];
   const rest = tiles.slice(1);
+
+  // Full PlaceItem data for CardStackCarousel (has address, hours, website, etc.)
+  const tilePlaces = useMemo<PlaceItem[]>(() => {
+    const tileIds = tiles.map(t => t.id);
+    return tileIds
+      .map(id => fetchedPlaces.find(p => p.id === id))
+      .filter((p): p is PlaceItem => !!p);
+  }, [tiles, fetchedPlaces]);
 
   const rows: MosaicTile[][] = [];
   for (let i = 0; i < rest.length; i += 2) {
@@ -117,6 +137,7 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
           nameSize={18}
           padInner={20}
           isFeature
+          onPress={() => setSelectedIdx(0)}
         />
       </TileFadeIn>
 
@@ -152,6 +173,7 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
                         color={color}
                         width={tileWidth}
                         height={isFullWidth ? 120 : layout[2]}
+                        onPress={() => setSelectedIdx(baseIndex + ti)}
                       />
                     </TileFadeIn>
                   </View>
@@ -162,6 +184,18 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
           </View>
         );
       })}
+
+      {/* Card detail overlay */}
+      {selectedIdx >= 0 && tilePlaces.length > 0 && (
+        <CardStackCarousel
+          places={tilePlaces}
+          initialIndex={Math.min(selectedIdx, tilePlaces.length - 1)}
+          favorites={[]}
+          onToggleFav={() => {}}
+          overlay
+          onClose={() => setSelectedIdx(-1)}
+        />
+      )}
     </View>
   );
 }

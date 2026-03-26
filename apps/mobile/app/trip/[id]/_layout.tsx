@@ -30,7 +30,6 @@ const ALL_TABS = [
   { name: 'itinerary',   title: 'Itinerary',   icon: 'calendar'    },
   { name: 'hotels',      title: 'Hotels',      icon: 'building-o'  },
   { name: 'flights',     title: 'Flights',     icon: 'plane'       },
-  { name: 'restaurants', title: 'Restaurants',  icon: 'cutlery'     },
   { name: 'activities',  title: 'Explore',     icon: 'compass'     },
   { name: 'packing',     title: 'Packing',     icon: 'suitcase'    },
   { name: 'budget',      title: 'Budget',      icon: 'pie-chart'   },
@@ -41,7 +40,7 @@ const ALL_TABS = [
 
 const PERMANENT_TAB_NAMES = new Set(['index', 'itinerary']);
 const ADDABLE_TABS = ALL_TABS.filter(t => !PERMANENT_TAB_NAMES.has(t.name));
-const DEFAULT_ENABLED_TABS = ['index', 'itinerary'];
+const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'activities', 'packing', 'budget', 'cars', 'favorites', 'settings'];
 
 // ─── Types ──────────────────────────────────────────────
 type SpinePosition = 'top' | 'bottom' | 'left' | 'right';

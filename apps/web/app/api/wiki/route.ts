@@ -1,31 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '../lib/response'
+
+// ─── Response types ──────────────────────────────────────────────────────────
+
+interface WikiSummary {
+  title: string | null
+  extract: string | null
+  thumbnail: string | null
+  description: string | null
+}
+
+// ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get('q')
-
-  if (!q) {
-    return NextResponse.json({ error: 'Missing q parameter' }, { status: 400 })
-  }
-
   try {
+    const q = requireParam(req.nextUrl.searchParams, 'q')
+
     const res = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}`,
-      { next: { revalidate: 3600 } }
+      CACHE_1H
     )
 
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Wikipedia fetch failed' }, { status: res.status })
-    }
+    if (!res.ok) return errorResponse('Wikipedia fetch failed', res.status)
 
     const data = await res.json()
 
-    return NextResponse.json({
+    const summary: WikiSummary = {
       title: data.title ?? null,
       extract: data.extract ?? null,
       thumbnail: data.thumbnail?.source ?? null,
       description: data.description ?? null,
-    })
-  } catch {
-    return NextResponse.json({ error: 'Wikipedia service unavailable' }, { status: 500 })
+    }
+
+    return jsonResponse(summary)
+  } catch (err) {
+    if (err instanceof MissingParamError) return errorResponse(err.message, 400)
+    return errorResponse('Wikipedia service unavailable', 500)
   }
 }

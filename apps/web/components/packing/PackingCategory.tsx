@@ -13,6 +13,8 @@ interface PackingCategoryProps {
   items: DbPackingItem[]
   suggestions?: PackingSuggestion[]
   onToggle: (id: string) => void
+  onIncrementPacked: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
   onRemove: (id: string) => void
   onClaim?: (id: string) => void
   onRelease?: (id: string) => void
@@ -27,6 +29,8 @@ export function PackingCategory({
   items,
   suggestions = [],
   onToggle,
+  onIncrementPacked,
+  onUpdateQuantity,
   onRemove,
   onClaim,
   onRelease,
@@ -37,8 +41,8 @@ export function PackingCategory({
 }: PackingCategoryProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
-  const packedCount = items.filter((i) => i.is_packed).length
-  const totalCount = items.length
+  const packedUnits = items.reduce((s, i) => s + i.packed_count, 0)
+  const totalUnits = items.reduce((s, i) => s + i.quantity, 0)
 
   return (
     <div className="mb-1">
@@ -69,7 +73,7 @@ export function PackingCategory({
         </span>
 
         <span className="text-xs tabular-nums text-[var(--cal-text-muted)]">
-          {packedCount}/{totalCount}
+          {packedUnits}/{totalUnits}
         </span>
       </button>
 
@@ -91,6 +95,8 @@ export function PackingCategory({
                     key={item.id}
                     item={item}
                     onToggle={onToggle}
+                    onIncrementPacked={onIncrementPacked}
+                    onUpdateQuantity={onUpdateQuantity}
                     onRemove={onRemove}
                     onClaim={onClaim}
                     onRelease={onRelease}

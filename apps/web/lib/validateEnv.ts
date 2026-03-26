@@ -9,10 +9,6 @@ const REQUIRED_PUBLIC = [
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
 ] as const
 
-const REQUIRED_SERVER = [
-  'SUPABASE_SECRET_KEY',
-] as const
-
 export function validateEnv() {
   // Only validate on the server
   if (typeof window !== 'undefined') return
@@ -20,9 +16,6 @@ export function validateEnv() {
   const missing: string[] = []
 
   for (const key of REQUIRED_PUBLIC) {
-    if (!process.env[key]) missing.push(key)
-  }
-  for (const key of REQUIRED_SERVER) {
     if (!process.env[key]) missing.push(key)
   }
 
