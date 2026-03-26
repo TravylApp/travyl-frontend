@@ -1,4 +1,4 @@
-export { useTrips } from './useTrips';
+export { useTrips, saveAnonTripId } from './useTrips';
 export { useHomeScreen } from './useHomeScreen';
 export { useExploreRows } from './useExploreRows';
 export { useExploreData } from './useExploreData';
