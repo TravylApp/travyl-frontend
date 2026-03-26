@@ -1080,10 +1080,10 @@ export default function HotelsScreen() {
   }, [starFilter, amenityFilter, brandFilter, sortBy]);
 
   // Use first real hotel from trip_context, fall back to mock
-  const hotel = useMemo<HotelData>(() => {
+  const hotel = useMemo<HotelData | null>(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
     const h = source[0];
-    if (!h) return SELECTED_HOTEL;
+    if (!h) return null;
     const price = h.price ?? h.price_per_night ?? 100;
     const stars = h.stars ?? (h.rating >= 4.5 ? 5 : h.rating >= 3.5 ? 4 : 3);
     return {

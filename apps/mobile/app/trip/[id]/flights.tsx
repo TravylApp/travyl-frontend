@@ -6,119 +6,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-/* ================================================================
-   MOCK DATA — Paris trip: JFK <-> CDG
-   ================================================================ */
-
 const POPULAR_AIRPORTS = [
   { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
+  { code: 'LAX', name: 'Los Angeles Intl', city: 'Los Angeles' },
+  { code: 'ORD', name: "O'Hare Intl", city: 'Chicago' },
+  { code: 'LHR', name: 'Heathrow', city: 'London' },
   { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-  { code: 'EWR', name: 'Newark Liberty Intl', city: 'Newark' },
-  { code: 'LGA', name: 'LaGuardia', city: 'New York' },
-  { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
 ];
 
-const BOOKED_FLIGHTS = [
-  {
-    id: 'outbound-1',
-    type: 'outbound' as const,
-    flightNumber: 'AA 100',
-    airline: 'American Airlines',
-    airlineLogo: 'AA',
-    aircraft: 'Boeing 777-300ER',
-    date: 'Mar 10, 2026',
-    departure: { time: '7:30 PM', code: 'JFK', terminal: 'T8', gate: 'B44' },
-    arrival: { time: '9:15 AM', code: 'CDG', terminal: 'T2A', gate: 'K26', nextDay: true },
-    duration: '7h 45m',
-    stops: 'Direct',
-    cabinClass: 'Economy',
-    seats: '24A, 24B',
-    baggage: '1 carry-on + 1 checked (23 kg)',
-    meal: 'Dinner + breakfast',
-    wifi: 'Available (complimentary)',
-    confirmation: 'XHGT7K',
-    price: { base: 412, taxes: 86, total: 498 },
-    status: 'Confirmed',
-  },
-  {
-    id: 'return-1',
-    type: 'return' as const,
-    flightNumber: 'AA 101',
-    airline: 'American Airlines',
-    airlineLogo: 'AA',
-    aircraft: 'Boeing 777-300ER',
-    date: 'Mar 16, 2026',
-    departure: { time: '11:00 AM', code: 'CDG', terminal: 'T2A', gate: 'K12' },
-    arrival: { time: '2:30 PM', code: 'JFK', terminal: 'T8', gate: 'B38', nextDay: false },
-    duration: '8h 30m',
-    stops: 'Direct',
-    cabinClass: 'Economy',
-    seats: '26A, 26B',
-    baggage: '1 carry-on + 1 checked (23 kg)',
-    meal: 'Lunch + snack',
-    wifi: 'Available (complimentary)',
-    confirmation: 'XHGT7K',
-    price: { base: 428, taxes: 91, total: 519 },
-    status: 'Confirmed',
-  },
-];
+const BOOKED_FLIGHTS: any[] = [];
 
-const COMPARISON_FLIGHTS = [
-  {
-    id: 'dl-310',
-    airline: 'Delta Air Lines',
-    airlineLogo: 'DL',
-    flightNumber: 'DL 310',
-    departure: { time: '6:15 PM', airport: 'JFK' },
-    arrival: { time: '8:45 AM', airport: 'CDG', nextDay: true },
-    duration: '8h 30m',
-    stops: 1,
-    layover: 'ATL (1h 40m)',
-    price: 520,
-    fareClass: 'Main Cabin',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 84,
-    co2: 312,
-    badge: null as string | null,
-    businessAvailable: false,
-  },
-  {
-    id: 'ua-57',
-    airline: 'United Airlines',
-    airlineLogo: 'UA',
-    flightNumber: 'UA 57',
-    departure: { time: '9:00 PM', airport: 'EWR' },
-    arrival: { time: '10:30 AM', airport: 'CDG', nextDay: true },
-    duration: '7h 30m',
-    stops: 0,
-    layover: null,
-    price: 485,
-    fareClass: 'Economy',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 81,
-    co2: 278,
-    badge: 'Lowest Price',
-    businessAvailable: false,
-  },
-  {
-    id: 'lh-401',
-    airline: 'Lufthansa',
-    airlineLogo: 'LH',
-    flightNumber: 'LH 401',
-    departure: { time: '5:30 PM', airport: 'JFK' },
-    arrival: { time: '7:15 AM', airport: 'CDG', nextDay: true },
-    duration: '7h 45m',
-    stops: 0,
-    layover: null,
-    price: 610,
-    fareClass: 'Economy',
-    amenities: { wifi: true, power: true, meals: true, entertainment: true },
-    onTime: 88,
-    co2: 265,
-    badge: 'Best Overall',
-    businessAvailable: true,
-  },
-];
+const COMPARISON_FLIGHTS: any[] = [];
 
 const BOOKING_DETAILS = {
   confirmationNumber: 'XHGT7K',
