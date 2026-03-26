@@ -200,6 +200,18 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     handleDragEnd: handlePanelDragEnd,
   } = useResizablePanel()
 
+  // Navigate to today's position in the trip on first load.
+  useEffect(() => {
+    if (!trip) return
+    const today = new Date()
+    const tripStart = new Date(trip.start_date + 'T00:00:00Z')
+    const diffDays = Math.floor((today.getTime() - tripStart.getTime()) / (1000 * 60 * 60 * 24))
+    const dayIndex = Math.max(0, Math.min(diffDays, tripTotalDays - 1))
+    selectDay(dayIndex)
+  // Run once when the trip first loads (trip?.id changes from undefined → id).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip?.id])
+
   // Sync view mode to presence
   useEffect(() => {
     setCurrentView(viewMode)
