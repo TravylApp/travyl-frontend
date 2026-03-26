@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { useDraggable, useDndMonitor } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
@@ -121,13 +122,15 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
           />
         ) : (
           images.map((url, idx) => (
-            <img
+            <Image
               key={url}
               src={url}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+              fill
+              className="object-cover transition-opacity duration-700"
               style={{ opacity: idx === activeIdx ? 1 : 0 }}
               draggable={false}
+              sizes="(max-width: 640px) 100vw, 300px"
               onError={() => {
                 setFailedUrls(prev => new Set(prev).add(url))
                 if (idx === activeIdx) setActiveIdx(i => Math.max(0, i - 1))

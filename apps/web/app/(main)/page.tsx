@@ -520,6 +520,7 @@ export default function Home() {
               alt=""
               width={1600}
               height={900}
+              loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "low"}
               decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1500ms] ease-in-out"

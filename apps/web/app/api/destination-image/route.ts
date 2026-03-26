@@ -43,7 +43,9 @@ export async function GET(req: NextRequest) {
     }
 
     const photo = data.photos[Math.floor(Math.random() * data.photos.length)]
-    return NextResponse.json({ url: photo.src.large2x })
+    const res_out = NextResponse.json({ url: photo.src.large2x })
+    res_out.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+    return res_out
   } catch (err) {
     console.error('Pexels fetch failed:', err)
     return NextResponse.json({ url: null })

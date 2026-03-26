@@ -30,6 +30,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const [avatarError, setAvatarError] = useState(false);
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name;
   const email = user?.email;
@@ -100,8 +101,8 @@ export default function Navbar() {
           useLightNav ? "bg-white/20 text-white" : "bg-[#1e3a5f] text-white"
         } font-medium`}
       >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={displayName || "User"} className="h-full w-full object-cover" />
+        {avatarUrl && !avatarError ? (
+          <img src={avatarUrl} alt={displayName || "User"} className="h-full w-full object-cover" onError={() => setAvatarError(true)} />
         ) : (
           initials
         )}

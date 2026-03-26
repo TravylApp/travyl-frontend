@@ -11,8 +11,14 @@ export const cacheTable = new sst.aws.Dynamo('RecommendationCache', {
 // Activity images + Personalize training data
 export const bucket = new sst.aws.Bucket('ActivityAssets')
 
-// CDN for activity images — deferred until image pipeline is built
-// export const cdn = new sst.aws.Router('ActivityCdn', { ... })
+// CDN for serving optimized activity images from S3
+export const activityCdn = new sst.aws.Router('ActivityCdn', {
+  routes: {
+    '/*': {
+      bucket,
+    },
+  },
+})
 
 // Amazon Location Services — Place Index for POI discovery
 export const placeIndex = new aws.location.PlaceIndex('TravylPlaceIndex', {

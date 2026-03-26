@@ -1,4 +1,4 @@
-import { cacheTable, placeIndex, userInteractions } from './storage'
+import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
 import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels } from './secrets'
 
@@ -35,7 +35,7 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -49,7 +49,7 @@ api.route('GET /suggest', {
 
 api.route('GET /search', {
   handler: 'services/search.handler',
-  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, supabaseSecretKey, supabaseUrl, serpApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -95,7 +95,7 @@ api.route('GET /entity-search', {
 
 api.route('GET /recommend', {
   handler: 'services/recommend.handler',
-  link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
 api.route('POST /invite', {
@@ -119,10 +119,10 @@ api.route('POST /packing-suggest', {
 
 api.route('GET /activity-intelligence', {
   handler: 'services/activity-intelligence.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
 api.route('GET /discover', {
   handler: 'services/discover.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })

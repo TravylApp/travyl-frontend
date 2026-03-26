@@ -27,6 +27,7 @@
     "react-dom": "^19.2.3",
     "react-leaflet": "^5.0.0",
     "react-responsive-masonry": "^2.7.1",
+    "sharp": "^0.34.5",
     "y-supabase": "^0.0.4-7-alpha",
     "yjs": "^13.6.30"
   },

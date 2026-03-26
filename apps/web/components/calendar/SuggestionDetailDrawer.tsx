@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard } from './types'
 
@@ -88,13 +89,15 @@ export function SuggestionDetailDrawer({
           />
         ) : (
           images.map((url, idx) => (
-            <img
+            <Image
               key={url}
               src={url}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+              fill
+              className="object-cover transition-opacity duration-500"
               style={{ opacity: idx === activeIdx ? 1 : 0 }}
               draggable={false}
+              sizes="100vw"
               onError={() => {
                 setFailedUrls((prev) => new Set(prev).add(url))
                 if (idx === activeIdx) setActiveIdx((i) => Math.max(0, i - 1))
