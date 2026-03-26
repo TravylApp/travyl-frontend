@@ -119,6 +119,20 @@ async function fetchDiscover(query: string, token: string): Promise<DiscoverResp
   return res.json()
 }
 
+async function fetchFsqSearch(query: string, near?: string): Promise<Record<string, SpotlightResult[]>> {
+  const params = new URLSearchParams({ q: query })
+  if (near) params.set('near', near)
+  const res = await fetch(`/api/fsq-search?${params}`)
+  if (!res.ok) return {}
+  const { results } = await res.json() as { results: SpotlightResult[] }
+  const grouped: Record<string, SpotlightResult[]> = {}
+  for (const r of results) {
+    if (!grouped[r.type]) grouped[r.type] = []
+    grouped[r.type].push(r)
+  }
+  return grouped
+}
+
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
   if (type === 'destination') return `/destination/${encodeURIComponent(entityName ?? '')}`
   if (type === 'restaurant') return `/restaurant/${encodeURIComponent(entityId)}`
@@ -213,6 +227,16 @@ export function useSpotlightSearch() {
     queryKey: ['discover', discoverLocation],
     queryFn: () => fetchDiscover(discoverLocation, token!),
     enabled: shouldSearch && parsedIntent !== undefined,
+    staleTime: 60_000,
+  })
+
+  // Foursquare text search — fires for entity-search intents to surface named places
+  // (e.g. "the botanist bakersfield") that aren't in the user's saved trip data.
+  const fsqEnabled = shouldSearch && parsedIntent !== undefined && parsedIntent.intent === 'entity-search'
+  const { data: fsqResults, isLoading: fsqLoading } = useQuery({
+    queryKey: ['fsq-search', debouncedQuery, parsedIntent?.location],
+    queryFn: () => fetchFsqSearch(debouncedQuery, parsedIntent?.location),
+    enabled: fsqEnabled,
     staleTime: 60_000,
   })
 
@@ -384,10 +408,10 @@ export function useSpotlightSearch() {
     }
   }, [parsedIntent?.entityType, scope, setScope])
 
-  // Merge all sources (now including commands, actions, and discover)
+  // Merge all sources (now including commands, actions, discover, and Foursquare text search)
   const results = useMemo(() => {
-    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, discoverResults, navResults, commandResults], { maxPerCategory: 5 })
-  }, [actionResults, tripResults, entityResults, discoverResults, navResults, commandResults])
+    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, discoverResults, fsqResults ?? {}, navResults, commandResults], { maxPerCategory: 5 })
+  }, [actionResults, tripResults, entityResults, discoverResults, fsqResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
