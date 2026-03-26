@@ -153,17 +153,13 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
   onChange: (id: T) => void;
 }) {
   return (
-    <div className="flex h-14 items-center justify-between border-b border-border px-4">
-      <span className="text-foreground">{label}</span>
-      <button
-        onClick={onToggle}
-        className={`relative h-6 w-11 rounded-full transition-colors ${
-          enabled ? "bg-primary" : "bg-border"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-            enabled ? "translate-x-5" : "translate-x-0"
+    <div className="flex h-14 items-center gap-2 border-b border-border px-4">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+            active === tab.id ? "bg-primary text-white" : "text-foreground hover:bg-border"
           }`}
         >
           {tab.label}
