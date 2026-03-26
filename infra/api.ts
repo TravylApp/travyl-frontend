@@ -137,3 +137,8 @@ api.route('GET /parse-intent', {
     },
   ],
 })
+
+api.route('GET /places/search', {
+  handler: 'services/place-search.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+})
