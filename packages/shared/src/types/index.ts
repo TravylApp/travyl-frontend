@@ -20,6 +20,7 @@ export interface TripContextData {
   lat?: number;
   lng?: number;
   lede_text?: string;
+  travelers?: TravelerMetadata;
   quick_facts?: {
     currency?: string;
     language?: string;
@@ -346,22 +347,27 @@ export interface BudgetCategoryData {
 // ─── Packing Types ──────────────────────────────────────────
 
 export const PACKING_CATEGORIES = ['clothing', 'toiletries', 'electronics', 'documents', 'accessories', 'essentials'] as const
-export type PackingCategory = (typeof PACKING_CATEGORIES)[number]
+export type StaticPackingCategory = (typeof PACKING_CATEGORIES)[number]
+/** @deprecated Use StaticPackingCategory for static categories, or string for freeform */
+export type PackingCategory = StaticPackingCategory
 
 export interface DbPackingItem {
   id: string
   trip_id: string
   user_id: string
   name: string
-  category: PackingCategory
+  category: string
   is_packed: boolean
   packed_by: string | null
   packed_at: string | null
   sort_order: number
   created_at: string
   updated_at: string
+  owner_id: string | null
+  group_tag: string | null
   user_display_name?: string
   user_avatar_url?: string
+  owner_display_name?: string
 }
 
 export interface PackingAuditEntry {
@@ -369,11 +375,13 @@ export interface PackingAuditEntry {
   trip_id: string
   user_id: string
   item_id: string | null
-  action: 'added' | 'packed' | 'unpacked' | 'removed'
+  action: 'added' | 'packed' | 'unpacked' | 'removed' | 'claimed' | 'released' | 'transferred'
   item_name: string
   created_at: string
+  target_user_id: string | null
   user_display_name?: string
   user_avatar_url?: string
+  target_display_name?: string
 }
 
 export interface CatalogItem {
@@ -387,10 +395,17 @@ export interface PackingSuggestion {
   trip_id: string
   user_id: string
   name: string
-  category: PackingCategory
+  category: string
   reason: string
   status: 'pending' | 'accepted' | 'dismissed'
   created_at: string
+}
+
+export interface TravelerMetadata {
+  adults: number
+  children: number
+  infants: number
+  child_ages: number[]
 }
 
 export interface WeatherInfo {

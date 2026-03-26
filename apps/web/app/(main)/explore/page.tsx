@@ -129,7 +129,8 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
 }
 
 export default function ExplorePage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get('q') ?? '');
 
   const { data: trips, isLoading, error } = useQuery({
     queryKey: ['publicTrips'],
@@ -151,7 +152,7 @@ export default function ExplorePage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] text-white py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">Explore Trips</h1>
+          <h1 className="text-3xl font-serif font-normal mb-2 tracking-wide">Explore Trips</h1>
           <p className="text-white/80">Discover and fork amazing travel itineraries from the community</p>
 
           {/* Search bar */}

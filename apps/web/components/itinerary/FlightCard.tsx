@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { PaperPlane } from '@/components/ui';
 import type { FlightViewModel } from '@travyl/shared';
 
@@ -10,8 +12,11 @@ interface FlightCardProps {
 
 export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
   const isReturn = variant === 'return';
+  const params = useParams();
+  const tripId = params?.id as string;
 
   return (
+    <Link href={`/trip/${tripId}/flights/${flight.id}`} className="block">
     <div className="rounded-xl bg-white overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-3">
       {/* Header band — sky blue gradient (outbound) or navy gradient (return) */}
       <div
@@ -90,5 +95,6 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
         </div>
       </div>
     </div>
+    </Link>
   );
 }

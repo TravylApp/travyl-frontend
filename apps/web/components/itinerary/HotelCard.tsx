@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { MapPin, LogIn, LogOut, Star, Image as ImageIcon, Building2 } from 'lucide-react';
 import type { HotelViewModel } from '@travyl/shared';
 
@@ -8,7 +10,11 @@ interface HotelCardProps {
 }
 
 export function HotelCard({ hotel }: HotelCardProps) {
+  const params = useParams();
+  const tripId = params?.id as string;
+
   return (
+    <Link href={`/trip/${tripId}/hotels/${hotel.id}`} className="block">
     <div className="rounded-xl bg-white overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-3">
       {/* Navy gradient header band */}
       <div
@@ -82,5 +88,6 @@ export function HotelCard({ hotel }: HotelCardProps) {
         </button>
       </div>
     </div>
+    </Link>
   );
 }

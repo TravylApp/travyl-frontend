@@ -78,9 +78,8 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
     <section className="py-16 px-6">
       {/* Header — outside the scroll container so it scrolls away */}
       <div className="max-w-6xl mx-auto text-center mb-12">
-        <h2 className="text-2xl md:text-3xl text-foreground mb-2">
-          <span className="font-extrabold">How</span>{" "}
-          <span className="font-normal italic">It Works</span>
+        <h2 className="text-2xl md:text-3xl font-serif font-normal text-foreground mb-2 tracking-wide">
+          How <span className="italic">It Works</span>
         </h2>
         <p className="text-muted-foreground text-sm max-w-md mx-auto">
           From destination to departure — your perfect trip in 3 simple steps.

@@ -1,5 +1,4 @@
 export { useTrips } from './useTrips';
-export { useSavedItems } from './useSavedItems';
 export { useProfile } from './useProfile';
 export { useHomeScreen } from './useHomeScreen';
 export { useExploreRows } from './useExploreRows';
@@ -18,10 +17,8 @@ export type { RestaurantCategory, RestaurantSortOption } from './useRestaurantFi
 export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_SORT_OPTIONS, ACTIVITY_CATEGORY_ICONS, mapActivityCategory } from './useActivityFilters';
 export type { ActivityFilterCategory, ActivitySortOption } from './useActivityFilters';
 export { useForkTrip } from './useForkTrip';
-export { useTripActions } from './useTripActions';
-export { useSimilarPlaces, getSimilarPlaces } from './useSimilarPlaces';
+export { useSimilarPlaces } from './useSimilarPlaces';
 export { useCollaborators } from './useCollaborators';
-export { useTripNotes } from './useTripNotes';
 export { useExchangeRates } from './useExchangeRates';
 export { useTripBudget } from './useTripBudget';
 export { usePackingList } from './usePackingList';

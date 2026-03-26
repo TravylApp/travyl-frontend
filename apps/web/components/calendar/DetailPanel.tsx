@@ -6,6 +6,7 @@ import type { CalendarActivity, UserAwareness } from './types'
 import { DETAIL_PANEL_WIDTH } from './constants'
 import { formatTimeRange } from './utils'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
+import { ActivityIntelligencePanel } from './ActivityIntelligencePanel'
 
 interface DetailPanelProps {
   activity: CalendarActivity | null
@@ -14,9 +15,10 @@ interface DetailPanelProps {
   onRemove: (id: string) => void
   onUpdateActivity?: (id: string, updates: Partial<CalendarActivity>) => void
   onEdit?: (id: string) => void
+  tripId: string
 }
 
-export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActivity, onEdit }: DetailPanelProps) {
+export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActivity, onEdit, tripId }: DetailPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
 
@@ -190,6 +192,9 @@ export function DetailPanel({ activity, viewers, onClose, onRemove, onUpdateActi
               ))}
             </div>
           )}
+
+          {/* Intelligence Panel */}
+          <ActivityIntelligencePanel activity={activity} tripId={tripId} />
 
           {/* Spacer */}
           <div className="flex-1" />

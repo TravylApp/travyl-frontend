@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatDateRange } from '@travyl/shared';
+import { formatDateRange, formatCurrency } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
 import { ForkCountBadge } from '../trip/ForkAttribution';
@@ -18,9 +18,6 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
   abandoned: { label: 'Cancelled', bg: 'bg-red-500/90', text: 'text-white' },
 };
 
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
-}
 
 interface TripCardProps {
   trip: MockTripCard;

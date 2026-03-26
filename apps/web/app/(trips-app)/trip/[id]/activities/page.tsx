@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const ResponsiveMasonry = dynamic(
@@ -24,7 +25,6 @@ import {
   ACTIVITY_SUBFILTERS,
   ACTIVITY_SORT_OPTIONS,
 } from '@travyl/shared';
-import { SplitScreenModal } from '@/components/itinerary';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 
 const ACCENT = 'var(--trip-base)';
@@ -83,6 +83,7 @@ function ActivitiesSkeleton() {
 
 export default function Activities({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const { days, isLoading } = useItineraryScreen(id);
 
   const {
@@ -102,8 +103,6 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
   const [minRating, setMinRating] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
   const activeFilterCount = (minRating > 0 ? 1 : 0) + (categoryFilter !== 'All' ? 1 : 0) + (activitySubFilter ? 1 : 0);
 
   const clearAllFilters = () => {
@@ -304,7 +303,7 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
                       accentColor={item.category === 'Events' ? 'var(--trip-base)' : ACCENT}
                       isFavorited={favorites.includes(item.id)}
                       onFavorite={toggleFavorite}
-                      onClick={() => setSelectedIndex(displayItems.indexOf(item))}
+                      onClick={() => router.push(`/trip/${id}/activities/${item.id}`)}
                       onAddToItinerary={() => {}}
                       onRemoveFromItinerary={() => {}}
                     />
@@ -325,16 +324,6 @@ export default function Activities({ params }: { params: Promise<{ id: string }>
       </div>
       </div>
 
-      {selectedIndex !== null && (
-        <SplitScreenModal
-          items={displayItems}
-          initialIndex={selectedIndex}
-          accentColor={ACCENT}
-          favorites={favorites}
-          onClose={() => setSelectedIndex(null)}
-          onFavorite={toggleFavorite}
-        />
-      )}
     </div>
   );
 }

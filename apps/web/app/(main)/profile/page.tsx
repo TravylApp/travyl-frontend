@@ -158,7 +158,7 @@ function ProfileContent({
               </button>
             </div>
 
-            <h1 className="text-[20px] text-white tracking-tight text-center">{displayName}</h1>
+            <h1 className="text-[20px] font-serif font-normal text-white text-center tracking-wide">{displayName}</h1>
             <p className="text-[14px] text-white/50 text-center max-w-[368px] mt-1 leading-relaxed tracking-tight">
               Travel enthusiast exploring the world one destination at a time.
             </p>

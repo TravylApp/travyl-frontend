@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
-import { GlobalCommandPalette } from './GlobalCommandPalette';
+import { SpotlightSearch } from './spotlight/SpotlightSearch';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -41,7 +41,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     sb.from('profiles')
       .select('preferences')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data?.preferences) {
           hydrateSettings(data.preferences as Record<string, unknown>);
@@ -52,7 +52,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClientRef.current}>
       {children}
-      <GlobalCommandPalette />
+      <SpotlightSearch />
     </QueryClientProvider>
   );
 }

@@ -486,35 +486,6 @@ export async function inviteCollaborator(tripId: string, email: string, role: Co
   return data
 }
 
-// ── Trip Notes ─────────────────────────────────────────
-
-export async function fetchTripNotes(tripId: string): Promise<TripNote[]> {
-  const { data, error } = await supabase.from('trip_notes').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
-  if (error) throw error
-  return data ?? []
-}
-
-export async function createTripNote(tripId: string, userId: string, day: number, hour: number, color: string): Promise<TripNote> {
-  const { data, error } = await supabase.from('trip_notes').insert({ trip_id: tripId, user_id: userId, day, hour, text: '', color }).select().single()
-  if (error) throw error
-  return data
-}
-
-export async function updateTripNote(noteId: string, text: string): Promise<void> {
-  const { error } = await supabase.from('trip_notes').update({ text }).eq('id', noteId)
-  if (error) throw error
-}
-
-export async function moveTripNote(noteId: string, day: number, hour: number): Promise<void> {
-  const { error } = await supabase.from('trip_notes').update({ day, hour }).eq('id', noteId)
-  if (error) throw error
-}
-
-export async function deleteTripNote(noteId: string): Promise<void> {
-  const { error } = await supabase.from('trip_notes').delete().eq('id', noteId)
-  if (error) throw error
-}
-
 // ─── Save AI Plan to Supabase ─────────────────────────────
 
 interface PlanToSave {

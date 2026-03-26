@@ -140,7 +140,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
           <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl text-gray-400">?</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">User not found</h2>
+          <h2 className="text-xl font-serif font-normal text-gray-900 mb-2 tracking-wide">User not found</h2>
           <p className="text-gray-500">The user &quot;{username}&quot; doesn&apos;t exist or has no public profile.</p>
           <Link href="/explore" className="mt-4 inline-block text-sm font-medium" style={{ color: BRAND }}>
             Browse all trips
@@ -170,7 +170,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
 
             {/* Info */}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">
                 {profile.display_name || 'Anonymous'}
               </h1>
               {profile.email && (
@@ -186,7 +186,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
 
       {/* Trips Grid */}
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Public Trips</h2>
+        <h2 className="text-lg font-serif font-normal text-gray-900 mb-4 tracking-wide">Public Trips</h2>
 
         {tripsLoading ? (
           <div className="flex items-center justify-center py-12">

@@ -127,7 +127,7 @@ function EmptyState() {
       <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#ef444415' }}>
         <Heart size={24} style={{ color: '#ef4444' }} />
       </div>
-      <h3 className="text-[17px] font-bold text-gray-900 mb-1.5">No favorites yet</h3>
+      <h3 className="text-[17px] font-serif font-normal text-gray-900 tracking-wide mb-1.5">No favorites yet</h3>
       <p className="text-[13px] text-gray-500 text-center leading-5 mb-5">
         Save your favorite activities, restaurants, and places to quickly find them later.
       </p>
@@ -202,7 +202,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
         <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-[#1e3a5f] to-[#2c4f7f] rounded-full mb-3">
           <Heart size={24} className="text-white fill-white" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Your Favorites</h2>
+        <h2 className="text-xl font-serif font-normal text-gray-900 tracking-wide mb-1">Your Favorites</h2>
         <p className="text-sm text-gray-600">{totalFavorites} saved items across all categories</p>
       </div>
 
@@ -214,7 +214,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
               <Camera size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Activities & Attractions</h2>
+              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Activities & Attractions</h2>
               <p className="text-sm text-gray-600">{favoritedActivities.length} saved</p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
               <UtensilsCrossed size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Restaurants & Dining</h2>
+              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Restaurants & Dining</h2>
               <p className="text-sm text-gray-600">{favoritedRestaurants.length} saved</p>
             </div>
           </div>
@@ -268,7 +268,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
               <Compass size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Saved Destinations</h2>
+              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Saved Destinations</h2>
               <p className="text-sm text-gray-600">{favoritedDestinations.length} saved</p>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
             <Building2 size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Hotels & Accommodations</h2>
+            <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Hotels & Accommodations</h2>
             <p className="text-sm text-gray-600">0 saved</p>
           </div>
         </div>
