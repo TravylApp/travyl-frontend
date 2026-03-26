@@ -27,6 +27,7 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
+import { DetailPanel } from './DetailPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -626,6 +627,17 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                 />
               </>
             )}
+
+            {/* Detail panel — slides in when activity is selected */}
+            <DetailPanel
+              activity={selectedActivity}
+              viewers={collaborators}
+              onClose={() => selectEvent(null)}
+              onRemove={handleRemoveActivity}
+              onUpdateActivity={updateActivity}
+              onEdit={(id) => setEditingActivityId(id)}
+              tripId={tripId}
+            />
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}
