@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!DUFFEL_TOKEN) {
-    return NextResponse.json({ error: 'Flight search not configured' }, { status: 500 })
+    return NextResponse.json({ total: 0, flights: [] })
   }
 
   try {

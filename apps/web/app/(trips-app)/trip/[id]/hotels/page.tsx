@@ -11,7 +11,9 @@ import {
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
 import { useItineraryScreen, useHotels as useDbHotels } from '@travyl/shared';
+import type { PlaceItem } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
+import { PinCard } from '@/components/PinCard';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -216,16 +218,74 @@ function useHotels(tripId: string, searchQuery?: string) {
     enabled: !!destination && !!(lat && lng),
   });
 
-  // Combine: DB first (generated hotels), then context, then Foursquare — deduplicate by name
+  // 4. SerpAPI Google Hotels search
+  const { data: serpHotels = [] } = useQuery({
+    queryKey: ['hotels-serp', destination, trip?.start_date, trip?.end_date],
+    queryFn: async () => {
+      if (!destination) return [];
+      const params = new URLSearchParams({ destination });
+      if (trip?.start_date) params.set('check_in', trip.start_date);
+      if (trip?.end_date) params.set('check_out', trip.end_date);
+      const res = await fetch(`/api/hotels/search?${params}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.hotels ?? []).map((h: any, i: number): HotelData => ({
+        id: h.id || `serp-${i}`,
+        name: h.name,
+        stars: h.stars,
+        rating: h.rating,
+        reviews: h.reviews,
+        price: h.price ?? 0,
+        address: h.address,
+        neighborhood: h.neighborhood,
+        lat: h.lat,
+        lng: h.lng,
+        images: h.images ?? [],
+        amenities: h.amenities ?? [],
+        roomTypes: [],
+        checkIn: h.checkIn ?? '3:00 PM',
+        checkOut: h.checkOut ?? '11:00 AM',
+        cancellation: 'See hotel policy',
+        phone: '',
+        email: '',
+        guestRatings: { overall: h.rating, cleanliness: 0, comfort: 0, location: 0, facilities: 0, staff: 0, value: 0 },
+      }));
+    },
+    staleTime: 15 * 60 * 1000,
+    enabled: !!destination,
+  });
+
+  // Combine: DB first, then context, then Foursquare, then SerpAPI — deduplicate by name
   return useMemo(() => {
     const seen = new Set<string>();
-    return [...fromDb, ...fromContext, ...fetchedHotels].filter((h) => {
+    return [...fromDb, ...fromContext, ...fetchedHotels, ...serpHotels].filter((h) => {
       const key = h.name.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [fromDb, fromContext, fetchedHotels]);
+  }, [fromDb, fromContext, fetchedHotels, serpHotels]);
+}
+
+function hotelToPlaceItem(h: HotelData): PlaceItem {
+  const priceTag = h.price ? `€${h.price}/night` : '';
+  const starTag = h.stars ? '★'.repeat(h.stars) : '';
+  return {
+    id: h.id,
+    name: h.name,
+    image: h.images[0] || '',
+    images: h.images,
+    type: 'destination',
+    rating: h.rating > 5 ? h.rating / 2 : h.rating,
+    tagline: [priceTag, h.neighborhood].filter(Boolean).join(' · '),
+    category: starTag ? `${starTag} Hotel` : 'Hotel',
+    description: [h.address, h.cancellation].filter(Boolean).join(' · '),
+    tags: h.amenities.slice(0, 4),
+    latitude: h.lat,
+    longitude: h.lng,
+    address: h.address,
+    reviewCount: h.reviews,
+  };
 }
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
@@ -1261,17 +1321,19 @@ function BrowsingHotelsSection({
               </div>
 
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {hotels.map((hotel) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {hotels.map((hotel, i) => (
                     <div
                       key={hotel.id}
                       onMouseEnter={() => handleHover(hotel.id)}
                       onMouseLeave={() => handleHover(null)}
+                      onClick={() => setDetailHotel(detailHotel?.id === hotel.id ? null : hotel)}
                     >
-                      <BrowsingHotelGridCard
-                        hotel={hotel}
-                        onViewDetails={() => setDetailHotel(detailHotel?.id === hotel.id ? null : hotel)}
-                        isActive={detailHotel?.id === hotel.id}
+                      <PinCard
+                        item={hotelToPlaceItem(hotel)}
+                        index={i}
+                        isFavorited={false}
+                        onFavorite={() => {}}
                       />
                     </div>
                   ))}
