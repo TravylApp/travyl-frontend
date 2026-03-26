@@ -19,6 +19,11 @@ export function validateEnv() {
     if (!process.env[key]) missing.push(key)
   }
 
+  // Accept either SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY
+  if (!process.env.SUPABASE_SECRET_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    missing.push('SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)')
+  }
+
   if (missing.length > 0) {
     console.error(
       `\n❌ Missing required environment variables:\n${missing.map((k) => `   - ${k}`).join('\n')}\n\nSet them via \`sst secret set <Name> <value>\` or in your .env.local for local dev.\n`
