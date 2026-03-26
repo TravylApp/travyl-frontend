@@ -36,6 +36,76 @@ const CATEGORY_QUERIES: Record<string, string> = {
   tour: PAGE_QUERIES[6],
 }
 
+// ─── Internal type with enrichment metadata ───────────────────
+
+type SuggestionCardWithMeta = SuggestionCard & { _dataId?: string }
+
+// ─── Foursquare v3 photo enrichment ──────────────────────────
+
+async function enrichPhotosFromFoursquare(
+  name: string,
+  lat: number,
+  lng: number,
+): Promise<string[]> {
+  const fsqKey = process.env.FOURSQUARE_API_KEY
+  if (!fsqKey) return []
+  try {
+    const searchUrl = new URL('https://api.foursquare.com/v3/places/search')
+    searchUrl.searchParams.set('query', name)
+    searchUrl.searchParams.set('ll', `${lat},${lng}`)
+    searchUrl.searchParams.set('radius', '200')
+    searchUrl.searchParams.set('limit', '1')
+    searchUrl.searchParams.set('fields', 'fsq_id')
+    const searchRes = await fetch(searchUrl.toString(), {
+      headers: { Accept: 'application/json', Authorization: fsqKey },
+      signal: AbortSignal.timeout(4000),
+    })
+    if (!searchRes.ok) return []
+    const fsqId = (await searchRes.json()).results?.[0]?.fsq_id
+    if (!fsqId) return []
+
+    const photosRes = await fetch(
+      `https://api.foursquare.com/v3/places/${fsqId}/photos?limit=5&sort=POPULAR`,
+      {
+        headers: { Accept: 'application/json', Authorization: fsqKey },
+        signal: AbortSignal.timeout(4000),
+      },
+    )
+    if (!photosRes.ok) return []
+    return ((await photosRes.json()) as any[])
+      .map((p: any) => `${p.prefix}original${p.suffix}`)
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+// ─── SerpAPI google_maps photo enrichment (fallback) ─────────
+
+async function enrichPhotosFromGoogleMaps(
+  dataId: string,
+  serpApiKey: string,
+): Promise<string[]> {
+  try {
+    const url = new URL(SERPAPI_BASE)
+    url.searchParams.set('engine', 'google_maps')
+    url.searchParams.set('data_id', dataId)
+    url.searchParams.set('api_key', serpApiKey)
+    const res = await fetch(url.toString(), {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return ((data.place_results?.photos ?? []) as any[])
+      .map((p: any) => p.image ?? p.thumbnail ?? '')
+      .filter((u: string) => u && !u.includes('encrypted-tbn'))
+      .slice(0, 5)
+  } catch {
+    return []
+  }
+}
+
 // ─── Cached fetch ─────────────────────────────────────────────
 
 const fetchSuggestionsForQuery = unstable_cache(
@@ -72,11 +142,13 @@ const fetchSuggestionsForQuery = unstable_cache(
       return haversineKm(centerLat, centerLng, lat, lng) <= MAX_KM
     }).slice(0, 20)
 
-    return nearby.map((place: any, i: number) => {
+    // Map to initial cards, preserving place_id for enrichment
+    const initial: SuggestionCardWithMeta[] = nearby.map((place: any, i: number) => {
       const imageUrls = extractImageUrls(place)
       return {
         id: `serp-${place.place_id ?? i}`,
-        name: place.title,
+        _dataId: place.place_id as string | undefined,
+        name: place.title as string,
         category: inferCategory(place.type, 'sightseeing'),
         imageUrl: imageUrls[0] ?? '',
         imageUrls,
@@ -85,12 +157,47 @@ const fetchSuggestionsForQuery = unstable_cache(
         currency: 'USD',
         rating: place.rating ?? null,
         location: place.address ?? '',
-        latitude: place.gps_coordinates?.latitude ?? 0,
-        longitude: place.gps_coordinates?.longitude ?? 0,
-        description: place.description ?? '',
+        latitude: (place.gps_coordinates?.latitude ?? 0) as number,
+        longitude: (place.gps_coordinates?.longitude ?? 0) as number,
+        description: (place.description ?? '') as string,
         source: 'ai' as const,
         relevanceScore: Math.max(0, 1 - i * 0.05),
       }
+    })
+
+    // Enrich cards that only have low-quality encrypted-tbn thumbnails
+    const needsEnrichment = initial.filter(
+      (s: SuggestionCardWithMeta) =>
+        !s.imageUrls?.length || s.imageUrls.every((u: string) => u.includes('encrypted-tbn')),
+    )
+
+    if (needsEnrichment.length > 0) {
+      console.log(`[suggest] enriching ${needsEnrichment.length} cards`)
+      const enrichMap = new Map<string, string[]>()
+
+      await Promise.all(
+        needsEnrichment.slice(0, 10).map(async (s: SuggestionCardWithMeta) => {
+          // Prefer Foursquare v3 (real venue photos)
+          let photos = await enrichPhotosFromFoursquare(s.name, s.latitude, s.longitude)
+          // Fall back to SerpAPI google_maps
+          if (!photos.length && s._dataId) {
+            photos = await enrichPhotosFromGoogleMaps(s._dataId, apiKey)
+          }
+          if (photos.length) enrichMap.set(s.id, photos)
+        }),
+      )
+
+      return initial.map((s: SuggestionCardWithMeta) => {
+        const { _dataId: _d, ...rest } = s
+        const photos = enrichMap.get(s.id)
+        if (!photos) return rest as SuggestionCard
+        return { ...rest, imageUrl: photos[0], imageUrls: photos } as SuggestionCard
+      })
+    }
+
+    return initial.map((s: SuggestionCardWithMeta) => {
+      const { _dataId: _d, ...rest } = s
+      return rest as SuggestionCard
     })
   },
   ['suggestions'],
@@ -159,7 +266,7 @@ export async function GET(req: NextRequest) {
 function upscaleThumbnail(url: string): string {
   if (!url) return url
   if (/lh\d*\.googleusercontent\.com/.test(url)) {
-    return url.replace(/=([whs]\d+(-[a-zA-Z0-9]+)*)$/, '=w800-h600')
+    return url.replace(/=([whs]\d+(-[a-zA-Z0-9]+)*)$/, '=w1200-h800')
   }
   return url
 }
