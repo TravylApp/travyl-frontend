@@ -473,6 +473,12 @@ export default function Home() {
           // Fallback: save directly to Supabase (bypasses CloudFront)
           try {
             const tripId = await savePlanToSupabase(plan as any);
+            // Enrich in background (weather, wiki, cuisine, etc.)
+            fetch('/api/trips/enrich', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tripId }),
+            }).catch(() => {});
             setTakeoffCompleted(true);
             await new Promise((r) => setTimeout(r, 800));
             setShowTakeoff(false);
