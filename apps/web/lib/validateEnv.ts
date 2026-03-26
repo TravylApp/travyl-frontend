@@ -9,9 +9,7 @@ const REQUIRED_PUBLIC = [
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
 ] as const
 
-const REQUIRED_SERVER = [
-  'SUPABASE_SERVICE_ROLE_KEY',
-] as const
+const REQUIRED_SERVER: readonly string[] = []
 
 export function validateEnv() {
   // Only validate on the server

@@ -349,7 +349,7 @@ export function useSpotlightSearch() {
         title: place.name,
         subtitle: place.location,
         imageUrl: place.imageUrl || undefined,
-        href: `/destination/${encodeURIComponent(discoverData.destination?.name ?? debouncedQuery)}`,
+        href: buildHref(type, place.id, null),
         score: 1.5,
         metadata: {
           rating: place.rating ?? undefined,
