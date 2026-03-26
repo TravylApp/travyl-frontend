@@ -271,7 +271,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
   }, [moveActivity, queryClient])
 
-  const { sensors, activeData, pendingDrop, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useCalendarDnd({
+  const { sensors, activeData, pendingDrop, handleDragStart, handleDragMove, handleDragEnd, handleDragCancel } = useCalendarDnd({
     onMoveActivity: handleMoveActivity,
     onAddFromSuggestion: handleAddFromSuggestion,
     onGroupMove: handleGroupMove,
@@ -549,7 +549,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           sensors={isSharedView ? [] : sensors}
           collisionDetection={calendarCollision}
           onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
+          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >

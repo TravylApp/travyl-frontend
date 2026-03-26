@@ -5,7 +5,7 @@ import {
   PointerSensor,
   KeyboardSensor,
   DragEndEvent,
-  DragOverEvent,
+  DragMoveEvent,
 } from '@dnd-kit/core'
 import { suggestionToCalendarActivity } from '@travyl/shared/utils/suggestionMapper'
 import { HOUR_HEIGHT } from '../constants'
@@ -93,8 +93,8 @@ export function useCalendarDnd({
     cleanupRef.current = () => window.removeEventListener('pointermove', onPointerMove)
   }, [])
 
-  const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
+  const handleDragMove = useCallback(
+    (event: DragMoveEvent) => {
       const { active, over } = event
       // When the pointer is in a dead zone (gap between columns, resize divider,
       // etc.) `over` is null. Keep the last known pendingDrop so the ghost doesn't
@@ -113,11 +113,10 @@ export function useCalendarDnd({
       if (!dragData) return
 
       if (dragData.type === 'activity') {
-        const delta = event.delta
-        const rawHourDelta = delta.y / HOUR_HEIGHT
-        const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
+        const rawHourDelta = event.delta.y / HOUR_HEIGHT
+        const snappedHourDelta = Math.round(rawHourDelta * 4) / 4
         const currentStartHour = dragData.activity.startHour ?? 0
-        const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
+        const newStartHour = Math.max(0, Math.min(23 - dragData.activity.duration, currentStartHour + snappedHourDelta))
         setPendingDrop({
           dayIndex: newDay,
           activity: { ...dragData.activity, day: newDay, startHour: newStartHour },
@@ -176,9 +175,9 @@ export function useCalendarDnd({
 
       if (dragData.type === 'activity') {
         const rawHourDelta = delta.y / HOUR_HEIGHT
-        const snappedHourDelta = Math.round(rawHourDelta * 2) / 2
+        const snappedHourDelta = Math.round(rawHourDelta * 4) / 4
         const currentStartHour = dragData.activity.startHour ?? 0
-        const newStartHour = Math.max(0, Math.min(23, currentStartHour + snappedHourDelta))
+        const newStartHour = Math.max(0, Math.min(23 - dragData.activity.duration, currentStartHour + snappedHourDelta))
 
         if (marqueeSelectedIds && marqueeSelectedIds.has(String(active.id)) && marqueeSelectedIds.size > 1) {
           const dayDelta = newDay - dragData.activity.day
@@ -214,7 +213,7 @@ export function useCalendarDnd({
     activeData,
     pendingDrop,
     handleDragStart,
-    handleDragOver,
+    handleDragMove,
     handleDragEnd,
     handleDragCancel,
   }

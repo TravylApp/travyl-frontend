@@ -209,7 +209,7 @@ export function DayColumn({
           'relative flex-1 border-l border-[var(--cal-border-light)]',
           isOver ? 'bg-[var(--cal-drag-over)]' : '',
         ].join(' ')}
-        style={{ height: hourCount * HOUR_HEIGHT }}
+        style={{ minHeight: hourCount * HOUR_HEIGHT }}
         onClick={handleBackgroundClick}
       >
         {/* Hour grid lines */}
