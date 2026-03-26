@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  return createClient(url, key)
+}
 
 const CITY_AIRPORTS: Record<string, string> = {
   'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
@@ -21,6 +23,7 @@ const CITY_AIRPORTS: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = getSupabase()
   const body = await req.json()
   const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
 
