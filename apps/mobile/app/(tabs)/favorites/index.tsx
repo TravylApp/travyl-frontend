@@ -305,15 +305,38 @@ export default function FavoritesScreen() {
     queryKey: ['mobile-places-search', searchCity],
     queryFn: async () => {
       if (!searchCity) return [];
-      const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
-      const results = await Promise.all(
-        cats.map(cat =>
-          fetch(`${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=10`)
-            .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
-            .catch(() => [])
-        )
+      const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'nightlife'];
+      const fetches: Promise<PlaceItem[]>[] = cats.map(cat =>
+        fetch(`${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=8`)
+          .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+          .catch(() => [])
       );
-      return dedup(results.flat());
+      const results = await Promise.all(fetches);
+      const allPlaces = results.flat();
+      // Use first result's coordinates to fetch events
+      const firstWithCoords = allPlaces.find(p => p.latitude && p.longitude);
+      if (firstWithCoords) {
+        try {
+          const evRes = await fetch(`${WEB_API}/api/events?lat=${firstWithCoords.latitude}&lng=${firstWithCoords.longitude}&limit=6`);
+          if (evRes.ok) {
+            const events = await evRes.json();
+            if (Array.isArray(events)) {
+              for (const e of events) {
+                if (e.title) {
+                  allPlaces.push({
+                    id: `ev_${e.id}`, name: e.title, image: e.image || '',
+                    type: 'event', rating: 0,
+                    tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
+                    category: e.category || 'Event', description: e.description || '',
+                    tags: ['Event', e.category].filter(Boolean),
+                  } as PlaceItem);
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+      return dedup(allPlaces);
     },
     staleTime: 5 * 60 * 1000,
     enabled: !!searchCity,

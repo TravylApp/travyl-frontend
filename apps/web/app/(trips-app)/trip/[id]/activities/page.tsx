@@ -102,6 +102,26 @@ async function fetchExplorePage(
     } catch {}
   }
 
+  // Fetch events (Eventbrite + PredictHQ) on first page
+  if (pageParam === 0) {
+    try {
+      const evRes = await fetch(`/api/events?lat=${lat}&lng=${lng}&limit=6`);
+      if (evRes.ok) {
+        const events = await evRes.json();
+        if (Array.isArray(events)) {
+          const mapped = events.filter((e: any) => e.title).map((e: any) => ({
+            id: `ev_${e.id}`, name: e.title, image: e.image || '',
+            type: 'event' as const, rating: 0,
+            tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
+            category: e.category || 'Event', description: e.description || '',
+            tags: ['Event', e.category].filter(Boolean),
+          }));
+          results.push(mapped);
+        }
+      }
+    } catch {}
+  }
+
   // Deduplicate and ensure images
   let fallbackIdx = pageParam * 3;
   const seen = new Set<string>();
