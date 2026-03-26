@@ -4,7 +4,26 @@ import { supabase, toActivityRow } from '@travyl/shared'
 import type { CalendarActivity } from '../types'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
 import { useIndexTrip } from '@/hooks/useIndexTrip'
-import { CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
+import { yMapToCalendarActivity, CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
+
+async function insertAuditRow(
+  tripId: string,
+  activityId: string,
+  editType: 'create' | 'delete',
+  originalData: unknown,
+  newData: unknown,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase.from('itinerary_edits').insert({
+    trip_id: tripId,
+    activity_id: activityId,
+    edit_type: editType,
+    original_data: originalData,
+    new_data: newData,
+    user_id: userId,
+  })
+  if (error) console.warn('[insertAuditRow]', error.message)
+}
 
 interface UseActivityMutationsReturn {
   addActivity: (activity: CalendarActivity) => Promise<void>
@@ -43,6 +62,8 @@ export function useActivityMutations(
         }
         activitiesMap.set(activity.id, yMap)
       })
+
+      insertAuditRow(tripId, activity.id, 'create', null, activity, userId).catch(console.warn)
 
       indexTrip(tripId)
     },
@@ -95,6 +116,10 @@ export function useActivityMutations(
 
   const removeActivity = useCallback(
     async (id: string): Promise<void> => {
+      // Snapshot before delete (for audit log)
+      const yMap = activitiesMap.get(id)
+      const snapshot = yMap ? yMapToCalendarActivity(id, yMap) : null
+
       // Immediate Supabase delete
       const { error } = await supabase
         .from('activity')
@@ -115,9 +140,13 @@ export function useActivityMutations(
         }
       })
 
+      if (snapshot) {
+        insertAuditRow(tripId, id, 'delete', snapshot, null, userId).catch(console.warn)
+      }
+
       indexTrip(tripId)
     },
-    [activitiesMap, pollsMap, tripId, indexTrip],
+    [activitiesMap, pollsMap, tripId, userId, indexTrip],
   )
 
   const duplicateActivity = useCallback(
