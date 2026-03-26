@@ -12,11 +12,9 @@ const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const PINNED_RESULTS_KEY = 'travyl:pinnedResults'
 const MAX_RECENT = 10
 
-export type SearchScope = 'hotels' | 'flights' | 'trips' | 'restaurants' | 'activities' | 'commands' | null
+export type SearchScope = 'trips' | 'restaurants' | 'activities' | 'commands' | null
 
 const SCOPE_TO_TYPES: Record<string, string[]> = {
-  hotels: ['hotel'],
-  flights: ['flight'],
   trips: ['trip'],
   restaurants: ['restaurant'],
   activities: ['activity'],
@@ -86,6 +84,33 @@ async function fetchEntitySearch(
     }))
   }
   return mapped
+}
+
+interface DiscoverPlace {
+  id: string
+  name: string
+  category: string
+  imageUrl: string
+  rating: number | null
+  priceLevel: string | null
+  location: string
+  latitude: number
+  longitude: number
+  description: string
+}
+
+interface DiscoverResponse {
+  destination: { name: string; imageUrl: string } | null
+  places: DiscoverPlace[]
+  route?: { origin: string; destination: string }
+}
+
+async function fetchDiscover(query: string, token: string): Promise<DiscoverResponse> {
+  const res = await fetch(`/api/discover?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return { destination: null, places: [] }
+  return res.json()
 }
 
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
@@ -165,6 +190,14 @@ export function useSpotlightSearch() {
     staleTime: 30_000,
   })
 
+  // Live discover for destination queries (restaurants, attractions, activities)
+  const { data: discoverData, isLoading: discoverLoading } = useQuery({
+    queryKey: ['discover', debouncedQuery],
+    queryFn: () => fetchDiscover(debouncedQuery, token!),
+    enabled: shouldSearch && !scope, // only when no scope filter active
+    staleTime: 60_000, // 1 minute (server caches for 1 hour)
+  })
+
   // Client-side filter for navigation items using fuzzy match
   const navResults = useMemo((): Record<string, SpotlightResult[]> => {
     if (debouncedQuery.length < 1) return {}
@@ -230,6 +263,77 @@ export function useSpotlightSearch() {
     }
   }, [tripSearchResults, scope])
 
+  // Transform discover response into SpotlightResult format
+  const discoverResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!discoverData?.places?.length) return {}
+
+    // Build destination card if available
+    const results: Record<string, SpotlightResult[]> = {}
+
+    if (discoverData.destination?.name) {
+      results.destination = [{
+        id: `discover-dest-${discoverData.destination.name}`,
+        type: 'destination' as const,
+        title: discoverData.destination.name,
+        subtitle: `${discoverData.places.length} places to explore`,
+        imageUrl: discoverData.destination.imageUrl || undefined,
+        href: `/destination/${encodeURIComponent(discoverData.destination.name)}`,
+        score: 2, // higher than entity results
+        metadata: {},
+      }]
+    }
+
+    // Group places by category → map to SpotlightResult types
+    const categoryMap: Record<string, SpotlightResult['type']> = {
+      dining: 'restaurant',
+      sightseeing: 'activity',
+      outdoor: 'activity',
+      cultural: 'activity',
+      shopping: 'activity',
+      nightlife: 'activity',
+      tour: 'activity',
+    }
+
+    for (const place of discoverData.places) {
+      const type = categoryMap[place.category] ?? 'activity'
+      if (!results[type]) results[type] = []
+      results[type].push({
+        id: place.id,
+        type,
+        title: place.name,
+        subtitle: place.location,
+        imageUrl: place.imageUrl || undefined,
+        href: `/destination/${encodeURIComponent(discoverData.destination?.name ?? debouncedQuery)}`,
+        score: 1.5,
+        metadata: {
+          rating: place.rating ?? undefined,
+          priceLevel: place.priceLevel ?? undefined,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          category: place.category,
+          source: 'discover',
+        },
+      })
+    }
+
+    return results
+  }, [discoverData, debouncedQuery])
+
+  // Detect route pattern "X to Y" from discover response
+  const routeIntent = useMemo((): SpotlightResult | null => {
+    if (!discoverData?.route) return null
+    const { origin, destination } = discoverData.route
+    return {
+      id: 'create-trip-route',
+      type: 'action' as const,
+      title: `Plan trip: ${origin} to ${destination}`,
+      subtitle: 'Start planning with destinations pre-filled',
+      href: '',
+      score: 100,
+      metadata: { prefillDestination: destination, origin },
+    }
+  }, [discoverData])
+
   // Detect trip creation intent
   const createTripIntent = useMemo((): SpotlightResult | null => {
     const q = query.toLowerCase().trim()
@@ -253,14 +357,17 @@ export function useSpotlightSearch() {
 
   // Inject create-trip action into results
   const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
-    if (!createTripIntent) return {}
-    return { action: [createTripIntent] }
-  }, [createTripIntent])
+    const actions: SpotlightResult[] = []
+    if (createTripIntent) actions.push(createTripIntent)
+    if (routeIntent) actions.push(routeIntent)
+    if (!actions.length) return {}
+    return { action: actions }
+  }, [createTripIntent, routeIntent])
 
-  // Merge all sources (now including commands and actions)
+  // Merge all sources (now including commands, actions, and discover)
   const results = useMemo(() => {
-    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, navResults, commandResults], { maxPerCategory: 3 })
-  }, [actionResults, tripResults, entityResults, navResults, commandResults])
+    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, discoverResults, navResults, commandResults], { maxPerCategory: 5 })
+  }, [actionResults, tripResults, entityResults, discoverResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -313,7 +420,7 @@ export function useSpotlightSearch() {
     query,
     setQuery,
     results,
-    isLoading: tripSearchLoading || entityLoading,
+    isLoading: tripSearchLoading || entityLoading || discoverLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,

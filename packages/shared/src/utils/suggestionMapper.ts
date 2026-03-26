@@ -15,7 +15,7 @@ export function suggestionToCalendarActivity(
     price: suggestion.price != null ? String(suggestion.price) : undefined,
     rating: suggestion.rating ?? undefined,
     location: suggestion.location,
-    image: suggestion.imageUrl,
+    image: suggestion.imageUrls?.[0] ?? suggestion.imageUrl,
     latitude: suggestion.latitude,
     longitude: suggestion.longitude,
     notes: suggestion.description,

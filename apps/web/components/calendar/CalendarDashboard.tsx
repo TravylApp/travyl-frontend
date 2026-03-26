@@ -3,7 +3,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { DndContext, DragOverlay } from '@dnd-kit/core'
+import { DndContext, DragOverlay, pointerWithin, closestCenter, type CollisionDetection } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { fetchCollaborators } from '@travyl/shared'
@@ -27,7 +27,6 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
-import { DetailPanel } from './DetailPanel'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { FlightBanner, HotelBanner } from './AllDayRow'
@@ -71,6 +70,16 @@ function formatDurationLabel(hours: number): string {
   if (hours < 1) return `${Math.round(hours * 60)}m`
   if (hours % 1 === 0) return `${hours}h`
   return `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m`
+}
+
+// Pointer-based collision detection with closest-center fallback.
+// `pointerWithin` alone has dead zones (e.g. 5px ResizeDivider gaps between
+// columns) where no droppable contains the pointer → `over` becomes null and
+// the ghost flickers. The fallback ensures we always resolve to the nearest
+// column.
+const calendarCollision: CollisionDetection = (args) => {
+  const collisions = pointerWithin(args)
+  return collisions.length > 0 ? collisions : closestCenter(args)
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -538,6 +547,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         {/* Grid area */}
         <DndContext
           sensors={isSharedView ? [] : sensors}
+          collisionDetection={calendarCollision}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
@@ -654,16 +664,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
               </>
             )}
 
-            {/* Detail panel — slides in when activity is selected */}
-            <DetailPanel
-              activity={selectedActivity}
-              viewers={collaborators}
-              onClose={() => selectEvent(null)}
-              onRemove={handleRemoveActivity}
-              onUpdateActivity={updateActivity}
-              onEdit={(id) => setEditingActivityId(id)}
-              tripId={tripId}
-            />
           </div>
 
           {/* Drag overlay — shows ghost of dragged item */}

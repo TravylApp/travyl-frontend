@@ -1,6 +1,7 @@
 export interface OverlapLayoutItem {
   column: number       // 0, 1, 2, or -1 (hidden)
   totalColumns: number // 1, 2, or 3
+  columnSpan: number   // how many columns this event spans (1 to totalColumns - column)
 }
 
 const MAX_VISIBLE_COLUMNS = 3
@@ -9,6 +10,10 @@ interface LayoutInput {
   id: string
   startHour: number
   duration: number
+}
+
+function overlaps(a: LayoutInput, b: LayoutInput): boolean {
+  return a.startHour < b.startHour + b.duration && b.startHour < a.startHour + a.duration
 }
 
 export function computeOverlapLayout(
@@ -48,9 +53,7 @@ export function computeOverlapLayout(
       for (let col = 0; col < MAX_VISIBLE_COLUMNS; col++) {
         const conflict = assignments.some(
           (a) =>
-            a.column === col &&
-            a.act.startHour < act.startHour + act.duration &&
-            act.startHour < a.act.startHour + a.act.duration,
+            a.column === col && overlaps(a.act, act),
         )
         if (!conflict) {
           assignedCol = col
@@ -61,11 +64,21 @@ export function computeOverlapLayout(
     }
 
     const maxCol = Math.max(...assignments.map((a) => a.column))
-    const visibleUsed = maxCol === -1 ? 0 : maxCol + 1
-    const totalColumns = Math.min(Math.max(visibleUsed, cluster.length, 1), MAX_VISIBLE_COLUMNS)
+    const totalColumns = maxCol <= 0 ? 1 : maxCol + 1
 
+    // Compute column span: each event expands rightward into empty columns
     for (const { act, column } of assignments) {
-      result.set(act.id, { column, totalColumns })
+      let span = 1
+      if (column >= 0) {
+        for (let col = column + 1; col < totalColumns; col++) {
+          const blocked = assignments.some(
+            (a) => a.column === col && overlaps(a.act, act),
+          )
+          if (blocked) break
+          span++
+        }
+      }
+      result.set(act.id, { column, totalColumns, columnSpan: span })
     }
   }
 

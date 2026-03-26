@@ -526,6 +526,7 @@ export interface SuggestionCard {
   name: string
   category: ActivityCategory
   imageUrl: string
+  imageUrls?: string[]
   duration: number        // hours
   price: number | null
   currency: string
