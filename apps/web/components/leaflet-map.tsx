@@ -198,7 +198,7 @@ export default function LeafletMap({
   return (
     <div
       ref={containerRef}
-      className={`w-full rounded-xl overflow-hidden border border-gray-200 ${className}`}
+      className={`w-full rounded-xl overflow-hidden border border-gray-200 isolate ${className}`}
       style={{ height }}
     />
   );
