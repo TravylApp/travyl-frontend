@@ -86,6 +86,14 @@ export function parseQueryIntentSync(rawQuery: string): ParsedIntent | null {
   const entityInCity = matchEntityInCity(q)
   if (entityInCity) return { intent: 'entity-search', ...entityInCity, rawQuery }
 
+  // Pattern 3.5: "[places/where] to [synonym] in [city]"
+  // Catches "places to eat in bakersfield", "where to stay in nyc", etc.
+  const placesToIn = q.match(/^(?:places?\s+to|where\s+to)\s+(\w+)\s+in\s+(.+)$/)
+  if (placesToIn) {
+    const entityType = ENTITY_SYNONYMS[placesToIn[1]]
+    if (entityType) return { intent: 'entity-search', entityType, location: toTitleCase(placesToIn[2].trim()), rawQuery }
+  }
+
   // Pattern 4: "things to do in [city]"
   // Must come before Pattern 6 (X to Y) to prevent "things to do in nyc" being classified as route.
   // Safe to run after Pattern 3 only because "things" and "do" are not entity synonyms.

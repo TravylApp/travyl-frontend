@@ -6,9 +6,7 @@ const supabaseUrl =
 
 const supabasePublishableKey =
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   'placeholder';
 
 // Helper function to check if Supabase is properly configured

@@ -1,6 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const FSQ_API_KEY = process.env.FOURSQUARE_API_KEY
+const SERPAPI_KEY = process.env.SERPAPI_KEY
+const SERPAPI_BASE = 'https://serpapi.com/search.json'
+
+function mapPriceToTier(price: string | undefined): number | null {
+  if (!price) return null
+  return ({ '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 } as Record<string, number>)[price] ?? null
+}
+
+function extractSerpImages(place: any): string[] {
+  const seen = new Set<string>()
+  const urls: string[] = []
+  const push = (url: string) => {
+    if (!url || url.includes('encrypted-tbn') || seen.has(url)) return
+    seen.add(url)
+    urls.push(url)
+  }
+  if (place.thumbnail) push(place.thumbnail)
+  for (const p of (place.photos ?? [])) push(p.original ?? p.url ?? p.thumbnail ?? p.image ?? '')
+  return urls
+}
+
+async function fetchFromSerpAPI(placeId: string) {
+  if (!SERPAPI_KEY) return null
+  const url = new URL(SERPAPI_BASE)
+  url.searchParams.set('engine', 'google_maps')
+  url.searchParams.set('place_id', placeId)
+  url.searchParams.set('api_key', SERPAPI_KEY)
+  try {
+    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const place = data.place_results
+    if (!place) return null
+    const images = extractSerpImages(place)
+    return {
+      id: `serp-${placeId}`,
+      name: place.title ?? '',
+      address: place.address ?? null,
+      city: null as string | null,
+      region: null as string | null,
+      country: null as string | null,
+      latitude: place.gps_coordinates?.latitude ?? null,
+      longitude: place.gps_coordinates?.longitude ?? null,
+      rating: place.rating ?? null,
+      phone: place.phone ?? null,
+      website: place.website ?? null,
+      menuUrl: null as string | null,
+      description: place.description ?? null,
+      images,
+      image_url: images[0] ?? null,
+      categories: place.type ? [place.type] : [],
+      hours: place.hours?.schedule
+        ? place.hours.schedule.slice(0, 2).map((h: any) => `${h.day}: ${h.opens}–${h.closes}`).join(', ')
+        : null,
+      openNow: place.hours?.open_now ?? null,
+      price: mapPriceToTier(place.price),
+      reviewCount: place.reviews ?? null,
+    }
+  } catch {
+    return null
+  }
+}
 
 interface FsqCategory {
   name: string
@@ -47,6 +109,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  // Discover results use Google Maps place IDs prefixed with "serp-"
+  if (id.startsWith('serp-')) {
+    const restaurant = await fetchFromSerpAPI(id.slice(5))
+    if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
+    return NextResponse.json(restaurant, {
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' },
+    })
+  }
 
   if (!FSQ_API_KEY) {
     return NextResponse.json({ error: 'Foursquare not configured' }, { status: 500 })

@@ -1,13 +1,14 @@
 import { api } from './api'
 import {
   supabaseUrl,
-  supabaseAnonKey,
+  supabasePublishableKey,
   supabaseSecretKey,
   serpApiKey,
   pexels,
   unsplashAccessKey,
   foursquareClientId,
   foursquareClientSecret,
+  foursquareApiKey,
   tripadvisorApiKey,
   geonamesUsername,
   opentripmapApiKey,
@@ -31,16 +32,16 @@ export const web = new sst.x.DevCommand('TravylWeb', {
     // Public (browser-safe)
     NEXT_PUBLIC_RECOMMENDATION_API_URL: api.url,
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseAnonKey.value,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey.value,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey.value,
 
     // Server-only — Supabase
-    SUPABASE_SERVICE_ROLE_KEY: supabaseSecretKey.value,
+    SUPABASE_SECRET_KEY: supabaseSecretKey.value,
 
     // Server-only — Search & Location
     SERPAPI_KEY: serpApiKey.value,
     FOURSQUARE_CLIENT_ID: foursquareClientId.value,
     FOURSQUARE_CLIENT_SECRET: foursquareClientSecret.value,
+    FOURSQUARE_API_KEY: foursquareApiKey.value,
     TRIPADVISOR_API_KEY: tripadvisorApiKey.value,
     GEONAMES_USERNAME: geonamesUsername.value,
     OPENTRIPMAP_API_KEY: opentripmapApiKey.value,

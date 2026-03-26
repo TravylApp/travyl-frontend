@@ -1,12 +1,13 @@
 // ─── Supabase ────────────────────────────────────────────────
 export const supabaseSecretKey = new sst.Secret('SupabaseSecretKey')
 export const supabaseUrl = new sst.Secret('SupabaseUrl')
-export const supabaseAnonKey = new sst.Secret('SupabaseAnonKey')
+export const supabasePublishableKey = new sst.Secret('SupabasePublishableKey')
 
 // ─── Search & Location ──────────────────────────────────────
 export const serpApiKey = new sst.Secret('SerpApiKey')
 export const foursquareClientId = new sst.Secret('FoursquareClientId')
 export const foursquareClientSecret = new sst.Secret('FoursquareClientSecret')
+export const foursquareApiKey = new sst.Secret('FoursquareApiKey')
 export const tripadvisorApiKey = new sst.Secret('TripadvisorApiKey')
 export const geonamesUsername = new sst.Secret('GeonamesUsername')
 export const opentripmapApiKey = new sst.Secret('OpentripmapApiKey')

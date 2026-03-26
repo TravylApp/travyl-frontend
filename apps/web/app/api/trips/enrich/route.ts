@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 // Lazy-init to avoid crashing at build time when env vars aren't set
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const key = process.env.SUPABASE_SECRET_KEY!
   return createClient(url, key)
 }
 
