@@ -113,7 +113,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     ...rawMutations,
     getActivity: (id) => activities.find((a) => a.id === id),
   })
-  const { collaborators, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, disabled: isSharedView })
+  const { collaborators, setSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, disabled: isSharedView })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
@@ -216,6 +216,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   useEffect(() => {
     setCurrentView(viewMode)
   }, [viewMode, setCurrentView])
+
+  // Sync selected activity to presence
+  useEffect(() => {
+    setSelectedEvent(selectedEventId ?? null)
+  }, [selectedEventId, setSelectedEvent])
 
   // Sync selected day to presence
   useEffect(() => {

@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import * as Y from 'yjs'
+import { SupabaseProvider } from '@supabase-labs/y-supabase'
 import { supabase } from '@travyl/shared'
 
 interface YjsTripContextValue {
@@ -38,10 +39,6 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
     'connected' | 'reconnecting' | 'disconnected'
   >('disconnected')
 
-  // One Y.Doc per tripId, created synchronously during render so it is
-  // immediately available to context consumers without waiting for an effect.
-  // Replacing docRef here (not in an effect) means consumers always see the
-  // correct doc on the very first render — no second doc swapped in later.
   const docRef = useRef<Y.Doc | null>(null)
   const docTripIdRef = useRef<string>('')
   if (docTripIdRef.current !== tripId) {
@@ -51,70 +48,33 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
   }
   const doc = docRef.current!
 
-  // Destroy the doc when the component unmounts (tripId-change destroys happen in render body above)
   useEffect(() => {
     return () => { docRef.current?.destroy() }
   }, [])
 
   useEffect(() => {
-    let isMounted = true
+    const provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase, {
+      awareness: true,
+      persistence: {
+        table: 'yjs_documents',
+        roomColumn: 'room',
+        stateColumn: 'state',
+        storeTimeout: 1000,
+      },
+    })
 
-    // Load persisted Yjs state from Supabase
-    supabase
-      .from('yjs_documents')
-      .select('content')
-      .eq('id', tripId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.content && isMounted) {
-          Y.applyUpdate(doc, new Uint8Array(data.content as number[]), 'hydration')
-        }
-      })
+    provider.on('status', (status) => {
+      if (status === 'connected') setConnectionStatus('connected')
+      else if (status === 'connecting') setConnectionStatus('reconnecting')
+      else if (status === 'disconnected') setConnectionStatus('disconnected')
+    })
 
-    // Subscribe to realtime updates from other clients
-    const channel = supabase.channel(`trip:${tripId}`)
-
-    channel
-      .on('broadcast', { event: 'yjs-update' }, ({ payload }) => {
-        if (payload?.update) {
-          Y.applyUpdate(doc, new Uint8Array(payload.update as number[]), 'remote')
-        }
-      })
-      .subscribe((status) => {
-        if (!isMounted) return
-        if (status === 'SUBSCRIBED') setConnectionStatus('connected')
-        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          setConnectionStatus('reconnecting')
-        else if (status === 'CLOSED') setConnectionStatus('disconnected')
-      })
-
-    // Broadcast local updates + debounced persist
-    let persistTimeout: ReturnType<typeof setTimeout>
-    const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === 'remote' || origin === 'hydration') return
-
-      channel.send({
-        type: 'broadcast',
-        event: 'yjs-update',
-        payload: { update: Array.from(update) },
-      })
-
-      clearTimeout(persistTimeout)
-      persistTimeout = setTimeout(() => {
-        const state = Y.encodeStateAsUpdate(doc)
-        supabase
-          .from('yjs_documents')
-          .upsert({ id: tripId, content: Array.from(state) })
-      }, 1000)
-    }
-
-    doc.on('update', onUpdate)
+    provider.on('error', (err) => {
+      console.error('[YjsTripProvider]', err.message)
+    })
 
     return () => {
-      isMounted = false
-      clearTimeout(persistTimeout)
-      doc.off('update', onUpdate)
-      channel.unsubscribe()
+      provider.destroy()
     }
   }, [tripId, doc])
 
