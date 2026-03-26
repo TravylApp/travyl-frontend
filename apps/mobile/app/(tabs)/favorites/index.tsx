@@ -24,39 +24,88 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
 
 const BROWSE_CITIES = [
-  { lat: '48.8566', lng: '2.3522' },   // Paris
-  { lat: '35.6762', lng: '139.6503' }, // Tokyo
-  { lat: '41.9028', lng: '12.4964' },  // Rome
-  { lat: '40.7128', lng: '-74.0060' }, // New York
-  { lat: '41.3874', lng: '2.1686' },   // Barcelona
-  { lat: '-33.8688', lng: '151.2093' }, // Sydney
-  { lat: '13.7563', lng: '100.5018' }, // Bangkok
-  { lat: '25.2048', lng: '55.2708' },  // Dubai
+  { lat: '48.8566', lng: '2.3522', name: 'Paris' },
+  { lat: '35.6762', lng: '139.6503', name: 'Tokyo' },
+  { lat: '41.9028', lng: '12.4964', name: 'Rome' },
+  { lat: '40.7128', lng: '-74.0060', name: 'New York' },
+  { lat: '41.3874', lng: '2.1686', name: 'Barcelona' },
+  { lat: '-33.8688', lng: '151.2093', name: 'Sydney' },
+  { lat: '13.7563', lng: '100.5018', name: 'Bangkok' },
+  { lat: '25.2048', lng: '55.2708', name: 'Dubai' },
+  { lat: '51.5074', lng: '-0.1278', name: 'London' },
+  { lat: '-8.4095', lng: '115.1889', name: 'Bali' },
+  { lat: '37.9838', lng: '23.7275', name: 'Athens' },
+  { lat: '31.6295', lng: '-7.9811', name: 'Marrakech' },
+  { lat: '37.7749', lng: '-122.4194', name: 'San Francisco' },
+  { lat: '1.3521', lng: '103.8198', name: 'Singapore' },
 ];
 
+const ALL_CATEGORIES = [
+  'sightseeing', 'restaurant', 'museum', 'park', 'cafe',
+  'bar', 'shopping', 'nightlife', 'landmark',
+];
+
+// Session seed so each app launch gets different cities
+const SESSION_SEED = Date.now();
+
 async function fetchMobilePlaces(): Promise<PlaceItem[]> {
-  // 2 cities × 3 categories = 6 calls (was 12) — faster load
-  const cats = ['sightseeing', 'restaurant', 'museum'];
-  const cities = [...BROWSE_CITIES].sort(() => Math.random() - 0.5).slice(0, 2);
-  const results = await Promise.all(
-    cities.flatMap((city) =>
-      cats.map(async (cat) => {
-        try {
-          // Call web app's /api/places — it handles SerpAPI, image upscaling,
-          // tag formatting, price mapping, and has all API keys
-          const res = await fetch(
-            `${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`
-          );
-          if (!res.ok) return [];
-          return res.json() as Promise<PlaceItem[]>;
-        } catch { return []; }
-      })
-    )
-  );
+  // Pick 4 random cities × 2 categories each = 8 API calls for variety
+  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random()) - 0.5);
+  const cities = shuffled.slice(0, 4);
+  const catStart = Math.floor(Math.random() * ALL_CATEGORIES.length);
+
+  const fetches: Promise<PlaceItem[]>[] = [];
+
+  cities.forEach((city, i) => {
+    const cat1 = ALL_CATEGORIES[(catStart + i * 2) % ALL_CATEGORIES.length];
+    const cat2 = ALL_CATEGORIES[(catStart + i * 2 + 1) % ALL_CATEGORIES.length];
+    for (const cat of [cat1, cat2]) {
+      fetches.push(
+        fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`)
+          .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+          .catch(() => [])
+      );
+    }
+  });
+
+  // Also fetch from foursquare for restaurant variety
+  const fsCities = cities.slice(0, 2);
+  for (const city of fsCities) {
+    fetches.push(
+      fetch(`${WEB_API}/api/foursquare?lat=${city.lat}&lng=${city.lng}&category=restaurant&limit=6`)
+        .then(async r => {
+          if (!r.ok) return [];
+          const venues = await r.json();
+          if (!Array.isArray(venues)) return [];
+          return venues
+            .filter((v: any) => v.image && !v.image.includes('categories_v2'))
+            .map((v: any): PlaceItem => ({
+              id: `fs_${v.id}`,
+              name: v.name,
+              image: v.image,
+              type: 'restaurant',
+              rating: v.rating ? v.rating / 2 : 0,
+              tagline: v.address || v.category || 'Restaurant',
+              category: v.category || 'Restaurant',
+              description: v.tip || '',
+              latitude: v.lat,
+              longitude: v.lng,
+              tags: [v.category || 'Restaurant'],
+            }));
+        })
+        .catch(() => [])
+    );
+  }
+
+  const results = await Promise.all(fetches);
   const seen = new Set<string>();
+  const seenNames = new Set<string>();
   return results.flat().filter((p) => {
     if (!p.name || !p.image || seen.has(p.id)) return false;
+    const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (seenNames.has(norm)) return false;
     seen.add(p.id);
+    seenNames.add(norm);
     return true;
   });
 }
@@ -232,9 +281,9 @@ export default function FavoritesScreen() {
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
   const { data: PLACES = [], isLoading: placesLoading, error: placesError } = useQuery({
-    queryKey: ['mobile-places'],
+    queryKey: ['mobile-places', SESSION_SEED],
     queryFn: fetchMobilePlaces,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     retry: 2,
   });
 

@@ -307,8 +307,8 @@ export function CardStackCarousel({
     <>
       <RNAnimated.View style={{
         height: mapHeight,
-        marginHorizontal: 16,
-        borderRadius: 16, overflow: 'hidden',
+        marginHorizontal: 0,
+        borderRadius: 0, overflow: 'hidden',
       }}>
         <MapView
           ref={mapRef}
@@ -322,15 +322,41 @@ export function CardStackCarousel({
           <Marker coordinate={{ latitude: place.latitude!, longitude: place.longitude! }} title={place.name} />
         </MapView>
 
-        {/* Place name pill */}
+        {/* Place info pill */}
         <View style={{
           position: 'absolute', bottom: 10, left: 10, right: 10,
           backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12,
-          paddingHorizontal: 12, paddingVertical: 8,
+          paddingHorizontal: 12, paddingVertical: 10,
           shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4,
         }}>
           <Text style={{ fontSize: 14, fontWeight: '700', color: '#333' }}>{place.name}</Text>
           {place.tagline ? <Text style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{place.tagline}</Text> : null}
+          {/* Rating + reviews */}
+          {place.rating > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+              <FontAwesome name="star" size={10} color="#fbbf24" />
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#333' }}>{place.rating.toFixed(1)}</Text>
+              {place.reviewCount ? <Text style={{ fontSize: 10, color: '#999' }}>({place.reviewCount.toLocaleString()})</Text> : null}
+              {place.hours ? <Text style={{ fontSize: 10, color: '#10b981', marginLeft: 6 }}>{place.hours}</Text> : null}
+            </View>
+          )}
+          {/* Address */}
+          {place.address ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+              <FontAwesome name="map-marker" size={10} color="#999" />
+              <Text style={{ fontSize: 10, color: '#666', flex: 1 }} numberOfLines={1}>{place.address}</Text>
+            </View>
+          ) : null}
+          {/* Tags */}
+          {place.tags && place.tags.length > 0 && (
+            <View style={{ flexDirection: 'row', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+              {place.tags.slice(0, 3).map((tag) => (
+                <View key={tag} style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#555' }}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </RNAnimated.View>
 
@@ -360,7 +386,7 @@ export function CardStackCarousel({
           backgroundColor: overlay ? 'rgba(255,255,255,0.15)' : '#f3f4f6',
         }}>
           <FontAwesome name="map" size={11} color={overlay ? '#fff' : '#666'} />
-          <Text style={{ fontSize: 12, fontWeight: '600', color: overlay ? '#fff' : '#666' }}>Hide Map</Text>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: overlay ? '#fff' : '#666' }}>{showMap ? 'Hide Map' : 'Show Map'}</Text>
         </Pressable>
       </View>
     </>
@@ -395,31 +421,17 @@ export function CardStackCarousel({
     <Animated.View
       entering={FadeIn.duration(300)}
       exiting={FadeOut.duration(200)}
-      onStartShouldSetResponder={() => true}
-      onResponderTerminationRequest={() => false}
       style={{
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
       }}
     >
-      {/* Close button */}
-      <Pressable
-        onPress={onClose}
-        style={{
-          position: 'absolute', top: insets.top + 8, right: 16, zIndex: 110,
-          width: 36, height: 36, borderRadius: 18,
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          alignItems: 'center', justifyContent: 'center',
-          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
-        }}
-      >
-        <FontAwesome name="times" size={16} color="#333" />
-      </Pressable>
+      {/* Tap dark area to close */}
+      <Pressable onPress={onClose} style={{ height: insets.top + 20 }} />
 
-      {/* Content — map at top, card pushed down as map grows */}
+      {/* Content — map flush at top, card below */}
       <View style={{
         flex: 1,
-        paddingTop: insets.top + 52,
         paddingBottom: insets.bottom,
         overflow: 'hidden',
       }}>
