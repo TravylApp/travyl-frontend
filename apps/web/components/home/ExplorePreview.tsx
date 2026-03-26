@@ -237,7 +237,7 @@ function ExploreSection({
 }
 
 // ─── Main Component ──────────────────────────────────────────
-export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem) => void } = {}) {
+export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem) => void }) {
   const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading } = useExploreSections();
 
   if (isLoading) {

@@ -106,7 +106,7 @@ const MOBILE_HEIGHTS = [240, 200, 200, 200, 200, 200, 200];
 const DESKTOP_SPANS =   [12, 7, 5, 4, 4, 4, 5, 7, 6, 6];
 const DESKTOP_HEIGHTS = [320, 260, 260, 200, 200, 200, 260, 260, 220, 220];
 
-export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => void } = {}) {
+export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => void }) {
   const [sectionRef, inView] = useInView();
   const { data: fetchedTiles = [] } = useQuery({
     queryKey: ['mosaic-tiles'],
