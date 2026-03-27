@@ -187,6 +187,7 @@ export default function Home() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
   const [showQuestions, setShowQuestions] = useState(false);
   const skipQuestionsRef = useRef(false);
+  const skipRetries = useRef(0);
 
 
   const isClarifying = planner.state.phase === 'clarifying';
@@ -196,9 +197,10 @@ export default function Home() {
   const currentQuestion = questions[currentQIdx];
 
   // Auto-skip questions when user clicked Send (not Refine)
+  // Keeps firing if plan returns needs_clarification (up to 3 retries)
   useEffect(() => {
-    if (isClarifying && skipQuestionsRef.current) {
-      skipQuestionsRef.current = false;
+    if (isClarifying && skipQuestionsRef.current && skipRetries.current < 3) {
+      skipRetries.current += 1;
       setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       planner.submitAnswers({});
@@ -351,6 +353,8 @@ export default function Home() {
     setCurrentQIdx(0);
     setSelectedAnswers({});
     setShowQuestions(false);
+    skipQuestionsRef.current = false;
+    skipRetries.current = 0;
     setTripQuery("");
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [planner, setTripQuery]);
@@ -359,6 +363,7 @@ export default function Home() {
     const val = tripQuery.trim();
     if (!val) return;
     skipQuestionsRef.current = true;
+    skipRetries.current = 0;
     planner.submitPrompt(val);
     setTripQuery("");
   };
@@ -802,21 +807,21 @@ export default function Home() {
               </div>
             )}
           </motion.div>
-
-          {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 0.8 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-          >
-            <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
-              <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
-            </div>
-            <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
-          </motion.div>
-          <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
         </motion.div>
+
+        {/* Scroll indicator — fixed to bottom of hero, outside parallax text */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 0.8 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
+        >
+          <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
+            <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
+          </div>
+          <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
+        </motion.div>
+        <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
       </section>
 
       {/* ─── Trip Statistics — Live from Supabase ────────────── */}
