@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 // ─── Parameter extraction + validation ───────────────────────
 
@@ -109,7 +110,32 @@ export async function proxyToBackend(
   }
 
   const headers: HeadersInit = {}
-  const auth = req.headers.get('authorization')
+  let auth = req.headers.get('authorization')
+
+  // If no explicit Authorization header, extract the session token from
+  // Supabase auth cookies so backend Lambdas can validate the user.
+  if (!auth) {
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+        {
+          cookies: {
+            getAll() { return req.cookies.getAll() },
+            setAll() {},
+          },
+        },
+      )
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        auth = `Bearer ${session.access_token}`
+      }
+    } catch {
+      // No session available — continue without auth
+    }
+  }
+
   if (auth) {
     headers['Authorization'] = auth
   }
