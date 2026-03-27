@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) {
-    console.error('[Stats] Missing env vars:', { url: !!url, key: !!key })
-    return null
-  }
-  return createClient(url, key)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
 
 export async function GET() {
   try {
-    const sb = getServiceSupabase()
-    if (!sb) return NextResponse.json({ destinations: 0, travelers: 0, trips: 0, error: 'Missing env vars' }, { status: 500 })
+    const sb = getSupabase()
 
     const [tripsRes, profilesRes, destsRes] = await Promise.all([
       sb.from('trips').select('id', { count: 'exact', head: true }),

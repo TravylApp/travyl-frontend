@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key)
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
 
 const CITY_AIRPORTS: Record<string, string> = {
@@ -24,13 +25,6 @@ const CITY_AIRPORTS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !key) {
-      console.error('[Trip Create] Missing env vars:', { url: !!url, key: !!key })
-      return NextResponse.json({ error: `Missing env: url=${!!url} key=${!!key}` }, { status: 500 })
-    }
-
     const supabase = getSupabase()
     const body = await req.json()
     const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
@@ -145,54 +139,7 @@ export async function POST(req: NextRequest) {
     if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 
-  // Save itinerary days + activities (best effort)
-  if (itinerary?.length) {
-    for (const day of itinerary) {
-      const { data: dayRow, error: dayErr } = await supabase
-        .from('itinerary_days')
-        .insert({ trip_id: tripId, day_number: day.day, date: day.date })
-        .select('id')
-        .single()
-
-      if (dayErr || !dayRow) continue
-
-      if (day.slots?.length) {
-        const catMap: Record<string, string> = {
-          restaurant: 'food', cafe: 'food', bar: 'food',
-          park: 'nature', beach: 'nature', garden: 'nature', hiking: 'nature',
-          hotel: 'hotel', hostel: 'hotel', airport: 'airport',
-        }
-        const activities = day.slots.map((slot: any, i: number) => {
-          const poi = slot.poi
-          return {
-            trip_id: tripId,
-            itinerary_day_id: dayRow.id,
-            activity_name: poi.name,
-            activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
-            starting_date: day.date,
-            ending_date: day.date,
-            starting_time: slot.start_time,
-            ending_time: slot.end_time,
-            latitude: poi.lat,
-            longitude: poi.lng,
-            sort_order: i,
-            activity_data: {
-              category: poi.category,
-              subcategory: poi.subcategory,
-              location_name: poi.name,
-              image_url: poi.photo_url || null,
-              rating: poi.rating || null,
-              description: poi.description || null,
-              tags: poi.tags,
-              visit_duration_min: poi.visit_duration_min,
-            },
-          }
-        })
-        const { error: actErr } = await supabase.from('activities').insert(activities)
-        if (actErr) console.error('Failed to save activities for day', day.day, actErr)
-      }
-    }
-  }
+  // Itinerary is stored in trip_context — no separate tables needed
 
   return NextResponse.json(data)
   } catch (e) {
