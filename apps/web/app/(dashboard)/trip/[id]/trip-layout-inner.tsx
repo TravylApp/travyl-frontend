@@ -3,12 +3,10 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Calendar, X } from 'lucide-react';
+import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname } from 'next/navigation';
-import { TripSidebar } from '@/components/trip/TripSidebar';
-import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import type { SpinePosition } from '@/components/trip-tabs';
+import { getTabMeta } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
 import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
@@ -51,10 +49,6 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
           <p className="text-[12px] text-gray-400 dark:text-gray-500">{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <a href={`/trip/${tripId}/calendar`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600" title="Calendar view">
-            <Calendar size={13} />
-            <span className="text-[12px] font-medium">Calendar</span>
-          </a>
           <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
             <Map size={13} />
             <span className="text-[12px] font-medium">Map</span>
@@ -270,7 +264,6 @@ function TripLayoutContent({
   const basePath = `/trip/${tripId}`;
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
-  const isCalendar = currentSegment === 'calendar';
   const isMagazineLayout = isOverview || currentSegment === 'itinerary';
 
   // Track exit animation from magazine pages to prevent white flash
@@ -313,18 +306,6 @@ function TripLayoutContent({
     exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
   };
 
-  // Calendar: full-screen layout with shared sidebar, no hero/card chrome
-  if (isCalendar) {
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <TripSidebar tripId={tripId} />
-        <div className="flex-1 min-w-0 h-full">
-          {children}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={`pb-14 md:pb-0 ${useOverviewBg ? '-mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
@@ -353,10 +334,7 @@ function TripLayoutContent({
                 }
           }
         >
-        <div className="flex flex-col md:flex-row">
-          {/* Sidebar */}
-          <TripSidebar tripId={tripId} />
-
+        <div>
           {/* Content area */}
           <div className="flex-1 flex flex-col min-w-0">
             <ContentHeader
