@@ -248,6 +248,14 @@ export default function Home() {
   // Parallax divider
   const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
 
+  // Search bar translucent transition on scroll
+  const searchBgAlpha = useTransform(heroScroll, [0, 0.08], [1, 0.75]);
+  const searchBarBg = useTransform(searchBgAlpha, (a) => `rgba(255,255,255,${a})`);
+  const searchBlurPx = useTransform(heroScroll, [0, 0.08], [0, 20]);
+  const searchBarBlur = useTransform(searchBlurPx, (b) => `blur(${b}px)`);
+  const searchBarBorderAlpha = useTransform(heroScroll, [0, 0.08], [0, 0.25]);
+  const searchBarBorder = useTransform(searchBarBorderAlpha, (a) => `rgba(255,255,255,${a})`);
+
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
   const heroImageQueries = usePlaceImages(HERO_DESTINATIONS);
@@ -648,8 +656,9 @@ export default function Home() {
 
         <motion.div
           className="relative z-10 max-w-3xl mx-auto text-center w-full"
-          style={{ y: heroTextY, opacity: heroTextOpacity }}
+          style={{ y: heroTextY }}
         >
+          <motion.div style={{ opacity: heroTextOpacity }}>
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -671,7 +680,22 @@ export default function Home() {
             )}
           </motion.p>
 
-          {/* Search Bar */}
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 0.8 }}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          >
+            <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
+              <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
+            </div>
+            <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
+          </motion.div>
+          <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
+          </motion.div>
+
+          {/* Search Bar - becomes translucent on scroll */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -741,7 +765,17 @@ export default function Home() {
 
             {/* Search bar — hidden during questions */}
             {!(isClarifying && showQuestions) && (
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <motion.div
+                className="rounded-2xl shadow-2xl overflow-hidden"
+                style={{
+                  backgroundColor: searchBarBg,
+                  backdropFilter: searchBarBlur,
+                  WebkitBackdropFilter: searchBarBlur,
+                  borderColor: searchBarBorder,
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                }}
+              >
                 <div className="flex items-center p-1.5 gap-2">
                   <HeroSearchInput
                     tripQuery={tripQuery}
@@ -768,7 +802,7 @@ export default function Home() {
                     <PaperPlane size={16} />
                   </button>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Questions — only shown if user clicked Refine */}
@@ -851,20 +885,6 @@ export default function Home() {
               </div>
             )}
           </motion.div>
-
-          {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 0.8 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-          >
-            <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
-              <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
-            </div>
-            <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
-          </motion.div>
-          <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
         </motion.div>
       </section>
 

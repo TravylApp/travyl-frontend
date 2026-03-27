@@ -81,6 +81,14 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
   const [essentialsOpen, setEssentialsOpen] = useState(true);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
+  const [useFahrenheit, setUseFahrenheit] = useState(false);
+  useEffect(() => {
+    try {
+      const region = new Intl.Locale(navigator.language).region;
+      setUseFahrenheit(['US', 'BS', 'BZ', 'KY', 'PW', 'FM', 'MH', 'LR'].includes(region ?? ''));
+    } catch { /* default to Celsius */ }
+  }, []);
+  const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
   const weather = trip?.trip_context?.weather?.current;
   const forecast = trip?.trip_context?.weather?.forecast;
   const rawCover = overrideImage || trip?.trip_context?.hero_image_url;
@@ -300,7 +308,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
               {weather && (
                 <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
                   <WeatherIcon size={16} />
-                  <span className="font-bold">{weather.temp}&deg;</span>
+                  <span className="font-bold">{weather.temp != null ? fmtTemp(weather.temp) : ''}</span>
                   <span className="text-[10px]" style={{ opacity: 0.7 }}>{weather.conditions}</span>
                 </span>
               )}
@@ -315,7 +323,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
                     <span key={d.date} className="flex items-center gap-1.5 shrink-0">
                       <span className="font-semibold text-white/70">{day}</span>
                       <span className="text-[14px]">{icon}</span>
-                      <span className="font-bold text-white">{d.high}&deg;</span>
+                      <span className="font-bold text-white">{fmtTemp(d.high)}</span>
                     </span>
                   );
                 })
