@@ -197,13 +197,21 @@ export default function Home() {
   const currentQuestion = questions[currentQIdx];
 
   // Auto-skip questions when user clicked Send (not Refine)
-  // Keeps firing if plan returns needs_clarification (up to 3 retries)
+  // Retries up to 2 times if plan returns needs_clarification, then falls back to showing questions
   useEffect(() => {
-    if (isClarifying && skipQuestionsRef.current && skipRetries.current < 3) {
-      skipRetries.current += 1;
-      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
-      setShowTakeoff(true);
-      planner.submitAnswers({});
+    if (isClarifying && skipQuestionsRef.current) {
+      if (skipRetries.current < 2) {
+        skipRetries.current += 1;
+        setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+        setShowTakeoff(true);
+        planner.submitAnswers({});
+      } else {
+        // Backend insists on answers — show questions to the user
+        skipQuestionsRef.current = false;
+        skipRetries.current = 0;
+        setShowTakeoff(false);
+        setShowQuestions(true);
+      }
     }
   }, [isClarifying, planner]);
 
