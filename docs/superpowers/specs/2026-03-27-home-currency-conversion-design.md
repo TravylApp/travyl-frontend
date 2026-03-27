@@ -12,6 +12,8 @@ Trip costs (hotels, flights, activities, food) come in various local currencies 
 
 Silent, implicit conversion — every price displays in the user's home currency. No manual conversion tool, no toggles, no "~$49" footnotes. Just the converted amount formatted correctly.
 
+**This iteration is web-only.** Mobile uses a different rate-fetching mechanism (Expo doesn't have Next.js API routes) and is deferred to a future iteration.
+
 ## Design
 
 ### 1. Data Layer — Currency Type + Rate Provider
@@ -19,15 +21,16 @@ Silent, implicit conversion — every price displays in the user's home currency
 **Currency type** (`settingsStore.ts`):
 - `Currency` type changes from a union of 7 codes to `string` (any ISO 4217 3-letter code)
 - Validation: check it's a 3-letter uppercase string, default to `'USD'`
+- No migration needed — the existing 7 codes (USD, EUR, GBP, JPY, CAD, AUD, MXN) are all valid ISO 4217, so existing `profiles.preferences` values remain valid
 - Add a `CURRENCIES` constant (~150 entries: `{ code, name, symbol }[]`) in `packages/shared/src/config/currencies.ts` for the picker UI
 - The type is open-ended; the curated list is for the picker, not for restriction
 
 **Rate provider swap** (`apps/web/app/api/exchange-rates/route.ts`):
 - Replace Frankfurter API with `open.er-api.com` (free, no API key, 1500+ requests/month, supports 150+ currencies)
 - Endpoint: `GET https://open.er-api.com/v6/latest/{base}`
-- Response shape: `{ rates: { EUR: 0.92, THB: 35.1, ... } }`
+- Response shape: `{ rates: { EUR: 0.92, THB: 35.1, ... } }` — same convention as Frankfurter (1 base = X foreign)
 - Keep 24h server-side cache via `CACHE_24H` — no change
-- Fallback: if `open.er-api.com` is down, fall back to Frankfurter for supported currencies
+- Fallback: if `open.er-api.com` is down, fall back to Frankfurter for currencies it supports. For currencies not covered by Frankfurter (e.g. THB, VND), show original currency as described in Section 5
 
 **`useExchangeRates` hook**: no structural change. Queries the updated API route. Returns `{ rates, isLoading, error, refetch }`.
 
@@ -48,7 +51,7 @@ useHomeCurrency() → {
 **How it works**:
 - Reads `currency` from `useSettingsStore`
 - Calls `useExchangeRates(currency)` to get rates for that base
-- `convert(amount, sourceCurrency)` — wraps `convertToTripCurrency`, returns original amount if rates aren't loaded or source === home currency
+- `convert(amount, sourceCurrency)` — wraps the existing `convertToTripCurrency(amount, sourceCurrency, homeCurrency, rates)`. **Critical invariant**: the third argument must always equal the base currency used to fetch rates. Since `useExchangeRates` fetches with `currency` from the settings store, and we pass that same value as the target, the math (`amount / rates[sourceCurrency]`) correctly converts a foreign amount into the home currency
 - `format(amount, sourceCurrency?)` — converts then formats with `Intl.NumberFormat` using the home currency. If conversion fails (no rate, API down), falls back to formatting in the source currency with its code visible (e.g. "THB 1,500")
 
 **Usage pattern**: Any component does:
@@ -61,27 +64,49 @@ format(1500, 'THB') // → '$45.32' (or 'THB 1,500' if rates haven't loaded)
 
 Conversion is a display concern only. Data in Supabase stays in its original currency. No schema changes.
 
-**Budget page** (`apps/web/app/(trips-app)/trip/[id]/budget/page.tsx`):
-- Replace hardcoded `$` + `toLocaleString()` with `useHomeCurrency().format(amount, sourceCurrency)`
-- `generateBudgetFromTrip` — costs from `trip_context` come in local currency; conversion happens at display time, not storage time
-- Budget amounts stored in original currency, displayed in home currency
+There are **two separate budget display paths** that both need updating:
 
-**`useItineraryScreen` budget** (`packages/shared/src/hooks/useItineraryScreen.ts`):
-- The `budget` memo currently uses `buildBudgetSummary` with `trip.currency`
-- Swap to format with home currency via the hook
-- Fallback path (computing from `trip_context` hotels) — same treatment
+#### 3a. BudgetPanel (itinerary tab)
 
-**Activity cards** (`ActivityCardRenderer`, `CalendarView`, etc.):
-- Where `estimated_cost` is displayed, swap `formatCurrency(cost, activity.currency)` for `format(cost, activity.currency)` from `useHomeCurrency`
+`apps/web/components/budget/BudgetPanel.tsx` already uses `useTripBudget(tripId, tripCurrency)` which converts per-item via `convertToTripCurrency`. The fix:
+- Change `tripCurrency` from `trip?.currency ?? 'USD'` to the user's home currency from `useSettingsStore`
+- `useTripBudget` already handles all conversion — just needs the right target currency
+- `formatBudgetAmount(amount, tripCurrency)` in the component also needs to use the home currency
 
-**Hotel cards** (`HotelListView`, `ComparisonAlternatives`):
-- `format(hotel.price, hotel.currency)` instead of hardcoded formatting
+#### 3b. Budget page (standalone /budget route)
 
-**Flight cards**:
-- `format(flight.price, flight.currency)`
+`apps/web/app/(dashboard)/trip/[id]/budget/page.tsx` uses local state with `generateBudgetFromTrip` and hardcoded `$` formatting:
+- Replace hardcoded `$` + `toLocaleString()` calls with `useHomeCurrency().format(amount, sourceCurrency)`
+- `generateBudgetFromTrip` — costs from `trip_context` come in the local currency; conversion happens at display time, not storage time
+- Description strings that embed `$` (e.g. `"${duration} nights × $${hotel?.price}"`) need to use the appropriate currency symbol from the home currency
 
-**Trip overview/sidebar** (`TripSidebar`, `TripMagazineHero`):
-- Budget display already uses `trip.currency` — swap to home currency formatting
+#### 3c. `useItineraryScreen` budget memo
+
+`packages/shared/src/hooks/useItineraryScreen.ts` calls `buildBudgetSummary` which sums raw amounts without conversion. Fix:
+- `buildBudgetSummary` needs to receive `rates` and `homeCurrency` parameters and convert each item before summing
+- Alternatively, replace the `buildBudgetSummary` path with `useTripBudget`-style per-item conversion
+- The fallback path (computing from `trip_context` hotels) also needs conversion
+
+#### 3d. ViewModels carry raw amounts
+
+**Problem**: View models (`itineraryViewModel.ts`) pre-format costs as strings (`costDisplay: formatCurrency(...)`) — components can't re-convert.
+
+**Fix**: Add raw `cost` and `costCurrency` fields to view model interfaces alongside `costDisplay`:
+- `ActivityViewModel` gains `cost: number | null` and `costCurrency: string | null`
+- `FlightViewModel` gains `price: number | null` and `priceCurrency: string | null`
+- `HotelViewModel` gains `price: number | null` and `priceCurrency: string | null`
+- Components that want to use `useHomeCurrency` format use the raw fields; components that don't can still use `costDisplay` (formatted in original currency)
+
+#### 3e. Individual card components
+
+With raw amounts now available in view models:
+
+- **Activity cards** (`ActivityCardRenderer`, `CalendarView`): use `format(activity.cost, activity.costCurrency)` from `useHomeCurrency`
+- **Hotel cards** (`HotelListView`, `ComparisonAlternatives`): use `format(hotel.price, hotel.priceCurrency)`
+- **Flight cards**: use `format(flight.price, flight.priceCurrency)`
+- **Trip overview/sidebar** (`TripSidebar`, `TripMagazineHero`): budget display uses home currency formatting
+- **`ComparisonAlternatives`** has hardcoded `$` in multiple places — replace with `format()`
+- **`HotelListView`** appears to be dead code (uses empty `HOTEL_SEARCH_RESULTS` array) — still update it for consistency but it's low priority
 
 ### 4. Settings UI — Currency Picker
 
@@ -107,7 +132,13 @@ Conversion is a display concern only. Data in Supabase stays in its original cur
 
 **User changes currency mid-session**: React Query caches rates per base currency. On switch, new fetch fires. During load, stale rates still show (stale-while-revalidate). No flash of unconverted prices.
 
-**Frankfurter removal**: Route rewritten for new provider. Frankfurter fully replaced.
+**Frankfurter fallback gaps**: When `open.er-api.com` is down and Frankfurter doesn't support the currency pair, `format()` shows the original currency (same as API-down behavior).
+
+### 6. Testing
+
+- Update existing `packages/shared/src/utils/currency.test.ts` for the renamed/updated conversion function
+- Add unit tests for `useHomeCurrency` conversion logic (pure function tests for the `convert` and `format` logic, extracted as testable utilities)
+- Validate the `currencies.ts` constant — every entry has a 3-letter uppercase code, a name, and a symbol
 
 ## What Does NOT Change
 
@@ -115,21 +146,28 @@ Conversion is a display concern only. Data in Supabase stays in its original cur
 - Data storage — all costs remain in their original currency
 - Trip-level `currency` field — kept for informational purposes (e.g. "Local currency: THB")
 - No new deployable infrastructure — no cron jobs, no edge functions, no DB caches
+- Mobile app — deferred to a future iteration (Expo can't use Next.js API routes)
 
 ## Files Changed (Summary)
 
 | File | Change |
 |------|--------|
-| `packages/shared/src/stores/settingsStore.ts` | Expand `Currency` type, update validation |
-| `packages/shared/src/config/currencies.ts` | New file — `CURRENCIES` constant |
+| `packages/shared/src/stores/settingsStore.ts` | Expand `Currency` type to `string`, update validation |
+| `packages/shared/src/config/currencies.ts` | New file — `CURRENCIES` constant (~150 entries) |
 | `apps/web/app/api/exchange-rates/route.ts` | Swap Frankfurter for open.er-api.com |
 | `packages/shared/src/hooks/useHomeCurrency.ts` | New file — thin conversion hook |
 | `packages/shared/src/hooks/useExchangeRates.ts` | Minor — update if response shape differs |
-| `apps/web/app/(trips-app)/trip/[id]/budget/page.tsx` | Wire `useHomeCurrency` |
-| `packages/shared/src/hooks/useItineraryScreen.ts` | Wire home currency into budget memo |
-| `apps/web/components/itinerary/ActivityCardRenderer.tsx` | Swap `formatCurrency` for `format` |
-| `apps/web/components/itinerary/HotelListView.tsx` | Same |
-| `apps/web/components/itinerary/CalendarView.tsx` | Same |
+| `apps/web/app/(dashboard)/trip/[id]/budget/page.tsx` | Wire `useHomeCurrency`, fix `$` in description strings |
+| `apps/web/components/budget/BudgetPanel.tsx` | Pass home currency to `useTripBudget` instead of trip currency |
+| `packages/shared/src/hooks/useTripBudget.ts` | Accept home currency param (already converts per-item) |
+| `packages/shared/src/hooks/useItineraryScreen.ts` | Wire home currency into budget memo, convert in `buildBudgetSummary` |
+| `packages/shared/src/viewmodels/itineraryViewModel.ts` | Add raw `cost`/`costCurrency` fields to view models |
+| `apps/web/components/itinerary/ActivityCardRenderer.tsx` | Use `format(cost, currency)` from `useHomeCurrency` |
+| `apps/web/components/itinerary/HotelListView.tsx` | Same (low priority — may be dead code) |
+| `apps/web/components/itinerary/ComparisonAlternatives.tsx` | Replace hardcoded `$` with `format()` |
+| `apps/web/components/itinerary/CalendarView.tsx` | Use `format(cost, currency)` |
 | `apps/web/components/trip/TripSidebar.tsx` | Same |
+| `apps/web/components/trip/TripMagazineHero.tsx` | Same |
 | Settings UI (wherever currency picker lives) | New searchable currency picker component |
 | `packages/shared/src/index.ts` | Re-export `useHomeCurrency` |
+| `packages/shared/src/utils/currency.test.ts` | Update tests |
