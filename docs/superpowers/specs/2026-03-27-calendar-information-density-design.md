@@ -58,7 +58,7 @@ Inline indicators between adjacent activities in the day column showing estimate
 ### UI
 
 - **Badge position:** Between EventBlocks in DayColumn. A thin dashed connector line with a centered badge.
-- **Badge content:** Travel time (e.g. "15 min") and transport mode icon (walking icon for <2km, car icon for >=2km). Compact: just "15 min 🚶" or "8 min 🚗".
+- **Badge content:** Travel time (e.g. "15 min") and transport mode icon from `iconoir-react`: `Walking` icon for <2km, `CarSolid` icon for >=2km.
 - **Conflict state:** If travel time exceeds the time gap between activities, badge background turns amber, shows warning icon: "⚠ 25 min needed, 10 min gap".
 - **Visibility:** Badges appear on hover over the gap area or when any activity on that day is selected. Hidden by default to reduce clutter.
 
@@ -80,13 +80,13 @@ New Lambda handler or route in `services/day-intelligence.ts`:
 6. Fetch place details for each activity (SerpAPI) — batch or parallel.
 7. Detect conflicts (hours + travel time) using existing `hasHoursConflict` / `hasTravelTimeConflict`.
 8. Cache result in DynamoDB with key `{ pk: 'day-intelligence:{tripId}', sk: date }`, 1hr TTL.
-9. Return array of `ActivityIntelligence` objects keyed by activity ID.
+9. Return response shape: `{ weather: WeatherData | null, activities: Record<activityId, ActivityIntelligence> }` — weather hoisted to day level, activities keyed by ID. Reuse existing `ActivityIntelligence` TypeScript interface, omitting the `weather` field from each activity entry (it's shared at day level).
 
 ### Frontend
 
 - New hook: `useDayIntelligence(tripId, date)` — React Query wrapper, staleTime 1hr.
 - New component: `TravelTimeBadge` — renders the connector + badge between events.
-- Modified component: `DayColumn` — insert `TravelTimeBadge` between sorted EventBlocks.
+- Modified component: `DayColumn` — insert `TravelTimeBadge` between sorted EventBlocks. Travel time badges are only shown in DayView; hidden in WeekView where columns are too narrow. In WeekView, the day health dot serves as the feasibility signal.
 
 ## Feature 3: Enriched Activity Cards
 
@@ -97,11 +97,11 @@ Surface opening hours, weather, and travel time directly on EventBlock and DayHe
 ### UI — EventBlock additions
 
 - **Opening hours badge:** Small pill at top-right of card: "9-18" (green) or "Closed" (red). Only shown when hours data is available. Subtle, doesn't dominate the card.
-- **Hours conflict indicator:** Existing amber dot (top-right corner) already exists for conflicts. Enhance its tooltip: "Eiffel Tower closes at 18:00, activity ends at 19:30".
+- **Hours conflict indicator:** The existing amber dot (EventBlock top-right) currently combines hours and travel-time conflicts (`hasConflict = intel.conflicts.hours || intel.conflicts.travelTime`). Split into two distinct indicators: amber dot for hours conflicts, separate travel-time warning on the TravelTimeBadge. Enhance the hours dot tooltip to show specifics: "Eiffel Tower closes at 18:00, activity ends at 19:30".
 
 ### UI — DayHeader additions
 
-- **Weather chip:** Small icon + temperature in the day header column. e.g. "☀ 22°C". Data from `useDayIntelligence` weather response.
+- **Weather chip:** Small icon + temperature in the day header column. Use `iconoir-react` icons (`SunLight`, `HalfMoon`, `Cloud`, etc.) matching the existing `getWmoWeather` icon mapping. e.g. `[SunLight icon] 22°C`. Data from `useDayIntelligence` weather response.
 - **Layout:** Weather chip sits to the right of the day label, before collaborator avatars.
 
 ### Data
@@ -110,8 +110,8 @@ All from `useDayIntelligence` (Feature 2). No additional API calls.
 
 ### Components
 
-- Modified: `EventBlock` — conditionally render hours badge when intelligence data is available.
-- Modified: `DayHeader` (inside `DayColumn`) — render weather chip.
+- Modified: `EventBlock` — conditionally render hours badge when intelligence data is available. Split conflict dot to only show hours conflicts (not travel time).
+- Modified: `DayColumn.tsx` (day header section, inline `<div>` ~lines 154-189) — render weather chip in the day header area. Note: there is no separate `DayHeader` component; the header is inline in DayColumn.
 
 ## Feature 4: Schedule Feasibility
 
@@ -123,7 +123,7 @@ Aggregate per-activity conflict detection into a day-level health indicator with
 
 - **Day health dot:** Small colored circle in the day header (next to weather chip). Green = no conflicts, amber = warnings (travel time tight), red = conflicts (hours overlap or impossible travel).
 - **Health tooltip:** Hovering shows summary: "2 hours conflicts, 1 travel time warning".
-- **Auto-fix button:** When a travel time conflict exists, a "Fix" button in the tooltip or in the conflict detail pushes the conflicting activity's start time forward by the travel time gap. Simple calculation: `newStartTime = prevActivity.endTime + travelTimeMinutes`.
+- **Auto-fix button:** When a travel time conflict exists, a "Fix" button in the tooltip or in the conflict detail pushes the conflicting activity's start time forward by the travel time gap. Simple calculation: `newStartTime = prevActivity.endTime + travelTimeMinutes`. Auto-fix must update the activity's `startHour` and `duration` via the Yjs Y.Map (through `useActivityMutations`) to maintain real-time sync with collaborators. Do not write directly to Supabase.
 
 ### Data
 
@@ -135,8 +135,8 @@ Derived from `useDayIntelligence` response. For each day:
 ### Components
 
 - New: `DayHealthIndicator` — renders the dot + tooltip.
-- New: `ConflictFixSuggestion` — renders "Fix" button with time suggestion.
-- Modified: `DayHeader` — include `DayHealthIndicator`.
+- New: `ConflictFixSuggestion` — renders "Fix" button with time suggestion. Must use `useActivityMutations` to update Yjs.
+- Modified: `DayColumn.tsx` (day header section) — include `DayHealthIndicator` next to weather chip.
 
 ## Architecture
 
@@ -147,7 +147,7 @@ services/day-intelligence.ts    ← New endpoint
 services/lib/conflictDetection.ts  ← Existing, reused
 services/lib/haversine.ts          ← Existing, reused
 services/lib/serpapi.ts            ← Existing, reused
-infra/api.ts                       ← Add GET /day-intelligence route
+infra/api.ts                       ← Add GET /day-intelligence route, link [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey] (same pattern as /activity-intelligence)
 ```
 
 ### Frontend
@@ -179,8 +179,8 @@ Not everything visible at once. Three layers:
 
 ### Dependencies
 
-- **MapLibre GL JS** — new npm dependency for the map component.
-- **Amazon Location Maps** — already in SST infra for map tiles (or fallback to OSM raster).
+- **MapLibre GL JS** (`maplibre-gl`) — install in `apps/web`. Import `maplibre-gl/dist/maplibre-gl.css` in the DayMap component or layout.
+- **Amazon Location Maps** — for SigV4-signed tiles, also install `@aws/amazon-location-utilities-auth-helper` in `apps/web`. Fallback to OSM raster tiles (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) if Location Maps auth is not configured.
 - **No new AWS resources** — reuses existing DynamoDB, Lambda, API Gateway.
 
 ## Out of Scope
