@@ -15,7 +15,6 @@ export const opentripmapApiKey = new sst.Secret('OpentripmapApiKey')
 
 // ─── Images ─────────────────────────────────────────────────
 export const pexels = new sst.Secret('Pexels')
-export const unsplashAccessKey = new sst.Secret('UnsplashAccessKey')
 
 // ─── Travel & Flights ───────────────────────────────────────
 export const duffelApiToken = new sst.Secret('DuffelApiToken')
