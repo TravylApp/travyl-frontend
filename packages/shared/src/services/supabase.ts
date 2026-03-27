@@ -12,12 +12,14 @@ const supabasePublishableKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   'placeholder';
 
-// Default client (localStorage-based — fine for mobile, overridden for web)
+// Default client — persistSession OFF to prevent auth leaking across users on SSR.
+// Web overrides this via configureSupabase() with a cookie-based browser client.
+// Mobile overrides this via configureSupabase() with an AsyncStorage-based client.
 export let supabase: SupabaseClient = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
   },
 });
 
