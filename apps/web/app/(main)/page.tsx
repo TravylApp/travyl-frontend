@@ -110,14 +110,14 @@ function OptionCard({ label, index, selected, onSelect }: {
       onClick={onSelect}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
         selected
-          ? "bg-[#1e3a5f] text-white shadow-md"
+          ? "bg-[#1e3a5f] text-white shadow-md ring-1 ring-white/30"
           : "bg-white/10 text-white/80 hover:bg-white/20 border border-white/15"
       }`}
     >
-      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
         selected ? "bg-white/20 text-white" : "bg-white/10 text-white/50"
       }`}>
-        {keys[index] || index + 1}
+        {selected ? "✓" : keys[index] || index + 1}
       </span>
       <span className="font-medium">{label}</span>
     </button>
@@ -146,7 +146,7 @@ export default function Home() {
   // API-driven planning flow
   const planner = useTripPlanner();
   const [currentQIdx, setCurrentQIdx] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
 
 
   const isClarifying = planner.state.phase === 'clarifying';
@@ -221,25 +221,53 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
-  // Handle selecting an answer option
+  // Toggle an option (multi-select)
   const handleOptionSelect = useCallback((questionId: string, option: string) => {
-    const newAnswers = { ...selectedAnswers, [questionId]: option };
-    setSelectedAnswers(newAnswers);
+    setSelectedAnswers((prev) => {
+      const current = prev[questionId] ?? [];
+      const isSelected = current.includes(option);
+      return {
+        ...prev,
+        [questionId]: isSelected
+          ? current.filter((o) => o !== option)
+          : [...current, option],
+      };
+    });
+  }, []);
 
-    // Auto-advance to next question after a brief pause
-    if (currentQIdx < questions.length - 1) {
-      setTimeout(() => setCurrentQIdx((i) => i + 1), 400);
-    } else {
-      // All questions answered — submit to plan
-      setTimeout(() => {
-        setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
-        setShowTakeoff(true);
-        planner.submitAnswers(newAnswers);
-      }, 600);
+  // Flatten multi-select answers into strings for the planner API
+  const flattenAnswers = useCallback((answers: Record<string, string[]>) => {
+    const flat: Record<string, string> = {};
+    for (const [k, v] of Object.entries(answers)) {
+      flat[k] = v.join(", ");
     }
-  }, [selectedAnswers, currentQIdx, questions.length, planner]);
+    return flat;
+  }, []);
 
-  // Handle keyboard shortcuts for options (1-5 or A-E)
+  // Advance to next question or submit
+  const handleNextQuestion = useCallback(() => {
+    if (currentQIdx < questions.length - 1) {
+      setCurrentQIdx((i) => i + 1);
+    } else {
+      // All questions done — submit
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+      setShowTakeoff(true);
+      planner.submitAnswers(flattenAnswers(selectedAnswers));
+    }
+  }, [currentQIdx, questions.length, planner, selectedAnswers, flattenAnswers]);
+
+  // Skip this question entirely
+  const handleSkipQuestion = useCallback(() => {
+    if (currentQIdx < questions.length - 1) {
+      setCurrentQIdx((i) => i + 1);
+    } else {
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+      setShowTakeoff(true);
+      planner.submitAnswers(flattenAnswers(selectedAnswers));
+    }
+  }, [currentQIdx, questions.length, planner, selectedAnswers, flattenAnswers]);
+
+  // Handle keyboard shortcuts for options (A-E to toggle, Enter to advance, S to skip)
   useEffect(() => {
     if (!isClarifying || !currentQuestion) return;
     const handler = (e: KeyboardEvent) => {
@@ -250,10 +278,12 @@ export default function Home() {
       if (idx >= 0 && idx < opts.length) {
         handleOptionSelect(currentQuestion.id, opts[idx]);
       }
+      if (e.key === 'Enter') handleNextQuestion();
+      if (e.key.toLowerCase() === 's' && e.ctrlKey) { e.preventDefault(); handleSkipQuestion(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isClarifying, currentQuestion, handleOptionSelect]);
+  }, [isClarifying, currentQuestion, handleOptionSelect, handleNextQuestion, handleSkipQuestion]);
 
   const handleConvReset = useCallback(() => {
     planner.reset();
@@ -581,7 +611,7 @@ export default function Home() {
                 <div className="bg-black/30 backdrop-blur-md rounded-2xl px-5 py-2.5 border border-white/15 shadow-lg">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm text-white/80 truncate">
-                      {Object.values(selectedAnswers).join(" · ")}
+                      {Object.values(selectedAnswers).map((v) => v.join(", ")).join(" · ")}
                     </p>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {questions.map((_, i) => (
@@ -674,13 +704,34 @@ export default function Home() {
                         key={opt}
                         label={opt}
                         index={i}
-                        selected={selectedAnswers[currentQuestion.id] === opt}
+                        selected={(selectedAnswers[currentQuestion.id] ?? []).includes(opt)}
                         onSelect={() => handleOptionSelect(currentQuestion.id, opt)}
                       />
                     ))}
                   </div>
-                  <p className="text-[10px] text-white/30 mt-2 text-center">
-                    Press {currentQuestion.options.map((_, i) => ["A","B","C","D","E"][i]).join("/")} to select
+                  <div className="flex items-center justify-between mt-3 gap-2">
+                    <button
+                      onClick={handleSkipQuestion}
+                      className="text-[11px] text-white/40 hover:text-white/60 transition-colors px-3 py-1.5"
+                    >
+                      Skip
+                    </button>
+                    <div className="flex items-center gap-2">
+                      {(selectedAnswers[currentQuestion.id]?.length ?? 0) > 0 && (
+                        <span className="text-[10px] text-white/40">
+                          {selectedAnswers[currentQuestion.id].length} selected
+                        </span>
+                      )}
+                      <button
+                        onClick={handleNextQuestion}
+                        className="text-[11px] font-semibold text-white bg-white/20 hover:bg-white/30 transition-colors px-4 py-1.5 rounded-lg backdrop-blur-sm"
+                      >
+                        {currentQIdx < questions.length - 1 ? "Next →" : "Plan my trip →"}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-white/30 mt-1 text-center">
+                    Select multiple · Enter to continue · Skip to move on
                   </p>
                 </div>
               </div>
