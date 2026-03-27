@@ -28,6 +28,7 @@ export const site = new sst.aws.Nextjs('TravylWeb', {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey.value,
     NEXT_PUBLIC_RECOMMENDATION_API_URL: api.url,
+    SUPABASE_SECRET_KEY: supabaseSecretKey.value,
     PEXELS_API_KEY: pexels.value,
   },
 })
