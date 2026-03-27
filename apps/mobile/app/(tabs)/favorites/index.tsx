@@ -21,8 +21,64 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Use web app as API proxy — it has all the API keys (Foursquare, etc.)
 // In dev: localhost:3000, in production: deeviaje.com
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
 const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+const WEB_API = BACKEND_API;
+
+const KNOWN_CITIES: Record<string, { lat: string; lng: string }> = {
+  'paris': { lat: '48.8566', lng: '2.3522' }, 'london': { lat: '51.5074', lng: '-0.1278' },
+  'rome': { lat: '41.9028', lng: '12.4964' }, 'tokyo': { lat: '35.6762', lng: '139.6503' },
+  'barcelona': { lat: '41.3874', lng: '2.1686' }, 'new york': { lat: '40.7128', lng: '-74.0060' },
+  'bali': { lat: '-8.4095', lng: '115.1889' }, 'dubai': { lat: '25.2048', lng: '55.2708' },
+  'bangkok': { lat: '13.7563', lng: '100.5018' }, 'amsterdam': { lat: '52.3676', lng: '4.9041' },
+  'sydney': { lat: '-33.8688', lng: '151.2093' }, 'istanbul': { lat: '41.0082', lng: '28.9784' },
+  'lisbon': { lat: '38.7223', lng: '-9.1393' }, 'singapore': { lat: '1.3521', lng: '103.8198' },
+  'seoul': { lat: '37.5665', lng: '126.9780' }, 'athens': { lat: '37.9838', lng: '23.7275' },
+  'prague': { lat: '50.0755', lng: '14.4378' }, 'marrakech': { lat: '31.6295', lng: '-7.9811' },
+  'cape town': { lat: '-33.9249', lng: '18.4241' }, 'mexico city': { lat: '19.4326', lng: '-99.1332' },
+  'rio de janeiro': { lat: '-22.9068', lng: '-43.1729' }, 'miami': { lat: '25.7617', lng: '-80.1918' },
+  'san francisco': { lat: '37.7749', lng: '-122.4194' }, 'los angeles': { lat: '34.0522', lng: '-118.2437' },
+  'cancun': { lat: '21.1619', lng: '-86.8515' }, 'berlin': { lat: '52.5200', lng: '13.4050' },
+};
+
+// Upscale Google Places thumbnails to usable resolution
+function upscaleImage(url: string | null | undefined): string {
+  if (!url) return '';
+  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no');
+}
+
+// Map backend response to PlaceItem format
+function mapBackendToPlaceItem(p: any): PlaceItem {
+  const cat = (p.category || '').toLowerCase();
+  return {
+    id: p.id,
+    name: p.name,
+    image: upscaleImage(p.photo_url),
+    type: /restaurant|cafe|bar|dining/.test(cat) ? 'restaurant' : /park|garden|beach/.test(cat) ? 'experience' : 'attraction',
+    rating: p.rating || 0,
+    tagline: p.description?.split('.')[0] || p.category || '',
+    category: p.category || '',
+    description: p.description || '',
+    tags: p.tags || [p.category].filter(Boolean),
+    latitude: p.lat,
+    longitude: p.lng,
+    address: p.address,
+    reviewCount: p.review_count,
+  };
+}
+
+async function resolveCoords(query: string): Promise<{ lat: string; lng: string } | null> {
+  const known = KNOWN_CITIES[query.toLowerCase()];
+  if (known) return known;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'User-Agent': 'Travyl/1.0' } }
+    );
+    const data = await res.json();
+    if (data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
+  } catch {}
+  return null;
+}
 
 const BROWSE_CITIES = [
   { lat: '48.8566', lng: '2.3522', name: 'Paris' },
@@ -57,8 +113,9 @@ async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
 
   const results = await Promise.all(
     cities.map(city =>
-      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+      fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => data.map(mapBackendToPlaceItem))
         .catch(() => [])
     )
   );
@@ -75,8 +132,9 @@ async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
   cities.forEach((city, i) => {
     const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
     fetches.push(
-      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+      fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => data.map(mapBackendToPlaceItem))
         .catch(() => [])
     );
   });
@@ -301,15 +359,50 @@ export default function FavoritesScreen() {
     staleTime: 5 * 60 * 1000,
     enabled: fastPlaces.length > 0, // only after fast batch loads
   });
-  // API search — when user types a city/destination name
+  // API search — NLP search via /api/places/suggest
   const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
     queryKey: ['mobile-places-search', searchCity],
     queryFn: async () => {
       if (!searchCity) return [];
+
+      // Try NLP suggest endpoint first (handles "hidden gem restaurant in Paris", "best ramen Tokyo", etc.)
+      const coords = await resolveCoords(searchCity);
+      const destination = coords ? searchCity : searchCity.split(' ').pop() || searchCity;
+
+      const suggestRes = await fetch(
+        `${WEB_API}/api/places/suggest?q=${encodeURIComponent(searchCity)}&destination=${encodeURIComponent(destination)}&limit=20`
+      ).catch(() => null);
+
+      if (suggestRes?.ok) {
+        const json = await suggestRes.json();
+        const suggestions = json.suggestions ?? json.results ?? [];
+        if (suggestions.length > 0) {
+          return dedup(suggestions.map((s: any): PlaceItem => ({
+            id: s.id,
+            name: s.name,
+            image: s.imageUrl || s.imageUrls?.[0] || '',
+            images: s.imageUrls || (s.imageUrl ? [s.imageUrl] : []),
+            type: /restaurant|food|cafe|dining/i.test(s.category || '') ? 'restaurant' : 'attraction',
+            rating: s.rating || 0,
+            tagline: s.location || s.description || s.category || '',
+            category: s.category || '',
+            description: s.description || '',
+            tags: s.tags || [s.category].filter(Boolean),
+            latitude: s.latitude,
+            longitude: s.longitude,
+            address: s.location,
+            reviewCount: s.reviewCount,
+          })));
+        }
+      }
+
+      // Fallback: nearby search with resolved coordinates
+      if (!coords) return [];
       const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'nightlife'];
       const fetches: Promise<PlaceItem[]>[] = cats.map(cat =>
-        fetch(`${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=8`)
-          .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+        fetch(`${WEB_API}/api/places/nearby?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=8`)
+          .then(r => r.ok ? r.json() : [])
+          .then((data: any[]) => data.map(mapBackendToPlaceItem))
           .catch(() => [])
       );
       const results = await Promise.all(fetches);
