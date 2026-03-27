@@ -23,7 +23,7 @@ Silent, implicit conversion — every price displays in the user's home currency
 - Validation: check it's a 3-letter uppercase string, default to `'USD'`
 - No migration needed — the existing 7 codes (USD, EUR, GBP, JPY, CAD, AUD, MXN) are all valid ISO 4217, so existing `profiles.preferences` values remain valid
 - Add a `CURRENCIES` constant (~150 entries: `{ code, name, symbol }[]`) in `packages/shared/src/config/currencies.ts` for the picker UI
-- The type is open-ended; the curated list is for the picker, not for restriction
+- The type is open-ended; the curated list is for the picker, not for restriction. The list does not need to be exhaustive — it covers common currencies, and users who need an uncommon one can enter its ISO code directly
 
 **Rate provider swap** (`apps/web/app/api/exchange-rates/route.ts`):
 - Replace Frankfurter API with `open.er-api.com` (free, no API key, 1500+ requests/month, supports 150+ currencies)
@@ -37,6 +37,8 @@ Silent, implicit conversion — every price displays in the user's home currency
 ### 2. The `useHomeCurrency` Hook
 
 **Location**: `packages/shared/src/hooks/useHomeCurrency.ts`
+
+> **Note**: This hook depends on `useExchangeRates` which fetches from a Next.js API route. Since this iteration is web-only, the hook is in shared but mobile will need a different rate-fetching strategy when it's wired up. The hook is safe to import from mobile (it won't crash at import time, only at fetch time), so no special guarding is needed now.
 
 ```ts
 useHomeCurrency() → {
@@ -75,17 +77,19 @@ There are **two separate budget display paths** that both need updating:
 
 #### 3b. Budget page (standalone /budget route)
 
-`apps/web/app/(dashboard)/trip/[id]/budget/page.tsx` uses local state with `generateBudgetFromTrip` and hardcoded `$` formatting:
-- Replace hardcoded `$` + `toLocaleString()` calls with `useHomeCurrency().format(amount, sourceCurrency)`
-- `generateBudgetFromTrip` — costs from `trip_context` come in the local currency; conversion happens at display time, not storage time
-- Description strings that embed `$` (e.g. `"${duration} nights × $${hotel?.price}"`) need to use the appropriate currency symbol from the home currency
+`apps/web/app/(dashboard)/trip/[id]/budget/page.tsx` uses local state with `generateBudgetFromTrip` and hardcoded `$` formatting. This is a significant change — there are ~15 distinct `$${...}` render locations throughout the 812-line component (lines 365, 381, 394, 463, 509, 533, 554, 558, 609, and more). Every instance must be replaced.
+
+- Replace all `$${amount.toLocaleString()}` patterns with `useHomeCurrency().format(amount, sourceCurrency)`
+- `generateBudgetFromTrip` — costs from `trip_context` come in the trip's local currency (from `trip?.currency` or `trip_context.quick_facts.currency`), not USD. The `$` prefix is a pre-existing bug. The source currency for all `generateBudgetFromTrip` amounts is the trip currency, and must be passed to `format()` so conversion is correct
+- Description strings that embed `$` (e.g. `"${duration} nights × $${hotel?.price}"`, `"~$${Math.round(dailyFood)}/day"`) — replace `$` with the home currency symbol from `format()`
 
 #### 3c. `useItineraryScreen` budget memo
 
-`packages/shared/src/hooks/useItineraryScreen.ts` calls `buildBudgetSummary` which sums raw amounts without conversion. Fix:
-- `buildBudgetSummary` needs to receive `rates` and `homeCurrency` parameters and convert each item before summing
-- Alternatively, replace the `buildBudgetSummary` path with `useTripBudget`-style per-item conversion
-- The fallback path (computing from `trip_context` hotels) also needs conversion
+`packages/shared/src/hooks/useItineraryScreen.ts` calls `buildBudgetSummary` which sums raw amounts without conversion. **Decision: pass `rates` and `homeCurrency` into `buildBudgetSummary`** — this is the smaller change and is consistent with how `useTripBudget` already works.
+
+Fix:
+- `buildBudgetSummary` receives `rates` and `homeCurrency` parameters and converts each item before summing (same `convertToTripCurrency` call pattern as `useTripBudget`)
+- The fallback path at `useItineraryScreen.ts` lines 213-219 has hardcoded currency symbol logic (`const sym = currency === 'USD' ? '$' : ...`). Replace this with `Intl.NumberFormat` using the home currency, or delegate to `useHomeCurrency().format()`
 
 #### 3d. ViewModels carry raw amounts
 
@@ -128,7 +132,7 @@ With raw amounts now available in view models:
 
 **Currency pair not available**: Same fallback. `convert()` returns unconverted amount, `format()` renders with source currency code.
 
-**No currency on a cost item**: Activities with `currency: null` default to the trip's currency from `trip_context.quick_facts.currency`, then USD. If all missing, raw number.
+**No currency on a cost item**: Activities with missing or empty `currency` (runtime possibility even though the type is `string`) default to the trip's currency from `trip_context.quick_facts.currency`, then USD. If all missing, raw number.
 
 **User changes currency mid-session**: React Query caches rates per base currency. On switch, new fetch fires. During load, stale rates still show (stale-while-revalidate). No flash of unconverted prices.
 
