@@ -31,6 +31,10 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "SupabasePublishableKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "SupabaseSecretKey": {
       "type": "sst.sst.Secret"
       "value": string
@@ -43,6 +47,10 @@ declare module "sst" {
       "configSet": string
       "sender": string
       "type": "sst.aws.Email"
+    }
+    "TravylWeb": {
+      "type": "sst.aws.Nextjs"
+      "url": string
     }
     "UserInteractions": {
       "name": string

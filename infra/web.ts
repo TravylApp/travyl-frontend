@@ -1,7 +1,7 @@
 import { api } from './api'
 import {
   supabaseUrl,
-  supabasePublishableKey,
+  supabaseAnonKey,
   supabaseSecretKey,
   serpApiKey,
   pexels,
@@ -21,7 +21,19 @@ import {
   openchargeApiKey,
 } from './secrets'
 
-export const web = new sst.x.DevCommand('TravylWeb', {
+export const site = new sst.aws.Nextjs('TravylWeb', {
+  path: 'apps/web',
+  environment: {
+    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey.value,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseAnonKey.value,
+    NEXT_PUBLIC_RECOMMENDATION_API_URL: api.url,
+    SUPABASE_SECRET_KEY: supabaseSecretKey.value,
+    PEXELS_API_KEY: pexels.value,
+  },
+})
+
+export const web = new sst.x.DevCommand('TravylWebDev', {
   dev: {
     command: 'npm run web',
     directory: 'apps/web',
@@ -31,7 +43,7 @@ export const web = new sst.x.DevCommand('TravylWeb', {
     // Public (browser-safe)
     NEXT_PUBLIC_RECOMMENDATION_API_URL: api.url,
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabasePublishableKey.value,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey.value,
 
     // Server-only — Supabase
     SUPABASE_SECRET_KEY: supabaseSecretKey.value,
