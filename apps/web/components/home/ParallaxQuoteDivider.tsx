@@ -3,21 +3,37 @@
 import { useState, useEffect, forwardRef, useMemo } from "react";
 import { motion, AnimatePresence, type MotionValue } from "motion/react";
 import { TypeWriter } from "@/components/TypeWriter";
+import { usePlaceImages } from "@travyl/shared";
 
-const ALL_SLIDES = [
-  { image: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1400&fit=crop&q=75&fm=webp", quote: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
-  { image: "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1400&fit=crop&q=75&fm=webp", quote: "Travel makes one modest. You see what a tiny place you occupy in the world.", author: "Gustave Flaubert" },
-  { image: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1400&fit=crop&q=75&fm=webp", quote: "Life is short and the world is wide.", author: null },
-  { image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1400&fit=crop&q=75&fm=webp", quote: "Adventure is worthwhile in itself.", author: "Amelia Earhart" },
-  { image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1400&fit=crop&q=75&fm=webp", quote: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
-  { image: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1400&fit=crop&q=75&fm=webp", quote: "To travel is to live.", author: "Hans Christian Andersen" },
-  { image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&fit=crop&q=75&fm=webp", quote: "The world is a book, and those who do not travel read only a page.", author: "Saint Augustine" },
-  { image: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1400&fit=crop&q=75&fm=webp", quote: "Travel far enough, you meet yourself.", author: "David Mitchell" },
-  { image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1400&fit=crop&q=75&fm=webp", quote: "Once a year, go someplace you've never been before.", author: "Dalai Lama" },
-  { image: "https://images.unsplash.com/photo-1528127269322-539801943592?w=1400&fit=crop&q=75&fm=webp", quote: "Travel is the only thing you buy that makes you richer.", author: null },
+// Curated travel quotes — expanded pool for variety
+const QUOTES = [
+  { quote: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+  { quote: "Travel makes one modest. You see what a tiny place you occupy in the world.", author: "Gustave Flaubert" },
+  { quote: "Life is short and the world is wide.", author: null },
+  { quote: "Adventure is worthwhile in itself.", author: "Amelia Earhart" },
+  { quote: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+  { quote: "To travel is to live.", author: "Hans Christian Andersen" },
+  { quote: "The world is a book, and those who do not travel read only a page.", author: "Saint Augustine" },
+  { quote: "Travel far enough, you meet yourself.", author: "David Mitchell" },
+  { quote: "Once a year, go someplace you've never been before.", author: "Dalai Lama" },
+  { quote: "Travel is the only thing you buy that makes you richer.", author: null },
+  { quote: "We travel not to escape life, but for life not to escape us.", author: null },
+  { quote: "A good traveler has no fixed plans and is not intent on arriving.", author: "Lao Tzu" },
+  { quote: "Take only memories, leave only footprints.", author: "Chief Seattle" },
+  { quote: "Jobs fill your pocket, but adventures fill your soul.", author: "Jaime Lyn Beatty" },
+  { quote: "The real voyage of discovery consists not in seeking new landscapes, but in having new eyes.", author: "Marcel Proust" },
+  { quote: "Wherever you go, go with all your heart.", author: "Confucius" },
 ];
 
-// Daily seed — same for server and client on the same day, changes at midnight
+// Fallback images — only used if trending + API images both fail
+const FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1400&fit=crop&q=75&fm=webp",
+  "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1400&fit=crop&q=75&fm=webp",
+  "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1400&fit=crop&q=75&fm=webp",
+  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1400&fit=crop&q=75&fm=webp",
+];
+
+// Daily seed — same for server and client on the same day
 function dailySeed(): number {
   const d = new Date();
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
@@ -32,12 +48,51 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   return result;
 }
 
-export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, { bgY: MotionValue<number> }>(
-  function ParallaxQuoteDivider({ bgY }, ref) {
+interface TrendingDestination {
+  name: string;
+  country: string;
+  thumbnail: string | null;
+}
+
+interface Props {
+  bgY: MotionValue<number>;
+  trendingDestinations?: TrendingDestination[];
+}
+
+export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, Props>(
+  function ParallaxQuoteDivider({ bgY, trendingDestinations }, ref) {
     const [slideIndex, setSlideIndex] = useState(0);
 
-    // Deterministic shuffle — same on server and client for the same day
-    const slides = useMemo(() => seededShuffle(ALL_SLIDES, dailySeed()).slice(0, 4), []);
+    // Pick 4 trending destination names for high-res image lookups
+    const imageSearchNames = useMemo(() => {
+      if (!trendingDestinations?.length) return [];
+      const seed = dailySeed();
+      return seededShuffle(trendingDestinations, seed + 2)
+        .slice(0, 4)
+        .map((d) => `${d.name} ${d.country} landmark`);
+    }, [trendingDestinations]);
+
+    // Fetch high-res images via /api/images (same as hero/HowItWorks)
+    const imageQueries = usePlaceImages(imageSearchNames);
+
+    const slides = useMemo(() => {
+      const seed = dailySeed();
+      const shuffledQuotes = seededShuffle(QUOTES, seed);
+
+      // Build image list: prefer API images, then fallbacks
+      const apiImages = imageQueries
+        .map((q) => q.data?.url)
+        .filter((url): url is string => !!url);
+
+      const images = apiImages.length >= 4
+        ? apiImages
+        : [...apiImages, ...FALLBACK_IMAGES].slice(0, 4);
+
+      return shuffledQuotes.slice(0, 4).map((q, i) => ({
+        image: images[i % images.length],
+        ...q,
+      }));
+    }, [imageQueries]);
 
     useEffect(() => {
       const interval = setInterval(() => {
@@ -60,7 +115,7 @@ export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, { bgY: MotionValu
             />
           ))}
         </motion.div>
-        <div className="absolute inset-0 bg-[#1e3a5f]/30" />
+        <div className="absolute inset-0 bg-[#0f1f33]/50" />
         <div className="relative h-full flex items-center justify-center z-10 px-6">
           <AnimatePresence mode="wait">
             <motion.p
