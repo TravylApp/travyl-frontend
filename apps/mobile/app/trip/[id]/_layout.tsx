@@ -322,7 +322,7 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: s
     .filter(({ route }) => enabledTabs.includes(route.name));
 }
 
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
+const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
 // ─── Trip Hero ───────────────────────────────────────────
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
