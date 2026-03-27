@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
-import { Search, ArrowRight, MapPin, Calendar, Users, Sparkles } from "lucide-react";
+import { motion, useScroll, useTransform } from "motion/react";
+import { Search, Sparkles } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
-import type { FollowUpQuestion, PlaceItem } from "@travyl/shared";
-import { PlaceDetailOverlay } from "@/components/PlaceDetailOverlay";
+import type { FollowUpQuestion } from "@travyl/shared";
+import { useQuery } from "@tanstack/react-query";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -21,10 +20,6 @@ const HowItWorks = dynamic(
 );
 const GetInspired = dynamic(
   () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
-  { ssr: false }
-);
-const TravelMosaic = dynamic(
-  () => import("@/components/home/TravelMosaic").then((m) => ({ default: m.TravelMosaic })),
   { ssr: false }
 );
 const TagUs = dynamic(
@@ -100,6 +95,54 @@ const HeroSearchInput = memo(function HeroSearchInput({
   );
 });
 
+// ─── Live stats from /api/stats ──────────────────────────────
+function LiveStats() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['live-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/stats');
+      if (!res.ok) return { destinations: 0, travelers: 0, trips: 0 };
+      return res.json() as Promise<{ destinations: number; travelers: number; trips: number }>;
+    },
+    staleTime: 60 * 1000,
+    refetchOnMount: 'always',
+  });
+
+  const items = [
+    { value: stats?.destinations ?? 0, suffix: "+", label: "Destinations", desc: "Real places our community has explored." },
+    { value: stats?.travelers ?? 0, suffix: "", label: "Travelers", desc: "People planning their next adventure." },
+    { value: stats?.trips ?? 0, suffix: "+", label: "Trips Planned", desc: "AI-powered itineraries created and counting." },
+  ];
+
+  return (
+    <section className="py-8 sm:py-14 px-4 sm:px-6 border-y bg-[#e8d5c0] border-[#5c4a3a]">
+      <div className="max-w-5xl mx-auto grid grid-cols-3 gap-3 sm:gap-8 text-center">
+        {isLoading ? (
+          <>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <div className="h-8 sm:h-12 w-20 sm:w-28 bg-[#2a1f17]/10 rounded-lg animate-pulse" />
+                <div className="h-3 w-16 sm:w-24 bg-[#2a1f17]/10 rounded animate-pulse" />
+                <div className="h-3 w-28 sm:w-40 bg-[#2a1f17]/8 rounded animate-pulse" />
+              </div>
+            ))}
+          </>
+        ) : (
+          items.map((item) => (
+            <div key={item.label}>
+              <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
+                <AnimatedCounter value={item.value} suffix={item.suffix} decimals={0} />
+              </p>
+              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#1e3a5f]">{item.label}</p>
+              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#2a1f17]">{item.desc}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ─── Follow-up question option card ─────────────────────────
 function OptionCard({ label, index, selected, onSelect }: {
   label: string; index: number; selected: boolean; onSelect: () => void;
@@ -110,14 +153,14 @@ function OptionCard({ label, index, selected, onSelect }: {
       onClick={onSelect}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
         selected
-          ? "bg-[#1e3a5f] text-white shadow-md"
+          ? "bg-[#1e3a5f] text-white shadow-md ring-1 ring-white/30"
           : "bg-white/10 text-white/80 hover:bg-white/20 border border-white/15"
       }`}
     >
-      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
         selected ? "bg-white/20 text-white" : "bg-white/10 text-white/50"
       }`}>
-        {keys[index] || index + 1}
+        {selected ? "✓" : keys[index] || index + 1}
       </span>
       <span className="font-medium">{label}</span>
     </button>
@@ -129,11 +172,6 @@ export default function Home() {
   const {
     tripQuery,
     setTripQuery,
-    handleSearch,
-    recentTrips,
-    showRecentTrips,
-    showLoadingSkeleton,
-    showEmptyState,
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
@@ -146,7 +184,9 @@ export default function Home() {
   // API-driven planning flow
   const planner = useTripPlanner();
   const [currentQIdx, setCurrentQIdx] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
+  const [showQuestions, setShowQuestions] = useState(false);
+  const skipQuestionsRef = useRef(false);
 
 
   const isClarifying = planner.state.phase === 'clarifying';
@@ -155,22 +195,32 @@ export default function Home() {
   const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : [];
   const currentQuestion = questions[currentQIdx];
 
+  // Auto-skip questions when user clicked Send (not Refine)
+  useEffect(() => {
+    if (isClarifying && skipQuestionsRef.current) {
+      skipQuestionsRef.current = false;
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+      setShowTakeoff(true);
+      planner.submitAnswers({});
+    }
+  }, [isClarifying, planner]);
+
   // Cycling placeholders live in isolated memo components above
   // to avoid re-rendering the entire page every ~25ms
 
-  // Cycling suggestion pills
-  const allSuggestions = heroConfig?.suggestions?.length
-    ? heroConfig.suggestions
-    : [
-        { id: 'ps-1', label: 'Beach getaway', short_label: null },
-        { id: 'ps-2', label: 'City explorer', short_label: null },
-        { id: 'ps-3', label: 'Mountain trek', short_label: null },
-        { id: 'ps-4', label: 'Cultural immersion', short_label: null },
-        { id: 'ps-5', label: 'Island hopping', short_label: null },
-        { id: 'ps-6', label: 'Food & wine', short_label: null },
-        { id: 'ps-7', label: 'Road trip', short_label: null },
-        { id: 'ps-8', label: 'Backpacking', short_label: null },
-      ];
+  // Trending destination pills from SerpAPI (cached 6h server-side)
+  const { data: trendingDestinations } = useQuery({
+    queryKey: ['trending-destinations'],
+    queryFn: async () => {
+      const res = await fetch('/api/trending-destinations');
+      if (!res.ok) return [];
+      return res.json() as Promise<{ name: string; country: string; thumbnail: string | null }[]>;
+    },
+    staleTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+  });
+
+  const allSuggestions = (trendingDestinations ?? []).map((d, i) => ({ id: `td-${i}`, label: d.name }));
   const PILLS_VISIBLE = 4;
   const [pillGroup, setPillGroup] = useState(0);
   const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
@@ -221,25 +271,64 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
-  // Handle selecting an answer option
+  // Flatten multi-select answers into strings for the planner API
+  const flattenAnswers = useCallback((answers: Record<string, string[]>) => {
+    const flat: Record<string, string> = {};
+    for (const [k, v] of Object.entries(answers)) {
+      flat[k] = v.join(", ");
+    }
+    return flat;
+  }, []);
+
+  // Select an option — auto-advances after brief pause
   const handleOptionSelect = useCallback((questionId: string, option: string) => {
-    const newAnswers = { ...selectedAnswers, [questionId]: option };
+    const current = selectedAnswers[questionId] ?? [];
+    const isDeselecting = current.includes(option);
+    const newSelection = isDeselecting
+      ? current.filter((o) => o !== option)
+      : [...current, option];
+
+    const newAnswers = { ...selectedAnswers, [questionId]: newSelection };
     setSelectedAnswers(newAnswers);
 
-    // Auto-advance to next question after a brief pause
-    if (currentQIdx < questions.length - 1) {
-      setTimeout(() => setCurrentQIdx((i) => i + 1), 400);
-    } else {
-      // All questions answered — submit to plan
+    // Auto-advance after selecting (not deselecting)
+    if (!isDeselecting) {
       setTimeout(() => {
-        setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
-        setShowTakeoff(true);
-        planner.submitAnswers(newAnswers);
+        if (currentQIdx < questions.length - 1) {
+          setCurrentQIdx((i) => i + 1);
+        } else {
+          setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+          setShowTakeoff(true);
+          planner.submitAnswers(flattenAnswers(newAnswers));
+        }
       }, 600);
     }
-  }, [selectedAnswers, currentQIdx, questions.length, planner]);
+  }, [selectedAnswers, currentQIdx, questions.length, planner, flattenAnswers]);
 
-  // Handle keyboard shortcuts for options (1-5 or A-E)
+  // Advance to next question or submit
+  const handleNextQuestion = useCallback(() => {
+    if (currentQIdx < questions.length - 1) {
+      setCurrentQIdx((i) => i + 1);
+    } else {
+      // All questions done — submit
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+      setShowTakeoff(true);
+      planner.submitAnswers(flattenAnswers(selectedAnswers));
+    }
+  }, [currentQIdx, questions.length, planner, selectedAnswers, flattenAnswers]);
+
+  // Skip this question entirely
+  const handleSkipQuestion = useCallback(() => {
+    if (currentQIdx < questions.length - 1) {
+      setCurrentQIdx((i) => i + 1);
+    } else {
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+      setShowTakeoff(true);
+      planner.submitAnswers(flattenAnswers(selectedAnswers));
+    }
+  }, [currentQIdx, questions.length, planner, selectedAnswers, flattenAnswers]);
+
+  // Handle keyboard shortcuts for options (A-E to toggle, Enter to advance, S to skip)
   useEffect(() => {
     if (!isClarifying || !currentQuestion) return;
     const handler = (e: KeyboardEvent) => {
@@ -250,15 +339,18 @@ export default function Home() {
       if (idx >= 0 && idx < opts.length) {
         handleOptionSelect(currentQuestion.id, opts[idx]);
       }
+      if (e.key === 'Enter') handleNextQuestion();
+      if (e.key.toLowerCase() === 's' && e.ctrlKey) { e.preventDefault(); handleSkipQuestion(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isClarifying, currentQuestion, handleOptionSelect]);
+  }, [isClarifying, currentQuestion, handleOptionSelect, handleNextQuestion, handleSkipQuestion]);
 
   const handleConvReset = useCallback(() => {
     planner.reset();
     setCurrentQIdx(0);
     setSelectedAnswers({});
+    setShowQuestions(false);
     setTripQuery("");
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [planner, setTripQuery]);
@@ -266,14 +358,22 @@ export default function Home() {
   const onSearch = () => {
     const val = tripQuery.trim();
     if (!val) return;
-    // Send to backend for extraction
+    skipQuestionsRef.current = true;
+    planner.submitPrompt(val);
+    setTripQuery("");
+  };
+
+  const onRefine = () => {
+    const val = tripQuery.trim();
+    if (!val) return;
+    skipQuestionsRef.current = false;
+    setShowQuestions(true);
     planner.submitPrompt(val);
     setTripQuery("");
   };
 
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [takeoffCompleted, setTakeoffCompleted] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const isSaving = useRef(false);
   const user = useAuthStore((s) => s.user);
 
@@ -541,7 +641,7 @@ export default function Home() {
           ))}
         </motion.div>
         {/* Dark overlay for text contrast */}
-        <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/30 via-black/20 to-black/40" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
 
         <motion.div
           className="relative z-10 max-w-3xl mx-auto text-center w-full"
@@ -559,7 +659,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4, ease: EASE_OUT_EXPO }}
-            className="text-xs sm:text-sm md:text-base text-white mb-10 w-fit mx-auto font-medium px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/40 shadow-sm drop-shadow-sm"
+            className="text-xs sm:text-sm md:text-base text-white mb-10 w-fit mx-auto font-medium px-4 py-1.5 rounded-full bg-black/25 backdrop-blur-md border border-white/25 shadow-lg drop-shadow-md"
           >
             {heroConfig?.subtitle ? (
               <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
@@ -581,7 +681,7 @@ export default function Home() {
                 <div className="bg-black/30 backdrop-blur-md rounded-2xl px-5 py-2.5 border border-white/15 shadow-lg">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm text-white/80 truncate">
-                      {Object.values(selectedAnswers).join(" · ")}
+                      {Object.values(selectedAnswers).map((v) => v.join(", ")).join(" · ")}
                     </p>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {questions.map((_, i) => (
@@ -636,35 +736,46 @@ export default function Home() {
               </div>
             )}
 
-            {/* Search bar */}
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-              <div className="flex items-center p-1.5 gap-2">
-                <HeroSearchInput
-                  tripQuery={tripQuery}
-                  setTripQuery={setTripQuery}
-                  onSearch={onSearch}
-                  staticPlaceholder={heroConfig?.search_placeholder}
-                  inputRef={inputRef}
-                />
-                <button
-                  ref={sendButtonRef}
-                  onClick={onSearch}
-                  disabled={isExtracting || isPlanning}
-                  className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
-                >
-                  <PaperPlane size={16} />
-                </button>
+            {/* Search bar — hidden during questions */}
+            {!(isClarifying && showQuestions) && (
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                <div className="flex items-center p-1.5 gap-2">
+                  <HeroSearchInput
+                    tripQuery={tripQuery}
+                    setTripQuery={setTripQuery}
+                    onSearch={onSearch}
+                    staticPlaceholder={heroConfig?.search_placeholder}
+                    inputRef={inputRef}
+                  />
+                  <button
+                    onClick={onRefine}
+                    disabled={isExtracting || isPlanning || !tripQuery.trim()}
+                    className="text-[#1e3a5f]/70 hover:text-[#1e3a5f] hover:bg-[#1e3a5f]/8 disabled:opacity-0 disabled:pointer-events-none px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 flex items-center gap-1.5 shrink-0 border border-transparent hover:border-[#1e3a5f]/15"
+                    title="Answer a few questions for a more personalized trip"
+                  >
+                    <Sparkles size={14} />
+                    <span className="hidden sm:inline">Refine</span>
+                  </button>
+                  <button
+                    ref={sendButtonRef}
+                    onClick={onSearch}
+                    disabled={isExtracting || isPlanning}
+                    className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
+                  >
+                    <PaperPlane size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Follow-up questions — multiple choice cards */}
-            {isClarifying && currentQuestion && (
+            {/* Questions — only shown if user clicked Refine */}
+            {isClarifying && showQuestions && currentQuestion && (
               <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out]">
                 <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/15 shadow-lg">
                   <div className="flex items-center gap-2 mb-3">
                     <Sparkles size={14} className="text-white/60" />
                     <p className="text-sm text-white font-semibold">{currentQuestion.question}</p>
-                    <span className="ml-auto text-[10px] text-white/40 font-medium">
+                    <span className="ml-auto text-[10px] text-white/40 font-medium shrink-0">
                       {currentQIdx + 1}/{questions.length}
                     </span>
                   </div>
@@ -674,20 +785,48 @@ export default function Home() {
                         key={opt}
                         label={opt}
                         index={i}
-                        selected={selectedAnswers[currentQuestion.id] === opt}
+                        selected={(selectedAnswers[currentQuestion.id] ?? []).includes(opt)}
                         onSelect={() => handleOptionSelect(currentQuestion.id, opt)}
                       />
                     ))}
                   </div>
-                  <p className="text-[10px] text-white/30 mt-2 text-center">
-                    Press {currentQuestion.options.map((_, i) => ["A","B","C","D","E"][i]).join("/")} to select
-                  </p>
+                  {/* Type your own answer */}
+                  <form
+                    className="mt-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = (e.target as HTMLFormElement).elements.namedItem('custom') as HTMLInputElement;
+                      const val = input?.value?.trim();
+                      if (val) {
+                        handleOptionSelect(currentQuestion.id, val);
+                        input.value = '';
+                      }
+                    }}
+                  >
+                    <input
+                      name="custom"
+                      type="text"
+                      placeholder="Or type your own..."
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
+                    />
+                  </form>
+                  {/* Plan it now — escape hatch */}
+                  <button
+                    onClick={() => {
+                      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+                      setShowTakeoff(true);
+                      planner.submitAnswers(flattenAnswers(selectedAnswers));
+                    }}
+                    className="w-full mt-3 text-[11px] text-white/40 hover:text-white/70 transition-colors py-1.5 text-center"
+                  >
+                    Done? Plan my trip with what I&apos;ve picked →
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Suggestion Pills — only show when idle */}
-            {planner.state.phase === 'idle' && (
+            {planner.state.phase === 'idle' && allSuggestions.length > 0 && (
               <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
                 <div
                   key={pillGroup}
@@ -696,7 +835,10 @@ export default function Home() {
                   {visiblePills.map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => setTripQuery(s.label)}
+                      onClick={() => {
+                        skipQuestionsRef.current = true;
+                        planner.submitPrompt(`Plan a trip to ${s.label}`);
+                      }}
                       className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"
                     >
                       {s.label}
@@ -706,149 +848,31 @@ export default function Home() {
               </div>
             )}
           </motion.div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 0.8 }}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          >
+            <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
+              <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
+            </div>
+            <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
+          </motion.div>
+          <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
         </motion.div>
       </section>
 
-      {/* ─── Trip Statistics ───────────────────────────────────── */}
-      <section className="py-8 sm:py-14 px-4 sm:px-6 border-y bg-[#e8d5c0] border-[#5c4a3a]">
-        <div className="max-w-5xl mx-auto grid grid-cols-3 gap-3 sm:gap-8 text-center">
-          {[
-            { value: 500, suffix: "K+", decimals: 0, label: "Destinations", desc: "Discover unexpected gems, even in your own backyard." },
-            { value: 95, suffix: "M+", decimals: 0, label: "Fellow Travelers", desc: "Share your adventures and learn from our global community." },
-            { value: 2.0, suffix: "B+", decimals: 1, label: "Trips Planned", desc: "Navigate your way and keep a record of all your travels." },
-          ].map((item) => (
-            <div key={item.label}>
-              <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
-                <AnimatedCounter value={item.value} suffix={item.suffix} decimals={item.decimals} />
-              </p>
-              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#1e3a5f]">{item.label}</p>
-              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#2a1f17]">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ─── Trip Statistics — Live from Supabase ────────────── */}
+      <LiveStats />
 
-      {/* ─── Recent Trips (logged-in users) ───────────────────── */}
-      {showRecentTrips && (
-        <section className="py-12 px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-serif font-normal text-foreground tracking-wide">
-                Your Recent Trips
-              </h2>
-              <Link
-                href="/trips"
-                className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
-              >
-                View all <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentTrips.map((trip: any) => (
-                <Link
-                  key={trip.id}
-                  href={`/trip/${trip.id}`}
-                  className="group block rounded-xl border border-border p-5 hover:shadow-md hover:border-primary/30 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {trip.title}
-                      </h3>
-                      <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                        <MapPin size={14} />
-                        <span>{trip.destination}</span>
-                      </div>
-                    </div>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{
-                        backgroundColor: trip.status.bgColor,
-                        color: trip.status.textColor,
-                      }}
-                    >
-                      {trip.status.label}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      <span>{trip.dateRange.short}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users size={12} />
-                      <span>{trip.travelersLabel}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ─── Loading Skeleton ──────────────────────────────────── */}
-      {showLoadingSkeleton && (
-        <section className="py-12 px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="h-7 w-48 bg-gray-200 rounded animate-pulse mb-6" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-border p-5 space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                    </div>
-                    <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="h-3 w-28 bg-gray-100 rounded animate-pulse" />
-                    <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ─── Empty State ─────────────────────────────────────── */}
-      {showEmptyState && (
-        <section className="py-16 px-6">
-          <div className="max-w-md mx-auto text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <PaperPlane className="text-primary -rotate-12" size={28} />
-            </div>
-            <h2 className="text-xl font-serif font-normal text-foreground mb-2 tracking-wide">
-              No trips yet
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Start planning your first adventure — type a destination in the
-              search bar above or tap the button below.
-            </p>
-            <button
-              onClick={() => router.push("/trips")}
-              className="bg-primary text-white px-6 py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
-            >
-              <PaperPlane size={16} className="-rotate-12" />
-              Plan your first trip
-            </button>
-          </div>
-        </section>
-      )}
 
       {/* ─── Static Content Sections ──────────────────────────── */}
       <HowItWorks onCtaPress={() => router.push("/trips")} />
-      <TravelMosaic onTileClick={(place) => setSelectedPlace(place)} />
-
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
-      <ParallaxQuoteDivider bgY={dividerBgY} />
+      <ParallaxQuoteDivider bgY={dividerBgY} trendingDestinations={trendingDestinations} />
 
       <GetInspired />
       <TagUs />
@@ -859,19 +883,6 @@ export default function Home() {
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />
 
-      {/* ─── Place Detail Overlay ────────────────────────────── */}
-      <AnimatePresence>
-        {selectedPlace && (
-          <PlaceDetailOverlay
-            place={selectedPlace}
-            isFavorited={false}
-            onToggleFavorite={() => {}}
-            onClose={() => setSelectedPlace(null)}
-            onNavigate={(p) => setSelectedPlace(p)}
-            onSearchTag={() => {}}
-          />
-        )}
-      </AnimatePresence>
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition

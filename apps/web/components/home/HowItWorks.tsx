@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "motion/react";
+// motion.div used for progress bar; useTransform for progressX
 import { useState } from "react";
 import { ArrowRight, Check, MessageSquare, Sparkles, CircleCheck } from "lucide-react";
-import { HOW_IT_WORKS_STEPS, usePlaceImages, EASE_OUT_EXPO } from "@travyl/shared";
+import { HOW_IT_WORKS_STEPS, usePlaceImages } from "@travyl/shared";
 
 const STEP_ICONS = [MessageSquare, Sparkles, CircleCheck];
 const STEP_IMAGES = ["Santorini Greece sunset", "Rome Colosseum", "Bali beach resort"];
@@ -23,6 +24,8 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
   const [activeStep, setActiveStep] = useState(0);
   const stepCount = HOW_IT_WORKS_STEPS.length;
   const prevStepRef = useRef(0);
+  const isSnapping = useRef(false);
+  const snapCooldown = useRef(0);
 
   const imageQueries = usePlaceImages(STEP_IMAGES);
   const images = useMemo(
@@ -35,41 +38,79 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
     offset: ["start center", "end center"],
   });
 
-  // Update step indicator at the midpoint of each crossfade
+  // Update active step based on scroll progress
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     let step = 0;
-    if (v > 0.65) step = 2;
-    else if (v > 0.32) step = 1;
+    if (v > 0.66) step = 2;
+    else if (v > 0.33) step = 1;
     if (step !== prevStepRef.current) {
       prevStepRef.current = step;
       setActiveStep(step);
     }
   });
 
-  // Per-step text opacity + y — wide crossfade zones (15% overlap)
-  // Step 1: visible 0–0.27, fades out 0.27–0.40
-  // Step 2: fades in 0.25–0.38, visible 0.38–0.60, fades out 0.60–0.73
-  // Step 3: fades in 0.58–0.73, visible 0.73–1.0
-  const t0Op = useTransform(scrollYProgress, [0, 0.04, 0.22, 0.38], [0, 1, 1, 0]);
-  const t1Op = useTransform(scrollYProgress, [0.25, 0.40, 0.56, 0.72], [0, 1, 1, 0]);
-  const t2Op = useTransform(scrollYProgress, [0.58, 0.74, 1], [0, 1, 1]);
-  const textOps = [t0Op, t1Op, t2Op];
+  // Snap to step boundaries on scroll
+  const snapToStep = useCallback((step: number) => {
+    const container = containerRef.current;
+    if (!container || isSnapping.current) return;
 
-  const t0Y = useTransform(scrollYProgress, [0, 0.04, 0.22, 0.38], [15, 0, 0, -15]);
-  const t1Y = useTransform(scrollYProgress, [0.25, 0.40, 0.56, 0.72], [15, 0, 0, -15]);
-  const t2Y = useTransform(scrollYProgress, [0.58, 0.74, 1], [15, 0, 0]);
-  const textYs = [t0Y, t1Y, t2Y];
+    const rect = container.getBoundingClientRect();
+    const containerTop = window.scrollY + rect.top;
+    const containerHeight = rect.height;
 
-  // Per-step image opacity + scale — matching crossfade
-  const i0Op = useTransform(scrollYProgress, [0, 0.02, 0.24, 0.40], [1, 1, 1, 0]);
-  const i1Op = useTransform(scrollYProgress, [0.26, 0.40, 0.58, 0.74], [0, 1, 1, 0]);
-  const i2Op = useTransform(scrollYProgress, [0.60, 0.74, 1], [0, 1, 1]);
-  const imgOps = [i0Op, i1Op, i2Op];
+    // Each step occupies 1/3 of the container; snap to center of that zone
+    const stepCenter = containerTop + (step + 0.5) * (containerHeight / stepCount);
+    const targetScroll = stepCenter - window.innerHeight / 2;
 
-  const i0S = useTransform(scrollYProgress, [0, 0.38], [1, 1.04]);
-  const i1S = useTransform(scrollYProgress, [0.30, 0.72], [1, 1.04]);
-  const i2S = useTransform(scrollYProgress, [0.62, 1], [1, 1.04]);
-  const imgScales = [i0S, i1S, i2S];
+    isSnapping.current = true;
+    snapCooldown.current = Date.now();
+
+    window.scrollTo({ top: targetScroll, behavior: "smooth" });
+
+    // Release snap lock after animation
+    setTimeout(() => {
+      isSnapping.current = false;
+    }, 600);
+  }, [stepCount]);
+
+  // Wheel event handler — intercept scroll in the HowItWorks section
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Don't intercept if we're snapping or cooling down
+      if (isSnapping.current || Date.now() - snapCooldown.current < 500) return;
+
+      const rect = container.getBoundingClientRect();
+      const stickyCard = container.querySelector(".sticky");
+      if (!stickyCard) return;
+
+      const cardRect = stickyCard.getBoundingClientRect();
+
+      // Only intercept when the sticky card is visible in viewport
+      if (cardRect.top > window.innerHeight || cardRect.bottom < 0) return;
+
+      // Check if the card is actually in "stuck" state (not at top/bottom of container)
+      const isStuck = rect.top < 0 && rect.bottom > window.innerHeight;
+      if (!isStuck) return;
+
+      const direction = e.deltaY > 0 ? 1 : -1;
+      const currentStep = prevStepRef.current;
+      const nextStep = currentStep + direction;
+
+      if (nextStep >= 0 && nextStep < stepCount) {
+        e.preventDefault();
+        snapToStep(nextStep);
+      }
+    };
+
+    // Use passive: false to allow preventDefault
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => window.removeEventListener("wheel", handleWheel);
+  }, [snapToStep, stepCount]);
+
+  // Images now also transition via activeStep (matching text behavior)
 
   // Progress bar
   const progressX = useTransform(scrollYProgress, [0, 1], [0, 1]);
@@ -87,7 +128,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
       </div>
 
       {/* Scroll container — the card sticks while you scroll through */}
-      <div ref={containerRef} className="max-w-6xl mx-auto" style={{ height: `${stepCount * 60}vh` }}>
+      <div ref={containerRef} className="max-w-6xl mx-auto" style={{ height: `${stepCount * 70}vh` }}>
         <div className="sticky top-[15vh]">
           <div className="rounded-3xl overflow-hidden bg-[#0f1f33] shadow-2xl shadow-black/20">
             <div className="flex flex-col md:flex-row" style={{ minHeight: 420 }}>
@@ -120,15 +161,20 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
                   ))}
                 </div>
 
-                {/* Animated content — scroll-driven */}
+                {/* Animated content — CSS transition driven by activeStep */}
                 <div className="relative min-h-[220px]">
                   {HOW_IT_WORKS_STEPS.map((step, i) => {
                     const Icon = STEP_ICONS[i];
+                    const isActive = activeStep === i;
                     return (
-                      <motion.div
+                      <div
                         key={i}
-                        className="absolute top-0 left-0 right-0"
-                        style={{ opacity: textOps[i], y: textYs[i] }}
+                        className="absolute top-0 left-0 right-0 transition-all duration-500 ease-out"
+                        style={{
+                          opacity: isActive ? 1 : 0,
+                          transform: isActive ? "translateY(0)" : activeStep > i ? "translateY(-12px)" : "translateY(12px)",
+                          pointerEvents: isActive ? "auto" : "none",
+                        }}
                       >
                         <div className="flex items-center gap-2 mb-3">
                           <Icon size={14} className="text-white/40" />
@@ -155,7 +201,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
                             </li>
                           ))}
                         </ul>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -194,14 +240,17 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
               <div className="relative w-full md:w-[45%] min-h-[280px] md:min-h-0 p-3 md:p-4">
                 <div className="relative w-full h-full rounded-2xl overflow-hidden">
                   {images.map((src, i) => (
-                    <motion.img
+                    <img
                       key={i}
                       src={src}
                       alt=""
                       loading={i === 0 ? "eager" : "lazy"}
                       decoding="async"
-                      className="absolute inset-0 w-full h-full object-cover"
-                      style={{ opacity: imgOps[i], scale: imgScales[i] }}
+                      className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out"
+                      style={{
+                        opacity: activeStep === i ? 1 : 0,
+                        transform: activeStep === i ? "scale(1)" : "scale(1.04)",
+                      }}
                     />
                   ))}
                 </div>
