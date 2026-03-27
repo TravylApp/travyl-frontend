@@ -14,10 +14,22 @@ interface PexelsSearchResponse {
  * Returns null on any error or if no photos are found.
  */
 export async function fetchPexelsImage(destination: string): Promise<string | null> {
+  const result = await fetchPexelsImages(destination, 1)
+  return result?.url ?? null
+}
+
+/**
+ * Fetches multiple landscape photo URLs from Pexels for a given query.
+ * Returns `{ url, images }` on success, or null on any error.
+ */
+export async function fetchPexelsImages(
+  query: string,
+  perPage: number = 1,
+): Promise<{ url: string; images: Array<{ url: string }> } | null> {
   const apiKey = Resource.Pexels.value
   const url = new URL('https://api.pexels.com/v1/search')
-  url.searchParams.set('query', destination)
-  url.searchParams.set('per_page', '1')
+  url.searchParams.set('query', query)
+  url.searchParams.set('per_page', String(perPage))
   url.searchParams.set('orientation', 'landscape')
 
   try {
@@ -29,7 +41,12 @@ export async function fetchPexelsImage(destination: string): Promise<string | nu
       return null
     }
     const data = await res.json() as PexelsSearchResponse
-    return data.photos[0]?.src?.large ?? null
+    const images = data.photos
+      .map((p) => p.src?.large)
+      .filter((u): u is string => !!u)
+      .map((u) => ({ url: u }))
+    if (images.length === 0) return null
+    return { url: images[0].url, images }
   } catch (err) {
     console.error('[pexels] fetch error:', err)
     return null

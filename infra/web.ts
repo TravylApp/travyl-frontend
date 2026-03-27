@@ -5,7 +5,6 @@ import {
   supabaseSecretKey,
   serpApiKey,
   pexels,
-  unsplashAccessKey,
   foursquareClientId,
   foursquareClientSecret,
   foursquareApiKey,
@@ -48,7 +47,6 @@ export const web = new sst.x.DevCommand('TravylWeb', {
 
     // Server-only — Images
     PEXELS_API_KEY: pexels.value,
-    UNSPLASH_ACCESS_KEY: unsplashAccessKey.value,
 
     // Server-only — Travel
     DUFFEL_API_TOKEN: duffelApiToken.value,

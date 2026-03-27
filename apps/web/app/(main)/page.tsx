@@ -202,15 +202,18 @@ export default function Home() {
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
   const heroImageQueries = usePlaceImages(HERO_DESTINATIONS);
 
-  // Only include slides that have actually loaded
+  // Combine hero config image with place images for a slideshow
   const heroSlides = useMemo(() => {
-    if (heroConfig?.background_image_url) return [heroConfig.background_image_url];
+    const slides: string[] = [];
+    if (heroConfig?.background_image_url) slides.push(heroConfig.background_image_url);
     const loaded = heroImageQueries
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url);
-    return loaded.length > 0 ? loaded : HERO_DESTINATIONS.map(() =>
-      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop&fm=webp&q=80`
-    ).slice(0, 1); // single fallback while loading
+    slides.push(...loaded);
+    if (slides.length === 0) {
+      slides.push(`https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop&fm=webp&q=80`);
+    }
+    return slides;
   }, [heroConfig?.background_image_url, heroImageQueries]);
 
   useEffect(() => {

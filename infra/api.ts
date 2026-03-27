@@ -142,3 +142,13 @@ api.route('GET /places/search', {
   handler: 'services/place-search.handler',
   link: [supabaseSecretKey, supabaseUrl, serpApiKey],
 })
+
+api.route('GET /api/images/search', {
+  handler: 'services/image-search.handler',
+  link: [pexels],
+})
+
+api.route('GET /api/images/destination', {
+  handler: 'services/image-destination.handler',
+  link: [pexels],
+})
