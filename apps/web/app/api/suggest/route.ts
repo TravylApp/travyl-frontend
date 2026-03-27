@@ -10,5 +10,5 @@ export async function GET(req: NextRequest) {
     if (value) params[key] = value
   }
 
-  return proxyToBackend('/api/places/suggest', req, { params })
+  return proxyToBackend('/suggest', req, { params })
 }

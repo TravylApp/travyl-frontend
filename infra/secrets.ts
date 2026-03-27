@@ -1,6 +1,7 @@
 // ─── Supabase ────────────────────────────────────────────────
 export const supabaseSecretKey = new sst.Secret('SupabaseSecretKey')
 export const supabaseUrl = new sst.Secret('SupabaseUrl')
+export const supabaseAnonKey = new sst.Secret('SupabaseAnonKey')
 export const supabasePublishableKey = new sst.Secret('SupabasePublishableKey')
 
 // ─── Search & Location ──────────────────────────────────────
@@ -14,7 +15,6 @@ export const opentripmapApiKey = new sst.Secret('OpentripmapApiKey')
 
 // ─── Images ─────────────────────────────────────────────────
 export const pexels = new sst.Secret('Pexels')
-export const unsplashAccessKey = new sst.Secret('UnsplashAccessKey')
 
 // ─── Travel & Flights ───────────────────────────────────────
 export const duffelApiToken = new sst.Secret('DuffelApiToken')

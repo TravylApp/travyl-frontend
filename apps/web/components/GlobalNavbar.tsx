@@ -3,12 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
+import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { useAuthStore } from "@travyl/shared";
 
 const baseNavLinks = [
-  { href: "/", label: "Discover", icon: Compass },
   { href: "/places", label: "Places", icon: MapPin },
   { href: "/trips", label: "Trips", icon: Luggage },
 ];
@@ -104,7 +103,7 @@ export default function GlobalNavbar() {
   return (
     <>
       {/* Inject keyframes + navbar transition styles */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .gnav {
           position: fixed;
           top: 0;
@@ -178,7 +177,7 @@ export default function GlobalNavbar() {
           .gnav { height: 48px; }
           .gnav.scrolled { top: 8px; width: min(95%, 64rem); height: 44px; }
         }
-      `}</style>
+      ` }} />
 
       <nav className={`gnav ${scrolled ? "scrolled" : ""} ${useLightNav ? "bg-clear-hero" : "bg-clear"}`}>
         <div className="gnav-inner mx-auto flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">

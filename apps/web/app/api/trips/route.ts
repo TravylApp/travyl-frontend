@@ -27,10 +27,11 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (user) {
-    // Logged in: RLS returns only their trips
+    // Logged in: return only trips owned by this user
     const { data, error } = await supabase
       .from('trips')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

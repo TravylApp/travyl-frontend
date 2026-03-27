@@ -23,8 +23,6 @@ out/
 
 # Claude
 .claude/
-CLAUDE.md
-docs/plans/
 
 # OS
 .DS_Store
@@ -51,3 +49,8 @@ supabase/.temp/
 sst-env.d.ts
 .worktrees/
 .worktrees/
+# Ignore screenshots and playwright files
+.playwright-mcp/
+*.png
+!apps/**/*.png
+!packages/**/*.png
