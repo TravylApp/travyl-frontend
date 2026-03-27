@@ -3,12 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
+import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { useAuthStore } from "@travyl/shared";
 
 const baseNavLinks = [
-  { href: "/", label: "Discover", icon: Compass },
   { href: "/places", label: "Places", icon: MapPin },
   { href: "/trips", label: "Trips", icon: Luggage },
 ];
