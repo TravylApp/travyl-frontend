@@ -1,6 +1,7 @@
 export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
+  fetchCollaboratorTrips,
   fetchSavedItems,
   fetchProfile,
   fetchMosaicTiles,

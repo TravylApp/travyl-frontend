@@ -1,13 +1,26 @@
 import { supabase } from './supabase';
 import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
-export async function fetchTrips(): Promise<Trip[]> {
+export async function fetchTrips(userId: string): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
     .select('*')
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function fetchCollaboratorTrips(userId: string): Promise<Trip[]> {
+  const { data, error } = await supabase
+    .from('trips')
+    .select('*, trip_collaborators!inner(*)')
+    .eq('trip_collaborators.user_id', userId)
+    .eq('trip_collaborators.invite_status', 'accepted')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  // Strip the join column before returning
+  return (data ?? []).map(({ trip_collaborators: _tc, ...trip }) => trip as Trip);
 }
 
 export async function fetchSavedItems(): Promise<SavedItem[]> {
@@ -553,7 +566,7 @@ export async function savePlanToSupabase(
   // 1. Create trip
   const tripInsert: Record<string, unknown> = {
     user_id: user?.id || null,
-    visibility: user?.id ? 'private' : 'public',
+    visibility: 'private',
     title: `${dest.city}, ${dest.country}`,
     destination: `${dest.city}, ${dest.country}`,
     start_date: ext.dates.start,
