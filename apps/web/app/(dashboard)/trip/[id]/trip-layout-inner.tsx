@@ -16,6 +16,8 @@ import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
+import { DashboardTopBarSlot } from '@/components/dashboard/DashboardTopBarSlot';
+import { TripTabBar } from '@/components/dashboard/TripTabBar';
 import type { PlaceItem } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
@@ -230,9 +232,11 @@ export default function TripLayoutInner({
 
   return (
     <TripThemeProvider trip={trip}>
-      <ItineraryProvider tripId={tripId}>
-        <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
-      </ItineraryProvider>
+      <DashboardTopBarSlot.Provider value={<TripTabBar tripId={tripId} />}>
+        <ItineraryProvider tripId={tripId}>
+          <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
+        </ItineraryProvider>
+      </DashboardTopBarSlot.Provider>
     </TripThemeProvider>
   );
 }
