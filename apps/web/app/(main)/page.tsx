@@ -421,16 +421,47 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — save to Supabase with planner data in trip_context
-        // so the overview page has hotels, itinerary, budget immediately
+        // Not logged in — two-step save to stay under CloudFront WAF body limit
+        // Step 1: Create trip with minimal data (~1KB)
+        // Step 2: PATCH full trip_context via update endpoint (server-side, no WAF)
         try {
           const ext = plan.extracted;
           if (!ext?.destination) throw new Error('No destination extracted');
           const dest = ext.destination;
           const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
 
-          // Build explore_items from itinerary slots (attractions + restaurants)
-          const exploreFromPlan = (plan.itinerary ?? []).flatMap((day: any) =>
+          // Step 1 — lightweight create
+          const createRes = await fetch('/api/trips/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              destination: `${dest.city}, ${dest.country}`,
+              start_date: ext.dates.start,
+              end_date: ext.dates.end,
+              travelers: ext.travelers.count,
+              budget: totalBudget,
+              currency: 'USD',
+            }),
+          });
+          if (!createRes.ok) {
+            const errBody = await createRes.text().catch(() => '');
+            console.error('[Trip Create] Step 1 failed:', createRes.status, errBody);
+            throw new Error(`Create failed: ${createRes.status}`);
+          }
+          const trip = await createRes.json();
+          const tripId = trip.id;
+
+          // Track in localStorage for anonymous persistence
+          try {
+            const stored = localStorage.getItem('my-trip-ids');
+            const ids: string[] = stored ? JSON.parse(stored) : [];
+            if (!ids.includes(tripId)) ids.push(tripId);
+            localStorage.setItem('my-trip-ids', JSON.stringify(ids));
+          } catch {}
+
+          // Step 2 — send full context via update (server-side, bypasses WAF)
+          const seenIds = new Set<string>();
+          const uniqueExplore = (plan.itinerary ?? []).flatMap((day: any) =>
             (day.slots ?? []).map((slot: any) => ({
               id: slot.poi.id,
               title: slot.poi.name,
@@ -439,16 +470,12 @@ export default function Home() {
               image: slot.poi.photo_url,
               tags: slot.poi.tags,
             }))
-          );
-          // Deduplicate by id
-          const seenIds = new Set<string>();
-          const uniqueExplore = exploreFromPlan.filter((e: any) => {
+          ).filter((e: any) => {
             if (seenIds.has(e.id)) return false;
             seenIds.add(e.id);
             return true;
           });
 
-          // Build weather from itinerary day weather
           const weatherForecast = (plan.itinerary ?? [])
             .filter((d: any) => d.weather)
             .map((d: any) => ({
@@ -460,151 +487,78 @@ export default function Home() {
               icon: d.weather.icon || '☀️',
             }));
 
-          const res = await fetch('/api/trips/create', {
+          // Fire update + enrich in parallel — don't block navigation
+          fetch('/api/trips/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              destination: `${dest.city}, ${dest.country}`,
-              start_date: ext.dates.start,
-              end_date: ext.dates.end,
-              travelers: ext.travelers.count,
-              budget: totalBudget,
-              currency: 'USD',
+              tripId,
               trip_context: {
                 lat: dest.lat,
                 lng: dest.lng,
                 hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
                 hero_image_url: plan.destination_photo_url,
                 explore_items: uniqueExplore,
-                // Top 5 curated hotels from planner
                 hotels: (plan.hotels ?? []).map((h: any) => ({
                   id: `hotel-${h.name.replace(/\s+/g, '-').toLowerCase()}`,
-                  name: h.name,
-                  category: 'Hotel',
-                  image: h.photo_url,
-                  rating: h.rating,
-                  ratingCount: h.review_count,
-                  price: h.price_per_night,
-                  totalPrice: h.total_price,
-                  currency: h.currency,
-                  stars: h.stars,
-                  amenities: h.amenities,
-                  address: h.address,
-                  link: h.link,
-                  lat: h.lat,
-                  lng: h.lng,
+                  name: h.name, category: 'Hotel', image: h.photo_url,
+                  rating: h.rating, ratingCount: h.review_count,
+                  price: h.price_per_night, totalPrice: h.total_price,
+                  currency: h.currency, stars: h.stars, amenities: h.amenities,
+                  address: h.address, link: h.link, lat: h.lat, lng: h.lng,
                 })),
-                // Top 8 hotels (trimmed to keep payload under CloudFront limit)
                 all_hotels: ((plan as any).data?.hotels ?? []).slice(0, 8).map((h: any) => ({
                   id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                  name: h.name,
-                  image: h.photo_url,
-                  rating: h.rating,
-                  price: h.price_per_night,
-                  stars: h.stars,
-                  address: h.address,
-                  link: h.link,
+                  name: h.name, image: h.photo_url, rating: h.rating,
+                  price: h.price_per_night, stars: h.stars, address: h.address, link: h.link,
                 })),
-                // Top 5 events
                 events: ((plan as any).data?.events ?? []).slice(0, 5).map((e: any) => ({
                   id: e.id || `event-${e.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                  title: e.name,
-                  date: e.date,
-                  venue: e.venue,
-                  image: e.photo_url,
+                  title: e.name, date: e.date, venue: e.venue, image: e.photo_url,
                 })),
-                // Top 10 POIs (trimmed from 40)
                 foursquare_venues: ((plan as any).data?.pois ?? [])
-                  .filter((p: any) => !seenIds.has(p.id))
-                  .slice(0, 10)
-                  .map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    category: p.category,
-                    image: p.photo_url,
-                    rating: p.rating,
-                  })),
+                  .filter((p: any) => !seenIds.has(p.id)).slice(0, 10)
+                  .map((p: any) => ({ id: p.id, name: p.name, category: p.category, image: p.photo_url, rating: p.rating })),
                 weather: weatherForecast.length > 0 ? {
                   forecast: weatherForecast,
-                  current: weatherForecast[0] ? {
-                    high: weatherForecast[0].high,
-                    low: weatherForecast[0].low,
-                    condition: weatherForecast[0].condition,
-                  } : undefined,
+                  current: weatherForecast[0] ? { high: weatherForecast[0].high, low: weatherForecast[0].low, condition: weatherForecast[0].condition } : undefined,
                 } : undefined,
                 quick_facts: {
                   currency: ext.budget_level ? `${ext.budget_level} (~$${ext.daily_estimate_usd}/day)` : undefined,
                   timezone: (plan as any).timezone,
                 },
                 lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
-                // Store full itinerary in trip_context so the itinerary page can render it
                 itinerary: (plan.itinerary ?? []).map((day: any) => ({
-                  day: day.day,
-                  date: day.date,
-                  weather: day.weather,
+                  day: day.day, date: day.date, weather: day.weather,
                   slots: (day.slots ?? []).map((slot: any) => ({
-                    poi: slot.poi,
-                    start_time: slot.start_time,
-                    end_time: slot.end_time,
-                    start_time_12h: slot.start_time_12h,
-                    end_time_12h: slot.end_time_12h,
+                    poi: slot.poi, start_time: slot.start_time, end_time: slot.end_time,
+                    start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
                     travel_from_prev_min: slot.travel_from_prev_min,
                   })),
                 })),
               },
-              // Pass trimmed plan data for API to save
               hotels: (plan.hotels ?? []).slice(0, 5),
               flights: (plan.flights ?? []).slice(0, 5),
             }),
-          });
-          if (!res.ok) {
-            const errBody = await res.text().catch(() => '');
-            console.error('[Trip Create] Failed:', res.status, errBody);
-            throw new Error(`Save failed: ${res.status}`);
-          }
-          const trip = await res.json();
-          // Track in localStorage for anonymous persistence
-          try {
-            const stored = localStorage.getItem('my-trip-ids');
-            const ids: string[] = stored ? JSON.parse(stored) : [];
-            if (!ids.includes(trip.id)) ids.push(trip.id);
-            localStorage.setItem('my-trip-ids', JSON.stringify(ids));
-          } catch {}
-          // Enrich in background
+          }).catch((e) => console.error('[Trip Update] Failed:', e));
+
           fetch('/api/trips/enrich', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tripId: trip.id }),
+            body: JSON.stringify({ tripId }),
           }).catch(() => {});
+
           setTakeoffCompleted(true);
           await new Promise((r) => setTimeout(r, 800));
           setShowTakeoff(false);
           planner.reset();
           isSaving.current = false;
-          router.push(`/trip/${trip.id}`);
+          router.push(`/trip/${tripId}`);
         } catch (saveErr) {
-          console.error('[Trip Create] API route failed, falling back to direct save:', saveErr);
-          // Fallback: save directly to Supabase (bypasses CloudFront)
-          try {
-            const tripId = await savePlanToSupabase(plan as any);
-            // Enrich in background (weather, wiki, cuisine, etc.)
-            fetch('/api/trips/enrich', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tripId }),
-            }).catch(() => {});
-            setTakeoffCompleted(true);
-            await new Promise((r) => setTimeout(r, 800));
-            setShowTakeoff(false);
-            planner.reset();
-            isSaving.current = false;
-            router.push(`/trip/${tripId}`);
-          } catch (fallbackErr) {
-            console.error('[Trip Create] Fallback also failed:', fallbackErr);
-            setLoadingError(fallbackErr instanceof Error ? fallbackErr.message : 'Failed to save trip');
-            setShowTakeoff(false);
-            isSaving.current = false;
-          }
+          console.error('[Trip Create] Failed:', saveErr);
+          setLoadingError(saveErr instanceof Error ? saveErr.message : 'Failed to save trip');
+          setShowTakeoff(false);
+          isSaving.current = false;
         }
       }
     })();
