@@ -137,6 +137,89 @@ export async function proxyToBackend(
   }
 }
 
+// ─── Origin check ───────────────────────────────────────────
+
+const IS_DEV = process.env.NODE_ENV === 'development'
+
+/**
+ * Verify the request comes from our own domain.
+ * Returns null if OK, or a 403 NextResponse if blocked.
+ */
+export function checkOrigin(req: NextRequest): NextResponse | null {
+  if (IS_DEV) return null // Allow in development
+
+  const origin = req.headers.get('origin') || ''
+  const referer = req.headers.get('referer') || ''
+  const host = req.headers.get('host') || ''
+
+  // No origin header = same-origin or server-to-server (OK)
+  if (!origin && !referer) return null
+
+  const source = origin || referer
+  if (host && source.includes(host)) return null
+
+  // Allow known domains
+  const allowed = ['gotravyl.com', 'deeviaje.com', 'amplifyapp.com']
+  if (allowed.some(d => source.includes(d))) return null
+
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+}
+
+// ─── Rate limiting ──────────────────────────────────────────
+
+interface RateLimitEntry { count: number; resetAt: number }
+const rateLimitStore = new Map<string, RateLimitEntry>()
+
+// Clean up expired entries every 5 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, entry] of rateLimitStore) {
+      if (now > entry.resetAt) rateLimitStore.delete(key)
+    }
+  }, 5 * 60 * 1000)
+}
+
+/**
+ * Simple in-memory rate limiter by IP.
+ * Returns null if OK, or a 429 NextResponse if rate limited.
+ * @param req - The incoming request
+ * @param key - Namespace for the limit (e.g., 'flights-search')
+ * @param maxRequests - Max requests per window
+ * @param windowMs - Window duration in milliseconds
+ */
+export function rateLimit(
+  req: NextRequest,
+  key: string,
+  maxRequests: number,
+  windowMs: number,
+): NextResponse | null {
+  if (IS_DEV) return null
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown'
+  const storeKey = `${key}:${ip}`
+  const now = Date.now()
+
+  const entry = rateLimitStore.get(storeKey)
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(storeKey, { count: 1, resetAt: now + windowMs })
+    return null
+  }
+
+  entry.count++
+  if (entry.count > maxRequests) {
+    const retryAfter = Math.ceil((entry.resetAt - now) / 1000)
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    )
+  }
+
+  return null
+}
+
 // ─── Standard error response ─────────────────────────────────
 
 /**

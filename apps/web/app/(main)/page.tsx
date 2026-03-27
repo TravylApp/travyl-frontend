@@ -434,16 +434,13 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — two-step save to stay under CloudFront WAF body limit
-        // Step 1: Create trip with minimal data (~1KB)
-        // Step 2: PATCH full trip_context via update endpoint (server-side, no WAF)
+        // Not logged in — trimmed payload to fit under CloudFront WAF limit (~8KB)
         try {
           const ext = plan.extracted;
           if (!ext?.destination) throw new Error('No destination extracted');
           const dest = ext.destination;
           const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
 
-          // Step 1 — lightweight create
           const createRes = await fetch('/api/trips/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -454,11 +451,44 @@ export default function Home() {
               travelers: ext.travelers.count,
               budget: totalBudget,
               currency: 'USD',
+              trip_context: {
+                lat: dest.lat, lng: dest.lng,
+                hero_image_url: plan.destination_photo_url || null,
+                hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+                quick_facts: {
+                  budget_level: ext.budget_level,
+                  daily_budget: ext.daily_estimate_usd,
+                  interests: ext.interests,
+                  timezone: (plan as any).timezone,
+                },
+                hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                  name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
+                })),
+                flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+                  airline: f.airline, price: f.price,
+                  departure_time: f.departure_time, arrival_time: f.arrival_time,
+                })),
+                itinerary: (plan.itinerary ?? []).map((day: any) => ({
+                  day: day.day, date: day.date,
+                  weather: day.weather ? { high_c: day.weather.high_c, low_c: day.weather.low_c, condition: day.weather.condition } : undefined,
+                  slots: (day.slots ?? []).map((slot: any) => ({
+                    start_time: slot.start_time, end_time: slot.end_time,
+                    poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
+                  })),
+                })),
+                explore_items: (plan.itinerary ?? []).flatMap((day: any) =>
+                  (day.slots ?? []).map((slot: any) => ({
+                    id: slot.poi.id, title: slot.poi.name, category: slot.poi.category,
+                  }))
+                ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
+              },
             }),
           });
           if (!createRes.ok) {
             const errBody = await createRes.text().catch(() => '');
-            console.error('[Trip Create] Step 1 failed:', createRes.status, errBody);
+            console.error('[Trip Create] Failed:', createRes.status, errBody);
             throw new Error(`Create failed: ${createRes.status}`);
           }
           const trip = await createRes.json();
@@ -472,89 +502,7 @@ export default function Home() {
             localStorage.setItem('my-trip-ids', JSON.stringify(ids));
           } catch {}
 
-          // Step 2 — send full context via update (server-side, bypasses WAF)
-          const seenIds = new Set<string>();
-          const uniqueExplore = (plan.itinerary ?? []).flatMap((day: any) =>
-            (day.slots ?? []).map((slot: any) => ({
-              id: slot.poi.id,
-              title: slot.poi.name,
-              description: slot.poi.description || slot.poi.category,
-              category: slot.poi.category,
-              image: slot.poi.photo_url,
-              tags: slot.poi.tags,
-            }))
-          ).filter((e: any) => {
-            if (seenIds.has(e.id)) return false;
-            seenIds.add(e.id);
-            return true;
-          });
-
-          const weatherForecast = (plan.itinerary ?? [])
-            .filter((d: any) => d.weather)
-            .map((d: any) => ({
-              day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
-              date: d.date,
-              high: d.weather.high_c,
-              low: d.weather.low_c,
-              condition: d.weather.condition,
-              icon: d.weather.icon || '☀️',
-            }));
-
-          // Fire update + enrich in parallel — don't block navigation
-          fetch('/api/trips/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              tripId,
-              trip_context: {
-                lat: dest.lat,
-                lng: dest.lng,
-                hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
-                hero_image_url: plan.destination_photo_url,
-                explore_items: uniqueExplore,
-                hotels: (plan.hotels ?? []).map((h: any) => ({
-                  id: `hotel-${h.name.replace(/\s+/g, '-').toLowerCase()}`,
-                  name: h.name, category: 'Hotel', image: h.photo_url,
-                  rating: h.rating, ratingCount: h.review_count,
-                  price: h.price_per_night, totalPrice: h.total_price,
-                  currency: h.currency, stars: h.stars, amenities: h.amenities,
-                  address: h.address, link: h.link, lat: h.lat, lng: h.lng,
-                })),
-                all_hotels: ((plan as any).data?.hotels ?? []).slice(0, 8).map((h: any) => ({
-                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                  name: h.name, image: h.photo_url, rating: h.rating,
-                  price: h.price_per_night, stars: h.stars, address: h.address, link: h.link,
-                })),
-                events: ((plan as any).data?.events ?? []).slice(0, 5).map((e: any) => ({
-                  id: e.id || `event-${e.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                  title: e.name, date: e.date, venue: e.venue, image: e.photo_url,
-                })),
-                foursquare_venues: ((plan as any).data?.pois ?? [])
-                  .filter((p: any) => !seenIds.has(p.id)).slice(0, 10)
-                  .map((p: any) => ({ id: p.id, name: p.name, category: p.category, image: p.photo_url, rating: p.rating })),
-                weather: weatherForecast.length > 0 ? {
-                  forecast: weatherForecast,
-                  current: weatherForecast[0] ? { high: weatherForecast[0].high, low: weatherForecast[0].low, condition: weatherForecast[0].condition } : undefined,
-                } : undefined,
-                quick_facts: {
-                  currency: ext.budget_level ? `${ext.budget_level} (~$${ext.daily_estimate_usd}/day)` : undefined,
-                  timezone: (plan as any).timezone,
-                },
-                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
-                itinerary: (plan.itinerary ?? []).map((day: any) => ({
-                  day: day.day, date: day.date, weather: day.weather,
-                  slots: (day.slots ?? []).map((slot: any) => ({
-                    poi: slot.poi, start_time: slot.start_time, end_time: slot.end_time,
-                    start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
-                    travel_from_prev_min: slot.travel_from_prev_min,
-                  })),
-                })),
-              },
-              hotels: (plan.hotels ?? []).slice(0, 5),
-              flights: (plan.flights ?? []).slice(0, 5),
-            }),
-          }).catch((e) => console.error('[Trip Update] Failed:', e));
-
+          // Enrich in background
           fetch('/api/trips/enrich', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

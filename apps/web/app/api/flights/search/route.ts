@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin, rateLimit } from '@/lib/api-utils'
 
 const DUFFEL_TOKEN = process.env.DUFFEL_API_TOKEN
 
 export async function GET(req: NextRequest) {
+  const blocked = checkOrigin(req) || rateLimit(req, 'flights', 10, 60_000)
+  if (blocked) return blocked
+
   const origin = req.nextUrl.searchParams.get('origin')       // IATA code: JFK
   const destination = req.nextUrl.searchParams.get('destination') // IATA code: BCN
   const date = req.nextUrl.searchParams.get('date')            // YYYY-MM-DD
