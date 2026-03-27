@@ -1,29 +1,33 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
 
-export default function Providers({ children }: { children: React.ReactNode }) {
-  const queryClientRef = useRef(new QueryClient({
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000, // 5 min — cached data served instantly, no background refetch
-        gcTime: 10 * 60 * 1000,   // 10 min — keep unused cache longer
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: false,
-        refetchOnMount: false,     // Don't refetch when component remounts (tab switches)
+        refetchOnMount: false,
         retry: false,
       },
     },
   }));
+
   const initialize = useAuthStore((s) => s.initialize);
 
   // Configure synchronously during render so child component effects see the
   // cookie-based client. useEffect fires after child effects, which is too late.
-  configureSupabase(getSupabaseBrowser());
+  const supabaseClient = getSupabaseBrowser();
+  if (supabaseClient) {
+    configureSupabase(supabaseClient);
+  }
 
   useEffect(() => {
     const unsubscribe = initialize();
@@ -51,10 +55,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClientRef.current}>
+    <QueryClientProvider client={queryClient}>
       <GlobalNavbar />
       {children}
       <SpotlightSearch />
     </QueryClientProvider>
   );
 }
+
+export default Providers;
