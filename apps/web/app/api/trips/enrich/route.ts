@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!tripId) return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
   // Fetch the trip
-  const { data: trip, error: fetchErr } = await supabase
+  const { data: trip, error: fetchErr } = await supabase!
     .from('trips').select('*').eq('id', tripId).single()
 
   if (fetchErr || !trip) {
@@ -304,7 +304,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Update trip
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await supabase!
     .from('trips').update({ trip_context: merged }).eq('id', tripId)
 
   if (updateErr) {

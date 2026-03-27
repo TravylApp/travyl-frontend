@@ -25,13 +25,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       return () => {};
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase!.auth.getSession().then(({ data: { session } }) => {
       set({ session, user: session?.user ?? null, loading: false });
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase!.auth.onAuthStateChange((_event, session) => {
       set({ session, user: session?.user ?? null, loading: false });
     });
 
@@ -40,13 +40,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signIn: async (email, password) => {
     if (!supabase) throw new Error('Supabase is not configured');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
   },
 
   signUp: async (email, password, name?) => {
     if (!supabase) throw new Error('Supabase is not configured');
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabase!.auth.signUp({
       email,
       password,
       options: name ? { data: { display_name: name } } : undefined,
@@ -62,12 +62,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signInWithOAuth: async (provider) => {
     if (!supabase) throw new Error('Supabase is not configured');
-    await supabase.auth.signInWithOAuth({ provider });
+    await supabase!.auth.signInWithOAuth({ provider });
   },
 
   signOut: async () => {
     if (!supabase) throw new Error('Supabase is not configured');
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase!.auth.signOut();
     if (error) throw error;
   },
 }));

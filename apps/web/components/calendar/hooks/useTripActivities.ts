@@ -36,7 +36,7 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
       setError(null)
 
       // Fetch trip
-      const { data: tripData, error: tripError } = await supabase
+      const { data: tripData, error: tripError } = await supabase!
         .from('trips')
         .select('*')
         .eq('id', tripId)
@@ -54,7 +54,7 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
       setTrip(fetchedTrip)
 
       // Fetch activities
-      const { data: activityData, error: activityError } = await supabase
+      const { data: activityData, error: activityError } = await supabase!
         .from('activity')
         .select('*')
         .eq('trip_id', tripId)
@@ -104,7 +104,7 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
   const tripStartDate = trip?.start_date ?? ''
 
   const refetchTrip = useCallback(async () => {
-    const { data, error } = await supabase.from('trips').select('*').eq('id', tripId).single()
+    const { data, error } = await supabase!.from('trips').select('*').eq('id', tripId).single()
     if (!error && data) setTrip(data as Trip)
   }, [tripId])
 

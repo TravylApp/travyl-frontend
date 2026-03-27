@@ -466,14 +466,14 @@ function TravelersSection({
     setSaving(true);
     try {
       // Fetch the current trip_context to merge travelers in without clobbering other fields
-      const { data: current } = await supabase
+      const { data: current } = await supabase!
         .from('trips')
         .select('trip_context')
         .eq('id', tripId)
         .single();
 
       const existingContext = (current?.trip_context as Record<string, unknown>) ?? {};
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabase!
         .from('trips')
         .update({
           travelers: next.adults + next.children + next.infants,

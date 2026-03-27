@@ -64,7 +64,7 @@ export function useCollaboratorPresence(
     if (disabled) return
 
     const tabId = tabIdRef.current
-    const channel = supabase.channel(`presence:trip:${tripId}`, {
+    const channel = supabase!.channel(`presence:trip:${tripId}`, {
       config: { presence: { key: tabId } },
     })
 

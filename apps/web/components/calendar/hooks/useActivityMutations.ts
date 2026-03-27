@@ -14,7 +14,7 @@ async function insertAuditRow(
   newData: unknown,
   userId: string,
 ): Promise<void> {
-  const { error } = await supabase.from('itinerary_edits').insert({
+  const { error } = await supabase!.from('itinerary_edits').insert({
     trip_id: tripId,
     activity_id: activityId,
     edit_type: editType,
@@ -46,7 +46,7 @@ export function useActivityMutations(
       // Immediate Supabase insert
       const row = toActivityRow(activity, tripId, userId, tripStartDate)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await supabase.from('activity').insert(row as any)
+      const { error } = await supabase!.from('activity').insert(row as any)
       if (error) {
         console.error('[useActivityMutations] insert error:', error.message)
         throw error
@@ -121,7 +121,7 @@ export function useActivityMutations(
       const snapshot = yMap ? yMapToCalendarActivity(id, yMap) : null
 
       // Immediate Supabase delete
-      const { error } = await supabase
+      const { error } = await supabase!
         .from('activity')
         .delete()
         .eq('id', id)

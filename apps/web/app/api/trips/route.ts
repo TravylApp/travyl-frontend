@@ -24,11 +24,11 @@ export async function GET(req: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase!.auth.getUser()
 
   if (user) {
     // Logged in: RLS returns only their trips
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('trips')
       .select('*')
       .order('created_at', { ascending: false })

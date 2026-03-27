@@ -50,7 +50,7 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
     try {
       if (!API_URL) throw new Error('Invite service not configured (missing NEXT_PUBLIC_RECOMMENDATION_API_URL)')
 
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase!.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
       const res = await fetch(`${API_URL}/invite`, {

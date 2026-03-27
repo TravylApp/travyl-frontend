@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
 export async function fetchTrips(): Promise<Trip[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trips')
     .select('*')
     .order('created_at', { ascending: false });
@@ -11,7 +11,7 @@ export async function fetchTrips(): Promise<Trip[]> {
 }
 
 export async function fetchSavedItems(): Promise<SavedItem[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('saved_items')
     .select('*')
     .order('created_at', { ascending: false });
@@ -21,7 +21,7 @@ export async function fetchSavedItems(): Promise<SavedItem[]> {
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -35,7 +35,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('mosaic_tiles')
       .select('*')
       .order('sort_order', { ascending: true });
@@ -46,7 +46,7 @@ export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
 
 export async function fetchInspirationCards(): Promise<InspirationCard[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('inspiration_cards')
       .select('*')
       .order('sort_order', { ascending: true });
@@ -57,7 +57,7 @@ export async function fetchInspirationCards(): Promise<InspirationCard[]> {
 
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('explore_rows')
       .select('*, items:explore_items(*)');
     if (error) return [];
@@ -67,7 +67,7 @@ export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
 
 export async function fetchHeroConfig(): Promise<HeroConfig | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('hero_config')
       .select('*, suggestions:hero_suggestions(*)');
     if (error) return null;
@@ -78,7 +78,7 @@ export async function fetchHeroConfig(): Promise<HeroConfig | null> {
 // ─── Itinerary Data ─────────────────────────────────────────
 
 export async function fetchTripById(tripId: string): Promise<Trip> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trips').select('*').eq('id', tripId).single();
   if (error) throw error;
   // If schema uses owner_id + JSONB data column, remap; otherwise return as-is
@@ -93,7 +93,7 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
 // Pages already fall back to trip_context when these return empty.
 // TODO: Create these tables when we need per-item CRUD (booking, reordering).
 export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWithActivities[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('itinerary_days').select('*, activities(*)')
     .eq('trip_id', tripId).order('day_number', { ascending: true });
   if (error) return []; // Table doesn't exist yet — fall back to trip_context
@@ -106,7 +106,7 @@ export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWi
 }
 
 export async function fetchFlights(tripId: string): Promise<Flight[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('flights').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
   if (error) return []; // Table doesn't exist yet — fall back to trip_context
@@ -114,7 +114,7 @@ export async function fetchFlights(tripId: string): Promise<Flight[]> {
 }
 
 export async function fetchHotels(tripId: string): Promise<Hotel[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('hotels').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
   if (error) return []; // Table doesn't exist yet — fall back to trip_context
@@ -122,7 +122,7 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
 }
 
 export async function fetchActivities(tripId: string): Promise<Activity[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('activities')
     .select('*')
     .eq('trip_id', tripId)
@@ -139,7 +139,7 @@ export async function fetchActivities(tripId: string): Promise<Activity[]> {
  */
 export async function forkTrip(tripId: string): Promise<Trip> {
   // 1. Fetch the original trip
-  const { data: originalTrip, error: tripError } = await supabase
+  const { data: originalTrip, error: tripError } = await supabase!
     .from('trips')
     .select('*')
     .eq('id', tripId)
@@ -149,7 +149,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   if (!originalTrip) throw new Error('Trip not found');
 
   // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase!.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   // 2. Create new trip with fork attribution
@@ -164,7 +164,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
     share_link_token: null,
   };
 
-  const { data: newTrip, error: createError } = await supabase
+  const { data: newTrip, error: createError } = await supabase!
     .from('trips')
     .insert(newTripData)
     .select()
@@ -174,7 +174,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   if (!newTrip) throw new Error('Failed to create forked trip');
 
   // 3. Fetch and copy itinerary days
-  const { data: itineraryDays, error: daysError } = await supabase
+  const { data: itineraryDays, error: daysError } = await supabase!
     .from('itinerary_days')
     .select('*')
     .eq('trip_id', tripId);
@@ -187,7 +187,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
       const { id: dayId, trip_id, created_at, ...dayData } = day;
       const newDayData = { ...dayData, trip_id: newTrip.id };
 
-      const { data: newDay, error: dayInsertError } = await supabase
+      const { data: newDay, error: dayInsertError } = await supabase!
         .from('itinerary_days')
         .insert(newDayData)
         .select()
@@ -197,7 +197,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
 
       // Copy activities for this day
       if (newDay) {
-        const { data: activities, error: activitiesError } = await supabase
+        const { data: activities, error: activitiesError } = await supabase!
           .from('activities')
           .select('*')
           .eq('itinerary_day_id', dayId);
@@ -214,7 +214,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
             };
           });
 
-          const { error: activityInsertError } = await supabase
+          const { error: activityInsertError } = await supabase!
             .from('activities')
             .insert(newActivities);
 
@@ -225,7 +225,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   }
 
   // 5. Copy flights
-  const { data: flights, error: flightsError } = await supabase
+  const { data: flights, error: flightsError } = await supabase!
     .from('flights')
     .select('*')
     .eq('trip_id', tripId);
@@ -238,7 +238,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
       return { ...flightData, trip_id: newTrip.id };
     });
 
-    const { error: flightInsertError } = await supabase
+    const { error: flightInsertError } = await supabase!
       .from('flights')
       .insert(newFlights);
 
@@ -246,7 +246,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   }
 
   // 6. Copy hotels
-  const { data: hotels, error: hotelsError } = await supabase
+  const { data: hotels, error: hotelsError } = await supabase!
     .from('hotels')
     .select('*')
     .eq('trip_id', tripId);
@@ -259,7 +259,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
       return { ...hotelData, trip_id: newTrip.id };
     });
 
-    const { error: hotelInsertError } = await supabase
+    const { error: hotelInsertError } = await supabase!
       .from('hotels')
       .insert(newHotels);
 
@@ -267,7 +267,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   }
 
   // 7. Increment fork count on original trip
-  const { error: updateError } = await supabase
+  const { error: updateError } = await supabase!
     .from('trips')
     .update({ fork_count: (originalTrip.fork_count || 0) + 1 })
     .eq('id', tripId);
@@ -283,7 +283,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
  * Fetch all public trips (for explore page)
  */
 export async function fetchPublicTrips(): Promise<Trip[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trips')
     .select('*, profiles!trips_user_id_fkey(display_name, avatar_url)')
     .or('is_public.eq.true,is_shared.eq.true')
@@ -296,7 +296,7 @@ export async function fetchPublicTrips(): Promise<Trip[]> {
  * Fetch a user's public trips (for public profile page)
  */
 export async function fetchUserPublicTrips(userId: string): Promise<Trip[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trips')
     .select('*')
     .eq('user_id', userId)
@@ -310,7 +310,7 @@ export async function fetchUserPublicTrips(userId: string): Promise<Trip[]> {
  * Fetch a trip by share token (for shared trip access)
  */
 export async function fetchTripByShareToken(token: string): Promise<Trip | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trips')
     .select('*')
     .eq('share_link_token', token)
@@ -323,23 +323,23 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
 export async function updateTripVisibility(tripId: string, visibility: Visibility, linkPermission?: LinkPermission): Promise<void> {
   const updates: Record<string, unknown> = { visibility }
   if (linkPermission !== undefined) { updates.link_permission = linkPermission }
-  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  const { error } = await supabase!.from('trips').update(updates).eq('id', tripId)
   if (error) throw error
 }
 
 export async function ensureShareLinkToken(tripId: string): Promise<string> {
-  const { data: trip, error: fetchError } = await supabase.from('trips').select('share_link_token').eq('id', tripId).single()
+  const { data: trip, error: fetchError } = await supabase!.from('trips').select('share_link_token').eq('id', tripId).single()
   if (fetchError) throw fetchError
   if (trip.share_link_token) return trip.share_link_token
   const token = crypto.randomUUID()
-  const { error: updateError } = await supabase.from('trips').update({ share_link_token: token }).eq('id', tripId)
+  const { error: updateError } = await supabase!.from('trips').update({ share_link_token: token }).eq('id', tripId)
   if (updateError) throw updateError
   return token
 }
 
 export async function rotateShareLinkToken(tripId: string): Promise<string> {
   const newToken = crypto.randomUUID()
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('trips')
     .update({ share_link_token: newToken })
     .eq('id', tripId)
@@ -351,17 +351,17 @@ export async function updateTripDetails(
   tripId: string,
   updates: Partial<Pick<Trip, 'title' | 'destination' | 'start_date' | 'end_date' | 'budget' | 'currency' | 'travelers' | 'status'>>
 ): Promise<void> {
-  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  const { error } = await supabase!.from('trips').update(updates).eq('id', tripId)
   if (error) throw error
 }
 
 export async function deleteTrip(tripId: string): Promise<void> {
-  const { error } = await supabase.from('trips').delete().eq('id', tripId)
+  const { error } = await supabase!.from('trips').delete().eq('id', tripId)
   if (error) throw error
 }
 
 export async function leaveTrip(tripId: string, userId: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('trip_collaborators')
     .delete()
     .eq('trip_id', tripId)
@@ -372,7 +372,7 @@ export async function leaveTrip(tripId: string, userId: string): Promise<void> {
 // ─── Mutations ─────────────────────────────────────────────
 
 export async function addToItinerary(tripId: string, itemId: string, dayNumber: number, timeSlot?: string) {
-  const { error } = await supabase.from('itinerary_items').insert({
+  const { error } = await supabase!.from('itinerary_items').insert({
     trip_id: tripId,
     item_id: itemId,
     day_number: dayNumber,
@@ -382,7 +382,7 @@ export async function addToItinerary(tripId: string, itemId: string, dayNumber: 
 }
 
 export async function removeFromItinerary(tripId: string, itemId: string) {
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('itinerary_items')
     .delete()
     .eq('trip_id', tripId)
@@ -392,14 +392,14 @@ export async function removeFromItinerary(tripId: string, itemId: string) {
 
 export async function toggleFavorite(tripId: string, itemId: string, isFavorited: boolean) {
   if (isFavorited) {
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('favorites')
       .delete()
       .eq('trip_id', tripId)
       .eq('item_id', itemId);
     if (error) throw error;
   } else {
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('favorites')
       .insert({ trip_id: tripId, item_id: itemId });
     if (error) throw error;
@@ -407,7 +407,7 @@ export async function toggleFavorite(tripId: string, itemId: string, isFavorited
 }
 
 export async function updateBudgetExpense(expenseId: string, updates: { amount?: number; note?: string }) {
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('budget_expenses')
     .update(updates)
     .eq('id', expenseId);
@@ -415,7 +415,7 @@ export async function updateBudgetExpense(expenseId: string, updates: { amount?:
 }
 
 export async function addBudgetExpense(tripId: string, category: string, amount: number, note: string) {
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('budget_expenses')
     .insert({ trip_id: tripId, category, amount, note });
   if (error) throw error;
@@ -431,47 +431,47 @@ export async function updateTripThemeSettings(
     hidden_tabs?: Record<string, boolean>
   }
 ): Promise<void> {
-  const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
+  const { error } = await supabase!.from('trips').update(updates).eq('id', tripId)
   if (error) throw error
 }
 
 // ── Collaborators ──────────────────────────────────────
 
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
-  const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
+  const { data, error } = await supabase!.from('trip_collaborators').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
   if (error) throw error
   return data ?? []
 }
 
 export async function updateCollaboratorRole(collaboratorId: string, role: CollaboratorRole): Promise<void> {
-  const { error } = await supabase.from('trip_collaborators').update({ role_type: role }).eq('id', collaboratorId)
+  const { error } = await supabase!.from('trip_collaborators').update({ role_type: role }).eq('id', collaboratorId)
   if (error) throw error
 }
 
 export async function removeCollaborator(collaboratorId: string): Promise<void> {
-  const { error } = await supabase.from('trip_collaborators').delete().eq('id', collaboratorId)
+  const { error } = await supabase!.from('trip_collaborators').delete().eq('id', collaboratorId)
   if (error) throw error
 }
 
 export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId: string }> {
-  const { data, error } = await supabase.rpc('accept_invite_by_token', { p_token: inviteToken })
+  const { data, error } = await supabase!.rpc('accept_invite_by_token', { p_token: inviteToken })
   if (error) throw error
   return { tripId: (data as { trip_id: string }).trip_id }
 }
 
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
-  const { error } = await supabase.from('trip_collaborators').insert({ trip_id: tripId, user_id: userId, role_type: role, invite_status: 'accepted', invited_by: userId, accepted_at: new Date().toISOString() })
+  const { error } = await supabase!.from('trip_collaborators').insert({ trip_id: tripId, user_id: userId, role_type: role, invite_status: 'accepted', invited_by: userId, accepted_at: new Date().toISOString() })
   if (error) throw error
 }
 
 export async function findPendingInviteByEmail(tripId: string, email: string): Promise<TripCollaborator | null> {
-  const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('invited_email', email.toLowerCase()).eq('invite_status', 'pending').maybeSingle()
+  const { data, error } = await supabase!.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('invited_email', email.toLowerCase()).eq('invite_status', 'pending').maybeSingle()
   if (error) throw error
   return data
 }
 
 export async function inviteCollaborator(tripId: string, email: string, role: CollaboratorRole): Promise<TripCollaborator> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase!.auth.getUser()
   if (!user) throw new Error('User not authenticated')
 
   // Skip if there's already a pending invite for this email
@@ -479,7 +479,7 @@ export async function inviteCollaborator(tripId: string, email: string, role: Co
   if (existing) return existing
 
   const inviteToken = crypto.randomUUID()
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trip_collaborators')
     .insert({
       trip_id: tripId,
@@ -543,7 +543,7 @@ export async function savePlanToSupabase(
   plan: PlanToSave,
   onProgress?: (stage: string, pct: number) => void
 ): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase!.auth.getUser()
 
   const ext = plan.extracted
   const dest = ext.destination
@@ -630,7 +630,7 @@ export async function savePlanToSupabase(
     },
   }
 
-  const { data: trip, error: tripErr } = await supabase
+  const { data: trip, error: tripErr } = await supabase!
     .from('trips')
     .insert(tripInsert)
     .select('id')
@@ -650,7 +650,7 @@ export async function savePlanToSupabase(
     const pct = 30 + Math.round((d / plan.itinerary.length) * 40)
     onProgress?.(`Day ${day.day}...`, pct)
 
-    const { data: dayRow, error: dayErr } = await supabase
+    const { data: dayRow, error: dayErr } = await supabase!
       .from('itinerary_days')
       .insert({ trip_id: tripId, day_number: day.day, date: day.date })
       .select('id')
@@ -700,7 +700,7 @@ export async function savePlanToSupabase(
         }
       })
 
-      const { error: actErr } = await supabase.from('activities').insert(activities)
+      const { error: actErr } = await supabase!.from('activities').insert(activities)
       if (actErr) console.error('Failed to save activities for day', day.day, actErr)
     }
   }
@@ -734,7 +734,7 @@ export async function savePlanToSupabase(
         },
       }
     })
-    const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
+    const { error: hotelErr } = await supabase!.from('hotels').insert(hotelRows)
     if (hotelErr) console.error('Failed to save hotels:', hotelErr)
   }
 
@@ -783,7 +783,7 @@ export async function savePlanToSupabase(
         offer_id: null,
       },
     }))
-    const { error: flightErr } = await supabase.from('flights').insert(flightRows)
+    const { error: flightErr } = await supabase!.from('flights').insert(flightRows)
     if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 

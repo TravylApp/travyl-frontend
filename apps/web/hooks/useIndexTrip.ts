@@ -20,7 +20,7 @@ export function useIndexTrip() {
         timers.current.delete(tripId)
 
         // Fire and forget
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase!.auth.getSession().then(({ data: { session } }) => {
           const token = session?.access_token
           if (!token) return
 

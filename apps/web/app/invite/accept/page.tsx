@@ -22,7 +22,7 @@ function AcceptInviteInner() {
 
     async function accept() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session } } = await supabase!.auth.getSession()
 
         if (!session) {
           const next = `/invite/accept?token=${token}`

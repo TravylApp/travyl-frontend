@@ -56,7 +56,7 @@ async function fetchTripsWithAnonymous(): Promise<Trip[]> {
   // Mobile/fallback: fetch specific trip IDs directly from Supabase
   if (anonIds.length > 0) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('trips')
         .select('*')
         .in('id', anonIds)

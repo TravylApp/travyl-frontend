@@ -56,9 +56,9 @@ interface SettingsState {
 }
 
 function persistPreferences(prefs: Record<string, unknown>) {
-  supabase.auth.getUser().then(({ data }) => {
+  supabase!.auth.getUser().then(({ data }) => {
     if (!data.user) return;
-    supabase
+    supabase!
       .from('profiles')
       .update({ preferences: prefs })
       .eq('id', data.user.id)

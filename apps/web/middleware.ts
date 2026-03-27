@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
     )
 
     // Refresh session tokens
-    await supabase.auth.getSession()
+    await supabase!.auth.getSession()
   } catch {
     // Supabase auth error — continue without session
   }

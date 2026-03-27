@@ -77,7 +77,7 @@ export function HistoryDrawer({
     }
 
     // Log the revert itself
-    await supabase.from('itinerary_edits').insert({
+    await supabase!.from('itinerary_edits').insert({
       trip_id: tripId,
       activity_id: activityId,
       edit_type: 'revert',

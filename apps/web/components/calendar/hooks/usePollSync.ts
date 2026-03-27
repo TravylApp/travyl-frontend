@@ -44,7 +44,7 @@ export function usePollSync(tripId: string) {
       if (rows.length > 0) {
         // Use individual upserts since the unique index is partial (WHERE status = 'active')
         for (const row of rows) {
-          const { error } = await supabase
+          const { error } = await supabase!
             .from('activity_polls')
             .upsert(row, { onConflict: 'id' })
           if (error) console.error('[usePollSync] upsert error:', error.message)
@@ -54,7 +54,7 @@ export function usePollSync(tripId: string) {
 
     // Delete removed polls
     if (toDelete.length > 0) {
-      const { error } = await supabase
+      const { error } = await supabase!
         .from('activity_polls')
         .delete()
         .eq('trip_id', tripId)
@@ -107,7 +107,7 @@ export function usePollSync(tripId: string) {
     const handleVisibility = async () => {
       if (document.visibilityState !== 'visible') return
 
-      const { data: serverPolls } = await supabase
+      const { data: serverPolls } = await supabase!
         .from('activity_polls')
         .select('*')
         .eq('trip_id', tripId)

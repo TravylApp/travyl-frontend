@@ -23,7 +23,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
 
   useEffect(() => {
     if (!tripId || !userId) return
-    const channel = supabase
+    const channel = supabase!
       .channel(`packing-${tripId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_items', filter: `trip_id=eq.${tripId}` }, (payload) => {
         const record = (payload.new ?? payload.old) as any
@@ -32,7 +32,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
         queryClient.invalidateQueries({ queryKey: ['packingAuditLog', tripId] })
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => { supabase!.removeChannel(channel) }
   }, [tripId, userId, queryClient])
 
   const items = itemsQuery.data ?? []

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const { tripId } = await req.json()
   if (!tripId) return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
-  const { error } = await supabase.rpc('delete_trip_cascade', { p_trip_id: tripId })
+  const { error } = await supabase!.rpc('delete_trip_cascade', { p_trip_id: tripId })
 
   if (error) {
     return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })

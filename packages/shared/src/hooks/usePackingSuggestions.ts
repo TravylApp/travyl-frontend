@@ -39,7 +39,7 @@ export function usePackingSuggestions(
         console.warn('[usePackingSuggestions] NEXT_PUBLIC_RECOMMENDATION_API_URL not set')
         return
       }
-      const session = await supabase.auth.getSession()
+      const session = await supabase!.auth.getSession()
       const token = session.data.session?.access_token
       if (!token) return
 

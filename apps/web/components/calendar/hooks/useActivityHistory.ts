@@ -14,7 +14,7 @@ export interface AuditEntry {
 }
 
 async function fetchHistory(tripId: string): Promise<AuditEntry[]> {
-  const { data: edits, error } = await supabase
+  const { data: edits, error } = await supabase!
     .from('itinerary_edits')
     .select('*')
     .eq('trip_id', tripId)
@@ -24,7 +24,7 @@ async function fetchHistory(tripId: string): Promise<AuditEntry[]> {
   if (error || !edits) return []
 
   const userIds = [...new Set(edits.map((e) => e.user_id).filter(Boolean))]
-  const { data: profiles } = await supabase
+  const { data: profiles } = await supabase!
     .from('profiles')
     .select('id, display_name')
     .in('id', userIds)

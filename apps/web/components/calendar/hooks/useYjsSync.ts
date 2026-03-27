@@ -79,7 +79,7 @@ export function useYjsSync(
 
     if (rows.length === 0) return
 
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await supabase!
       .from('activity')
       .upsert(rows as any)
 
@@ -116,7 +116,7 @@ export function useYjsSync(
         .filter(Boolean)
 
       if (auditRows.length > 0) {
-        supabase.from('itinerary_edits').insert(auditRows).then(({ error }) => {
+        supabase!.from('itinerary_edits').insert(auditRows).then(({ error }) => {
           if (error) console.warn('[useYjsSync] audit insert error:', error.message)
         })
       }
@@ -207,7 +207,7 @@ export function useYjsSync(
   // Uses application-level activity.id (UUID) to update our local Yjs map,
   // bypassing the Y.Map internal-ID incompatibility that breaks Yjs delta sync.
   useEffect(() => {
-    const channel = supabase
+    const channel = supabase!
       .channel(`activity-pg:${tripId}`)
       .on(
         'postgres_changes',
@@ -251,7 +251,7 @@ export function useYjsSync(
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') return
 
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await supabase!
         .from('activity')
         .select('*')
         .eq('trip_id', tripIdRef.current)

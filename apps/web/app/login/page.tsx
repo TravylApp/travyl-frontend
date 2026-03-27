@@ -57,7 +57,7 @@ function LoginPageInner() {
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook' | 'azure' | 'apple') => {
     setError('');
-    const { error } = await supabase.auth.signInWithOAuth({ provider });
+    const { error } = await supabase!.auth.signInWithOAuth({ provider });
     if (error) setError(error.message);
   };
 

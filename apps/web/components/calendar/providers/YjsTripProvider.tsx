@@ -53,7 +53,7 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
   }, [])
 
   useEffect(() => {
-    const provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase, {
+    const provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase!, {
       awareness: true,
       persistence: {
         table: 'yjs_documents',

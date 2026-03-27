@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing destination' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('trips')
     .insert({
       title: title || `${destination.split(',')[0]} Trip`,
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
             hero_image_url: heroUrl,
             hero_images: allUrls.length > 0 ? allUrls : [heroUrl],
           }
-          await supabase.from('trips').update({ trip_context: updatedContext }).eq('id', tripId)
+          await supabase!.from('trips').update({ trip_context: updatedContext }).eq('id', tripId)
           data.trip_context = updatedContext
         }
       }
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         booking_url: h.booking_url || h.link || null,
       },
     }))
-    const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
+    const { error: hotelErr } = await supabase!.from('hotels').insert(hotelRows)
     if (hotelErr) console.error('Failed to save hotels:', hotelErr.message, hotelErr.code, hotelErr.details)
   }
 
@@ -132,14 +132,14 @@ export async function POST(req: NextRequest) {
         offer_id: null,
       },
     }))
-    const { error: flightErr } = await supabase.from('flights').insert(flightRows)
+    const { error: flightErr } = await supabase!.from('flights').insert(flightRows)
     if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 
   // Save itinerary days + activities (best effort)
   if (itinerary?.length) {
     for (const day of itinerary) {
-      const { data: dayRow, error: dayErr } = await supabase
+      const { data: dayRow, error: dayErr } = await supabase!
         .from('itinerary_days')
         .insert({ trip_id: tripId, day_number: day.day, date: day.date })
         .select('id')
@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
             },
           }
         })
-        const { error: actErr } = await supabase.from('activities').insert(activities)
+        const { error: actErr } = await supabase!.from('activities').insert(activities)
         if (actErr) console.error('Failed to save activities for day', day.day, actErr)
       }
     }

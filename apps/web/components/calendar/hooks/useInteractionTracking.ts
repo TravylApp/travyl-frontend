@@ -20,7 +20,7 @@ export function useInteractionTracking(tripId: string) {
       }
 
       // Fire and forget — no await, no error handling
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase!.auth.getSession().then(({ data: { session } }) => {
         const token = session?.access_token
         if (!token) return
 

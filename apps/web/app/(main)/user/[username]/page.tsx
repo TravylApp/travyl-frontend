@@ -12,7 +12,7 @@ const BRAND = '#1e3a5f';
 
 // Fetch user profile by username (display_name)
 async function fetchUserProfileByUsername(username: string): Promise<Profile | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('profiles')
     .select('*')
     .ilike('display_name', username)

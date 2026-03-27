@@ -32,7 +32,7 @@ export async function fetchActivityIntelligence(
   activityId: string,
   tripId: string,
 ): Promise<ActivityIntelligence> {
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session } } = await supabase!.auth.getSession()
   const token = session?.access_token
   if (!token) throw new Error('Not authenticated')
 

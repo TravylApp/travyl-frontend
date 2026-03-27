@@ -178,7 +178,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
 
     setSubmitting(true)
     try {
-      const { data, error: insertError } = await supabase
+      const { data, error: insertError } = await supabase!
         .from('trips')
         .insert({
           title: title.trim(),
@@ -203,7 +203,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         const imgRes = await fetch(`/api/destination-image?destination=${encodeURIComponent(shortDest)}`)
         const { url } = await imgRes.json() as { url: string | null }
         if (url) {
-          await supabase
+          await supabase!
             .from('trips')
             .update({ cover_image_url: url })
             .eq('id', data.id)

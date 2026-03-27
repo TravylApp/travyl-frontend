@@ -143,12 +143,12 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
     async function init() {
       try {
         // Resolve session (anonymous sign-in for unauthenticated visitors)
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session } } = await supabase!.auth.getSession()
         if (!session) {
-          const { error: anonError } = await supabase.auth.signInAnonymously()
+          const { error: anonError } = await supabase!.auth.signInAnonymously()
           if (anonError) throw anonError
         }
-        const { data: { session: resolvedSession } } = await supabase.auth.getSession()
+        const { data: { session: resolvedSession } } = await supabase!.auth.getSession()
         const user = resolvedSession?.user ?? null
         setResolvedUser(user)
 
