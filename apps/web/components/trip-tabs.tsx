@@ -14,7 +14,7 @@ import { useTripTheme } from "@/components/trip/TripThemeContext";
 
 // ─── Tab Configuration ──────────────────────────────────────
 
-interface TabDef {
+export interface TabDef {
   segment: string;
   label: string;
   subtitle: string;
