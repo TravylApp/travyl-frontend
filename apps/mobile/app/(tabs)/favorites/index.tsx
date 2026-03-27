@@ -40,6 +40,32 @@ const KNOWN_CITIES: Record<string, { lat: string; lng: string }> = {
   'cancun': { lat: '21.1619', lng: '-86.8515' }, 'berlin': { lat: '52.5200', lng: '13.4050' },
 };
 
+// Upscale Google Places thumbnails to usable resolution
+function upscaleImage(url: string | null | undefined): string {
+  if (!url) return '';
+  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no');
+}
+
+// Map backend response to PlaceItem format
+function mapBackendToPlaceItem(p: any): PlaceItem {
+  const cat = (p.category || '').toLowerCase();
+  return {
+    id: p.id,
+    name: p.name,
+    image: upscaleImage(p.photo_url),
+    type: /restaurant|cafe|bar|dining/.test(cat) ? 'restaurant' : /park|garden|beach/.test(cat) ? 'experience' : 'attraction',
+    rating: p.rating || 0,
+    tagline: p.description?.split('.')[0] || p.category || '',
+    category: p.category || '',
+    description: p.description || '',
+    tags: p.tags || [p.category].filter(Boolean),
+    latitude: p.lat,
+    longitude: p.lng,
+    address: p.address,
+    reviewCount: p.review_count,
+  };
+}
+
 async function resolveCoords(query: string): Promise<{ lat: string; lng: string } | null> {
   const known = KNOWN_CITIES[query.toLowerCase()];
   if (known) return known;
@@ -88,7 +114,8 @@ async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
   const results = await Promise.all(
     cities.map(city =>
       fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => data.map(mapBackendToPlaceItem))
         .catch(() => [])
     )
   );
@@ -106,7 +133,8 @@ async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
     const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
     fetches.push(
       fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => data.map(mapBackendToPlaceItem))
         .catch(() => [])
     );
   });
@@ -373,7 +401,8 @@ export default function FavoritesScreen() {
       const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'nightlife'];
       const fetches: Promise<PlaceItem[]>[] = cats.map(cat =>
         fetch(`${WEB_API}/api/places/nearby?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=8`)
-          .then(r => r.ok ? r.json() as Promise<PlaceItem[]> : [])
+          .then(r => r.ok ? r.json() : [])
+          .then((data: any[]) => data.map(mapBackendToPlaceItem))
           .catch(() => [])
       );
       const results = await Promise.all(fetches);
