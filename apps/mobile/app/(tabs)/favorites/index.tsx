@@ -111,15 +111,28 @@ async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
   const cities = shuffled.slice(0, 2);
   const cat = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
 
+  const url = `${WEB_API}/api/places/nearby?lat=${cities[0].lat}&lng=${cities[0].lng}&category=${cat}&limit=12`;
+  console.log('[Places] Fetching:', url);
+
   const results = await Promise.all(
     cities.map(city =>
       fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => data.map(mapBackendToPlaceItem))
-        .catch(() => [])
+        .then(r => {
+          console.log('[Places] Response status:', r.status);
+          return r.ok ? r.json() : [];
+        })
+        .then((data: any[]) => {
+          console.log('[Places] Raw items:', data.length, 'first photo:', data[0]?.photo_url?.substring(0, 50));
+          const mapped = Array.isArray(data) ? data.map(mapBackendToPlaceItem) : [];
+          console.log('[Places] Mapped items:', mapped.length, 'first image:', mapped[0]?.image?.substring(0, 50));
+          return mapped;
+        })
+        .catch((err) => { console.log('[Places] Fetch error:', err); return []; })
     )
   );
-  return dedup(results.flat());
+  const deduped = dedup(results.flat());
+  console.log('[Places] Final deduped:', deduped.length);
+  return deduped;
 }
 
 // Slower second batch: more cities + categories + foursquare
