@@ -38,6 +38,8 @@ export interface ActivityViewModel {
   endTime: string | null;
   timeDisplay: string | null;
   costDisplay: string | null;
+  cost: number | null;          // raw estimated_cost
+  costCurrency: string | null;  // raw activity.currency
   bookingUrl: string | null;
   notes: string | null;
   image: string | null;
@@ -63,6 +65,8 @@ function buildActivityViewModel(activity: Activity): ActivityViewModel {
     costDisplay: activity.estimated_cost != null
       ? formatCurrency(activity.estimated_cost, activity.currency)
       : null,
+    cost: activity.estimated_cost ?? null,
+    costCurrency: activity.estimated_cost != null ? activity.currency : null,
     bookingUrl: activity.booking_url,
     notes: activity.notes,
     image: upscaleGoogleImage((activity as any).image) ?? null,
@@ -132,6 +136,8 @@ export interface FlightViewModel {
   departureDisplay: string | null;
   arrivalDisplay: string | null;
   priceDisplay: string | null;
+  price: number | null;          // raw price
+  priceCurrency: string | null;  // raw currency
   cabinClass: string | null;
   bookingRef: string | null;
 }
@@ -162,6 +168,8 @@ export function buildFlightViewModel(flight: Flight): FlightViewModel {
     departureDisplay: formatDatetime(d.departure_at),
     arrivalDisplay: formatDatetime(d.arrival_at),
     priceDisplay: d.price != null && d.currency ? formatCurrency(d.price, d.currency) : null,
+    price: d.price ?? null,
+    priceCurrency: d.price != null ? d.currency ?? null : null,
     cabinClass: d.cabin_class,
     bookingRef: d.booking_ref,
   };
@@ -180,6 +188,8 @@ export interface HotelViewModel {
   nights: number;
   nightsLabel: string;
   priceDisplay: string | null;
+  price: number | null;          // matches priceDisplay: total_price if available, otherwise price_per_night
+  priceCurrency: string | null;  // raw currency
   rating: number | null;
   starRating: number | null;
   imageUrl: string | null;
@@ -216,6 +226,8 @@ export function buildHotelViewModel(hotel: Hotel): HotelViewModel {
     nights,
     nightsLabel: nights === 1 ? '1 night' : `${nights} nights`,
     priceDisplay,
+    price: d.total_price ?? (d.price_per_night != null ? d.price_per_night : null),
+    priceCurrency: (d.total_price != null || d.price_per_night != null) ? d.currency ?? null : null,
     rating: d.rating,
     starRating: d.star_rating,
     imageUrl: d.image_url,
