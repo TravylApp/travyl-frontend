@@ -4,11 +4,11 @@ import { supabase } from '../services/supabase';
 
 // ─── Types ────────────────────────────────────────────────────
 
-export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD' | 'MXN';
+export type Currency = string;
 export type DistanceUnits = 'miles' | 'kilometers';
 export type TravelStyle = 'balanced' | 'budget' | 'luxury' | 'adventure' | 'relaxed';
 
-const VALID_CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'MXN'];
+const ISO_4217_PATTERN = /^[A-Z]{3}$/;
 const VALID_DISTANCE_UNITS: DistanceUnits[] = ['miles', 'kilometers'];
 const VALID_TRAVEL_STYLES: TravelStyle[] = ['balanced', 'budget', 'luxury', 'adventure', 'relaxed'];
 
@@ -23,7 +23,7 @@ const DEFAULTS = {
 // ─── Validation helpers ───────────────────────────────────────
 
 function validCurrency(v: unknown): Currency {
-  return VALID_CURRENCIES.includes(v as Currency) ? (v as Currency) : DEFAULTS.currency;
+  return typeof v === 'string' && ISO_4217_PATTERN.test(v) ? v : DEFAULTS.currency;
 }
 
 function validDistanceUnits(v: unknown): DistanceUnits {
@@ -47,7 +47,7 @@ interface SettingsState {
   pushNotifications: boolean;
   emailNotifications: boolean;
 
-  setCurrency: (v: Currency) => void;
+  setCurrency: (v: string) => void;
   setDistanceUnits: (v: DistanceUnits) => void;
   setTravelStyle: (v: TravelStyle) => void;
   togglePushNotifications: () => void;
@@ -82,8 +82,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULTS,
 
   setCurrency: (v) => {
-    set({ currency: v });
-    persistPreferences({ ...getPrefsSnapshot(get()), currency: v });
+    const validated = ISO_4217_PATTERN.test(v) ? v : DEFAULTS.currency;
+    set({ currency: validated });
+    persistPreferences({ ...getPrefsSnapshot(get()), currency: validated });
   },
 
   setDistanceUnits: (v) => {
