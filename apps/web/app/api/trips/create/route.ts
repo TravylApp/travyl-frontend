@@ -23,36 +23,45 @@ const CITY_AIRPORTS: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase()
-  const body = await req.json()
-  const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) {
+      console.error('[Trip Create] Missing env vars:', { url: !!url, key: !!key })
+      return NextResponse.json({ error: `Missing env: url=${!!url} key=${!!key}` }, { status: 500 })
+    }
 
-  if (!destination) {
-    return NextResponse.json({ error: 'Missing destination' }, { status: 400 })
-  }
+    const supabase = getSupabase()
+    const body = await req.json()
+    const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
 
-  const { data, error } = await supabase
-    .from('trips')
-    .insert({
-      title: title || `${destination.split(',')[0]} Trip`,
-      destination,
-      start_date,
-      end_date,
-      status: status || 'planning',
-      user_id: user_id || null,
-      travelers: travelers || 1,
-      budget: budget || null,
-      currency: currency || 'USD',
-      trip_context: trip_context || {},
-      visibility: user_id ? 'private' : 'public',
-      is_generated: true,
-    })
-    .select()
-    .single()
+    if (!destination) {
+      return NextResponse.json({ error: 'Missing destination' }, { status: 400 })
+    }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+    const { data, error } = await supabase
+      .from('trips')
+      .insert({
+        title: title || `${destination.split(',')[0]} Trip`,
+        destination,
+        start_date,
+        end_date,
+        status: status || 'planning',
+        user_id: user_id || null,
+        travelers: travelers || 1,
+        budget: budget || null,
+        currency: currency || 'USD',
+        trip_context: trip_context || {},
+        visibility: user_id ? 'private' : 'public',
+        is_generated: true,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[Trip Create] Supabase error:', error.message, error.code)
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+    }
 
   const tripId = data.id
   const city = destination.split(',')[0]?.trim()
@@ -186,4 +195,8 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(data)
+  } catch (e) {
+    console.error('[Trip Create] Unhandled error:', e)
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500 })
+  }
 }

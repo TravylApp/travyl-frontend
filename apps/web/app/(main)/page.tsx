@@ -817,19 +817,6 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
-        {/* Scroll indicator — fixed to bottom of hero, outside parallax text */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 0.8 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
-        >
-          <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
-            <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
-          </div>
-          <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
-        </motion.div>
-        <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
       </section>
 
       {/* ─── Trip Statistics — Live from Supabase ────────────── */}
