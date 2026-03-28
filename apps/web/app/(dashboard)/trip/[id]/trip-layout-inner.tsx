@@ -317,8 +317,10 @@ function TripLayoutContent({
       className={`pb-14 md:pb-0 ${useOverviewBg ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
       style={{ transition: 'background-color 0.5s ease' }}
     >
-      {/* Trip navigation sidebar — vertical on desktop, bottom bar on mobile */}
-      <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
+      {/* Trip navigation sidebar — only on calendar view */}
+      {currentSegment === 'calendar' && (
+        <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
+      )}
 
       {/* Hero banner — only on overview + itinerary */}
       {(isOverview || isItinerary) && (

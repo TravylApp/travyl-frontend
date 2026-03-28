@@ -43,10 +43,7 @@ export default function GlobalNavbar() {
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
   const isDashboardRoute =
-    pathname.startsWith('/trips') ||
-    pathname.startsWith('/trip') ||
-    pathname.startsWith('/explore') ||
-    pathname.startsWith('/places');
+    pathname.startsWith('/trip/');
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
