@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { checkOrigin, rateLimit } from '@/lib/api-utils'
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
+import { getSupabase, supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,8 +19,7 @@ export async function POST(req: NextRequest) {
     if (authHeader) {
       // Logged-in user — verify they own the trip
       const { data: { user }, error: authErr } = await createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl, supabaseKey,
         { global: { headers: { Authorization: authHeader } } }
       ).auth.getUser()
 

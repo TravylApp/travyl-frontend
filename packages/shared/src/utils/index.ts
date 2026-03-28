@@ -126,8 +126,8 @@ export type { RescoperOperation } from './rescoper'
 export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
-// Gap computation
-export { computeGaps } from './gaps'
+// Gap computation (calendar time gaps)
+export { computeGaps as computeTimeGaps } from './gaps'
 export type { TimeGap } from './gaps'
 
 /** Returns distance in km between two lat/lng points (Haversine formula) */
@@ -144,6 +144,6 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 // Booking matcher utilities
 export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
 
-// Gap computation utility
+// Gap computation utility (day planner)
 export { computeGaps } from './gapCompute'
 export type { Gap } from './gapCompute'

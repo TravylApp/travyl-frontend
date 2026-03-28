@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { rateLimit } from '@/lib/api-utils'
+import { getSupabase, rateLimit } from '@/lib/api-utils'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
 
 const COUNTRY_CUISINE: Record<string, string> = {
   France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
