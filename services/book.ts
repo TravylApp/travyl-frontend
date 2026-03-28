@@ -3,7 +3,7 @@ import { Resource } from 'sst'
 import { createClient } from '@supabase/supabase-js'
 import { validateAuth } from './lib/auth'
 import { routeProvider, nameSimScore, proximityScore, calculateConfidence } from '@travyl/shared'
-import { searchOpenTable } from './lib/booking/opentable'
+// import { searchOpenTable } from './lib/booking/opentable'
 import { searchTicketmaster } from './lib/booking/ticketmaster'
 import type { BookingActivity } from './lib/booking/types'
 
@@ -28,8 +28,8 @@ async function matchActivity(activity: BookingActivity) {
   }
 
   try {
-    if (provider === 'opentable') match = await searchOpenTable(activity)
-    else if (provider === 'ticketmaster') match = await searchTicketmaster(activity)
+    // if (provider === 'opentable') match = await searchOpenTable(activity)
+    if (provider === 'ticketmaster') match = await searchTicketmaster(activity)
   } catch {
     // provider threw — treat as unmatched
   }

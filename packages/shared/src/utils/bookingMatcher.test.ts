@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
 
 describe('routeProvider', () => {
-  it('routes dining to opentable', () => {
-    expect(routeProvider('dining')).toBe('opentable')
+  it('routes dining to null (opentable disabled)', () => {
+    expect(routeProvider('dining')).toBeNull()
   })
   it('routes former viator/amadeus types to null (no provider)', () => {
     expect(routeProvider('sightseeing')).toBeNull()
@@ -33,7 +33,7 @@ describe('routeProvider', () => {
     expect(routeProvider('')).toBeNull()
   })
   it('is case-insensitive', () => {
-    expect(routeProvider('Dining')).toBe('opentable')
+    expect(routeProvider('Dining')).toBeNull()
     expect(routeProvider('TOUR')).toBeNull()
   })
 })
