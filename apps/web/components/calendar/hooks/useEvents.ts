@@ -27,7 +27,7 @@ async function fetchEvents(
 ): Promise<LocalEvent[]> {
   const params = new URLSearchParams({ destination, startDate, endDate })
   const res = await fetch(`/api/trip-events?${params}`)
-  if (!res.ok) throw new Error(`Failed to fetch events: ${res.status}`)
+  if (!res.ok) return [] // Gracefully handle backend unavailable
   const data = await res.json()
   return (data.events ?? []) as LocalEvent[]
 }

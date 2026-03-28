@@ -576,8 +576,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     queryKey: ['trip-events', trip?.id, tripCity],
     queryFn: async () => {
       if (!tripCity) return [];
-      const params = new URLSearchParams({ city: tripCity, limit: '10' });
-      if (tripCountry) params.set('country', tripCountry);
+      const params = new URLSearchParams({ city: tripCity });
+      if (trip?.start_date) params.set('start', trip.start_date);
+      if (trip?.end_date) params.set('end', trip.end_date);
+      if (!params.has('start') || !params.has('end')) return [];
       const res = await fetch(`/api/events?${params}`);
       if (!res.ok) return [];
       const evts = await res.json();
