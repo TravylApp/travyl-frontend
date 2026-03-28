@@ -470,19 +470,15 @@ export default function Home() {
                   airline: f.airline, price: f.price,
                   departure_time: f.departure_time, arrival_time: f.arrival_time,
                 })),
+                // Itinerary without weather (enrich adds it) — keeps payload under 8KB
                 itinerary: (plan.itinerary ?? []).map((day: any) => ({
                   day: day.day, date: day.date,
-                  weather: day.weather ? { high_c: day.weather.high_c, low_c: day.weather.low_c, condition: day.weather.condition } : undefined,
                   slots: (day.slots ?? []).map((slot: any) => ({
                     start_time: slot.start_time, end_time: slot.end_time,
                     poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
                   })),
                 })),
-                explore_items: (plan.itinerary ?? []).flatMap((day: any) =>
-                  (day.slots ?? []).map((slot: any) => ({
-                    id: slot.poi.id, title: slot.poi.name, category: slot.poi.category,
-                  }))
-                ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
+                // explore_items derived from itinerary on the trip page — not stored here
               },
             }),
           });
