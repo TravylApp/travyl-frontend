@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import { useSettingsStore, useAuthStore } from '@travyl/shared';
+import { CurrencyPicker } from '@/components/settings/CurrencyPicker';
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -65,6 +67,7 @@ function SettingsToggle({
 }
 
 export default function SettingsPage() {
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const user = useAuthStore((s) => s.user);
   const currency = useSettingsStore((s) => s.currency);
   const distanceUnits = useSettingsStore((s) => s.distanceUnits);
@@ -100,8 +103,7 @@ export default function SettingsPage() {
       {/* Preferences */}
       <SectionHeader title="Preferences" />
       <div className="overflow-hidden rounded-xl border border-border">
-        {/* TODO: Open currency picker */}
-        <SettingsRow label="Currency" value={currency} onClick={() => {}} />
+        <SettingsRow label="Currency" value={currency} onClick={() => setShowCurrencyPicker(true)} />
         {/* TODO: Open distance unit picker */}
         <SettingsRow label="Distance Units" value={distanceUnits === 'miles' ? 'Miles' : 'Kilometers'} onClick={() => {}} />
         {/* TODO: Open travel style picker */}
@@ -126,6 +128,10 @@ export default function SettingsPage() {
       </div>
 
       <div className="h-12" />
+
+      {showCurrencyPicker && (
+        <CurrencyPicker onClose={() => setShowCurrencyPicker(false)} />
+      )}
     </div>
   );
 }
