@@ -18,6 +18,8 @@ interface UseEventsReturn {
   refetch: () => void
 }
 
+// Auth is handled server-side by the Next.js proxy route (api-utils proxyToBackend),
+// which forwards the Supabase session cookie to the Lambda.
 async function fetchEvents(
   destination: string,
   startDate: string,
@@ -44,8 +46,8 @@ export function useEvents({
     queryKey: ['trip-events', destination, startDate, endDate],
     queryFn: () => fetchEvents(destination, startDate, endDate),
     enabled: !!destination && !!startDate && !!endDate,
-    staleTime: 1000 * 60 * 60,
-    gcTime: 2 * 60 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,       // 1 hour
+    gcTime: 2 * 60 * 60 * 1000,     // 2 hours
   })
 
   const eventsByDate = useMemo(() => {
@@ -61,7 +63,7 @@ export function useEvents({
     events,
     eventsByDate,
     isLoading,
-    error: error as Error | null,
+    error,
     refetch,
   }
 }
