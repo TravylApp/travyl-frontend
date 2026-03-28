@@ -28,6 +28,9 @@ interface WeekViewProps {
   polls?: Map<string, Poll>
   pollUserId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  ghostActivities?: CalendarActivity[]
+  onConfirmGhost?: (activity: CalendarActivity) => void
+  onDismissGhost?: (id: string) => void
   tripId?: string
 }
 
@@ -51,6 +54,9 @@ export function WeekView({
   polls,
   pollUserId,
   onVotePoll,
+  ghostActivities,
+  onConfirmGhost,
+  onDismissGhost,
   tripId,
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -131,6 +137,9 @@ export function WeekView({
                   polls={polls}
                   pollUserId={pollUserId}
                   onVotePoll={onVotePoll}
+                  ghostActivities={ghostActivities}
+                  onConfirmGhost={onConfirmGhost}
+                  onDismissGhost={onDismissGhost}
                   tripId={tripId}
                   isDayView={false}
                 />
