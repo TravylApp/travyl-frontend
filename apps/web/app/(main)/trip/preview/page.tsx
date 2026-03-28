@@ -69,6 +69,8 @@ function planToData(plan: PlanResponse) {
         endTime: end12,
         timeDisplay: `${start12} – ${end12}`,
         costDisplay: null,
+        cost: null,
+        costCurrency: null,
         bookingUrl: null,
         notes: slot.poi.description || null,
         source: 'ai' as any,
