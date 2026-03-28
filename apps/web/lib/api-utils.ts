@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
+
+// ─── Shared Supabase client for API routes ──────────────────
+
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+export const supabaseKey = (
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+)!
+
+export function getSupabase() {
+  return createClient(supabaseUrl, supabaseKey)
+}
 
 // ─── Parameter extraction + validation ───────────────────────
 
@@ -117,9 +130,8 @@ export async function proxyToBackend(
   if (!auth) {
     try {
       const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+        supabaseUrl,
+        supabaseKey,
         {
           cookies: {
             getAll() { return req.cookies.getAll() },

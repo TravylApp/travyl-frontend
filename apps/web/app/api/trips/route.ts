@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
-
-function getAnonSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  )
-}
+import { getSupabase, supabaseUrl, supabaseKey } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
   // Try to get user session from cookies
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
@@ -46,7 +39,7 @@ export async function GET(req: NextRequest) {
   if (tripIds.length === 0) return NextResponse.json([])
 
   // Anon key can read public trips via RLS policy
-  const { data, error } = await getAnonSupabase()
+  const { data, error } = await getSupabase()
     .from('trips')
     .select('*')
     .in('id', tripIds)
