@@ -34,6 +34,7 @@ interface EventBlockProps {
   totalColumns?: number
   columnSpan?: number
   hiddenCount?: number
+  bookingStatus?: 'matched' | 'opened' | null
 }
 
 export function EventBlock({
@@ -54,6 +55,7 @@ export function EventBlock({
   totalColumns = 1,
   columnSpan = 1,
   hiddenCount = 0,
+  bookingStatus = null,
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
@@ -294,6 +296,24 @@ export function EventBlock({
           compact={displayDuration < 0.67}
           isResolved={poll.status === 'resolved'}
         />
+      )}
+
+      {/* Booking status badge */}
+      {bookingStatus === 'matched' && (
+        <span
+          title="Bookable"
+          className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white dark:ring-[#0a1520]"
+        />
+      )}
+      {bookingStatus === 'opened' && (
+        <span
+          title="Booking opened"
+          className="absolute bottom-1 right-1 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-green-500 ring-1 ring-white dark:ring-[#0a1520]"
+        >
+          <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden>
+            <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
       )}
     </div>
   )

@@ -136,6 +136,14 @@ export interface CalendarToolbarProps {
   isGapFilling?: boolean
   hasGhosts?: boolean
   hasGaps?: boolean
+  /** Called when user clicks "Book My Trip" */
+  onBookTrip?: () => void
+  /** When true, shows "View Bookings" button */
+  hasBookingMatches?: boolean
+  /** When true, "Book My Trip" button is disabled (match run in progress) */
+  isBookingInProgress?: boolean
+  /** Called when user clicks "View Bookings" */
+  onViewBookings?: () => void
 }
 
 export function CalendarToolbar({
@@ -163,6 +171,10 @@ export function CalendarToolbar({
   isGapFilling = false,
   hasGhosts = false,
   hasGaps = false,
+  onBookTrip,
+  hasBookingMatches = false,
+  isBookingInProgress = false,
+  onViewBookings,
 }: CalendarToolbarProps) {
   const { canEdit } = useEffectivePermission()
   const [rescoperOpen, setRescoperOpen] = useState(false)
@@ -389,6 +401,32 @@ export function CalendarToolbar({
                 )
               })}
             </div>
+          )}
+
+          {/* Book My Trip */}
+          {!isSharedView && onBookTrip && (
+            <button
+              onClick={isBookingInProgress ? undefined : onBookTrip}
+              disabled={isBookingInProgress}
+              className={[
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors shrink-0',
+                isBookingInProgress
+                  ? 'bg-gray-100 dark:bg-[#1e3a5f]/20 text-gray-400 dark:text-[#4a7ab5] cursor-not-allowed'
+                  : 'border border-[#003594]/30 text-[#003594] dark:text-[#4a7ab5] hover:bg-[#003594]/5 dark:hover:bg-[#1e3a5f]/20',
+              ].join(' ')}
+            >
+              {isBookingInProgress ? 'Matching…' : 'Book My Trip'}
+            </button>
+          )}
+
+          {/* View Bookings (appears once matches exist) */}
+          {!isSharedView && hasBookingMatches && onViewBookings && (
+            <button
+              onClick={onViewBookings}
+              className="flex items-center gap-1.5 rounded-lg border border-green-300 dark:border-green-700/40 bg-green-50 dark:bg-green-900/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors shrink-0"
+            >
+              View Bookings
+            </button>
           )}
 
           {/* Share */}
