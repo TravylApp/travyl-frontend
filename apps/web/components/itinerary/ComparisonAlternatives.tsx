@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useHomeCurrency } from '@travyl/shared';
 import {
   TrendingUp,
   ChevronDown,
@@ -79,6 +80,7 @@ function ComparisonFlightCard({
   onSelect: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { format: formatHome } = useHomeCurrency();
 
   const co2Diff = flight.co2 - flight.co2Avg;
   const co2Label = co2Diff <= 0 ? `${Math.abs(co2Diff)}kg below avg` : `${co2Diff}kg above avg`;
@@ -115,7 +117,7 @@ function ComparisonFlightCard({
           </div>
           <div className="text-right">
             <span className="block text-lg font-bold text-gray-900">
-              ${flight.price.total.toLocaleString()}
+              {formatHome(flight.price.total)}
             </span>
             <span className="block text-[11px] text-gray-500">/person</span>
           </div>
@@ -193,15 +195,15 @@ function ComparisonFlightCard({
               <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Base fare</span>
-                  <span className="text-gray-900 font-medium">${flight.price.base}</span>
+                  <span className="text-gray-900 font-medium">{formatHome(flight.price.base)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Taxes &amp; fees</span>
-                  <span className="text-gray-900 font-medium">${flight.price.taxes}</span>
+                  <span className="text-gray-900 font-medium">{formatHome(flight.price.taxes)}</span>
                 </div>
                 <div className="flex justify-between text-sm pt-1.5 border-t border-gray-200">
                   <span className="text-gray-900 font-semibold">Total</span>
-                  <span className="text-gray-900 font-bold">${flight.price.total}</span>
+                  <span className="text-gray-900 font-bold">{formatHome(flight.price.total)}</span>
                 </div>
               </div>
             </div>
@@ -224,7 +226,7 @@ function ComparisonFlightCard({
                   <Luggage size={14} className="text-gray-400" />
                   Checked: {flight.baggage.checked}
                   {flight.baggage.checkedFee > 0 && (
-                    <span className="text-amber-600 text-xs">(+${flight.baggage.checkedFee})</span>
+                    <span className="text-amber-600 text-xs">(+{formatHome(flight.baggage.checkedFee)})</span>
                   )}
                 </div>
               </div>
@@ -255,7 +257,7 @@ function ComparisonFlightCard({
                 </div>
                 {flight.cancellation.changeFee > 0 && (
                   <span className="text-xs text-gray-500 ml-6">
-                    Change fee: ${flight.cancellation.changeFee}
+                    Change fee: {formatHome(flight.cancellation.changeFee)}
                   </span>
                 )}
                 <p className="text-xs text-gray-500 ml-6">{flight.cancellation.policy}</p>
@@ -325,6 +327,7 @@ export function ComparisonAlternatives() {
   const [sortMode, setSortMode] = useState<SortMode>('best');
   const [showAltAirports, setShowAltAirports] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
+  const { format: formatHome } = useHomeCurrency();
 
   const sorted = sortFlights(FLIGHT_OPTIONS, sortMode);
 
@@ -346,7 +349,7 @@ export function ComparisonAlternatives() {
           <div className="text-left">
             <span className="block text-sm font-semibold text-gray-900">Compare Flights</span>
             <span className="block text-xs text-gray-500">
-              {FLIGHT_OPTIONS.length} options · From ${Math.min(...FLIGHT_OPTIONS.map((f) => f.price.total)).toLocaleString()}
+              {FLIGHT_OPTIONS.length} options{FLIGHT_OPTIONS.length > 0 ? ` · From ${formatHome(Math.min(...FLIGHT_OPTIONS.map((f) => f.price.total)))}` : ''}
             </span>
           </div>
         </div>
@@ -409,7 +412,7 @@ export function ComparisonAlternatives() {
                     <span className="block text-sm font-bold text-gray-900">{alt.code}</span>
                     <span className="block text-[11px] text-gray-500 mb-1">{alt.name}</span>
                     <span className="inline-block bg-emerald-100 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                      Save ${alt.savings}
+                      Save {formatHome(alt.savings)}
                     </span>
                   </div>
                 ))}
