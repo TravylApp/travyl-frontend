@@ -15,7 +15,7 @@ import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
-import { TripNavbar } from './TripNavbar'
+import { CalendarToolbar } from './CalendarToolbar'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -526,21 +526,18 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
-        <TripNavbar
+        <CalendarToolbar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           commands={commands}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
-          onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
           onShare={() => setIsShareModalOpen(true)}
           selectedActivity={selectedActivity}
           onDeselect={() => selectEvent(null)}
-          theme={theme}
-          onToggleTheme={toggleTheme}
           tripDays={TRIP_DAYS}
           trip={trip ?? null}
           scheduledActivities={scheduledActivities}

@@ -42,7 +42,11 @@ export default function GlobalNavbar() {
     : baseNavLinks;
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isCalendarTab = /\/trip\/[^/]+\/calendar$/.test(pathname);
+  const isDashboardRoute =
+    pathname.startsWith('/trips') ||
+    pathname.startsWith('/trip') ||
+    pathname.startsWith('/explore') ||
+    pathname.startsWith('/places');
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
@@ -98,7 +102,7 @@ export default function GlobalNavbar() {
     await signOut();
   }, [signOut]);
 
-  if (isAuthPage || isCalendarTab) return null;
+  if (isAuthPage || isDashboardRoute) return null;
 
   return (
     <>

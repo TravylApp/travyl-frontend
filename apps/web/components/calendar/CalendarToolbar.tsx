@@ -1,22 +1,18 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import Link from 'next/link'
-import { NavArrowLeft, Plus, ShareAndroid, Settings, LogOut, SunLight, HalfMoon, User, Clock } from 'iconoir-react'
-import { useAuthStore } from '@travyl/shared'
+import { Plus, ShareAndroid, Clock } from 'iconoir-react'
 import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
 import type { Command } from './types'
-import type { CalendarTheme } from './hooks/useCalendarTheme'
 import { useEffectivePermission } from './providers/TripPermissionContext'
 import { RescoperPopover } from './RescoperPopover'
 import { UnscheduledPopover } from './UnscheduledPopover'
 
-// ─── TripMenuBar ────────────────────────────────────────────────
-// Internal sub-component. Not exported.
+// ─── TripMenuBar (inlined from TripNavbar) ──────────────────────
 
 const MENU_GROUPS = ['edit', 'activity', 'view', 'insert'] as const
-type MenuGroup = typeof MENU_GROUPS[number]
+type MenuGroup = (typeof MENU_GROUPS)[number]
 
 const MENU_LABELS: Record<MenuGroup, string> = {
   edit: 'Edit',
@@ -33,7 +29,6 @@ function TripMenuBar({ commands }: TripMenuBarProps) {
   const [openGroup, setOpenGroup] = useState<MenuGroup | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -112,81 +107,45 @@ function TripMenuBar({ commands }: TripMenuBarProps) {
   )
 }
 
-// ─── TripNavbar ─────────────────────────────────────────────────
+// ─── CalendarToolbar ────────────────────────────────────────────
 
-export interface TripNavbarProps {
+export interface CalendarToolbarProps {
   tripName: string
   dateRange: string
   commands: Command[]
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onAddEvent: () => void
-  onBack: () => void
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected'
   collaborators: UserAwareness[]
   onShare: () => void
   selectedActivity: CalendarActivity | null
   onDeselect: () => void
-  theme: CalendarTheme
-  onToggleTheme: () => void
   tripDays: { dayIndex: number; label: string }[]
   trip: Trip | null
   scheduledActivities: CalendarActivity[]
   unscheduledActivities: CalendarActivity[]
-  /** Same userId CalendarDashboard receives — threaded to RescoperPopover → useRescope → useActivityMutations */
+  /** Same userId CalendarDashboard receives — threaded to RescoperPopover */
   userId: string
   onAssignUnscheduled: (id: string, dayOffset: number) => void
   onDeleteUnscheduled: (id: string) => void
-  /** When true: read-only shared view — hides share, avatar dropdown, and new activity controls */
+  /** When true: read-only shared view — hides share and new activity controls */
   isSharedView?: boolean
   onOpenHistory?: () => void
 }
 
-function getInitials(name: string | undefined): string {
-  if (!name) return 'U'
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
-
-interface AvatarCircleProps {
-  size?: number
-  avatarUrl?: string
-  displayName?: string
-  initials: string
-}
-
-function AvatarCircle({ size = 28, avatarUrl, displayName, initials }: AvatarCircleProps) {
-  const [imgError, setImgError] = useState(false)
-  return (
-    <div
-      style={{ width: size, height: size }}
-      className="flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-[11px]"
-    >
-      {avatarUrl && !imgError ? (
-        <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" onError={() => setImgError(true)} />
-      ) : (
-        initials
-      )}
-    </div>
-  )
-}
-
-export function TripNavbar({
+export function CalendarToolbar({
   tripName,
   dateRange,
   commands,
   viewMode,
   onViewModeChange,
   onAddEvent,
-  onBack,
   connectionStatus,
   collaborators,
   onShare,
   selectedActivity,
   onDeselect,
-  theme,
-  onToggleTheme,
   tripDays,
   trip,
   scheduledActivities,
@@ -196,35 +155,10 @@ export function TripNavbar({
   onDeleteUnscheduled,
   isSharedView = false,
   onOpenHistory,
-}: TripNavbarProps) {
-  const user = useAuthStore((s) => s.user)
-  const signOut = useAuthStore((s) => s.signOut)
-  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
-  const avatarRef = useRef<HTMLDivElement>(null)
+}: CalendarToolbarProps) {
   const { canEdit } = useEffectivePermission()
   const [rescoperOpen, setRescoperOpen] = useState(false)
   const [unscheduledOpen, setUnscheduledOpen] = useState(false)
-
-  const avatarUrl = user?.user_metadata?.avatar_url
-  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name
-  const email = user?.email
-  const initials = getInitials(displayName)
-
-  // Close avatar dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
-        setAvatarDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const handleSignOut = async () => {
-    setAvatarDropdownOpen(false)
-    await signOut()
-  }
 
   return (
     <div className="flex flex-col shrink-0">
@@ -238,34 +172,14 @@ export function TripNavbar({
         </div>
       )}
 
-      {/* Main navbar row */}
+      {/* Main toolbar row */}
       <div className="flex items-center h-11 border-b border-gray-200/60 dark:border-[#1e3a5f]/30 bg-white/70 dark:bg-[#0f1a28]/80 backdrop-blur-xl shrink-0">
-
-        {/* Logo */}
-        <Link
-          href="/trips"
-          className="flex items-center gap-1 px-3 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 text-[#1e3a5f] dark:text-[#f5efe8] shrink-0 text-[13px] font-bold"
-        >
-          <span className="hidden sm:inline font-serif tracking-[0.15em]">TRAVYL</span>
-          <span>&#9992;</span>
-        </Link>
-
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          aria-label="Back to trips"
-          className="flex items-center justify-center h-full w-10 border-r border-gray-200 dark:border-[#1e3a5f]/30 text-gray-400 dark:text-[#4a7ab5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 hover:text-gray-700 dark:hover:text-white transition-colors shrink-0"
-        >
-          <NavArrowLeft width={16} height={16} />
-        </button>
 
         {/* Menu bar */}
         <TripMenuBar commands={commands} />
 
         {/* Trip info */}
-        <div
-          className="relative flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0"
-        >
+        <div className="relative flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-[#1e3a5f]/30 shrink-0 min-w-0">
           <span className="truncate text-[13px] font-serif font-normal tracking-wide text-[#1e3a5f] dark:text-[#f5efe8] leading-tight">
             {tripName}
           </span>
@@ -373,16 +287,16 @@ export function TripNavbar({
 
           {/* New Activity */}
           {!isSharedView && (
-          <button
-            onClick={onAddEvent}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-[#1e3a5f]/25 dark:hover:text-white transition-colors shrink-0"
-          >
-            <Plus width={12} height={12} />
-            <span className="hidden sm:inline">New Activity</span>
-            <kbd className="text-[9px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1 rounded hidden sm:inline">
-              N
-            </kbd>
-          </button>
+            <button
+              onClick={onAddEvent}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-[#1e3a5f]/25 dark:hover:text-white transition-colors shrink-0"
+            >
+              <Plus width={12} height={12} />
+              <span className="hidden sm:inline">New Activity</span>
+              <kbd className="text-[9px] text-gray-400 dark:text-[#484f58] bg-gray-100 dark:bg-[#0a1520] border border-gray-200 dark:border-[#1e3a5f]/30 px-1 rounded hidden sm:inline">
+                N
+              </kbd>
+            </button>
           )}
 
           {/* Change history */}
@@ -396,17 +310,6 @@ export function TripNavbar({
               <Clock className="w-4 h-4" />
             </button>
           )}
-
-          {/* Theme toggle - inline light/dark button */}
-          <button
-            onClick={onToggleTheme}
-            aria-label="Toggle theme"
-            className="flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 text-gray-400 dark:text-[#4a7ab5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
-          >
-            {theme === 'dark'
-              ? <SunLight width={14} height={14} />
-              : <HalfMoon width={14} height={14} />}
-          </button>
 
           {/* Collaborator avatars */}
           {collaborators.length > 0 && (
@@ -448,86 +351,20 @@ export function TripNavbar({
 
           {/* Share */}
           {!isSharedView && (
-          <button
-            onClick={onShare}
-            className="flex items-center gap-1.5 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#D97706] transition-colors shrink-0"
-          >
-            <ShareAndroid width={12} height={12} />
-            Share
-          </button>
+            <button
+              onClick={onShare}
+              className="flex items-center gap-1.5 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#D97706] transition-colors shrink-0"
+            >
+              <ShareAndroid width={12} height={12} />
+              Share
+            </button>
           )}
 
-          {/* Avatar dropdown */}
-          {isSharedView ? (
+          {/* Shared view indicator */}
+          {isSharedView && (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-100 dark:bg-[#1e3a5f]/20">
               <span className="text-xs text-gray-500 dark:text-[#4a7ab5]">Viewing</span>
             </div>
-          ) : (
-          <div className="relative" ref={avatarRef}>
-            <button
-              onClick={() => setAvatarDropdownOpen((o) => !o)}
-              className="rounded-full hover:ring-2 hover:ring-[#1e3a5f]/20 transition-all"
-            >
-              <AvatarCircle avatarUrl={avatarUrl} displayName={displayName} initials={initials} />
-            </button>
-
-            {avatarDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0f1a28] rounded-xl shadow-xl border border-gray-100 dark:border-[#1e3a5f]/30 py-1.5 z-50">
-                {/* User info */}
-                <div className="px-3 py-2 border-b border-gray-100 dark:border-[#1e3a5f]/20">
-                  <div className="flex items-center gap-2.5">
-                    <AvatarCircle size={32} avatarUrl={avatarUrl} displayName={displayName} initials={initials} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8] truncate">
-                        {displayName || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-[#4a7ab5] truncate">{email}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="py-0.5">
-                  <Link
-                    href="/profile"
-                    onClick={() => setAvatarDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
-                  >
-                    <User width={15} height={15} className="text-gray-400" />
-                    Your Profile
-                  </Link>
-                  <Link
-                    href="/profile/settings"
-                    onClick={() => setAvatarDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
-                  >
-                    <Settings width={15} height={15} className="text-gray-400" />
-                    Settings
-                  </Link>
-                </div>
-                <div className="border-t border-gray-100 dark:border-[#1e3a5f]/20 py-1">
-                  <button
-                    onClick={onToggleTheme}
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      {theme === 'dark'
-                        ? <HalfMoon width={15} height={15} className="text-gray-400" />
-                        : <SunLight width={15} height={15} className="text-gray-400" />}
-                      {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
-                    </span>
-                  </button>
-                </div>
-                <div className="border-t border-gray-100 dark:border-[#1e3a5f]/20 py-0.5">
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
-                  >
-                    <LogOut width={15} height={15} />
-                    Sign out
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
           )}
         </div>
       </div>
