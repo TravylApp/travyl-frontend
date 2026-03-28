@@ -11,13 +11,14 @@ interface AmadeusActivity {
   geoCode?: { latitude: number; longitude: number }
 }
 
-async function getAmadeusToken(): Promise<string | null> {
+async function getAmadeusToken(signal: AbortSignal): Promise<string | null> {
   const id = Resource.AmadeusApiKey.value
   const secret = Resource.AmadeusApiSecret.value
   if (!id || id === 'placeholder') return null
 
   const res = await fetch(AUTH_URL, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=client_credentials&client_id=${id}&client_secret=${secret}`,
   })
@@ -33,8 +34,11 @@ export async function searchAmadeus(
   const timeout = setTimeout(() => controller.abort(), 5000)
 
   try {
-    const token = await getAmadeusToken()
-    if (!token) return null
+    const token = await getAmadeusToken(controller.signal)
+    if (!token) {
+      clearTimeout(timeout)
+      return null
+    }
 
     const params = new URLSearchParams({
       latitude: String(activity.latitude),
@@ -57,7 +61,7 @@ export async function searchAmadeus(
       sim: nameSimScore(activity.title, item.name),
     }))
     const best = scored.sort((a, b) => b.sim - a.sim)[0]
-    if (!best || !best.item.bookingLink) return null
+    if (!best || best.sim < 0.3 || !best.item.bookingLink) return null
 
     const affiliateUrl = `${best.item.bookingLink}${best.item.bookingLink.includes('?') ? '&' : '?'}utm_source=travyl`
 
