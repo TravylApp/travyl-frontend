@@ -1,7 +1,7 @@
 // ─── Provider routing ─────────────────────────────────────────
 
 const PROVIDER_MAP: Record<string, string> = {
-  dining: 'opentable',
+  // dining: 'opentable',
   event: 'ticketmaster',
   concert: 'ticketmaster',
   show: 'ticketmaster',
