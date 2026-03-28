@@ -415,12 +415,6 @@ export function useSpotlightSearch() {
     setClearTripScope(true)
   }, [])
 
-  // Phase 1 (quick): trip search + command filtering + nav filtering
-  const quickLoading = tripSearchLoading
-
-  // Phase 2 (deep): external searches (entity, discover, fsq) + intent parsing
-  const deepLoading = entityLoading || discoverLoading || intentLoading || fsqLoading
-
   // Overall loading: either phase is loading
   const isLoading = quickLoading || deepLoading
 
