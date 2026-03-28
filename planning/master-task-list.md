@@ -17,7 +17,7 @@ Last updated: March 27, 2026
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| H1 | Questions: multi-select + skip button | Demo feedback F2 | In progress |
+| H1 | Questions: multi-select + skip button | Demo feedback F2 | Done (TRA-287) |
 | H2 | Card clicks → expand in-place detail (not blurry modal) | User feedback | Todo |
 | H3 | "Add to trip" buttons are fake — toggle local state only | E2E test | Todo |
 | H4 | Hotels page ignores trip_context (shows 0 until SerpAPI loads) | E2E test | Todo |
@@ -40,8 +40,8 @@ Last updated: March 27, 2026
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| M1 | How It Works scroll snapping | User feedback | Todo |
-| M2 | Font color contrast issues on some text | Demo feedback F4 | Todo |
+| M1 | How It Works scroll snapping | User feedback | Done (TRA-287) |
+| M2 | Font color contrast issues on some text | Demo feedback F4 | Partial (TRA-287, hero done) |
 | M3 | Add accommodation types ("stay with someone", "own house") | Demo feedback F5 | Todo |
 | M4 | Trip visibility enforcement — anon users see others' trips | Demo feedback F6 | Todo |
 | M5 | Currency conversion — wire /api/exchange-rates | Demo feedback F7 | Todo |
@@ -56,20 +56,20 @@ Last updated: March 27, 2026
 | M14 | Mobile budget daily chart hardcoded | Audit | Todo |
 | M15 | Mobile settings hardcoded "Alex Rivera" | Audit | Todo |
 | M16 | Drag day to swap itinerary plans | User feedback | Todo |
-| M17 | Suppress hero_config/mosaic_tiles/inspiration_cards 404s | E2E test | Todo |
+| M17 | Suppress hero_config/mosaic_tiles/inspiration_cards 404s | E2E test | Done (TRA-287, mosaic removed) |
 
 ## LOW — Nice to Have
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| L1 | Home page images always same destinations | User feedback | Todo |
+| L1 | Home page images always same destinations | User feedback | Done (TRA-287, trending API) |
 | L2 | Travel advisories for unsafe locations | Demo feedback F9 | Todo |
 | L3 | Onboarding — "a lot to look through at first" | Demo feedback F11 | Todo |
 | L4 | Photo content moderation/filtering | Demo feedback F12 | Todo |
 | L5 | Cars tab — implement or remove | Audit | Todo |
 | L6 | Profile settings pickers empty (email, password, delete) | Audit | Todo |
 | L7 | Forgot password not implemented | Audit | Todo |
-| L8 | Parallax workaround (document scroll) | Audit | Todo |
+| L8 | Parallax workaround (document scroll) | Audit | Done (TRA-285) |
 
 ## ENRICHMENT — SerpAPI Powered (Weeks 3-4)
 
