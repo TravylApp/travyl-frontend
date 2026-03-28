@@ -98,6 +98,20 @@ interface DeepSearchResponse {
 const FSQ_FIELDS = 'fsq_id,name,location,categories,rating,stats,price'
 const MODEL_ID = 'anthropic.claude-3-haiku-20240307-v1:0'
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Fisher-Yates shuffle — returns a new array */
+function shuffleArray<T>(arr: T[]): T[] {
+  const out = [...arr]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 const HAIKU_PROMPT = `You are a travel search intent parser. Extract structured intent from a search query.
 Return ONLY valid JSON — no explanation, no markdown, no code fences.
 Schema:
@@ -159,12 +173,12 @@ interface DiscoverCacheEntry {
   expiresAt: number
 }
 
-async function getCachedDiscover(location: string): Promise<DiscoverResult[] | null> {
+async function getCachedDiscover(location: string, q: string): Promise<DiscoverResult[] | null> {
   try {
     const result = await dynamoClient.send(
       new GetCommand({
         TableName: Resource.RecommendationCache.name,
-        Key: { pk: `discover:${location.toLowerCase()}`, sk: 'results-deep' },
+        Key: { pk: `discover:${location.toLowerCase()}:${q.toLowerCase()}`, sk: 'results-deep' },
       }),
     )
     if (!result.Item) return null
@@ -177,13 +191,13 @@ async function getCachedDiscover(location: string): Promise<DiscoverResult[] | n
   }
 }
 
-async function setCachedDiscover(location: string, data: DiscoverResult[]): Promise<void> {
+async function setCachedDiscover(location: string, q: string, data: DiscoverResult[]): Promise<void> {
   try {
     await dynamoClient.send(
       new PutCommand({
         TableName: Resource.RecommendationCache.name,
         Item: {
-          pk: `discover:${location.toLowerCase()}`,
+          pk: `discover:${location.toLowerCase()}:${q.toLowerCase()}`,
           sk: 'results-deep',
           data,
           expiresAt: Math.floor(Date.now() / 1000) + 3600,
@@ -238,7 +252,7 @@ async function fetchFoursquare(
   }
 
   const data = (await res.json()) as FsqApiResponse
-  const places = data.results ?? []
+  const places = shuffleArray(data.results ?? [])
 
   const grouped: { restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] } = {
     restaurant: [],
@@ -270,15 +284,15 @@ async function fetchFoursquare(
 // SerpAPI discover helpers
 // ---------------------------------------------------------------------------
 
-async function fetchDiscover(location: string): Promise<DiscoverResult[]> {
-  // Cache check
-  const cached = await getCachedDiscover(location)
+async function fetchDiscover(location: string, q: string): Promise<DiscoverResult[]> {
+  // Cache check (keyed by both location and query)
+  const cached = await getCachedDiscover(location, q)
   if (cached) {
-    console.log('[search-deep] discover cache hit for', location)
-    return cached
+    console.log('[search-deep] discover cache hit for', location, q)
+    return shuffleArray(cached)
   }
 
-  console.log('[search-deep] discover cache miss, firing 3 SerpAPI calls for', location)
+  console.log('[search-deep] discover cache miss, firing 3 SerpAPI calls for', location, q)
 
   const [diningResults, sightseeingResults, outdoorResults] = await Promise.all([
     searchPlaces(location, 'dining', { limit: 10 }),
@@ -307,10 +321,10 @@ async function fetchDiscover(location: string): Promise<DiscoverResult[]> {
   }
 
   if (discoverResults.length > 0) {
-    await setCachedDiscover(location, discoverResults)
+    await setCachedDiscover(location, q, discoverResults)
   }
 
-  return discoverResults
+  return shuffleArray(discoverResults)
 }
 
 // ---------------------------------------------------------------------------
@@ -406,7 +420,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const failedSources: string[] = []
 
     const fsqPromise: Promise<{ restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] }> =
-      intent === 'entity-search' || intent === 'discover'
+      intent === 'entity-search' || intent === 'discover' || intent === 'unknown'
         ? fetchFoursquare(q, location).catch((err) => {
             console.error('[search-deep] foursquare failed:', err)
             failedSources.push('foursquare')
@@ -416,7 +430,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const discoverPromise: Promise<DiscoverResult[]> =
       (intent === 'discover' || intent === 'route') && location
-        ? fetchDiscover(location).catch((err) => {
+        ? fetchDiscover(location, q).catch((err) => {
             console.error('[search-deep] discover failed:', err)
             failedSources.push('serpapi')
             return []

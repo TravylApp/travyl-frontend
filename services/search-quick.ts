@@ -5,6 +5,16 @@ import { validateAuth } from './lib/auth'
 import { generateEmbedding } from './lib/embeddings'
 import { parseQueryIntentSync, type ParsedIntent } from './lib/intent-parser'
 
+/** Fisher-Yates shuffle — returns a new array */
+function shuffleArray<T>(arr: T[]): T[] {
+  const out = [...arr]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 interface TripResult {
   tripId: string
   title: string
@@ -116,7 +126,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
             return {}
           }
           const grouped: Record<string, EntityResult[]> = {}
-          for (const row of (data as EntityResult[]) ?? []) {
+          for (const row of shuffleArray((data as EntityResult[]) ?? [])) {
             if (!grouped[row.entity_type]) grouped[row.entity_type] = []
             grouped[row.entity_type].push(row)
           }

@@ -42,14 +42,15 @@ export function ForYouPanel({
 
   const { trackEvent } = useInteractionTracking(tripId)
 
-  // Stream high-res Pexels images for each suggestion — resolves independently per card
+  // Pexels as last-resort fallback only — suggestions already have real Foursquare photos from the API
   const suggestionNames = useMemo(() => suggestions.map(s => s.name), [suggestions])
   const imageResults = usePlaceImages(suggestionNames)
 
-  // Merge resolved Pexels images into suggestions as they stream in
+  // Only apply Pexels when a suggestion has no image at all (Foursquare enrichment covers most cases)
   const enrichedSuggestions = useMemo(() => {
     if (!imageResults.length) return suggestions
     return suggestions.map((suggestion, i) => {
+      if (suggestion.imageUrl) return suggestion
       const pexelsUrl = imageResults[i]?.data?.url
       if (!pexelsUrl) return suggestion
       return {
