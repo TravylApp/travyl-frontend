@@ -12,6 +12,7 @@ import { useDayIntelligence } from './hooks/useDayIntelligence'
 import { getWmoWeather } from './utils/wmoWeatherCode'
 import DayHealthIndicator from './DayHealthIndicator'
 import TravelTimeBadge from './TravelTimeBadge'
+import { GhostEventBlock } from './GhostEventBlock'
 
 interface DayColumnProps {
   dayIndex: number
@@ -38,8 +39,12 @@ interface DayColumnProps {
   polls?: Map<string, Poll>
   pollUserId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  bookingStatuses?: Map<string, 'matched' | 'opened'>
   tripId?: string
   isDayView?: boolean
+  ghostActivities?: CalendarActivity[]
+  onConfirmGhost?: (activity: CalendarActivity) => void
+  onDismissGhost?: (id: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -104,8 +109,12 @@ export function DayColumn({
   polls,
   pollUserId,
   onVotePoll,
+  bookingStatuses,
   tripId,
   isDayView = false,
+  ghostActivities = [],
+  onConfirmGhost,
+  onDismissGhost,
 }: DayColumnProps) {
   const date = useMemo(() => {
     const d = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
@@ -283,6 +292,7 @@ export function DayColumn({
               poll={polls?.get(activity.id)}
               userId={pollUserId}
               onVote={onVotePoll}
+              bookingStatus={bookingStatuses?.get(activity.id) ?? null}
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}
@@ -363,6 +373,23 @@ export function DayColumn({
             </div>
           )
         })}
+
+        {/* Ghost activity layer — above events (z-10), pointer-events only on blocks */}
+        {ghostActivities.length > 0 && (
+          <div className="absolute inset-0" style={{ pointerEvents: 'none', zIndex: 10 }}>
+            {ghostActivities
+              .filter((g) => g.day === dayIndex)
+              .map((ghost) => (
+                <GhostEventBlock
+                  key={ghost.id}
+                  activity={ghost}
+                  timeRangeStartHour={timeRange.startHour}
+                  onConfirm={(a) => onConfirmGhost?.(a)}
+                  onDismiss={(id) => onDismissGhost?.(id)}
+                />
+              ))}
+          </div>
+        )}
       </div>
     </div>
   )

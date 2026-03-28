@@ -10,6 +10,8 @@ create table booking_matches (
   status text not null default 'unmatched',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint booking_matches_confidence_range check (confidence is null or (confidence >= 0 and confidence <= 1)),
+  constraint booking_matches_status_values check (status in ('unmatched', 'matched', 'opened')),
   constraint booking_matches_trip_activity_key unique (trip_id, activity_id)
 );
 
@@ -27,6 +29,9 @@ create trigger booking_matches_updated_at
 
 alter table booking_matches enable row level security;
 
+-- INSERT: no policy defined. The book.ts Lambda writes via the Supabase service role key,
+-- which bypasses RLS entirely. Authenticated browser clients have no INSERT access by design.
+
 create policy "booking_matches_select"
   on booking_matches for select
   using (
@@ -37,6 +42,9 @@ create policy "booking_matches_select"
     )
   );
 
+-- UPDATE: authenticated browser clients may only transition status to 'opened'.
+-- The `with check (status = 'opened')` clause enforces this — any attempt to set
+-- status to 'matched' or 'unmatched' via a client session will be rejected.
 create policy "booking_matches_update_opened"
   on booking_matches for update
   using (

@@ -27,7 +27,14 @@ export const timezonedbApiKey = new sst.Secret('TimezonedbApiKey')
 // ─── Events ─────────────────────────────────────────────────
 export const eventbriteApiKey = new sst.Secret('EventbriteApiKey')
 export const predicthqApiKey = new sst.Secret('PredicthqApiKey')
+export const ticketmasterApiKey = new sst.Secret('TicketmasterApiKey')
 
 // ─── Misc ───────────────────────────────────────────────────
 export const openExchangeRatesAppId = new sst.Secret('OpenExchangeRatesAppId')
 export const openchargeApiKey = new sst.Secret('OpenchargeApiKey')
+
+// ─── Booking / Affiliate ────────────────────────────────────
+export const viatorAffiliateKey = new sst.Secret('ViatorAffiliateKey')
+export const openTableAffiliateKey = new sst.Secret('OpenTableAffiliateKey')
+export const amadeusApiKey = new sst.Secret('AmadeusApiKey')
+export const amadeusApiSecret = new sst.Secret('AmadeusApiSecret')

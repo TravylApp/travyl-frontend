@@ -126,6 +126,10 @@ export type { RescoperOperation } from './rescoper'
 export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
+// Gap computation
+export { computeGaps } from './gaps'
+export type { TimeGap } from './gaps'
+
 /** Returns distance in km between two lat/lng points (Haversine formula) */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
@@ -136,6 +140,9 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
+
+// Booking matcher utilities
+export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
 
 // Gap computation utility
 export { computeGaps } from './gapCompute'
