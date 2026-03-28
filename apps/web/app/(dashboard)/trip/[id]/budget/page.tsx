@@ -460,7 +460,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                     <div className="font-semibold text-gray-900 text-left">{item.category}</div>
                     {!isExpanded && (
                       <div className="text-sm text-gray-600">
-                        ${item.actual.toLocaleString()}
+                        ${item.budgeted.toLocaleString()}
                       </div>
                     )}
                   </div>

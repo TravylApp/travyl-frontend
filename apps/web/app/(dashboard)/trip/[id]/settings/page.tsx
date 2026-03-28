@@ -778,7 +778,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  if (tripLoading) {
+  if (tripLoading && !trip) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center text-gray-400 text-sm">
         Loading settings...
