@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Plus, ShareAndroid, Clock } from 'iconoir-react'
+import { Plus, ShareAndroid, Clock, MagicWand } from 'iconoir-react'
 import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
 import type { Command } from './types'
@@ -132,6 +132,10 @@ export interface CalendarToolbarProps {
   /** When true: read-only shared view — hides share and new activity controls */
   isSharedView?: boolean
   onOpenHistory?: () => void
+  onFillGaps?: () => void
+  isGapFilling?: boolean
+  hasGhosts?: boolean
+  hasGaps?: boolean
 }
 
 export function CalendarToolbar({
@@ -155,6 +159,10 @@ export function CalendarToolbar({
   onDeleteUnscheduled,
   isSharedView = false,
   onOpenHistory,
+  onFillGaps,
+  isGapFilling = false,
+  hasGhosts = false,
+  hasGaps = false,
 }: CalendarToolbarProps) {
   const { canEdit } = useEffectivePermission()
   const [rescoperOpen, setRescoperOpen] = useState(false)
@@ -308,6 +316,40 @@ export function CalendarToolbar({
               className="p-1.5 rounded-lg text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30 transition-colors"
             >
               <Clock className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Magic wand — gap filler */}
+          {!isSharedView && onFillGaps && (
+            <button
+              onClick={onFillGaps}
+              disabled={isGapFilling || (!hasGaps && !hasGhosts)}
+              title={
+                isGapFilling
+                  ? 'Finding suggestions…'
+                  : hasGhosts
+                  ? 'Clear suggestions'
+                  : hasGaps
+                  ? 'Fill day with AI suggestions'
+                  : 'Day is fully scheduled'
+              }
+              aria-label="Fill day with AI suggestions"
+              className={[
+                'p-1.5 rounded-lg transition-colors',
+                hasGhosts && !isGapFilling
+                  ? 'text-[var(--cal-accent)] bg-[color-mix(in_srgb,var(--cal-accent)_12%,transparent)]'
+                  : 'text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30',
+                (isGapFilling || (!hasGaps && !hasGhosts)) ? 'opacity-40 cursor-not-allowed' : '',
+              ].join(' ')}
+            >
+              {isGapFilling ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : (
+                <MagicWand className="w-4 h-4" />
+              )}
             </button>
           )}
 
