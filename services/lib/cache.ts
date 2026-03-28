@@ -3,6 +3,20 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import type { SuggestionCard, LocalEvent } from './types'
 
+export interface GapSuggestion {
+  title: string
+  type: string
+  startHour: number
+  duration: number
+  latitude?: number
+  longitude?: number
+  address?: string
+  rating?: number
+  price?: number | null
+  image?: string
+  description?: string
+}
+
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 
 interface CacheEntry {
@@ -86,6 +100,42 @@ export async function setCachedEvents(
         pk: `events:${destination}:${startDate}:${endDate}`,
         sk: 'events',
         events,
+        expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,
+      },
+    }),
+  )
+}
+
+export async function getCachedGaps(
+  tripId: string,
+  date: string,
+): Promise<GapSuggestion[] | null> {
+  const result = await client.send(
+    new GetCommand({
+      TableName: Resource.RecommendationCache.name,
+      Key: { pk: `gaps:${tripId}:${date}`, sk: 'gaps' },
+    }),
+  )
+
+  if (!result.Item) return null
+  const entry = result.Item as { gaps: GapSuggestion[]; expiresAt: number }
+  if (entry.expiresAt < Math.floor(Date.now() / 1000)) return null
+  return entry.gaps
+}
+
+export async function setCachedGaps(
+  tripId: string,
+  date: string,
+  gaps: GapSuggestion[],
+  ttlSeconds: number = 1800, // 30 min default
+): Promise<void> {
+  await client.send(
+    new PutCommand({
+      TableName: Resource.RecommendationCache.name,
+      Item: {
+        pk: `gaps:${tripId}:${date}`,
+        sk: 'gaps',
+        gaps,
         expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,
       },
     }),
