@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Plus, ShareAndroid, Clock, MagicWand } from 'iconoir-react'
+import { Plus, ShareAndroid, Clock, MagicWand, Calendar } from 'iconoir-react'
 import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
 import type { Command } from './types'
@@ -144,6 +144,8 @@ export interface CalendarToolbarProps {
   isBookingInProgress?: boolean
   /** Called when user clicks "View Bookings" */
   onViewBookings?: () => void
+  showEvents?: boolean
+  onToggleEvents?: () => void
 }
 
 export function CalendarToolbar({
@@ -175,6 +177,8 @@ export function CalendarToolbar({
   hasBookingMatches = false,
   isBookingInProgress = false,
   onViewBookings,
+  showEvents = true,
+  onToggleEvents,
 }: CalendarToolbarProps) {
   const { canEdit } = useEffectivePermission()
   const [rescoperOpen, setRescoperOpen] = useState(false)
@@ -328,6 +332,23 @@ export function CalendarToolbar({
               className="p-1.5 rounded-lg text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30 transition-colors"
             >
               <Clock className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Events toggle */}
+          {onToggleEvents && (
+            <button
+              onClick={onToggleEvents}
+              title={showEvents ? 'Hide events' : 'Show events'}
+              className={[
+                'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
+                showEvents
+                  ? 'bg-[#003594]/10 text-[#003594]'
+                  : 'text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30',
+              ].join(' ')}
+            >
+              <Calendar width={14} height={14} strokeWidth={1.5} />
+              <span>Events</span>
             </button>
           )}
 
