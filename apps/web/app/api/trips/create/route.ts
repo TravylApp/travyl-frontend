@@ -40,14 +40,18 @@ export async function POST(req: NextRequest) {
     const safeTravelers = Math.min(Math.max(1, parseInt(travelers) || 1), 50)
     const safeBudget = budget ? Math.min(Math.max(0, parseFloat(budget) || 0), 1000000) : null
     const safeTitle = title ? String(title).slice(0, 200) : `${destination.split(',')[0]} Trip`
+    // Default dates: today + 7 days if not provided
+    const today = new Date()
+    const defaultStart = today.toISOString().split('T')[0]
+    const defaultEnd = new Date(today.getTime() + 7 * 86400000).toISOString().split('T')[0]
 
     const { data, error } = await supabase
       .from('trips')
       .insert({
         title: safeTitle,
         destination: destination.slice(0, 200),
-        start_date: start_date || null,
-        end_date: end_date || null,
+        start_date: start_date || defaultStart,
+        end_date: end_date || defaultEnd,
         status: 'planning',
         user_id: user_id || null,
         travelers: safeTravelers,
