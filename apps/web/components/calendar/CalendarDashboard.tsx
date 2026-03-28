@@ -212,7 +212,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     staleTime: 5 * 60 * 1000,
   })
 
-  const { matches: bookingMatches, hasBookingMatches, startRealtimeAndMatch, markOpened } = useBookingMatches({
+  const { matches: bookingMatches, hasMatches: hasBookingMatches, startRealtimeAndMatch, markOpened } = useBookingMatches({
     tripId,
     apiUrl: process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? '',
     authToken: session?.access_token ?? '',

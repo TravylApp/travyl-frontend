@@ -2,8 +2,8 @@ import { Resource } from 'sst'
 import { nameSimScore } from '@travyl/shared'
 import type { BookingActivity, ProviderMatch } from './types'
 
-const AUTH_URL = 'https://test.api.amadeus.com/v1/security/oauth2/token'
-const BASE_URL = 'https://test.api.amadeus.com/v1'
+const AUTH_URL = 'https://api.amadeus.com/v1/security/oauth2/token'
+const BASE_URL = 'https://api.amadeus.com/v1'
 
 interface AmadeusActivity {
   name: string
