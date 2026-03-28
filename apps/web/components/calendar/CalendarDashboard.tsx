@@ -6,7 +6,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay, pointerWithin, closestCenter, type CollisionDetection } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
-import { fetchCollaborators } from '@travyl/shared'
+import { fetchCollaborators, computeGaps } from '@travyl/shared'
+import { useGapFiller } from './hooks/useGapFiller'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
 import { useTripActivities } from './hooks/useTripActivities'
@@ -102,6 +103,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
+  const [ghostActivities, setGhostActivities] = useState<CalendarActivity[]>([])
   const router = useRouter()
 
   // Hooks
@@ -140,6 +142,20 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const { polls } = usePollObserver({ editorCount: editorIds.length, editorIds })
   usePollSync(tripId)
 
+  const { fill: fillGaps, isPending: isGapFilling } = useGapFiller({
+    tripId,
+    destination: trip?.destination ?? '',
+    onSuccess: (suggestions) => {
+      if (suggestions.length === 0) {
+        return
+      }
+      setGhostActivities(suggestions)
+    },
+    onError: () => {
+      console.error('[fill-gaps] Failed to fetch gap suggestions')
+    },
+  })
+
   const scheduledActivities = useMemo(
     () => activities.filter((a) => !a.unscheduled),
     [activities],
@@ -172,7 +188,25 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const weekGridRef = useRef<HTMLDivElement>(null)
 
   // Computed (moved up so useCalendarDnd can reference timeRange)
-  const timeRange = useMemo(() => computeTimeRange(activities), [activities])
+  const selectedDayGhosts = useMemo(
+    () => ghostActivities.filter((g) => g.day === selectedDayIndex),
+    [ghostActivities, selectedDayIndex],
+  )
+
+  const timeRange = useMemo(
+    () => computeTimeRange([...activities, ...selectedDayGhosts]),
+    [activities, selectedDayGhosts],
+  )
+
+  const hasGaps = useMemo(
+    () =>
+      computeGaps(
+        scheduledActivities
+          .filter((a) => a.day === selectedDayIndex)
+          .map((a) => ({ startHour: a.startHour, duration: a.duration })),
+      ).length > 0,
+    [scheduledActivities, selectedDayIndex],
+  )
 
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
@@ -236,6 +270,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   useEffect(() => {
     setSelectedDay(selectedDayIndex)
   }, [selectedDayIndex, setSelectedDay])
+
+  // Clear ghost suggestions when the user navigates to a different day
+  useEffect(() => {
+    setGhostActivities([])
+  }, [selectedDayIndex])
 
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
@@ -350,6 +389,28 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       await duplicateActivity(act)
     }
   }, [marqueeSelectedIds, clearMarqueeSelection, scheduledActivities, duplicateActivity])
+
+  const handleConfirmGhost = useCallback((ghost: CalendarActivity) => {
+    addActivity({ ...ghost, id: crypto.randomUUID() })
+    setGhostActivities((prev) => prev.filter((g) => g.id !== ghost.id))
+  }, [addActivity])
+
+  const handleDismissGhost = useCallback((id: string) => {
+    setGhostActivities((prev) => prev.filter((g) => g.id !== id))
+  }, [])
+
+  const handleFillGaps = useCallback(() => {
+    if (ghostActivities.length > 0) {
+      setGhostActivities([])
+      return
+    }
+    if (!trip) return
+    const date = new Date(parsedStartMs + selectedDayIndex * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0]
+    const dayActivities = scheduledActivities.filter((a) => a.day === selectedDayIndex)
+    fillGaps({ date, dayIndex: selectedDayIndex, activities: dayActivities })
+  }, [ghostActivities, trip, parsedStartMs, selectedDayIndex, scheduledActivities, fillGaps])
 
   const commands = useCalendarCommands({
     selectedActivity,
@@ -560,6 +621,10 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
           onOpenHistory={() => setIsHistoryOpen(true)}
+          onFillGaps={handleFillGaps}
+          isGapFilling={isGapFilling}
+          hasGhosts={ghostActivities.length > 0}
+          hasGaps={hasGaps}
         />
 
         {/* Grid area */}
@@ -611,6 +676,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
                         tripId={tripId}
+                        ghostActivities={ghostActivities}
+                        onConfirmGhost={handleConfirmGhost}
+                        onDismissGhost={handleDismissGhost}
                       />
                     </motion.div>
                   ) : (
@@ -639,6 +707,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
                         tripId={tripId}
+                        ghostActivities={ghostActivities}
+                        onConfirmGhost={handleConfirmGhost}
+                        onDismissGhost={handleDismissGhost}
                       />
                     </motion.div>
                   )}

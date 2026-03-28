@@ -126,6 +126,10 @@ export type { RescoperOperation } from './rescoper'
 export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
+// Gap computation
+export { computeGaps } from './gaps'
+export type { TimeGap } from './gaps'
+
 /** Returns distance in km between two lat/lng points (Haversine formula) */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
