@@ -1,6 +1,6 @@
 # Travyl Master Task List — 6 Week Sprint
 
-Last updated: March 27, 2026 (evening)
+Last updated: March 28, 2026
 
 ---
 
@@ -8,10 +8,10 @@ Last updated: March 27, 2026 (evening)
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| C1 | Fix CloudFront 403 on trip creation (payload too large for WAF) | E2E test | Done (trimmed payloads ~3KB) |
+| C1 | Fix CloudFront 403 on trip creation (payload too large for WAF) | E2E test | Done (TRA-288, TRA-358) |
 | C2 | Fix Amplify build stability (main/develop divergence) | Recurring | Done (TRA-286) |
 | C3 | Fix location filtering — wrong city results (Universal Studios in New Delhi) | Demo feedback F1 | Todo |
-| C4 | Fix deployed site: missing env vars, API routes 404/500 | E2E test | Done (switched to anon key, no service key needed) |
+| C4 | Fix deployed site: missing env vars, API routes 404/500 | E2E test | Done (TRA-290, TRA-357) |
 
 ## HIGH — Broken or Fake Features
 
@@ -43,7 +43,7 @@ Last updated: March 27, 2026 (evening)
 | M1 | How It Works scroll snapping | User feedback | Done (TRA-287) |
 | M2 | Font color contrast issues on some text | Demo feedback F4 | Partial (TRA-287, hero done) |
 | M3 | Add accommodation types ("stay with someone", "own house") | Demo feedback F5 | Todo |
-| M4 | Trip visibility enforcement — anon users see others' trips | Demo feedback F6 | Partial (RLS policies added, auth session leak fixed) |
+| M4 | Trip visibility enforcement — anon users see others' trips | Demo feedback F6 | Partial (TRA-357 — RLS policies + auth session leak fixed) |
 | M5 | Currency conversion — wire /api/exchange-rates | Demo feedback F7 | Todo |
 | M6 | Map language consistent with user locale | Demo feedback F8 | Todo |
 | M7 | Fix events API params (city+country, not lat/lng) | E2E test | Todo |
@@ -56,7 +56,7 @@ Last updated: March 27, 2026 (evening)
 | M14 | Mobile budget daily chart hardcoded | Audit | Todo |
 | M15 | Mobile settings hardcoded "Alex Rivera" | Audit | Todo |
 | M16 | Drag day to swap itinerary plans | User feedback | Todo |
-| M17 | Suppress hero_config/mosaic_tiles/inspiration_cards 404s | E2E test | Done (TRA-287, mosaic removed) |
+| M17 | Suppress hero_config/mosaic_tiles/inspiration_cards 404s | E2E test | Done (TRA-287, TRA-359) |
 
 ## LOW — Nice to Have
 
@@ -81,7 +81,7 @@ Last updated: March 27, 2026 (evening)
 | E4 | Wire /api/places/enrich to PlaceDetailModal | API audit | Todo |
 | E5 | Wire /api/places/menu for restaurant menus | API audit | Todo |
 | E6 | Request: /api/places/reviews (Google Maps Reviews) | SerpAPI map | Todo |
-| E7 | Request: /api/search/autocomplete (type-ahead) | SerpAPI map | Todo |
+| E7 | Request: /api/search/autocomplete (type-ahead) | SerpAPI map | Done (TRA-360 — Geonames autocomplete on hero search) |
 | E8 | Request: /api/tripadvisor/place (rankings, badges) | SerpAPI map | Todo |
 | E9 | Request: /api/yelp/place (food photos, "Good for" tags) | SerpAPI map | Todo |
 | E10 | Request: /api/destinations/trending (Google Trends) | SerpAPI map | Todo |
@@ -109,16 +109,16 @@ Last updated: March 27, 2026 (evening)
 
 | # | Task | Status |
 |---|---|---|
-| S1 | Remove service role key from ALL API routes (use anon key + RLS) | Done |
-| S2 | Auth session leak — shared Supabase singleton persisted across users on SSR | Done |
-| S3 | Delete route had no auth — anyone could delete any trip | Done (owner check added) |
-| S4 | Origin checks on all POST routes (create, update, delete, enrich, plan, extract) | Done |
-| S5 | Rate limiting on expensive routes (flights, hotels, trending, plan, extract, enrich, create, delete) | Done |
-| S6 | Input validation on trip create (destination, travelers, budget, currency) | Done |
-| S7 | Prompt length validation on extract/plan (max 2000 chars) | Done |
-| S8 | RLS policies — anon insert/select public trips, time-limited update (1hr) | Done |
-| S9 | Enrich route — 15s timeout on 22 parallel fetches via AbortController | Done |
-| S10 | Drop overly permissive anon UPDATE policy (replaced with time-limited) | Done |
+| S1 | Remove service role key from ALL API routes (use anon key + RLS) | Done (TRA-357) |
+| S2 | Auth session leak — shared Supabase singleton persisted across users on SSR | Done (TRA-357) |
+| S3 | Delete route had no auth — anyone could delete any trip | Done (TRA-357) |
+| S4 | Origin checks on all POST routes (create, update, delete, enrich, plan, extract) | Done (TRA-357) |
+| S5 | Rate limiting on expensive routes (flights, hotels, trending, plan, extract, enrich, create, delete) | Done (TRA-357) |
+| S6 | Input validation on trip create (destination, travelers, budget, currency) | Done (TRA-357) |
+| S7 | Prompt length validation on extract/plan (max 2000 chars) | Done (TRA-357) |
+| S8 | RLS policies — anon insert/select public trips, time-limited update (1hr) | Done (TRA-357) |
+| S9 | Enrich route — 15s timeout on 22 parallel fetches via AbortController | Done (TRA-357) |
+| S10 | Drop overly permissive anon UPDATE policy (replaced with time-limited) | Done (TRA-357) |
 
 ---
 
@@ -136,6 +136,11 @@ Last updated: March 27, 2026 (evening)
 | ✓ | SUPABASE_SERVICE_ROLE_KEY env var compat | #358 |
 | ✓ | Mobile flights wired to trip_context | #363 |
 | ✓ | Homepage polish — live stats, trending pills, hero contrast, cleanup | TRA-287, #386 |
-| ✓ | CloudFront WAF fix — trimmed payloads to ~3KB | TRA-288 |
-| ✓ | Security hardening — 10 fixes (see Security section above) | TRA-287 |
-| ✓ | Auth session leak — persistSession: false on shared client | TRA-287 |
+| ✓ | CloudFront WAF fix — bypass for anon, trimmed for auth | TRA-288, TRA-358 |
+| ✓ | Deployed site env vars — switched to anon key, no service key needed | TRA-290 |
+| ✓ | Security hardening — 10 fixes (see Security section above) | TRA-357 |
+| ✓ | Auth session leak — persistSession: false on shared client | TRA-357 |
+| ✓ | Suppress 404s — hero_config, mosaic_tiles, inspiration_cards, itinerary_days | TRA-359 |
+| ✓ | Destination autocomplete dropdown on hero search | TRA-360 |
+| ✓ | Auto-skip stuck fix — fallback to showing questions after 2 retries | TRA-361 |
+| ✓ | Default start_date/end_date when backend returns null | TRA-358 |
