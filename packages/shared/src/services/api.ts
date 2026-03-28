@@ -46,7 +46,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
 // ─── Home Page Data ──────────────────────────────────────────
 
-// These tables don't exist yet — return empty immediately to suppress 404 console errors.
+// These tables don't exist in the current schema — return empty to avoid 404s
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> { return []; }
 export async function fetchInspirationCards(): Promise<InspirationCard[]> { return []; }
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> { return []; }
@@ -66,8 +66,7 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
-// Table doesn't exist yet — data lives in trip_context JSONB.
-// Pages fall back to trip_context when this returns empty.
+// itinerary_days table doesn't exist — itinerary lives in trip_context
 export async function fetchItineraryDays(_tripId: string): Promise<ItineraryDayWithActivities[]> {
   return [];
 }

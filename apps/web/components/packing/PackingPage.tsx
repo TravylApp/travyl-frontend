@@ -50,7 +50,12 @@ export function PackingPage({ tripId }: PackingPageProps) {
     if (!filteredItemsByCategory[item.category]) filteredItemsByCategory[item.category] = []
     filteredItemsByCategory[item.category].push(item)
   }
-  const filteredOrderedCategories = orderedCategories.filter((cat) => (filteredItemsByCategory[cat]?.length ?? 0) > 0)
+  // Include categories that have items OR suggestions
+  const suggestionCats = Object.keys(suggestionsByCategory)
+  const allCats = new Set([...orderedCategories, ...suggestionCats])
+  const filteredOrderedCategories = [...allCats].filter(
+    (cat) => (filteredItemsByCategory[cat]?.length ?? 0) > 0 || (suggestionsByCategory[cat]?.length ?? 0) > 0
+  )
 
   return (
     <div className="flex flex-col h-full p-6">
