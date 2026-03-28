@@ -2,7 +2,6 @@
 
 interface ConflictFixSuggestionProps {
   activityId: string
-  currentStartHour: number
   travelTimeMinutes: number
   prevEndHour: number
   onFix: (activityId: string, newStartHour: number) => void

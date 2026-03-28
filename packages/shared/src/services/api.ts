@@ -46,46 +46,21 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
 // ─── Home Page Data ──────────────────────────────────────────
 
+// These tables don't exist yet — return empty immediately to suppress 404 console errors.
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
-  try {
-    const { data, error } = await supabase
-      .from('mosaic_tiles')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (error) return [];
-    return data ?? [];
-  } catch { return []; }
+  return [];
 }
 
 export async function fetchInspirationCards(): Promise<InspirationCard[]> {
-  try {
-    const { data, error } = await supabase
-      .from('inspiration_cards')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (error) return [];
-    return data ?? [];
-  } catch { return []; }
+  return [];
 }
 
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
-  try {
-    const { data, error } = await supabase
-      .from('explore_rows')
-      .select('*, items:explore_items(*)');
-    if (error) return [];
-    return data ?? [];
-  } catch { return []; }
+  return [];
 }
 
 export async function fetchHeroConfig(): Promise<HeroConfig | null> {
-  try {
-    const { data, error } = await supabase
-      .from('hero_config')
-      .select('*, suggestions:hero_suggestions(*)');
-    if (error) return null;
-    return data?.[0] ?? null;
-  } catch { return null; }
+  return null;
 }
 
 // ─── Itinerary Data ─────────────────────────────────────────
@@ -102,20 +77,11 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
-// These tables don't exist yet — data lives in trip_context JSONB.
-// Pages already fall back to trip_context when these return empty.
-// TODO: Create these tables when we need per-item CRUD (booking, reordering).
-export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWithActivities[]> {
-  const { data, error } = await supabase
-    .from('itinerary_days').select('*, activities(*)')
-    .eq('trip_id', tripId).order('day_number', { ascending: true });
-  if (error) return []; // Table doesn't exist yet — fall back to trip_context
-  return (data ?? []).map((day: any) => ({
-    ...day,
-    activities: (day.activities ?? []).sort(
-      (a: Activity, b: Activity) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
-    ),
-  }));
+// Table doesn't exist yet — data lives in trip_context JSONB.
+// Pages fall back to trip_context when this returns empty.
+// TODO: Create this table when we need per-item CRUD (booking, reordering).
+export async function fetchItineraryDays(_tripId: string): Promise<ItineraryDayWithActivities[]> {
+  return [];
 }
 
 export async function fetchFlights(tripId: string): Promise<Flight[]> {
