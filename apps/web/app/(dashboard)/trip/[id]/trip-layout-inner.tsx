@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
-import { getTabMeta } from '@/components/trip-tabs';
+import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip } from '@travyl/shared';
 import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
@@ -14,8 +14,6 @@ import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
-import { DashboardTopBarSlot } from '@/components/dashboard/DashboardTopBarSlot';
-import { TripTabBar } from '@/components/dashboard/TripTabBar';
 import type { PlaceItem } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
@@ -39,7 +37,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   if (segment === '' || segment === 'itinerary') return null;
 
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 pt-4 pb-3 sticky top-0 z-20">
+    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-20 pt-4 pb-3 sticky top-0 z-20">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: tab.color }}>
           <Icon size={15} className="text-white" />
@@ -226,11 +224,9 @@ export default function TripLayoutInner({
 
   return (
     <TripThemeProvider trip={trip}>
-      <DashboardTopBarSlot.Provider value={<TripTabBar tripId={tripId} />}>
-        <ItineraryProvider tripId={tripId}>
-          <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
-        </ItineraryProvider>
-      </DashboardTopBarSlot.Provider>
+      <ItineraryProvider tripId={tripId}>
+        <TripLayoutContent tripId={tripId}>{children}</TripLayoutContent>
+      </ItineraryProvider>
     </TripThemeProvider>
   );
 }
@@ -318,9 +314,12 @@ function TripLayoutContent({
 
   return (
     <div
-      className={`pb-14 md:pb-0 ${useOverviewBg ? '-mt-16 relative' : 'bg-white dark:bg-[var(--background)]'}`}
+      className={`pb-14 md:pb-0 ${useOverviewBg ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
       style={{ transition: 'background-color 0.5s ease' }}
     >
+      {/* Trip navigation sidebar — vertical on desktop, bottom bar on mobile */}
+      <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
+
       {/* Hero banner — only on overview + itinerary */}
       {(isOverview || isItinerary) && (
         <TripMagazineHero trip={trip} compact={isItinerary} />
@@ -356,7 +355,7 @@ function TripLayoutContent({
             <div className="flex">
               <div
                 className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-5 pt-4 pb-5'
+                  isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-5 md:pl-20 pt-4 pb-5'
                 }`}
                 style={{ perspective: 1200 }}
               >

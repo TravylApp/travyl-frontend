@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -35,7 +35,7 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -140,6 +140,28 @@ api.route('GET /discover', {
 api.route('GET /parse-intent', {
   handler: 'services/parse-intent.handler',
   link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})
+
+api.route('GET /search/quick', {
+  handler: 'services/search-quick.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0'],
+    },
+  ],
+})
+
+api.route('GET /search/deep', {
+  handler: 'services/search-deep.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey, cacheTable],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],
