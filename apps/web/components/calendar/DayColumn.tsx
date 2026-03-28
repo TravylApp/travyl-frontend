@@ -39,6 +39,7 @@ interface DayColumnProps {
   polls?: Map<string, Poll>
   pollUserId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  bookingStatuses?: Map<string, 'matched' | 'opened'>
   tripId?: string
   isDayView?: boolean
   ghostActivities?: CalendarActivity[]
@@ -108,6 +109,7 @@ export function DayColumn({
   polls,
   pollUserId,
   onVotePoll,
+  bookingStatuses,
   tripId,
   isDayView = false,
   ghostActivities = [],
@@ -290,6 +292,7 @@ export function DayColumn({
               poll={polls?.get(activity.id)}
               userId={pollUserId}
               onVote={onVotePoll}
+              bookingStatus={bookingStatuses?.get(activity.id) ?? null}
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}

@@ -38,6 +38,9 @@ import { CalendarThemeContext } from './CalendarThemeContext'
 import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
 import { HistoryDrawer } from './HistoryDrawer'
+import { useBookingMatches } from './hooks/useBookingMatches'
+import { BookingPanel, type BookingPanelMode } from './BookingPanel'
+import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
@@ -104,6 +107,13 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
   const [ghostActivities, setGhostActivities] = useState<CalendarActivity[]>([])
+  const [isBookingPanelOpen, setIsBookingPanelOpen] = useState(false)
+  const [bookingPanelMode, setBookingPanelMode] = useState<BookingPanelMode>('loading')
+  const [bookingTotal, setBookingTotal] = useState(0)
+  const [bookingReceived, setBookingReceived] = useState(0)
+  const [bookingInProgress, setBookingInProgress] = useState(false)
+  const [failedToOpenIds, setFailedToOpenIds] = useState<string[]>([])
+  const bookingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const router = useRouter()
 
   // Hooks
@@ -185,6 +195,21 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   const { trackEvent } = useInteractionTracking(tripId)
 
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => {
+      const { data } = await getSupabaseBrowser().auth.getSession()
+      return data.session
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { matches: bookingMatches, hasBookingMatches, startRealtimeAndMatch, markOpened } = useBookingMatches({
+    tripId,
+    apiUrl: process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? '',
+    authToken: session?.access_token ?? '',
+  })
+
   const weekGridRef = useRef<HTMLDivElement>(null)
 
   // Computed (moved up so useCalendarDnd can reference timeRange)
@@ -207,6 +232,16 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       ).length > 0,
     [scheduledActivities, selectedDayIndex],
   )
+
+  const bookingStatuses = useMemo(() => {
+    const m = new Map<string, 'matched' | 'opened'>()
+    for (const [id, match] of bookingMatches) {
+      if (match.status === 'matched' || match.status === 'opened') {
+        m.set(id, match.status)
+      }
+    }
+    return m
+  }, [bookingMatches])
 
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
@@ -389,6 +424,78 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       await duplicateActivity(act)
     }
   }, [marqueeSelectedIds, clearMarqueeSelection, scheduledActivities, duplicateActivity])
+
+  const handleBookTrip = useCallback(async () => {
+    if (bookingInProgress) return
+    setBookingInProgress(true)
+    setBookingPanelMode('loading')
+    setIsBookingPanelOpen(true)
+    setBookingReceived(0)
+    setFailedToOpenIds([])
+
+    try {
+      const activitiesToMatch = scheduledActivities.map((a) => ({
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        latitude: a.latitude ?? null,
+        longitude: a.longitude ?? null,
+      }))
+      setBookingTotal(activitiesToMatch.length)
+
+      const result = await startRealtimeAndMatch(activitiesToMatch)
+      setBookingTotal(result.total)
+
+      if (bookingFallbackTimerRef.current) clearTimeout(bookingFallbackTimerRef.current)
+      bookingFallbackTimerRef.current = setTimeout(() => {
+        setBookingReceived(result.total)
+        setBookingPanelMode('summary')
+        setBookingInProgress(false)
+      }, 2000)
+    } catch {
+      setBookingPanelMode('summary')
+      setBookingInProgress(false)
+    }
+  }, [bookingInProgress, scheduledActivities, startRealtimeAndMatch])
+
+  useEffect(() => {
+    if (bookingPanelMode !== 'loading' || bookingTotal === 0) return
+    setBookingReceived(Math.min(bookingMatches.size, bookingTotal))
+  }, [bookingMatches.size, bookingTotal, bookingPanelMode])
+
+  const handleBookAll = useCallback(() => {
+    const toBook = scheduledActivities.filter((a) => bookingMatches.get(a.id)?.status === 'matched')
+    const failed: string[] = []
+
+    for (const a of toBook) {
+      const m = bookingMatches.get(a.id)
+      if (!m?.affiliateUrl) continue
+      const win = window.open(m.affiliateUrl, '_blank')
+      if (!win) failed.push(a.id)
+    }
+
+    setFailedToOpenIds(failed)
+    const successIds = toBook.map((a) => a.id).filter((id) => !failed.includes(id))
+    if (successIds.length > 0) markOpened(successIds)
+    setBookingPanelMode('done')
+  }, [scheduledActivities, bookingMatches, markOpened])
+
+  const handleBookOne = useCallback((activityId: string) => {
+    const m = bookingMatches.get(activityId)
+    if (!m?.affiliateUrl) return
+    const win = window.open(m.affiliateUrl, '_blank')
+    if (win) {
+      markOpened([activityId])
+    } else {
+      setFailedToOpenIds((prev) => [...prev, activityId])
+    }
+  }, [bookingMatches, markOpened])
+
+  useEffect(() => {
+    return () => {
+      if (bookingFallbackTimerRef.current) clearTimeout(bookingFallbackTimerRef.current)
+    }
+  }, [])
 
   const handleConfirmGhost = useCallback((ghost: CalendarActivity) => {
     addActivity({ ...ghost, id: crypto.randomUUID() })
@@ -621,6 +728,13 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
           onOpenHistory={() => setIsHistoryOpen(true)}
+          onBookTrip={isSharedView ? undefined : handleBookTrip}
+          hasBookingMatches={hasBookingMatches}
+          isBookingInProgress={bookingInProgress}
+          onViewBookings={() => {
+            setBookingPanelMode('summary')
+            setIsBookingPanelOpen(true)
+          }}
           onFillGaps={handleFillGaps}
           isGapFilling={isGapFilling}
           hasGhosts={ghostActivities.length > 0}
@@ -675,6 +789,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         polls={polls}
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        bookingStatuses={bookingStatuses}
                         tripId={tripId}
                         ghostActivities={ghostActivities}
                         onConfirmGhost={handleConfirmGhost}
@@ -706,6 +821,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         polls={polls}
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        bookingStatuses={bookingStatuses}
                         tripId={tripId}
                         ghostActivities={ghostActivities}
                         onConfirmGhost={handleConfirmGhost}
@@ -874,6 +990,18 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       onAdd={addActivity}
       tripStartDate={tripStartDate}
       userId={userId}
+    />
+    <BookingPanel
+      isOpen={isBookingPanelOpen}
+      onClose={() => setIsBookingPanelOpen(false)}
+      mode={bookingPanelMode}
+      activities={scheduledActivities.map((a) => ({ id: a.id, title: a.title }))}
+      matches={bookingMatches}
+      receivedCount={bookingReceived}
+      total={bookingTotal}
+      onBookAll={handleBookAll}
+      onBookOne={handleBookOne}
+      failedToOpenIds={failedToOpenIds}
     />
     {contextMenu && (() => {
       const poll = polls.get(contextMenu.activityId)
