@@ -29,6 +29,8 @@ import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
 import SidebarTabs from './SidebarTabs'
+import { EventsPanel } from './EventsPanel'
+import { useEvents } from './hooks/useEvents'
 import DayMap from './DayMap'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
@@ -101,7 +103,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const [sidebarTab, setSidebarTab] = useState<'for-you' | 'map'>('for-you')
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
@@ -194,6 +195,13 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   )
 
   const { trackEvent } = useInteractionTracking(tripId)
+
+  const { events, eventsByDate, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useEvents({
+    destination: trip?.destination ?? '',
+    startDate: trip?.start_date ?? '',
+    endDate: trip?.end_date ?? '',
+  })
+  const [showEvents, setShowEvents] = useState(true)
 
   const { data: session } = useQuery({
     queryKey: ['session'],
@@ -327,6 +335,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         day: 'numeric',
         timeZone: 'UTC',
       }),
+      isoDate: date.toISOString().slice(0, 10),
     }
   }), [tripTotalDays, parsedStartMs])
 
@@ -739,6 +748,8 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           isGapFilling={isGapFilling}
           hasGhosts={ghostActivities.length > 0}
           hasGaps={hasGaps}
+          showEvents={showEvents}
+          onToggleEvents={() => setShowEvents(v => !v)}
         />
 
         {/* Grid area */}
@@ -756,6 +767,8 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
               {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
               <AllDayRow
                 days={visibleDays}
+                eventsByDate={eventsByDate}
+                showEvents={showEvents}
               />
               {/* Scrollable time grid */}
               <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
@@ -861,8 +874,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
                 {/* Right column: Sidebar with For You / Map tabs */}
                 <SidebarTabs
-                  activeTab={sidebarTab}
-                  onTabChange={setSidebarTab}
                   width={forYouWidth}
                   forYouContent={
                     <ForYouPanel
@@ -870,6 +881,16 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                       tripId={trip?.id ?? ''}
                       scheduledActivityIds={droppedSuggestionIds}
                       width={forYouWidth}
+                    />
+                  }
+                  eventsContent={
+                    <EventsPanel
+                      events={events}
+                      isLoading={eventsLoading}
+                      destination={trip?.destination ?? ''}
+                      startDate={trip?.start_date ?? ''}
+                      endDate={trip?.end_date ?? ''}
+                      onRetry={eventsError ? refetchEvents : undefined}
                     />
                   }
                   mapContent={
