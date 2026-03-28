@@ -3,10 +3,8 @@ import { Resource } from 'sst'
 import { createClient } from '@supabase/supabase-js'
 import { validateAuth } from './lib/auth'
 import { routeProvider, nameSimScore, proximityScore, calculateConfidence } from '@travyl/shared'
-import { searchViator } from './lib/booking/viator'
 import { searchOpenTable } from './lib/booking/opentable'
 import { searchTicketmaster } from './lib/booking/ticketmaster'
-import { searchAmadeus } from './lib/booking/amadeus'
 import type { BookingActivity } from './lib/booking/types'
 
 const CONFIDENCE_THRESHOLD = 0.6
@@ -19,11 +17,19 @@ async function matchActivity(activity: BookingActivity) {
   const provider = routeProvider(activity.type)
 
   let match = null
+  if (!provider) return {
+    activityId: activity.id,
+    provider: null,
+    matchedName: null,
+    bookingUrl: null,
+    affiliateUrl: null,
+    confidence: null,
+    status: 'unmatched' as const,
+  }
+
   try {
-    if (provider === 'viator') match = await searchViator(activity)
-    else if (provider === 'opentable') match = await searchOpenTable(activity)
+    if (provider === 'opentable') match = await searchOpenTable(activity)
     else if (provider === 'ticketmaster') match = await searchTicketmaster(activity)
-    else match = await searchAmadeus(activity)
   } catch {
     // provider threw — treat as unmatched
   }

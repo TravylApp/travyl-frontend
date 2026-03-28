@@ -4,17 +4,13 @@ import { Xmark, BookmarkSolid } from 'iconoir-react'
 import type { BookingMatch } from './hooks/useBookingMatches'
 
 const PROVIDER_LABELS: Record<string, string> = {
-  viator: 'Viator',
   opentable: 'OpenTable',
   ticketmaster: 'Ticketmaster',
-  amadeus: 'Amadeus',
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
-  viator: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   opentable: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   ticketmaster: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  amadeus: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
 }
 
 export type BookingPanelMode = 'loading' | 'summary' | 'done'
