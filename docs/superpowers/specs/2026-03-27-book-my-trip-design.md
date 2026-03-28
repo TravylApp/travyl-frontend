@@ -86,6 +86,7 @@ Two endpoints added to the existing SST API Gateway:
 |---|---|
 | `tour`, `sightseeing`, `museum`, `cultural`, `outdoor` | Viator |
 | `dining` | OpenTable |
+| `event`, `concert`, `show`, `nightlife`, `entertainment` | Ticketmaster |
 | all other types | Amadeus Activities |
 
 No provider fallback chains in Phase 1. Amadeus is the catch-all for unrecognized types. If Amadeus does not return a bookable affiliate URL for a given activity (its API provides discovery links, not guaranteed affiliate booking links), that activity is marked `unmatched`.
@@ -100,7 +101,7 @@ No provider fallback chains in Phase 1. Amadeus is the catch-all for unrecognize
 
 All provider searches run in parallel (Promise.allSettled). Individual provider failures mark that activity `unmatched` and do not block the response.
 
-**Affiliate URL construction** is done server-side. Provider API keys and affiliate tokens are stored as SST secrets (`Resource.ViatorAffiliateKey.value`, `Resource.OpenTableAffiliateKey.value`, `Resource.AmadeusApiKey.value`), never exposed to the client.
+**Affiliate URL construction** is done server-side. Provider API keys and affiliate tokens are stored as SST secrets (`Resource.ViatorAffiliateKey.value`, `Resource.OpenTableAffiliateKey.value`, `Resource.AmadeusApiKey.value`, `Resource.TicketmasterApiKey.value`), never exposed to the client.
 
 **`booking_url` vs `affiliate_url`:**
 - `booking_url` — the provider's canonical URL for the venue/product (e.g., Viator product page)
@@ -117,7 +118,7 @@ create table booking_matches (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references trips(id) on delete cascade,
   activity_id text not null,           -- Yjs activity UUID
-  provider text,                       -- 'viator' | 'opentable' | 'amadeus' | null for unmatched
+  provider text,                       -- 'viator' | 'opentable' | 'ticketmaster' | 'amadeus' | null for unmatched
   matched_name text,
   booking_url text,                    -- provider canonical URL
   affiliate_url text,                  -- booking_url + affiliate tracking params
@@ -290,6 +291,13 @@ User re-opens panel later (via "View Bookings" button)
 - Search: restaurant name + lat/lng
 - Affiliate URL: constructed with restaurant ID + affiliate tracking param
 - Commission: per-cover fee per confirmed reservation
+
+### Ticketmaster (events, concerts, shows, nightlife)
+- Free public API via developer.ticketmaster.com (no partnership required)
+- Search: `GET /discovery/v2/events` with keyword (activity title) + lat/lng + radius
+- Match by event name similarity + date proximity to the activity's scheduled day
+- Affiliate URL: Ticketmaster affiliate program link with tracking param
+- Commission: per-ticket fee via affiliate program
 
 ### Amadeus Activities (catch-all)
 - Free developer tier at developers.amadeus.com
