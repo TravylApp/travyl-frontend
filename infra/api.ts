@@ -122,6 +122,11 @@ api.route('GET /activity-intelligence', {
   link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
+api.route('GET /day-intelligence', {
+  handler: 'services/day-intelligence.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
 api.route('GET /discover', {
   handler: 'services/discover.handler',
   link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
