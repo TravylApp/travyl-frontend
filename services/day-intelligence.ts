@@ -29,7 +29,7 @@ async function fetchWeather(lat: number, lng: number, date: string) {
   try {
     const res = await fetch(url.toString())
     if (!res.ok) return null
-    const data = await res.json() as any
+    const data = await res.json() as { daily?: { temperature_2m_max?: number[]; precipitation_sum?: number[]; weathercode?: number[] } }
     return {
       tempMaxC: data.daily?.temperature_2m_max?.[0] ?? null,
       precipitationMm: data.daily?.precipitation_sum?.[0] ?? null,
@@ -118,8 +118,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     }))
 
     return { statusCode: 200, body: JSON.stringify(result) }
-  } catch (err: any) {
-    if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    if (msg === 'Invalid token' || msg.includes('Authorization')) {
       return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
     }
     console.error('[day-intelligence] error:', err)

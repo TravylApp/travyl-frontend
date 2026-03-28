@@ -39,6 +39,7 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !password) return;
@@ -53,6 +54,23 @@ export default function LoginScreen() {
       router.replace('/');
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Enter your email', 'Type your email address in the field above, then tap Forgot password.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      setResetEmailSent(true);
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Failed to send reset email.');
     } finally {
       setSubmitting(false);
     }
@@ -167,8 +185,14 @@ export default function LoginScreen() {
           </View>
 
           {!isSignUp && (
-            <Pressable style={{ alignSelf: 'flex-end', marginBottom: 16 }}>
-              <Text style={{ ...TextStyles.caption, color: 'rgba(30,58,95,0.5)' }}>Forgot password?</Text>
+            <Pressable
+              onPress={handleForgotPassword}
+              disabled={submitting}
+              style={{ alignSelf: 'flex-end', marginBottom: 16 }}
+            >
+              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? '#16a34a' : 'rgba(30,58,95,0.5)' }}>
+                {resetEmailSent ? 'Check your email for a reset link.' : 'Forgot password?'}
+              </Text>
             </Pressable>
           )}
 

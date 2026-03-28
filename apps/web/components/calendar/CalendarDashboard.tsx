@@ -27,6 +27,8 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
+import SidebarTabs from './SidebarTabs'
+import DayMap from './DayMap'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { CalendarActivity } from './types'
@@ -95,6 +97,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [sidebarTab, setSidebarTab] = useState<'for-you' | 'map'>('for-you')
   const isPaletteOpen = useCalendarCommandsStore((s) => s.paletteOpen)
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
@@ -155,6 +158,14 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     selectEvent,
     goToDayView,
   } = useCalendarNavigation()
+
+  const currentDayMapActivities = useMemo(
+    () => scheduledActivities
+      .filter((a) => a.day === selectedDayIndex && a.latitude != null && a.longitude != null)
+      .sort((a, b) => a.startHour - b.startHour)
+      .map((a) => ({ id: a.id, title: a.title, latitude: a.latitude!, longitude: a.longitude!, startHour: a.startHour })),
+    [scheduledActivities, selectedDayIndex],
+  )
 
   const { trackEvent } = useInteractionTracking(tripId)
 
@@ -599,6 +610,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         polls={polls}
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        tripId={tripId}
                       />
                     </motion.div>
                   ) : (
@@ -626,6 +638,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         polls={polls}
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        tripId={tripId}
                       />
                     </motion.div>
                   )}
@@ -659,12 +672,27 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
                 </div>
 
-                {/* Right column: For You panel */}
-                <ForYouPanel
-                  destination={trip?.destination ?? ''}
-                  tripId={trip?.id ?? ''}
-                  scheduledActivityIds={droppedSuggestionIds}
+                {/* Right column: Sidebar with For You / Map tabs */}
+                <SidebarTabs
+                  activeTab={sidebarTab}
+                  onTabChange={setSidebarTab}
                   width={forYouWidth}
+                  forYouContent={
+                    <ForYouPanel
+                      destination={trip?.destination ?? ''}
+                      tripId={trip?.id ?? ''}
+                      scheduledActivityIds={droppedSuggestionIds}
+                      width={forYouWidth}
+                    />
+                  }
+                  mapContent={
+                    <DayMap
+                      activities={currentDayMapActivities}
+                      selectedActivityId={selectedEventId}
+                      onSelectActivity={(id) => handleSelectEvent(id)}
+                      className="h-full"
+                    />
+                  }
                 />
               </>
             )}

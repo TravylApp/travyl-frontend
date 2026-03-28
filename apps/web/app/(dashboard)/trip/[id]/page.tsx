@@ -568,11 +568,17 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     staleTime: 5 * 60 * 1000,
   });
 
+  const tripDestParts = trip?.destination?.split(',') ?? [];
+  const tripCity = tripDestParts[0]?.trim();
+  const tripCountry = tripDestParts.slice(1).join(',').trim();
+
   const { data: liveEvents } = useQuery({
-    queryKey: ['trip-events', trip?.id, tripLat, tripLng],
+    queryKey: ['trip-events', trip?.id, tripCity],
     queryFn: async () => {
-      if (!tripLat || !tripLng) return [];
-      const res = await fetch(`/api/events?lat=${tripLat}&lng=${tripLng}&limit=10`);
+      if (!tripCity) return [];
+      const params = new URLSearchParams({ city: tripCity, limit: '10' });
+      if (tripCountry) params.set('country', tripCountry);
+      const res = await fetch(`/api/events?${params}`);
       if (!res.ok) return [];
       const evts = await res.json();
       if (!Array.isArray(evts)) return [];
@@ -582,7 +588,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         category: e.category, image: e.image,
       }));
     },
-    enabled: !!tripLat && !!tripLng && !enriching,
+    enabled: !!tripCity && !enriching,
     staleTime: 5 * 60 * 1000,
   });
 

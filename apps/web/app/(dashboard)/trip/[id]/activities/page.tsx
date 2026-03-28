@@ -33,7 +33,7 @@ type SortKey = 'default' | 'rating' | 'name';
 // ─── Data fetching ──────────────────────────────────────────
 
 async function fetchExplorePage(
-  lat: number, lng: number, pageParam: number,
+  lat: number, lng: number, pageParam: number, city?: string, country?: string,
 ): Promise<PlaceItem[]> {
   const catsPerPage = 3;
   const startCat = (pageParam * catsPerPage) % CATEGORIES.length;
@@ -99,7 +99,9 @@ async function fetchExplorePage(
   // Fetch events (Eventbrite + PredictHQ) on first page
   if (pageParam === 0) {
     try {
-      const evRes = await fetch(`/api/events?lat=${lat}&lng=${lng}&limit=6`);
+      const evParams = new URLSearchParams({ limit: '6' });
+      if (city) { evParams.set('city', city); if (country) evParams.set('country', country); }
+      const evRes = await fetch(`/api/events?${evParams}`);
       if (evRes.ok) {
         const events = await evRes.json();
         if (Array.isArray(events)) {
@@ -137,7 +139,9 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
 
   const lat = trip?.trip_context?.lat ?? 0;
   const lng = trip?.trip_context?.lng ?? 0;
-  const destination = trip?.destination?.split(',')[0]?.trim() || 'Destination';
+  const destParts = trip?.destination?.split(',') ?? [];
+  const destination = destParts[0]?.trim() || 'Destination';
+  const destCountry = destParts.slice(1).join(',').trim() || undefined;
   const hasCoords = lat !== 0 || lng !== 0;
 
   // Paginated data — accumulate pages manually to avoid useInfiniteQuery internal bug
@@ -147,7 +151,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
 
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['trip-explore', id, lat, lng, page],
-    queryFn: () => fetchExplorePage(lat, lng, page),
+    queryFn: () => fetchExplorePage(lat, lng, page, destination !== 'Destination' ? destination : undefined, destCountry),
     staleTime: 15 * 60 * 1000,
     enabled: hasCoords,
   });
