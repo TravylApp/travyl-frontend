@@ -28,7 +28,7 @@ export interface LocalEvent {
   venueName: string
   venueAddress?: string
   imageUrl?: string
-  ticketUrl: string
+  ticketUrl?: string
   priceMin?: number
   priceMax?: number
   currency?: string
