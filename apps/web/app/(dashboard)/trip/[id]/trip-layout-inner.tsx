@@ -5,9 +5,9 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip } from '@travyl/shared';
 import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
@@ -239,8 +239,18 @@ function TripLayoutContent({
   children: React.ReactNode;
 }) {
   const [mapOpen, setMapOpen] = useState(false);
-  const { trip } = useItineraryScreen(tripId);
+  const { trip, isLoading } = useItineraryScreen(tripId);
+  const user = useAuthStore((s) => s.user);
+  const router = useRouter();
   useTripSettingsRegistration(tripId);
+
+  // Redirect to login if the trip has loaded and the user can't view it
+  useEffect(() => {
+    if (isLoading || !trip) return;
+    if (!canViewTrip(trip, user?.id ?? null)) {
+      router.replace(`/login?next=/trip/${tripId}`);
+    }
+  }, [trip, isLoading, user?.id, tripId, router]);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
 
   // Sync map open with context requests

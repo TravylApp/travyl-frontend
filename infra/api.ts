@@ -47,6 +47,11 @@ api.route('GET /suggest', {
   ],
 })
 
+api.route('POST /fill-gaps', {
+  handler: 'services/fill-gaps.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
 api.route('GET /search', {
   handler: 'services/search.handler',
   link: [activityCdn, supabaseSecretKey, supabaseUrl, serpApiKey],
@@ -120,6 +125,11 @@ api.route('POST /packing-suggest', {
 api.route('GET /activity-intelligence', {
   handler: 'services/activity-intelligence.handler',
   link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
+api.route('GET /day-intelligence', {
+  handler: 'services/day-intelligence.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
 api.route('GET /discover', {

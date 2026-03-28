@@ -187,8 +187,7 @@ export default function Home() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
   const [showQuestions, setShowQuestions] = useState(false);
   const skipQuestionsRef = useRef(false);
-  const skipRetries = useRef(0);
-
+  const skipRetryCountRef = useRef(0);
 
   const isClarifying = planner.state.phase === 'clarifying';
   const isExtracting = planner.state.phase === 'extracting';
@@ -196,19 +195,19 @@ export default function Home() {
   const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : [];
   const currentQuestion = questions[currentQIdx];
 
-  // Auto-skip questions when user clicked Send (not Refine)
-  // Retries up to 2 times if plan returns needs_clarification, then falls back to showing questions
+  // Auto-skip questions when user clicked Send (not Refine).
+  // Retries up to 2 times if the plan API keeps returning needs_clarification,
+  // then falls back to showing the questions so the user isn't stuck.
   useEffect(() => {
     if (isClarifying && skipQuestionsRef.current) {
-      if (skipRetries.current < 2) {
-        skipRetries.current += 1;
+      if (skipRetryCountRef.current < 2) {
+        skipRetryCountRef.current += 1;
         setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
         setShowTakeoff(true);
         planner.submitAnswers({});
       } else {
-        // Backend insists on answers — show questions to the user
         skipQuestionsRef.current = false;
-        skipRetries.current = 0;
+        skipRetryCountRef.current = 0;
         setShowTakeoff(false);
         setShowQuestions(true);
       }
@@ -373,7 +372,7 @@ export default function Home() {
     setSelectedAnswers({});
     setShowQuestions(false);
     skipQuestionsRef.current = false;
-    skipRetries.current = 0;
+    skipRetryCountRef.current = 0;
     setTripQuery("");
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [planner, setTripQuery]);
@@ -382,7 +381,7 @@ export default function Home() {
     const val = tripQuery.trim();
     if (!val) return;
     skipQuestionsRef.current = true;
-    skipRetries.current = 0;
+    skipRetryCountRef.current = 0;
     planner.submitPrompt(val);
     setTripQuery("");
   };
@@ -789,6 +788,7 @@ export default function Home() {
                       key={s.id}
                       onClick={() => {
                         skipQuestionsRef.current = true;
+                        skipRetryCountRef.current = 0;
                         planner.submitPrompt(`Plan a trip to ${s.label}`);
                       }}
                       className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"

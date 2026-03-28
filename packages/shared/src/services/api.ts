@@ -46,11 +46,10 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
 // ─── Home Page Data ──────────────────────────────────────────
 
-// These tables don't exist in the current schema — return empty to avoid 404s
+// These tables don't exist yet — return empty immediately to suppress 404 console errors.
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> { return []; }
 export async function fetchInspirationCards(): Promise<InspirationCard[]> { return []; }
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> { return []; }
-
 export async function fetchHeroConfig(): Promise<HeroConfig | null> { return null; }
 
 // ─── Itinerary Data ─────────────────────────────────────────
@@ -67,11 +66,9 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
-// These tables don't exist yet — data lives in trip_context JSONB.
-// Pages already fall back to trip_context when these return empty.
-// TODO: Create these tables when we need per-item CRUD (booking, reordering).
+// Table doesn't exist yet — data lives in trip_context JSONB.
+// Pages fall back to trip_context when this returns empty.
 export async function fetchItineraryDays(_tripId: string): Promise<ItineraryDayWithActivities[]> {
-  // itinerary_days table doesn't exist — itinerary lives in trip_context
   return [];
 }
 

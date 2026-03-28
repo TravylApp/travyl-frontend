@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useTripBudget, useTrip, formatBudgetAmount } from '@travyl/shared'
+import { useTripBudget, useHomeCurrency } from '@travyl/shared'
 import { BudgetSkeleton } from './BudgetSkeleton'
 import { BudgetSummaryStrip } from './BudgetSummaryStrip'
 import { BudgetDonutChart } from './BudgetDonutChart'
@@ -13,8 +13,7 @@ interface BudgetPanelProps {
 }
 
 export function BudgetPanel({ tripId }: BudgetPanelProps) {
-  const { data: trip } = useTrip(tripId)
-  const tripCurrency = trip?.currency ?? 'USD'
+  const { currency: homeCurrency, format: formatWithHomeCurrency } = useHomeCurrency()
 
   const {
     categories,
@@ -30,14 +29,14 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
     deleteCategory,
     addExpense,
     deleteExpense,
-  } = useTripBudget(tripId, tripCurrency)
+  } = useTripBudget(tripId, homeCurrency)
 
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
 
   const formatAmount = useMemo(
-    () => (amount: number) => formatBudgetAmount(amount, tripCurrency),
-    [tripCurrency],
+    () => (amount: number) => formatWithHomeCurrency(amount),
+    [formatWithHomeCurrency],
   )
 
   const mutations = useMemo(() => ({
@@ -54,11 +53,11 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
         if (item.originalCurrency) currencies.add(item.originalCurrency)
       }
       for (const expense of cat.manualExpenses) {
-        if (expense.currency !== tripCurrency) currencies.add(expense.currency)
+        if (expense.currency !== homeCurrency) currencies.add(expense.currency)
       }
     }
     return Array.from(currencies)
-  }, [categories, tripCurrency])
+  }, [categories, homeCurrency])
 
   const handleEditTotal = (newTotal: number) => {
     if (totalBudgeted <= 0) return
@@ -112,14 +111,14 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
           expandedCategory={expandedCategory}
           onExpandCategory={setExpandedCategory}
           mutations={mutations}
-          tripCurrency={tripCurrency}
+          tripCurrency={homeCurrency}
           rates={rates}
           formatAmount={formatAmount}
         />
       </div>
 
       <CurrencyFooter
-        tripCurrency={tripCurrency}
+        tripCurrency={homeCurrency}
         rates={rates}
         isLoading={ratesLoading}
         onRefresh={refetchRates}

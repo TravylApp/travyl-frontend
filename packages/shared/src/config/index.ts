@@ -50,6 +50,8 @@ export * from './placeCollections';
 
 export * from './packingCatalog';
 
+export { CURRENCIES, type CurrencyInfo } from './currencies';
+
 export * from './typography';
 
 // UI content data (login, profile, travel boards)

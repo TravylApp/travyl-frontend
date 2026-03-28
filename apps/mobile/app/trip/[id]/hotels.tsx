@@ -522,28 +522,32 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
     <View style={{ marginTop: 14 }}>
       <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 10 }}>Contact & Location</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Pressable
-          onPress={() => Linking.openURL(`tel:${phone}`)}
-          style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: '#f0fdf4', borderRadius: 10, paddingVertical: 12,
-            borderWidth: 1, borderColor: '#bbf7d0',
-          }}
-        >
-          <FontAwesome name="phone" size={14} color="#16a34a" />
-          <Text style={{ ...TextStyles.bodyEm, color: '#16a34a' }}>Call</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => Linking.openURL(`mailto:${email}`)}
-          style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: ACCENT + '10', borderRadius: 10, paddingVertical: 12,
-            borderWidth: 1, borderColor: ACCENT + '25',
-          }}
-        >
-          <FontAwesome name="envelope" size={13} color={ACCENT} />
-          <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Email</Text>
-        </Pressable>
+        {!!phone && (
+          <Pressable
+            onPress={() => Linking.openURL(`tel:${phone}`)}
+            style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+              backgroundColor: '#f0fdf4', borderRadius: 10, paddingVertical: 12,
+              borderWidth: 1, borderColor: '#bbf7d0',
+            }}
+          >
+            <FontAwesome name="phone" size={14} color="#16a34a" />
+            <Text style={{ ...TextStyles.bodyEm, color: '#16a34a' }}>Call</Text>
+          </Pressable>
+        )}
+        {!!email && (
+          <Pressable
+            onPress={() => Linking.openURL(`mailto:${email}`)}
+            style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+              backgroundColor: ACCENT + '10', borderRadius: 10, paddingVertical: 12,
+              borderWidth: 1, borderColor: ACCENT + '25',
+            }}
+          >
+            <FontAwesome name="envelope" size={13} color={ACCENT} />
+            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Email</Text>
+          </Pressable>
+        )}
         <Pressable
           onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`)}
           style={{
@@ -1247,8 +1251,10 @@ export default function HotelsScreen() {
           {/* Price Breakdown */}
           <PriceBreakdown room={currentRoom} pricePerNight={currentRoom.price} />
 
-          {/* Contact & Location */}
-          <ContactActions phone={hotel.phone} email={hotel.email} address={hotel.address} />
+          {/* Contact & Location — only shown when at least one field is populated */}
+          {(!!hotel.phone || !!hotel.email || !!hotel.address) && (
+            <ContactActions phone={hotel.phone} email={hotel.email} address={hotel.address} />
+          )}
 
           {/* Guest Ratings */}
           <GuestRatingsSection ratings={hotel.guestRatings} reviews={hotel.reviews} />
