@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@travyl/shared';
 import { fetchUserPublicTrips, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
@@ -33,6 +34,9 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
   const user = useAuthStore((s) => s.user);
   const { mutate: forkTripMutation, isPending } = useForkTrip();
   const [forking, setForking] = useState(false);
+  const [forkError, setForkError] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const canFork = canForkTrip(trip, user?.id ?? null);
 
@@ -40,11 +44,18 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
     e.preventDefault();
     e.stopPropagation();
     setForking(true);
+    setForkError(false);
     forkTripMutation(
       { tripId: trip.id },
       {
-        onSuccess: () => setForking(false),
-        onError: () => setForking(false),
+        onSuccess: (newTrip) => {
+          setForking(false);
+          router.push(`/trip/${newTrip.id}`);
+        },
+        onError: () => {
+          setForking(false);
+          setForkError(true);
+        },
       }
     );
   };
@@ -92,21 +103,35 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
         </div>
       </Link>
 
-      {/* Fork button */}
-      {canFork && (
-        <button
-          onClick={handleFork}
-          disabled={isPending || forking}
-          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 backdrop-blur-sm border border-gray-200 text-xs font-medium text-gray-700 hover:bg-white hover:border-gray-300 transition-all disabled:opacity-50"
+      {/* Fork button / sign-in prompt */}
+      {user === null ? (
+        <Link
+          href={`/login?redirect=${encodeURIComponent(pathname)}`}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 backdrop-blur-sm border border-gray-200 text-xs font-medium text-gray-700 hover:bg-white hover:border-gray-300 transition-all"
         >
-          {isPending || forking ? (
-            <Loader2 size={12} className="animate-spin" />
-          ) : (
-            <GitFork size={12} />
+          <GitFork size={12} />
+          <span>Sign in to fork</span>
+        </Link>
+      ) : canFork ? (
+        <div className="absolute bottom-3 right-3 flex flex-col items-end gap-1">
+          {forkError && (
+            <span className="text-[10px] text-red-500 bg-white/90 px-1.5 py-0.5 rounded">Fork failed — try again</span>
           )}
-          <span>Fork</span>
-        </button>
-      )}
+          <button
+            onClick={handleFork}
+            disabled={isPending || forking}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 backdrop-blur-sm border border-gray-200 text-xs font-medium text-gray-700 hover:bg-white hover:border-gray-300 transition-all disabled:opacity-50"
+          >
+            {isPending || forking ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <GitFork size={12} />
+            )}
+            <span>Fork</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
