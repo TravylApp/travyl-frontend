@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from '@/lib/api-utils'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
-// Lazy-init to avoid crashing at build time when env vars aren't set
 function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!
-  return createClient(url, key)
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
 
 const COUNTRY_CUISINE: Record<string, string> = {
@@ -20,9 +21,20 @@ const COUNTRY_CUISINE: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = rateLimit(req, 'enrich', 3, 60_000)
+  if (blocked) return blocked
+
+  // Origin check — only accept requests from our own domain
+  const originHeader = req.headers.get('origin') || req.headers.get('referer') || ''
+  const host = req.headers.get('host') || ''
+  const IS_DEV = process.env.NODE_ENV === 'development'
+  if (!IS_DEV && originHeader && !originHeader.includes(host) && !['gotravyl.com', 'deeviaje.com', 'amplifyapp.com'].some(d => originHeader.includes(d))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = getSupabase()
   const { tripId } = await req.json()
-  if (!tripId) return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
+  if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
   // Fetch the trip
   const { data: trip, error: fetchErr } = await supabase
@@ -117,10 +129,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Fetch all enrichment APIs in parallel
+  // Fetch all enrichment APIs in parallel with 15s timeout
   const countryCode = country.substring(0, 2).toUpperCase()
   const startParam = trip.start_date || ''
   const endParam = trip.end_date || ''
+  const enrichAbort = new AbortController()
+  const enrichTimeout = setTimeout(() => enrichAbort.abort(), 15_000)
+  const sig = enrichAbort.signal
+  const safeFetch = (url: string, opts?: RequestInit) =>
+    fetch(url, { ...opts, signal: sig }).catch(() => null)
   const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
     (BACKEND_URL
       ? fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(city)}`)
@@ -189,6 +206,7 @@ export async function POST(req: NextRequest) {
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
   ])
+  clearTimeout(enrichTimeout)
 
   // Supplement explore_items with TripAdvisor attractions (better photos, more data)
   if (taAttractions?.length > 0) {

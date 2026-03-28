@@ -1,6 +1,6 @@
 # Travyl Master Task List — 6 Week Sprint
 
-Last updated: March 27, 2026
+Last updated: March 27, 2026 (evening)
 
 ---
 
@@ -8,10 +8,10 @@ Last updated: March 27, 2026
 
 | # | Task | Source | Status |
 |---|---|---|---|
-| C1 | Fix CloudFront 403 on trip creation (payload too large for WAF) | E2E test | Todo |
+| C1 | Fix CloudFront 403 on trip creation (payload too large for WAF) | E2E test | Done (trimmed payloads ~3KB) |
 | C2 | Fix Amplify build stability (main/develop divergence) | Recurring | Done (TRA-286) |
 | C3 | Fix location filtering — wrong city results (Universal Studios in New Delhi) | Demo feedback F1 | Todo |
-| C4 | Fix deployed site: missing env vars, API routes 404/500 | E2E test | Partial |
+| C4 | Fix deployed site: missing env vars, API routes 404/500 | E2E test | Done (switched to anon key, no service key needed) |
 
 ## HIGH — Broken or Fake Features
 
@@ -43,7 +43,7 @@ Last updated: March 27, 2026
 | M1 | How It Works scroll snapping | User feedback | Done (TRA-287) |
 | M2 | Font color contrast issues on some text | Demo feedback F4 | Partial (TRA-287, hero done) |
 | M3 | Add accommodation types ("stay with someone", "own house") | Demo feedback F5 | Todo |
-| M4 | Trip visibility enforcement — anon users see others' trips | Demo feedback F6 | Todo |
+| M4 | Trip visibility enforcement — anon users see others' trips | Demo feedback F6 | Partial (RLS policies added, auth session leak fixed) |
 | M5 | Currency conversion — wire /api/exchange-rates | Demo feedback F7 | Todo |
 | M6 | Map language consistent with user locale | Demo feedback F8 | Todo |
 | M7 | Fix events API params (city+country, not lat/lng) | E2E test | Todo |
@@ -105,6 +105,21 @@ Last updated: March 27, 2026
 | N9 | Analytics integration | Roadmap | Todo |
 | N10 | App store submission prep | Roadmap | Todo |
 
+## SECURITY — Hardening (Done March 27)
+
+| # | Task | Status |
+|---|---|---|
+| S1 | Remove service role key from ALL API routes (use anon key + RLS) | Done |
+| S2 | Auth session leak — shared Supabase singleton persisted across users on SSR | Done |
+| S3 | Delete route had no auth — anyone could delete any trip | Done (owner check added) |
+| S4 | Origin checks on all POST routes (create, update, delete, enrich, plan, extract) | Done |
+| S5 | Rate limiting on expensive routes (flights, hotels, trending, plan, extract, enrich, create, delete) | Done |
+| S6 | Input validation on trip create (destination, travelers, budget, currency) | Done |
+| S7 | Prompt length validation on extract/plan (max 2000 chars) | Done |
+| S8 | RLS policies — anon insert/select public trips, time-limited update (1hr) | Done |
+| S9 | Enrich route — 15s timeout on 22 parallel fetches via AbortController | Done |
+| S10 | Drop overly permissive anon UPDATE policy (replaced with time-limited) | Done |
+
 ---
 
 ## COMPLETED
@@ -120,3 +135,7 @@ Last updated: March 27, 2026
 | ✓ | Amplify build fixes (styled-jsx, layoutEffect, props) | Multiple PRs |
 | ✓ | SUPABASE_SERVICE_ROLE_KEY env var compat | #358 |
 | ✓ | Mobile flights wired to trip_context | #363 |
+| ✓ | Homepage polish — live stats, trending pills, hero contrast, cleanup | TRA-287, #386 |
+| ✓ | CloudFront WAF fix — trimmed payloads to ~3KB | TRA-288 |
+| ✓ | Security hardening — 10 fixes (see Security section above) | TRA-287 |
+| ✓ | Auth session leak — persistSession: false on shared client | TRA-287 |

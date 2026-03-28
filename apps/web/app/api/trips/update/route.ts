@@ -30,10 +30,17 @@ const CITY_AIRPORTS: Record<string, string> = {
  */
 export async function POST(req: NextRequest) {
   const supabase = getSupabase()
+  // Origin check
+  const origin = req.headers.get('origin') || req.headers.get('referer') || ''
+  const host = req.headers.get('host') || ''
+  if (origin && !origin.includes(host) && !origin.includes('localhost')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const body = await req.json()
   const { tripId, trip_context, hotels, flights } = body
 
-  if (!tripId) {
+  if (!tripId || typeof tripId !== 'string') {
     return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
   }
 

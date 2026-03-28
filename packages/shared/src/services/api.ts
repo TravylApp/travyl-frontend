@@ -563,89 +563,62 @@ export async function savePlanToSupabase(
 
   onProgress?.('Creating trip...', 10)
 
-  // 1. Create trip
-  const tripInsert: Record<string, unknown> = {
-    user_id: user?.id || null,
-    visibility: 'private',
-    title: `${dest.city}, ${dest.country}`,
-    destination: `${dest.city}, ${dest.country}`,
-    start_date: ext.dates.start,
-    end_date: ext.dates.end,
-    travelers: ext.travelers.count,
-    budget: ext.daily_estimate_usd * ext.duration_days,
-    currency: 'USD',
-    status: 'planning',
-    is_generated: true,
-    trip_context: {
-      lat: dest.lat,
-      lng: dest.lng,
-      hero_image_url: plan.destination_photo_url || null,
-      hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
-      quick_facts: {
-        budget_level: ext.budget_level,
-        daily_budget: ext.daily_estimate_usd,
-        interests: ext.interests,
-        timezone: plan.timezone,
-      },
-      weather: {
-        forecast: plan.itinerary.filter((d: any) => d.weather).map((d: any) => ({
-          day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
-          date: d.date,
-          high: d.weather?.high_c,
-          low: d.weather?.low_c,
-          condition: d.weather?.condition,
-          icon: d.weather?.icon || '☀️',
-        })),
-        current: plan.itinerary[0]?.weather ? {
-          temp: plan.itinerary[0].weather.high_c,
-          conditions: plan.itinerary[0].weather.condition,
-        } : undefined,
-      },
-      // Hotels from planner
-      hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
-        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-        name: h.name, image: h.photo_url, rating: h.rating,
-        price: h.price_per_night, stars: h.stars,
-        amenities: h.amenities, address: h.address, link: h.link,
-        lat: h.lat, lng: h.lng,
-      })),
-      all_hotels: ((plan as any).data?.hotels ?? plan.hotels ?? []).slice(0, 10).map((h: any) => ({
-        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-        name: h.name, image: h.photo_url, rating: h.rating,
-        price: h.price_per_night, stars: h.stars,
-        address: h.address, link: h.link,
-      })),
-      // Flights from planner
-      flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
-        airline: f.airline, price: f.price, departure_time: f.departure_time,
-        arrival_time: f.arrival_time, stops: f.stops, duration: f.duration,
-        origin: f.origin, destination: f.destination, dest_iata: f.dest_iata,
-      })),
-      // Itinerary for the itinerary tab
-      itinerary: plan.itinerary.map((day: any) => ({
-        day: day.day, date: day.date, weather: day.weather,
-        slots: (day.slots ?? []).map((slot: any) => ({
-          poi: slot.poi,
-          start_time: slot.start_time, end_time: slot.end_time,
-          start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
-        })),
-      })),
-      // Explore items from itinerary POIs
-      explore_items: plan.itinerary.flatMap((day: any) =>
-        (day.slots ?? []).map((slot: any) => ({
-          id: slot.poi.id, title: slot.poi.name,
-          description: slot.poi.description || slot.poi.category,
-          category: slot.poi.category, image: slot.poi.photo_url,
-          tags: slot.poi.tags,
-        }))
-      ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
-      lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+  // Build trimmed trip_context — keep payloads small for CloudFront WAF (<8KB)
+  const tripContext: Record<string, unknown> = {
+    lat: dest.lat,
+    lng: dest.lng,
+    hero_image_url: plan.destination_photo_url || null,
+    hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+    quick_facts: {
+      budget_level: ext.budget_level,
+      daily_budget: ext.daily_estimate_usd,
+      interests: ext.interests,
+      timezone: plan.timezone,
     },
+    lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+    // Trimmed hotels — name/price/rating/stars only
+    hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+      id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+      name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
+    })),
+    // Trimmed flights — airline/price/times only
+    flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+      airline: f.airline, price: f.price,
+      departure_time: f.departure_time, arrival_time: f.arrival_time,
+    })),
+    // Trimmed itinerary — POI id/name/category/lat/lng + times only
+    itinerary: plan.itinerary.map((day: any) => ({
+      day: day.day, date: day.date,
+      weather: day.weather ? { high_c: day.weather.high_c, low_c: day.weather.low_c, condition: day.weather.condition } : undefined,
+      slots: (day.slots ?? []).map((slot: any) => ({
+        start_time: slot.start_time, end_time: slot.end_time,
+        poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
+      })),
+    })),
+    // Trimmed explore items — id/name/category only
+    explore_items: plan.itinerary.flatMap((day: any) =>
+      (day.slots ?? []).map((slot: any) => ({
+        id: slot.poi.id, title: slot.poi.name, category: slot.poi.category,
+      }))
+    ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
   }
 
   const { data: trip, error: tripErr } = await supabase
     .from('trips')
-    .insert(tripInsert)
+    .insert({
+      user_id: user?.id || null,
+      visibility: user?.id ? 'private' : 'public',
+      title: `${dest.city}, ${dest.country}`,
+      destination: `${dest.city}, ${dest.country}`,
+      start_date: ext.dates.start,
+      end_date: ext.dates.end,
+      travelers: ext.travelers.count,
+      budget: ext.daily_estimate_usd * ext.duration_days,
+      currency: 'USD',
+      status: 'planning',
+      is_generated: true,
+      trip_context: tripContext,
+    })
     .select('id')
     .single()
 
@@ -654,94 +627,18 @@ export async function savePlanToSupabase(
   }
   const tripId = trip.id
 
-  onProgress?.('Building itinerary...', 30)
+  onProgress?.('Saving hotels...', 60)
 
-  // 2. Create itinerary days + activities (skip if table doesn't exist)
-  let itineraryTableExists = true
-  for (let d = 0; d < plan.itinerary.length && itineraryTableExists; d++) {
-    const day = plan.itinerary[d]
-    const pct = 30 + Math.round((d / plan.itinerary.length) * 40)
-    onProgress?.(`Day ${day.day}...`, pct)
-
-    const { data: dayRow, error: dayErr } = await supabase
-      .from('itinerary_days')
-      .insert({ trip_id: tripId, day_number: day.day, date: day.date })
-      .select('id')
-      .single()
-
-    if (dayErr) {
-      // If table doesn't exist (PGRST205/404), stop trying
-      if (dayErr.code === 'PGRST205' || dayErr.code === '42P01' || dayErr.message?.includes('Could not find') || dayErr.message?.includes('does not exist')) {
-        itineraryTableExists = false
-        break
-      }
-      console.error('Failed to create itinerary day:', dayErr)
-      continue
-    }
-
-    if (day.slots.length > 0) {
-      const activities = day.slots.map((slot, i) => {
-        const poi = slot.poi
-        const catMap: Record<string, string> = {
-          restaurant: 'food', cafe: 'food', bar: 'food',
-          park: 'nature', beach: 'nature', garden: 'nature', hiking: 'nature',
-          hotel: 'hotel', hostel: 'hotel', airport: 'airport',
-        }
-        return {
-          trip_id: tripId,
-          itinerary_day_id: dayRow.id,
-          user_id: user?.id || null,
-          activity_name: poi.name,
-          activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
-          starting_date: day.date,
-          ending_date: day.date,
-          starting_time: slot.start_time,
-          ending_time: slot.end_time,
-          latitude: poi.lat,
-          longitude: poi.lng,
-          sort_order: i,
-          activity_data: {
-            category: poi.category,
-            subcategory: poi.subcategory,
-            location_name: poi.name,
-            image_url: poi.photo_url || null,
-            rating: poi.rating || null,
-            description: poi.description || null,
-            tags: poi.tags,
-            visit_duration_min: poi.visit_duration_min,
-          },
-        }
-      })
-
-      const { error: actErr } = await supabase.from('activities').insert(activities)
-      if (actErr) console.error('Failed to save activities for day', day.day, actErr)
-    }
-  }
-
-  onProgress?.('Saving hotels...', 75)
-
-  // 3. Save hotels (best effort)
+  // Save hotels to hotels table (best effort, non-blocking)
   if (plan.hotels.length > 0) {
-    const hotelRows = plan.hotels.map(h => {
-      // Backend may return extra fields beyond the TS interface (lat, lng, amenities, link, etc.)
+    const hotelRows = plan.hotels.slice(0, 5).map(h => {
       const extra = h as Record<string, unknown>
       return {
         trip_id: tripId,
         data: {
-          name: h.name,
-          address: (extra.address as string) || null,
-          latitude: (extra.lat as number) || null,
-          longitude: (extra.lng as number) || null,
-          price_per_night: h.price_per_night,
-          total_price: (extra.total_price as number) || (h.price_per_night ? h.price_per_night * ext.duration_days : null),
-          currency: h.currency,
-          rating: h.rating || null,
-          star_rating: h.stars || null,
-          image_url: h.photo_url || null,
-          check_in: ext.dates.start,
-          check_out: ext.dates.end,
-          booking_ref: null,
-          offer_id: null,
+          name: h.name, price_per_night: h.price_per_night, currency: h.currency,
+          rating: h.rating || null, star_rating: h.stars || null,
+          image_url: h.photo_url || null, check_in: ext.dates.start, check_out: ext.dates.end,
           amenities: (extra.amenities as string[]) || [],
           booking_url: h.booking_url || (extra.link as string) || null,
         },
@@ -751,49 +648,15 @@ export async function savePlanToSupabase(
     if (hotelErr) console.error('Failed to save hotels:', hotelErr)
   }
 
-  onProgress?.('Saving flights...', 85)
+  onProgress?.('Saving flights...', 80)
 
-  // 4. Save flights (best effort)
+  // Save flights to flights table (best effort, non-blocking)
   if (plan.flights.length > 0) {
-    // City-to-IATA lookup for destination airport
-    const CITY_AIRPORTS: Record<string, string> = {
-      'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-      'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-      'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-      'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
-      'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
-      'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
-      'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
-      'Milan': 'MXP', 'Vienna': 'VIE', 'Zurich': 'ZRH', 'Dublin': 'DUB',
-      'Edinburgh': 'EDI', 'Florence': 'FLR', 'Venice': 'VCE', 'Nice': 'NCE',
-      'Cancun': 'CUN', 'Havana': 'HAV', 'Lima': 'LIM', 'Bogota': 'BOG',
-      'Buenos Aires': 'EZE', 'Santiago': 'SCL', 'Reykjavik': 'KEF',
-      'Oslo': 'OSL', 'Stockholm': 'ARN', 'Copenhagen': 'CPH', 'Helsinki': 'HEL',
-      'Warsaw': 'WAW', 'Budapest': 'BUD', 'Bucharest': 'OTP',
-      'Kuala Lumpur': 'KUL', 'Jakarta': 'CGK', 'Manila': 'MNL',
-      'Taipei': 'TPE', 'Osaka': 'KIX', 'Beijing': 'PEK', 'Shanghai': 'PVG',
-      'Johannesburg': 'JNB', 'Casablanca': 'CMN', 'Doha': 'DOH',
-      'Abu Dhabi': 'AUH', 'Muscat': 'MCT', 'Riyadh': 'RUH',
-    }
-    const destCity = dest.city
-    const destIata = CITY_AIRPORTS[destCity] || ''
-
-    const flightRows = plan.flights.map((f) => ({
+    const flightRows = plan.flights.slice(0, 5).map((f) => ({
       trip_id: tripId,
       data: {
-        airline: f.airline,
-        flight_number: null,
-        origin_iata: '',
-        origin_name: null,
-        dest_iata: destIata,
-        dest_name: destCity,
-        departure_at: f.departure_time,
-        arrival_at: f.arrival_time,
-        price: f.price,
-        currency: f.currency,
-        cabin_class: null,
-        booking_ref: null,
-        offer_id: null,
+        airline: f.airline, departure_at: f.departure_time, arrival_at: f.arrival_time,
+        price: f.price, currency: f.currency,
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
