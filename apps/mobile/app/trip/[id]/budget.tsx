@@ -23,19 +23,7 @@ const CATEGORY_CONFIG: Record<string, { icon: string; bg: string; color: string;
 
 const defaultCfg = { icon: 'money', bg: '#f3f4f6', color: '#6b7280', bar: '#9ca3af' };
 
-/* ================================================================
-   Mock daily spending data (for the spending chart)
-   ================================================================ */
-
-const DAILY_SPENDING = [
-  { day: 'Mon', amount: 320, label: 'Mar 10' },
-  { day: 'Tue', amount: 185, label: 'Mar 11' },
-  { day: 'Wed', amount: 245, label: 'Mar 12' },
-  { day: 'Thu', amount: 410, label: 'Mar 13' },
-  { day: 'Fri', amount: 195, label: 'Mar 14' },
-  { day: 'Sat', amount: 520, label: 'Mar 15' },
-  { day: 'Sun', amount: 152, label: 'Mar 16' },
-];
+const DAY_ABBREVS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /* ================================================================
    Helpers — health-based backgrounds (matches web healthBg / categoryHealthBg)
@@ -183,9 +171,22 @@ export default function BudgetScreen() {
 
   const overallHealth = healthColors(pctUsed);
 
-  /* Daily spending chart helpers */
-  const maxDailySpend = Math.max(...DAILY_SPENDING.map((d) => d.amount));
-  const avgDailySpend = Math.round(DAILY_SPENDING.reduce((s, d) => s + d.amount, 0) / DAILY_SPENDING.length);
+  /* Daily budget chart — derived from real trip dates and total budget */
+  const tripDays = trip?.start_date && trip?.end_date
+    ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
+    : 7;
+  const dailyBudget = tripDays > 0 ? Math.round(totalBudgeted / tripDays) : 0;
+  const dailyActual = tripDays > 0 ? Math.round(totalActual / tripDays) : 0;
+  const DAILY_SPENDING = Array.from({ length: Math.min(tripDays, 7) }, (_, i) => {
+    const date = trip?.start_date ? new Date(new Date(trip.start_date).getTime() + i * 86400000) : null;
+    return {
+      day: date ? DAY_ABBREVS[date.getDay()] : `D${i + 1}`,
+      amount: dailyBudget,
+      label: date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `Day ${i + 1}`,
+    };
+  });
+  const maxDailySpend = Math.max(...DAILY_SPENDING.map((d) => d.amount), 1);
+  const avgDailySpend = dailyBudget;
   const chartBarMaxHeight = 100;
 
   /* Budget alerts */
@@ -480,7 +481,7 @@ export default function BudgetScreen() {
       {/* ===== Daily Spending Chart ===== */}
       <View style={{ backgroundColor: colors.cardBackground, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Daily Spending</Text>
+          <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Daily Budget</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Avg:</Text>
             <Text style={{ ...TextStyles.captionEm, color: colors.text }}>${avgDailySpend}</Text>
@@ -521,11 +522,11 @@ export default function BudgetScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
           <View style={{ width: 12, height: 2, backgroundColor: '#f59e0b', borderRadius: 1, marginRight: 6 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
-            Daily average: ${avgDailySpend}/day
+            Daily budget: ${avgDailySpend}/day
           </Text>
           <View style={{ flex: 1 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
-            Total: ${DAILY_SPENDING.reduce((s, d) => s + d.amount, 0).toLocaleString()}
+            Budget: ${totalBudgeted.toLocaleString()}
           </Text>
         </View>
       </View>

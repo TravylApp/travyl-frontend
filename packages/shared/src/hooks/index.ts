@@ -24,5 +24,6 @@ export { useRestaurantFilters, RESTAURANT_CATEGORIES, CUISINE_SUBFILTERS, RESTAU
 export type { RestaurantCategory, RestaurantSortOption } from './useRestaurantFilters';
 export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_SORT_OPTIONS, ACTIVITY_CATEGORY_ICONS, mapActivityCategory } from './useActivityFilters';
 export type { ActivityFilterCategory, ActivitySortOption } from './useActivityFilters';
+export { useHomeCurrency } from './useHomeCurrency';
 export { useTripPlanner } from './useTripPlanner';
 export type { FollowUpQuestion, PlanResponse, DayPlan, DaySlot, TripExtraction } from './useTripPlanner';

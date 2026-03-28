@@ -50,7 +50,6 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> { return []; }
 export async function fetchInspirationCards(): Promise<InspirationCard[]> { return []; }
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> { return []; }
-
 export async function fetchHeroConfig(): Promise<HeroConfig | null> { return null; }
 
 // ─── Itinerary Data ─────────────────────────────────────────
@@ -67,11 +66,8 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
-// These tables don't exist yet — data lives in trip_context JSONB.
-// Pages already fall back to trip_context when these return empty.
-// TODO: Create these tables when we need per-item CRUD (booking, reordering).
+// itinerary_days table doesn't exist — itinerary lives in trip_context
 export async function fetchItineraryDays(_tripId: string): Promise<ItineraryDayWithActivities[]> {
-  // itinerary_days table doesn't exist — itinerary lives in trip_context
   return [];
 }
 
@@ -123,15 +119,15 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   if (!user) throw new Error('User not authenticated');
 
   // 2. Create new trip with fork attribution
-  const { forked_from_trip_id, fork_count, is_public, created_at, updated_at, id, ...tripData } = originalTrip;
+  const { forked_from_trip_id, fork_count, created_at, updated_at, id, ...tripData } = originalTrip;
   const newTripData = {
     ...tripData,
     user_id: user.id,
     forked_from_trip_id: tripId,
     title: `${originalTrip.title} (Fork)`,
     is_generated: false,
-    is_shared: false,
     share_link_token: null,
+    visibility: 'private' as const,
   };
 
   const { data: newTrip, error: createError } = await supabase
@@ -236,14 +232,10 @@ export async function forkTrip(tripId: string): Promise<Trip> {
     if (hotelInsertError) throw hotelInsertError;
   }
 
-  // 7. Increment fork count on original trip
-  const { error: updateError } = await supabase
-    .from('trips')
-    .update({ fork_count: (originalTrip.fork_count || 0) + 1 })
-    .eq('id', tripId);
-
-  if (updateError) {
-    console.warn('Failed to increment fork count:', updateError);
+  // 7. Increment fork count on original trip via security-definer RPC (bypasses RLS)
+  const { error: rpcError } = await supabase.rpc('increment_fork_count', { trip_id: tripId });
+  if (rpcError) {
+    console.warn('Failed to increment fork count:', rpcError);
   }
 
   return newTrip;
@@ -256,7 +248,7 @@ export async function fetchPublicTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
     .select('*, profiles!trips_user_id_fkey(display_name, avatar_url)')
-    .or('is_public.eq.true,is_shared.eq.true')
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -270,7 +262,7 @@ export async function fetchUserPublicTrips(userId: string): Promise<Trip[]> {
     .from('trips')
     .select('*')
     .eq('user_id', userId)
-    .eq('is_public', true)
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];

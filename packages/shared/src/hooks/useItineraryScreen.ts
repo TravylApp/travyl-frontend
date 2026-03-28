@@ -3,6 +3,7 @@ import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
 import { useFlights } from './useFlights';
 import { useHotels } from './useHotels';
+import { useExchangeRates } from './useExchangeRates';
 import {
   buildItineraryDayViewModel,
   buildFlightViewModel,
@@ -11,6 +12,7 @@ import {
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
+import { useSettingsStore } from '../stores/settingsStore';
 
 /** Build basic itinerary days from explore_items for trips that have no stored itinerary */
 function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayViewModel[] {
@@ -65,6 +67,8 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
           endTime: null,
           timeDisplay: fmt12(time),
           costDisplay: null,
+          cost: null,
+          costCurrency: null,
           bookingUrl: null,
           notes: item.description || null,
           image: upscaleGoogleImage(item.image) ?? null,
@@ -126,6 +130,8 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
       endTime: fmt12(slot.end_time),
       timeDisplay: slot.start_time && slot.end_time ? `${fmt12(slot.start_time)} – ${fmt12(slot.end_time)}` : null,
       costDisplay: null,
+      cost: null,
+      costCurrency: null,
       bookingUrl: null,
       notes: slot.poi?.description ?? null,
       image: upscaleGoogleImage(slot.poi?.photo_url) ?? null,
@@ -165,6 +171,8 @@ export function useItineraryScreen(tripId: string | undefined) {
   const daysQuery = useItineraryDays(tripId);
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
+  const homeCurrency = useSettingsStore((s) => s.currency);
+  const { rates } = useExchangeRates(homeCurrency);
 
   // Build days from DB, or fall back to trip_context.itinerary
   const dbDays = useMemo(
@@ -196,12 +204,12 @@ export function useItineraryScreen(tripId: string | undefined) {
       daysQuery.data ?? [],
       flightsQuery.data ?? [],
       hotelsQuery.data ?? [],
-      tripQuery.data?.currency ?? 'USD',
+      homeCurrency,
+      rates,
     );
     // If DB budget is empty, compute from trip_context hotels
     if (dbBudget.total === 0 && tripQuery.data?.trip_context) {
       const ctx = tripQuery.data.trip_context as any;
-      const currency = tripQuery.data.currency ?? 'USD';
       const ctxHotels = ctx.hotels ?? [];
       const firstHotel = ctxHotels[0];
       let hotelsCost = 0;
@@ -210,17 +218,17 @@ export function useItineraryScreen(tripId: string | undefined) {
       }
       const categories: { label: string; amount: number; formatted: string }[] = [];
       if (hotelsCost > 0) {
-        const sym = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : `${currency} `;
-        categories.push({ label: 'Hotels', amount: hotelsCost, formatted: `${sym}${Math.round(hotelsCost).toLocaleString()}` });
+        const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: homeCurrency, maximumFractionDigits: 0 }).format(Math.round(hotelsCost));
+        categories.push({ label: 'Hotels', amount: hotelsCost, formatted });
       }
       const total = hotelsCost;
       if (total > 0) {
-        const sym = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : `${currency} `;
-        return { total, totalFormatted: `${sym}${Math.round(total).toLocaleString()}`, categories, currency };
+        const totalFormatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: homeCurrency, maximumFractionDigits: 0 }).format(Math.round(total));
+        return { total, totalFormatted, categories, currency: homeCurrency };
       }
     }
     return dbBudget;
-  }, [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency, tripQuery.data?.trip_context]);
+  }, [daysQuery.data, flightsQuery.data, hotelsQuery.data, homeCurrency, rates, tripQuery.data?.trip_context]);
 
   // Block on trip loading — also treat "not yet started" as loading
   const isLoading = (tripQuery.isLoading || (!tripQuery.data && !tripQuery.error)) && !!tripId;

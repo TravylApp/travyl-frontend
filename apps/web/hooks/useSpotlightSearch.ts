@@ -4,10 +4,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, usePathname } from 'next/navigation'
 import { useAuthStore, useTrip, mergeSearchResults, type SpotlightResult } from '@travyl/shared'
-import { useContextSearch } from './useContextSearch'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { fuzzyMatch } from '@/components/spotlight/fuzzyMatch'
-import { parseQueryIntent, type ParsedIntent } from '@/lib/parseQueryIntent'
 
 const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const PINNED_RESULTS_KEY = 'travyl:pinnedResults'
@@ -37,101 +35,89 @@ const NAV_ITEMS: SpotlightResult[] = [
   { id: 'nav-settings', type: 'navigation', title: 'Settings', subtitle: 'App settings', href: '/profile/settings', score: 1 },
 ]
 
-async function fetchEntitySearch(
+// --- New interfaces for the two-phase pipeline ---
+
+interface QuickSearchTripResult {
+  tripId: string
+  title: string
+  destination: string
+  startDate: string | null
+  endDate: string | null
+  status: string
+  activityCount: number
+  imageUrl: string | null
+  score: number
+}
+
+interface QuickSearchEntityResult {
+  entity_id: string
+  entity_type: string
+  entity_name: string
+  entity_subtitle: string | null
+  trip_id: string | null
+  trip_title: string | null
+  trip_destination: string | null
+  image_url: string | null
+  score: number
+  latitude: number | null
+  longitude: number | null
+  metadata?: Record<string, unknown>
+}
+
+interface QuickSearchResponse {
+  intent: { intent: string; location?: string; entityType?: string; rawQuery: string }
+  results: {
+    trip?: QuickSearchTripResult[]
+    [key: string]: QuickSearchEntityResult[] | QuickSearchTripResult[] | undefined
+  }
+}
+
+interface DeepSearchResponse {
+  results: {
+    restaurant?: Array<{ id: string; type: string; title: string; subtitle: string; href: string; score: number; metadata?: Record<string, unknown> }>
+    activity?: Array<{ id: string; type: string; title: string; subtitle: string; href: string; score: number; metadata?: Record<string, unknown> }>
+    hotel?: Array<{ id: string; type: string; title: string; subtitle: string; href: string; score: number; metadata?: Record<string, unknown> }>
+    destination?: Array<{ id: string; type: string; title: string; subtitle: string; imageUrl?: string; href: string; score: number; metadata?: Record<string, unknown> }>
+    user?: Array<{ id: string; type: string; title: string; subtitle: string; href: string; score: number; metadata?: Record<string, unknown> }>
+    [key: string]: Array<{ id: string; type: string; title: string; subtitle: string; href?: string; imageUrl?: string; score: number; metadata?: Record<string, unknown> }> | undefined
+  }
+}
+
+// --- Fetch functions ---
+
+async function fetchSearchQuick(
   query: string,
-  types: string[] | null,
-  tripId: string | null,
   token: string,
-): Promise<Record<string, SpotlightResult[]>> {
+  tripId: string | null,
+): Promise<QuickSearchResponse> {
   const params = new URLSearchParams({ q: query })
-  if (types) params.set('types', types.join(','))
   if (tripId) params.set('tripId', tripId)
-
-  const res = await fetch(`/api/entity-search?${params}`, {
+  const res = await fetch(`/api/search/quick?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) return {}
-
-  const { results } = await res.json() as {
-    results: Record<string, Array<{
-      entity_id: string
-      entity_type: string
-      entity_name: string
-      entity_subtitle: string | null
-      trip_id: string | null
-      trip_title: string | null
-      trip_destination: string | null
-      image_url: string | null
-      score: number
-      latitude: number | null
-      longitude: number | null
-      metadata?: Record<string, unknown>
-    }>>
-  }
-
-  // Transform API results to SpotlightResult
-  const mapped: Record<string, SpotlightResult[]> = {}
-  for (const [type, items] of Object.entries(results)) {
-    mapped[type] = items.map((item) => ({
-      id: item.entity_id,
-      type: item.entity_type as SpotlightResult['type'],
-      title: item.entity_name,
-      subtitle: item.entity_subtitle ?? item.trip_title ?? '',
-      imageUrl: item.image_url ?? undefined,
-      tripId: item.trip_id ?? undefined,
-      tripTitle: item.trip_title ?? undefined,
-      href: buildHref(item.entity_type, item.entity_id, item.trip_id, item.entity_name),
-      score: item.score,
-      metadata: {
-        ...item.metadata,
-        latitude: item.latitude ?? undefined,
-        longitude: item.longitude ?? undefined,
-      },
-    }))
-  }
-  return mapped
-}
-
-interface DiscoverPlace {
-  id: string
-  name: string
-  category: string
-  imageUrl: string
-  rating: number | null
-  priceLevel: string | null
-  location: string
-  latitude: number
-  longitude: number
-  description: string
-}
-
-interface DiscoverResponse {
-  destination: { name: string; imageUrl: string } | null
-  places: DiscoverPlace[]
-  route?: { origin: string; destination: string }
-}
-
-async function fetchDiscover(query: string, token: string): Promise<DiscoverResponse> {
-  const res = await fetch(`/api/discover?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) return { destination: null, places: [] }
+  if (!res.ok) return { intent: { intent: 'unknown', rawQuery: query }, results: {} }
   return res.json()
 }
 
-async function fetchFsqSearch(query: string, near?: string): Promise<Record<string, SpotlightResult[]>> {
-  const params = new URLSearchParams({ q: query })
-  if (near) params.set('near', near)
-  const res = await fetch(`/api/fsq-search?${params}`)
-  if (!res.ok) return {}
-  const { results } = await res.json() as { results: SpotlightResult[] }
-  const grouped: Record<string, SpotlightResult[]> = {}
-  for (const r of results) {
-    if (!grouped[r.type]) grouped[r.type] = []
-    grouped[r.type].push(r)
-  }
-  return grouped
+async function fetchSearchDeep(
+  query: string,
+  intent: { intent: string; location?: string; entityType?: string; rawQuery: string },
+  token: string,
+): Promise<DeepSearchResponse> {
+  const params = new URLSearchParams({
+    q: query,
+    intent: intent.intent,
+  })
+  if (intent.location) params.set('location', intent.location)
+  if (intent.entityType) params.set('entityType', intent.entityType)
+  const res = await fetch(`/api/search/deep?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return { results: {} }
+  return res.json()
 }
+
+// --- Helpers ---
 
 function buildHref(type: string, entityId: string, tripId: string | null, entityName?: string): string {
   if (type === 'destination') return `/destination/${encodeURIComponent(entityName ?? '')}`
@@ -142,6 +128,25 @@ function buildHref(type: string, entityId: string, tripId: string | null, entity
   switch (type) {
     case 'flight': return `/trip/${tripId}/flights/${entityId}`
     default: return '/'
+  }
+}
+
+function mapEntityToSpotlight(item: QuickSearchEntityResult): SpotlightResult {
+  return {
+    id: item.entity_id,
+    type: item.entity_type as SpotlightResult['type'],
+    title: item.entity_name,
+    subtitle: item.entity_subtitle ?? item.trip_title ?? '',
+    imageUrl: item.image_url ?? undefined,
+    tripId: item.trip_id ?? undefined,
+    tripTitle: item.trip_title ?? undefined,
+    href: buildHref(item.entity_type, item.entity_id, item.trip_id, item.entity_name),
+    score: item.score,
+    metadata: {
+      ...item.metadata,
+      latitude: item.latitude ?? undefined,
+      longitude: item.longitude ?? undefined,
+    },
   }
 }
 
@@ -184,59 +189,31 @@ export function useSpotlightSearch() {
   const { data: tripData } = useTrip(isInTripContext && !clearTripScope ? tripId ?? undefined : undefined)
   const tripName = tripData?.title ?? null
 
-  // Debounce query for entity search (context-search has its own debounce)
+  // 200ms debounce (single debounce for the two-phase pipeline)
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 300)
+    const timer = setTimeout(() => setDebouncedQuery(query), 200)
     return () => clearTimeout(timer)
   }, [query])
 
-  // Determine entity-search types based on scope
-  const entitySearchTypes = useMemo(() => {
-    if (!scope) return null
-    return SCOPE_TO_TYPES[scope] ?? null
-  }, [scope])
+  const shouldSearchQuick = debouncedQuery.length >= 2 && !!token
 
-  const shouldSearch = debouncedQuery.length >= 3 && !!token
-
-  // Intent parsing — Phase 1 (sync regex) or Phase 2 (Haiku LLM fallback) before any search fires
-  const { data: parsedIntent, isLoading: intentLoading } = useQuery<ParsedIntent>({
-    queryKey: ['parse-intent', debouncedQuery],
-    queryFn: () => parseQueryIntent(debouncedQuery, token!),
-    enabled: shouldSearch,
-    staleTime: Infinity, // intent for a given query string never changes
-  })
-
-  // Existing context-search for trips (vector-powered)
-  const { results: tripSearchResults, isLoading: tripSearchLoading } = useContextSearch(query)
-
-  // New entity-search for hotels, flights, restaurants, activities, destinations
-  const { data: entityResults, isLoading: entityLoading } = useQuery({
-    queryKey: ['entity-search', debouncedQuery, effectiveTripId, entitySearchTypes],
-    queryFn: () => fetchEntitySearch(debouncedQuery, entitySearchTypes, effectiveTripId, token!),
-    enabled: shouldSearch,
+  // Phase 1: Quick search — internal data only
+  const { data: quickData, isLoading: quickLoading } = useQuery({
+    queryKey: ['search-quick', debouncedQuery, effectiveTripId],
+    queryFn: () => fetchSearchQuick(debouncedQuery, token!, effectiveTripId),
+    enabled: shouldSearchQuick,
     staleTime: 30_000,
   })
 
-  // Use parsed location if available (e.g. "Bakersfield" from "bakersfield restaurants")
-  const discoverLocation = parsedIntent?.location ?? debouncedQuery
+  // Extract intent from Phase 1 response (parsed server-side)
+  const parsedIntent = quickData?.intent
 
-  // Live discover for destination queries — waits for intent to resolve before firing.
-  // Fires regardless of scope so entity-type scoped searches (e.g. "bakersfield restaurants")
-  // still get discover results; scope filtering happens in discoverResults memo below.
-  const { data: discoverData, isLoading: discoverLoading } = useQuery({
-    queryKey: ['discover', discoverLocation],
-    queryFn: () => fetchDiscover(discoverLocation, token!),
-    enabled: shouldSearch && parsedIntent !== undefined,
-    staleTime: 60_000,
-  })
-
-  // Foursquare text search — fires for entity-search intents to surface named places
-  // (e.g. "the botanist bakersfield") that aren't in the user's saved trip data.
-  const fsqEnabled = shouldSearch && parsedIntent !== undefined && parsedIntent.intent === 'entity-search'
-  const { data: fsqResults, isLoading: fsqLoading } = useQuery({
-    queryKey: ['fsq-search', debouncedQuery, parsedIntent?.location],
-    queryFn: () => fetchFsqSearch(debouncedQuery, parsedIntent?.location),
-    enabled: fsqEnabled,
+  // Phase 2: Deep search — external data, only fires when Phase 1 returns intent
+  const shouldSearchDeep = !!quickData?.intent && debouncedQuery.length >= 3
+  const { data: deepData, isLoading: deepLoading } = useQuery({
+    queryKey: ['search-deep', debouncedQuery, quickData?.intent],
+    queryFn: () => fetchSearchDeep(debouncedQuery, quickData!.intent, token!),
+    enabled: shouldSearchDeep,
     staleTime: 60_000,
   })
 
@@ -287,12 +264,13 @@ export function useSpotlightSearch() {
     return cleaned.length ? { command: cleaned } : {}
   }, [commands, debouncedQuery, scope])
 
-  // Transform trip search results into SpotlightResult format
+  // Transform Phase 1 trip results
   const tripResults = useMemo((): Record<string, SpotlightResult[]> => {
-    if (scope && scope !== 'trips') return {} // scope filters out trip results
-    if (!tripSearchResults?.length) return {}
+    if (scope && scope !== 'trips') return {}
+    const trips = quickData?.results?.trip
+    if (!trips?.length) return {}
     return {
-      trip: tripSearchResults.map((r) => ({
+      trip: trips.map((r) => ({
         id: r.tripId,
         type: 'trip' as const,
         title: r.title,
@@ -301,71 +279,46 @@ export function useSpotlightSearch() {
         tripId: r.tripId,
         href: `/trip/${r.tripId}`,
         score: r.score,
+        metadata: { source: 'my-trips' },
       })),
     }
-  }, [tripSearchResults, scope])
+  }, [quickData?.results?.trip, scope])
 
-  // Transform discover response into SpotlightResult format
-  const discoverResults = useMemo((): Record<string, SpotlightResult[]> => {
-    if (!discoverData?.places?.length) return {}
-
-    // Build destination card — only when no scope (scope-less exploration)
+  // Transform Phase 1 entity results (activities + restaurants from user's trips)
+  const quickEntityResults = useMemo((): Record<string, SpotlightResult[]> => {
     const results: Record<string, SpotlightResult[]> = {}
-
-    if (!scope && discoverData.destination?.name) {
-      results.destination = [{
-        id: `discover-dest-${discoverData.destination.name}`,
-        type: 'destination' as const,
-        title: discoverData.destination.name,
-        subtitle: `${discoverData.places.length} places to explore`,
-        imageUrl: discoverData.destination.imageUrl || undefined,
-        href: `/destination/${encodeURIComponent(discoverData.destination.name)}`,
-        score: 2, // higher than entity results
-        metadata: {},
-      }]
-    }
-
-    // Group places by category → map to SpotlightResult types
-    const categoryMap: Record<string, SpotlightResult['type']> = {
-      dining: 'restaurant',
-      sightseeing: 'activity',
-      outdoor: 'activity',
-      cultural: 'activity',
-      shopping: 'activity',
-      nightlife: 'activity',
-      tour: 'activity',
-    }
-
-    // When a scope is active, only include place types that match it
-    const allowedTypes = scope ? new Set(SCOPE_TO_TYPES[scope] ?? []) : null
-
-    for (const place of discoverData.places) {
-      const type = categoryMap[place.category] ?? 'activity'
+    for (const [type, items] of Object.entries(quickData?.results ?? {})) {
+      if (type === 'trip') continue
+      if (!items?.length) continue
+      const allowedTypes = scope ? new Set(SCOPE_TO_TYPES[scope] ?? []) : null
       if (allowedTypes && !allowedTypes.has(type)) continue
-      if (!results[type]) results[type] = []
-      results[type].push({
-        id: place.id,
-        type,
-        title: place.name,
-        subtitle: place.location,
-        imageUrl: place.imageUrl || undefined,
-        href: buildHref(type, place.id, null),
-        score: 1.5,
-        metadata: {
-          rating: place.rating ?? undefined,
-          priceLevel: place.priceLevel ?? undefined,
-          latitude: place.latitude,
-          longitude: place.longitude,
-          category: place.category,
-          source: 'discover',
-        },
-      })
+      results[type] = (items as QuickSearchEntityResult[]).map(mapEntityToSpotlight)
     }
-
     return results
-  }, [discoverData, debouncedQuery, scope])
+  }, [quickData?.results, scope])
 
-  // Action results derived from parsed intent (replaces createTripIntent + routeIntent memos)
+  // Transform Phase 2 results (Foursquare + SerpAPI + collaborators)
+  const deepEntityResults = useMemo((): Record<string, SpotlightResult[]> => {
+    const results: Record<string, SpotlightResult[]> = {}
+    for (const [type, items] of Object.entries(deepData?.results ?? {})) {
+      if (!items?.length) continue
+      const allowedTypes = scope ? new Set(SCOPE_TO_TYPES[scope] ?? []) : null
+      if (allowedTypes && !allowedTypes.has(type)) continue
+      results[type] = items.map((item) => ({
+        id: item.id,
+        type: item.type as SpotlightResult['type'],
+        title: item.title,
+        subtitle: item.subtitle,
+        imageUrl: (item as { imageUrl?: string }).imageUrl,
+        href: item.href ?? '/',
+        score: item.score,
+        metadata: item.metadata,
+      }))
+    }
+    return results
+  }, [deepData?.results, scope])
+
+  // Action results derived from parsed intent
   const actionResults = useMemo((): Record<string, SpotlightResult[]> => {
     if (!parsedIntent) return {}
     const actions: SpotlightResult[] = []
@@ -384,21 +337,20 @@ export function useSpotlightSearch() {
       })
     }
 
-    if (parsedIntent.intent === 'route' && discoverData?.route) {
-      const { origin, destination } = discoverData.route
+    if (parsedIntent.intent === 'route') {
       actions.push({
         id: 'create-trip-route',
         type: 'action' as const,
-        title: `Plan trip: ${origin} to ${destination}`,
+        title: parsedIntent.location ? `Plan route to ${parsedIntent.location}` : 'Plan a route',
         subtitle: 'Start planning with destinations pre-filled',
         href: '',
         score: 100,
-        metadata: { prefillDestination: destination, origin },
+        metadata: { prefillDestination: parsedIntent.location ?? '' },
       })
     }
 
     return actions.length ? { action: actions } : {}
-  }, [parsedIntent, discoverData?.route])
+  }, [parsedIntent])
 
   // Auto-set scope from parsed entity type (only when user hasn't set one manually)
   useEffect(() => {
@@ -408,10 +360,13 @@ export function useSpotlightSearch() {
     }
   }, [parsedIntent?.entityType, scope, setScope])
 
-  // Merge all sources (now including commands, actions, discover, and Foursquare text search)
+  // Merge all sources
   const results = useMemo(() => {
-    return mergeSearchResults([actionResults, tripResults, entityResults ?? {}, discoverResults, fsqResults ?? {}, navResults, commandResults], { maxPerCategory: 5 })
-  }, [actionResults, tripResults, entityResults, discoverResults, fsqResults, navResults, commandResults])
+    return mergeSearchResults(
+      [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults, commandResults],
+      { maxPerCategory: 5 },
+    )
+  }, [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -460,11 +415,16 @@ export function useSpotlightSearch() {
     setClearTripScope(true)
   }, [])
 
+  // Overall loading: either phase is loading
+  const isLoading = quickLoading || deepLoading
+
   return {
     query,
     setQuery,
     results,
-    isLoading: tripSearchLoading || entityLoading || discoverLoading || intentLoading || fsqLoading,
+    isLoading,
+    quickLoading,
+    deepLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,

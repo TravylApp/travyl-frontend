@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { validateAuth } from './lib/auth'
 import { getCachedSuggestions, setCachedSuggestions } from './lib/cache'
 import { searchPlaces } from './lib/serpapi'
+import { enrichWithFoursquarePhotos } from './lib/foursquare'
 import type { SuggestResponse } from './lib/types'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
@@ -31,12 +32,16 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     console.log('[suggest] SerpAPI returned', suggestions.length, 'suggestions')
 
+    // Enrich with Foursquare venue photos (replaces stock/thumbnail images with real place photos)
+    const enriched = await enrichWithFoursquarePhotos(suggestions)
+    console.log('[suggest] foursquare photo enrichment complete')
+
     // Cache results (30min default TTL)
-    if (suggestions.length > 0) {
-      await setCachedSuggestions(destination, category, suggestions)
+    if (enriched.length > 0) {
+      await setCachedSuggestions(destination, category, enriched)
     }
 
-    const response: SuggestResponse = { suggestions, source: 'fresh' }
+    const response: SuggestResponse = { suggestions: enriched, source: 'fresh' }
     return { statusCode: 200, body: JSON.stringify(response) }
   } catch (err: any) {
     if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {

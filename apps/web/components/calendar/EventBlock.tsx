@@ -83,14 +83,12 @@ export function EventBlock({
     queryKey: ['activity-intelligence', activity.id],
   })
   const intel = cachedResults[0]?.[1] ?? null
-  const hasConflict = intel ? (intel.conflicts.hours || intel.conflicts.travelTime) : false
-  const conflictTooltip = intel?.conflicts.hours && intel?.conflicts.travelTime
-    ? 'Two scheduling issues'
-    : intel?.conflicts.hours
-    ? 'Opening hours conflict'
-    : intel?.conflicts.travelTime
-    ? 'Not enough travel time'
-    : null
+  const hasConflict = intel ? intel.conflicts.hours : false
+  const conflictTooltip = intel?.conflicts.hours ? 'Opening hours conflict' : null
+
+  // Opening hours pill — show the first entry's hours as a hint (e.g. "09:00–18:00")
+  const hoursEntry = intel?.place.openingHours?.[0]
+  const hoursLabel = hoursEntry ? `${hoursEntry.opens.slice(0, 5)}–${hoursEntry.closes.slice(0, 5)}` : null
 
   const color = getActivityColor(activity.type)
   const hasImage = !!(activity.image && activity.duration >= 1)
@@ -186,6 +184,20 @@ export function EventBlock({
 
       {/* Inner clip wrapper — provides overflow-hidden and rounded corners for card content */}
       <div className="absolute inset-0 rounded-md overflow-hidden">
+        {/* Opening hours pill — top-left, only for activities >= 30 min */}
+        {hoursLabel && activity.duration >= 0.5 && (
+          <div
+            title={`Open: ${hoursLabel}`}
+            className={[
+              'absolute top-0.5 left-0.5 z-10 px-1 py-0.5 rounded text-[9px] leading-none pointer-events-none',
+              intel?.conflicts.hours
+                ? 'bg-red-500/80 text-white'
+                : 'bg-green-500/80 text-white',
+            ].join(' ')}
+          >
+            {hoursLabel}
+          </div>
+        )}
         {hasImage ? (
           <>
             <div

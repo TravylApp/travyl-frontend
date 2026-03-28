@@ -6,7 +6,7 @@ import {
   MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 
@@ -141,11 +141,12 @@ function categoryHealthBg(pct: number): { className: string; style?: React.CSSPr
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-function generateBudgetFromTrip(trip: any): BudgetItem[] {
+function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: string) => string = (n) => `$${n}`): BudgetItem[] {
   if (!trip) return EMPTY_BUDGET;
   const ctx = trip.trip_context as any;
   const cost = ctx?.cost_of_living;
   const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
+  const tripCurrency: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
   const duration = trip.start_date && trip.end_date
     ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
     : ctx?.weather?.forecast?.length ?? 5;
@@ -162,14 +163,14 @@ function generateBudgetFromTrip(trip: any): BudgetItem[] {
   return [
     { id: 'flights', category: 'Flights', budgeted: Math.round(totalBudget * 0.25), actual: 0, fixed: true, expenses: [] },
     { id: 'hotels', category: 'Hotels', budgeted: hotelPrice || Math.round(totalBudget * 0.30), actual: 0, fixed: true, expenses: hotelPrice ? [
-      { id: 'h1', description: `${hotel?.name || 'Hotel'} (${duration} nights × $${hotel?.price ?? hotel?.price_per_night ?? 0})`, amount: hotelPrice },
+      { id: 'h1', description: `${hotel?.name || 'Hotel'} (${duration} nights × ${formatAmount(hotel?.price ?? hotel?.price_per_night ?? 0, tripCurrency)})`, amount: hotelPrice },
     ] : [] },
     { id: 'food', category: 'Food & Dining', budgeted: Math.round(dailyFood * duration * travelers), actual: 0, fixed: false, expenses: [
-      { id: 'fd1', description: `~$${Math.round(dailyFood)}/day × ${duration} days`, amount: 0 },
+      { id: 'fd1', description: `~${formatAmount(Math.round(dailyFood), tripCurrency)}/day × ${duration} days`, amount: 0 },
     ] },
     { id: 'activities', category: 'Activities', budgeted: Math.round(duration * 25 * travelers), actual: 0, fixed: false, expenses: [] },
     { id: 'transportation', category: 'Transportation', budgeted: Math.round(transport * duration * travelers), actual: 0, fixed: false, expenses: [
-      { id: 't1', description: `~$${Math.round(transport)}/day × ${duration} days`, amount: 0 },
+      { id: 't1', description: `~${formatAmount(Math.round(transport), tripCurrency)}/day × ${duration} days`, amount: 0 },
     ] },
     { id: 'shopping', category: 'Shopping', budgeted: Math.round(duration * 15), actual: 0, fixed: false, expenses: [] },
     { id: 'other', category: 'Other', budgeted: 50, actual: 0, fixed: false, expenses: [] },
@@ -179,16 +180,18 @@ function generateBudgetFromTrip(trip: any): BudgetItem[] {
 export default function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { isLoading, trip } = useItineraryScreen(id);
+  const { format: formatHome } = useHomeCurrency();
+  const tripCurrency: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
 
   /* ---- state ---- */
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));
   const seeded = useRef(false);
   useEffect(() => {
     if (trip && !seeded.current) {
-      setBudgetData(generateBudgetFromTrip(trip));
+      setBudgetData(generateBudgetFromTrip(trip, formatHome));
       seeded.current = true;
     }
-  }, [trip]);
+  }, [trip, formatHome]);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotal, setTempTotal] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -362,7 +365,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
           </div>
           {!isEditingTotal ? (
             <div className="text-base sm:text-xl font-bold text-gray-900">
-              ${totalBudgeted.toLocaleString()}
+              {formatHome(totalBudgeted, tripCurrency)}
             </div>
           ) : (
             <input
@@ -379,7 +382,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
         <div className={`${overallBg} rounded-lg p-2 transition-colors`}>
           <span className="text-[10px] sm:text-xs text-gray-600 block mb-0.5">Total Spent</span>
           <div className="text-base sm:text-xl font-bold text-gray-900">
-            ${totalActual.toLocaleString()}
+            {formatHome(totalActual, tripCurrency)}
           </div>
         </div>
 
@@ -391,7 +394,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
               remaining >= 0 ? 'text-emerald-600' : 'text-red-600'
             }`}
           >
-            ${Math.abs(remaining).toLocaleString()}
+            {formatHome(Math.abs(remaining), tripCurrency)}
           </div>
         </div>
       </div>
@@ -460,7 +463,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                     <div className="font-semibold text-gray-900 text-left">{item.category}</div>
                     {!isExpanded && (
                       <div className="text-sm text-gray-600">
-                        ${item.budgeted.toLocaleString()}
+                        {formatHome(item.budgeted, tripCurrency)}
                       </div>
                     )}
                   </div>
@@ -507,7 +510,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                             <div>
                               <div className="text-xs text-gray-600 mb-1">Budgeted</div>
                               <div className="text-lg font-bold text-gray-900">
-                                ${item.budgeted.toLocaleString()}
+                                {formatHome(item.budgeted, tripCurrency)}
                               </div>
                             </div>
                             <div>
@@ -531,7 +534,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                                 </div>
                               </div>
                               <div className="text-lg font-bold text-gray-900">
-                                ${item.actual.toLocaleString()}
+                                {formatHome(item.actual, tripCurrency)}
                               </div>
                             </div>
                           </div>
@@ -551,11 +554,11 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                             <span className="text-gray-600">{itemPct.toFixed(0)}% used</span>
                             {itemDiff > 0 ? (
                               <span className="text-emerald-600 font-medium">
-                                ${itemDiff.toLocaleString()} under
+                                {formatHome(itemDiff, tripCurrency)} under
                               </span>
                             ) : itemDiff < 0 ? (
                               <span className="text-red-600 font-medium">
-                                ${Math.abs(itemDiff).toLocaleString()} over
+                                {formatHome(Math.abs(itemDiff), tripCurrency)} over
                               </span>
                             ) : (
                               <span className="text-gray-600">On track</span>
@@ -606,7 +609,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
                                               <span className="text-sm font-semibold text-gray-900">
-                                                ${expense.amount.toLocaleString()}
+                                                {formatHome(expense.amount, tripCurrency)}
                                               </span>
                                               <button
                                                 onClick={() =>

@@ -46,6 +46,25 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       .select('activity_name, activity_type, notes, starting_date, ending_date, activity_data')
       .eq('trip_id', tripId)
 
+    // Fetch collaborator display names
+    const { data: collaborators } = await supabase
+      .from('trip_collaborators')
+      .select('user_id')
+      .eq('trip_id', tripId)
+
+    const collaboratorIds = (collaborators ?? []).map((c: any) => c.user_id)
+
+    const { data: profiles } = collaboratorIds.length
+      ? await supabase
+          .from('profiles')
+          .select('display_name')
+          .in('id', collaboratorIds)
+      : { data: [] }
+
+    const collaboratorNames = (profiles ?? [])
+      .map((p: any) => p.display_name)
+      .filter(Boolean)
+
     // Build text blob
     interface ActivityData { category?: string; location_name?: string }
 
@@ -76,6 +95,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       trip.status,
       dateRange,
       activityText,
+      collaboratorNames.length ? `With: ${collaboratorNames.join(', ')}` : null,
     ].filter(Boolean).join(' | ')
 
     // Generate embedding

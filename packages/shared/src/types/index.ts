@@ -98,8 +98,6 @@ export interface Trip {
   tab_color_overrides?: Record<string, string>;
   itinerary_color_overrides?: Record<string, string>;
   hidden_tabs?: Record<string, boolean>;
-  is_public?: boolean;
-  is_shared?: boolean;
   cover_image_url?: string | null;
   created_at: string;
   updated_at: string;

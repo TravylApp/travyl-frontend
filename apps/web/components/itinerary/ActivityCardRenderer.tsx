@@ -2,6 +2,7 @@
 
 import type { ActivityViewModel } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
+import { useHomeCurrency } from '@travyl/shared';
 import { ActivityCard } from './ActivityCard';
 import { CompactActivityCard } from './CompactActivityCard';
 import { MinimalActivityCard } from './MinimalActivityCard';
@@ -57,11 +58,17 @@ export function ActivityCardRenderer({
   onAddToItinerary,
   onRemoveFromItinerary,
 }: ActivityCardRendererProps) {
+  const { format: formatHome } = useHomeCurrency();
+  const costDisplay = activity.cost != null
+    ? formatHome(activity.cost, activity.costCurrency ?? undefined)
+    : activity.costDisplay;
+  const activityWithHomeCost = { ...activity, costDisplay };
+
   switch (cardStyle) {
     case 'pin':
       return (
         <ItineraryPinCard
-          item={activityToDiscoverItem(activity, images)}
+          item={activityToDiscoverItem(activityWithHomeCost, images)}
           index={index}
           accentColor={accentColor}
           isFavorited={isFavorited}
@@ -75,7 +82,7 @@ export function ActivityCardRenderer({
     case 'compact':
       return (
         <CompactActivityCard
-          activity={activity}
+          activity={activityWithHomeCost}
           images={images}
           rating={rating}
           onClick={onClick}
@@ -86,7 +93,7 @@ export function ActivityCardRenderer({
     case 'minimal':
       return (
         <MinimalActivityCard
-          activity={activity}
+          activity={activityWithHomeCost}
           images={images}
           rating={rating}
           onClick={onClick}
@@ -97,7 +104,7 @@ export function ActivityCardRenderer({
     case 'list':
       return (
         <ListActivityCard
-          activity={activity}
+          activity={activityWithHomeCost}
           images={images}
           rating={rating}
           onClick={onClick}
@@ -107,6 +114,6 @@ export function ActivityCardRenderer({
       );
     case 'legacy':
     default:
-      return <ActivityCard activity={activity} onClick={onClick} />;
+      return <ActivityCard activity={activityWithHomeCost} onClick={onClick} />;
   }
 }

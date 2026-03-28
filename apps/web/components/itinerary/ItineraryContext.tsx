@@ -29,6 +29,8 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
     endTime: a.endTime ?? null,
     timeDisplay: a.startTime && a.endTime ? `${a.startTime} – ${a.endTime}` : a.startTime ?? null,
     costDisplay: a.price ?? null,
+    cost: null,
+    costCurrency: null,
     bookingUrl: null,
     notes: null,
     image: a.image ?? null,
