@@ -47,6 +47,11 @@ api.route('GET /suggest', {
   ],
 })
 
+api.route('POST /fill-gaps', {
+  handler: 'services/fill-gaps.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
 api.route('GET /search', {
   handler: 'services/search.handler',
   link: [activityCdn, supabaseSecretKey, supabaseUrl, serpApiKey],
