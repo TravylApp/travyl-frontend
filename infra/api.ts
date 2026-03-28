@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -183,4 +183,9 @@ api.route('GET /api/images/search', {
 api.route('GET /api/images/destination', {
   handler: 'services/image-destination.handler',
   link: [pexels],
+})
+
+api.route('GET /events', {
+  handler: 'services/events.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
 })
