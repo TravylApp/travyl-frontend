@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "motion/react";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, MapPin } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
 import type { FollowUpQuestion } from "@travyl/shared";
 import { useQuery } from "@tanstack/react-query";
@@ -66,32 +66,120 @@ const CyclingSubtitle = memo(function CyclingSubtitle() {
   return <><span ref={textRef} /><span className="animate-pulse">|</span></>;
 });
 
+interface AutocompleteSuggestion {
+  id: string;
+  name: string;
+  country: string;
+  fullName: string;
+}
+
 const HeroSearchInput = memo(function HeroSearchInput({
   tripQuery,
   setTripQuery,
   onSearch,
+  onSelectDestination,
   staticPlaceholder,
   inputRef,
 }: {
   tripQuery: string;
   setTripQuery: (v: string) => void;
   onSearch: () => void;
+  onSelectDestination?: (destination: string) => void;
   staticPlaceholder?: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Fetch suggestions as user types
+  const fetchSuggestions = useCallback((query: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.length < 2) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query)}&mode=destination&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setShowSuggestions(data.length > 0);
+          setSelectedIdx(-1);
+        }
+      } catch {}
+    }, 250);
+  }, []);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setTripQuery(val);
+    fetchSuggestions(val);
+  }, [setTripQuery, fetchSuggestions]);
+
+  const handleSelect = useCallback((suggestion: AutocompleteSuggestion) => {
+    setTripQuery(suggestion.fullName);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    onSelectDestination?.(suggestion.fullName);
+  }, [setTripQuery, onSelectDestination]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === "Enter") onSearch();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIdx((i) => Math.max(i - 1, -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (selectedIdx >= 0) {
+        handleSelect(suggestions[selectedIdx]);
+      } else {
+        setShowSuggestions(false);
+        onSearch();
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  }, [showSuggestions, suggestions, selectedIdx, onSearch, handleSelect]);
+
   return (
-    <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
+    <div className="flex-1 flex items-center gap-3 px-4 min-w-0 relative">
       <Search className="text-gray-400 shrink-0" size={18} />
       <input
         ref={inputRef}
         type="text"
         value={tripQuery}
-        onChange={(e) => setTripQuery(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && onSearch()}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
         className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
+        autoComplete="off"
       />
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+          {suggestions.map((s, i) => (
+            <button
+              key={s.id}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(s); }}
+              className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors ${
+                i === selectedIdx ? "bg-[#1e3a5f]/10 text-[#1e3a5f]" : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <MapPin size={14} className="text-gray-400 shrink-0" />
+              <span className="font-medium">{s.name}</span>
+              <span className="text-gray-400 text-xs">{s.country}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
