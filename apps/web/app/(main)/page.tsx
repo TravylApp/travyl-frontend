@@ -13,6 +13,7 @@ import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
 import dynamic from "next/dynamic";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 const HowItWorks = dynamic(
   () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
@@ -434,13 +435,17 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — trimmed payload to fit under CloudFront WAF limit (~8KB)
+        // Not logged in:
+        // 1. Tiny create through CloudFront (~500 bytes, no trip_context)
+        // 2. Update trip_context via direct Supabase (bypasses CloudFront WAF)
+        //    Secured by time-limited RLS policy (1hr window after creation)
         try {
           const ext = plan.extracted;
           if (!ext?.destination) throw new Error('No destination extracted');
           const dest = ext.destination;
           const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
 
+          // Step 1 — tiny create (no trip_context, bypasses WAF)
           const createRes = await fetch('/api/trips/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -451,35 +456,6 @@ export default function Home() {
               travelers: ext.travelers.count,
               budget: totalBudget,
               currency: 'USD',
-              trip_context: {
-                lat: dest.lat, lng: dest.lng,
-                hero_image_url: plan.destination_photo_url || null,
-                hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
-                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
-                quick_facts: {
-                  budget_level: ext.budget_level,
-                  daily_budget: ext.daily_estimate_usd,
-                  interests: ext.interests,
-                  timezone: (plan as any).timezone,
-                },
-                hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
-                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                  name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
-                })),
-                flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
-                  airline: f.airline, price: f.price,
-                  departure_time: f.departure_time, arrival_time: f.arrival_time,
-                })),
-                // Itinerary without weather (enrich adds it) — keeps payload under 8KB
-                itinerary: (plan.itinerary ?? []).map((day: any) => ({
-                  day: day.day, date: day.date,
-                  slots: (day.slots ?? []).map((slot: any) => ({
-                    start_time: slot.start_time, end_time: slot.end_time,
-                    poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
-                  })),
-                })),
-                // explore_items derived from itinerary on the trip page — not stored here
-              },
             }),
           });
           if (!createRes.ok) {
@@ -497,6 +473,41 @@ export default function Home() {
             if (!ids.includes(tripId)) ids.push(tripId);
             localStorage.setItem('my-trip-ids', JSON.stringify(ids));
           } catch {}
+
+          // Step 2 — update trip_context direct to Supabase (no CloudFront)
+          // RLS: anon can only update public trips created in last 1 hour
+          const sb = getSupabaseBrowser();
+          sb.from('trips').update({
+            trip_context: {
+              lat: dest.lat, lng: dest.lng,
+              hero_image_url: plan.destination_photo_url || null,
+              hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+              lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+              quick_facts: {
+                budget_level: ext.budget_level,
+                daily_budget: ext.daily_estimate_usd,
+                interests: ext.interests,
+                timezone: (plan as any).timezone,
+              },
+              hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+                id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
+              })),
+              flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+                airline: f.airline, price: f.price,
+                departure_time: f.departure_time, arrival_time: f.arrival_time,
+              })),
+              itinerary: (plan.itinerary ?? []).map((day: any) => ({
+                day: day.day, date: day.date,
+                slots: (day.slots ?? []).map((slot: any) => ({
+                  start_time: slot.start_time, end_time: slot.end_time,
+                  poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
+                })),
+              })),
+            },
+          }).eq('id', tripId).then(({ error }) => {
+            if (error) console.error('[Trip Context] Update failed:', error.message);
+          });
 
           // Enrich in background
           fetch('/api/trips/enrich', {
