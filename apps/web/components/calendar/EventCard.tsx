@@ -46,7 +46,7 @@ export function EventCard({ event }: EventCardProps) {
         style={{ backgroundColor: `${color}22` }}
       >
         {event.imageUrl ? (
-          <img src={event.imageUrl} alt="" className="w-full h-full object-cover" />
+          <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
