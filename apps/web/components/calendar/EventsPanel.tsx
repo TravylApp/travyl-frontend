@@ -72,7 +72,8 @@ export function EventsPanel({
         )}
       </div>
 
-      {/* Filter chips */}
+      {/* Filter chips — only shown in loaded state */}
+      {!isDisabled && !isLoading && events.length > 0 && (
       <div className="flex gap-1.5 px-3.5 pt-2.5 pb-0 overflow-x-auto">
         {FILTER_CHIPS.map(chip => (
           <button
@@ -89,6 +90,7 @@ export function EventsPanel({
           </button>
         ))}
       </div>
+      )}
 
       {/* Content */}
       <div className="h-0 grow overflow-y-auto py-2 scrollbar-thin">
