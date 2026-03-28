@@ -17,6 +17,7 @@ export interface GapSuggestion {
   description?: string
 }
 
+
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 
 interface CacheEntry {

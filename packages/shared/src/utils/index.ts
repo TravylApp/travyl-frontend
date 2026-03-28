@@ -143,3 +143,7 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 
 // Booking matcher utilities
 export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
+
+// Gap computation utility
+export { computeGaps } from './gapCompute'
+export type { Gap } from './gapCompute'

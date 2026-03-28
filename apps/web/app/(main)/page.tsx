@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "motion/react";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, MapPin } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
 import type { FollowUpQuestion } from "@travyl/shared";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
 import dynamic from "next/dynamic";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 const HowItWorks = dynamic(
   () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
@@ -65,32 +66,120 @@ const CyclingSubtitle = memo(function CyclingSubtitle() {
   return <><span ref={textRef} /><span className="animate-pulse">|</span></>;
 });
 
+interface AutocompleteSuggestion {
+  id: string;
+  name: string;
+  country: string;
+  fullName: string;
+}
+
 const HeroSearchInput = memo(function HeroSearchInput({
   tripQuery,
   setTripQuery,
   onSearch,
+  onSelectDestination,
   staticPlaceholder,
   inputRef,
 }: {
   tripQuery: string;
   setTripQuery: (v: string) => void;
   onSearch: () => void;
+  onSelectDestination?: (destination: string) => void;
   staticPlaceholder?: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const typingPlaceholder = useCyclingPlaceholder(PLACEHOLDER_PHRASES);
+  const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Fetch suggestions as user types
+  const fetchSuggestions = useCallback((query: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.length < 2) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query)}&mode=destination&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setShowSuggestions(data.length > 0);
+          setSelectedIdx(-1);
+        }
+      } catch {}
+    }, 250);
+  }, []);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setTripQuery(val);
+    fetchSuggestions(val);
+  }, [setTripQuery, fetchSuggestions]);
+
+  const handleSelect = useCallback((suggestion: AutocompleteSuggestion) => {
+    setTripQuery(suggestion.fullName);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    onSelectDestination?.(suggestion.fullName);
+  }, [setTripQuery, onSelectDestination]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === "Enter") onSearch();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIdx((i) => Math.max(i - 1, -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (selectedIdx >= 0) {
+        handleSelect(suggestions[selectedIdx]);
+      } else {
+        setShowSuggestions(false);
+        onSearch();
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  }, [showSuggestions, suggestions, selectedIdx, onSearch, handleSelect]);
+
   return (
-    <div className="flex-1 flex items-center gap-3 px-4 min-w-0">
+    <div className="flex-1 flex items-center gap-3 px-4 min-w-0 relative">
       <Search className="text-gray-400 shrink-0" size={18} />
       <input
         ref={inputRef}
         type="text"
         value={tripQuery}
-        onChange={(e) => setTripQuery(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && onSearch()}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
         className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
+        autoComplete="off"
       />
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+          {suggestions.map((s, i) => (
+            <button
+              key={s.id}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(s); }}
+              className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors ${
+                i === selectedIdx ? "bg-[#1e3a5f]/10 text-[#1e3a5f]" : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <MapPin size={14} className="text-gray-400 shrink-0" />
+              <span className="font-medium">{s.name}</span>
+              <span className="text-gray-400 text-xs">{s.country}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
@@ -257,30 +346,19 @@ export default function Home() {
   // Parallax divider
   const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
 
-  // Search bar translucent transition on scroll
-  const searchBgAlpha = useTransform(heroScroll, [0, 0.08], [1, 0.75]);
-  const searchBarBg = useTransform(searchBgAlpha, (a) => `rgba(255,255,255,${a})`);
-  const searchBlurPx = useTransform(heroScroll, [0, 0.08], [0, 20]);
-  const searchBarBlur = useTransform(searchBlurPx, (b) => `blur(${b}px)`);
-  const searchBarBorderAlpha = useTransform(heroScroll, [0, 0.08], [0, 0.25]);
-  const searchBarBorder = useTransform(searchBarBorderAlpha, (a) => `rgba(255,255,255,${a})`);
-
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
   const heroImageQueries = usePlaceImages(HERO_DESTINATIONS);
 
-  // Combine hero config image with place images for a slideshow
+  // Only include slides that have actually loaded
   const heroSlides = useMemo(() => {
-    const slides: string[] = [];
-    if (heroConfig?.background_image_url) slides.push(heroConfig.background_image_url);
+    if (heroConfig?.background_image_url) return [heroConfig.background_image_url];
     const loaded = heroImageQueries
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url);
-    slides.push(...loaded);
-    if (slides.length === 0) {
-      slides.push(`https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop&fm=webp&q=80`);
-    }
-    return slides;
+    return loaded.length > 0 ? loaded : [
+      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop&fm=webp&q=80`
+    ];
   }, [heroConfig?.background_image_url, heroImageQueries]);
 
   useEffect(() => {
@@ -444,13 +522,17 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — trimmed payload to fit under CloudFront WAF limit (~8KB)
+        // Not logged in:
+        // 1. Tiny create through CloudFront (~500 bytes, no trip_context)
+        // 2. Update trip_context via direct Supabase (bypasses CloudFront WAF)
+        //    Secured by time-limited RLS policy (1hr window after creation)
         try {
           const ext = plan.extracted;
           if (!ext?.destination) throw new Error('No destination extracted');
           const dest = ext.destination;
           const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
 
+          // Step 1 — tiny create (no trip_context, bypasses WAF)
           const createRes = await fetch('/api/trips/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -461,39 +543,6 @@ export default function Home() {
               travelers: ext.travelers.count,
               budget: totalBudget,
               currency: 'USD',
-              trip_context: {
-                lat: dest.lat, lng: dest.lng,
-                hero_image_url: plan.destination_photo_url || null,
-                hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
-                lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
-                quick_facts: {
-                  budget_level: ext.budget_level,
-                  daily_budget: ext.daily_estimate_usd,
-                  interests: ext.interests,
-                  timezone: (plan as any).timezone,
-                },
-                hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
-                  id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                  name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
-                })),
-                flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
-                  airline: f.airline, price: f.price,
-                  departure_time: f.departure_time, arrival_time: f.arrival_time,
-                })),
-                itinerary: (plan.itinerary ?? []).map((day: any) => ({
-                  day: day.day, date: day.date,
-                  weather: day.weather ? { high_c: day.weather.high_c, low_c: day.weather.low_c, condition: day.weather.condition } : undefined,
-                  slots: (day.slots ?? []).map((slot: any) => ({
-                    start_time: slot.start_time, end_time: slot.end_time,
-                    poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
-                  })),
-                })),
-                explore_items: (plan.itinerary ?? []).flatMap((day: any) =>
-                  (day.slots ?? []).map((slot: any) => ({
-                    id: slot.poi.id, title: slot.poi.name, category: slot.poi.category,
-                  }))
-                ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
-              },
             }),
           });
           if (!createRes.ok) {
@@ -511,6 +560,41 @@ export default function Home() {
             if (!ids.includes(tripId)) ids.push(tripId);
             localStorage.setItem('my-trip-ids', JSON.stringify(ids));
           } catch {}
+
+          // Step 2 — update trip_context direct to Supabase (no CloudFront)
+          // RLS: anon can only update public trips created in last 1 hour
+          const sb = getSupabaseBrowser();
+          sb.from('trips').update({
+            trip_context: {
+              lat: dest.lat, lng: dest.lng,
+              hero_image_url: plan.destination_photo_url || null,
+              hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+              lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+              quick_facts: {
+                budget_level: ext.budget_level,
+                daily_budget: ext.daily_estimate_usd,
+                interests: ext.interests,
+                timezone: (plan as any).timezone,
+              },
+              hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+                id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+                name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
+              })),
+              flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+                airline: f.airline, price: f.price,
+                departure_time: f.departure_time, arrival_time: f.arrival_time,
+              })),
+              itinerary: (plan.itinerary ?? []).map((day: any) => ({
+                day: day.day, date: day.date,
+                slots: (day.slots ?? []).map((slot: any) => ({
+                  start_time: slot.start_time, end_time: slot.end_time,
+                  poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
+                })),
+              })),
+            },
+          }).eq('id', tripId).then(({ error }) => {
+            if (error) console.error('[Trip Context] Update failed:', error.message);
+          });
 
           // Enrich in background
           fetch('/api/trips/enrich', {
@@ -570,9 +654,8 @@ export default function Home() {
 
         <motion.div
           className="relative z-10 max-w-3xl mx-auto text-center w-full"
-          style={{ y: heroTextY }}
+          style={{ y: heroTextY, opacity: heroTextOpacity }}
         >
-          <motion.div style={{ opacity: heroTextOpacity }}>
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -594,22 +677,7 @@ export default function Home() {
             )}
           </motion.p>
 
-          {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 0.8 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-          >
-            <div className="w-5 h-8 rounded-full border-2 border-white/40 flex items-start justify-center pt-1.5">
-              <div className="w-1 h-1.5 rounded-full bg-white/70 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
-            </div>
-            <span className="text-white/40 text-[9px] font-medium uppercase tracking-widest">Scroll</span>
-          </motion.div>
-          <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(8px); opacity: 0.3; } }`}</style>
-          </motion.div>
-
-          {/* Search Bar - becomes translucent on scroll */}
+          {/* Search Bar */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -679,17 +747,7 @@ export default function Home() {
 
             {/* Search bar — hidden during questions */}
             {!(isClarifying && showQuestions) && (
-              <motion.div
-                className="rounded-2xl shadow-2xl overflow-hidden"
-                style={{
-                  backgroundColor: searchBarBg,
-                  backdropFilter: searchBarBlur,
-                  WebkitBackdropFilter: searchBarBlur,
-                  borderColor: searchBarBorder,
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                }}
-              >
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                 <div className="flex items-center p-1.5 gap-2">
                   <HeroSearchInput
                     tripQuery={tripQuery}
@@ -716,7 +774,7 @@ export default function Home() {
                     <PaperPlane size={16} />
                   </button>
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* Questions — only shown if user clicked Refine */}

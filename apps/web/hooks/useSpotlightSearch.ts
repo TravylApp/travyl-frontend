@@ -309,7 +309,7 @@ export function useSpotlightSearch() {
         type: item.type as SpotlightResult['type'],
         title: item.title,
         subtitle: item.subtitle,
-        imageUrl: item.imageUrl,
+        imageUrl: (item as { imageUrl?: string }).imageUrl,
         href: item.href ?? '/',
         score: item.score,
         metadata: item.metadata,
