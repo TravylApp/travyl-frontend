@@ -5,7 +5,7 @@ import { checkOrigin, rateLimit } from '@/lib/api-utils'
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   )
 }
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       // Logged-in user — verify they own the trip
       const { data: { user }, error: authErr } = await createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
         { global: { headers: { Authorization: authHeader } } }
       ).auth.getUser()
 
