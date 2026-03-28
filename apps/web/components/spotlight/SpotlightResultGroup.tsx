@@ -18,6 +18,14 @@ const TYPE_LABELS: Record<string, string> = {
   action: 'Quick Actions',
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  'my-trips': 'Your trips',
+  'foursquare': 'Foursquare',
+  'discover': 'Discover',
+  'serpapi': 'Web',
+  'collaborators': 'People',
+}
+
 interface Props {
   type: string
   results: SpotlightResult[]
@@ -57,6 +65,11 @@ export function SpotlightResultGroup({
         <span className="text-[10px] text-gray-300 dark:text-gray-600">
           ({results.length})
         </span>
+        {results[0]?.metadata?.source && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 leading-none">
+            {SOURCE_LABELS[results[0].metadata.source as string] ?? results[0].metadata.source as string}
+          </span>
+        )}
       </div>
       {results.map((result, i) => (
         <SpotlightResultItem
