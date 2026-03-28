@@ -70,6 +70,9 @@ export interface TripContextData {
   country?: any;
   holidays?: any[];
   restaurants?: any[];
+  flights?: any[];
+  itinerary?: any[];
+  all_hotels?: any[];
 }
 
 export interface Trip {
