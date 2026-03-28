@@ -35,7 +35,7 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
