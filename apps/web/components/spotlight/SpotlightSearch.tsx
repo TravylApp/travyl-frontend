@@ -35,6 +35,8 @@ export function SpotlightSearch() {
     setQuery,
     results,
     isLoading,
+    quickLoading,
+    deepLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,
@@ -364,6 +366,7 @@ export function SpotlightSearch() {
                             query={query}
                             itemRefs={itemRefs}
                             isPinned={isPinned}
+                            deepLoading={deepLoading}
                           />
                         ) : query.length >= 1 && !isLoading ? (
                           <div className="px-4 py-8 text-center">
