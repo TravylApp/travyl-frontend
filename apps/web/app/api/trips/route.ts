@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
-function getServiceSupabase() {
+function getAnonSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
 
@@ -45,7 +45,8 @@ export async function GET(req: NextRequest) {
   const tripIds = ids.split(',').filter(Boolean).slice(0, 50)
   if (tripIds.length === 0) return NextResponse.json([])
 
-  const { data, error } = await getServiceSupabase()
+  // Anon key can read public trips via RLS policy
+  const { data, error } = await getAnonSupabase()
     .from('trips')
     .select('*')
     .in('id', tripIds)

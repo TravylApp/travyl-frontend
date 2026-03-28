@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
 
 export async function GET(req: NextRequest) {
+  const blocked = checkOrigin(req) || rateLimit(req, 'hotels', 10, 60_000)
+  if (blocked) return blocked
+
   const destination = req.nextUrl.searchParams.get('destination') // "Tokyo, Japan"
   const checkIn = req.nextUrl.searchParams.get('check_in')       // YYYY-MM-DD
   const checkOut = req.nextUrl.searchParams.get('check_out')      // YYYY-MM-DD

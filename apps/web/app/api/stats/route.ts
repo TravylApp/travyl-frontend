@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-function getServiceSupabase() {
+function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
 
 export async function GET() {
   try {
-    const sb = getServiceSupabase()
+    const sb = getSupabase()
 
     const [tripsRes, profilesRes, destsRes] = await Promise.all([
       sb.from('trips').select('id', { count: 'exact', head: true }),
