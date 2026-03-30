@@ -533,8 +533,9 @@ function TripMosaic({ photos, destination }: { photos: string[]; destination?: s
 /** Check if trip_context needs enrichment (missing key overview fields) */
 function needsEnrichment(ctx: TripContextData | undefined | null): boolean {
   if (!ctx) return true;
-  // Missing any key field means it needs enrichment
-  return !ctx.wiki || !ctx.quick_facts || !ctx.explore_items?.length;
+  // Missing any key overview field triggers re-enrichment
+  return !ctx.wiki || !ctx.quick_facts || !ctx.explore_items?.length
+    || !ctx.phrases || !ctx.cost_of_living || !ctx.news?.length || !ctx.cuisine?.length;
 }
 
 export default function TripOverview({ params }: { params: Promise<{ id: string }> }) {
