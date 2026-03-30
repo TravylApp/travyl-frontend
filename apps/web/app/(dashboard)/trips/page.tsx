@@ -76,7 +76,7 @@ function SkeletonCard() {
 export default function MyTripsPage() {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
         </div>
@@ -233,7 +233,7 @@ function TripsContent() {
   if (isLoading && !isError) {
     return (
       <div className="flex flex-col min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
           </div>
@@ -250,8 +250,8 @@ function TripsContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen pt-16">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+    <div className="flex flex-col min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>

@@ -5,7 +5,7 @@
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-[var(--background)] pt-14">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[var(--background)]" style={{ paddingTop: 48 }}>
       <main className="flex-1">
         {children}
       </main>
