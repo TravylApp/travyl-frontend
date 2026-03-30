@@ -623,11 +623,48 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const hasNews = news.length > 0;
   const hasEvents = news.some(n => n.category === 'event' || n.category === 'tip');
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
+  const hasAnyContent = hasExploreItems || hasCuisine || hasNewsArticles || events.length > 0;
 
   return (
     <div className="relative">
       <div className="relative z-10">
         <div ref={revealRef}>
+
+          {/* ── Empty state for obscure/unknown locations ── */}
+          {!hasAnyContent && (
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              </div>
+              <h3 className="text-lg font-serif font-bold text-gray-800 mb-2">
+                We couldn't find details for this destination
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md mb-6">
+                {trip?.destination
+                  ? <>We don't have data for <strong>{trip.destination}</strong> yet. Try being more specific (e.g. "Paris, France" instead of just "Paris"), or check the spelling.</>
+                  : 'No destination set for this trip. Try updating the destination in settings.'}
+              </p>
+              <div className="flex gap-3">
+                {trip?.destination && (
+                  <button
+                    onClick={() => { enrichAttempted.current = false; autoEnrich(); }}
+                    className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Try again
+                  </button>
+                )}
+                <button
+                  onClick={() => window.location.href = '/trips'}
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-[#1e3a5f] text-white hover:bg-[#162d4a] transition-colors"
+                >
+                  Back to trips
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Row 1: Things to Do (left) + Cuisine (right) ── */}
           <div className="px-6 sm:px-10 mt-6">
