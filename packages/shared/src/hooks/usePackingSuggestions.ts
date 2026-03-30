@@ -145,7 +145,7 @@ export function usePackingSuggestions(
       const session = await supabase.auth.getSession()
       if (session.data.session?.access_token) {
         hasAttemptedGeneration.current = true
-        generateSuggestions(false)
+        await generateSuggestions(false)
       } else if (tripQuery.data) {
         hasAttemptedGeneration.current = true
         setLocalSuggestions(generateLocalSuggestions(tripQuery.data))

@@ -321,5 +321,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
   }
 
+  // Auto-generate packing suggestions via SST (fire-and-forget)
+  if (BACKEND_URL) {
+    const { data: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? []).length === 0) {
+      // Get auth token to forward to the packing-suggest SST function
+      const authHeader = req.headers.get('authorization')
+      const body = JSON.stringify({ tripId })
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authHeader) headers['Authorization'] = authHeader
+
+      fetch(`${BACKEND_URL}/packing-suggest`, { method: 'POST', headers, body })
+        .catch((err) => console.error('[enrich] packing-suggest failed:', err))
+    }
+  }
+
   return NextResponse.json({ status: 'enriched', keys: Object.keys(merged) })
 }
