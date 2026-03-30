@@ -85,6 +85,15 @@ export default function LoginScreen() {
     if (error) Alert.alert('Sign in failed', error.message);
   };
 
+  const handleSocialSignIn = async (provider: 'apple' | 'facebook' | 'azure') => {
+    const redirectTo = Linking.createURL('login-callback');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    });
+    if (error) Alert.alert('Sign in failed', error.message);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -118,11 +127,11 @@ export default function LoginScreen() {
           {/* Social login */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             <View style={{ flex: 1 }}><SocialButton label="Google" iconName="google" iconColor="#EA4335" onPress={handleGoogleSignIn} /></View>
-            <View style={{ flex: 1 }}><SocialButton label="Apple" iconName="apple" iconColor="#000" onPress={() => {}} /></View>
+            <View style={{ flex: 1 }}><SocialButton label="Apple" iconName="apple" iconColor="#000" onPress={() => handleSocialSignIn('apple')} /></View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-            <View style={{ flex: 1 }}><SocialButton label="Facebook" iconName="facebook" iconColor="#1877F2" onPress={() => {}} /></View>
-            <View style={{ flex: 1 }}><SocialButton label="Microsoft" iconName="windows" iconColor="#00a4ef" onPress={() => {}} /></View>
+            <View style={{ flex: 1 }}><SocialButton label="Facebook" iconName="facebook" iconColor="#1877F2" onPress={() => handleSocialSignIn('facebook')} /></View>
+            <View style={{ flex: 1 }}><SocialButton label="Microsoft" iconName="windows" iconColor="#00a4ef" onPress={() => handleSocialSignIn('azure')} /></View>
           </View>
 
           {/* Divider */}
