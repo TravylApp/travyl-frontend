@@ -1,3 +1,4 @@
+"use client"
 import { useState, useCallback, useMemo } from 'react';
 import { getCyclicGradient } from '../config/homeData';
 import { useExploreData } from './useExploreData';

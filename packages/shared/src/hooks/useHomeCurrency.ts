@@ -1,3 +1,4 @@
+"use client"
 import { useCallback } from 'react'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useExchangeRates } from './useExchangeRates'

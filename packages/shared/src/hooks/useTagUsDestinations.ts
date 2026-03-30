@@ -1,3 +1,4 @@
+"use client"
 import { useMemo } from 'react';
 import { useMosaicTiles } from './useMosaicTiles';
 import { useInspirationCards } from './useInspirationCards';
