@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
 
@@ -60,8 +61,8 @@ export async function GET(req: NextRequest) {
       lat: p.gps_coordinates?.latitude ?? 0,
       lng: p.gps_coordinates?.longitude ?? 0,
       images: [
-        p.images?.[0]?.thumbnail ?? p.images?.[0]?.original_image ?? '',
-        ...(p.images?.slice(1, 4).map((img: any) => img.thumbnail ?? img.original_image ?? '') ?? []),
+        upscaleGoogleImage(p.images?.[0]?.thumbnail) ?? p.images?.[0]?.thumbnail ?? upscaleGoogleImage(p.images?.[0]?.original_image) ?? p.images?.[0]?.original_image ?? '',
+        ...(p.images?.slice(1, 4).map((img: any) => upscaleGoogleImage(img.thumbnail) ?? img.thumbnail ?? upscaleGoogleImage(img.original_image) ?? img.original_image ?? '') ?? []),
       ].filter(Boolean),
       amenities: p.amenities ?? [],
       checkIn: p.check_in_time ?? '3:00 PM',

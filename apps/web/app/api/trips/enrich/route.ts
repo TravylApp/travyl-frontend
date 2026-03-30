@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabase, rateLimit } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       const seen = new Set<string>()
       exploreItems = results.flat().filter((p: any) => {
         if (seen.has(p.id)) return false; seen.add(p.id); return true
-      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image }))
+      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: upscaleGoogleImage(p.image) ?? p.image }))
     } catch {}
 
     // Fallback 1: Foursquare (via backend /api/places/nearby)
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
         const seen = new Set<string>()
         exploreItems = results.flat().filter((p: any) => {
           if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
-        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
+        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: upscaleGoogleImage(p.image) ?? p.image }))
       } catch {}
     }
 
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
         const seen = new Set<string>()
         exploreItems = results.flat().filter((p: any) => {
           if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
-        }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: p.image }))
+        }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: upscaleGoogleImage(p.image) ?? p.image }))
       } catch {}
     }
   }
@@ -228,17 +229,17 @@ export async function POST(req: NextRequest) {
     .slice(0, 8)
 
   const fresh: Record<string, any> = {
-    hero_image_url: landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl,
+    hero_image_url: upscaleGoogleImage(landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl) ?? (landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl),
     hero_images: (landmarkPhotos?.length > 0
-      ? landmarkPhotos.filter((p: any) => p.image).map((p: any) => p.image).slice(0, 8)
-      : exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6)) || undefined,
+      ? landmarkPhotos.filter((p: any) => p.image).map((p: any) => upscaleGoogleImage(p.image) ?? p.image).slice(0, 8)
+      : exploreItems.filter((e) => e.image).map((e) => upscaleGoogleImage(e.image) ?? e.image).slice(0, 6)) || undefined,
     lat, lng,
     lede_text: `A ${durationDays}-day trip to ${city}.`,
     explore_items: exploreItems,
-    foursquare_venues: goingOnVenues.length > 0 ? goingOnVenues : undefined,
+    foursquare_venues: goingOnVenues.length > 0 ? goingOnVenues.map((v: any) => ({ ...v, image: upscaleGoogleImage(v.image) ?? v.image })) : undefined,
     events: eventsData?.length > 0 ? eventsData : undefined,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
-    hotels: hotelData?.length > 0 ? hotelData : undefined,
+    hotels: hotelData?.length > 0 ? hotelData.map((h: any) => ({ ...h, photo_url: upscaleGoogleImage(h.photo_url) ?? h.photo_url })) : undefined,
     news: newsData?.length > 0 ? newsData : undefined,
     country: countryInfo ?? undefined,
     wiki: wikiData ?? undefined,
@@ -250,7 +251,7 @@ export async function POST(req: NextRequest) {
       ? nearbyCities.filter((c: any) => c.name?.toLowerCase() !== city.toLowerCase()).slice(0, 4)
       : undefined,
     timezone_info: timezoneData ?? undefined,
-    restaurants: taRestaurants?.length > 0 ? taRestaurants : undefined,
+    restaurants: taRestaurants?.length > 0 ? taRestaurants.map((r: any) => ({ ...r, photo_url: upscaleGoogleImage(r.photo_url) ?? r.photo_url })) : undefined,
     phrases: phrasesData ?? undefined,
     aqi: aqiData ?? undefined,
     cost_of_living: costData ?? undefined,

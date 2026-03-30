@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import type { DestinationDetail } from '@travyl/shared'
-import { jsonResponse } from '../../lib/response'
+import { jsonResponse } from '@/lib/api-utils'
 
 // ─── Hardcoded destination metadata ──────────────────────────────────────────
 

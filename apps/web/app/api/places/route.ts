@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
@@ -233,12 +234,6 @@ async function fetchNearby(
   )
   if (!res.ok) return []
   return res.json()
-}
-
-function upscaleGoogleImage(url: string | null | undefined): string | null {
-  if (!url) return null
-  // Google Places thumbnails use =wNNN-hNNN or =wNNN-hNNN-k-no format — 600x400 is plenty for cards
-  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no')
 }
 
 // Varied Unsplash fallbacks by category hash so each place gets a unique photo

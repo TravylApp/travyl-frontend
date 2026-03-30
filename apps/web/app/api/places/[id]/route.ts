@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
@@ -80,11 +81,6 @@ function mapBackendPlace(p: BackendPlace) {
     duration: formatDuration(p.visit_duration_min),
     tags: mapTags(p.category, p.tags, p.cuisine),
   }
-}
-
-function upscaleGoogleImage(url: string | null | undefined): string | null {
-  if (!url) return null
-  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no')
 }
 
 const FALLBACK_PHOTOS = [
