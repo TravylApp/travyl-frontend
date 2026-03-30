@@ -6,7 +6,6 @@ import { useItineraryScreen } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
-import { TripExploreSection } from './trip-layout-inner';
 
 // ── Hooks ─────────────────────────────────────────────────────
 
@@ -720,10 +719,6 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
         </div>
       </div>
-
-      {/* Explore section — destination categories */}
-      <TripExploreSection trip={trip ?? null} />
-      <div className="h-24" />
 
       {/* Detail modal */}
       {selectedPlace && (
