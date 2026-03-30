@@ -199,6 +199,11 @@ function GlanceView({
   // Fetch destination-specific images from Unsplash/Pexels
   const destImages = useDestinationImages(destination, Math.max(days.length, 3));
 
+  // Sync scroll position when selectedDayIndex changes from external source (day pills)
+  useEffect(() => {
+    scrollTo(selectedDayIndex);
+  }, [selectedDayIndex]);
+
   const scrollTo = (idx: number) => {
     const el = scrollRef.current;
     if (!el) return;
