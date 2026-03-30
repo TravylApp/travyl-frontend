@@ -137,7 +137,8 @@ function generateFromTripContext(
     const days: BaseDayData[] = [];
     const activities: CalendarActivity[] = [];
 
-    for (let d = 0; d < plannerItinerary.length; d++) {
+    const dayCount = Math.min(plannerItinerary.length, durationDays);
+    for (let d = 0; d < dayCount; d++) {
       const dayData = plannerItinerary[d];
       const date = new Date(startDate);
       date.setDate(date.getDate() + d);
@@ -273,7 +274,7 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     if (trip.start_date && trip.end_date) {
       duration = Math.max(1, Math.ceil(
         (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
-      ));
+      ) + 1);
     } else if (trip.trip_context?.weather?.forecast?.length) {
       duration = trip.trip_context.weather.forecast.length;
     }
@@ -283,15 +284,16 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
   const [activities, setActivities] = useState<CalendarActivity[]>([]);
   const [baseDays, setBaseDays] = useState<BaseDayData[]>([]);
 
-  // Seed activities from trip context when trip loads (only once)
-  const [seeded, setSeeded] = useState(false);
+  // Seed activities from trip context — re-seeds when dates change
+  const dateKey = `${trip?.start_date}-${trip?.end_date}`;
+  const [seededKey, setSeededKey] = useState('');
   useEffect(() => {
-    if (generated && !seeded && generated.days.length > 0) {
+    if (generated && generated.days.length > 0 && seededKey !== dateKey) {
       setBaseDays(generated.days);
       setActivities(generated.activities);
-      setSeeded(true);
+      setSeededKey(dateKey);
     }
-  }, [generated, seeded]);
+  }, [generated, dateKey, seededKey]);
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);

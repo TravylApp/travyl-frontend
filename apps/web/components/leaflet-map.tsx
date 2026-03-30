@@ -84,7 +84,9 @@ function createLabelIcon(name: string): L.DivIcon {
   });
 }
 
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+// Use CARTO Voyager tiles with user's language
+const getUserLang = () => typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
+const TILE_URL = `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?lang=${getUserLang()}`;
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 export default function LeafletMap({

@@ -239,7 +239,7 @@ function TripLayoutContent({
   children: React.ReactNode;
 }) {
   const [mapOpen, setMapOpen] = useState(false);
-  const { trip, isLoading } = useItineraryScreen(tripId);
+  const { trip, isLoading, refetch } = useItineraryScreen(tripId);
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   useTripSettingsRegistration(tripId);
@@ -270,6 +270,7 @@ function TripLayoutContent({
   const basePath = `/trip/${tripId}`;
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
+  const isCalendar = currentSegment === 'calendar';
   const isMagazineLayout = isOverview || currentSegment === 'itinerary';
 
   // Track exit animation from magazine pages to prevent white flash
@@ -306,25 +307,54 @@ function TripLayoutContent({
   const hasMarkers = mapMarkers.length > 0;
   const dir = directionRef.current;
 
-  const pageVariants = {
-    initial: { opacity: 0, rotateX: dir > 0 ? -15 : 15, y: dir > 0 ? 30 : -30, scale: 0.97 },
-    animate: { opacity: 1, rotateX: 0, y: 0, scale: 1 },
-    exit: { opacity: 0, rotateX: dir > 0 ? 15 : -15, y: dir > 0 ? -20 : 20, scale: 0.97 },
+  // Skip fancy animation when coming from/going to calendar — it causes a jarring flash
+  const wasCalendarRef = useRef(isCalendar);
+  useEffect(() => { wasCalendarRef.current = isCalendar; }, [isCalendar]);
+  const skipAnimation = isCalendar || wasCalendarRef.current;
+
+  const pageVariants = skipAnimation ? {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  } : {
+    initial: { opacity: 0, y: dir > 0 ? 20 : -20 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0 },
   };
+
+  // Calendar gets full-screen layout with hover-reveal sidebar
+  if (isCalendar) {
+    return (
+      <TripThemeProvider trip={trip}>
+        <ItineraryProvider tripId={tripId}>
+          <div className="w-screen overflow-hidden relative" style={{ height: 'calc(100vh - 48px)', marginTop: 48 }}>
+            {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
+            <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
+              {/* Thin hover trigger strip */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 rounded-r-full bg-white/10 group-hover:opacity-0 transition-opacity" />
+              {/* Sidebar — slides in on hover */}
+              <div className="h-full opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out pointer-events-none group-hover:pointer-events-auto">
+                <TripTabs tripId={tripId} position="left" dark />
+              </div>
+            </div>
+            {children}
+          </div>
+        </ItineraryProvider>
+      </TripThemeProvider>
+    );
+  }
 
   return (
     <div
       className={`pb-14 md:pb-0 ${useOverviewBg ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
       style={{ transition: 'background-color 0.5s ease' }}
     >
-      {/* Trip navigation sidebar — only on calendar view */}
-      {currentSegment === 'calendar' && (
-        <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
-      )}
+      {/* Trip navigation sidebar — vertical on desktop, bottom bar on mobile */}
+      <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
 
       {/* Hero banner — only on overview + itinerary */}
       {(isOverview || isItinerary) && (
-        <TripMagazineHero trip={trip} compact={isItinerary} />
+        <TripMagazineHero tripId={tripId} trip={trip} compact={isItinerary} onTripUpdate={refetch} />
       )}
 
       <div className="mx-auto max-w-7xl">
@@ -357,19 +387,16 @@ function TripLayoutContent({
             <div className="flex">
               <div
                 className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isMagazineLayout ? '' : 'bg-white dark:bg-[var(--background)] px-5 md:pl-20 pt-4 pb-5'
+                  isMagazineLayout ? 'md:pl-20' : 'bg-white dark:bg-[var(--background)] px-5 md:pl-20 pt-4 pb-5'
                 }`}
-                style={{ perspective: 1200 }}
               >
                 <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
                   <motion.div
                     key={`tab-${currentSegment}`}
-                    layout
                     initial={pageVariants.initial}
                     animate={pageVariants.animate}
                     exit={pageVariants.exit}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ transformOrigin: 'center top' }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
                   >
                     {children}
                   </motion.div>

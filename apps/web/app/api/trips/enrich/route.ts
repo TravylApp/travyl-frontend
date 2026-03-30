@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabase, rateLimit } from '@/lib/api-utils'
+import { createClient } from '@supabase/supabase-js'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
@@ -34,6 +35,18 @@ export async function POST(req: NextRequest) {
 
   if (fetchErr || !trip) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
+  }
+
+  // Ownership check: logged-in must own, anonymous can only enrich public unowned trips
+  const authHeader = req.headers.get('authorization')
+  if (authHeader) {
+    const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
+      { global: { headers: { Authorization: authHeader } } }).auth.getUser()
+    if (!user || (trip.user_id && trip.user_id !== user.id)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+  } else if (trip.user_id || trip.visibility !== 'public') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
   const existing = trip.trip_context ?? {}
