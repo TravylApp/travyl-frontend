@@ -72,9 +72,9 @@ export function PackingPage({ tripId }: PackingPageProps) {
         </button>
       </div>
 
-      {/* Filter toolbar */}
+      {/* Filter toolbar — show personal filters only when logged in */}
       <div className="flex items-center gap-1.5 mb-4">
-        {['all', 'mine', 'shared', 'kids', 'adults'].map((filter) => (
+        {(userId ? ['all', 'mine', 'shared', 'kids', 'adults'] : ['all', 'kids', 'adults']).map((filter) => (
           <button key={filter} onClick={() => setFilterBy(filter)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               filterBy === filter ? 'bg-[#1e3a5f] text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10'

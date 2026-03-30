@@ -67,8 +67,48 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
         return
       }
 
-      const rows = (activityData ?? []) as ActivityRow[]
+      let rows = (activityData ?? []) as ActivityRow[]
       const tripStartDate = fetchedTrip.start_date
+
+      // Auto-seed: if no activities in DB but trip_context has itinerary, insert them
+      if (rows.length === 0 && fetchedTrip.trip_context?.itinerary?.length) {
+        const itinerary = fetchedTrip.trip_context.itinerary as any[]
+        const seedRows: Record<string, unknown>[] = []
+        for (const day of itinerary) {
+          const dayDate = day.date || fetchedTrip.start_date
+          for (const slot of day.slots ?? []) {
+            const poi = slot.poi ?? {}
+            seedRows.push({
+              trip_id: tripId,
+              user_id: null,
+              activity_name: poi.name || 'Activity',
+              activity_type: poi.category || 'sightseeing',
+              starting_date: dayDate,
+              ending_date: dayDate,
+              starting_time: slot.start_time || '09:00',
+              ending_time: slot.end_time || '11:00',
+              latitude: poi.lat || null,
+              longitude: poi.lng || null,
+              notes: null,
+              activity_data: {
+                category: poi.category,
+                location_name: poi.name,
+                image_url: poi.photo_url || null,
+                rating: poi.rating || null,
+              },
+            })
+          }
+        }
+        if (seedRows.length > 0) {
+          const { data: seeded, error: seedErr } = await supabase
+            .from('activity')
+            .insert(seedRows)
+            .select('*')
+          if (!seedErr && seeded) {
+            rows = seeded as ActivityRow[]
+          }
+        }
+      }
 
       // Hydrate Y.Map inside a single transaction. Use 'hydration' as the
       // transaction origin so onUpdate skips broadcasting this initial load.

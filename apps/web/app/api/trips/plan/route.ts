@@ -18,6 +18,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid prompt' }, { status: 400 })
   }
 
+  // Allowlist fields to prevent prompt injection / parameter manipulation
+  const safeBody: Record<string, unknown> = { prompt: body.prompt }
+  if (typeof body.city === 'string') safeBody.city = body.city.slice(0, 100)
+  if (typeof body.country === 'string') safeBody.country = body.country.slice(0, 100)
+  if (typeof body.answers === 'object' && body.answers) safeBody.answers = body.answers
+
   const res = await fetch(`${API_URL}/api/trips/plan`, {
     method: 'POST',
     headers: {
@@ -26,7 +32,7 @@ export async function POST(req: NextRequest) {
         ? { Authorization: req.headers.get('authorization')! }
         : {}),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(safeBody),
   })
 
   const data = await res.json()

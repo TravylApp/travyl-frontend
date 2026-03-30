@@ -122,7 +122,13 @@ export function usePackingSuggestions(
     mutationFn: async (suggestionId: string) => {
       const suggestion = suggestions.find((s) => s.id === suggestionId)
       if (!suggestion) return
-      await updateSuggestionStatus(suggestionId, 'accepted')
+      // Skip Supabase call for local suggestions (id starts with 'local-')
+      if (!suggestionId.startsWith('local-')) {
+        await updateSuggestionStatus(suggestionId, 'accepted')
+      } else {
+        // Remove from local state
+        setLocalSuggestions(prev => prev.filter(s => s.id !== suggestionId))
+      }
       addItem(suggestion.name, suggestion.category)
     },
     onMutate: async (suggestionId: string) => {
@@ -142,7 +148,13 @@ export function usePackingSuggestions(
   })
 
   const dismissMutation = useMutation({
-    mutationFn: (suggestionId: string) => updateSuggestionStatus(suggestionId, 'dismissed'),
+    mutationFn: async (suggestionId: string) => {
+      if (!suggestionId.startsWith('local-')) {
+        await updateSuggestionStatus(suggestionId, 'dismissed')
+      } else {
+        setLocalSuggestions(prev => prev.filter(s => s.id !== suggestionId))
+      }
+    },
     onMutate: async (suggestionId: string) => {
       await queryClient.cancelQueries({ queryKey: ['packingSuggestions', tripId] })
       const previous = queryClient.getQueryData<PackingSuggestion[]>(['packingSuggestions', tripId])
@@ -166,7 +178,11 @@ export function usePackingSuggestions(
     const pending = [...suggestions]
     for (const s of pending) {
       try {
-        await updateSuggestionStatus(s.id, 'accepted')
+        if (!s.id.startsWith('local-')) {
+          await updateSuggestionStatus(s.id, 'accepted')
+        } else {
+          setLocalSuggestions(prev => prev.filter(ls => ls.id !== s.id))
+        }
         addItem(s.name, s.category)
       } catch (err) {
         console.error('[usePackingSuggestions] acceptAll error for:', s.name, err)
