@@ -571,7 +571,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     allCollapsedOverride, setAllCollapsedOverride,
     selectedDayIndex, setSelectedDayIndex,
     setMapMarkers, setSelectedMarkerId, requestMapOpen, setRequestMapOpen,
+    swapDays,
   } = useItineraryContext();
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const dragDayRef = useRef<number | null>(null);
   const selectedDay = days[selectedDayIndex] ?? null;
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -1198,15 +1201,30 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     <div className="relative overflow-hidden">
       <div className="relative z-10 px-6 sm:px-10 pb-8">
 
-        {/* ── Day selector ── */}
+        {/* ── Day selector — draggable to reorder ── */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 mb-4">
           {days.map((d, i) => (
             <button
-              key={d.dayNumber}
+              key={`day-${i}`}
+              draggable
+              onDragStart={() => { dragDayRef.current = i; }}
+              onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+              onDragLeave={() => setDragOverIdx(null)}
+              onDrop={() => {
+                if (dragDayRef.current !== null && dragDayRef.current !== i) {
+                  swapDays(dragDayRef.current, i);
+                  setSelectedDayIndex(i);
+                }
+                dragDayRef.current = null;
+                setDragOverIdx(null);
+              }}
+              onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
               onClick={() => setSelectedDayIndex(i)}
-              className="shrink-0 px-3 py-1.5 rounded-lg text-center transition-all"
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing ${
+                dragOverIdx === i ? 'ring-2 ring-white/40 scale-105' : ''
+              }`}
               style={{
-                backgroundColor: i === selectedDayIndex ? 'rgba(255,255,255,0.15)' : 'transparent',
+                backgroundColor: i === selectedDayIndex ? 'rgba(255,255,255,0.15)' : dragOverIdx === i ? 'rgba(255,255,255,0.08)' : 'transparent',
                 border: i === selectedDayIndex ? '1px solid rgba(255,255,255,0.25)' : '1px solid transparent',
               }}
             >

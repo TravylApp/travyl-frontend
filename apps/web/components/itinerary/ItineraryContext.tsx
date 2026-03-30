@@ -115,6 +115,7 @@ interface ItineraryContextValue {
   setAllCollapsedOverride: React.Dispatch<React.SetStateAction<boolean | null>>;
   selectedDayIndex: number;
   setSelectedDayIndex: React.Dispatch<React.SetStateAction<number>>;
+  swapDays: (fromIdx: number, toIdx: number) => void;
 }
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
@@ -367,6 +368,25 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     });
   }, []);
 
+  // Swap two days — reorders baseDays and remaps activity day indices
+  const swapDays = useCallback((fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+    setBaseDays(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      // Renumber dayNumber
+      return next.map((d, i) => ({ ...d, dayNumber: i + 1, dayLabel: `Day ${i + 1}` }));
+    });
+    setActivities(prev => prev.map(a => {
+      if (a.day === fromIdx) return { ...a, day: toIdx };
+      // Shift activities between fromIdx and toIdx
+      if (fromIdx < toIdx && a.day > fromIdx && a.day <= toIdx) return { ...a, day: a.day - 1 };
+      if (fromIdx > toIdx && a.day >= toIdx && a.day < fromIdx) return { ...a, day: a.day + 1 };
+      return a;
+    }));
+  }, []);
+
   const value = useMemo(
     () => ({
       activities, setActivities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
@@ -375,10 +395,11 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
       collapsedSections, setCollapsedSections,
       allCollapsedOverride, setAllCollapsedOverride,
       selectedDayIndex, setSelectedDayIndex,
+      swapDays,
     }),
     [activities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
      mapMarkers, selectedMarkerId, requestMapOpen,
-     collapsedSections, allCollapsedOverride, selectedDayIndex],
+     collapsedSections, allCollapsedOverride, selectedDayIndex, swapDays],
   );
 
   return (
