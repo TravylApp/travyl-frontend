@@ -313,6 +313,41 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-generate packing suggestions if none exist yet
+  try {
+    const { count: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? 0) === 0) {
+      const { generatePackingSuggestions } = await import('@travyl/shared')
+      const userId = trip.user_id ?? ''
+      const suggestions = generatePackingSuggestions(
+        {
+          destination: trip.destination ?? '',
+          country: country,
+          startDate: trip.start_date ?? undefined,
+          endDate: trip.end_date ?? undefined,
+          durationDays,
+          weather: weatherData ? {
+            current: weatherData.current ? { temp_f: weatherData.current.temp_f, conditions: weatherData.current.conditions } : undefined,
+            forecast: weatherData.forecast?.map((d: any) => ({ high: d.high, low: d.low, conditions: d.conditions })),
+          } : undefined,
+          travelers: trip.trip_context?.travelers ?? undefined,
+        },
+        userId,
+      )
+
+      if (suggestions.length > 0) {
+        const rows = suggestions.map((s) => ({ ...s, trip_id: tripId }))
+        await supabase.from('packing_suggestions').insert(rows)
+      }
+    }
+  } catch {
+    // Non-critical — don't fail enrichment if packing generation fails
+  }
+
   // Update trip
   const { error: updateErr } = await supabase
     .from('trips').update({ trip_context: merged }).eq('id', tripId)
