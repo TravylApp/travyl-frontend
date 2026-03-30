@@ -953,7 +953,7 @@ export default function PlacesPage() {
 
             <div style={{ display: gridShowcase ? 'none' : undefined }}>
               {/* Near You section */}
-              {nearbyPlaces.length >= 4 && !searchCity && (
+              {nearbyPlaces.length > 0 && !searchCity && (
                 <div className="mb-8">
                   <div className="flex items-center gap-2 mb-3">
                     <Navigation size={14} className="text-[#1e3a5f]" />
@@ -961,9 +961,9 @@ export default function PlacesPage() {
                     <div className="flex-1 h-px bg-gray-100 dark:bg-white/10" />
                     <span className="text-[10px] text-gray-400">{nearbyPlaces.length}</span>
                   </div>
-                  <div style={{ columnCount, columnGap: '0.75rem' }}>
+                  <div className={`grid gap-3 grid-cols-2 sm:grid-cols-${Math.min(columnCount, 4)}`}>
                     {nearbyPlaces.slice(0, 12).map((place, i) => (
-                      <div key={place.id} className="mb-3" style={{ breakInside: 'avoid' }}>
+                      <div key={place.id}>
                         <PinCard
                           item={place}
                           index={i}
@@ -973,7 +973,7 @@ export default function PlacesPage() {
                           onAddToTrip={(p) => {
                             if (!favorites.includes(p.id)) toggleFavorite(p.id);
                           }}
-                          flush={flushGrid}
+                          flush
                         />
                       </div>
                     ))}
