@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, CACHE_1H, MissingParamError } from '../lib/response'
+import { errorResponse, jsonResponse, CACHE_1H, MissingParamError } from '@/lib/api-utils'
 
 const GEONAMES_USER = process.env.GEONAMES_USERNAME || 'demo'
 

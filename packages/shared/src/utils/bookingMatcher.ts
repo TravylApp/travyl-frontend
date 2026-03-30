@@ -1,12 +1,7 @@
 // ─── Provider routing ─────────────────────────────────────────
 
 const PROVIDER_MAP: Record<string, string> = {
-  tour: 'viator',
-  sightseeing: 'viator',
-  museum: 'viator',
-  cultural: 'viator',
-  outdoor: 'viator',
-  dining: 'opentable',
+  // dining: 'opentable',
   event: 'ticketmaster',
   concert: 'ticketmaster',
   show: 'ticketmaster',
@@ -14,9 +9,9 @@ const PROVIDER_MAP: Record<string, string> = {
   entertainment: 'ticketmaster',
 }
 
-/** Returns the booking provider name for a given activity type. */
-export function routeProvider(activityType: string): string {
-  return PROVIDER_MAP[activityType.toLowerCase()] ?? 'amadeus'
+/** Returns the booking provider name for a given activity type, or null if no provider available. */
+export function routeProvider(activityType: string): string | null {
+  return PROVIDER_MAP[activityType.toLowerCase()] ?? null
 }
 
 // ─── Name similarity (normalized Levenshtein) ─────────────────

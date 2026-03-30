@@ -2,23 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
 
 describe('routeProvider', () => {
-  it('routes dining to opentable', () => {
-    expect(routeProvider('dining')).toBe('opentable')
+  it('routes dining to null (opentable disabled)', () => {
+    expect(routeProvider('dining')).toBeNull()
   })
-  it('routes sightseeing to viator', () => {
-    expect(routeProvider('sightseeing')).toBe('viator')
-  })
-  it('routes tour to viator', () => {
-    expect(routeProvider('tour')).toBe('viator')
-  })
-  it('routes museum to viator', () => {
-    expect(routeProvider('museum')).toBe('viator')
-  })
-  it('routes cultural to viator', () => {
-    expect(routeProvider('cultural')).toBe('viator')
-  })
-  it('routes outdoor to viator', () => {
-    expect(routeProvider('outdoor')).toBe('viator')
+  it('routes former viator/amadeus types to null (no provider)', () => {
+    expect(routeProvider('sightseeing')).toBeNull()
+    expect(routeProvider('tour')).toBeNull()
+    expect(routeProvider('museum')).toBeNull()
+    expect(routeProvider('cultural')).toBeNull()
+    expect(routeProvider('outdoor')).toBeNull()
   })
   it('routes event to ticketmaster', () => {
     expect(routeProvider('event')).toBe('ticketmaster')
@@ -35,14 +27,14 @@ describe('routeProvider', () => {
   it('routes entertainment to ticketmaster', () => {
     expect(routeProvider('entertainment')).toBe('ticketmaster')
   })
-  it('routes unknown types to amadeus', () => {
-    expect(routeProvider('shopping')).toBe('amadeus')
-    expect(routeProvider('unknown')).toBe('amadeus')
-    expect(routeProvider('')).toBe('amadeus')
+  it('routes unknown types to null', () => {
+    expect(routeProvider('shopping')).toBeNull()
+    expect(routeProvider('unknown')).toBeNull()
+    expect(routeProvider('')).toBeNull()
   })
   it('is case-insensitive', () => {
-    expect(routeProvider('Dining')).toBe('opentable')
-    expect(routeProvider('TOUR')).toBe('viator')
+    expect(routeProvider('Dining')).toBeNull()
+    expect(routeProvider('TOUR')).toBeNull()
   })
 })
 

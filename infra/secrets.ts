@@ -34,7 +34,4 @@ export const openExchangeRatesAppId = new sst.Secret('OpenExchangeRatesAppId')
 export const openchargeApiKey = new sst.Secret('OpenchargeApiKey')
 
 // ─── Booking / Affiliate ────────────────────────────────────
-export const viatorAffiliateKey = new sst.Secret('ViatorAffiliateKey')
 export const openTableAffiliateKey = new sst.Secret('OpenTableAffiliateKey')
-export const amadeusApiKey = new sst.Secret('AmadeusApiKey')
-export const amadeusApiSecret = new sst.Secret('AmadeusApiSecret')

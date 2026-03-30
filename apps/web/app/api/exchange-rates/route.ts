@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_24H } from '@/app/api/lib/response'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_24H } from '@/lib/api-utils'
 
 const FALLBACK_URL = 'https://api.frankfurter.app'
 
