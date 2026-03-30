@@ -953,7 +953,7 @@ export default function PlacesPage() {
 
             <div style={{ display: gridShowcase ? 'none' : undefined }}>
               {/* Near You section */}
-              {nearbyPlaces.length > 0 && !searchCity && (
+              {nearbyPlaces.length >= 4 && !searchCity && (
                 <div className="mb-8">
                   <div className="flex items-center gap-2 mb-3">
                     <Navigation size={14} className="text-[#1e3a5f]" />
