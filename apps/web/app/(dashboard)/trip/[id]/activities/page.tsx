@@ -198,6 +198,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
   const [showFilters, setShowFilters] = useState(false);
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [columnCount, setColumnCount] = useState(3);
+  const [flush, setFlush] = useState(false);
 
   useEffect(() => {
     const w = window.innerWidth;
@@ -352,6 +353,18 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
               <option value="name">A–Z</option>
             </select>
             <span className="text-[10px] text-gray-400 tabular-nums">{filtered.length} places</span>
+            <div className="flex items-center gap-0.5 border-l border-gray-200 pl-2 ml-1">
+              {[2, 3, 4].map((n) => (
+                <button key={n} onClick={() => setColumnCount(n)}
+                  className={`w-5 h-5 rounded text-[9px] font-bold transition-all ${columnCount === n ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                  {n}
+                </button>
+              ))}
+              <button onClick={() => setFlush(f => !f)} title="Flush grid"
+                className={`w-5 h-5 rounded flex items-center justify-center transition-all ml-0.5 ${flush ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0" y="0" width="4" height="4" rx="0.5" fill="currentColor"/><rect x="6" y="0" width="4" height="4" rx="0.5" fill="currentColor"/><rect x="0" y="6" width="4" height="4" rx="0.5" fill="currentColor"/><rect x="6" y="6" width="4" height="4" rx="0.5" fill="currentColor"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -409,6 +422,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                     index={i}
                     isFavorited={favorites.includes(place.id)}
                     onFavorite={toggleFavorite}
+                    flush={flush}
                   />
                 </motion.div>
               ))}
