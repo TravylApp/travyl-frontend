@@ -4,7 +4,7 @@ import { use, useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Search, Globe, Landmark, UtensilsCrossed, Compass, CalendarDays, Heart,
-  X, ChevronRight,
+  X,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -195,7 +195,6 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
-  const [showFilters, setShowFilters] = useState(false);
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [columnCount, setColumnCount] = useState(3);
   const [flush, setFlush] = useState(false);
@@ -253,143 +252,142 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     <div className="flex flex-col min-h-[60vh]">
       {/* Sticky header */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b border-gray-100 dark:border-white/10">
-        {/* Row 1: Tabs + Search */}
-        <div className="px-4 pt-2 pb-0">
-          <div className="flex items-center gap-2">
-            <div className="shrink-0 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-0 -mb-px">
-                {TABS.map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
-                      activeTab === key
-                        ? 'font-semibold'
-                        : 'border-transparent text-gray-400 hover:text-gray-600'
-                    }`}
-                    style={activeTab === key ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
-                  >
-                    <Icon size={13} />
-                    <span className="hidden sm:inline">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="relative flex-1 min-w-0">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder={`Search ${destination}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all"
-                style={{ '--tw-ring-color': 'var(--trip-base)' } as any}
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+        {/* Row 1: Tabs */}
+        <div className="px-4 pt-2 pb-0 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-0 -mb-px">
+            {TABS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
+                className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
+                  activeTab === key
+                    ? 'font-semibold'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+                style={activeTab === key ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
+              >
+                <Icon size={13} />
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Row 2: Filters + Sort */}
-        <div className="px-4 py-1.5 flex items-center gap-2">
-          {subcategories.length > 1 && (
-            <button
-              onClick={() => setShowFilters((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all shrink-0 ${
-                showFilters || activeSubcategory ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              style={showFilters || activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
-            >
-              <span>Filters</span>
-              <motion.div animate={{ rotate: showFilters ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                <ChevronRight size={11} />
-              </motion.div>
-            </button>
-          )}
-
-          <AnimatePresence>
-            {showFilters && subcategories.length > 1 && (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0 flex-1"
-              >
-                <button
-                  onClick={() => setActiveSubcategory('')}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap shrink-0 transition-all ${
-                    !activeSubcategory ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                  style={!activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
-                >
-                  All
-                </button>
-                {subcategories.slice(0, 12).map(({ label, count }) => (
-                  <button
-                    key={label}
-                    onClick={() => setActiveSubcategory(activeSubcategory === label ? '' : label)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap shrink-0 transition-all ${
-                      activeSubcategory === label ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                    style={activeSubcategory === label ? { backgroundColor: 'var(--trip-base)' } : undefined}
-                  >
-                    {label} <span className="opacity-50 ml-0.5">{count}</span>
-                  </button>
-                ))}
-              </motion.div>
+        {/* Row 2: Search + Controls */}
+        <div className="px-4 py-2 flex items-center gap-3">
+          <div className="relative flex-1 min-w-0 max-w-xs">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={`Search ${destination}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[12px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all"
+              style={{ '--tw-ring-color': 'var(--trip-base)' } as any}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X size={12} />
+              </button>
             )}
-          </AnimatePresence>
+          </div>
 
-          <div className="ml-auto flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 ml-auto shrink-0">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="text-[10px] px-2 py-1 rounded-md border border-gray-200 bg-white text-gray-600 focus:outline-none"
+              className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer"
             >
               <option value="default">Default</option>
               <option value="rating">Top Rated</option>
               <option value="name">A–Z</option>
             </select>
-            <span className="text-[10px] text-gray-400 tabular-nums">{filtered.length} places</span>
-            <div className="flex items-center gap-0.5 border-l border-gray-200 pl-2 ml-1">
+
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 rounded-lg p-0.5">
               {[2, 3, 4].map((n) => (
                 <button key={n} onClick={() => setColumnCount(n)}
-                  className={`w-5 h-5 rounded text-[9px] font-bold transition-all ${columnCount === n ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                  className={`w-7 h-7 rounded-md text-[11px] font-semibold transition-all ${
+                    columnCount === n
+                      ? 'bg-white dark:bg-white/20 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}>
                   {n}
                 </button>
               ))}
-              <button onClick={() => setFlush(f => !f)} title="Flush grid"
-                className={`w-5 h-5 rounded flex items-center justify-center transition-all ml-0.5 ${flush ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0" y="0" width="4" height="4" rx="0.5" fill="currentColor"/><rect x="6" y="0" width="4" height="4" rx="0.5" fill="currentColor"/><rect x="0" y="6" width="4" height="4" rx="0.5" fill="currentColor"/><rect x="6" y="6" width="4" height="4" rx="0.5" fill="currentColor"/></svg>
-              </button>
             </div>
+
+            <button
+              onClick={() => setFlush(f => !f)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                flush
+                  ? 'bg-gray-900 dark:bg-white/90 text-white dark:text-gray-900'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x="0" y="0" width="5" height="5" rx="1" fill="currentColor"/>
+                <rect x="7" y="0" width="5" height="5" rx="1" fill="currentColor"/>
+                <rect x="0" y="7" width="5" height="5" rx="1" fill="currentColor"/>
+                <rect x="7" y="7" width="5" height="5" rx="1" fill="currentColor"/>
+              </svg>
+              {flush ? 'Grid' : 'Flush'}
+            </button>
           </div>
+        </div>
+
+        {/* Row 3: Subcategory pills (always visible when available) */}
+        {subcategories.length > 1 && (
+          <div className="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setActiveSubcategory('')}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition-all ${
+                !activeSubcategory
+                  ? 'text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
+              }`}
+              style={!activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
+            >
+              All
+            </button>
+            {subcategories.slice(0, 12).map(({ label, count }) => (
+              <button
+                key={label}
+                onClick={() => setActiveSubcategory(activeSubcategory === label ? '' : label)}
+                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition-all ${
+                  activeSubcategory === label
+                    ? 'text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
+                }`}
+                style={activeSubcategory === label ? { backgroundColor: 'var(--trip-base)' } : undefined}
+              >
+                {label} <span className="opacity-50">{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Title + count */}
+      <div className="px-4 pt-4 pb-2 flex items-baseline justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white" style={{ color: 'var(--trip-base)' }}>
+            Explore {destination}
+          </h2>
+          <p className="text-[12px] text-gray-400">{filtered.length} places to discover</p>
         </div>
       </div>
 
-      {/* Title */}
-      <div className="px-4 pt-4 pb-2">
-        <h2 className="text-lg font-bold text-gray-900" style={{ color: 'var(--trip-base)' }}>
-          Explore {destination}
-        </h2>
-        <p className="text-[12px] text-gray-400">
-          {filtered.length} places to discover
-        </p>
-      </div>
-
-      {/* Masonry Grid */}
+      {/* Card Grid / Masonry */}
       <div className="px-4 pb-8">
         {(isLoading || tripLoading) ? (
           <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-gray-100 animate-pulse" style={{ height: 320 + (i % 3) * 40 }} />
+              <div key={i} className="rounded-2xl bg-gray-100 dark:bg-white/5 animate-pulse" style={{ height: 320 + (i % 3) * 40 }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search size={32} className="text-gray-300 mb-3" />
+            <Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-sm text-gray-500">No places found</p>
             <button
               onClick={() => { setSearchQuery(''); setActiveSubcategory(''); setActiveTab('all'); }}
@@ -399,13 +397,11 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
               Clear all filters
             </button>
           </div>
-        ) : (
+        ) : flush ? (
+          /* ─── Flush / Uniform Grid ─── */
           <div
-            className="gap-3"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
-            }}
+            className="grid gap-3"
+            style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
           >
             <AnimatePresence mode="popLayout">
               {filtered.map((place, i) => (
@@ -415,18 +411,44 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3, delay: Math.min(i * 0.03, 0.3) }}
+                  transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.2) }}
                 >
                   <PinCard
                     item={place}
                     index={i}
                     isFavorited={favorites.includes(place.id)}
                     onFavorite={toggleFavorite}
-                    flush={flush}
+                    flush
                   />
                 </motion.div>
               ))}
             </AnimatePresence>
+          </div>
+        ) : (
+          /* ─── Masonry / Pinterest layout ─── */
+          <div
+            className="gap-3"
+            style={{
+              columnCount,
+              columnGap: '12px',
+            }}
+          >
+            {filtered.map((place, i) => (
+              <div
+                key={place.id}
+                className="break-inside-avoid mb-3"
+                style={{
+                  animation: `card-fade-in 0.3s ease-out ${Math.min(i * 0.02, 0.2)}s both`,
+                }}
+              >
+                <PinCard
+                  item={place}
+                  index={i}
+                  isFavorited={favorites.includes(place.id)}
+                  onFavorite={toggleFavorite}
+                />
+              </div>
+            ))}
           </div>
         )}
 

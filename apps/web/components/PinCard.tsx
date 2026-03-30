@@ -82,10 +82,11 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
         >
           {imgError || images.length === 0 ? (
             <div
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center"
               style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
             >
-              <MapPin size={32} className="text-white/30" />
+              <MapPin size={28} className="text-white/20 mb-2" />
+              <span className="text-white/40 text-[11px] font-medium leading-tight line-clamp-2">{item.name}</span>
             </div>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */

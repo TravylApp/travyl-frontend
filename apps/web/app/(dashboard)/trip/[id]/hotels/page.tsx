@@ -158,7 +158,7 @@ function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
   });
 }
 
-function useHotels(tripId: string, searchQuery?: string) {
+function useHotels(tripId: string, searchQuery?: string): HotelData[] {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination;
 
@@ -241,16 +241,83 @@ function useHotels(tripId: string, searchQuery?: string) {
     enabled: !!destination,
   });
 
-  // Combine: DB first, then context, then Foursquare, then SerpAPI — deduplicate by name
-  return useMemo(() => {
-    const seen = new Set<string>();
-    return [...fromDb, ...fromContext, ...fetchedHotels, ...serpHotels].filter((h) => {
-      const key = h.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  // Combine: DB first, then context, then Foursquare, then SerpAPI
+  // When duplicates found, prefer the version with images
+  const combined = useMemo(() => {
+    const byName: Record<string, HotelData> = {};
+    const order: string[] = [];
+    for (const h of [...fromDb, ...fromContext, ...fetchedHotels, ...serpHotels]) {
+      const key = h.name.toLowerCase().trim();
+      const existing = byName[key];
+      if (!existing) {
+        byName[key] = h;
+        order.push(key);
+      } else {
+        const existingImgs = existing.images.filter(Boolean).length;
+        const newImgs = h.images.filter(Boolean).length;
+        if (newImgs > existingImgs) {
+          byName[key] = { ...existing, images: h.images };
+        }
+      }
+    }
+    return order.map((k) => byName[k]);
   }, [fromDb, fromContext, fetchedHotels, serpHotels]);
+
+  // 5. Auto-fetch images for hotels that have none (search Foursquare by name)
+  const imagelessNames = useMemo(
+    () => combined.filter((h) => h.images.filter(Boolean).length === 0).map((h) => h.name).join('|'),
+    [combined],
+  );
+
+  const { data: imagePatches } = useQuery({
+    queryKey: ['hotel-images', imagelessNames, lat, lng],
+    queryFn: async () => {
+      if (!lat || !lng || !imagelessNames) return {};
+      const names = imagelessNames.split('|');
+      const patches: Record<string, string[]> = {};
+      const usedImages = new Set<string>(); // prevent same image on multiple hotels
+      await Promise.all(
+        names.map(async (name) => {
+          try {
+            const params = new URLSearchParams({ lat: String(lat), lng: String(lng), category: 'hotel', limit: '5', q: name });
+            const res = await fetch(`/api/foursquare?${params}`);
+            if (!res.ok) return;
+            const results = await res.json();
+            // Find best name match from results
+            const nameWords = name.toLowerCase().split(/\s+/);
+            const match = results?.find((r: any) => {
+              const rWords = (r.name || '').toLowerCase().split(/\s+/);
+              // At least one significant word must overlap (skip "the", "hotel", etc.)
+              const skip = new Set(['the', 'hotel', 'hostel', 'inn', 'b&b', 'a', 'di', 'del', 'la', 'il']);
+              return nameWords.some((w: string) => w.length > 2 && !skip.has(w) && rWords.some((rw: string) => rw.includes(w) || w.includes(rw)));
+            });
+            if (match) {
+              const imgs = [match.image, ...(match.images ?? [])].filter(
+                (img: string) => img && !img.includes('categories_v2') && !usedImages.has(img),
+              );
+              if (imgs.length > 0) {
+                imgs.forEach((img: string) => usedImages.add(img));
+                patches[name.toLowerCase().trim()] = imgs;
+              }
+            }
+          } catch { /* skip */ }
+        }),
+      );
+      return patches;
+    },
+    staleTime: 30 * 60 * 1000,
+    enabled: !!imagelessNames && !!(lat && lng),
+  });
+
+  // Merge patched images into the combined list
+  return useMemo(() => {
+    if (!imagePatches || Object.keys(imagePatches).length === 0) return combined;
+    return combined.map((h) => {
+      if (h.images.filter(Boolean).length > 0) return h;
+      const patch = imagePatches[h.name.toLowerCase().trim()];
+      return patch ? { ...h, images: patch } : h;
+    });
+  }, [combined, imagePatches]);
 }
 
 function hotelToPlaceItem(h: HotelData): PlaceItem {
@@ -1320,6 +1387,7 @@ function BrowsingHotelsSection({
                         index={i}
                         isFavorited={false}
                         onFavorite={() => {}}
+                        flush
                       />
                     </div>
                   ))}
