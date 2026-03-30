@@ -313,6 +313,28 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-generate packing suggestions via SST if none exist yet (fire-and-forget)
+  try {
+    const { count: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? 0) === 0) {
+      const authHeader = req.headers.get('authorization')
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authHeader) headers['Authorization'] = authHeader
+
+      fetch(`${BACKEND_URL}/packing-suggest`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tripId }),
+      }).catch((err) => console.error('[enrich] packing-suggest failed:', err))
+    }
+  } catch {
+    // Non-critical — don't fail enrichment if packing generation fails
+  }
+
   // Update trip
   const { error: updateErr } = await supabase
     .from('trips').update({ trip_context: merged }).eq('id', tripId)
