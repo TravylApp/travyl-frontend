@@ -1,10 +1,4 @@
-import { NextRequest } from 'next/server'
-import { proxyToBackend } from '@/lib/api-utils'
+import { GET } from '@/app/api/hotels/[id]/route'
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params
-  return proxyToBackend(`/api/places/${encodeURIComponent(id)}`, req)
-}
+// Re-export the hotels handler to avoid duplication
+export { GET }
