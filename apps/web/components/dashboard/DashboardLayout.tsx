@@ -1,11 +1,12 @@
 'use client'
 
+// DashboardNavBar is available at @/components/dashboard/DashboardNavBar
+// for future use as a secondary nav on dashboard list pages.
+
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // GlobalNavbar handles top navigation for all pages.
-  // Trip detail pages have their own TripTabs for in-trip navigation.
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-white dark:bg-[var(--background)]">
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[var(--background)] pt-14">
+      <main className="flex-1">
         {children}
       </main>
     </div>
