@@ -786,6 +786,17 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     );
   }
 
+  if (!trip) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center">
+        <p className="text-gray-500 mb-4">Trip not found or you don't have access.</p>
+        <button onClick={() => router.push('/trips')} className="text-sm text-blue-600 hover:underline">
+          Back to trips
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto pb-24 divide-y divide-gray-200">
       {/* Theme & Colors */}
