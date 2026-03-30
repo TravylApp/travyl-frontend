@@ -5,7 +5,8 @@ import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, 
 import { useItineraryScreen } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
-import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
+import { AnimatePresence } from 'motion/react';
+import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
 
 // ── Hooks ─────────────────────────────────────────────────────
@@ -791,13 +792,16 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
       <div className="h-24" />
 
-      {/* Detail modal */}
-      {selectedPlace && (
-        <PlaceDetailModal
-          place={selectedPlace}
-          onClose={() => setSelectedPlace(null)}
-        />
-      )}
+      {/* Detail overlay — same as Places page */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            onClose={() => setSelectedPlace(null)}
+            minimal
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

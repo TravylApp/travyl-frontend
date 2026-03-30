@@ -585,7 +585,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const [addCategory, setAddCategory] = useState('All');
   const [addSearch, setAddSearch] = useState('');
   const [browseIndex, setBrowseIndex] = useState<number | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem(`favorites-${id}`) || '[]'); } catch { return []; }
+  });
   const [regenerating, setRegenerating] = useState(false);
 
   const [regenMenuOpen, setRegenMenuOpen] = useState(false);
@@ -1036,9 +1039,13 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     setAddCategory('All');
   }, [addActivity, selectedDayIndex]);
 
-  const toggleFavorite = useCallback((id: string) => {
-    setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
-  }, []);
+  const toggleFavorite = useCallback((itemId: string) => {
+    setFavorites((prev) => {
+      const next = prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId];
+      try { localStorage.setItem(`favorites-${id}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [id]);
 
   const isFirstDay = selectedDayIndex === 0;
   const isLastDay = selectedDayIndex === days.length - 1;

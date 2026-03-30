@@ -382,7 +382,10 @@ export default function PlacesPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem('places-favorites') || '[]'); } catch { return []; }
+  });
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [selectedPlace, _setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -416,8 +419,12 @@ export default function PlacesPage() {
     return () => observer.disconnect();
   }, [searchCity, hasNextPage, isFetchingNextPage, fetchNextPage, gridShowcase]);
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
+  const toggleFavorite = (itemId: string) => {
+    setFavorites((prev) => {
+      const next = prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId];
+      try { localStorage.setItem('places-favorites', JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   // Responsive column count on mount
