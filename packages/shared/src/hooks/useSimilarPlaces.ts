@@ -1,3 +1,4 @@
+"use client"
 import { useMemo } from 'react';
 import type { PlaceItem } from '../types';
 import { haversineKm } from '../utils';

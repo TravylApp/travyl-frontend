@@ -1,3 +1,4 @@
+"use client"
 import { useState, useMemo, useCallback } from 'react';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';

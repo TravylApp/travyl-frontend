@@ -1,3 +1,4 @@
+"use client"
 import { useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchMosaicTiles } from '../services/api';
