@@ -687,7 +687,8 @@ export async function savePlanToSupabase(
   // Fire enrichment in the background (fills wiki, news, phrases, cuisine, cost_of_living, etc.)
   onProgress?.('Enriching trip details...', 95)
   try {
-    const enrichRes = await fetch('/api/trips/enrich', {
+    const enrichBase = process.env.EXPO_PUBLIC_WEB_API_URL || ''
+    const enrichRes = await fetch(`${enrichBase}/api/trips/enrich`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tripId }),
