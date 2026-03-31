@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plane, Building2, UtensilsCrossed, Compass, Car, ShoppingBag,
   MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
+import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -188,10 +189,43 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   const seeded = useRef(false);
   useEffect(() => {
     if (trip && !seeded.current) {
-      setBudgetData(generateBudgetFromTrip(trip, formatHome));
+      // Load saved budget from trip_context if available, otherwise generate from trip data
+      const saved = (trip.trip_context as any)?.budget_data;
+      if (saved && Array.isArray(saved) && saved.length > 0) {
+        setBudgetData(saved);
+      } else {
+        setBudgetData(generateBudgetFromTrip(trip, formatHome));
+      }
       seeded.current = true;
     }
   }, [trip, formatHome]);
+
+  // Debounce-save budget to trip_context whenever it changes
+  const saveTimer = useRef<NodeJS.Timeout | null>(null);
+  const persistBudget = useCallback((data: BudgetItem[]) => {
+    if (!seeded.current) return; // Don't save during initial load
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const supabase = getSupabaseBrowser();
+      // Save budget_data into trip_context
+      supabase.from('trips').select('trip_context').eq('id', id).single().then(({ data: row }) => {
+        if (row) {
+          const ctx = (row.trip_context || {}) as Record<string, unknown>;
+          ctx.budget_data = data;
+          supabase.from('trips').update({ trip_context: ctx }).eq('id', id).then(() => {});
+        }
+      });
+    }, 1500);
+  }, [id]);
+
+  // Wrap setBudgetData to also persist
+  const updateBudget = useCallback((updater: BudgetItem[] | ((prev: BudgetItem[]) => BudgetItem[])) => {
+    setBudgetData((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistBudget(next);
+      return next;
+    });
+  }, [persistBudget]);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotal, setTempTotal] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -231,7 +265,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
     const newTotal = parseFloat(tempTotal) || 0;
     if (newTotal > 0 && totalBudgeted > 0) {
       const ratio = newTotal / totalBudgeted;
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => ({
           ...item,
           budgeted: Math.round(item.budgeted * ratio * 100) / 100,
@@ -249,7 +283,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   const handleSaveEdit = () => {
     if (editingItemId) {
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) =>
           item.id === editingItemId
             ? { ...item, budgeted: parseFloat(tempBudgeted) || 0 }
@@ -266,7 +300,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteCategory = (cid: string) => {
-    setBudgetData((prev) => prev.filter((item) => item.id !== cid));
+    updateBudget((prev) => prev.filter((item) => item.id !== cid));
   };
 
   const handleAddExpense = (categoryId: string) => {
@@ -276,7 +310,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
         description: newExpenseDesc,
         amount: parseFloat(newExpenseAmount) || 0,
       };
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => {
           if (item.id === categoryId) {
             const expenses = [...(item.expenses || []), expense];
@@ -293,7 +327,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteExpense = (categoryId: string, expenseId: string) => {
-    setBudgetData((prev) =>
+    updateBudget((prev) =>
       prev.map((item) => {
         if (item.id === categoryId) {
           const expenses = (item.expenses || []).filter((e) => e.id !== expenseId);
@@ -307,7 +341,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      setBudgetData((prev) => [
+      updateBudget((prev) => [
         ...prev,
         {
           id: `custom-${Date.now()}`,

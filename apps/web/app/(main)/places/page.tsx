@@ -290,7 +290,7 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-const NEARBY_RADIUS_KM = 25 // Only show places within 25km
+const NEARBY_RADIUS_KM = 15 // Only show places within 15km
 
 async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItemType[]> {
   const categories = ['sightseeing', 'restaurant', 'cafe', 'attraction', 'park']
@@ -305,10 +305,9 @@ async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItemTyp
   return results.flat().filter((p) => {
     if (!p.name || !p.image) return false
     if (seen.has(p.id)) return false
-    // Filter out places too far from user's actual location
-    if (p.latitude != null && p.longitude != null) {
-      if (distanceKm(lat, lng, p.latitude, p.longitude) > NEARBY_RADIUS_KM) return false
-    }
+    // Require coordinates — skip places we can't verify distance for
+    if (p.latitude == null || p.longitude == null) return false
+    if (distanceKm(lat, lng, p.latitude, p.longitude) > NEARBY_RADIUS_KM) return false
     seen.add(p.id)
     return true
   })

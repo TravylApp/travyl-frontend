@@ -628,10 +628,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const tripLng = trip?.trip_context?.lng;
 
   const tripCity = trip?.destination?.split(',')[0]?.trim();
-  // Rotate explore queries each session for variety
-  const [exploreOffset] = useState(() => Math.floor(Math.random() * 6));
+  // Rotate explore queries — new seed every 30 minutes so content feels fresh
+  const [exploreSeed] = useState(() => Math.floor(Date.now() / (30 * 60 * 1000)));
   const { data: liveExploreItems } = useQuery({
-    queryKey: ['trip-explore', trip?.id, tripCity],
+    queryKey: ['trip-explore', trip?.id, tripCity, exploreSeed],
     queryFn: async () => {
       if (!tripCity) return [];
       const allQueries = [
@@ -645,9 +645,16 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         `parks nature ${tripCity}`,
         `local food ${tripCity}`,
         `viewpoints ${tripCity}`,
+        `historical sites ${tripCity}`,
+        `family activities ${tripCity}`,
+        `romantic spots ${tripCity}`,
+        `street food ${tripCity}`,
+        `outdoor adventures ${tripCity}`,
+        `art galleries ${tripCity}`,
       ];
-      // Pick 6 starting from random offset
-      const queries = Array.from({ length: 6 }, (_, i) => allQueries[(exploreOffset + i) % allQueries.length]);
+      // Shuffle based on seed, then pick 6
+      const shuffled = [...allQueries].sort(() => ((exploreSeed * 9301 + 49297) % 233280) / 233280 - 0.5);
+      const queries = shuffled.slice(0, 6);
       const results = await Promise.all(
         queries.map(async (q) => {
           const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=4`);
@@ -675,13 +682,13 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       }));
     },
     enabled: !!tripCity && !enriching,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 
   const tripCountry = trip?.destination?.split(',').slice(1).join(',').trim() || '';
 
   const { data: liveEvents } = useQuery({
-    queryKey: ['trip-events', trip?.id, tripCity],
+    queryKey: ['trip-events', trip?.id, tripCity, exploreSeed],
     queryFn: async () => {
       if (!tripCity) return [];
       const params = new URLSearchParams({ city: tripCity });
