@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -136,6 +136,44 @@ export default function BudgetScreen() {
 
   /* ── State ── */
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(initialBudget);
+  const seeded = useRef(false);
+
+  // Load saved budget from trip_context if available
+  useEffect(() => {
+    if (trip && !seeded.current) {
+      const saved = (trip.trip_context as any)?.budget_data;
+      if (saved && Array.isArray(saved) && saved.length > 0) {
+        setBudgetData(saved);
+      } else {
+        setBudgetData(initialBudget);
+      }
+      seeded.current = true;
+    }
+  }, [trip, initialBudget]);
+
+  // Debounce-save budget to trip_context
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistBudget = useCallback((data: BudgetItem[]) => {
+    if (!seeded.current || !id) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      supabase.from('trips').select('trip_context').eq('id', id).single().then(({ data: row }) => {
+        if (row) {
+          const ctx = (row.trip_context || {}) as Record<string, unknown>;
+          ctx.budget_data = data;
+          supabase.from('trips').update({ trip_context: ctx }).eq('id', id).then(() => {});
+        }
+      });
+    }, 1500);
+  }, [id]);
+
+  const updateBudget = useCallback((updater: BudgetItem[] | ((prev: BudgetItem[]) => BudgetItem[])) => {
+    setBudgetData((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistBudget(next);
+      return next;
+    });
+  }, [persistBudget]);
 
   /* Editing total budget */
   const [isEditingTotal, setIsEditingTotal] = useState(false);
@@ -249,7 +287,7 @@ export default function BudgetScreen() {
     const newTotal = parseFloat(tempTotal) || 0;
     if (newTotal > 0 && totalBudgeted > 0) {
       const ratio = newTotal / totalBudgeted;
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => ({ ...item, budgeted: Math.round(item.budgeted * ratio * 100) / 100 })),
       );
     }
@@ -264,7 +302,7 @@ export default function BudgetScreen() {
 
   const handleSaveEdit = () => {
     if (editingItemId) {
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) =>
           item.id === editingItemId ? { ...item, budgeted: parseFloat(tempBudgeted) || 0 } : item,
         ),
@@ -279,7 +317,7 @@ export default function BudgetScreen() {
   };
 
   const handleDeleteCategory = (catId: string) => {
-    setBudgetData((prev) => prev.filter((item) => item.id !== catId));
+    updateBudget((prev) => prev.filter((item) => item.id !== catId));
   };
 
   const handleAddExpense = (categoryId: string) => {
@@ -289,7 +327,7 @@ export default function BudgetScreen() {
         description: newExpenseDesc,
         amount: parseFloat(newExpenseAmount) || 0,
       };
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => {
           if (item.id === categoryId) {
             const expenses = [...(item.expenses || []), expense];
@@ -306,7 +344,7 @@ export default function BudgetScreen() {
   };
 
   const handleDeleteExpense = (categoryId: string, expenseId: string) => {
-    setBudgetData((prev) =>
+    updateBudget((prev) =>
       prev.map((item) => {
         if (item.id === categoryId) {
           const expenses = (item.expenses || []).filter((exp) => exp.id !== expenseId);
@@ -320,7 +358,7 @@ export default function BudgetScreen() {
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      setBudgetData((prev) => [
+      updateBudget((prev) => [
         ...prev,
         {
           id: `custom-${Date.now()}`,
@@ -328,6 +366,7 @@ export default function BudgetScreen() {
           budgeted: parseFloat(newBudgeted) || 0,
           actual: parseFloat(newActual) || 0,
           fixed: false,
+          expenses: [],
         },
       ]);
       setNewCategory('');
