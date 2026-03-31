@@ -21,8 +21,8 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Use web app as API proxy — it has all the API keys (Foursquare, etc.)
 // In dev: localhost:3000, in production: deeviaje.com
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
 const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
-const WEB_API = BACKEND_API;
 
 const KNOWN_CITIES: Record<string, { lat: string; lng: string }> = {
   'paris': { lat: '48.8566', lng: '2.3522' }, 'london': { lat: '51.5074', lng: '-0.1278' },
@@ -101,6 +101,32 @@ const ALL_CATEGORIES = [
   'sightseeing', 'restaurant', 'museum', 'park', 'cafe',
   'bar', 'shopping', 'nightlife', 'landmark',
 ];
+
+const NEARBY_RADIUS_KM = 15;
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItem[]> {
+  const categories = ['sightseeing', 'restaurant', 'cafe', 'attraction', 'park'];
+  const results = await Promise.all(
+    categories.map(cat =>
+      fetch(`${WEB_API}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => Array.isArray(data) ? data.map(mapBackendToPlaceItem) : [])
+        .catch(() => [])
+    )
+  );
+  return dedup(results.flat()).filter(p =>
+    p.latitude != null && p.longitude != null &&
+    distanceKm(lat, lng, p.latitude!, p.longitude!) <= NEARBY_RADIUS_KM
+  );
+}
 
 // Session seed so each app launch gets different cities
 const SESSION_SEED = Date.now();
@@ -351,9 +377,37 @@ export default function FavoritesScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Geolocation — get user's current position for Near You
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    import('expo-location').then(async (Location) => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } catch {}
+    }).catch(() => {});
+  }, []);
+
+  // Near You places
+  const { data: nearbyPlaces = [], isLoading: nearbyLoading } = useQuery({
+    queryKey: ['mobile-places-nearby', userLocation?.lat, userLocation?.lng],
+    queryFn: () => fetchNearbyPlaces(userLocation!.lat, userLocation!.lng),
+    staleTime: 15 * 60 * 1000,
+    enabled: !!userLocation,
+  });
   const [searchCity, setSearchCity] = useState('');
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  useEffect(() => {
+    import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+      AsyncStorage.getItem('travyl-favorites').then(val => {
+        if (val) try { setFavorites(JSON.parse(val)); } catch {}
+      });
+    }).catch(() => {});
+  }, []);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -461,9 +515,13 @@ export default function FavoritesScreen() {
 
 
   const toggleFavorite = useCallback((id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
+    setFavorites((prev) => {
+      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem('travyl-favorites', JSON.stringify(next)).catch(() => {});
+      }).catch(() => {});
+      return next;
+    });
   }, []);
 
   const tabFiltered = useMemo(() => {
@@ -672,7 +730,7 @@ export default function FavoritesScreen() {
                   setSearchQuery(val);
                   if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
                   if (val.trim().length >= 2) {
-                    searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400);
+                    searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400) as unknown as NodeJS.Timeout;
                   } else if (!val.trim()) {
                     setSearchCity('');
                   }
@@ -694,6 +752,49 @@ export default function FavoritesScreen() {
             </View>
           </View>
         </View>
+
+        {/* Near You Section */}
+        {nearbyPlaces.length > 0 && !searchCity && activeTab === 'all' && (
+          <View style={{ paddingHorizontal: PAD, marginBottom: 16 }}>
+            <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16, paddingBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <FontAwesome name="map-marker" size={14} color="#1e3a5f" />
+                <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>Near You</Text>
+              </View>
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
+                {nearbyPlaces.length} places within {NEARBY_RADIUS_KM}km
+              </Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              {nearbyPlaces.slice(0, 10).map((place) => (
+                <Pressable
+                  key={place.id}
+                  onPress={() => setSelectedPlace(place)}
+                  style={{ width: 160 }}
+                >
+                  <Image
+                    source={{ uri: place.image }}
+                    style={{ width: 160, height: 120, borderRadius: 12 }}
+                    contentFit="cover"
+                  />
+                  <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginTop: 6 }} numberOfLines={1}>{place.name}</Text>
+                  <Text style={{ ...TextStyles.caption, color: colors.textTertiary }} numberOfLines={1}>{place.tagline}</Text>
+                  {place.rating > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                      <FontAwesome name="star" size={10} color="#f59e0b" />
+                      <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{place.rating.toFixed(1)}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+        {nearbyLoading && !searchCity && activeTab === 'all' && (
+          <View style={{ paddingHorizontal: PAD, paddingVertical: 20, alignItems: 'center' }}>
+            <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>Finding places near you...</Text>
+          </View>
+        )}
 
         {/* Content: Grid or Stack */}
         {viewMode === 'grid' ? (
