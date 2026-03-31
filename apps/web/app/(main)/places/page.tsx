@@ -384,7 +384,7 @@ export default function PlacesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [];
-    try { return JSON.parse(localStorage.getItem('places-favorites') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('travyl-favorites') || '[]'); } catch { return []; }
   });
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('default');
@@ -422,7 +422,7 @@ export default function PlacesPage() {
   const toggleFavorite = (itemId: string) => {
     setFavorites((prev) => {
       const next = prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId];
-      try { localStorage.setItem('places-favorites', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('travyl-favorites', JSON.stringify(next)); } catch {}
       return next;
     });
   };

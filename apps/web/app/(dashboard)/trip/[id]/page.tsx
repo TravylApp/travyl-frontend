@@ -8,6 +8,7 @@ import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
+import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
 // ── Hooks ─────────────────────────────────────────────────────
 
@@ -578,12 +579,47 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news ?? [];
 
   const toggleAdd = (itemId: string) => {
+    const wasAdded = addedItems.has(itemId);
     setAddedItems((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
       else next.add(itemId);
       return next;
     });
+
+    // Persist to Supabase activity table when ADDING (fire-and-forget)
+    if (!wasAdded) {
+      const allItems = [
+        ...(liveExploreItems || []),
+        ...(trip?.trip_context?.explore_items || []),
+        ...(liveEvents || []),
+        ...(trip?.trip_context?.events?.map((e: any) => ({ id: e.id, title: e.title, description: e.description, category: e.category, image: e.image })) || []),
+      ];
+      const item = allItems.find((i) => i.id === itemId);
+      if (item) {
+        const supabase = getSupabaseBrowser();
+        const startDate = trip?.start_date || new Date().toISOString().split('T')[0];
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          supabase.from('activity').insert({
+            trip_id: id,
+            user_id: user?.id || null,
+            activity_name: item.title,
+            activity_type: 'other',
+            starting_date: startDate,
+            ending_date: startDate,
+            starting_time: '09:00',
+            ending_time: '11:00',
+            latitude: 0,
+            longitude: 0,
+            sort_order: 0,
+            notes: item.description || '',
+            activity_data: { image: item.image, category: item.category, tags: 'tags' in item ? item.tags : [] },
+          }).then(({ error }) => {
+            if (error) console.error('[toggleAdd] insert failed:', error.message);
+          });
+        });
+      }
+    }
   };
 
   // Fetch fresh "things to do" and events on each visit using trip coordinates

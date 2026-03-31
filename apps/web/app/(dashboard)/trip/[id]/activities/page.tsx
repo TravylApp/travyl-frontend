@@ -193,7 +193,10 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
   // State
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem('travyl-favorites') || '[]'); } catch { return []; }
+  });
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [columnCount, setColumnCount] = useState(3);
@@ -208,7 +211,11 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
   }, []);
 
   const toggleFavorite = useCallback((fid: string) => {
-    setFavorites((prev) => prev.includes(fid) ? prev.filter((f) => f !== fid) : [...prev, fid]);
+    setFavorites((prev) => {
+      const next = prev.includes(fid) ? prev.filter((f) => f !== fid) : [...prev, fid];
+      try { localStorage.setItem('travyl-favorites', JSON.stringify(next)); } catch {}
+      return next;
+    });
   }, []);
 
   const places = allPlaces;
