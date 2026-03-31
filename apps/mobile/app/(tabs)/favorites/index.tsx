@@ -47,22 +47,24 @@ function upscaleImage(url: string | null | undefined): string {
 }
 
 // Map backend response to PlaceItem format
-function mapBackendToPlaceItem(p: any): PlaceItem {
-  const cat = (p.category || '').toLowerCase();
+// Web proxy /api/places returns PlaceItem-shaped objects directly.
+// Just ensure image is upscaled and fields are present.
+function mapToPlaceItem(p: any): PlaceItem {
   return {
     id: p.id,
     name: p.name,
-    image: upscaleImage(p.photo_url),
-    type: /restaurant|cafe|bar|dining/.test(cat) ? 'restaurant' : /park|garden|beach/.test(cat) ? 'experience' : 'attraction',
+    image: upscaleImage(p.image || p.photo_url),
+    images: p.images,
+    type: p.type || 'attraction',
     rating: p.rating || 0,
-    tagline: p.description?.split('.')[0] || p.category || '',
+    tagline: p.tagline || p.description?.split('.')[0] || p.category || '',
     category: p.category || '',
     description: p.description || '',
     tags: p.tags || [p.category].filter(Boolean),
-    latitude: p.lat,
-    longitude: p.lng,
+    latitude: p.latitude ?? p.lat,
+    longitude: p.longitude ?? p.lng,
     address: p.address,
-    reviewCount: p.review_count,
+    reviewCount: p.reviewCount ?? p.review_count,
   };
 }
 
@@ -118,7 +120,7 @@ async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItem[]>
     categories.map(cat =>
       fetch(`${WEB_API}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
         .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => Array.isArray(data) ? data.map(mapBackendToPlaceItem) : [])
+        .then((data: any[]) => Array.isArray(data) ? data.map(mapToPlaceItem) : [])
         .catch(() => [])
     )
   );
@@ -149,7 +151,7 @@ async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
         })
         .then((data: any[]) => {
           console.log('[Places] Raw items:', data.length, 'first photo:', data[0]?.photo_url?.substring(0, 50));
-          const mapped = Array.isArray(data) ? data.map(mapBackendToPlaceItem) : [];
+          const mapped = Array.isArray(data) ? data.map(mapToPlaceItem) : [];
           console.log('[Places] Mapped items:', mapped.length, 'first image:', mapped[0]?.image?.substring(0, 50));
           return mapped;
         })
@@ -173,7 +175,7 @@ async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
     fetches.push(
       fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
         .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => data.map(mapBackendToPlaceItem))
+        .then((data: any[]) => data.map(mapToPlaceItem))
         .catch(() => [])
     );
   });
@@ -440,7 +442,7 @@ export default function FavoritesScreen() {
           : `${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=8`;
         return fetch(url)
           .then(r => r.ok ? r.json() : [])
-          .then((data: any[]) => data.map(mapBackendToPlaceItem))
+          .then((data: any[]) => data.map(mapToPlaceItem))
           .catch(() => []);
       });
       const results = await Promise.all(fetches);
