@@ -1,3 +1,5 @@
+'use client';
+
 export { useTrips, saveAnonTripId } from './useTrips';
 export { useHomeScreen } from './useHomeScreen';
 export { useExploreRows } from './useExploreRows';
