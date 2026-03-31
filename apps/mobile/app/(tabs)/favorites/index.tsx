@@ -137,12 +137,12 @@ async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
   const cities = shuffled.slice(0, 2);
   const cat = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
 
-  const url = `${WEB_API}/api/places/nearby?lat=${cities[0].lat}&lng=${cities[0].lng}&category=${cat}&limit=12`;
+  const url = `${WEB_API}/api/places?lat=${cities[0].lat}&lng=${cities[0].lng}&category=${cat}&limit=12`;
   console.log('[Places] Fetching:', url);
 
   const results = await Promise.all(
     cities.map(city =>
-      fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
+      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
         .then(r => {
           console.log('[Places] Response status:', r.status);
           return r.ok ? r.json() : [];
@@ -171,7 +171,7 @@ async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
   cities.forEach((city, i) => {
     const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
     fetches.push(
-      fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
+      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
         .then(r => r.ok ? r.json() : [])
         .then((data: any[]) => data.map(mapBackendToPlaceItem))
         .catch(() => [])
@@ -426,52 +426,23 @@ export default function FavoritesScreen() {
     staleTime: 5 * 60 * 1000,
     enabled: fastPlaces.length > 0, // only after fast batch loads
   });
-  // API search — NLP search via /api/places/suggest
+  // API search — uses /api/places?q= which handles geocoding + backend search
   const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
     queryKey: ['mobile-places-search', searchCity],
     queryFn: async () => {
       if (!searchCity) return [];
 
-      // Try NLP suggest endpoint first (handles "hidden gem restaurant in Paris", "best ramen Tokyo", etc.)
       const coords = await resolveCoords(searchCity);
-      const destination = coords ? searchCity : searchCity.split(' ').pop() || searchCity;
-
-      const suggestRes = await fetch(
-        `${WEB_API}/api/places/suggest?q=${encodeURIComponent(searchCity)}&destination=${encodeURIComponent(destination)}&limit=20`
-      ).catch(() => null);
-
-      if (suggestRes?.ok) {
-        const json = await suggestRes.json();
-        const suggestions = json.suggestions ?? json.results ?? [];
-        if (suggestions.length > 0) {
-          return dedup(suggestions.map((s: any): PlaceItem => ({
-            id: s.id,
-            name: s.name,
-            image: s.imageUrl || s.imageUrls?.[0] || '',
-            images: s.imageUrls || (s.imageUrl ? [s.imageUrl] : []),
-            type: /restaurant|food|cafe|dining/i.test(s.category || '') ? 'restaurant' : 'attraction',
-            rating: s.rating || 0,
-            tagline: s.location || s.description || s.category || '',
-            category: s.category || '',
-            description: s.description || '',
-            tags: s.tags || [s.category].filter(Boolean),
-            latitude: s.latitude,
-            longitude: s.longitude,
-            address: s.location,
-            reviewCount: s.reviewCount,
-          })));
-        }
-      }
-
-      // Fallback: nearby search with resolved coordinates
-      if (!coords) return [];
       const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'nightlife'];
-      const fetches: Promise<PlaceItem[]>[] = cats.map(cat =>
-        fetch(`${WEB_API}/api/places/nearby?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=8`)
+      const fetches: Promise<PlaceItem[]>[] = cats.map(cat => {
+        const url = coords
+          ? `${WEB_API}/api/places?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=8`
+          : `${WEB_API}/api/places?q=${encodeURIComponent(searchCity)}&category=${cat}&limit=8`;
+        return fetch(url)
           .then(r => r.ok ? r.json() : [])
           .then((data: any[]) => data.map(mapBackendToPlaceItem))
-          .catch(() => [])
-      );
+          .catch(() => []);
+      });
       const results = await Promise.all(fetches);
       const allPlaces = results.flat();
       // Use first result's coordinates to fetch events
