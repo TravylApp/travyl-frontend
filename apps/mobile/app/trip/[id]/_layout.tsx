@@ -723,86 +723,89 @@ function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
 function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const { theme, tabColorOverrides, enabledTabs, setShowTabPicker } = useContext(TabCtx);
   const visibleRoutes = getVisibleRoutes(state, enabledTabs);
-  const { containerRef, panResponder, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Auto-scroll to active tab
+  const activeIdx = visibleRoutes.findIndex(({ index }) => state.index === index);
+  useEffect(() => {
+    if (scrollRef.current && activeIdx >= 0) {
+      scrollRef.current.scrollTo({ x: Math.max(0, activeIdx * 72 - 40), animated: true });
+    }
+  }, [activeIdx]);
 
   return (
     <View
-      ref={containerRef}
-      {...panResponder.panHandlers}
       style={{
         position: 'absolute',
         bottom: BOTTOM_BAR_OFFSET,
         left: 0,
         right: 0,
         zIndex: 10,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
       }}
     >
-      {/* Drag handle */}
-      <View style={{
-        height: TAB_NOTCH_W,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.base + '80',
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        marginHorizontal: 1,
-        paddingHorizontal: 4,
-      }}>
-        <DragHandle direction="horizontal" />
-      </View>
-
-      {visibleRoutes.map(({ route, index }, i) => {
-        const isFocused = state.index === index;
-        const tab = ALL_TABS.find((t) => t.name === route.name);
-        const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
-
-        return (
-          <Pressable
-            key={route.key}
-            onPress={() => navigation.navigate(route.name)}
-            onLayout={(e) => registerTabLayout(i, e)}
-            style={{
-              flex: 1,
-              height: TAB_NOTCH_W,
-              backgroundColor: isFocused ? color : color + 'B3',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginHorizontal: 1,
-              borderTopLeftRadius: 8,
-              borderTopRightRadius: 8,
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
-            }}
-          >
-            <FontAwesome
-              name={(tab?.icon ?? 'circle') as any}
-              size={16}
-              color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
-            />
-          </Pressable>
-        );
-      })}
-
-      {/* Manage tabs button */}
-      <Pressable
-        onPress={() => setShowTabPicker(true)}
-        style={{
-          height: TAB_NOTCH_W,
-          paddingHorizontal: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.base + '40',
-          borderTopLeftRadius: 8,
-          borderTopRightRadius: 8,
-          marginHorizontal: 1,
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          paddingHorizontal: 8,
+          gap: 2,
         }}
       >
-        <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-h'} size={14} color="rgba(255,255,255,0.6)" />
-      </Pressable>
+        {visibleRoutes.map(({ route, index }) => {
+          const isFocused = state.index === index;
+          const tab = ALL_TABS.find((t) => t.name === route.name);
+          const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={() => navigation.navigate(route.name)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                height: 36,
+                paddingHorizontal: isFocused ? 14 : 10,
+                backgroundColor: isFocused ? color : color + '40',
+                borderRadius: 18,
+              }}
+            >
+              <FontAwesome
+                name={(tab?.icon ?? 'circle') as any}
+                size={13}
+                color={isFocused ? '#fff' : 'rgba(255,255,255,0.7)'}
+              />
+              {isFocused && (
+                <Text style={{
+                  fontSize: 12,
+                  fontFamily: FontFamily.sansBold,
+                  color: '#fff',
+                }}>
+                  {tab?.title ?? route.name}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+
+        {/* Manage tabs button */}
+        <Pressable
+          onPress={() => setShowTabPicker(true)}
+          style={{
+            height: 36,
+            width: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.base + '30',
+            borderRadius: 18,
+          }}
+        >
+          <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-h'} size={12} color="rgba(255,255,255,0.5)" />
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
