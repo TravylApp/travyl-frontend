@@ -777,16 +777,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="relative overflow-hidden">
-      {/* Destination hero image — subtle background from shared hook */}
-      {destHeroImageUrl && (
-        <div className="absolute inset-x-0 top-0 h-[400px] -z-0 overflow-hidden pointer-events-none">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={destHeroImageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, var(--magazine-bg, #f5f0eb) 10%, rgba(245,240,235,0.6) 50%, var(--magazine-bg, #f5f0eb) 100%)',
-          }} />
-        </div>
-      )}
+      {/* Destination hero image removed — the TripMagazineHero already handles the header background */}
       <div className="relative z-10">
         <div ref={revealRef}>
 

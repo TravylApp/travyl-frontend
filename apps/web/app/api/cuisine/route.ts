@@ -7,9 +7,6 @@ interface Meal {
   image: string
 }
 
-// TheMealDB uses cuisine style names (French, Italian, etc.)
-// First try the country name directly — TheMealDB accepts many as-is (e.g. "Japanese", "Mexican")
-// If that fails, try common demonym form
 async function fetchMeals(area: string): Promise<Meal[]> {
   const res = await fetch(
     `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(area)}`,
@@ -26,8 +23,50 @@ async function fetchMeals(area: string): Promise<Meal[]> {
   )
 }
 
+// Cache the area list so we don't re-fetch every request
+let cachedAreas: string[] | null = null
+let cachedAt = 0
+
+async function getAvailableAreas(): Promise<string[]> {
+  if (cachedAreas && Date.now() - cachedAt < 24 * 60 * 60 * 1000) return cachedAreas
+  try {
+    const res = await fetch('https://www.themealdb.com/api/json/v1/1/list.php?a=list')
+    if (!res.ok) return cachedAreas ?? []
+    const data = await res.json()
+    cachedAreas = (data?.meals ?? []).map((m: { strArea: string }) => m.strArea)
+    cachedAt = Date.now()
+    return cachedAreas!
+  } catch {
+    return cachedAreas ?? []
+  }
+}
+
+/**
+ * Match a country name to a TheMealDB area.
+ * e.g. "Spain" → "Spanish", "France" → "French", "Japan" → "Japanese"
+ */
+async function resolveArea(country: string): Promise<string | null> {
+  const areas = await getAvailableAreas()
+  const lower = country.toLowerCase()
+
+  // Exact match (e.g. "Mexican" passed directly)
+  const exact = areas.find(a => a.toLowerCase() === lower)
+  if (exact) return exact
+
+  // Check if any area starts with the country name stem
+  // "Spain" → "Span" matches "Spanish", "France" → "Fran" matches "French"
+  const stem = lower.replace(/(land|ce|ny|ain|co|ia|e)$/i, '').slice(0, 4)
+  const stemMatch = areas.find(a => a.toLowerCase().startsWith(stem))
+  if (stemMatch) return stemMatch
+
+  // Check if country name is contained in any area
+  const containsMatch = areas.find(a => a.toLowerCase().includes(lower.slice(0, 4)))
+  if (containsMatch) return containsMatch
+
+  return null
+}
+
 export async function GET(req: NextRequest) {
-  // Accept either ?area=French or ?country=France
   const area = getOptionalParam(req, 'area', '')
   const country = getOptionalParam(req, 'country', '')
 
@@ -36,28 +75,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // If area is provided directly, use it
     if (area) {
-      const meals = await fetchMeals(area)
-      return NextResponse.json(meals)
+      return NextResponse.json(await fetchMeals(area))
     }
 
-    // Try the country name as-is first (works for "Japanese", "Mexican", "Indian", etc.)
-    let meals = await fetchMeals(country)
+    // Resolve country name to TheMealDB area
+    const resolved = await resolveArea(country)
+    if (!resolved) return NextResponse.json([])
 
-    // If no results, try common transformations:
-    // "France" → "French", "Spain" → "Spanish", "Italy" → "Italian"
-    if (meals.length === 0) {
-      // Try adding common suffixes — TheMealDB demonym patterns
-      const suffixes = ['n', 'ese', 'ish', 'ian', 'ch']
-      for (const suffix of suffixes) {
-        const attempt = country.replace(/[aeiou]?$/, '') + suffix
-        meals = await fetchMeals(attempt)
-        if (meals.length > 0) break
-      }
-    }
-
-    return NextResponse.json(meals)
+    return NextResponse.json(await fetchMeals(resolved))
   } catch {
     return NextResponse.json([], { status: 500 })
   }
