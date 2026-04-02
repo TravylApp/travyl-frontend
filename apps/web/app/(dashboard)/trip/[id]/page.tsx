@@ -499,7 +499,7 @@ function TripMosaic({ photos, destination }: { photos: string[]; destination?: s
   }, [photos]);
 
   return (
-    <div className="-mx-5 -mt-16 relative overflow-hidden" style={{ height: 600 }}>
+    <div className="-mx-10 -mt-16 relative overflow-hidden" style={{ height: 600 }}>
       {photos.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -665,15 +665,19 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       const params = new URLSearchParams({ city: tripCity });
       if (trip?.start_date) params.set('start', trip.start_date);
       if (trip?.end_date) params.set('end', trip.end_date);
-      if (!params.has('start') || !params.has('end')) return [];
-      const res = await fetch(`/api/events?${params}`);
+      // Try new events/search endpoint first (doesn't require both dates)
+      const searchParams = new URLSearchParams({ city: tripCity! });
+      if (trip?.start_date) searchParams.set('start_date', trip.start_date);
+      if (trip?.end_date) searchParams.set('end_date', trip.end_date);
+      if (tripCountry) searchParams.set('country', tripCountry);
+      const res = await fetch(`/api/events/search?${searchParams}`);
       if (!res.ok) return [];
       const evts = await res.json();
       if (!Array.isArray(evts)) return [];
       return evts.map((e: any) => ({
-        id: e.id, title: e.title,
+        id: e.id, title: e.name || e.title,
         description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
-        category: e.category, image: e.image,
+        category: e.category, image: e.photo_url || e.image || '',
       }));
     },
     enabled: !!tripCity && !enriching,
@@ -773,11 +777,25 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     category: e.category || 'Event',
     image: e.photo_url || '',
   }));
-  const allEvents = events.length > 0 ? events : tier1EventsMapped;
+  // Use: live events → tier1 events → trip_context.foursquare_venues (best photos) → trip_context events
+  const contextVenues = (trip?.trip_context?.foursquare_venues || []) as any[];
+  const allEvents = events.length > 0 ? events
+    : tier1EventsMapped.length > 0 ? tier1EventsMapped
+    : contextVenues.length > 0 ? contextVenues
+    : [];
 
   return (
     <div className="relative overflow-hidden">
-      {/* Destination hero image removed — the TripMagazineHero already handles the header background */}
+      {/* Extended destination image — stretches from header down through Things to Do */}
+      {destHeroImageUrl && (
+        <div className="absolute inset-x-0 top-0 h-[900px] -z-0 overflow-hidden pointer-events-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={destHeroImageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom, transparent 0%, var(--magazine-bg, #f5f0eb) 85%)',
+          }} />
+        </div>
+      )}
       <div className="relative z-10">
         <div ref={revealRef}>
 
@@ -910,7 +928,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
-      <div className="h-24" />
+      <div className="h-4" />
 
       {/* Detail overlay — same as Places page */}
       <AnimatePresence>
