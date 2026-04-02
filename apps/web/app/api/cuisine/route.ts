@@ -53,14 +53,28 @@ async function resolveArea(country: string): Promise<string | null> {
   const exact = areas.find(a => a.toLowerCase() === lower)
   if (exact) return exact
 
-  // Check if any area starts with the country name stem
-  // "Spain" → "Span" matches "Spanish", "France" → "Fran" matches "French"
-  const stem = lower.replace(/(land|ce|ny|ain|co|ia|e)$/i, '').slice(0, 4)
-  const stemMatch = areas.find(a => a.toLowerCase().startsWith(stem))
-  if (stemMatch) return stemMatch
+  // Score each area by how many leading characters match the country name
+  // "France" vs "French" → both start with "Fr" (score 2)
+  // "Spain" vs "Spanish" → both start with "Sp" (score 2)
+  let bestMatch: string | null = null
+  let bestScore = 0
+  for (const area of areas) {
+    const aLower = area.toLowerCase()
+    let score = 0
+    for (let i = 0; i < Math.min(lower.length, aLower.length); i++) {
+      if (lower[i] === aLower[i]) score++
+      else break
+    }
+    if (score > bestScore && score >= 2) {
+      bestScore = score
+      bestMatch = area
+    }
+  }
+  if (bestMatch) return bestMatch
 
-  // Check if country name is contained in any area
-  const containsMatch = areas.find(a => a.toLowerCase().includes(lower.slice(0, 4)))
+  // Fallback: check if first 3 chars of country appear in any area
+  const prefix = lower.slice(0, 3)
+  const containsMatch = areas.find(a => a.toLowerCase().startsWith(prefix))
   if (containsMatch) return containsMatch
 
   return null

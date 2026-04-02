@@ -11,11 +11,12 @@ export async function GET(req: NextRequest) {
     departure_date: params.date,
   }
 
-  // Backend needs country params — derive from city or pass through
-  const originCountry = getOptionalParam(req, 'origin_country', '')
+  // Backend requires country params — pass through or default
+  const originCountry = getOptionalParam(req, 'origin_country', 'US')
   const destCountry = getOptionalParam(req, 'destination_country', '')
-  if (originCountry) extra.origin_country = originCountry
-  if (destCountry) extra.destination_country = destCountry
+  extra.origin_country = originCountry
+  // If destination_country not provided, use destination as-is (backend can resolve)
+  extra.destination_country = destCountry || params.destination
 
   const returnDate = getOptionalParam(req, 'return', '')
   if (returnDate) extra.return_date = returnDate
