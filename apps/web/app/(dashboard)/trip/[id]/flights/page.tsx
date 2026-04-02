@@ -23,6 +23,7 @@ import {
   Zap,
   Monitor,
   Info,
+  Plane,
 } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { useItineraryScreen, useFlights } from '@travyl/shared';
@@ -887,6 +888,12 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
         </div>
       ) : searchedFlights.length > 0 ? (
         <ComparisonAlternatives comparisonFlights={searchedFlights} />
+      ) : !hasBookedFlights ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Plane size={32} className="text-gray-300 mb-3" />
+          <p className="text-sm font-medium text-gray-500">Search for flights to compare options</p>
+          <p className="text-xs text-gray-400 mt-1">Use the search above to find the best deals</p>
+        </div>
       ) : null}
 
       {/* Booking details will show when real booking data is available */}

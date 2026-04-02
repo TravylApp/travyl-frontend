@@ -329,7 +329,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   /* ---- render ---- */
   return (
-    <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden p-4 space-y-4">
+    <div className="space-y-4">
       {/* ===== Summary Cards (3-column) ===== */}
       <div className="grid grid-cols-3 gap-2">
         {/* Total Budget — editable */}
