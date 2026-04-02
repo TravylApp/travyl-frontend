@@ -790,8 +790,8 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       <div className="relative z-10">
         <div ref={revealRef}>
 
-          {/* ── Weather Widget ── */}
-          {weatherData?.current && (
+          {/* ── Weather Widget — only show if hero doesn't already have weather from trip_context ── */}
+          {weatherData?.current && !trip?.trip_context?.weather?.current && (
             <div className="px-6 sm:px-10 mt-4 mb-2">
               <div className="inline-flex items-center gap-4 px-5 py-3 rounded-2xl backdrop-blur-md"
                 style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
