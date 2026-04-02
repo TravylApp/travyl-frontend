@@ -5,7 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
+import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -1043,9 +1043,9 @@ export default function HotelsScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Use real hotels from trip_context, fallback to hardcoded
+  // Hotels from trip_context
   const ctx = trip?.trip_context as any;
-  const realHotels = useMemo(() => {
+  const contextHotels = useMemo(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
     if (source.length === 0) return [];
     return source.map((h: any, i: number) => ({
@@ -1062,6 +1062,37 @@ export default function HotelsScreen() {
       label: i === 0 ? 'Top Pick' : i < 3 ? 'Popular' : '',
     }));
   }, [ctx]);
+
+  // Live hotel search via backend API
+  const destination = trip?.destination?.split(',')[0]?.trim();
+  const { data: searchResults } = useHotelSearch({
+    destination,
+    checkIn: trip?.start_date ?? undefined,
+    checkOut: trip?.end_date ?? undefined,
+  });
+  const searchHotels = useMemo(() => {
+    const hotels = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? [];
+    return hotels.map((h: any, i: number) => ({
+      id: h.id || `search-${i}`,
+      name: h.name,
+      stars: h.stars ?? 3,
+      rating: h.rating ?? 0,
+      reviews: h.reviews ?? 0,
+      price: h.price ?? 0,
+      neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
+      image: h.images?.[0] ?? h.image ?? '',
+      amenities: h.amenities ?? [],
+      brand: '',
+      label: '',
+    }));
+  }, [searchResults]);
+
+  // Merge: context first, then search results (deduped by name)
+  const realHotels = useMemo(() => {
+    const seen = new Set(contextHotels.map((h: any) => h.name.toLowerCase()));
+    const extra = searchHotels.filter((h: any) => !seen.has(h.name.toLowerCase()));
+    return [...contextHotels, ...extra];
+  }, [contextHotels, searchHotels]);
 
   const filteredHotels = useMemo(() => {
     let result = [...realHotels];

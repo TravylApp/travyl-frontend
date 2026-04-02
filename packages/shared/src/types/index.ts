@@ -716,6 +716,105 @@ export interface FlightDetailsType {
   checkInOpens: string;
 }
 
+// ─── Weather ────────────────────────────────────────────────
+
+export interface WeatherCurrent {
+  temp: number;
+  feelslike: number;
+  conditions: string;
+  icon: string;
+  humidity: number;
+  windspeed: number;
+}
+
+export interface WeatherDay {
+  date: string;
+  high: number;
+  low: number;
+  conditions: string;
+  icon: string;
+  precipprob: number;
+  sunrise: string;
+  sunset: string;
+}
+
+export interface WeatherForecastResponse {
+  location: string;
+  timezone: string;
+  current: WeatherCurrent;
+  forecast: WeatherDay[];
+}
+
+// ─── Events ─────────────────────────────────────────────────
+
+export interface TravylEvent {
+  id: string;
+  name: string;
+  date: string;
+  time: string | null;
+  venue: string | null;
+  lat: number | null;
+  lng: number | null;
+  description: string | null;
+  price: string | null;
+  category: string | null;
+  photo_url: string | null;
+  link: string | null;
+}
+
+// ─── Place Detail (from /api/places/{id}) ───────────────────
+
+export interface PlaceDetailResponse {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  rating: number | null;
+  phone: string | null;
+  website: string | null;
+  description: string | null;
+  images: string[];
+  image_url: string | null;
+  categories: string[];
+  hours: string | null;
+  price: number | null;
+  reviewCount: number | null;
+}
+
+// ─── Menu ───────────────────────────────────────────────────
+
+export interface MenuItem {
+  name: string;
+  price: string | null;
+  description: string | null;
+}
+
+export interface MenuResponse {
+  restaurant_name: string;
+  menu_url: string | null;
+  items: MenuItem[];
+  source: string;
+}
+
+// ─── Suggest ────────────────────────────────────────────────
+
+export interface SuggestResponse {
+  suggestions: PlaceItem[];
+  hasMore: boolean;
+  nextPage: number | null;
+}
+
+// ─── Server Favorites ───────────────────────────────────────
+
+export interface ServerFavorite {
+  id: string;
+  place_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface PopularAirport {
   code: string;
   name: string;

@@ -10,107 +10,60 @@ import {
   LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2, AlignJustify, Navigation,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { useSimilarPlaces } from '@travyl/shared';
+import { useSimilarPlaces, useWeather, useDestinationImage, useServerFavorites, useAuthStore } from '@travyl/shared';
 import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-
-const BROWSE_CITIES = [
-  // Europe
-  { name: 'Paris', lat: '48.8566', lng: '2.3522' },
-  { name: 'London', lat: '51.5074', lng: '-0.1278' },
-  { name: 'Rome', lat: '41.9028', lng: '12.4964' },
-  { name: 'Barcelona', lat: '41.3874', lng: '2.1686' },
-  { name: 'Amsterdam', lat: '52.3676', lng: '4.9041' },
-  { name: 'Prague', lat: '50.0755', lng: '14.4378' },
-  { name: 'Lisbon', lat: '38.7223', lng: '-9.1393' },
-  { name: 'Istanbul', lat: '41.0082', lng: '28.9784' },
-  { name: 'Vienna', lat: '48.2082', lng: '16.3738' },
-  { name: 'Berlin', lat: '52.5200', lng: '13.4050' },
-  { name: 'Athens', lat: '37.9838', lng: '23.7275' },
-  { name: 'Budapest', lat: '47.4979', lng: '19.0402' },
-  { name: 'Dublin', lat: '53.3498', lng: '-6.2603' },
-  { name: 'Edinburgh', lat: '55.9533', lng: '-3.1883' },
-  { name: 'Florence', lat: '43.7696', lng: '11.2558' },
-  { name: 'Santorini', lat: '36.3932', lng: '25.4615' },
-  { name: 'Dubrovnik', lat: '42.6507', lng: '18.0944' },
-  { name: 'Copenhagen', lat: '55.6761', lng: '12.5683' },
-  { name: 'Stockholm', lat: '59.3293', lng: '18.0686' },
-  { name: 'Reykjavik', lat: '64.1466', lng: '-21.9426' },
-  // Asia
-  { name: 'Tokyo', lat: '35.6762', lng: '139.6503' },
-  { name: 'Bangkok', lat: '13.7563', lng: '100.5018' },
-  { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
-  { name: 'Singapore', lat: '1.3521', lng: '103.8198' },
-  { name: 'Seoul', lat: '37.5665', lng: '126.9780' },
-  { name: 'Kyoto', lat: '35.0116', lng: '135.7681' },
-  { name: 'Hong Kong', lat: '22.3193', lng: '114.1694' },
-  { name: 'Hanoi', lat: '21.0278', lng: '105.8342' },
-  { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
-  { name: 'Jaipur', lat: '26.9124', lng: '75.7873' },
-  { name: 'Petra', lat: '30.3285', lng: '35.4444' },
-  { name: 'Kuala Lumpur', lat: '3.1390', lng: '101.6869' },
-  { name: 'Taipei', lat: '25.0330', lng: '121.5654' },
-  { name: 'Siem Reap', lat: '13.3633', lng: '103.8564' },
-  // Americas
-  { name: 'New York', lat: '40.7128', lng: '-74.0060' },
-  { name: 'Rio de Janeiro', lat: '-22.9068', lng: '-43.1729' },
-  { name: 'Mexico City', lat: '19.4326', lng: '-99.1332' },
-  { name: 'Buenos Aires', lat: '-34.6037', lng: '-58.3816' },
-  { name: 'Havana', lat: '23.1136', lng: '-82.3666' },
-  { name: 'San Francisco', lat: '37.7749', lng: '-122.4194' },
-  { name: 'Cartagena', lat: '10.3910', lng: '-75.5364' },
-  { name: 'Cusco', lat: '-13.5319', lng: '-71.9675' },
-  { name: 'Los Angeles', lat: '34.0522', lng: '-118.2437' },
-  { name: 'Miami', lat: '25.7617', lng: '-80.1918' },
-  { name: 'Nashville', lat: '36.1627', lng: '-86.7816' },
-  { name: 'Tulum', lat: '20.2114', lng: '-87.4654' },
-  // Africa & Middle East
-  { name: 'Cape Town', lat: '-33.9249', lng: '18.4241' },
-  { name: 'Marrakech', lat: '31.6295', lng: '-7.9811' },
-  { name: 'Cairo', lat: '30.0444', lng: '31.2357' },
-  { name: 'Zanzibar', lat: '-6.1659', lng: '39.1989' },
-  { name: 'Nairobi', lat: '-1.2921', lng: '36.8219' },
-  // Oceania
-  { name: 'Sydney', lat: '-33.8688', lng: '151.2093' },
-  { name: 'Melbourne', lat: '-37.8136', lng: '144.9631' },
-  { name: 'Queenstown', lat: '-45.0312', lng: '168.6626' },
-  { name: 'Auckland', lat: '-36.8485', lng: '174.7633' },
-]
 
 const BROWSE_CATEGORIES = [
   'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
   'shopping', 'nightlife', 'beach', 'landmark', 'garden', 'market',
 ]
 
-// Random offset so each session starts at different cities
-const CITY_OFFSET = Math.floor(Math.random() * BROWSE_CITIES.length)
 const CAT_OFFSET = Math.floor(Math.random() * BROWSE_CATEGORIES.length)
 
-async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
-  const citiesPerPage = 2
+// Fetch nearby places using geolocation coords
+async function fetchNearbyPage(lat: number, lng: number, pageParam: number): Promise<PlaceItemType[]> {
   const catsPerPage = 3
-  const startCity = (CITY_OFFSET + pageParam * citiesPerPage) % BROWSE_CITIES.length
   const startCat = (CAT_OFFSET + pageParam * catsPerPage) % BROWSE_CATEGORIES.length
-
-  const cities: typeof BROWSE_CITIES = []
-  for (let i = 0; i < citiesPerPage; i++) {
-    cities.push(BROWSE_CITIES[(startCity + i) % BROWSE_CITIES.length])
-  }
   const cats: string[] = []
   for (let i = 0; i < catsPerPage; i++) {
     cats.push(BROWSE_CATEGORIES[(startCat + i) % BROWSE_CATEGORIES.length])
   }
 
+  // Slight coord offset per page for variety
+  const offsetLat = lat + (pageParam % 3) * 0.015
+  const offsetLng = lng + (pageParam % 2) * 0.012
+
   const results = await Promise.all(
-    cities.flatMap((city) =>
-      cats.map(async (cat) => {
-        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
-        if (!res.ok) return []
-        return res.json() as Promise<PlaceItemType[]>
-      })
-    )
+    cats.map(async (cat) => {
+      const res = await fetch(`/api/places?lat=${offsetLat}&lng=${offsetLng}&category=${cat}&limit=12`)
+      if (!res.ok) return []
+      return res.json() as Promise<PlaceItemType[]>
+    })
   )
   return results.flat()
+}
+
+// Fetch suggested places for discovery (no geolocation)
+async function fetchSuggestPage(pageParam: number): Promise<PlaceItemType[]> {
+  const res = await fetch(`/api/places/suggest?destination=popular&category=all&page=${pageParam}`)
+  if (!res.ok) return []
+  const data = await res.json()
+  const suggestions = data?.suggestions ?? []
+  return suggestions.map((s: any): PlaceItemType => ({
+    id: s.id,
+    name: s.name,
+    image: s.imageUrl ?? s.imageUrls?.[0] ?? '',
+    type: 'destination',
+    rating: s.rating ?? 0,
+    tagline: s.description?.split('.')[0] ?? s.location ?? '',
+    category: s.category ?? '',
+    description: s.description ?? '',
+    tags: s.category ? [s.category] : [],
+    latitude: s.latitude,
+    longitude: s.longitude,
+    address: s.location,
+  }))
 }
 
 async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
@@ -339,7 +292,7 @@ export default function PlacesPage() {
     enabled: !!userLocation,
   });
 
-  // Browse mode: infinite scroll through cities × categories
+  // Browse mode: geolocation nearby + suggest-based discovery for infinite scroll
   const {
     data: browseData,
     fetchNextPage,
@@ -347,13 +300,20 @@ export default function PlacesPage() {
     isFetchingNextPage,
     isLoading: browseLoading,
   } = useInfiniteQuery({
-    queryKey: ['places-browse'],
-    queryFn: ({ pageParam }) => fetchBrowsePage(pageParam),
+    queryKey: ['places-browse', userLocation?.lat, userLocation?.lng],
+    queryFn: ({ pageParam }) => {
+      // Page 0 with geolocation: fetch nearby places across categories
+      if (userLocation && pageParam === 0) {
+        return fetchNearbyPage(userLocation.lat, userLocation.lng, 0);
+      }
+      // Subsequent pages (or no geo): use suggest endpoint for diverse discovery
+      return fetchSuggestPage(pageParam);
+    },
     initialPageParam: 0,
-    getNextPageParam: (_lastPage, _allPages, lastPageParam) =>
-      lastPageParam < 99 ? lastPageParam + 1 : undefined, // endless scrolling — cycles through all cities
-    staleTime: 30 * 60 * 1000,  // Data stays fresh for 30 min
-    gcTime: 60 * 60 * 1000,     // Keep in cache for 1 hour
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length > 0 ? lastPageParam + 1 : undefined,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     enabled: !searchCity,
   });
 
@@ -382,10 +342,17 @@ export default function PlacesPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [favorites, setFavorites] = useState<string[]>(() => {
+  // Favorites: server for authenticated users, localStorage for anonymous
+  const user = useAuthStore((s) => s.user);
+  const authToken = user ? (user as any).access_token ?? null : null;
+  const { data: serverFavs, addFavorite: serverAdd, removeFavorite: serverRemove } = useServerFavorites(authToken);
+  const serverFavPlaceIds = useMemo(() => (serverFavs ?? []).map(f => f.place_id), [serverFavs]);
+
+  const [localFavorites, setLocalFavorites] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [];
     try { return JSON.parse(localStorage.getItem('places-favorites') || '[]'); } catch { return []; }
   });
+  const favorites = authToken ? serverFavPlaceIds : localFavorites;
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [selectedPlace, _setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -401,6 +368,12 @@ export default function PlacesPage() {
   const gridTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridPhaseRef = useRef<NodeJS.Timeout | null>(null);
   const setSelectedPlace = (p: PlaceItem | null) => { _setSelectedPlace(p); };
+
+  // ── Tier 1 hooks: weather + destination hero image ──
+  const { data: weatherData } = useWeather(searchCity);
+  const { data: heroImageUrl } = useDestinationImage(searchCity);
+  // TODO: useEvents needs country which the places page doesn't have.
+  // Once we add geocoding or city→country lookup, wire useEvents here.
 
   // Intersection observer for infinite scroll — paused while showcase is open
   useEffect(() => {
@@ -420,11 +393,22 @@ export default function PlacesPage() {
   }, [searchCity, hasNextPage, isFetchingNextPage, fetchNextPage, gridShowcase]);
 
   const toggleFavorite = (itemId: string) => {
-    setFavorites((prev) => {
-      const next = prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId];
-      try { localStorage.setItem('places-favorites', JSON.stringify(next)); } catch {}
-      return next;
-    });
+    if (authToken) {
+      // Server favorites for authenticated users
+      const existing = serverFavs?.find(f => f.place_id === itemId);
+      if (existing) {
+        serverRemove(existing.id);
+      } else {
+        serverAdd(itemId);
+      }
+    } else {
+      // localStorage for anonymous users
+      setLocalFavorites((prev) => {
+        const next = prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId];
+        try { localStorage.setItem('places-favorites', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
   };
 
   // Responsive column count on mount
@@ -737,12 +721,18 @@ export default function PlacesPage() {
         </div>
       ) : viewMode === 'grid' ? (
         <div
-          className={`mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-4 transition-all duration-300 ${
+          className={`relative mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-4 transition-all duration-300 ${
             columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-7xl' : 'max-w-[85rem]'
           }`}
-          style={{}}
-          // Removed crosshatch SVG background pattern — causes visual noise during scroll
         >
+          {/* Destination hero image — subtle background when searching a city */}
+          {searchCity && heroImageUrl && (
+            <div className="absolute inset-x-0 top-0 h-[320px] -z-10 overflow-hidden pointer-events-none">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroImageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/90 to-white dark:from-[var(--background)]/70 dark:via-[var(--background)]/90 dark:to-[var(--background)]" />
+            </div>
+          )}
           {/* Grid idle showcase curtain */}
           <AnimatePresence>
             {gridShowcase && filtered[gridShowcaseIdx] && (
@@ -1006,13 +996,22 @@ export default function PlacesPage() {
               {filtered.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">
-                        {searchCity ? `Results for "${searchCity}"` : 'Explore'}
-                      </h2>
-                      <p className="text-xs text-gray-400">
-                        {filtered.length} places {searchCity ? 'found' : 'from around the world'}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">
+                          {searchCity ? `Results for "${searchCity}"` : 'Explore'}
+                        </h2>
+                        <p className="text-xs text-gray-400">
+                          {filtered.length} places {searchCity ? 'found' : 'from around the world'}
+                        </p>
+                      </div>
+                      {/* Weather pill — shown when browsing a specific city */}
+                      {searchCity && weatherData?.current && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e3a5f]/5 dark:bg-white/10 border border-[#1e3a5f]/10 dark:border-white/10">
+                          <span className="text-sm font-bold text-[#1e3a5f] dark:text-white">{Math.round(weatherData.current.temp)}°</span>
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400">{weatherData.current.conditions}</span>
+                        </div>
+                      )}
                     </div>
                     {searchCity && (
                       <button

@@ -11,40 +11,17 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, groupPlacesByCollection, TextStyles, FontSize, FontFamily, type PlaceItem } from '@travyl/shared';
+import { Navy, groupPlacesByCollection, TextStyles, FontSize, upscaleGoogleImage, useWeather, useDestinationImage, type PlaceItem } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Use web app as API proxy — it has all the API keys (Foursquare, etc.)
-// In dev: localhost:3000, in production: deeviaje.com
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
-const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.gotravyl.com';
 
-const KNOWN_CITIES: Record<string, { lat: string; lng: string }> = {
-  'paris': { lat: '48.8566', lng: '2.3522' }, 'london': { lat: '51.5074', lng: '-0.1278' },
-  'rome': { lat: '41.9028', lng: '12.4964' }, 'tokyo': { lat: '35.6762', lng: '139.6503' },
-  'barcelona': { lat: '41.3874', lng: '2.1686' }, 'new york': { lat: '40.7128', lng: '-74.0060' },
-  'bali': { lat: '-8.4095', lng: '115.1889' }, 'dubai': { lat: '25.2048', lng: '55.2708' },
-  'bangkok': { lat: '13.7563', lng: '100.5018' }, 'amsterdam': { lat: '52.3676', lng: '4.9041' },
-  'sydney': { lat: '-33.8688', lng: '151.2093' }, 'istanbul': { lat: '41.0082', lng: '28.9784' },
-  'lisbon': { lat: '38.7223', lng: '-9.1393' }, 'singapore': { lat: '1.3521', lng: '103.8198' },
-  'seoul': { lat: '37.5665', lng: '126.9780' }, 'athens': { lat: '37.9838', lng: '23.7275' },
-  'prague': { lat: '50.0755', lng: '14.4378' }, 'marrakech': { lat: '31.6295', lng: '-7.9811' },
-  'cape town': { lat: '-33.9249', lng: '18.4241' }, 'mexico city': { lat: '19.4326', lng: '-99.1332' },
-  'rio de janeiro': { lat: '-22.9068', lng: '-43.1729' }, 'miami': { lat: '25.7617', lng: '-80.1918' },
-  'san francisco': { lat: '37.7749', lng: '-122.4194' }, 'los angeles': { lat: '34.0522', lng: '-118.2437' },
-  'cancun': { lat: '21.1619', lng: '-86.8515' }, 'berlin': { lat: '52.5200', lng: '13.4050' },
-};
-
-// Upscale Google Places thumbnails to usable resolution
-function upscaleImage(url: string | null | undefined): string {
-  if (!url) return '';
-  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no');
-}
 
 // Map backend response to PlaceItem format
 // Web proxy /api/places returns PlaceItem-shaped objects directly.
@@ -53,7 +30,7 @@ function mapToPlaceItem(p: any): PlaceItem {
   return {
     id: p.id,
     name: p.name,
-    image: upscaleImage(p.image || p.photo_url),
+    image: upscaleGoogleImage(p.image || p.photo_url) ?? '',
     images: p.images,
     type: p.type || 'attraction',
     rating: p.rating || 0,
@@ -65,12 +42,16 @@ function mapToPlaceItem(p: any): PlaceItem {
     longitude: p.longitude ?? p.lng,
     address: p.address,
     reviewCount: p.reviewCount ?? p.review_count,
+    website: p.website,
+    priceLevel: p.priceLevel,
+    hours: p.hours,
+    duration: p.duration,
+    phone: p.phone,
+    bestTimeToVisit: p.bestTimeToVisit,
   };
 }
 
 async function resolveCoords(query: string): Promise<{ lat: string; lng: string } | null> {
-  const known = KNOWN_CITIES[query.toLowerCase()];
-  if (known) return known;
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
@@ -81,28 +62,6 @@ async function resolveCoords(query: string): Promise<{ lat: string; lng: string 
   } catch {}
   return null;
 }
-
-const BROWSE_CITIES = [
-  { lat: '48.8566', lng: '2.3522', name: 'Paris' },
-  { lat: '35.6762', lng: '139.6503', name: 'Tokyo' },
-  { lat: '41.9028', lng: '12.4964', name: 'Rome' },
-  { lat: '40.7128', lng: '-74.0060', name: 'New York' },
-  { lat: '41.3874', lng: '2.1686', name: 'Barcelona' },
-  { lat: '-33.8688', lng: '151.2093', name: 'Sydney' },
-  { lat: '13.7563', lng: '100.5018', name: 'Bangkok' },
-  { lat: '25.2048', lng: '55.2708', name: 'Dubai' },
-  { lat: '51.5074', lng: '-0.1278', name: 'London' },
-  { lat: '-8.4095', lng: '115.1889', name: 'Bali' },
-  { lat: '37.9838', lng: '23.7275', name: 'Athens' },
-  { lat: '31.6295', lng: '-7.9811', name: 'Marrakech' },
-  { lat: '37.7749', lng: '-122.4194', name: 'San Francisco' },
-  { lat: '1.3521', lng: '103.8198', name: 'Singapore' },
-];
-
-const ALL_CATEGORIES = [
-  'sightseeing', 'restaurant', 'museum', 'park', 'cafe',
-  'bar', 'shopping', 'nightlife', 'landmark',
-];
 
 const NEARBY_RADIUS_KM = 15;
 function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -130,76 +89,40 @@ async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItem[]>
   );
 }
 
-// Session seed so each app launch gets different cities
-const SESSION_SEED = Date.now();
-
-// Fast first batch: 2 cities × 1 category = 2 API calls (~1-2s)
-async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
-  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random()) - 0.5);
-  const cities = shuffled.slice(0, 2);
-  const cat = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
-
-  const url = `${WEB_API}/api/places?lat=${cities[0].lat}&lng=${cities[0].lng}&category=${cat}&limit=12`;
-  console.log('[Places] Fetching:', url);
-
-  const results = await Promise.all(
-    cities.map(city =>
-      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
-        .then(r => {
-          console.log('[Places] Response status:', r.status);
-          return r.ok ? r.json() : [];
-        })
-        .then((data: any[]) => {
-          console.log('[Places] Raw items:', data.length, 'first photo:', data[0]?.photo_url?.substring(0, 50));
-          const mapped = Array.isArray(data) ? data.map(mapToPlaceItem) : [];
-          console.log('[Places] Mapped items:', mapped.length, 'first image:', mapped[0]?.image?.substring(0, 50));
-          return mapped;
-        })
-        .catch((err) => { console.log('[Places] Fetch error:', err); return []; })
-    )
-  );
-  const deduped = dedup(results.flat());
-  console.log('[Places] Final deduped:', deduped.length);
-  return deduped;
+// Fetch suggested places for discovery (no hardcoded cities)
+async function fetchSuggestPlaces(page = 0): Promise<PlaceItem[]> {
+  try {
+    const res = await fetch(`${WEB_API}/api/places/suggest?destination=popular&category=all&page=${page}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const suggestions = data?.suggestions ?? [];
+    return suggestions.map((s: any): PlaceItem => ({
+      id: s.id,
+      name: s.name,
+      image: s.imageUrl ?? s.imageUrls?.[0] ?? '',
+      type: 'destination',
+      rating: s.rating ?? 0,
+      tagline: s.description?.split('.')[0] ?? s.location ?? '',
+      category: s.category ?? '',
+      description: s.description ?? '',
+      tags: s.category ? [s.category] : [],
+      latitude: s.latitude,
+      longitude: s.longitude,
+      address: s.location,
+    }));
+  } catch { return []; }
 }
 
-// Slower second batch: more cities + categories + foursquare
+// Fast first batch: suggest page 0
+async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
+  const results = await fetchSuggestPlaces(0);
+  return dedup(results);
+}
+
+// Second batch: suggest page 1
 async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
-  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random() + 1) - 0.5);
-  const cities = shuffled.slice(0, 3);
-  const catStart = Math.floor(Math.random() * ALL_CATEGORIES.length);
-
-  const fetches: Promise<PlaceItem[]>[] = [];
-  cities.forEach((city, i) => {
-    const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
-    fetches.push(
-      fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => data.map(mapToPlaceItem))
-        .catch(() => [])
-    );
-  });
-  // Foursquare for restaurants
-  fetches.push(
-    fetch(`${WEB_API}/api/foursquare?lat=${cities[0].lat}&lng=${cities[0].lng}&category=restaurant&limit=6`)
-      .then(async r => {
-        if (!r.ok) return [];
-        const venues = await r.json();
-        if (!Array.isArray(venues)) return [];
-        return venues
-          .filter((v: any) => v.image && !v.image.includes('categories_v2'))
-          .map((v: any): PlaceItem => ({
-            id: `fs_${v.id}`, name: v.name, image: v.image, type: 'restaurant',
-            rating: v.rating ? v.rating / 2 : 0, tagline: v.address || 'Restaurant',
-            category: v.category || 'Restaurant', description: v.tip || '',
-            latitude: v.lat, longitude: v.lng, tags: [v.category || 'Restaurant'],
-          }));
-      })
-      .catch(() => [])
-  );
-
-  const results = await Promise.all(fetches);
-  return dedup(results.flat());
+  const results = await fetchSuggestPlaces(1);
+  return dedup(results);
 }
 
 function dedup(places: PlaceItem[]): PlaceItem[] {
@@ -217,8 +140,8 @@ function dedup(places: PlaceItem[]): PlaceItem[] {
 
 const PAD = 16;
 const GAP = 8;
-const STACK_CARD_W = SCREEN_WIDTH * 0.72;
-const STACK_CARD_H = STACK_CARD_W * 1.3;
+const STACK_CARD_W = SCREEN_WIDTH - 16;
+const STACK_CARD_H = SCREEN_HEIGHT * 0.48;
 
 function hashCode(str: string): number {
   let hash = 0;
@@ -416,20 +339,20 @@ export default function FavoritesScreen() {
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
   // Phase 1: fast initial load (~1-2s)
-  const { data: fastPlaces = [], isLoading: fastLoading } = useQuery({
-    queryKey: ['mobile-places-fast', SESSION_SEED],
+  const { data: fastPlaces = [] } = useQuery({
+    queryKey: ['mobile-places-fast', 'suggest'],
     queryFn: fetchMobilePlacesFast,
     staleTime: 5 * 60 * 1000,
   });
   // Phase 2: more results in background
   const { data: morePlaces = [] } = useQuery({
-    queryKey: ['mobile-places-more', SESSION_SEED],
+    queryKey: ['mobile-places-more', 'suggest'],
     queryFn: fetchMobilePlacesMore,
     staleTime: 5 * 60 * 1000,
     enabled: fastPlaces.length > 0, // only after fast batch loads
   });
   // API search — uses /api/places?q= which handles geocoding + backend search
-  const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
+  const { data: searchPlaces = [] } = useQuery({
     queryKey: ['mobile-places-search', searchCity],
     queryFn: async () => {
       if (!searchCity) return [];
@@ -483,9 +406,6 @@ export default function FavoritesScreen() {
     const seen = new Set<string>();
     return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
   }, [fastPlaces, morePlaces, searchCity, searchPlaces]);
-  const placesLoading = searchCity ? searchLoading : fastLoading;
-  const placesError = null;
-
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) => {
@@ -532,12 +452,29 @@ export default function FavoritesScreen() {
     return result;
   }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
 
-  const themedSections = useMemo(() => groupPlacesByCollection(filteredPlaces), [filteredPlaces]);
+  const baseSections = useMemo(() => groupPlacesByCollection(filteredPlaces), [filteredPlaces]);
+
+  // Prepend "Near You" as the first section when available
+  const themedSections = useMemo(() => {
+    if (!nearbyPlaces.length || searchCity || activeTab !== 'all') return baseSections;
+    const nearYouSection = {
+      collection: { key: 'near-you', label: 'Near You', icon: 'map-marker' },
+      places: nearbyPlaces.slice(0, 10),
+    };
+    return { ...baseSections, sections: [nearYouSection, ...baseSections.sections] };
+  }, [baseSections, nearbyPlaces, searchCity, activeTab]);
+
+  // All places for the showcase — nearby + filtered combined
+  const allShowcasePlaces = useMemo(() => {
+    const nearIds = new Set(nearbyPlaces.map(p => p.id));
+    const combined = [...nearbyPlaces, ...filteredPlaces.filter(p => !nearIds.has(p.id))];
+    return combined;
+  }, [nearbyPlaces, filteredPlaces]);
 
   const openShowcase = useCallback((placeId: string) => {
-    const idx = filteredPlaces.findIndex((p) => p.id === placeId);
+    const idx = allShowcasePlaces.findIndex((p) => p.id === placeId);
     if (idx !== -1) setShowcaseIdx(idx);
-  }, [filteredPlaces]);
+  }, [allShowcasePlaces]);
 
   const closeModal = useCallback(() => setSelectedPlace(null), []);
 
@@ -726,43 +663,7 @@ export default function FavoritesScreen() {
           </View>
         </View>
 
-        {/* Near You Section */}
-        {nearbyPlaces.length > 0 && !searchCity && activeTab === 'all' && (
-          <View style={{ paddingHorizontal: PAD, marginBottom: 16 }}>
-            <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16, paddingBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <FontAwesome name="map-marker" size={14} color="#1e3a5f" />
-                <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>Near You</Text>
-              </View>
-              <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
-                {nearbyPlaces.length} places within {NEARBY_RADIUS_KM}km
-              </Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-              {nearbyPlaces.slice(0, 10).map((place) => (
-                <Pressable
-                  key={place.id}
-                  onPress={() => setSelectedPlace(place)}
-                  style={{ width: 160 }}
-                >
-                  <Image
-                    source={{ uri: place.image }}
-                    style={{ width: 160, height: 120, borderRadius: 12 }}
-                    contentFit="cover"
-                  />
-                  <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginTop: 6 }} numberOfLines={1}>{place.name}</Text>
-                  <Text style={{ ...TextStyles.caption, color: colors.textTertiary }} numberOfLines={1}>{place.tagline}</Text>
-                  {place.rating > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                      <FontAwesome name="star" size={10} color="#f59e0b" />
-                      <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{place.rating.toFixed(1)}</Text>
-                    </View>
-                  )}
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        {/* Near You — rendered as a section in the same grid style */}
         {nearbyLoading && !searchCity && activeTab === 'all' && (
           <View style={{ paddingHorizontal: PAD, paddingVertical: 20, alignItems: 'center' }}>
             <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>Finding places near you...</Text>
@@ -820,7 +721,7 @@ export default function FavoritesScreen() {
           </View>
         ) : (
           /* Stack view — tinder-style card carousel */
-          <View style={{ flex: 1 }}>
+          <View style={{ minHeight: SCREEN_HEIGHT - 400, justifyContent: 'flex-end' }}>
             {filteredPlaces.length === 0 ? (
               <View style={{ alignItems: 'center', paddingTop: 60 }}>
                 <FontAwesome name="search" size={36} color={colors.textTertiary} />
@@ -842,9 +743,9 @@ export default function FavoritesScreen() {
       </ScrollView>
 
       {/* Card Stack Showcase — full screen overlay when tapping a card */}
-      {showcaseIdx >= 0 && filteredPlaces[showcaseIdx] && (
+      {showcaseIdx >= 0 && allShowcasePlaces[showcaseIdx] && (
         <CardStackCarousel
-          places={filteredPlaces}
+          places={allShowcasePlaces}
           initialIndex={showcaseIdx}
           favorites={favorites}
           onToggleFav={toggleFavorite}

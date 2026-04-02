@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, useWeather, useDestinationImage, useEvents } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
@@ -592,6 +592,20 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const tripLng = trip?.trip_context?.lng;
 
   const tripCity = trip?.destination?.split(',')[0]?.trim();
+  const tripCountryName = trip?.trip_context?.country?.name
+    || trip?.destination?.split(',').slice(1).join(',').trim()
+    || '';
+
+  // ── Tier 1 hooks: weather, destination hero image, events ──
+  const { data: weatherData } = useWeather(tripCity || '');
+  const { data: destHeroImageUrl } = useDestinationImage(tripCity || '');
+  const { data: tier1Events } = useEvents({
+    city: tripCity || '',
+    country: tripCountryName,
+    startDate: trip?.start_date,
+    endDate: trip?.end_date,
+  });
+
   // Rotate explore queries each session for variety
   const [exploreOffset] = useState(() => Math.floor(Math.random() * 6));
   const { data: liveExploreItems } = useQuery({
@@ -696,10 +710,64 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const hasEvents = news.some(n => n.category === 'event' || n.category === 'tip');
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
+  // Merge tier1Events into events display if available
+  const tier1EventsMapped = (tier1Events || []).map((e) => ({
+    id: e.id,
+    title: e.name,
+    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    category: e.category || 'Event',
+    image: e.photo_url || '',
+  }));
+  const allEvents = events.length > 0 ? events : tier1EventsMapped;
+
   return (
-    <div className="relative">
+    <div className="relative overflow-hidden">
+      {/* Destination hero image — subtle background from shared hook */}
+      {destHeroImageUrl && (
+        <div className="absolute inset-x-0 top-0 h-[400px] -z-0 overflow-hidden pointer-events-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={destHeroImageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom, var(--magazine-bg, #f5f0eb) 10%, rgba(245,240,235,0.6) 50%, var(--magazine-bg, #f5f0eb) 100%)',
+          }} />
+        </div>
+      )}
       <div className="relative z-10">
         <div ref={revealRef}>
+
+          {/* ── Weather Widget ── */}
+          {weatherData?.current && (
+            <div className="px-6 sm:px-10 mt-4 mb-2">
+              <div className="inline-flex items-center gap-4 px-5 py-3 rounded-2xl backdrop-blur-md"
+                style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
+                <div>
+                  <span className="text-3xl font-bold" style={{ color: 'var(--magazine-heading)' }}>{Math.round(weatherData.current.temp)}°</span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold" style={{ color: 'var(--magazine-heading)' }}>{weatherData.current.conditions}</p>
+                  <p className="text-[11px] opacity-50" style={{ color: 'var(--magazine-heading)' }}>
+                    Feels like {Math.round(weatherData.current.feelslike)}° · {weatherData.current.humidity}% humidity
+                  </p>
+                </div>
+                {/* Mini forecast — next 3 days */}
+                {weatherData.forecast && weatherData.forecast.length > 0 && (
+                  <div className="flex gap-3 ml-2 pl-4" style={{ borderLeft: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
+                    {weatherData.forecast.slice(0, 3).map((day) => (
+                      <div key={day.date} className="text-center">
+                        <p className="text-[10px] opacity-40" style={{ color: 'var(--magazine-heading)' }}>
+                          {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
+                        </p>
+                        <p className="text-[12px] font-bold" style={{ color: 'var(--magazine-heading)' }}>
+                          {Math.round(day.high)}°<span className="opacity-40">/{Math.round(day.low)}°</span>
+                        </p>
+                        <p className="text-[9px] opacity-50 truncate max-w-[60px]" style={{ color: 'var(--magazine-heading)' }}>{day.conditions}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Row 1: Things to Do (left) + Cuisine (right) ── */}
           <div className="px-6 sm:px-10 mt-6">
@@ -743,7 +811,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           </div>
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
-          {(hasNewsArticles || events.length > 0) && (
+          {(hasNewsArticles || allEvents.length > 0) && (
             <div className="relative z-10 px-6 sm:px-10 mt-8">
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
@@ -751,9 +819,9 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                     <NewsSection news={news} />
                   </div>
                 )}
-                {events.length > 0 && (
+                {allEvents.length > 0 && (
                   <div className="flex-1 min-w-0">
-                    <WhatsGoingOnSection exploreItems={events} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
+                    <WhatsGoingOnSection exploreItems={allEvents} addedItems={addedItems} onToggleAdd={toggleAdd} heroImages={trip?.trip_context?.hero_images} />
                   </div>
                 )}
               </div>
@@ -786,8 +854,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           )}
 
           {/* ── Rotating photo mosaic — bleeds up behind the cards ── */}
-          {trip?.trip_context?.hero_images && trip.trip_context.hero_images.length > 0 && (
-            <TripMosaic photos={trip.trip_context.hero_images} destination={trip.destination} />
+          {(trip?.trip_context?.hero_images?.length || destHeroImageUrl) && (
+            <TripMosaic
+              photos={trip?.trip_context?.hero_images?.length ? trip.trip_context.hero_images : (destHeroImageUrl ? [destHeroImageUrl] : [])}
+              destination={trip?.destination}
+            />
           )}
 
         </div>

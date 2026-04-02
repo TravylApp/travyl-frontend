@@ -133,8 +133,9 @@ async function fetchExplorePage(
 
 // ─── Component ──────────────────────────────────────────────
 
-export default function ExplorePage({ params }: { params: Promise<{ id: string }> }) {
+export default function ExplorePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = use(params);
+  const { tab: initialTab } = use(searchParams);
   const { trip, isLoading: tripLoading } = useItineraryScreen(id);
 
   const lat = trip?.trip_context?.lat ?? 0;
@@ -191,7 +192,10 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // State
-  const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const validTabs = TABS.map(t => t.key) as readonly string[];
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    initialTab && validTabs.includes(initialTab) ? initialTab as TabKey : 'all'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>('default');

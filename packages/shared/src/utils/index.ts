@@ -147,3 +147,5 @@ export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from
 // Gap computation utility (day planner)
 export { computeGaps } from './gapCompute'
 export type { Gap } from './gapCompute'
+
+export * from './places'

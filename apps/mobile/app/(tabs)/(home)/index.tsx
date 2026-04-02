@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type RefObject } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -287,10 +288,24 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [heroConfig?.subtitle]);
 
-  // Cycling suggestion pills
-  const allSuggestions = heroConfig?.suggestions?.length
-    ? heroConfig.suggestions
-    : ALL_SUGGESTIONS;
+  // Fetch trending destinations for suggestion pills
+  const { data: trendingDestinations } = useQuery({
+    queryKey: ['trending-destinations'],
+    queryFn: async () => {
+      const API = process.env.EXPO_PUBLIC_WEB_API_URL || '';
+      const res = await fetch(`${API}/api/trending-destinations`);
+      if (!res.ok) return [];
+      return res.json() as Promise<{ name: string; country: string }[]>;
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+
+  // Cycling suggestion pills — trending API first, then heroConfig, then static fallback
+  const allSuggestions = trendingDestinations?.length
+    ? trendingDestinations.map((d, i) => ({ id: `td-${i}`, label: d.name, short_label: null }))
+    : heroConfig?.suggestions?.length
+      ? heroConfig.suggestions
+      : ALL_SUGGESTIONS;
   const [pillGroup, setPillGroup] = useState(0);
   const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
   useEffect(() => {

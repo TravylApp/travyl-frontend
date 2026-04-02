@@ -12,10 +12,10 @@ import {
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { Footer } from '@/components/home/Footer';
 import { OceanWave } from '@/components/home/OceanWave';
-import { useSimilarPlaces, Navy } from '@travyl/shared';
+import { useSimilarPlaces, usePlaceDetail, usePlaceEnrich, usePlaceMenu, Navy } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
-const MOCK_PLACES: PlaceItem[] = [];
+// No mock data — similar places come from real API data
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 
@@ -48,11 +48,25 @@ export function PlaceDetailOverlay({
   const [searchFocused, setSearchFocused] = useState(false);
   const [direction, setDirection] = useState(0);
 
-  const similarPlaces = useSimilarPlaces(place, MOCK_PLACES, 12);
+  const similarPlaces = useSimilarPlaces(place, [], 12);
 
   const [discoveryIndex, setDiscoveryIndex] = useState(-1);
 
-  const currentPlace = discoveryIndex === -1 ? place : similarPlaces[discoveryIndex];
+  // Enrich place details — shared hooks fetch hours, address, phone, website, photos, menu
+  const { data: detailData } = usePlaceDetail(place.id);
+  const { data: enrichPhotos } = usePlaceEnrich(place.id, place.name);
+  const { data: menuData } = usePlaceMenu(
+    place.type === 'restaurant' ? place.name : undefined,
+  );
+
+  // Merge enriched data — detail takes priority for detail fields
+  const enrichedPlace = detailData ? { ...place, ...detailData } : place;
+  // Merge extra photos into images array
+  if (enrichPhotos?.photos?.length && enrichedPlace) {
+    enrichedPlace.images = [...(enrichedPlace.images ?? []), ...enrichPhotos.photos];
+  }
+
+  const currentPlace = discoveryIndex === -1 ? enrichedPlace : similarPlaces[discoveryIndex];
   const totalCount = similarPlaces.length + 1;
   const currentNum = discoveryIndex + 2;
 

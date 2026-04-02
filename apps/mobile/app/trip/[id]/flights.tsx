@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 const POPULAR_AIRPORTS = [
   { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
@@ -42,7 +42,7 @@ function contextFlightsToBooked(flights: any[], destination?: string): any[] {
       durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
     }
     const originCode = f.origin ?? '';
-    const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+    const destCode = f.dest_iata ?? f.destination ?? destination ?? '';
     const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
     return {
       id: `ctx-flight-${i}`,
@@ -74,13 +74,18 @@ function toggleInArray(arr: string[], val: string, setter: (v: string[]) => void
    FLIGHT SEARCH SECTION
    ================================================================ */
 
-function FlightSearchSection() {
+function FlightSearchSection({ destination, departDate, returnDate, onResults }: {
+  destination?: string;
+  departDate?: string;
+  returnDate?: string;
+  onResults?: (results: any[]) => void;
+}) {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const [collapsed, setCollapsed] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [from, setFrom] = useState('JFK');
-  const [to, setTo] = useState('CDG');
+  const [to, setTo] = useState(destination || 'CDG');
   const [travelers, setTravelers] = useState(2);
   const [cabinClass, setCabinClass] = useState<'economy' | 'premium' | 'business' | 'first'>('economy');
   const [nonstopOnly, setNonstopOnly] = useState(false);
@@ -88,6 +93,24 @@ function FlightSearchSection() {
   const [depTimes, setDepTimes] = useState<string[]>([]);
   const [arrTimes, setArrTimes] = useState<string[]>([]);
   const [airlines, setAirlines] = useState<string[]>([]);
+  const [searchTriggered, setSearchTriggered] = useState(false);
+
+  // Flight search via shared hook
+  const { data: searchResults, isLoading: searching } = useFlightSearch({
+    origin: searchTriggered ? from : undefined,
+    destination: searchTriggered ? to : undefined,
+    departDate: searchTriggered ? departDate : undefined,
+    returnDate,
+    passengers: travelers,
+  });
+
+  // Forward results to parent
+  useEffect(() => {
+    if (searchResults && onResults) {
+      const flights = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.flights ?? [];
+      onResults(flights);
+    }
+  }, [searchResults]);
 
   const cabinLabel: Record<string, string> = {
     economy: 'Economy',
@@ -245,9 +268,12 @@ function FlightSearchSection() {
             </View>
 
             {/* Search button */}
-            <Pressable style={{ backgroundColor: ACCENT, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <FontAwesome name="search" size={12} color="#fff" />
-              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Search</Text>
+            <Pressable
+              onPress={() => setSearchTriggered(true)}
+              style={{ backgroundColor: ACCENT, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: searching ? 0.6 : 1 }}
+            >
+              <FontAwesome name={searching ? 'spinner' : 'search'} size={12} color="#fff" />
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{searching ? 'Searching...' : 'Search'}</Text>
             </Pressable>
           </View>
 
@@ -974,13 +1000,7 @@ function FlightSkeleton() {
    MAIN PAGE
    ================================================================ */
 
-const CITY_AIRPORTS: Record<string, string> = {
-  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-  'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
-  'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
-};
+// CITY_AIRPORTS removed — backend resolves city names to airport codes directly
 
 export default function FlightsScreen() {
   const ACCENT = useTabAccent('flights');
@@ -995,7 +1015,7 @@ export default function FlightsScreen() {
 
   // Get destination airport from trip
   const city = trip?.destination?.split(',')[0]?.trim() ?? '';
-  const destAirport = CITY_AIRPORTS[city] || '';
+  const destAirport = city; // Backend resolves city names directly
 
   // Convert trip_context flights to display format
   const bookedFlights = useMemo(
@@ -1010,7 +1030,11 @@ export default function FlightsScreen() {
     <PageTransition>
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       {/* 1. Flight Search Section */}
-      <FlightSearchSection />
+      <FlightSearchSection
+        destination={destAirport || city}
+        departDate={trip?.start_date ?? undefined}
+        returnDate={trip?.end_date ?? undefined}
+      />
 
       {/* Flight prompt when no flights booked */}
       {!hasFlights && destAirport && (
