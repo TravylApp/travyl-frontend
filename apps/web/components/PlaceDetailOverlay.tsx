@@ -59,8 +59,10 @@ export function PlaceDetailOverlay({
     place.type === 'restaurant' ? place.name : undefined,
   );
 
-  // Merge enriched data — detail takes priority for detail fields
-  const enrichedPlace = detailData ? { ...place, ...detailData } : place;
+  // Merge enriched data — detail takes priority, but skip null values so PlaceItem types stay valid
+  const enrichedPlace = detailData
+    ? { ...place, ...Object.fromEntries(Object.entries(detailData).filter(([, v]) => v != null)) }
+    : place;
   // Merge extra photos into images array
   if (enrichPhotos?.photos?.length && enrichedPlace) {
     enrichedPlace.images = [...(enrichedPlace.images ?? []), ...enrichPhotos.photos];
@@ -71,7 +73,7 @@ export function PlaceDetailOverlay({
   const currentNum = discoveryIndex + 2;
 
   const searchResults = searchQuery.trim().length >= 2
-    ? MOCK_PLACES.filter((p) =>
+    ? similarPlaces.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.tagline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category?.toLowerCase().includes(searchQuery.toLowerCase())
