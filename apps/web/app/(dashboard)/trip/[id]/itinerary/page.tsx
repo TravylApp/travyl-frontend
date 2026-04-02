@@ -1211,7 +1211,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
 
   return (
     <div className="relative overflow-hidden">
-      <div className="relative z-10 px-6 sm:px-10 pb-8">
+      <div className="relative z-10 pb-8">
 
         {/* ── Day selector — draggable to reorder ── */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 mb-4">

@@ -699,7 +699,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         <div ref={revealRef}>
 
           {/* ── Row 1: Things to Do (left) + Cuisine (right) ── */}
-          <div className="px-6 sm:px-10 md:pl-16 mt-6">
+          <div className="px-0 mt-6">
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
@@ -741,7 +741,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
           {(hasNewsArticles || events.length > 0) && (
-            <div className="relative z-10 px-6 sm:px-10 md:pl-16 mt-8">
+            <div className="relative z-10 px-0 mt-8">
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
                   <div className="flex-1 min-w-0">
@@ -759,7 +759,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(trip?.trip_context?.phrases || trip?.trip_context?.cost_of_living) && (
-            <div className="relative z-10 px-6 sm:px-10 md:pl-16 mt-8">
+            <div className="relative z-10 px-0 mt-8">
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {trip?.trip_context?.phrases && Object.keys(trip.trip_context.phrases).length > 0 && (
                   <div className="flex-1 min-w-0">
@@ -777,7 +777,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (
-            <div className="px-6 sm:px-10 md:pl-16 mt-8">
+            <div className="px-0 mt-8">
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
           )}
