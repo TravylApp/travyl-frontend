@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequiredParams, errorResponse, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
 
 interface Meal {
   id: string
@@ -7,29 +7,58 @@ interface Meal {
   image: string
 }
 
+// TheMealDB uses cuisine style names (French, Italian, etc.)
+// First try the country name directly — TheMealDB accepts many as-is (e.g. "Japanese", "Mexican")
+// If that fails, try common demonym form
+async function fetchMeals(area: string): Promise<Meal[]> {
+  const res = await fetch(
+    `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(area)}`,
+    CACHE_1H,
+  )
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data?.meals ?? []).map(
+    (meal: { idMeal: string; strMeal: string; strMealThumb: string }) => ({
+      id: meal.idMeal,
+      name: meal.strMeal,
+      image: meal.strMealThumb,
+    }),
+  )
+}
+
 export async function GET(req: NextRequest) {
-  const params = getRequiredParams(req, 'area')
-  if (params instanceof NextResponse) return params
+  // Accept either ?area=French or ?country=France
+  const area = getOptionalParam(req, 'area', '')
+  const country = getOptionalParam(req, 'country', '')
+
+  if (!area && !country) {
+    return NextResponse.json({ error: 'Missing area or country param' }, { status: 400 })
+  }
 
   try {
-    const res = await fetch(
-      `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(params.area)}`,
-      CACHE_1H,
-    )
+    // If area is provided directly, use it
+    if (area) {
+      const meals = await fetchMeals(area)
+      return NextResponse.json(meals)
+    }
 
-    if (!res.ok) return errorResponse('TheMealDB fetch failed', res.status)
+    // Try the country name as-is first (works for "Japanese", "Mexican", "Indian", etc.)
+    let meals = await fetchMeals(country)
 
-    const data = await res.json()
-    const meals: Meal[] = (data?.meals ?? []).map(
-      (meal: { idMeal: string; strMeal: string; strMealThumb: string }) => ({
-        id: meal.idMeal,
-        name: meal.strMeal,
-        image: meal.strMealThumb,
-      }),
-    )
+    // If no results, try common transformations:
+    // "France" → "French", "Spain" → "Spanish", "Italy" → "Italian"
+    if (meals.length === 0) {
+      // Try adding common suffixes — TheMealDB demonym patterns
+      const suffixes = ['n', 'ese', 'ish', 'ian', 'ch']
+      for (const suffix of suffixes) {
+        const attempt = country.replace(/[aeiou]?$/, '') + suffix
+        meals = await fetchMeals(attempt)
+        if (meals.length > 0) break
+      }
+    }
 
     return NextResponse.json(meals)
   } catch {
-    return errorResponse('Cuisine service unavailable', 500)
+    return NextResponse.json([], { status: 500 })
   }
 }

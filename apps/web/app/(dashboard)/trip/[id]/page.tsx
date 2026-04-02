@@ -575,7 +575,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   useEffect(() => { autoEnrich(); }, [autoEnrich]);
 
-  const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news ?? [];
+  const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news?.length ? trip.trip_context.news : (liveNews ?? []);
 
   const toggleAdd = (itemId: string) => {
     setAddedItems((prev) => {
@@ -680,6 +680,56 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     staleTime: 5 * 60 * 1000,
   });
 
+  // ── Direct fallback fetches for sections that enrichment often misses ──
+  const tripCountryShort = tripCountryName.split(',')[0]?.trim() || '';
+
+  const { data: liveNews } = useQuery({
+    queryKey: ['trip-news', tripCity],
+    queryFn: async () => {
+      const res = await fetch(`/api/news?destination=${encodeURIComponent(tripCity!)}&limit=8`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!tripCity && !enriching && !(trip?.trip_context?.news?.length),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const { data: liveCuisine } = useQuery({
+    queryKey: ['trip-cuisine', tripCountryShort],
+    queryFn: async () => {
+      if (!tripCountryShort) return [];
+      const res = await fetch(`/api/cuisine?country=${encodeURIComponent(tripCountryShort)}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data.slice(0, 6) : [];
+    },
+    enabled: !!tripCountryShort && !enriching && !(trip?.trip_context?.cuisine?.length),
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const { data: livePhrases } = useQuery({
+    queryKey: ['trip-phrases', tripCountryShort],
+    queryFn: async () => {
+      const res = await fetch(`/api/translate?lang=${encodeURIComponent(tripCountryShort)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.phrases ?? null;
+    },
+    enabled: !!tripCountryShort && !enriching && !trip?.trip_context?.phrases,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const { data: liveCostOfLiving } = useQuery({
+    queryKey: ['trip-cost', tripCity, tripCountryShort],
+    queryFn: async () => {
+      const res = await fetch(`/api/costliving?city=${encodeURIComponent(tripCity!)}&country=${encodeURIComponent(tripCountryShort)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!tripCity && !!tripCountryShort && !enriching && !trip?.trip_context?.cost_of_living,
+    staleTime: 60 * 60 * 1000,
+  });
+
   // Use live data if available, fall back to trip_context
   const exploreItems = (liveExploreItems?.length ? liveExploreItems : trip?.trip_context?.explore_items) || [];
   const events = (liveEvents?.length ? liveEvents : trip?.trip_context?.events?.map((e: any) => ({
@@ -705,7 +755,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   }
 
   const hasExploreItems = exploreItems.length > 0;
-  const hasCuisine = trip?.trip_context?.cuisine && trip.trip_context.cuisine.length > 0;
+  const cuisineData = trip?.trip_context?.cuisine?.length ? trip.trip_context.cuisine : liveCuisine;
+  const hasCuisine = cuisineData && cuisineData.length > 0;
+  const phrasesData = trip?.trip_context?.phrases ?? livePhrases;
+  const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNews = news.length > 0;
   const hasEvents = news.some(n => n.category === 'event' || n.category === 'tip');
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
@@ -794,7 +847,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                     <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Must-Try Dishes</h3>
                   </div>
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
-                    {trip!.trip_context!.cuisine!.map((dish: { id: string; name: string; image: string }) => (
+                    {cuisineData!.map((dish: { id: string; name: string; image: string }) => (
                       <div key={dish.id} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start" style={{ height: 360 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={dish.image} alt={dish.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -829,17 +882,17 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           )}
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
-          {(trip?.trip_context?.phrases || trip?.trip_context?.cost_of_living) && (
+          {(phrasesData || costData) && (
             <div className="relative z-10 px-6 sm:px-10 mt-8">
               <div className="flex flex-col lg:flex-row gap-6 items-start">
-                {trip?.trip_context?.phrases && Object.keys(trip.trip_context.phrases).length > 0 && (
+                {phrasesData && Object.keys(phrasesData).length > 0 && (
                   <div className="flex-1 min-w-0">
-                    <PhrasesSection phrases={trip.trip_context.phrases as any} language={trip.trip_context.country?.language} />
+                    <PhrasesSection phrases={phrasesData as any} language={trip?.trip_context?.country?.language} />
                   </div>
                 )}
-                {trip?.trip_context?.cost_of_living && (
+                {costData && (
                   <div className="flex-1 min-w-0">
-                    <CostOfLivingSection cost={trip.trip_context.cost_of_living} currency={trip.trip_context.country?.currency?.symbol} />
+                    <CostOfLivingSection cost={costData} currency={trip?.trip_context?.country?.currency?.symbol} />
                   </div>
                 )}
               </div>

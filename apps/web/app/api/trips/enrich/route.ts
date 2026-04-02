@@ -4,14 +4,6 @@ import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-util
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
-const COUNTRY_CUISINE: Record<string, string> = {
-  France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
-  Mexico: 'Mexican', India: 'Indian', China: 'Chinese', Thailand: 'Thai',
-  Morocco: 'Moroccan', Turkey: 'Turkish', Greece: 'Greek', Vietnam: 'Vietnamese',
-  UK: 'British', USA: 'American', Canada: 'Canadian', Ireland: 'Irish',
-  Portugal: 'Portuguese', Brazil: 'Brazilian', Egypt: 'Egyptian', Poland: 'Polish',
-  Germany: 'German', Netherlands: 'Dutch', Sweden: 'Swedish', Norway: 'Norwegian',
-}
 
 export async function POST(req: NextRequest) {
   const blocked = rateLimit(req, 'enrich', 3, 60_000)
@@ -61,7 +53,7 @@ export async function POST(req: NextRequest) {
   const parts = (trip.destination || '').split(',')
   const city = parts[0]?.trim() || trip.destination
   const country = parts[parts.length - 1]?.trim() || ''
-  const cuisineArea = COUNTRY_CUISINE[country] ?? ''
+  const cuisineCountry = country
 
   // Geocode if no lat/lng
   let lat = existing.lat ?? 0
@@ -166,7 +158,7 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(`${baseUrl}/api/holidays?country=${encodeURIComponent(countryCode)}&year=${new Date().getFullYear()}`)
       .then(r => r.ok ? r.json() : []).catch(() => []),
-    cuisineArea ? fetch(`${baseUrl}/api/cuisine?area=${encodeURIComponent(cuisineArea)}`)
+    cuisineCountry ? fetch(`${baseUrl}/api/cuisine?country=${encodeURIComponent(cuisineCountry)}`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/sunrise?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
