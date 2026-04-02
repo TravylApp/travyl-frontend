@@ -232,8 +232,8 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
   }, [query]);
 
   return (
-    <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors relative">
-      <p className="text-[9px] uppercase tracking-widest text-gray-400">{label}</p>
+    <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors relative">
+      <p className="text-[9px] uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
       <input
         type="text"
         value={query || value}
@@ -241,20 +241,20 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
         onFocus={() => { setQuery(''); }}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
         placeholder={value || 'Search airport...'}
-        className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 w-full focus:outline-none placeholder:text-gray-300"
+        className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 w-full focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
       />
-      {cityName && !query && <p className="text-[10px] text-gray-400 truncate">{cityName}</p>}
+      {cityName && !query && <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{cityName}</p>}
       {open && results.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
           {results.map((r) => (
             <button
               key={r.iata}
               onMouseDown={(e) => { e.preventDefault(); onChange(r.iata); setQuery(''); setOpen(false); }}
-              className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-white/[0.06] transition-colors flex items-center gap-2"
             >
               <span className="text-xs font-bold text-[#2563eb] w-8">{r.iata}</span>
-              <span className="text-xs text-gray-600 truncate">{r.name}</span>
-              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{r.city}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{r.name}</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto shrink-0">{r.city}</span>
             </button>
           ))}
         </div>
@@ -301,23 +301,23 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
   const activeFilterCount = [nonstopOnly, depTimes.length > 0, arrTimes.length > 0, maxPrice < 3000, airlines.length > 0].filter(Boolean).length;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
+    <div className="bg-white dark:bg-white/[0.03] rounded-xl shadow-sm border border-gray-200 dark:border-white/[0.08] overflow-hidden mb-4">
       {/* Header */}
-      <div role="button" tabIndex={0} onClick={() => setCollapsed(!collapsed)} onKeyDown={(e) => { if (e.key === 'Enter') setCollapsed(!collapsed); }} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer">
+      <div role="button" tabIndex={0} onClick={() => setCollapsed(!collapsed)} onKeyDown={(e) => { if (e.key === 'Enter') setCollapsed(!collapsed); }} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#2563eb] flex items-center justify-center">
             <PaperPlane size={14} className="text-white" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-medium text-gray-800">Search Flights</p>
-            <p className="text-[11px] text-gray-400">{from} → {to} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-white">Search Flights</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">{from} → {to} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {!collapsed && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }}
-              className={`text-[11px] px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${showFilters ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
+              className={`text-[11px] px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${showFilters ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white dark:bg-white/[0.05] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/[0.1] hover:border-gray-300 dark:hover:border-white/[0.2]'}`}
             >
               <Settings size={10} />
               Filters
@@ -334,15 +334,15 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
       <AnimatePresence>
         {!collapsed && (
           <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
-            <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+            <div className="px-4 pb-4 border-t border-gray-100 dark:border-white/[0.06] pt-3">
               {/* Search strip */}
-              <div className="flex flex-col sm:flex-row items-stretch border border-gray-200 rounded-xl overflow-visible bg-white divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
+              <div className="flex flex-col sm:flex-row items-stretch border border-gray-200 dark:border-white/[0.08] rounded-xl overflow-visible bg-white dark:bg-white/[0.03] divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-white/[0.08]">
                 {/* From */}
                 <AirportInput label="From" value={from} onChange={setFrom} />
 
                 {/* Swap */}
                 <div className="hidden sm:flex items-center -mx-3 z-10">
-                  <button onClick={swap} className="w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow hover:border-[#2563eb]/30 transition-all flex items-center justify-center">
+                  <button onClick={swap} className="w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/[0.1] shadow-sm hover:shadow hover:border-[#2563eb]/30 transition-all flex items-center justify-center">
                     <ArrowLeftRight size={10} className="text-gray-400" />
                   </button>
                 </div>
@@ -351,21 +351,21 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
                 <AirportInput label="To" value={to} onChange={setTo} />
 
                 {/* Travelers */}
-                <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors">
-                  <p className="text-[9px] uppercase tracking-widest text-gray-400">Travelers</p>
+                <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors">
+                  <p className="text-[9px] uppercase tracking-widest text-gray-400 dark:text-gray-500">Travelers</p>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold text-[#2563eb]">{travelers}</span>
                     <div className="flex items-center gap-0.5">
-                      <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="w-5 h-5 rounded-full border border-gray-200 text-[10px] text-gray-500 hover:bg-gray-100 flex items-center justify-center">-</button>
-                      <button onClick={() => setTravelers(travelers + 1)} className="w-5 h-5 rounded-full border border-gray-200 text-[10px] text-gray-500 hover:bg-gray-100 flex items-center justify-center">+</button>
+                      <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="w-5 h-5 rounded-full border border-gray-200 dark:border-white/[0.1] text-[10px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.06] flex items-center justify-center">-</button>
+                      <button onClick={() => setTravelers(travelers + 1)} className="w-5 h-5 rounded-full border border-gray-200 dark:border-white/[0.1] text-[10px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.06] flex items-center justify-center">+</button>
                     </div>
                   </div>
                 </div>
 
                 {/* Class */}
-                <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors">
-                  <p className="text-[9px] uppercase tracking-widest text-gray-400">Class</p>
-                  <select value={cabinClass} onChange={e => setCabinClass(e.target.value)} className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 focus:outline-none cursor-pointer -ml-1">
+                <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors">
+                  <p className="text-[9px] uppercase tracking-widest text-gray-400 dark:text-gray-500">Class</p>
+                  <select value={cabinClass} onChange={e => setCabinClass(e.target.value)} className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 focus:outline-none cursor-pointer -ml-1 dark:[&>option]:bg-gray-900 dark:[&>option]:text-white">
                     <option value="economy">Economy</option>
                     <option value="premium">Premium Econ</option>
                     <option value="business">Business</option>
@@ -386,36 +386,36 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
               {/* Advanced filters */}
               <AnimatePresence>
                 {showFilters && (
-                  <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants} className="mt-2.5 bg-gray-50/60 rounded-xl border border-gray-200 overflow-hidden">
+                  <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants} className="mt-2.5 bg-gray-50/60 dark:bg-white/[0.02] rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden">
                     <div className="p-3 sm:p-4 space-y-4">
                       {/* Stops & max layover & max price */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Stops</p>
+                          <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Stops</p>
                           <div className="flex gap-1.5">
                             {[{ label: 'Nonstop', val: true }, { label: 'Any', val: false }].map(opt => (
                               <button key={String(opt.val)} onClick={() => setNonstopOnly(opt.val)}
-                                className={`flex-1 text-[11px] px-2 py-1.5 rounded-lg border transition-all ${nonstopOnly === opt.val ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                                className={`flex-1 text-[11px] px-2 py-1.5 rounded-lg border transition-all ${nonstopOnly === opt.val ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white dark:bg-white/[0.05] text-gray-600 dark:text-gray-400 border-gray-200 dark:border-white/[0.1] hover:border-gray-300 dark:hover:border-white/[0.2]'}`}
                               >{opt.label}</button>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Max layover</p>
+                          <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Max layover</p>
                           <div className="relative">
                             <input type="number" min={1} max={24} value={nonstopOnly ? 0 : maxLayover} disabled={nonstopOnly}
                               onChange={e => setMaxLayover(Math.min(24, Math.max(1, Number(e.target.value) || 1)))}
-                              className={`w-full text-xs border rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 ${nonstopOnly ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-200 text-gray-800'}`} />
-                            <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] ${nonstopOnly ? 'text-gray-300' : 'text-gray-400'}`}>hours</span>
+                              className={`w-full text-xs border rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 ${nonstopOnly ? 'bg-gray-100 dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'bg-white dark:bg-white/[0.05] border-gray-200 dark:border-white/[0.1] text-gray-800 dark:text-white'}`} />
+                            <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] ${nonstopOnly ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}`}>hours</span>
                           </div>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Max price</p>
+                          <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Max price</p>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 dark:text-gray-500">$</span>
                             <input type="number" min={0} max={10000} step={50} value={maxPrice}
                               onChange={e => setMaxPrice(Math.max(0, Number(e.target.value) || 0))}
-                              className="w-full text-xs bg-white border border-gray-200 rounded-lg pl-6 pr-3 py-1.5 focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 text-gray-800" />
+                              className="w-full text-xs bg-white dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.1] rounded-lg pl-6 pr-3 py-1.5 focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 text-gray-800 dark:text-white" />
                           </div>
                         </div>
                       </div>
@@ -424,13 +424,13 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {[{ label: 'Departure time', state: depTimes, setter: setDepTimes }, { label: 'Arrival time', state: arrTimes, setter: setArrTimes }].map(group => (
                           <div key={group.label}>
-                            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">{group.label}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">{group.label}</p>
                             <div className="grid grid-cols-4 gap-1.5">
                               {[{ label: 'Early', sub: '12a-6a', value: 'night' }, { label: 'Morning', sub: '6a-12p', value: 'morning' }, { label: 'Afternoon', sub: '12p-6p', value: 'afternoon' }, { label: 'Evening', sub: '6p-12a', value: 'evening' }].map(t => {
                                 const active = group.state.includes(t.value);
                                 return (
                                   <button key={t.value} onClick={() => toggleInArray(group.state, t.value, group.setter)}
-                                    className={`py-2 rounded-lg text-center border transition-all ${active ? 'border-[#2563eb] bg-[#2563eb]/5 text-[#2563eb]' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'}`}>
+                                    className={`py-2 rounded-lg text-center border transition-all ${active ? 'border-[#2563eb] bg-[#2563eb]/5 dark:bg-[#2563eb]/10 text-[#2563eb]' : 'border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.05] text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/[0.2]'}`}>
                                     <div className="text-[11px] font-medium">{t.label}</div>
                                     <div className="text-[9px] opacity-60">{t.sub}</div>
                                   </button>
@@ -443,13 +443,13 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
 
                       {/* Airline chips */}
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Airlines</p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Airlines</p>
                         <div className="flex flex-wrap gap-1.5">
                           {[{ code: 'AA', name: 'American', color: '#0078D2' }, { code: 'DL', name: 'Delta', color: '#003366' }, { code: 'UA', name: 'United', color: '#002244' }, { code: 'LH', name: 'Lufthansa', color: '#05164D' }, { code: 'AF', name: 'Air France', color: '#002157' }, { code: 'BA', name: 'British Airways', color: '#075AAA' }].map(a => {
                             const active = airlines.includes(a.name);
                             return (
                               <button key={a.code} onClick={() => toggleInArray(airlines, a.name, setAirlines)}
-                                className={`text-[11px] px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 transition-all ${active ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+                                className={`text-[11px] px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 transition-all ${active ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white dark:bg-white/[0.05] text-gray-600 dark:text-gray-400 border-gray-200 dark:border-white/[0.1] hover:border-gray-300 dark:hover:border-white/[0.2]'}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-white' : ''}`} style={!active ? { backgroundColor: a.color } : {}} />
                                 {a.name}
                               </button>
@@ -459,7 +459,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
                       </div>
 
                       <button onClick={() => { setNonstopOnly(false); setMaxLayover(12); setMaxPrice(3000); setDepTimes([]); setArrTimes([]); setAirlines([]); }}
-                        className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2">Reset all filters</button>
+                        className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors underline underline-offset-2">Reset all filters</button>
                     </div>
                   </motion.div>
                 )}
@@ -485,7 +485,7 @@ function BookedFlightCard({ flight }: { flight: BookedFlight }) {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-      className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+      className="rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden shadow-sm">
       {/* Header */}
       <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3 text-white" style={{ background: gradient }}>
         <div className="flex items-center gap-2">
@@ -503,28 +503,28 @@ function BookedFlightCard({ flight }: { flight: BookedFlight }) {
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="text-center">
-            <p className="text-xl font-bold text-gray-900">{flight.departure.time}</p>
-            <p className="text-xs text-gray-500 font-medium">{flight.departure.code}</p>
-            <p className="text-[10px] text-gray-400">T{flight.departure.terminal} · Gate {flight.departure.gate}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{flight.departure.time}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{flight.departure.code}</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">T{flight.departure.terminal} · Gate {flight.departure.gate}</p>
           </div>
           <div className="flex-1 flex flex-col items-center px-4">
-            <p className="text-[11px] text-gray-400 mb-1">{flight.duration}</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">{flight.duration}</p>
             <div className="flex items-center w-full">
-              <div className="flex-1 border-t border-dashed border-gray-300" />
+              <div className="flex-1 border-t border-dashed border-gray-300 dark:border-white/[0.15]" />
               <div className="w-7 h-7 rounded-full flex items-center justify-center mx-1.5" style={{ backgroundColor: '#2563eb' }}>
                 <PaperPlane size={12} className="text-white" />
               </div>
-              <div className="flex-1 border-t border-dashed border-gray-300" />
+              <div className="flex-1 border-t border-dashed border-gray-300 dark:border-white/[0.15]" />
             </div>
-            <p className="text-[11px] text-emerald-600 font-medium mt-1">{flight.stops}</p>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">{flight.stops}</p>
           </div>
           <div className="text-center">
-            <p className="text-xl font-bold text-gray-900">
+            <p className="text-xl font-bold text-gray-900 dark:text-white">
               {flight.arrival.time}
               {flight.arrival.nextDay && <sup className="text-[10px] text-amber-500 ml-0.5">+1</sup>}
             </p>
-            <p className="text-xs text-gray-500 font-medium">{flight.arrival.code}</p>
-            <p className="text-[10px] text-gray-400">T{flight.arrival.terminal} · Gate {flight.arrival.gate}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{flight.arrival.code}</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">T{flight.arrival.terminal} · Gate {flight.arrival.gate}</p>
           </div>
         </div>
 
@@ -534,12 +534,12 @@ function BookedFlightCard({ flight }: { flight: BookedFlight }) {
             <span className="text-white text-[10px] font-bold">{flight.airlineLogo}</span>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-800">{flight.airline}</p>
-            <p className="text-[10px] text-gray-400">{flight.cabinClass}</p>
+            <p className="text-xs font-medium text-gray-800 dark:text-white">{flight.airline}</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">{flight.cabinClass}</p>
           </div>
           <div className="ml-auto text-right">
             <p className="text-sm font-bold text-[#2563eb]">${flight.price.total}</p>
-            <p className="text-[10px] text-gray-400">per person</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">per person</p>
           </div>
         </div>
       </div>
@@ -548,7 +548,7 @@ function BookedFlightCard({ flight }: { flight: BookedFlight }) {
       <AnimatePresence>
         {expanded && (
           <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
-            <div className="border-t border-gray-100 bg-gradient-to-b from-gray-50/80 to-white px-4 pb-4 pt-3">
+            <div className="border-t border-gray-100 dark:border-white/[0.06] bg-gradient-to-b from-gray-50/80 dark:from-white/[0.02] to-white dark:to-transparent px-4 pb-4 pt-3">
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Aircraft', value: flight.aircraft },
@@ -558,23 +558,23 @@ function BookedFlightCard({ flight }: { flight: BookedFlight }) {
                   { label: 'Meal', value: flight.meal },
                   { label: 'Wi-Fi', value: flight.wifi },
                 ].map(item => (
-                  <div key={item.label} className="bg-white rounded-lg p-2.5 border border-gray-100 shadow-sm">
-                    <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">{item.label}</p>
-                    <p className="text-[11px] text-gray-700 font-medium">{item.value}</p>
+                  <div key={item.label} className="bg-white dark:bg-white/[0.03] rounded-lg p-2.5 border border-gray-100 dark:border-white/[0.06] shadow-sm">
+                    <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-0.5">{item.label}</p>
+                    <p className="text-[11px] text-gray-700 dark:text-gray-300 font-medium">{item.value}</p>
                   </div>
                 ))}
               </div>
               {/* Price breakdown */}
-              <div className="mt-2 bg-white rounded-lg p-2.5 border border-gray-100 shadow-sm">
-                <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1.5">Price Breakdown</p>
+              <div className="mt-2 bg-white dark:bg-white/[0.03] rounded-lg p-2.5 border border-gray-100 dark:border-white/[0.06] shadow-sm">
+                <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Price Breakdown</p>
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px]"><span className="text-gray-500">Base fare</span><span className="text-gray-700">${flight.price.base}</span></div>
-                  <div className="flex justify-between text-[11px]"><span className="text-gray-500">Taxes & fees</span><span className="text-gray-700">${flight.price.taxes}</span></div>
-                  <div className="flex justify-between text-[11px] font-semibold border-t border-gray-100 pt-1 mt-1"><span className="text-gray-800">Total</span><span className="text-[#2563eb]">${flight.price.total}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-gray-500 dark:text-gray-400">Base fare</span><span className="text-gray-700 dark:text-gray-300">${flight.price.base}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-gray-500 dark:text-gray-400">Taxes & fees</span><span className="text-gray-700 dark:text-gray-300">${flight.price.taxes}</span></div>
+                  <div className="flex justify-between text-[11px] font-semibold border-t border-gray-100 dark:border-white/[0.06] pt-1 mt-1"><span className="text-gray-800 dark:text-white">Total</span><span className="text-[#2563eb]">${flight.price.total}</span></div>
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px]">
-                <span className="text-gray-500">Confirmation:</span>
+                <span className="text-gray-500 dark:text-gray-400">Confirmation:</span>
                 <span className="font-mono font-bold text-[#2563eb]">{flight.confirmation}</span>
               </div>
             </div>
@@ -605,12 +605,12 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
-      <button onClick={() => setOpen(!open)} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+    <div className="bg-white dark:bg-white/[0.03] rounded-xl shadow-sm border border-gray-200 dark:border-white/[0.08] overflow-hidden mb-4">
+      <button onClick={() => setOpen(!open)} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-white/[0.04] transition-colors">
         <div className="flex items-center gap-2">
-          <TrendingUp size={16} className="text-emerald-600" />
-          <span className="text-sm font-medium text-gray-900">Compare Alternatives</span>
-          <span className="text-[10px] text-gray-400">{comparisonFlights.length} options</span>
+          <TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" />
+          <span className="text-sm font-medium text-gray-900 dark:text-white">Compare Alternatives</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">{comparisonFlights.length} options</span>
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -618,19 +618,19 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
       <AnimatePresence>
         {open && (
           <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
-            <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+            <div className="px-4 pb-4 border-t border-gray-100 dark:border-white/[0.06] pt-3 space-y-3">
               {/* Sort + alt airports */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex gap-1">
                   {(['price', 'duration', 'value'] as const).map(s => (
                     <button key={s} onClick={() => setSort(s)}
-                      className={`px-2.5 py-1 rounded-lg text-xs transition-all ${sort === s ? 'bg-[#2563eb] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      className={`px-2.5 py-1 rounded-lg text-xs transition-all ${sort === s ? 'bg-[#2563eb] text-white' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/[0.1]'}`}>
                       {s === 'price' ? 'Price' : s === 'duration' ? 'Fastest' : 'Best Value'}
                     </button>
                   ))}
                 </div>
                 <button onClick={() => setAltAirports(!altAirports)}
-                  className={`text-xs px-2.5 py-1 rounded-lg transition-all ${altAirports ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  className={`text-xs px-2.5 py-1 rounded-lg transition-all ${altAirports ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/[0.1]'}`}>
                   Alt Airports
                 </button>
               </div>
@@ -641,9 +641,9 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                     <div className="grid grid-cols-3 gap-2">
                       {[{ code: 'EWR', savings: 50 }, { code: 'LGA', savings: 35 }, { code: 'ORY', savings: 75 }].map(ap => (
-                        <button key={ap.code} className="text-left p-2 border border-gray-200 rounded-lg hover:border-[#2563eb] hover:bg-blue-50/50 transition-colors">
-                          <p className="text-xs font-semibold text-gray-900">{ap.code}</p>
-                          <p className="text-xs text-emerald-600 font-medium">-${ap.savings}</p>
+                        <button key={ap.code} className="text-left p-2 border border-gray-200 dark:border-white/[0.08] rounded-lg hover:border-[#2563eb] hover:bg-blue-50/50 dark:hover:bg-white/[0.04] transition-colors">
+                          <p className="text-xs font-semibold text-gray-900 dark:text-white">{ap.code}</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">-${ap.savings}</p>
                         </button>
                       ))}
                     </div>
@@ -654,16 +654,16 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
               {/* Price range info */}
               <div className="flex items-center gap-2 px-1">
                 <Info size={11} className="text-gray-400 shrink-0" />
-                <p className="text-[10px] text-gray-500">
-                  Prices from <span className="font-semibold text-gray-700">${Math.min(...comparisonFlights.map(f => f.price))}</span> to{' '}
-                  <span className="font-semibold text-gray-700">${Math.max(...comparisonFlights.map(f => f.price))}</span> per person incl. taxes
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  Prices from <span className="font-semibold text-gray-700 dark:text-gray-300">${Math.min(...comparisonFlights.map(f => f.price))}</span> to{' '}
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">${Math.max(...comparisonFlights.map(f => f.price))}</span> per person incl. taxes
                 </p>
               </div>
 
               {/* Flight option cards */}
               <div className="space-y-2">
                 {sorted.map(flight => (
-                  <div key={flight.id} className={`rounded-xl overflow-hidden transition-all ${expandedId === flight.id ? 'shadow-md ring-1 ring-[#2563eb]/20' : 'shadow-sm ring-1 ring-gray-200 hover:ring-gray-300 hover:shadow'}`}>
+                  <div key={flight.id} className={`rounded-xl overflow-hidden transition-all ${expandedId === flight.id ? 'shadow-md ring-1 ring-[#2563eb]/20' : 'shadow-sm ring-1 ring-gray-200 dark:ring-white/[0.08] hover:ring-gray-300 dark:hover:ring-white/[0.15] hover:shadow'}`}>
                     {/* Badge */}
                     {flight.badge && (
                       <div className="bg-gradient-to-r from-[#2563eb] to-[#3b82f6] px-3 py-0.5">
@@ -672,50 +672,50 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
                     )}
 
                     {/* Summary row */}
-                    <button onClick={() => setExpandedId(expandedId === flight.id ? null : flight.id)} className="w-full text-left bg-white p-3 hover:bg-gray-50/50 transition-colors">
+                    <button onClick={() => setExpandedId(expandedId === flight.id ? null : flight.id)} className="w-full text-left bg-white dark:bg-white/[0.03] p-3 hover:bg-gray-50/50 dark:hover:bg-white/[0.05] transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center shrink-0 shadow-sm">
                           <span className="text-white text-[11px] font-bold">{flight.airlineLogo}</span>
                         </div>
                         <div className="flex items-baseline gap-1.5 min-w-0 shrink-0">
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">{flight.departure.time}</p>
-                            <p className="text-[11px] text-gray-400">{flight.departure.airport}</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{flight.departure.time}</p>
+                            <p className="text-[11px] text-gray-400 dark:text-gray-500">{flight.departure.airport}</p>
                           </div>
-                          <span className="text-gray-300 text-sm px-0.5">→</span>
+                          <span className="text-gray-300 dark:text-gray-600 text-sm px-0.5">→</span>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
                               {flight.arrival.time}
                               {flight.arrival.nextDay && <sup className="text-[9px] text-amber-500 ml-0.5">+1</sup>}
                             </p>
-                            <p className="text-[11px] text-gray-400">{flight.arrival.airport}</p>
+                            <p className="text-[11px] text-gray-400 dark:text-gray-500">{flight.arrival.airport}</p>
                           </div>
                         </div>
                         <div className="flex-1" />
                         <div className="shrink-0 text-right mr-1">
-                          <p className="text-[13px] text-gray-700">{flight.duration}</p>
+                          <p className="text-[13px] text-gray-700 dark:text-gray-300">{flight.duration}</p>
                           {flight.stops === 0
-                            ? <p className="text-[11px] text-emerald-600 font-medium">Direct</p>
-                            : <p className="text-[11px] text-amber-600 font-medium">{flight.stops} stop</p>}
+                            ? <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Direct</p>
+                            : <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">{flight.stops} stop</p>}
                         </div>
-                        <div className="h-8 w-px bg-gray-200 shrink-0" />
+                        <div className="h-8 w-px bg-gray-200 dark:bg-white/[0.08] shrink-0" />
                         <div className="text-right shrink-0 min-w-[56px]">
                           <p className="text-[15px] font-bold text-[#2563eb]">${flight.price}</p>
-                          <p className="text-[11px] text-gray-400">{flight.fareClass}</p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500">{flight.fareClass}</p>
                         </div>
-                        <ChevronDown size={16} className={`text-gray-300 shrink-0 transition-transform ${expandedId === flight.id ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={16} className={`text-gray-300 dark:text-gray-600 shrink-0 transition-transform ${expandedId === flight.id ? 'rotate-180' : ''}`} />
                       </div>
                       {/* Amenity row */}
                       <div className="flex items-center gap-2 mt-2 ml-[52px]">
-                        <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded-md">
-                          <Wifi size={11} className={flight.amenities.wifi ? 'text-gray-600' : 'text-gray-300'} />
-                          <Zap size={11} className={flight.amenities.power ? 'text-gray-600' : 'text-gray-300'} />
-                          <Utensils size={11} className={flight.amenities.meals ? 'text-gray-600' : 'text-gray-300'} />
-                          <Monitor size={11} className={flight.amenities.entertainment ? 'text-gray-600' : 'text-gray-300'} />
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-white/[0.04] rounded-md">
+                          <Wifi size={11} className={flight.amenities.wifi ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'} />
+                          <Zap size={11} className={flight.amenities.power ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'} />
+                          <Utensils size={11} className={flight.amenities.meals ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'} />
+                          <Monitor size={11} className={flight.amenities.entertainment ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'} />
                         </div>
-                        <span className="text-[11px] text-gray-400">{flight.airline}</span>
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500">{flight.airline}</span>
                         {'businessAvailable' in flight && flight.businessAvailable && (
-                          <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Business avail.</span>
+                          <span className="text-[10px] bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700/30 px-1.5 py-0.5 rounded-full">Business avail.</span>
                         )}
                       </div>
                     </button>
@@ -724,22 +724,22 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
                     <AnimatePresence>
                       {expandedId === flight.id && (
                         <motion.div initial="hidden" animate="visible" exit="exit" variants={collapseVariants}>
-                          <div className="border-t border-gray-100 bg-gradient-to-b from-gray-50/80 to-white px-3 pb-3 pt-2">
-                            <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 mb-2 text-[10px] text-gray-400">
-                              <span className="text-gray-600 font-medium">{flight.airline}</span>
+                          <div className="border-t border-gray-100 dark:border-white/[0.06] bg-gradient-to-b from-gray-50/80 dark:from-white/[0.02] to-white dark:to-transparent px-3 pb-3 pt-2">
+                            <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 mb-2 text-[10px] text-gray-400 dark:text-gray-500">
+                              <span className="text-gray-600 dark:text-gray-300 font-medium">{flight.airline}</span>
                               <span>·</span><span>{flight.flightNumber}</span>
-                              {flight.layover && (<><span>·</span><span className="text-amber-600">Stop: {flight.layover}</span></>)}
+                              {flight.layover && (<><span>·</span><span className="text-amber-600 dark:text-amber-400">Stop: {flight.layover}</span></>)}
                             </div>
                             {/* Stats bar */}
-                            <div className="flex items-center justify-between bg-white rounded-lg p-2.5 border border-gray-100 shadow-sm mb-2">
+                            <div className="flex items-center justify-between bg-white dark:bg-white/[0.03] rounded-lg p-2.5 border border-gray-100 dark:border-white/[0.06] shadow-sm mb-2">
                               <div className="flex items-center gap-1 text-[10px]">
                                 <div className={`w-1.5 h-1.5 rounded-full ${flight.onTime >= 85 ? 'bg-green-500' : flight.onTime >= 78 ? 'bg-amber-400' : 'bg-red-400'}`} />
-                                <span className="text-gray-600">{flight.onTime}% on-time</span>
+                                <span className="text-gray-600 dark:text-gray-400">{flight.onTime}% on-time</span>
                               </div>
-                              <div className="h-3 w-px bg-gray-200" />
+                              <div className="h-3 w-px bg-gray-200 dark:bg-white/[0.08]" />
                               <div className="flex items-center gap-0.5 text-[10px]">
-                                <Leaf size={10} className={flight.co2 <= 280 ? 'text-green-600' : 'text-gray-400'} />
-                                <span className="text-gray-600">{flight.co2}kg CO2</span>
+                                <Leaf size={10} className={flight.co2 <= 280 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'} />
+                                <span className="text-gray-600 dark:text-gray-400">{flight.co2}kg CO2</span>
                               </div>
                             </div>
                             <button className="w-full py-2 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white text-xs font-medium rounded-lg hover:from-[#1d4ed8] hover:to-[#2563eb] transition-all shadow-sm">
@@ -840,17 +840,17 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     return (
       <div className="space-y-3 animate-pulse">
         {[0, 1].map(i => (
-          <div key={i} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div key={i} className="rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden">
             <div className="h-11 rounded-t-2xl" style={{ background: i === 0 ? 'linear-gradient(135deg, #2563eb, #3b82f6)' : 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }} />
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="h-12 w-16 rounded bg-gray-200" />
-                <div className="flex-1 mx-4 h-px bg-gray-200" />
-                <div className="h-12 w-16 rounded bg-gray-200" />
+                <div className="h-12 w-16 rounded bg-gray-200 dark:bg-white/[0.06]" />
+                <div className="flex-1 mx-4 h-px bg-gray-200 dark:bg-white/[0.06]" />
+                <div className="h-12 w-16 rounded bg-gray-200 dark:bg-white/[0.06]" />
               </div>
               <div className="flex gap-2">
-                <div className="h-6 w-20 rounded-full bg-gray-200" />
-                <div className="h-6 w-24 rounded-full bg-gray-200" />
+                <div className="h-6 w-20 rounded-full bg-gray-200 dark:bg-white/[0.06]" />
+                <div className="h-6 w-24 rounded-full bg-gray-200 dark:bg-white/[0.06]" />
               </div>
             </div>
           </div>
@@ -882,17 +882,19 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
 
       {/* 3. Comparison Alternatives */}
       {searchingFlights ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-[#2563eb] rounded-full animate-spin mx-auto mb-2" />
-          <p className="text-sm text-gray-400">Searching flights...</p>
+        <div className="bg-white dark:bg-white/[0.03] rounded-xl shadow-sm border border-gray-200 dark:border-white/[0.08] p-6 text-center">
+          <div className="w-6 h-6 border-2 border-gray-300 dark:border-white/[0.15] border-t-[#2563eb] rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-sm text-gray-400 dark:text-gray-500">Searching flights...</p>
         </div>
       ) : searchedFlights.length > 0 ? (
         <ComparisonAlternatives comparisonFlights={searchedFlights} />
       ) : !hasBookedFlights ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Plane size={32} className="text-gray-300 mb-3" />
-          <p className="text-sm font-medium text-gray-500">Search for flights to compare options</p>
-          <p className="text-xs text-gray-400 mt-1">Use the search above to find the best deals</p>
+          <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center mb-3">
+            <Plane size={24} className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">Search for flights to compare options</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Use the search above to find the best deals</p>
         </div>
       ) : null}
 

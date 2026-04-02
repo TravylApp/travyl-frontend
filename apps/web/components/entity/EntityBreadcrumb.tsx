@@ -19,15 +19,15 @@ export function EntityBreadcrumb({ items, current }: Props) {
           <li key={i} className="flex items-center gap-1">
             <Link
               href={item.href}
-              className="text-sm text-gray-500 hover:text-[#003594] transition-colors"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#003594] dark:hover:text-blue-400 transition-colors"
             >
               {item.label}
             </Link>
-            <NavArrowRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+            <NavArrowRight className="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
           </li>
         ))}
         <li>
-          <span className="text-sm text-gray-900 font-medium truncate">{current}</span>
+          <span className="text-sm text-gray-900 dark:text-white font-medium truncate">{current}</span>
         </li>
       </ol>
     </nav>

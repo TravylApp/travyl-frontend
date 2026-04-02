@@ -263,7 +263,7 @@ function GlanceView({
                     {day.dateLabel}
                   </p>
                   <div className="flex items-end justify-between">
-                    <h3 className="text-base font-bold font-serif text-white">{day.dayLabel}</h3>
+                    <h3 className="text-base font-bold text-white">{day.dayLabel}</h3>
                     <span className="text-[9px] text-white/40">
                       {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
                     </span>
@@ -540,7 +540,7 @@ function GlanceView({
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f0f1e 0%, transparent 20%)' }} />
                 {/* Day label — bottom right */}
                 <div className="absolute bottom-3 right-3">
-                  <p className="text-sm font-bold text-white/60 font-serif" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                  <p className="text-sm font-bold text-white/60" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
                     {day.dayLabel}
                   </p>
                 </div>
@@ -1232,16 +1232,18 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               }}
               onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
               onClick={() => setSelectedDayIndex(i)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing ${
-                dragOverIdx === i ? 'ring-2 ring-white/40 scale-105' : ''
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing border ${
+                dragOverIdx === i ? 'ring-2 ring-gray-400 dark:ring-white/40 scale-105' : ''
+              } ${
+                i === selectedDayIndex
+                  ? 'bg-gray-100 dark:bg-white/[0.15] border-gray-300 dark:border-white/[0.25]'
+                  : dragOverIdx === i
+                    ? 'bg-gray-50 dark:bg-white/[0.08] border-transparent'
+                    : 'bg-transparent border-transparent'
               }`}
-              style={{
-                backgroundColor: i === selectedDayIndex ? 'rgba(255,255,255,0.15)' : dragOverIdx === i ? 'rgba(255,255,255,0.08)' : 'transparent',
-                border: i === selectedDayIndex ? '1px solid rgba(255,255,255,0.25)' : '1px solid transparent',
-              }}
             >
-              <span className="block text-[10px] font-bold text-white/50">{d.dayLabel.replace('Day ', 'D')}</span>
-              <span className="block text-[11px] font-medium text-white/80">{d.dateLabel.replace(/,.*/, '')}</span>
+              <span className="block text-[10px] font-bold text-gray-500 dark:text-white/50">{d.dayLabel.replace('Day ', 'D')}</span>
+              <span className="block text-[11px] font-medium text-gray-800 dark:text-white/80">{d.dateLabel.replace(/,.*/, '')}</span>
             </button>
           ))}
         </div>
@@ -1250,17 +1252,15 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         <section>
           <div className="mb-4 flex items-end justify-between">
             <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-white/70"
-                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-normal font-serif text-white tracking-wide"
+              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
+              <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white tracking-wide"
                 style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
             </div>
             <div className="relative shrink-0 mr-2" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
-                style={{ border: '1px solid rgba(255,255,255,0.2)' }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/[0.2] transition-all disabled:opacity-50"
               >
                 <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
                 {regenerating ? 'Working...' : 'Regenerate'}
@@ -1268,48 +1268,48 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               </button>
               {regenMenuOpen && !regenerating && (
                 <div className="absolute right-0 top-full mt-1.5 z-50 animate-[fadeSlideIn_0.15s_ease-out]">
-                  <div className="bg-[#0f1f33] border border-white/15 rounded-xl p-1.5 shadow-2xl min-w-[200px] backdrop-blur-xl">
-                    <p className="px-3 py-1 text-[9px] uppercase tracking-wider text-white/30 font-semibold">Regenerate</p>
+                  <div className="bg-white dark:bg-[#0f1f33] border border-gray-200 dark:border-white/15 rounded-xl p-1.5 shadow-2xl min-w-[200px] backdrop-blur-xl">
+                    <p className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 dark:text-white/30 font-semibold">Regenerate</p>
                     <button onClick={() => { setRegenMenuOpen(false); handleRegenerate(); }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                       <RefreshCw size={11} /> Entire trip
                     </button>
                     <button onClick={() => { setRegenMenuOpen(false); handleRegenerateDay(selectedDayIndex); }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                       <Calendar size={11} /> Day {selectedDayIndex + 1} only
                     </button>
                     <button onClick={() => { setRegenMenuOpen(false); handleFillEmpty(selectedDayIndex); }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                       <Compass size={11} /> Fill empty slots
                     </button>
-                    <div className="mx-2 my-1 h-px bg-white/10" />
-                    <p className="px-3 py-1 text-[9px] uppercase tracking-wider text-white/30 font-semibold">Suggest for Day {selectedDayIndex + 1}</p>
+                    <div className="mx-2 my-1 h-px bg-gray-100 dark:bg-white/10" />
+                    <p className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 dark:text-white/30 font-semibold">Suggest for Day {selectedDayIndex + 1}</p>
                     <button onClick={() => { setRegenMenuOpen(false); handleSuggestActivity('restaurant', selectedDayIndex, 'evening'); }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                       <UtensilsCrossed size={11} /> Restaurant
                     </button>
                     <button onClick={() => { setRegenMenuOpen(false); handleSuggestActivity('attraction', selectedDayIndex, 'morning'); }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                       <Landmark size={11} /> Attraction
                     </button>
                     <button onClick={() => { setRegenMenuOpen(false); handleSuggestActivity('nightlife bar', selectedDayIndex, 'latenight'); }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                      className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                       <Moon size={11} /> Nightlife
                     </button>
                     {trip?.trip_context?.lat && (
                       <>
-                        <div className="mx-2 my-1 h-px bg-white/10" />
-                        <p className="px-3 py-1 text-[9px] uppercase tracking-wider text-white/30 font-semibold">Nearby</p>
+                        <div className="mx-2 my-1 h-px bg-gray-100 dark:bg-white/10" />
+                        <p className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 dark:text-white/30 font-semibold">Nearby</p>
                         <button onClick={() => { setRegenMenuOpen(false); handleSuggestActivity('restaurant', selectedDayIndex, 'evening', true); }}
-                          className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                          className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                           <UtensilsCrossed size={11} /> Restaurant nearby
                         </button>
                         <button onClick={() => { setRegenMenuOpen(false); handleSuggestActivity('cafe coffee', selectedDayIndex, 'morning', true); }}
-                          className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                          className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                           <MapPin size={11} /> Cafe nearby
                         </button>
                         <button onClick={() => { setRegenMenuOpen(false); handleSuggestActivity('things to do', selectedDayIndex, 'afternoon', true); }}
-                          className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2">
+                          className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-gray-700 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
                           <Compass size={11} /> Activity nearby
                         </button>
                       </>
@@ -1318,50 +1318,40 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md"
-              style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
-              <span className="text-[11px] tabular-nums mr-1 text-white/70">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md bg-gray-100/80 dark:bg-black/30">
+              <span className="text-[11px] tabular-nums mr-1 text-gray-600 dark:text-white/70">
                 {selectedDayIndex + 1} / {days.length}
               </span>
               <button onClick={() => selectedDayIndex > 0 && setSelectedDayIndex(selectedDayIndex - 1)} disabled={selectedDayIndex === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid rgba(255,255,255,0.25)' }}>
-                <ChevronDown size={14} className="rotate-90 text-white/70" />
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25]">
+                <ChevronDown size={14} className="rotate-90 text-gray-600 dark:text-white/70" />
               </button>
               <button onClick={() => selectedDayIndex < days.length - 1 && setSelectedDayIndex(selectedDayIndex + 1)} disabled={selectedDayIndex === days.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid rgba(255,255,255,0.25)' }}>
-                <ChevronDown size={14} className="-rotate-90 text-white/70" />
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25]">
+                <ChevronDown size={14} className="-rotate-90 text-gray-600 dark:text-white/70" />
               </button>
               <a
                 href={`/trip/${id}/calendar`}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                style={{ border: '1px solid rgba(255,255,255,0.25)' }}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25]"
                 title="Calendar view"
               >
-                <Calendar size={13} className="text-white/70" />
+                <Calendar size={13} className="text-gray-600 dark:text-white/70" />
               </a>
               <button
                 onClick={() => setCompactOpen((v) => !v)}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                style={{
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  backgroundColor: compactOpen ? 'rgba(255,255,255,0.2)' : 'transparent',
-                  color: compactOpen ? 'white' : 'rgba(255,255,255,0.7)',
-                }}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25] ${
+                  compactOpen ? 'bg-gray-200 dark:bg-white/[0.2] text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'
+                }`}
                 title={compactOpen ? 'Hide day details' : 'Show day details'}
               >
                 <LayoutList size={13} />
               </button>
-              <div className="w-px h-4 mx-1 bg-white/20" />
+              <div className="w-px h-4 mx-1 bg-gray-300 dark:bg-white/20" />
               <button
                 onClick={() => setRequestMapOpen((v: boolean) => !v)}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                style={{
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  backgroundColor: requestMapOpen ? 'rgba(255,255,255,0.2)' : 'transparent',
-                  color: requestMapOpen ? 'white' : 'rgba(255,255,255,0.7)',
-                }}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25] ${
+                  requestMapOpen ? 'bg-gray-200 dark:bg-white/[0.2] text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'
+                }`}
                 title="Toggle map"
               >
                 <Map size={13} />
@@ -1394,12 +1384,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       {compactOpen && selectedDay && (
         <section className="mt-8">
           <div className="mb-4">
-            <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1"
-              style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+            <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-gray-400">
               {selectedDay.dateLabel}
             </p>
-            <h2 className="text-xl sm:text-2xl font-bold font-serif"
-              style={{ color: 'var(--magazine-heading, #1a1a2e)' }}>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
               {selectedDay.dayLabel} — {selectedDay.theme || 'Your Day'}
             </h2>
           </div>
@@ -1410,17 +1398,17 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           {/* Flight placeholder on first day — links to Flights tab */}
           {isFirstDay && !arrivalFlight && tripFlight && (
             <section className="mb-3.5">
-              <a href={`/trip/${id}/flights`} className="block rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow group">
+              <a href={`/trip/${id}/flights`} className="block rounded-xl p-3 shadow-sm border border-blue-200/60 dark:border-blue-500/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 hover:shadow-md transition-shadow group">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--trip-base)' }}>
                     <PaperPlane size={14} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Arrival Flight</p>
-                    <p className="text-sm font-medium text-gray-900">Flight to {tripFlight.city} ({tripFlight.destAirport})</p>
-                    <p className="text-[11px] text-gray-500">Tap to search and select your flight</p>
+                    <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Arrival Flight</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">Flight to {tripFlight.city} ({tripFlight.destAirport})</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Tap to search and select your flight</p>
                   </div>
-                  <span className="text-[11px] font-medium text-blue-600 group-hover:text-blue-800 shrink-0">Search →</span>
+                  <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 group-hover:text-blue-800 dark:group-hover:text-blue-300 shrink-0">Search →</span>
                 </div>
               </a>
             </section>
@@ -1428,15 +1416,15 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           {/* Hotel check-in on first day */}
           {isFirstDay && firstHotel && (
             <section className="mb-3.5">
-              <a href={`/trip/${id}/hotels`} className="block rounded-lg p-3 shadow-sm border border-amber-200/60 bg-gradient-to-r from-amber-50 to-orange-50 hover:shadow-md transition-shadow group">
+              <a href={`/trip/${id}/hotels`} className="block rounded-xl p-3 shadow-sm border border-amber-200/60 dark:border-amber-500/20 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 hover:shadow-md transition-shadow group">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0">
                     <MapPin size={14} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Hotel Check-in</p>
-                    <p className="text-sm font-medium text-gray-900 truncate">{firstHotel.name}</p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Hotel Check-in</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{firstHotel.name}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
                       {firstHotel.price ? `$${firstHotel.price}/night · ` : firstHotel.price_per_night ? `$${firstHotel.price_per_night}/night · ` : ''}
                       {firstHotel.stars ? `${'★'.repeat(firstHotel.stars)} · ` : ''}
                       Check-in 3:00 PM
@@ -1446,7 +1434,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={firstHotel.image} alt={firstHotel.name} referrerPolicy="no-referrer" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   )}
-                  <span className="text-[11px] font-medium text-amber-600 group-hover:text-amber-800 shrink-0">Change →</span>
+                  <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 group-hover:text-amber-800 dark:group-hover:text-amber-300 shrink-0">Change →</span>
                 </div>
               </a>
             </section>
@@ -1539,7 +1527,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Search size={24} className="mx-auto text-gray-300 mb-2" />
+                        <Search size={24} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                         <p className="text-xs text-gray-500 dark:text-gray-400">No results match your search</p>
                         <button onClick={() => { setAddSearch(''); setAddCategory('All'); }} className="text-[11px] mt-1 hover:underline" style={{ color: 'var(--trip-base)' }}>Clear filters</button>
                       </div>
@@ -1555,15 +1543,15 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             <>
               {firstHotel && (
                 <section className="mb-3.5">
-                  <div className="rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="rounded-xl p-3 shadow-sm border border-blue-200/60 dark:border-blue-500/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
                         <MapPin size={14} className="text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Hotel Check-out</p>
-                        <p className="text-sm font-medium text-gray-900 truncate">{firstHotel.name}</p>
-                        <p className="text-[11px] text-gray-500">Check-out 11:00 AM</p>
+                        <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Hotel Check-out</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{firstHotel.name}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Check-out 11:00 AM</p>
                       </div>
                     </div>
                   </div>
@@ -1572,17 +1560,17 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />}
               {!returnFlight && tripFlight && (
                 <section className="mb-3.5">
-                  <a href={`/trip/${id}/flights`} className="block rounded-lg p-3 shadow-sm border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow group">
+                  <a href={`/trip/${id}/flights`} className="block rounded-xl p-3 shadow-sm border border-blue-200/60 dark:border-blue-500/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 hover:shadow-md transition-shadow group">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--trip-base)' }}>
                         <PaperPlane size={14} className="text-white rotate-180" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Return Flight</p>
-                        <p className="text-sm font-medium text-gray-900">Flight home from {tripFlight.city} ({tripFlight.destAirport})</p>
-                        <p className="text-[11px] text-gray-500">Tap to search and select your flight</p>
+                        <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Return Flight</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">Flight home from {tripFlight.city} ({tripFlight.destAirport})</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Tap to search and select your flight</p>
                       </div>
-                      <span className="text-[11px] font-medium text-blue-600 group-hover:text-blue-800 shrink-0">Search →</span>
+                      <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 group-hover:text-blue-800 dark:group-hover:text-blue-300 shrink-0">Search →</span>
                     </div>
                   </a>
                 </section>
