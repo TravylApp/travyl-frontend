@@ -85,39 +85,36 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
         <div>
           <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
             style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Explore</span>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-white"
-            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Things to Do</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-gray-900 dark:text-white">Things to Do</h2>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
-          style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full"
+          style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
           {!gridView && (
             <>
-              <span className="text-[11px] tabular-nums mr-1 text-white/80">
+              <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
                 {activeIdx + 1} / {items.length}
               </span>
               <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-                <ChevronLeft size={14} className="text-white" />
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/30">
+                <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
               </button>
               <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-                <ChevronRight size={14} className="text-white" />
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/30">
+                <ChevronRight size={14} className="text-gray-600 dark:text-white" />
               </button>
             </>
           )}
           {gridView && (
             <button onClick={() => setFlush(f => !f)} title="Flush grid"
-              className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-              style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: flush ? 'rgba(255,255,255,0.2)' : 'transparent' }}>
-              <LayoutGrid size={12} className="text-white/70" />
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/30"
+              style={{ backgroundColor: flush ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
+              <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />
             </button>
           )}
           <button onClick={() => setGridView(v => !v)} title={gridView ? 'Carousel view' : 'Grid view'}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-            style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: gridView ? 'rgba(255,255,255,0.2)' : 'transparent' }}>
-            {gridView ? <LayoutList size={12} className="text-white/70" /> : <LayoutGrid size={12} className="text-white/70" />}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/30"
+            style={{ backgroundColor: gridView ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
+            {gridView ? <LayoutList size={12} className="text-gray-500 dark:text-white/70" /> : <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />}
           </button>
         </div>
       </div>
@@ -702,7 +699,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         <div ref={revealRef}>
 
           {/* ── Row 1: Things to Do (left) + Cuisine (right) ── */}
-          <div className="px-6 sm:px-10 mt-6">
+          <div className="px-6 sm:px-10 md:pl-16 mt-6">
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
@@ -723,7 +720,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                   <div className="mb-4">
                     <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
                       style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Local Cuisine</span>
-                    <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Must-Try Dishes</h3>
+                    <h3 className="text-2xl sm:text-3xl font-bold font-serif text-gray-900 dark:text-white">Must-Try Dishes</h3>
                   </div>
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     {trip!.trip_context!.cuisine!.map((dish: { id: string; name: string; image: string }) => (
@@ -744,7 +741,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
           {(hasNewsArticles || events.length > 0) && (
-            <div className="relative z-10 px-6 sm:px-10 mt-8">
+            <div className="relative z-10 px-6 sm:px-10 md:pl-16 mt-8">
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
                   <div className="flex-1 min-w-0">
@@ -762,7 +759,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(trip?.trip_context?.phrases || trip?.trip_context?.cost_of_living) && (
-            <div className="relative z-10 px-6 sm:px-10 mt-8">
+            <div className="relative z-10 px-6 sm:px-10 md:pl-16 mt-8">
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {trip?.trip_context?.phrases && Object.keys(trip.trip_context.phrases).length > 0 && (
                   <div className="flex-1 min-w-0">
@@ -780,15 +777,12 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (
-            <div className="px-6 sm:px-10 mt-8">
+            <div className="px-6 sm:px-10 md:pl-16 mt-8">
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
           )}
 
-          {/* ── Rotating photo mosaic — bleeds up behind the cards ── */}
-          {trip?.trip_context?.hero_images && trip.trip_context.hero_images.length > 0 && (
-            <TripMosaic photos={trip.trip_context.hero_images} destination={trip.destination} />
-          )}
+          {/* TripMosaic removed — was designed for magazine layout, not app shell */}
 
         </div>
       </div>
