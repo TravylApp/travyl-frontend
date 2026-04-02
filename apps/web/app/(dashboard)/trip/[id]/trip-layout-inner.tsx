@@ -8,10 +8,10 @@ import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
 import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip } from '@travyl/shared';
-import { OceanWave, Footer } from '@/components/home';
+// Footer/OceanWave removed — trip pages use workspace layout
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
-import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
+import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
 import type { PlaceItem } from '@travyl/shared';
@@ -33,11 +33,8 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   if (!tab) return null;
   const Icon = tab.icon;
 
-  // Overview + Itinerary: clean magazine look — no header bar
-  if (segment === '' || segment === 'itinerary') return null;
-
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-20 pt-4 pb-3 sticky top-0 z-20">
+    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-6 pt-4 pb-3 sticky top-0 z-20">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: tab.color }}>
           <Icon size={15} className="text-white" />
@@ -271,25 +268,6 @@ function TripLayoutContent({
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
   const isCalendar = currentSegment === 'calendar';
-  const isMagazineLayout = isOverview || currentSegment === 'itinerary';
-
-  // Track exit animation from magazine pages to prevent white flash
-  const [exitingFromMagazine, setExitingFromMagazine] = useState(false);
-  const wasMagazineRef = useRef(isMagazineLayout);
-
-  useEffect(() => {
-    if (wasMagazineRef.current && !isMagazineLayout) {
-      setExitingFromMagazine(true);
-    }
-    wasMagazineRef.current = isMagazineLayout;
-  }, [isMagazineLayout]);
-
-  const handleExitComplete = () => {
-    setExitingFromMagazine(false);
-  };
-
-  const isItinerary = currentSegment === 'itinerary';
-  const useOverviewBg = isMagazineLayout || exitingFromMagazine;
 
   const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
   const prevSegmentRef = useRef(currentSegment);
@@ -345,73 +323,47 @@ function TripLayoutContent({
   }
 
   return (
-    <div
-      className={`pb-14 md:pb-0 ${useOverviewBg ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
-      style={{ transition: 'background-color 0.5s ease' }}
-    >
-      {/* Trip navigation sidebar — vertical on desktop, bottom bar on mobile */}
-      <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
+    <div className="pb-14 md:pb-0 bg-white dark:bg-[var(--background)]">
+      {/* Sidebar — always icon-only spine on desktop, bottom bar on mobile */}
+      <TripTabs tripId={tripId} position="left" />
 
-      {/* Hero banner — only on overview + itinerary */}
-      {(isOverview || isItinerary) && (
-        <TripMagazineHero tripId={tripId} trip={trip} compact={isItinerary} onTripUpdate={refetch} />
-      )}
+      {/* Compact trip header — all tabs */}
+      <CompactTripHeader tripId={tripId} trip={trip} onTripUpdate={refetch} />
 
+      {/* Content area */}
       <div className="mx-auto max-w-7xl">
+        <div className="relative z-10">
+          <ContentHeader
+            tripId={tripId}
+            mapOpen={mapOpen}
+            onToggleMap={() => setMapOpen(!mapOpen)}
+          />
 
-        {/* Suitcase card */}
-        <div
-          className={`relative z-10 ${
-            isOverview || currentSegment === 'itinerary'
-              ? ''
-              : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
-          }`}
-          style={
-            isOverview || currentSegment === 'itinerary'
-              ? undefined
-              : {
-                  boxShadow:
-                    '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)',
-                }
-          }
-        >
-        <div>
-          {/* Content area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <ContentHeader
-              tripId={tripId}
-              mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen(!mapOpen)}
-            />
+          <div className="flex">
+            {/* Main content */}
+            <div className="flex-1 min-w-0 relative overflow-hidden px-5 md:pl-6 pt-4 pb-5">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={`tab-${currentSegment}`}
+                  initial={pageVariants.initial}
+                  animate={pageVariants.animate}
+                  exit={pageVariants.exit}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
-            <div className="flex">
-              <div
-                className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isMagazineLayout ? 'md:pl-20' : 'bg-white dark:bg-[var(--background)] px-5 md:pl-20 pt-4 pb-5'
-                }`}
-              >
-                <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
-                  <motion.div
-                    key={`tab-${currentSegment}`}
-                    initial={pageVariants.initial}
-                    animate={pageVariants.animate}
-                    exit={pageVariants.exit}
-                    transition={{ duration: 0.18, ease: 'easeOut' }}
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              {/* Map side panel */}
-              <AnimatePresence>
+            {/* Map side panel */}
+            <AnimatePresence>
               {mapOpen && (
                 <motion.div
                   initial={{ width: 0, opacity: 0 }}
                   animate={{ width: '35%', opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden rounded-r-2xl"
+                  className="hidden md:block shrink-0 border-l border-gray-200 dark:border-white/[0.08] overflow-hidden"
                 >
                   <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
@@ -465,27 +417,15 @@ function TripLayoutContent({
                   </div>
                 </motion.div>
               )}
-              </AnimatePresence>
-            </div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
-      </div>{/* end max-w-7xl */}
-
-      {/* Trip Explore — only on overview page */}
+      {/* Explore section — overview only (useful content, not decoration) */}
       {isOverview && (
-        <div className="w-full relative z-10">
+        <div className="w-full relative z-10 bg-white dark:bg-[var(--background)]">
           <TripExploreSection trip={trip} />
-          <div className="h-24" />
-        </div>
-      )}
-
-      {/* Footer — only on overview */}
-      {isOverview && (
-        <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-          <OceanWave />
-          <Footer />
         </div>
       )}
     </div>
