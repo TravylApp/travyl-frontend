@@ -10,14 +10,21 @@ function getApiBase(): string {
   return '';
 }
 
-async function fetchDestinationImage(destination: string): Promise<string | null> {
+interface DestinationImageResult {
+  url: string | null;
+  images: string[];
+}
+
+async function fetchDestinationImage(destination: string): Promise<DestinationImageResult> {
   const base = getApiBase();
   const res = await fetch(
     `${base}/api/images/destination?destination=${encodeURIComponent(destination)}`
   );
-  if (!res.ok) return null;
-  const data = await res.json() as { url?: string; image_url?: string };
-  return data?.url ?? data?.image_url ?? null;
+  if (!res.ok) return { url: null, images: [] };
+  const data = await res.json() as { url?: string; image_url?: string; images?: string[] };
+  const url = data?.url ?? data?.image_url ?? null;
+  const images = data?.images ?? (url ? [url] : []);
+  return { url, images };
 }
 
 export function useDestinationImage(destination: string) {

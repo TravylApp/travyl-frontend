@@ -371,7 +371,8 @@ export default function PlacesPage() {
 
   // ── Tier 1 hooks: weather + destination hero image ──
   const { data: weatherData } = useWeather(searchCity);
-  const { data: heroImageUrl } = useDestinationImage(searchCity);
+  const { data: destImageData } = useDestinationImage(searchCity);
+  const heroImageUrl = destImageData?.url;
   // TODO: useEvents needs country which the places page doesn't have.
   // Once we add geocoding or city→country lookup, wire useEvents here.
 

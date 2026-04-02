@@ -7,7 +7,7 @@ import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip, useDestinationImage } from '@travyl/shared';
 import { OceanWave, Footer } from '@/components/home';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
@@ -211,6 +211,47 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   );
 }
 
+// ─── Bottom Photo Mosaic (full-bleed, matches hero width) ───
+
+function TripPhotoMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    setCurrent(0);
+    if (photos.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrent((c) => (c + 1) % photos.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [photos]);
+
+  return (
+    <div className="w-full relative overflow-hidden" style={{ height: 600, marginTop: -40 }}>
+      {photos.map((src, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={i}
+          src={src}
+          alt={destination || 'Trip photo'}
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
+          style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
+        />
+      ))}
+      {/* Top fade */}
+      <div className="absolute top-0 left-0 right-0 pointer-events-none" style={{
+        height: '20%',
+        background: 'linear-gradient(to bottom, var(--magazine-bg, #f5f0eb) 0%, transparent 100%)',
+      }} />
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
+        height: '20%',
+        background: 'linear-gradient(to top, var(--magazine-bg, #f5f0eb) 0%, transparent 100%)',
+      }} />
+    </div>
+  );
+}
+
 // ─── Main Layout ────────────────────────────────────────────
 
 export default function TripLayoutInner({
@@ -240,6 +281,8 @@ function TripLayoutContent({
 }) {
   const [mapOpen, setMapOpen] = useState(false);
   const { trip, isLoading, refetch } = useItineraryScreen(tripId);
+  const tripCity = trip?.destination?.split(',')[0]?.trim();
+  const { data: destImageData, isLoading: destImageLoading } = useDestinationImage(tripCity || '');
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   useTripSettingsRegistration(tripId);
@@ -354,7 +397,8 @@ function TripLayoutContent({
 
       {/* Hero banner — only on overview + itinerary */}
       {(isOverview || isItinerary) && (
-        <TripMagazineHero tripId={tripId} trip={trip} compact={isItinerary} onTripUpdate={refetch} />
+        <TripMagazineHero tripId={tripId} trip={trip} compact={isItinerary} onTripUpdate={refetch}
+          overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
       )}
 
       <div className="mx-auto max-w-7xl">
@@ -472,6 +516,11 @@ function TripLayoutContent({
       </div>
 
       </div>{/* end max-w-7xl */}
+
+      {/* Bottom photo mosaic — full-bleed like the hero, between content and explore */}
+      {isOverview && (destImageData?.images?.length ?? 0) > 0 && (
+        <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
+      )}
 
       {/* Trip Explore — only on overview page */}
       {isOverview && (

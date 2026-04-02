@@ -58,7 +58,7 @@ function useQuote() {
   return quote;
 }
 
-export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void }) {
+export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate, suppressFallback }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void; suppressFallback?: boolean }) {
   const bgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
   const weather = trip?.trip_context?.weather?.current;
   const forecast = trip?.trip_context?.weather?.forecast;
-  const rawCover = overrideImage || trip?.trip_context?.hero_image_url;
+  const rawCover = overrideImage || (suppressFallback ? undefined : trip?.trip_context?.hero_image_url);
   const coverImage = rawCover?.includes('googleusercontent.com')
     ? rawCover.replace(/=w\d+-h\d+[^&]*/, '=w1600-h1000-k-no')
     : rawCover;
@@ -193,14 +193,14 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     <>
       {/* Background image — bleeds behind nav and all content */}
       {coverImage && (
-        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '100vh' }}>
+        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '160vh' }}>
           <div ref={bgRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
             <Image src={coverImage} alt="" fill referrerPolicy="no-referrer" className="object-cover"
               style={{ objectPosition: 'center 30%' }} sizes="100vw" priority />
           </div>
-          {/* Gradient overlay — fades to solid background by 70% so it doesn't bleed into content below */}
+          {/* Gradient overlay — longer fade so hero bleeds through Things to Do */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 15%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.65) 50%, var(--magazine-bg, var(--background)) 68%, var(--magazine-bg, var(--background)) 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 10%, rgba(0,0,0,0.35) 20%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.65) 50%, var(--magazine-bg, var(--background)) 75%, var(--magazine-bg, var(--background)) 100%)' }} />
         </div>
       )}
 

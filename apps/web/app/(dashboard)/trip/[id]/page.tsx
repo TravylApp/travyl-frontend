@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
-import { useItineraryScreen, useWeather, useDestinationImage, useEvents } from '@travyl/shared';
+import { useItineraryScreen, useWeather, useEvents } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
@@ -479,54 +479,6 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   );
 }
 
-function upscalePhoto(url: string): string {
-  if (url.includes('googleusercontent.com')) {
-    return url.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no');
-  }
-  return url;
-}
-
-function TripMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    setCurrent(0);
-    if (photos.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrent((c) => (c + 1) % photos.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [photos]);
-
-  return (
-    <div className="-mx-10 -mt-16 relative overflow-hidden" style={{ height: 600 }}>
-      {photos.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={i}
-          src={upscalePhoto(src)}
-          alt={destination || 'Trip photo'}
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
-          style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
-        />
-      ))}
-      {/* Top fade — stronger gradient for clean transition */}
-      <div className="absolute top-0 left-0 right-0 pointer-events-none" style={{
-        height: '55%',
-        background: 'linear-gradient(to bottom, var(--magazine-bg, #f5f0eb) 50%, transparent 100%)',
-      }} />
-      {/* Side fades */}
-      <div className="absolute top-0 bottom-0 left-0 w-6 pointer-events-none" style={{
-        background: 'linear-gradient(to right, var(--magazine-bg, #f5f0eb), transparent)',
-      }} />
-      <div className="absolute top-0 bottom-0 right-0 w-6 pointer-events-none" style={{
-        background: 'linear-gradient(to left, var(--magazine-bg, #f5f0eb), transparent)',
-      }} />
-    </div>
-  );
-}
-
 
 // ── Main Page ────────────────────────────────────────────────
 
@@ -596,9 +548,8 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     || trip?.destination?.split(',').slice(1).join(',').trim()
     || '';
 
-  // ── Tier 1 hooks: weather, destination hero image, events ──
+  // ── Tier 1 hooks: weather, events ──
   const { data: weatherData } = useWeather(tripCity || '');
-  const { data: destHeroImageUrl } = useDestinationImage(tripCity || '');
   const { data: tier1Events } = useEvents({
     city: tripCity || '',
     country: tripCountryName,
@@ -786,16 +737,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="relative overflow-hidden">
-      {/* Extended destination image — stretches from header down through Things to Do */}
-      {destHeroImageUrl && (
-        <div className="absolute inset-x-0 top-0 h-[900px] -z-0 overflow-hidden pointer-events-none">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={destHeroImageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, transparent 0%, var(--magazine-bg, #f5f0eb) 85%)',
-          }} />
-        </div>
-      )}
+      {/* Header image bleeds down naturally from TripMagazineHero — no separate background needed */}
       <div className="relative z-10">
         <div ref={revealRef}>
 
@@ -915,14 +857,6 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
             <div className="px-6 sm:px-10 mt-8">
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
-          )}
-
-          {/* ── Rotating photo mosaic — bleeds up behind the cards ── */}
-          {(trip?.trip_context?.hero_images?.length || destHeroImageUrl) && (
-            <TripMosaic
-              photos={trip?.trip_context?.hero_images?.length ? trip.trip_context.hero_images : (destHeroImageUrl ? [destHeroImageUrl] : [])}
-              destination={trip?.destination}
-            />
           )}
 
         </div>
