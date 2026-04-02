@@ -34,7 +34,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   const Icon = tab.icon;
 
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-6 pt-4 pb-3 sticky top-0 z-20">
+    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-16 pt-4 pb-3 sticky top-0 z-20">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: tab.color }}>
           <Icon size={15} className="text-white" />
@@ -341,7 +341,7 @@ function TripLayoutContent({
 
           <div className="flex">
             {/* Main content */}
-            <div className="flex-1 min-w-0 relative overflow-hidden px-5 md:pl-6 pt-4 pb-5">
+            <div className="flex-1 min-w-0 relative overflow-hidden px-5 md:pl-16 pt-4 pb-5">
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
