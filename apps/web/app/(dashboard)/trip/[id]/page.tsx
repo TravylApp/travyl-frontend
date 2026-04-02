@@ -575,7 +575,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   useEffect(() => { autoEnrich(); }, [autoEnrich]);
 
-  const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news?.length ? trip.trip_context.news : (liveNews ?? []);
+  // news is computed below after liveNews is declared
 
   const toggleAdd = (itemId: string) => {
     setAddedItems((prev) => {
@@ -693,6 +693,8 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     enabled: !!tripCity && !enriching && !(trip?.trip_context?.news?.length),
     staleTime: 30 * 60 * 1000,
   });
+
+  const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news?.length ? trip.trip_context.news : (liveNews ?? []);
 
   const { data: liveCuisine } = useQuery({
     queryKey: ['trip-cuisine', tripCountryShort],
