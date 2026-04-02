@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
     city: params.city,
   }
 
-  // Country is optional — backend should handle missing country gracefully
+  // Country is required by backend — pass through or use city as fallback
   const country = getOptionalParam(req, 'country', '')
-  if (country) extra.country = country
+  extra.country = country || params.city
 
   // Dates are optional — if missing, default to next 30 days
   const startDate = getOptionalParam(req, 'start_date', '')
