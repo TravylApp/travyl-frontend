@@ -508,8 +508,8 @@ function TripLayoutContent({
 
       </div>{/* end max-w-7xl */}
 
-      {/* Bottom photo mosaic — full-bleed like the hero, between content and explore */}
-      {isOverview && (destImageData?.images?.length ?? 0) > 0 && (
+      {/* Bottom photo mosaic — full-bleed, shown on overview + itinerary */}
+      {(isOverview || isItinerary) && (destImageData?.images?.length ?? 0) > 0 && (
         <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
       )}
 

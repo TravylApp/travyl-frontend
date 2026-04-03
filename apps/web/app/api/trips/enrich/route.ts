@@ -394,5 +394,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ status: 'enriched', keys: Object.keys(merged), _debug: { baseUrl, backendUrl: BACKEND_URL, countryInfo: !!countryInfo, wikiData: !!wikiData, cuisineLen: cuisineData?.length, costData: !!costData, phrasesData: !!phrasesData, sunriseData: !!sunriseData } })
+  return NextResponse.json({ status: 'enriched', keys: Object.keys(merged) })
 }
