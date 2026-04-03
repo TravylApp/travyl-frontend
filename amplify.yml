@@ -10,6 +10,21 @@ applications:
         build:
           commands:
             - cd apps/web
+            - echo "PEXELS_API_KEY=$PEXELS_API_KEY" >> .env
+            - echo "SERPAPI_KEY=$SERPAPI_KEY" >> .env
+            - echo "FOURSQUARE_API_KEY=$FOURSQUARE_API_KEY" >> .env
+            - echo "FOURSQUARE_CLIENT_ID=$FOURSQUARE_CLIENT_ID" >> .env
+            - echo "FOURSQUARE_CLIENT_SECRET=$FOURSQUARE_CLIENT_SECRET" >> .env
+            - echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env
+            - echo "NEXT_PUBLIC_RECOMMENDATION_API_URL=$NEXT_PUBLIC_RECOMMENDATION_API_URL" >> .env
+            - echo "VISUAL_CROSSING_API_KEY=$VISUAL_CROSSING_API_KEY" >> .env
+            - echo "EVENTBRITE_API_KEY=$EVENTBRITE_API_KEY" >> .env
+            - echo "PREDICTHQ_API_KEY=$PREDICTHQ_API_KEY" >> .env
+            - echo "UNSPLASH_ACCESS_KEY=$UNSPLASH_ACCESS_KEY" >> .env
+            - echo "TRIPADVISOR_API_KEY=$TRIPADVISOR_API_KEY" >> .env
+            - echo "GRAPHHOPPER_API_KEY=$GRAPHHOPPER_API_KEY" >> .env
+            - echo "AVIATIONSTACK_API_KEY=$AVIATIONSTACK_API_KEY" >> .env
+            - echo "DUFFEL_API_TOKEN=$DUFFEL_API_TOKEN" >> .env
             - npm run build
       artifacts:
         baseDirectory: .next
