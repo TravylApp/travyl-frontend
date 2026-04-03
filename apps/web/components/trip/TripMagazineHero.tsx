@@ -138,7 +138,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const conditions = weather?.conditions?.toLowerCase() ?? '';
   const WeatherIcon = conditions.includes('cloud') ? Cloud : conditions.includes('rain') ? Droplets : Sun;
 
-  const quote = useQuote();
+  // Quote removed per #547 — keep hero focused on trip data
   const rawWiki = trip?.trip_context?.wiki;
   const wiki = typeof rawWiki === 'string' ? { extract: rawWiki } : rawWiki;
 
@@ -186,7 +186,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const phrases = trip?.trip_context?.phrases as Record<string, string> | undefined;
   const phraseEntries = phrases ? Object.entries(phrases).slice(0, 4) : [];
 
-  const hasEssentials = !!(trip?.trip_context?.quick_facts || weather || wiki || quote || exchangeFact || safety || sunrise || tripHolidays?.length || aqi || phraseEntries.length);
+  const hasEssentials = !!(trip?.trip_context?.quick_facts || weather || wiki || exchangeFact || safety || sunrise || tripHolidays?.length || aqi || phraseEntries.length);
   const essentialsMaxH = 'max-h-[1200px]';
 
   return (
@@ -416,25 +416,13 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             )}
             </div>
 
-            {/* Wiki + Quote — frosted glass backdrop for readability */}
-            {(wiki?.extract || quote) && (
-              <div className="rounded-xl px-4 py-3 space-y-3"
+            {/* Wiki summary — frosted glass backdrop for readability */}
+            {wiki?.extract && (
+              <div className="rounded-xl px-4 py-3"
                 style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
-                {wiki?.extract && (
-                  <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/90 font-serif line-clamp-3">
-                    {wiki.extract}
-                  </p>
-                )}
-                {quote && (
-                  <blockquote className="pl-3" style={{ borderLeft: '2px solid var(--magazine-accent, #c8a96a)' }}>
-                    <p className="text-[12px] sm:text-[13px] font-serif italic leading-[1.6] text-white/90">
-                      &ldquo;{quote.content}&rdquo;
-                    </p>
-                    <cite className="block mt-1 text-[10px] not-italic tracking-wider uppercase font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)', opacity: 0.7 }}>
-                      &mdash; {quote.author}
-                    </cite>
-                  </blockquote>
-                )}
+                <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/90 font-serif line-clamp-3">
+                  {wiki.extract}
+                </p>
               </div>
             )}
 

@@ -141,7 +141,7 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-20 py-8">
-      <h2 className="text-2xl font-bold text-white mb-6" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+      <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--magazine-heading, #1e3a5f)' }}>
         Explore {city}
       </h2>
 
@@ -149,11 +149,11 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
         {categories.map(({ key, label, items }) => (
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[14px] font-bold text-white/80 tracking-wide"
-                style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+              <h3 className="text-[14px] font-bold tracking-wide"
+                style={{ color: 'var(--magazine-heading, #1e3a5f)', opacity: 0.7 }}>
                 {label}
               </h3>
-              <span className="text-[11px] text-white/40">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
+              <span className="text-[11px]" style={{ color: 'var(--magazine-text, #666)', opacity: 0.5 }}>{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
               {items.map((item: ExploreItem) => (

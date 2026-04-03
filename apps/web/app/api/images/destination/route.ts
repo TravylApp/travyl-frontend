@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const PEXELS_API_KEY = process.env.PEXELS_API_KEY
+const PEXELS_API_KEY = process.env.PEXELS_API_KEY || process.env.PEXEL_API_KEY
 
 interface PexelsPhoto {
   id: number
