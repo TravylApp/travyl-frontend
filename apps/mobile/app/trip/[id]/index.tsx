@@ -9,6 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
+  useWeather,
+  upscaleGoogleImage,
   TextStyles, FontFamily,
 } from '@travyl/shared';
 import { PageTransition } from './_layout';
@@ -41,17 +43,18 @@ function buildExploreItems(ctx: any) {
   if (!ctx) return [];
   const items: any[] = [];
   const seen = new Set<string>();
+  const hiRes = (url: string | undefined) => upscaleGoogleImage(url) || url;
   for (const e of ctx.explore_items ?? []) {
-    if (e.title && !seen.has(e.title)) {
+    if (e.title && !seen.has(e.title) && e.image) {
       seen.add(e.title);
-      items.push({ id: e.id || e.title, title: e.title, description: e.description || '', category: e.category || 'Sightseeing', image: e.image });
+      items.push({ id: e.id || e.title, title: e.title, description: e.description || '', category: e.category || 'Sightseeing', image: hiRes(e.image) });
     }
   }
   for (const v of ctx.foursquare_venues ?? []) {
     const name = v.title || v.name;
-    if (name && !seen.has(name)) {
+    if (name && !seen.has(name) && v.image) {
       seen.add(name);
-      items.push({ id: v.id || name, title: name, description: v.description || v.category || '', category: v.category || 'Venue', image: v.image });
+      items.push({ id: v.id || name, title: name, description: v.description || v.category || '', category: v.category || 'Venue', image: hiRes(v.image) });
     }
   }
   let rc = 0;
@@ -59,7 +62,7 @@ function buildExploreItems(ctx: any) {
     if (rc >= 3) break;
     if (r.name && !seen.has(r.name)) {
       seen.add(r.name);
-      items.push({ id: r.id || r.name, title: r.name, description: r.tip || r.category || 'Restaurant', category: 'Dining', image: r.image });
+      items.push({ id: r.id || r.name, title: r.name, description: r.tip || r.category || 'Restaurant', category: 'Dining', image: hiRes(r.image) });
       rc++;
     }
   }
@@ -89,8 +92,18 @@ export default function OverviewScreen() {
   const tripLat = ctx?.lat;
   const tripLng = ctx?.lng;
 
-  // ─── Fetch fresh explore items from API (like web does) ─
+  // Wiki, safety, country info from trip_context
+  const wiki = typeof ctx?.wiki === 'string' ? ctx.wiki : ctx?.wiki?.extract || '';
+  const safety = ctx?.safety as { score: number; message: string; level?: string } | undefined;
+  const countryInfo = ctx?.country as { name?: string; flag?: string; cca2?: string; currency?: { code: string; symbol: string } } | undefined;
+  const flagUrl = countryInfo?.flag || (countryInfo?.cca2 ? `https://flagcdn.com/24x18/${countryInfo.cca2.toLowerCase()}.png` : null);
+
+  // ─── Destination + weather ─────────────────────────────
   const destination = trip?.destination || '';
+  const tripCity = destination.split(',')[0]?.trim() || '';
+  const { data: weatherData } = useWeather(tripCity);
+
+  // ─── Fetch fresh explore items from API (like web does) ─
   const [liveExploreItems, setLiveExploreItems] = useState<any[]>([]);
   useEffect(() => {
     // Use lat/lng if available, otherwise fetch by city name via places API
@@ -107,7 +120,7 @@ export default function OverviewScreen() {
         return true;
       }).map((p: any) => ({
         id: p.id, title: p.name, description: p.description || p.category,
-        category: p.category, image: p.image,
+        category: p.category, image: upscaleGoogleImage(p.image) || p.image,
       }));
     };
 
@@ -133,14 +146,7 @@ export default function OverviewScreen() {
   // Use live data if available, fall back to trip_context
   const exploreItems = liveExploreItems.length > 0 ? liveExploreItems : storedExploreItems;
 
-  // ─── Fetch quote from API ──────────────────────────────
-  const [quote, setQuote] = useState<{ content: string; author: string } | null>(null);
-  useEffect(() => {
-    fetch(`${WEB_API}/api/quote?tag=travel`)
-      .then(r => r.json())
-      .then(d => { if (d?.content) setQuote(d); })
-      .catch(() => setQuote({ content: 'To travel is to live.', author: 'Hans Christian Andersen' }));
-  }, []);
+  // Quote removed — matching web
 
   // ─── Normalize phrases to array ───────────────────────
   const phrases = useMemo(() => {
@@ -172,6 +178,63 @@ export default function OverviewScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
+
+      {/* ─── Trip Info Bar (weather, flag, safety) ──────────── */}
+      <View style={{ paddingHorizontal: 20, marginTop: 16, gap: 10 }}>
+        {/* Weather + Flag row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          {flagUrl && (
+            <Image source={{ uri: flagUrl }} style={{ width: 24, height: 18, borderRadius: 2 }} />
+          )}
+          {weatherData?.current && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', ...TEXT_SHADOW }}>{Math.round(weatherData.current.temp)}°</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', ...TEXT_SHADOW }}>{weatherData.current.conditions}</Text>
+            </View>
+          )}
+          {safety && safety.score > 0 && (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              backgroundColor: safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)',
+              borderWidth: 1,
+              borderColor: safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)',
+              borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3,
+            }}>
+              <FontAwesome name="shield" size={10} color={safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171'} />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171' }}>
+                {safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Weather forecast */}
+        {weatherData?.forecast && weatherData.forecast.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            {weatherData.forecast.slice(0, 4).map((day: any) => (
+              <View key={day.date} style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', ...TEXT_SHADOW }}>
+                  {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff', ...TEXT_SHADOW }}>
+                  {Math.round(day.high)}°
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Wiki extract */}
+        {wiki ? (
+          <View style={{
+            backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 12,
+          }}>
+            <Text style={{ fontSize: 13, lineHeight: 20, color: 'rgba(255,255,255,0.9)', fontFamily: FontFamily.serif }} numberOfLines={3}>
+              {wiki}
+            </Text>
+          </View>
+        ) : null}
+      </View>
 
       {/* ─── Things to Do — horizontal scroll cards ───────── */}
       <View style={{ marginTop: 20 }}>
@@ -236,21 +299,7 @@ export default function OverviewScreen() {
         )}
       </View>
 
-      {/* ─── Quote Divider ────────────────────────────────── */}
-      {quote && (
-        <View style={{ paddingHorizontal: 32, paddingVertical: 24, alignItems: 'center' }}>
-          <Text style={{
-            ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
-            fontStyle: 'italic',
-            textAlign: 'center', color: 'rgba(255,255,255,0.6)',
-            lineHeight: 22,
-            ...TEXT_SHADOW,
-          }}>
-            &ldquo;{quote.content}&rdquo;
-            {quote.author ? <Text style={{ fontStyle: 'normal', opacity: 0.5 }}>{' '}— {quote.author}</Text> : null}
-          </Text>
-        </View>
-      )}
+      {/* Quote removed — matching web */}
 
       {/* ─── What's Going On — dark gradient news cards ───── */}
       {news.length > 0 && (
