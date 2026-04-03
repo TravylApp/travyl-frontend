@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
 
   const PEXELS_API_KEY = process.env.PEXELS_API_KEY || process.env.PEXEL_API_KEY
   if (!PEXELS_API_KEY) {
-    return NextResponse.json({ error: 'Pexels API key not configured' }, { status: 500 })
+    // Debug: list env var keys that contain PEXEL (will remove after fixing)
+    const pexelKeys = Object.keys(process.env).filter(k => k.toLowerCase().includes('pexel'))
+    return NextResponse.json({ error: 'Pexels API key not configured', debug_keys: pexelKeys, all_keys_count: Object.keys(process.env).length }, { status: 500 })
   }
 
   try {
