@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
 
   // req.nextUrl.origin returns "https://localhost:3000" on Amplify SSR Lambda.
   // Use the Host header or known domain to build the correct self-referencing URL.
-  const host = req.headers.get('host') || req.headers.get('x-forwarded-host') || ''
-  const proto = req.headers.get('x-forwarded-proto') || 'https'
-  const baseUrl = host ? `${proto}://${host}` : req.nextUrl.origin
+  const selfHost = req.headers.get('host') || req.headers.get('x-forwarded-host') || ''
+  const selfProto = req.headers.get('x-forwarded-proto') || 'https'
+  const baseUrl = selfHost ? `${selfProto}://${selfHost}` : req.nextUrl.origin
 
   // Fetch explore items — try backend, fall back to Foursquare
   let exploreItems: any[] = []
