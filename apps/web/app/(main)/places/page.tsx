@@ -730,7 +730,7 @@ export default function PlacesPage() {
           {searchCity && heroImageUrl && (
             <div className="absolute inset-x-0 top-0 h-[320px] -z-10 overflow-hidden pointer-events-none">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroImageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
+              <img src={heroImageUrl} alt="" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
               <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/90 to-white dark:from-[var(--background)]/70 dark:via-[var(--background)]/90 dark:to-[var(--background)]" />
             </div>
           )}
@@ -783,7 +783,7 @@ export default function PlacesPage() {
                             >
                               <div className="relative w-full h-full">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={prevP.image} alt={prevP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={prevP.image} alt={prevP.name} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{prevP.type}</p>
@@ -814,7 +814,7 @@ export default function PlacesPage() {
                                 style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={nextNextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={nextNextP.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Back card 1 */}
                               <div
@@ -822,7 +822,7 @@ export default function PlacesPage() {
                                 style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={nextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={nextP.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Active card — shuffle animation */}
                               <AnimatePresence mode="popLayout" custom={gridDirection}>
@@ -839,7 +839,7 @@ export default function PlacesPage() {
                                 >
                                   <div className="relative w-full h-full bg-black">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                    <img src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} className="absolute inset-0 w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                                     {/* Favorite button */}
@@ -886,7 +886,7 @@ export default function PlacesPage() {
                             >
                               <div className="relative w-full h-full">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={nextP.image} alt={nextP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={nextP.image} alt={nextP.name} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{nextP.type}</p>
@@ -1198,7 +1198,7 @@ function MagazineCurtain({
             className="absolute inset-0"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={images[imgIdx]} alt={place.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={images[imgIdx]} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
           </motion.div>
         </AnimatePresence>
 
@@ -1520,7 +1520,7 @@ function CardStack({
               >
                 <div className="relative w-full h-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[prevIdx].image} alt={items[prevIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[prevIdx].image} alt={items[prevIdx].name} className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[prevIdx].type}</p>
@@ -1554,7 +1554,7 @@ function CardStack({
               >
                 <div className="relative w-full h-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[nextIdx].image} alt={items[nextIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[nextIdx].image} alt={items[nextIdx].name} className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[nextIdx].type}</p>
@@ -1588,7 +1588,7 @@ function CardStack({
                   style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[nextNextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[nextNextIdx].image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Back card 1 */}
@@ -1597,7 +1597,7 @@ function CardStack({
                   style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[nextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[nextIdx].image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Active card */}
@@ -1630,8 +1630,7 @@ function CardStack({
                         <img
                           src={images[imgIdx]}
                           alt={place.name}
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 w-full h-full object-cover"
+                                                    className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
@@ -1708,7 +1707,7 @@ function CardStack({
                       {/* ── Back ── */}
                       <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={images[0]} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <div className="relative h-full flex flex-col p-5 text-white overflow-y-auto">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300 mb-1 block">
@@ -1852,8 +1851,7 @@ function CardStack({
                     <img
                       src={sp.images?.[0] || sp.image}
                       alt={sp.name}
-                      referrerPolicy="no-referrer"
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     {sp.rating != null && (

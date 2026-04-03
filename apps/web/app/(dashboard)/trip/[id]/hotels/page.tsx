@@ -387,8 +387,7 @@ function ImageCarousel({
       <img
         src={images[idx]}
         alt={`${alt} ${idx + 1}`}
-        referrerPolicy="no-referrer"
-        className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
       />
       {images.length > 1 && (
         <>
@@ -793,7 +792,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                  <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                   <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                     <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                   </div>
@@ -828,7 +827,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                      <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={(e) => { e.stopPropagation(); setExpandedRoom(null); }} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -1501,7 +1500,7 @@ function BookedHotelCard({
                 <div className="rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                   <div className="relative h-40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                      <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <div className="flex items-end justify-between">
@@ -1624,7 +1623,7 @@ function BookedHotelCard({
                                 onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                  <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                   <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                 </div>
@@ -1658,7 +1657,7 @@ function BookedHotelCard({
                                   <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                      <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={() => setExpandedRoom(null)} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">

@@ -195,7 +195,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
       {coverImage && (
         <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '160vh' }}>
           <div ref={bgRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
-            <Image src={coverImage} alt="" fill referrerPolicy="no-referrer" className="object-cover"
+            <Image src={coverImage} alt="" fill  className="object-cover"
               style={{ objectPosition: 'center 30%' }} sizes="100vw" priority />
           </div>
           {/* Gradient overlay — longer fade so hero bleeds through Things to Do */}
@@ -223,17 +223,10 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
           {hasEssentials && (
             <button
               onClick={() => setEssentialsOpen((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all shrink-0"
-              style={{
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}
+              className="p-1.5 rounded-full transition-all shrink-0 hover:bg-white/15 active:scale-90"
+              title={essentialsOpen ? 'Hide trip info' : 'Show trip info'}
             >
-              <span>{essentialsOpen ? 'Hide Info' : 'Trip Info'}</span>
-              <ChevronDown size={10} className={`transition-transform ${essentialsOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={16} className={`text-white/60 transition-transform duration-300 ${essentialsOpen ? 'rotate-180' : ''}`} />
             </button>
           )}
         </div>

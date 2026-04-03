@@ -535,7 +535,7 @@ function GlanceView({
               {/* Right — destination image */}
               <div className="relative flex-1 min-w-0 hidden sm:block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImg} alt={day.dayLabel} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
+                <img src={heroImg} alt={day.dayLabel}  className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
                 {/* Soft left edge blend into dark background */}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f0f1e 0%, transparent 20%)' }} />
                 {/* Day label — bottom right */}
@@ -1444,7 +1444,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                   </div>
                   {firstHotel.image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={firstHotel.image} alt={firstHotel.name} referrerPolicy="no-referrer" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                    <img src={firstHotel.image} alt={firstHotel.name}  className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   )}
                   <span className="text-[11px] font-medium text-amber-600 group-hover:text-amber-800 shrink-0">Change →</span>
                 </div>

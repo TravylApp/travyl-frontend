@@ -135,7 +135,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
             {items.map((item) => (
               <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image} alt={item.title} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={item.image} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute top-3 left-3">
                   <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"
@@ -172,8 +172,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
               className={`relative rounded-xl overflow-hidden cursor-pointer group ${flush ? '' : 'break-inside-avoid mb-3'}`}
               style={flush ? { height: 280 } : undefined}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt={item.title} referrerPolicy="no-referrer"
-                className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
+              <img src={item.image} alt={item.title}                 className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
                 style={!flush ? { minHeight: 200 } : undefined} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               <div className="absolute top-2 left-2">
@@ -294,7 +293,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               {bgImage ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bgImage} alt={item.title} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
+                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                 </>
               ) : (

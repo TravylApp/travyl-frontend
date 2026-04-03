@@ -50,7 +50,7 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
           {place.image ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={place.image} alt={place.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ minHeight: 250 }} />
+              <img src={place.image} alt={place.name}  className="w-full h-full object-cover" style={{ minHeight: 250 }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </>
           ) : (

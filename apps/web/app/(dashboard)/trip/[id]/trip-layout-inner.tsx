@@ -69,48 +69,41 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   type ExploreItem = { id: string; title?: string; name?: string; description?: string; category?: string; image?: string; images?: string[]; rating?: number; cuisines?: string[]; priceLevel?: string; tripAdvisorUrl?: string; lat?: number; lng?: number; address?: string; phone?: string; website?: string; reviewCount?: number };
   const categories: { key: string; label: string; items: ExploreItem[] }[] = [];
 
-  // Famous Attractions
-  if (ctx?.explore_items && ctx.explore_items.length > 0) {
-    categories.push({ key: 'attractions', label: 'Famous Attractions', items: ctx.explore_items });
+  // ── 1. Top Attractions ──
+  // Collect from explore_items (non-food/non-hotel) + foursquare attraction venues
+  const foodCatRe = /culinary|restaurant|food|dining|cafe|bakery|bistro/i;
+  const hotelCatRe = /hotel|hostel|lodge|motel|inn|resort|accommodation/i;
+  const attractionItems: ExploreItem[] = [
+    ...(ctx?.explore_items || []).filter(item => !foodCatRe.test(item.category || '') && !hotelCatRe.test(item.category || '')),
+    ...(ctx?.foursquare_venues || []).filter((v: any) => {
+      const cat = (v.category || '').toLowerCase();
+      return !foodCatRe.test(cat) && !hotelCatRe.test(cat) && !/restaurant|bar|club/i.test(cat);
+    }),
+  ];
+  if (attractionItems.length > 0) {
+    categories.push({ key: 'attractions', label: 'Top Attractions', items: attractionItems });
   }
 
-  // TripAdvisor restaurants (best data + real photos)
-  if (ctx?.restaurants && ctx.restaurants.length > 0) {
-    categories.push({ key: 'ta-restaurants', label: 'Top Restaurants', items: ctx.restaurants as ExploreItem[] });
+  // ── 2. Restaurants ──
+  // Prefer TripAdvisor restaurants, fall back to food explore_items, then Foursquare food venues
+  const restaurantItems: ExploreItem[] = ctx?.restaurants?.length
+    ? (ctx.restaurants as ExploreItem[]).map(r => ({ ...r, category: foodCatRe.test(r.category || '') ? r.category : 'Restaurant' }))
+    : [
+        ...(ctx?.explore_items || []).filter(item => foodCatRe.test(item.category || '')),
+        ...(ctx?.foursquare_venues || []).filter((v: any) => foodCatRe.test(v.category || '') || /restaurant|café|cafe|dining/i.test(v.category || '')),
+      ];
+  if (restaurantItems.length > 0) {
+    categories.push({ key: 'restaurants', label: 'Restaurants', items: restaurantItems });
   }
 
-  // Categorize venues into specific buckets
-  const allVenues = ctx?.foursquare_venues || [];
-  const buckets: Record<string, ExploreItem[]> = { restaurants: [], museums: [], nightlife: [], shopping: [], parks: [], other: [] };
-
-  for (const v of allVenues) {
-    const cat = (v.category || '').toLowerCase();
-    if (/restaurant|food|café|cafe|dining|pizza|bistro|trattoria|culinary|bakery/i.test(cat)) {
-      buckets.restaurants.push(v);
-    } else if (/museum|gallery|theater|theatre|cultural|art|history/i.test(cat)) {
-      buckets.museums.push(v);
-    } else if (/bar|club|nightlife|entertainment|pub|lounge|cocktail/i.test(cat)) {
-      buckets.nightlife.push(v);
-    } else if (/shop|market|store|mall|boutique/i.test(cat)) {
-      buckets.shopping.push(v);
-    } else if (/park|garden|outdoor|nature|beach|trail/i.test(cat)) {
-      buckets.parks.push(v);
-    } else {
-      buckets.other.push(v);
-    }
-  }
-
-  // Only add Foursquare restaurants if no TripAdvisor data
-  if (!ctx?.restaurants?.length && buckets.restaurants.length > 0) categories.push({ key: 'restaurants', label: 'Restaurants & Cafes', items: buckets.restaurants });
-  if (buckets.museums.length > 0) categories.push({ key: 'museums', label: 'Museums & Culture', items: buckets.museums });
-  if (buckets.nightlife.length > 0) categories.push({ key: 'nightlife', label: 'Nightlife & Entertainment', items: buckets.nightlife });
-  if (buckets.shopping.length > 0) categories.push({ key: 'shopping', label: 'Shopping', items: buckets.shopping });
-  if (buckets.parks.length > 0) categories.push({ key: 'parks', label: 'Parks & Nature', items: buckets.parks });
-  if (buckets.other.length > 0) categories.push({ key: 'other', label: 'More to Explore', items: buckets.other });
-
-  // Hotels
-  if (ctx?.hotels && ctx.hotels.length > 0) {
-    categories.push({ key: 'hotels', label: `Hotels in ${city}`, items: ctx.hotels.map((h) => ({ id: h.id, title: h.name, name: h.name, description: h.tip || h.category || '', category: h.category || 'Hotel', image: h.image ?? undefined })) });
+  // ── 3. Events ──
+  const eventItems: ExploreItem[] = (ctx?.events || []).map((e: any) => ({
+    id: e.id, title: e.title || e.name, name: e.title || e.name,
+    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    category: e.category || 'Event', image: e.image || e.photo_url,
+  }));
+  if (eventItems.length > 0) {
+    categories.push({ key: 'events', label: 'Events', items: eventItems });
   }
 
   if (categories.length === 0) return null;
@@ -157,19 +150,12 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
               <span className="text-[11px] text-white/40">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-              {items.map((item: ExploreItem) => (
+              {items.filter((item: ExploreItem) => !!item.image).map((item: ExploreItem) => (
                 <div key={item.id} onClick={() => handleCardClick(item)}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
-                  {item.image ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image} alt={item.title || item.name} referrerPolicy="no-referrer"
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    </>
-                  ) : (
-                    <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #1a1a2e, #16213e)' }} />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   {/* Favorite button */}
                   <button
                     onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
@@ -233,8 +219,7 @@ function TripPhotoMosaic({ photos, destination }: { photos: string[]; destinatio
           key={i}
           src={src}
           alt={destination || 'Trip photo'}
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
+                    className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
           style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
         />
       ))}

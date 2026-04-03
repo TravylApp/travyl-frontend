@@ -93,8 +93,7 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
             <img
               src={images[imgIdx]}
               alt={item.name}
-              referrerPolicy="no-referrer"
-              loading="lazy"
+                            loading="lazy"
               decoding="async"
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               onError={() => setImgError(true)}
@@ -221,7 +220,7 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
           {isFlipped && !imgError && (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt="" referrerPolicy="no-referrer" loading="lazy" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md" />
+              <img src={item.image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md" />
               <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             </>
           )}
