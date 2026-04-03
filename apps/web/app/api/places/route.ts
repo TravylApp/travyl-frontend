@@ -74,6 +74,7 @@ async function fetchNearby(
 ): Promise<BackendPlace[]> {
   let searchLat = defaultLat
   let searchLng = defaultLng
+  let geocoded = !q // If no query, lat/lng were provided directly
   if (q) {
     try {
       const geoRes = await fetch(
@@ -87,9 +88,12 @@ async function fetchNearby(
       if (geoData.length > 0) {
         searchLat = geoData[0].lat
         searchLng = geoData[0].lon
+        geocoded = true
       }
     } catch {}
   }
+  // Don't silently fall back to default coords — return empty if location not found
+  if (!geocoded) return []
   const res = await fetch(
     `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
     { headers: { Accept: 'application/json' } }
