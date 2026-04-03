@@ -115,6 +115,7 @@ interface ItineraryContextValue {
   setAllCollapsedOverride: React.Dispatch<React.SetStateAction<boolean | null>>;
   selectedDayIndex: number;
   setSelectedDayIndex: React.Dispatch<React.SetStateAction<number>>;
+  swapDays: (fromIdx: number, toIdx: number) => void;
 }
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
@@ -137,7 +138,8 @@ function generateFromTripContext(
     const days: BaseDayData[] = [];
     const activities: CalendarActivity[] = [];
 
-    for (let d = 0; d < plannerItinerary.length; d++) {
+    const dayCount = Math.min(plannerItinerary.length, durationDays);
+    for (let d = 0; d < dayCount; d++) {
       const dayData = plannerItinerary[d];
       const date = new Date(startDate);
       date.setDate(date.getDate() + d);
@@ -273,7 +275,7 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     if (trip.start_date && trip.end_date) {
       duration = Math.max(1, Math.ceil(
         (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
-      ));
+      ) + 1);
     } else if (trip.trip_context?.weather?.forecast?.length) {
       duration = trip.trip_context.weather.forecast.length;
     }
@@ -283,15 +285,16 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
   const [activities, setActivities] = useState<CalendarActivity[]>([]);
   const [baseDays, setBaseDays] = useState<BaseDayData[]>([]);
 
-  // Seed activities from trip context when trip loads (only once)
-  const [seeded, setSeeded] = useState(false);
+  // Seed activities from trip context — re-seeds when dates change
+  const dateKey = `${trip?.start_date}-${trip?.end_date}`;
+  const [seededKey, setSeededKey] = useState('');
   useEffect(() => {
-    if (generated && !seeded && generated.days.length > 0) {
+    if (generated && generated.days.length > 0 && seededKey !== dateKey) {
       setBaseDays(generated.days);
       setActivities(generated.activities);
-      setSeeded(true);
+      setSeededKey(dateKey);
     }
-  }, [generated, seeded]);
+  }, [generated, dateKey, seededKey]);
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);
@@ -365,6 +368,25 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     });
   }, []);
 
+  // Swap two days — reorders baseDays and remaps activity day indices
+  const swapDays = useCallback((fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+    setBaseDays(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      // Renumber dayNumber
+      return next.map((d, i) => ({ ...d, dayNumber: i + 1, dayLabel: `Day ${i + 1}` }));
+    });
+    setActivities(prev => prev.map(a => {
+      if (a.day === fromIdx) return { ...a, day: toIdx };
+      // Shift activities between fromIdx and toIdx
+      if (fromIdx < toIdx && a.day > fromIdx && a.day <= toIdx) return { ...a, day: a.day - 1 };
+      if (fromIdx > toIdx && a.day >= toIdx && a.day < fromIdx) return { ...a, day: a.day + 1 };
+      return a;
+    }));
+  }, []);
+
   const value = useMemo(
     () => ({
       activities, setActivities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
@@ -373,10 +395,11 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
       collapsedSections, setCollapsedSections,
       allCollapsedOverride, setAllCollapsedOverride,
       selectedDayIndex, setSelectedDayIndex,
+      swapDays,
     }),
     [activities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
      mapMarkers, selectedMarkerId, requestMapOpen,
-     collapsedSections, allCollapsedOverride, selectedDayIndex],
+     collapsedSections, allCollapsedOverride, selectedDayIndex, swapDays],
   );
 
   return (

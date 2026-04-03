@@ -56,3 +56,7 @@ export {
   updateSuggestionStatus,
   dismissAllSuggestions,
 } from './packingService';
+
+export {
+  generatePackingSuggestions,
+} from './packingSuggestions';

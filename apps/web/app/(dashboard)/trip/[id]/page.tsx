@@ -1,11 +1,12 @@
 'use client';
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
-import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
+import { AnimatePresence } from 'motion/react';
+import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
 
 // ── Hooks ─────────────────────────────────────────────────────
@@ -68,6 +69,8 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [gridView, setGridView] = useState(false);
+  const [flush, setFlush] = useState(false);
 
   const scrollTo = (idx: number) => {
     const el = scrollRef.current;
@@ -87,63 +90,105 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
         </div>
         <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
           style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
-          <span className="text-[11px] tabular-nums mr-1 text-white/80">
-            {activeIdx + 1} / {items.length}
-          </span>
-          <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-            style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-            <ChevronLeft size={14} className="text-white" />
-          </button>
-          <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-            style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-            <ChevronRight size={14} className="text-white" />
+          {!gridView && (
+            <>
+              <span className="text-[11px] tabular-nums mr-1 text-white/80">
+                {activeIdx + 1} / {items.length}
+              </span>
+              <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+                style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
+                <ChevronLeft size={14} className="text-white" />
+              </button>
+              <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+                style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
+                <ChevronRight size={14} className="text-white" />
+              </button>
+            </>
+          )}
+          {gridView && (
+            <button onClick={() => setFlush(f => !f)} title="Flush grid"
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: flush ? 'rgba(255,255,255,0.2)' : 'transparent' }}>
+              <LayoutGrid size={12} className="text-white/70" />
+            </button>
+          )}
+          <button onClick={() => setGridView(v => !v)} title={gridView ? 'Carousel view' : 'Grid view'}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: gridView ? 'rgba(255,255,255,0.2)' : 'transparent' }}>
+            {gridView ? <LayoutList size={12} className="text-white/70" /> : <LayoutGrid size={12} className="text-white/70" />}
           </button>
         </div>
       </div>
 
-      {/* Horizontal scroll cards — one card at a time, full width */}
-      <div ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          const idx = Math.round(el.scrollLeft / (el.firstElementChild as HTMLElement)?.offsetWidth || 0);
-          setActiveIdx(Math.min(idx, items.length - 1));
-        }}>
-        {items.map((item) => (
-          <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.image} alt={item.title} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-            <div className="absolute top-3 left-3">
-              <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"
-                style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.2)' }}>
-                {item.category}
-              </span>
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 p-5">
-              <h3 className="text-lg font-bold text-white leading-tight mb-1 font-serif">{item.title}</h3>
-              <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
-              <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
-            </div>
+      {!gridView ? (
+        <>
+          {/* Horizontal scroll cards — one card at a time, full width */}
+          <div ref={scrollRef}
+            className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const idx = Math.round(el.scrollLeft / (el.firstElementChild as HTMLElement)?.offsetWidth || 0);
+              setActiveIdx(Math.min(idx, items.length - 1));
+            }}>
+            {items.map((item) => (
+              <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.image} alt={item.title} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute top-3 left-3">
+                  <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"
+                    style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.2)' }}>
+                    {item.category}
+                  </span>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <h3 className="text-lg font-bold text-white leading-tight mb-1 font-serif">{item.title}</h3>
+                  <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
+                  <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* Dot indicators */}
-      <div className="flex items-center gap-1.5 mt-3">
-        {items.map((_, i) => (
-          <button key={i} onClick={() => { setActiveIdx(i); scrollTo(i); }}
-            className="rounded-full transition-all duration-300"
-            style={{
-              width: i === activeIdx ? 16 : 5, height: 5,
-              backgroundColor: i === activeIdx ? 'var(--magazine-accent)' : 'var(--magazine-border)',
-            }} />
-        ))}
-      </div>
+          {/* Dot indicators */}
+          <div className="flex items-center gap-1.5 mt-3">
+            {items.map((_, i) => (
+              <button key={i} onClick={() => { setActiveIdx(i); scrollTo(i); }}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width: i === activeIdx ? 16 : 5, height: 5,
+                  backgroundColor: i === activeIdx ? 'var(--magazine-accent)' : 'var(--magazine-border)',
+                }} />
+            ))}
+          </div>
+        </>
+      ) : (
+        /* Grid view */
+        <div className={`grid gap-3 ${flush ? 'grid-cols-2 sm:grid-cols-3' : ''}`}
+          style={!flush ? { columns: '2 280px', columnGap: '0.75rem' } : undefined}>
+          {items.filter(item => item.image).map((item) => (
+            <div key={item.id} onClick={() => onItemClick?.(item)}
+              className={`relative rounded-xl overflow-hidden cursor-pointer group ${flush ? '' : 'break-inside-avoid mb-3'}`}
+              style={flush ? { height: 280 } : undefined}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.image} alt={item.title} referrerPolicy="no-referrer"
+                className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
+                style={!flush ? { minHeight: 200 } : undefined} />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+              <div className="absolute top-2 left-2">
+                <span className="text-[8px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full backdrop-blur-md"
+                  style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.2)' }}>
+                  {item.category}
+                </span>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <h3 className="text-sm font-bold text-white leading-tight font-serif">{item.title}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -488,8 +533,9 @@ function TripMosaic({ photos, destination }: { photos: string[]; destination?: s
 /** Check if trip_context needs enrichment (missing key overview fields) */
 function needsEnrichment(ctx: TripContextData | undefined | null): boolean {
   if (!ctx) return true;
-  // Missing any key field means it needs enrichment
-  return !ctx.wiki || !ctx.quick_facts || !ctx.explore_items?.length;
+  // Missing any key overview field triggers re-enrichment
+  return !ctx.wiki || !ctx.quick_facts || !ctx.explore_items?.length
+    || !ctx.phrases || !ctx.cost_of_living || !ctx.news?.length || !ctx.cuisine?.length;
 }
 
 export default function TripOverview({ params }: { params: Promise<{ id: string }> }) {
@@ -545,32 +591,58 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const tripLat = trip?.trip_context?.lat;
   const tripLng = trip?.trip_context?.lng;
 
+  const tripCity = trip?.destination?.split(',')[0]?.trim();
+  // Rotate explore queries each session for variety
+  const [exploreOffset] = useState(() => Math.floor(Math.random() * 6));
   const { data: liveExploreItems } = useQuery({
-    queryKey: ['trip-explore', trip?.id, tripLat, tripLng],
+    queryKey: ['trip-explore', trip?.id, tripCity],
     queryFn: async () => {
-      if (!tripLat || !tripLng) return [];
-      const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'shopping'];
+      if (!tripCity) return [];
+      const allQueries = [
+        `top attractions in ${tripCity}`,
+        `best restaurants in ${tripCity}`,
+        `hidden gems ${tripCity}`,
+        `things to do ${tripCity}`,
+        `nightlife ${tripCity}`,
+        `markets shopping ${tripCity}`,
+        `museums ${tripCity}`,
+        `parks nature ${tripCity}`,
+        `local food ${tripCity}`,
+        `viewpoints ${tripCity}`,
+      ];
+      // Pick 6 starting from random offset
+      const queries = Array.from({ length: 6 }, (_, i) => allQueries[(exploreOffset + i) % allQueries.length]);
       const results = await Promise.all(
-        cats.map(async (cat) => {
-          const res = await fetch(`/api/places?lat=${tripLat}&lng=${tripLng}&category=${cat}&limit=4`);
+        queries.map(async (q) => {
+          const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=4`);
           if (!res.ok) return [];
           return res.json();
         })
       );
       const seen = new Set<string>();
-      return results.flat().filter((p: any) => {
-        if (!p.name || !p.image || seen.has(p.id)) return false;
-        seen.add(p.id);
+      const all = results.flat().filter((p: any) => {
+        if (!p.name || seen.has(p.name)) return false;
+        seen.add(p.name);
         return true;
-      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image, tags: p.tags }));
+      });
+      // Shuffle for variety
+      for (let i = all.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [all[i], all[j]] = [all[j], all[i]];
+      }
+      return all.slice(0, 20).map((p: any) => ({
+        id: p.id, title: p.name,
+        description: p.description || p.category || '',
+        category: p.category || 'attraction',
+        image: p.images?.[0] || p.image || '',
+        tags: p.tags,
+      }));
     },
-    enabled: !!tripLat && !!tripLng && !enriching,
-    staleTime: 5 * 60 * 1000,
+    enabled: !!tripCity && !enriching,
+    staleTime: 10 * 60 * 1000,
   });
 
-  const tripDestParts = trip?.destination?.split(',') ?? [];
-  const tripCity = tripDestParts[0]?.trim();
-  const tripCountry = tripDestParts.slice(1).join(',').trim();
+  const tripCountry = trip?.destination?.split(',').slice(1).join(',').trim() || '';
 
   const { data: liveEvents } = useQuery({
     queryKey: ['trip-events', trip?.id, tripCity],
@@ -721,17 +793,18 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
-      {/* Explore section — destination categories */}
-      <TripExploreSection trip={trip ?? null} />
       <div className="h-24" />
 
-      {/* Detail modal */}
-      {selectedPlace && (
-        <PlaceDetailModal
-          place={selectedPlace}
-          onClose={() => setSelectedPlace(null)}
-        />
-      )}
+      {/* Detail overlay — same as Places page */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            onClose={() => setSelectedPlace(null)}
+            minimal
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

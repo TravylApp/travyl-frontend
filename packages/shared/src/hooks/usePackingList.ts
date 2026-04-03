@@ -70,8 +70,8 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     mutationFn: async ({ name, category }: { name: string; category: PackingCategory }) => {
       const catItems = items.filter((i) => i.category === category)
       const maxSort = catItems.length > 0 ? Math.max(...catItems.map((i) => i.sort_order)) : -1
-      const newItem = await insertPackingItem(tripId!, userId!, name, category, maxSort + 1)
-      await insertAuditEntry(tripId!, userId!, newItem.id, 'added', name).catch(() => {})
+      const newItem = await insertPackingItem(tripId!, userId || null as any, name, category, maxSort + 1)
+      await insertAuditEntry(tripId!, userId || null as any, newItem.id, 'added', name).catch(() => {})
       return newItem
     },
     onSuccess: () => {
@@ -87,7 +87,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
       if (!item) return
       const newPacked = !item.is_packed
       await updatePackingItemPacked(itemId, newPacked, userId ?? null, item.quantity)
-      await insertAuditEntry(tripId!, userId!, itemId, newPacked ? 'packed' : 'unpacked', item.name).catch(() => {})
+      await insertAuditEntry(tripId!, userId || null as any, itemId, newPacked ? 'packed' : 'unpacked', item.name).catch(() => {})
     },
     onMutate: async (itemId: string) => {
       await queryClient.cancelQueries({ queryKey: ['packingItems', tripId] })
@@ -125,9 +125,9 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
       const newIsPacked = newPackedCount >= item.quantity
       await updatePackedCount(itemId, newPackedCount, item.quantity)
       if (newIsPacked && !item.is_packed) {
-        await insertAuditEntry(tripId!, userId!, itemId, 'packed', item.name).catch(() => {})
+        await insertAuditEntry(tripId!, userId || null as any, itemId, 'packed', item.name).catch(() => {})
       } else if (!newIsPacked && item.is_packed) {
-        await insertAuditEntry(tripId!, userId!, itemId, 'unpacked', item.name).catch(() => {})
+        await insertAuditEntry(tripId!, userId || null as any, itemId, 'unpacked', item.name).catch(() => {})
       }
     },
     onMutate: async (itemId: string) => {
@@ -182,7 +182,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     mutationFn: async (itemId: string) => {
       const item = items.find((i) => i.id === itemId)
       await deletePackingItem(itemId)
-      if (item) await insertAuditEntry(tripId!, userId!, itemId, 'removed', item.name).catch(() => {})
+      if (item) await insertAuditEntry(tripId!, userId || null as any, itemId, 'removed', item.name).catch(() => {})
     },
     onMutate: async (itemId: string) => {
       await queryClient.cancelQueries({ queryKey: ['packingItems', tripId] })

@@ -265,6 +265,7 @@ export default function Home() {
   const { data: heroConfig } = useHeroConfig();
 
   const sendButtonRef = useRef<HTMLButtonElement>(null);
+  const heroSectionRef = useRef<HTMLElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
@@ -289,7 +290,7 @@ export default function Home() {
   // then falls back to showing the questions so the user isn't stuck.
   useEffect(() => {
     if (isClarifying && skipQuestionsRef.current) {
-      if (skipRetryCountRef.current < 2) {
+      if (skipRetryCountRef.current < 1) {
         skipRetryCountRef.current += 1;
         setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
         setShowTakeoff(true);
@@ -336,15 +337,19 @@ export default function Home() {
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
 
-  // Parallax transforms — document-level scroll (no target ref to avoid hydration error)
-  const { scrollYProgress: heroScroll } = useScroll();
-  const heroTextY = useTransform(heroScroll, [0, 0.35], [0, 150]);
-  const heroTextOpacity = useTransform(heroScroll, [0, 0.2], [1, 0]);
-  const heroBgY = useTransform(heroScroll, [0, 0.35], [0, -120]);
-  const heroBgScale = useTransform(heroScroll, [0, 0.35], [1, 1.15]);
+  // Parallax transforms — scoped to hero section so JS stops running once hero leaves viewport
+  const { scrollYProgress: heroScroll } = useScroll({
+    target: heroSectionRef,
+    offset: ["start start", "end start"],
+  });
+  const heroTextY = useTransform(heroScroll, [0, 0.6], [0, 150]);
+  const heroTextOpacity = useTransform(heroScroll, [0, 0.4], [1, 0]);
+  const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
+  const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
 
-  // Parallax divider
-  const dividerBgY = useTransform(heroScroll, [0.3, 0.7], [-80, 80]);
+  // Parallax divider — uses document scroll (fires only in divider viewport range)
+  const { scrollYProgress: pageScroll } = useScroll();
+  const dividerBgY = useTransform(pageScroll, [0.3, 0.7], [-80, 80]);
 
   // Hero slideshow — fetch from backend API, no hardcoded fallbacks
   const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
@@ -460,7 +465,12 @@ export default function Home() {
     if (!val) return;
     skipQuestionsRef.current = true;
     skipRetryCountRef.current = 0;
-    planner.submitPrompt(val);
+    // Enhance short/vague prompts so the API has enough to plan with
+    const words = val.split(/\s+/).length;
+    const prompt = words <= 3 && !val.match(/\d/)
+      ? `Plan a 5-day trip to ${val}`
+      : val;
+    planner.submitPrompt(prompt);
     setTripQuery("");
   };
 
@@ -631,7 +641,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+      <section ref={heroSectionRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
@@ -653,7 +663,7 @@ export default function Home() {
         <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
 
         <motion.div
-          className="relative z-10 max-w-3xl mx-auto text-center w-full"
+          className="relative z-10 max-w-3xl mx-auto text-center w-full will-change-[transform,opacity]"
           style={{ y: heroTextY, opacity: heroTextOpacity }}
         >
           <motion.h1
@@ -687,7 +697,7 @@ export default function Home() {
             {/* Answered options summary */}
             {isClarifying && Object.keys(selectedAnswers).length > 0 && (
               <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
-                <div className="bg-black/30 backdrop-blur-md rounded-2xl px-5 py-2.5 border border-white/15 shadow-lg">
+                <div className="bg-black/50 backdrop-blur-xl rounded-2xl px-5 py-2.5 border border-white/20 shadow-2xl">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm text-white/80 truncate">
                       {Object.values(selectedAnswers).map((v) => v.join(", ")).join(" · ")}
@@ -718,7 +728,7 @@ export default function Home() {
             {/* Loading state while extracting */}
             {(isExtracting || isPlanning) && (
               <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
-                <div className="bg-black/30 backdrop-blur-md rounded-full px-6 py-3 border border-white/15 flex items-center justify-center gap-3 shadow-lg">
+                <div className="bg-black/50 backdrop-blur-xl rounded-full px-6 py-3 border border-white/20 flex items-center justify-center gap-3 shadow-2xl">
                   <p className="text-white text-sm font-medium drop-shadow-sm">
                     {isExtracting ? "Understanding your trip..." : "Building your itinerary..."}
                   </p>
@@ -780,7 +790,7 @@ export default function Home() {
             {/* Questions — only shown if user clicked Refine */}
             {isClarifying && showQuestions && currentQuestion && (
               <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out]">
-                <div className="bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/15 shadow-lg">
+                <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-2xl">
                   <div className="flex items-center gap-2 mb-3">
                     <Sparkles size={14} className="text-white/60" />
                     <p className="text-sm text-white font-semibold">{currentQuestion.question}</p>
@@ -849,7 +859,7 @@ export default function Home() {
                         skipRetryCountRef.current = 0;
                         planner.submitPrompt(`Plan a trip to ${s.label}`);
                       }}
-                      className="text-[10px] sm:text-xs text-white font-medium border border-white/40 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-white/20 transition-colors backdrop-blur-sm bg-white/10 shadow-sm drop-shadow-sm whitespace-nowrap"
+                      className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
                     >
                       {s.label}
                     </button>

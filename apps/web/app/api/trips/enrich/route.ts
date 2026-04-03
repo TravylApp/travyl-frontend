@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabase, rateLimit } from '@/lib/api-utils'
+import { createClient } from '@supabase/supabase-js'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
 import { filterByRadius } from '@/lib/haversine'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
@@ -35,6 +36,18 @@ export async function POST(req: NextRequest) {
 
   if (fetchErr || !trip) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
+  }
+
+  // Ownership check: logged-in must own, anonymous can only enrich public unowned trips
+  const authHeader = req.headers.get('authorization')
+  if (authHeader) {
+    const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
+      { global: { headers: { Authorization: authHeader } } }).auth.getUser()
+    if (!user || (trip.user_id && trip.user_id !== user.id)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+  } else if (trip.user_id || trip.visibility !== 'public') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
   const existing = trip.trip_context ?? {}
@@ -325,12 +338,66 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-generate packing suggestions if none exist yet
+  try {
+    const { count: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? 0) === 0) {
+      const { generatePackingSuggestions } = await import('@travyl/shared')
+      const userId = trip.user_id ?? ''
+      const suggestions = generatePackingSuggestions(
+        {
+          destination: trip.destination ?? '',
+          country: country,
+          startDate: trip.start_date ?? undefined,
+          endDate: trip.end_date ?? undefined,
+          durationDays,
+          weather: weatherData ? {
+            current: weatherData.current ? { temp_f: weatherData.current.temp_f, conditions: weatherData.current.conditions } : undefined,
+            forecast: weatherData.forecast?.map((d: any) => ({ high: d.high, low: d.low, conditions: d.conditions })),
+          } : undefined,
+          travelers: trip.trip_context?.travelers ?? undefined,
+        },
+        userId,
+      )
+
+      if (suggestions.length > 0) {
+        const rows = suggestions.map((s) => ({ ...s, trip_id: tripId }))
+        await supabase.from('packing_suggestions').insert(rows)
+      }
+    }
+  } catch {
+    // Non-critical — don't fail enrichment if packing generation fails
+  }
+
   // Update trip
   const { error: updateErr } = await supabase
     .from('trips').update({ trip_context: merged }).eq('id', tripId)
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
+
+  // Auto-generate packing suggestions via SST (fire-and-forget)
+  if (BACKEND_URL) {
+    const { data: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? []).length === 0) {
+      // Get auth token to forward to the packing-suggest SST function
+      const authHeader = req.headers.get('authorization')
+      const body = JSON.stringify({ tripId })
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authHeader) headers['Authorization'] = authHeader
+
+      fetch(`${BACKEND_URL}/packing-suggest`, { method: 'POST', headers, body })
+        .catch((err) => console.error('[enrich] packing-suggest failed:', err))
+    }
   }
 
   return NextResponse.json({ status: 'enriched', keys: Object.keys(merged) })

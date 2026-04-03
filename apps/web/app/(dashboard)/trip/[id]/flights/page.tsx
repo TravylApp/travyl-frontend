@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useMemo } from 'react';
+import { use, useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
@@ -202,6 +202,72 @@ const collapseVariants = {
 } satisfies Record<string, object>;
 
 /* ================================================================
+   AIRPORT AUTOCOMPLETE INPUT
+   ================================================================ */
+
+function AirportInput({ label, value, onChange }: { label: string; value: string; onChange: (code: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<{ iata: string; name: string; city: string; country: string }[]>([]);
+  const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const cityName = POPULAR_AIRPORTS.find(a => a.code === value)?.city
+    || CITY_AIRPORTS_REVERSE[value]
+    || '';
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/airports?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setResults(data);
+          setOpen(data.length > 0);
+        }
+      } catch {}
+    }, 250);
+  }, [query]);
+
+  return (
+    <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors relative">
+      <p className="text-[9px] uppercase tracking-widest text-gray-400">{label}</p>
+      <input
+        type="text"
+        value={query || value}
+        onChange={(e) => { setQuery(e.target.value); }}
+        onFocus={() => { setQuery(''); }}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        placeholder={value || 'Search airport...'}
+        className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 w-full focus:outline-none placeholder:text-gray-300"
+      />
+      {cityName && !query && <p className="text-[10px] text-gray-400 truncate">{cityName}</p>}
+      {open && results.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
+          {results.map((r) => (
+            <button
+              key={r.iata}
+              onMouseDown={(e) => { e.preventDefault(); onChange(r.iata); setQuery(''); setOpen(false); }}
+              className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2"
+            >
+              <span className="text-xs font-bold text-[#2563eb] w-8">{r.iata}</span>
+              <span className="text-xs text-gray-600 truncate">{r.name}</span>
+              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{r.city}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Reverse lookup for city names from IATA codes
+const CITY_AIRPORTS_REVERSE: Record<string, string> = Object.fromEntries(
+  Object.entries(CITY_AIRPORTS).map(([city, code]) => [code, city])
+);
+
+/* ================================================================
    FLIGHT SEARCH SECTION
    ================================================================ */
 
@@ -271,13 +337,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
               {/* Search strip */}
               <div className="flex flex-col sm:flex-row items-stretch border border-gray-200 rounded-xl overflow-visible bg-white divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
                 {/* From */}
-                <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors">
-                  <p className="text-[9px] uppercase tracking-widest text-gray-400">From</p>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-sm font-semibold text-[#2563eb]">{from}</span>
-                    <span className="text-[10px] text-gray-400 truncate">{POPULAR_AIRPORTS.find(a => a.code === from)?.city}</span>
-                  </div>
-                </div>
+                <AirportInput label="From" value={from} onChange={setFrom} />
 
                 {/* Swap */}
                 <div className="hidden sm:flex items-center -mx-3 z-10">
@@ -287,13 +347,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
                 </div>
 
                 {/* To */}
-                <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors">
-                  <p className="text-[9px] uppercase tracking-widest text-gray-400">To</p>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-sm font-semibold text-[#2563eb]">{to}</span>
-                    <span className="text-[10px] text-gray-400 truncate">{POPULAR_AIRPORTS.find(a => a.code === to)?.city}</span>
-                  </div>
-                </div>
+                <AirportInput label="To" value={to} onChange={setTo} />
 
                 {/* Travelers */}
                 <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors">

@@ -313,6 +313,28 @@ export async function updateTripDetails(
   tripId: string,
   updates: Partial<Pick<Trip, 'title' | 'destination' | 'start_date' | 'end_date' | 'budget' | 'currency' | 'travelers' | 'status'>>
 ): Promise<void> {
+  // If dates changed, also trim trip_context.itinerary to match new duration
+  if (updates.start_date && updates.end_date) {
+    const newDuration = Math.max(1, Math.ceil(
+      (new Date(updates.end_date).getTime() - new Date(updates.start_date).getTime()) / 86400000
+    ) + 1)
+
+    const { data: existing } = await supabase
+      .from('trips')
+      .select('trip_context')
+      .eq('id', tripId)
+      .single()
+
+    const itinerary = existing?.trip_context?.itinerary as unknown[] | undefined
+    if (itinerary && itinerary.length > newDuration) {
+      const trimmed = itinerary.slice(0, newDuration)
+      const ctx = { ...existing!.trip_context, itinerary: trimmed }
+      const { error } = await supabase.from('trips').update({ ...updates, trip_context: ctx }).eq('id', tripId)
+      if (error) throw error
+      return
+    }
+  }
+
   const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
   if (error) throw error
 }
@@ -509,6 +531,22 @@ export async function savePlanToSupabase(
 
   const ext = plan.extracted
   const dest = ext.destination
+  const duration = ext.duration_days || 5
+
+  // Ensure we have concrete dates — default to tomorrow if API returned null
+  if (!ext.dates.start) {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    ext.dates.start = tomorrow.toISOString().split('T')[0]
+  }
+  if (!ext.dates.end) {
+    const end = new Date(ext.dates.start)
+    end.setDate(end.getDate() + duration - 1)
+    ext.dates.end = end.toISOString().split('T')[0]
+  }
+
+  // Cap itinerary to requested duration — API sometimes returns more days than asked
+  const cappedItinerary = plan.itinerary.slice(0, duration)
 
   onProgress?.('Creating trip...', 10)
 
@@ -535,8 +573,8 @@ export async function savePlanToSupabase(
       airline: f.airline, price: f.price,
       departure_time: f.departure_time, arrival_time: f.arrival_time,
     })),
-    // Trimmed itinerary — POI id/name/category/lat/lng + times only
-    itinerary: plan.itinerary.map((day: any) => ({
+    // Trimmed itinerary — POI id/name/category/lat/lng + times only (capped to duration)
+    itinerary: cappedItinerary.map((day: any) => ({
       day: day.day, date: day.date,
       weather: day.weather ? { high_c: day.weather.high_c, low_c: day.weather.low_c, condition: day.weather.condition } : undefined,
       slots: (day.slots ?? []).map((slot: any) => ({
@@ -545,7 +583,7 @@ export async function savePlanToSupabase(
       })),
     })),
     // Trimmed explore items — id/name/category only
-    explore_items: plan.itinerary.flatMap((day: any) =>
+    explore_items: cappedItinerary.flatMap((day: any) =>
       (day.slots ?? []).map((slot: any) => ({
         id: slot.poi.id, title: slot.poi.name, category: slot.poi.category,
       }))
@@ -610,6 +648,40 @@ export async function savePlanToSupabase(
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
     if (flightErr) console.error('Failed to save flights:', flightErr)
+  }
+
+  // Save itinerary activities to activity table (powers the calendar)
+  onProgress?.('Saving activities...', 90)
+  const activityRows: Record<string, unknown>[] = []
+  for (const day of cappedItinerary) {
+    const dayDate = day.date || ext.dates.start
+    for (const slot of day.slots ?? []) {
+      const poi = slot.poi ?? {}
+      activityRows.push({
+        trip_id: tripId,
+        user_id: user?.id || null,
+        activity_name: poi.name || 'Activity',
+        activity_type: poi.category || 'sightseeing',
+        starting_date: dayDate,
+        ending_date: dayDate,
+        starting_time: slot.start_time || '09:00',
+        ending_time: slot.end_time || '11:00',
+        latitude: poi.lat || null,
+        longitude: poi.lng || null,
+        notes: poi.description || null,
+        activity_data: {
+          category: poi.category,
+          location_name: poi.name,
+          image_url: poi.photo_url || null,
+          rating: poi.rating || null,
+          tags: poi.tags || [],
+        },
+      })
+    }
+  }
+  if (activityRows.length > 0) {
+    const { error: actErr } = await supabase.from('activity').insert(activityRows)
+    if (actErr) console.error('Failed to save activities:', actErr)
   }
 
   onProgress?.('Done!', 100)

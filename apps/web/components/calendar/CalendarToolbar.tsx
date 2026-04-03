@@ -187,12 +187,13 @@ export function CalendarToolbar({
   return (
     <div className="flex flex-col shrink-0">
       {/* Connection status banner */}
-      {connectionStatus !== 'connected' && (
-        <div className="flex items-center justify-center gap-2 bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400">
-          <span className="inline-block h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+      {/* Connection banner — only show after 3s to avoid flash on initial load */}
+      {connectionStatus !== 'connected' && typeof window !== 'undefined' && performance.now() > 3000 && (
+        <div className="flex items-center justify-center gap-2 bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
           {connectionStatus === 'reconnecting'
-            ? 'Reconnecting to collaboration server\u2026'
-            : 'Disconnected \u2014 changes may not sync'}
+            ? 'Reconnecting\u2026'
+            : 'Offline \u2014 changes saved locally'}
         </div>
       )}
 
