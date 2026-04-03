@@ -1,6 +1,6 @@
 # Travyl Master Task List — 6 Week Sprint
 
-Last updated: April 1, 2026
+Last updated: April 3, 2026
 
 ---
 
@@ -10,7 +10,7 @@ Last updated: April 1, 2026
 |---|---|---|---|
 | C1 | Fix CloudFront 403 on trip creation (payload too large for WAF) | E2E test | ✅ Done (trimmed payloads ~3KB) |
 | C2 (TRA-286) | Fix Amplify build stability (main/develop divergence) | Recurring | ✅ Done |
-| C3 (TRA-384) | Fix location filtering — wrong city results (Universal Studios in New Delhi) | Demo feedback F1 | ⚠️ Partial — client Haversine filter added, backend radius needed |
+| C3 (TRA-384) | Fix location filtering — wrong city results (Universal Studios in New Delhi) | Demo feedback F1 | ✅ Done (25km Haversine filter + obscure location fallback) |
 | C4 | Fix deployed site: missing env vars, API routes 404/500 | E2E test | ✅ Done (switched to anon key, no service key needed) |
 
 ## HIGH — Broken or Fake Features
@@ -27,7 +27,7 @@ Last updated: April 1, 2026
 | H8 | Budget expenses not persisted — lost on refresh | Audit | Todo (RLS policies added, needs testing) |
 | H9 (TRA-362) | Budget categories all show $0 despite having data | E2E test | ✅ Done |
 | H10 (TRA-362) | Day selector doesn't switch content on itinerary | E2E test | ✅ Done |
-| H11 | Images low res and not clickable | Demo feedback F3 | ✅ Partial — clickable with PlaceDetailOverlay, enrichment fetches better images |
+| H11 (TRA-405/TRA-410) | Images low res and not clickable | Demo feedback F3 | ✅ Done (removed referrerPolicy, 1200x800 upscale, hi-res pipeline) |
 | H12 (TRA-362) | Settings page stuck "Loading..." for anonymous users | E2E test | ✅ Done |
 | H13 (TRA-362/TRA-376) | Packing list empty for new trips — needs auto-generation | E2E test | ✅ Done (local suggestions + anonymous inserts) |
 | H14 | Profile page all mock data (web + mobile) | Audit | Todo |
@@ -42,7 +42,7 @@ Last updated: April 1, 2026
 |---|---|---|---|
 | M1 (TRA-364) | How It Works scroll snapping | User feedback | ✅ Done (removed scroll hijacking, reduced to 135vh) |
 | M2 | Font color contrast issues on some text | Demo feedback F4 | ✅ Done (hero pills, questions panel contrast increased) |
-| M3 | Add accommodation types ("stay with someone", "own house") | Demo feedback F5 | Todo |
+| M3 (TRA-308) | Add accommodation types ("stay with someone", "own house") | Demo feedback F5 | Todo (needs backend change) |
 | M4 | Trip visibility enforcement — anon users see others' trips | Demo feedback F6 | ✅ Done (RLS policies, anon CRUD on public trips) |
 | M5 | Currency conversion — wire /api/exchange-rates | Demo feedback F7 | ✅ Done (interactive converter in hero) |
 | M6 (TRA-311) | Map language consistent with user locale | Demo feedback F8 | ✅ Done (CARTO Voyager with getUserLang) |
@@ -88,7 +88,7 @@ Last updated: April 1, 2026
 | E11 (TRA-338) | Request: /api/destinations/news (Google News) | SerpAPI map | Todo |
 | E12 (TRA-339) | Request: /api/opentable/search (reservations) | SerpAPI map | Todo |
 | E13 (TRA-340) | Use /api/images/destination for trip hero images | API audit | ✅ Done (useDestinationImage hook on places page + trip overview) |
-| E14 (TRA-341) | Cross-source card enrichment (Google + TA + Yelp merged) | Strategy | Todo |
+| E14 (TRA-341) | Cross-source card enrichment (Google + TA + Yelp merged) | Strategy | ✅ Done (usePlaceEnrich wired to PlaceDetailModal on trip pages) |
 
 ## NEW FEATURES (Weeks 4-6)
 
@@ -98,7 +98,7 @@ Last updated: April 1, 2026
 | N2 | Booking/payment integration (Stripe) | Roadmap | Todo |
 | N3 | Push notifications | Roadmap | Todo |
 | N4 | Offline mode for mobile | Roadmap | Todo |
-| N5 | Deep linking — share trips via URL | Roadmap | Todo |
+| N5 (TRA-346) | Deep linking — share trips via URL | Roadmap | ✅ Done (share page exists, added OG meta tags for social previews) |
 | N6 | Trip templates — browse + apply | Roadmap | Todo |
 | N7 | Email notifications — trip reminders, flight alerts | Roadmap | Todo |
 | N8 | Accessibility audit (WCAG 2.1 AA) | Roadmap | Todo |
@@ -154,12 +154,28 @@ Last updated: April 1, 2026
 
 | Category | Total | Done | Remaining |
 |----------|-------|------|-----------|
-| Critical | 4 | 3 | 1 (partial) |
+| Critical | 4 | 4 | 0 |
 | High | 18 | 18 | 0 |
-| Medium | 17 | 16 | 1 |
+| Medium | 17 | 16 | 1 (M3 needs backend) |
 | Low | 8 | 6 | 2 |
-| Enrichment | 14 | 9 | 5 |
-| New Features | 10 | 0 | 10 |
+| Enrichment | 14 | 10 | 4 |
+| New Features | 10 | 1 | 9 |
 | Security | 18 | 14 | 4 |
 | Session Additions | 15 | 15 | 0 |
-| **TOTAL** | **104** | **81** | **23** |
+| **TOTAL** | **104** | **84** | **20** |
+
+### April 3 Deploy Fixes (not in original 104)
+| Task | TRA | Status |
+|------|-----|--------|
+| Remove referrerPolicy from all images | TRA-405 | ✅ Done |
+| Simplify Explore section (3 categories) | TRA-406 | ✅ Done |
+| Pexels API key not reaching Amplify SSR | TRA-407 | ✅ Done |
+| Enrichment baseUrl localhost:3000 bug | TRA-408 | ✅ Done |
+| Calendar auto-seed DB constraints | TRA-409 | ✅ Done |
+| Hi-res images across pipeline | TRA-410 | ✅ Done |
+| Remove travel quote from hero | TRA-411 | ✅ Done |
+| Photo mosaic on itinerary page | TRA-412 | ✅ Done |
+| Amplify env var injection (amplify.yml) | — | ✅ Done |
+| Ambiguous location disambiguation | TRA-353 | ✅ Done |
+| Mobile itinerary drag persistence | TRA-388 | ✅ Done |
+| Packing personal vs shared | TRA-375 | ✅ Done |
