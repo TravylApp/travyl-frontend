@@ -23,6 +23,7 @@ import {
   TextStyles,
   FontSize,
   FontFamily,
+  supabase,
 } from '@travyl/shared';
 import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
 import MapView, { Marker } from 'react-native-maps';
@@ -2107,6 +2108,39 @@ export default function ItineraryScreen() {
     }));
   }, []);
 
+  // Persist reordered day to Supabase (fire-and-forget)
+  const persistReorderedDay = useCallback(async (dayIndex: number, activities: ActivityViewModel[]) => {
+    if (!trip || !id) return;
+    try {
+      const startDate = trip.start_date || new Date().toISOString().split('T')[0];
+      const dayDate = new Date(startDate);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      const dayDateStr = dayDate.toISOString().split('T')[0];
+
+      const { data: tripData } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      if (!tripData?.trip_context) return;
+
+      const itinerary = tripData.trip_context.itinerary || [];
+      const dayIdx = itinerary.findIndex((d: any) => d.date === dayDateStr);
+      if (dayIdx < 0) return;
+
+      // Preserve existing POI data (lat/lng/photo), just reorder slots
+      const existingPois = new Map<string, any>();
+      for (const slot of itinerary[dayIdx].slots || []) {
+        if (slot.poi?.name) existingPois.set(slot.poi.name, slot.poi);
+      }
+      itinerary[dayIdx].slots = activities.map((a) => ({
+        start_time: a.startTime?.replace(/\s?(AM|PM)/i, '') || '09:00',
+        end_time: a.endTime?.replace(/\s?(AM|PM)/i, '') || '10:00',
+        poi: existingPois.get(a.name) || { id: a.id, name: a.name, category: a.category },
+      }));
+
+      await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
+    } catch (e) {
+      console.error('[reorder] persist failed:', e);
+    }
+  }, [trip, id]);
+
   const reorderGlanceDay = useCallback((dayIndex: number, reorderedActivities: ActivityViewModel[]) => {
     setGlanceDays((prev) => {
       const day = prev[dayIndex];
@@ -2189,9 +2223,13 @@ export default function ItineraryScreen() {
             };
           }),
       };
+      // Persist reordered day async
+      const allActivities = next[dayIndex].timeGroups.flatMap(g => g.activities);
+      persistReorderedDay(dayIndex, allActivities);
+
       return next;
     });
-  }, []);
+  }, [persistReorderedDay]);
 
   const updateActivityTime = useCallback((dayIndex: number, activityId: string, newTime: string) => {
     setGlanceDays((prev) => {
