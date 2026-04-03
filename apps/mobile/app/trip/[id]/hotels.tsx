@@ -5,7 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch } from '@travyl/shared';
+import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -1056,7 +1056,7 @@ export default function HotelsScreen() {
       reviews: h.ratingCount ?? h.review_count ?? 0,
       price: h.price ?? h.price_per_night ?? 100,
       neighborhood: h.address?.split(',')[0] || 'City Center',
-      image: h.image ?? h.photo_url ?? `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400`,
+      image: upscaleGoogleImage(h.image ?? h.photo_url) || h.image || h.photo_url || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400`,
       amenities: h.amenities ?? ['WiFi'],
       brand: '',
       label: i === 0 ? 'Top Pick' : i < 3 ? 'Popular' : '',
