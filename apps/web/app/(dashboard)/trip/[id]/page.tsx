@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
-import { useItineraryScreen, useWeather, useEvents } from '@travyl/shared';
+import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
@@ -598,7 +598,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         id: p.id, title: p.name,
         description: p.description || p.category || '',
         category: p.category || 'attraction',
-        image: p.images?.[0] || p.image || '',
+        image: upscaleGoogleImage(p.images?.[0] || p.image) || p.image || '',
         tags: p.tags,
       }));
     },
@@ -686,12 +686,13 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     staleTime: 60 * 60 * 1000,
   });
 
-  // Use live data if available, fall back to trip_context
-  const exploreItems = (liveExploreItems?.length ? liveExploreItems : trip?.trip_context?.explore_items) || [];
+  // Use live data if available, fall back to trip_context — upscale all images
+  const hiRes = (url: string | undefined) => upscaleGoogleImage(url) || url || '';
+  const exploreItems = (liveExploreItems?.length ? liveExploreItems : trip?.trip_context?.explore_items?.map((e: any) => ({ ...e, image: hiRes(e.image) }))) || [];
   const events = (liveEvents?.length ? liveEvents : trip?.trip_context?.events?.map((e: any) => ({
     id: e.id, title: e.title,
     description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
-    category: e.category, image: e.image,
+    category: e.category, image: hiRes(e.image),
   }))) || [];
 
   if (isLoading || enriching) {

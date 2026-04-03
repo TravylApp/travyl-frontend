@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
@@ -304,6 +305,15 @@ export async function POST(req: NextRequest) {
       if (url) ref.image = url
     }
   }
+
+  // Ensure all images are high-res before saving to Supabase
+  const hiRes = (url: string | undefined | null) => upscaleGoogleImage(url) || url || undefined
+  if (fresh.hero_image_url) fresh.hero_image_url = hiRes(fresh.hero_image_url)
+  if (fresh.hero_images) fresh.hero_images = fresh.hero_images.map((u: string) => hiRes(u)).filter(Boolean)
+  if (fresh.explore_items) fresh.explore_items = fresh.explore_items.map((e: any) => ({ ...e, image: hiRes(e.image) }))
+  if (fresh.foursquare_venues) fresh.foursquare_venues = fresh.foursquare_venues.map((v: any) => ({ ...v, image: hiRes(v.image) }))
+  if (fresh.restaurants) fresh.restaurants = fresh.restaurants.map((r: any) => ({ ...r, image: hiRes(r.image) }))
+  if (fresh.hotels) fresh.hotels = fresh.hotels.map((h: any) => ({ ...h, image: hiRes(h.image) }))
 
   // Merge: fill missing fields, replace empty arrays, and fix zero lat/lng
   const merged = { ...existing }
