@@ -661,7 +661,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         activity_name: a.name, activity_type: a.category || 'sightseeing',
         starting_date: a.dayDate, ending_date: a.dayDate,
         starting_time: a.startTime, ending_time: a.endTime,
-        latitude: a.lat || null, longitude: a.lng || null,
+        latitude: a.lat || 0, longitude: a.lng || 0,
         activity_data: { category: a.category, location_name: a.name, image_url: a.image || null },
       }));
       await supabase.from('activity').insert(rows).then(() => {}, () => {});
