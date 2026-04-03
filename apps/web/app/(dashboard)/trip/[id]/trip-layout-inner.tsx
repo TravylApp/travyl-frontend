@@ -80,8 +80,12 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
       return !foodCatRe.test(cat) && !hotelCatRe.test(cat) && !/restaurant|bar|club/i.test(cat);
     }),
   ];
-  if (attractionItems.length > 0) {
-    categories.push({ key: 'attractions', label: 'Top Attractions', items: attractionItems });
+  // Only include items that have an image — no point showing empty cards
+  const withImage = (items: ExploreItem[]) => items.filter(i => !!i.image);
+
+  const visibleAttractions = withImage(attractionItems);
+  if (visibleAttractions.length > 0) {
+    categories.push({ key: 'attractions', label: 'Top Attractions', items: visibleAttractions });
   }
 
   // ── 2. Restaurants ──
@@ -92,8 +96,9 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
         ...(ctx?.explore_items || []).filter(item => foodCatRe.test(item.category || '')),
         ...(ctx?.foursquare_venues || []).filter((v: any) => foodCatRe.test(v.category || '') || /restaurant|café|cafe|dining/i.test(v.category || '')),
       ];
-  if (restaurantItems.length > 0) {
-    categories.push({ key: 'restaurants', label: 'Restaurants', items: restaurantItems });
+  const visibleRestaurants = withImage(restaurantItems);
+  if (visibleRestaurants.length > 0) {
+    categories.push({ key: 'restaurants', label: 'Restaurants', items: visibleRestaurants });
   }
 
   // ── 3. Events ──
@@ -102,8 +107,9 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
     description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category || 'Event', image: e.image || e.photo_url,
   }));
-  if (eventItems.length > 0) {
-    categories.push({ key: 'events', label: 'Events', items: eventItems });
+  const visibleEvents = withImage(eventItems);
+  if (visibleEvents.length > 0) {
+    categories.push({ key: 'events', label: 'Events', items: visibleEvents });
   }
 
   if (categories.length === 0) return null;
@@ -134,7 +140,7 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-20 py-8">
       <h2 className="text-2xl font-bold text-white mb-6" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
         Explore {city}
       </h2>
@@ -150,7 +156,7 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
               <span className="text-[11px] text-white/40">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-              {items.filter((item: ExploreItem) => !!item.image).map((item: ExploreItem) => (
+              {items.map((item: ExploreItem) => (
                 <div key={item.id} onClick={() => handleCardClick(item)}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
