@@ -37,23 +37,22 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   if (segment === '' || segment === 'itinerary') return null;
 
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-20 pt-4 pb-3 sticky top-0 z-20">
+    <div className="shrink-0 px-5 md:pl-20 pt-4 pb-3 z-20">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: tab.color }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 backdrop-blur-md" style={{ backgroundColor: `${tab.color}cc` }}>
           <Icon size={15} className="text-white" />
         </div>
         <div className="flex-1">
-          <h2 className="text-[17px] tracking-tight" style={{ color: 'var(--trip-base)', fontWeight: 700 }}>{tab.label}</h2>
-          <p className="text-[12px] text-gray-400 dark:text-gray-500">{tab.subtitle}</p>
+          <h2 className="text-[17px] tracking-tight text-white font-bold" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>{tab.label}</h2>
+          <p className="text-[12px] text-white/60" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
+          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-white/30 hover:bg-white/20 text-white'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
             <Map size={13} />
             <span className="text-[12px] font-medium">Map</span>
           </button>
         </div>
       </div>
-      <div className="mt-3 h-[2px] rounded-full opacity-80" style={{ background: `linear-gradient(90deg, ${tab.color}, ${tab.color}40, transparent)` }} />
     </div>
   );
 }
@@ -305,7 +304,7 @@ function TripLayoutContent({
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
   const isCalendar = currentSegment === 'calendar';
-  const isMagazineLayout = isOverview || currentSegment === 'itinerary';
+  const isMagazineLayout = !isCalendar; // All tabs get magazine treatment except calendar
 
   // Track exit animation from magazine pages to prevent white flash
   const [exitingFromMagazine, setExitingFromMagazine] = useState(false);
@@ -386,30 +385,14 @@ function TripLayoutContent({
       {/* Trip navigation sidebar — vertical on desktop, bottom bar on mobile */}
       <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
 
-      {/* Hero banner — only on overview + itinerary */}
-      {(isOverview || isItinerary) && (
-        <TripMagazineHero tripId={tripId} trip={trip} compact={isItinerary} onTripUpdate={refetch}
-          overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
-      )}
+      {/* Hero banner — all tabs, compact on non-overview */}
+      <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
+        overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
 
       <div className="mx-auto max-w-7xl">
 
-        {/* Suitcase card */}
-        <div
-          className={`relative z-10 ${
-            isOverview || currentSegment === 'itinerary'
-              ? ''
-              : 'rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-[var(--background)] mx-2 sm:mx-4'
-          }`}
-          style={
-            isOverview || currentSegment === 'itinerary'
-              ? undefined
-              : {
-                  boxShadow:
-                    '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)',
-                }
-          }
-        >
+        {/* Content wrapper — flush, no card border */}
+        <div className="relative z-10">
         <div>
           {/* Content area */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -421,9 +404,7 @@ function TripLayoutContent({
 
             <div className="flex">
               <div
-                className={`flex-1 min-w-0 relative overflow-hidden ${
-                  isMagazineLayout ? 'md:pl-20' : 'bg-white dark:bg-[var(--background)] px-5 md:pl-20 pt-4 pb-5'
-                }`}
+                className="flex-1 min-w-0 relative overflow-hidden md:pl-20"
               >
                 <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
                   <motion.div
@@ -432,6 +413,8 @@ function TripLayoutContent({
                     animate={pageVariants.animate}
                     exit={pageVariants.exit}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className={!isOverview && !isItinerary && !isCalendar ? 'px-4 sm:px-6 pt-2 pb-8 mb-8 rounded-2xl backdrop-blur-md' : ''}
+                    style={!isOverview && !isItinerary && !isCalendar ? { background: 'linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.98) 100%)' } : undefined}
                   >
                     {children}
                   </motion.div>

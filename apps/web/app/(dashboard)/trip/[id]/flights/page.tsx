@@ -300,7 +300,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
   const activeFilterCount = [nonstopOnly, depTimes.length > 0, arrTimes.length > 0, maxPrice < 3000, airlines.length > 0].filter(Boolean).length;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
+    <div className="overflow-hidden mb-4">
       {/* Header */}
       <div role="button" tabIndex={0} onClick={() => setCollapsed(!collapsed)} onKeyDown={(e) => { if (e.key === 'Enter') setCollapsed(!collapsed); }} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer">
         <div className="flex items-center gap-2.5">

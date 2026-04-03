@@ -335,6 +335,20 @@ export async function updateTripDetails(
     }
   }
 
+  // If destination changed, clear stale trip_context so re-enrichment repopulates
+  if (updates.destination) {
+    const { data: existing } = await supabase.from('trips').select('trip_context, destination').eq('id', tripId).single()
+    if (existing && updates.destination !== existing.destination) {
+      const ctx = { ...(existing.trip_context || {}) }
+      for (const key of ['wiki', 'country', 'cuisine', 'phrases', 'cost_of_living', 'safety', 'sunrise', 'aqi', 'timezone_info', 'holidays', 'nearby_cities', 'hero_image_url', 'hero_images', 'explore_items', 'foursquare_venues', 'events', 'news', 'restaurants', 'hotels', 'lat', 'lng', 'quick_facts']) {
+        delete ctx[key]
+      }
+      const { error } = await supabase.from('trips').update({ ...updates, trip_context: ctx }).eq('id', tripId)
+      if (error) throw error
+      return
+    }
+  }
+
   const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
   if (error) throw error
 }

@@ -255,7 +255,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   return (
     <div className="flex flex-col min-h-[60vh]">
       {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b border-gray-100 dark:border-white/10">
+      <div className="sticky top-0 z-30">
         {/* Row 1: Tabs */}
         <div className="px-4 pt-2 pb-0 overflow-x-auto scrollbar-hide">
           <div className="flex gap-0 -mb-px">

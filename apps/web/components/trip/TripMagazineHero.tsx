@@ -83,6 +83,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const [editEnd, setEditEnd] = useState('');
   const [editTravelers, setEditTravelers] = useState(1);
   const [editTitle, setEditTitle] = useState('');
+  const [editDest, setEditDest] = useState('');
   const [saving, setSaving] = useState(false);
 
   const openEditor = useCallback(() => {
@@ -90,6 +91,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     setEditEnd(trip?.end_date || '');
     setEditTravelers(trip?.travelers || 1);
     setEditTitle(trip?.title || '');
+    setEditDest(trip?.destination || '');
     setEditing(true);
   }, [trip]);
 
@@ -97,14 +99,24 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     if (!tripId || saving) return;
     setSaving(true);
     try {
+      const destChanged = editDest && editDest !== trip?.destination;
       await updateTripDetails(tripId, {
         title: editTitle || undefined,
+        destination: editDest || undefined,
         start_date: editStart || undefined,
         end_date: editEnd || undefined,
         travelers: editTravelers,
       });
       setEditing(false);
       onTripUpdate?.();
+      // If destination changed, trigger re-enrichment to repopulate all data
+      if (destChanged) {
+        fetch(`/api/trips/enrich`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tripId }),
+        }).then(() => onTripUpdate?.()).catch(() => {});
+      }
     } catch (e) {
       console.error('Failed to update trip:', e);
     } finally {
@@ -241,6 +253,12 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             {/* Dates + travelers — inline editable */}
             {editing ? (
               <div className="flex flex-wrap items-end gap-3 mb-4 animate-[fadeSlideIn_0.2s_ease-out]">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Destination</label>
+                  <input type="text" value={editDest} onChange={(e) => setEditDest(e.target.value)}
+                    placeholder="City, Country"
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 w-48" />
+                </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Title</label>
                   <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
