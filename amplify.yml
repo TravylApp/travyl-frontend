@@ -25,6 +25,8 @@ applications:
             - echo "GRAPHHOPPER_API_KEY=$GRAPHHOPPER_API_KEY" >> .env
             - echo "AVIATIONSTACK_API_KEY=$AVIATIONSTACK_API_KEY" >> .env
             - echo "DUFFEL_API_TOKEN=$DUFFEL_API_TOKEN" >> .env
+            - echo "GEONAMES_USERNAME=$GEONAMES_USERNAME" >> .env
+            - echo "TIMEZONEDB_API_KEY=$TIMEZONEDB_API_KEY" >> .env
             - npm run build
       artifacts:
         baseDirectory: .next
