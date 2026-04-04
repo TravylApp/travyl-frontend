@@ -11,6 +11,8 @@ function getApiBase(): string {
 
 interface EnrichResponse {
   photos: string[];
+  website?: string;
+  phone?: string;
 }
 
 async function fetchPlaceEnrich(placeId: string, name: string): Promise<EnrichResponse> {
