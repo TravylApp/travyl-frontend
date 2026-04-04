@@ -9,13 +9,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
-  useWeather,
   upscaleGoogleImage,
   TextStyles, FontFamily,
 } from '@travyl/shared';
 import { PageTransition } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SIDEBAR_W = 30; // matches SIDE_TAB_W in _layout
+const CONTENT_WIDTH = SCREEN_WIDTH - SIDEBAR_W;
 const ACCENT_COLOR = '#c8a96a';
 const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
@@ -92,18 +93,8 @@ export default function OverviewScreen() {
   const tripLat = ctx?.lat;
   const tripLng = ctx?.lng;
 
-  // Wiki, safety, country info from trip_context
-  const wiki = typeof ctx?.wiki === 'string' ? ctx.wiki : ctx?.wiki?.extract || '';
-  const safety = ctx?.safety as { score: number; message: string; level?: string } | undefined;
-  const countryInfo = ctx?.country as { name?: string; flag?: string; cca2?: string; currency?: { code: string; symbol: string } } | undefined;
-  const flagUrl = countryInfo?.flag || (countryInfo?.cca2 ? `https://flagcdn.com/24x18/${countryInfo.cca2.toLowerCase()}.png` : null);
-
-  // ─── Destination + weather ─────────────────────────────
-  const destination = trip?.destination || '';
-  const tripCity = destination.split(',')[0]?.trim() || '';
-  const { data: weatherData } = useWeather(tripCity);
-
   // ─── Fetch fresh explore items from API (like web does) ─
+  const destination = trip?.destination || '';
   const [liveExploreItems, setLiveExploreItems] = useState<any[]>([]);
   useEffect(() => {
     // Use lat/lng if available, otherwise fetch by city name via places API
@@ -175,69 +166,22 @@ export default function OverviewScreen() {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 0 }}
         showsVerticalScrollIndicator={false}
       >
 
-      {/* ─── Trip Info Bar (weather, flag, safety) ──────────── */}
-      <View style={{ paddingHorizontal: 20, marginTop: 16, gap: 10 }}>
-        {/* Weather + Flag row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          {flagUrl && (
-            <Image source={{ uri: flagUrl }} style={{ width: 24, height: 18, borderRadius: 2 }} />
-          )}
-          {weatherData?.current && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', ...TEXT_SHADOW }}>{Math.round(weatherData.current.temp)}°</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', ...TEXT_SHADOW }}>{weatherData.current.conditions}</Text>
-            </View>
-          )}
-          {safety && safety.score > 0 && (
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', gap: 4,
-              backgroundColor: safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)',
-              borderWidth: 1,
-              borderColor: safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)',
-              borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3,
-            }}>
-              <FontAwesome name="shield" size={10} color={safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171'} />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171' }}>
-                {safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger'}
-              </Text>
-            </View>
-          )}
-        </View>
+      {/* Gradient fade from hero into content */}
+      <LinearGradient
+        colors={['transparent', isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)', isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)']}
+        locations={[0, 0.4, 1]}
+        style={{ height: 80 }}
+      />
 
-        {/* Weather forecast */}
-        {weatherData?.forecast && weatherData.forecast.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            {weatherData.forecast.slice(0, 4).map((day: any) => (
-              <View key={day.date} style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', ...TEXT_SHADOW }}>
-                  {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff', ...TEXT_SHADOW }}>
-                  {Math.round(day.high)}°
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Wiki extract */}
-        {wiki ? (
-          <View style={{
-            backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 12,
-          }}>
-            <Text style={{ fontSize: 13, lineHeight: 20, color: 'rgba(255,255,255,0.9)', fontFamily: FontFamily.serif }} numberOfLines={3}>
-              {wiki}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+      {/* Opaque content area — prevents hero bleed between sections */}
+      <View style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)' }}>
 
       {/* ─── Things to Do — horizontal scroll cards ───────── */}
-      <View style={{ marginTop: 20 }}>
+      <View>
         <View style={{ paddingHorizontal: 20 }}>
           <SectionHeader accent="Explore" title="Things to Do" />
         </View>
@@ -247,12 +191,12 @@ export default function OverviewScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
             decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH - 28}
+            snapToInterval={CONTENT_WIDTH - 28}
             pagingEnabled={false}
           >
             {exploreItems.map((item: any, idx: number) => (
               <View key={item.id || idx} style={{
-                width: SCREEN_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
+                width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {item.image ? (
                   <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -310,7 +254,7 @@ export default function OverviewScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 10 }}
             decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH - 60}
+            snapToInterval={CONTENT_WIDTH - 60}
           >
             {news.map((item: any, i: number) => {
               const gradients: [string, string][] = [['#1a1a2e', '#16213e'], ['#0f3460', '#1a1a2e'], ['#2c3e50', '#1a1a2e'], ['#1b2838', '#0f3460']];
@@ -319,7 +263,7 @@ export default function OverviewScreen() {
                 <Pressable
                   key={item.id || i}
                   onPress={() => item.url && Linking.openURL(item.url)}
-                  style={{ width: SCREEN_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
+                  style={{ width: CONTENT_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
                 >
                   <LinearGradient
                     colors={[grad[0], grad[1]]}
@@ -364,12 +308,12 @@ export default function OverviewScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
             decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH - 28}
+            snapToInterval={CONTENT_WIDTH - 28}
             pagingEnabled={false}
           >
             {(ctx.cuisine as any[]).map((dish: any, idx: number) => (
               <View key={dish.id || idx} style={{
-                width: SCREEN_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
+                width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {dish.image ? (
                   <Image source={{ uri: dish.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -391,34 +335,44 @@ export default function OverviewScreen() {
         </View>
       )}
 
-      {/* ─── Essential Phrases — horizontal scroll pills ───── */}
+      {/* ─── Essential Phrases — vertical scroll, 2 per row ── */}
       {phrases.length > 0 && (
-        <View style={{ marginTop: 24 }}>
-          <View style={{ paddingHorizontal: 20 }}>
-            <SectionHeader accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-            decelerationRate="fast"
-          >
-            {phrases.slice(0, 12).map((phrase: any, idx: number) => {
-              const en = phrase.english || phrase.en || Object.keys(phrase)[0];
-              const local = phrase.local || phrase.translation || Object.values(phrase)[0];
-              return (
-                <View key={idx} style={{
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
-                  borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
-                  borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                  minWidth: 140,
-                }}>
-                  <Text style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 4 }}>{en}</Text>
-                  <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: ACCENT_COLOR, fontFamily: FontFamily.serif }}>{local}</Text>
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <SectionHeader accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
+          <View style={{
+            height: 52 * 2 + 8, // 2 visible rows + gap
+            borderRadius: 12, overflow: 'hidden',
+          }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {phrases.slice(0, 12).reduce((rows: any[][], phrase: any, idx: number) => {
+                if (idx % 2 === 0) rows.push([phrase]);
+                else rows[rows.length - 1].push(phrase);
+                return rows;
+              }, []).map((pair: any[], rowIdx: number) => (
+                <View key={rowIdx} style={{ flexDirection: 'row', gap: 8 }}>
+                  {pair.map((phrase: any, colIdx: number) => {
+                    const en = phrase.english || phrase.en || Object.keys(phrase)[0];
+                    const local = phrase.local || phrase.translation || Object.values(phrase)[0];
+                    return (
+                      <View key={colIdx} style={{
+                        flex: 1,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                        borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+                        borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                      }}>
+                        <Text style={{ ...TextStyles.xs, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 2 }}>{en}</Text>
+                        <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: ACCENT_COLOR, fontFamily: FontFamily.serif }} numberOfLines={1}>{local}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
-              );
-            })}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          </View>
         </View>
       )}
 
@@ -426,18 +380,18 @@ export default function OverviewScreen() {
       {costItems.length > 0 && (
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
           <SectionHeader accent="Budget" title="Cost of Living" />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {costItems.map((item, idx) => (
               <View key={idx} style={{
-                width: (SCREEN_WIDTH - 50) / 3, alignItems: 'center',
+                width: '31%', alignItems: 'center',
                 backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                borderRadius: 12, paddingVertical: 14, paddingHorizontal: 8,
+                borderRadius: 10, paddingVertical: 10, paddingHorizontal: 4,
               }}>
-                <FontAwesome name={item.icon} size={16} color={ACCENT_COLOR} style={{ marginBottom: 8 }} />
-                <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: '#fff' }}>
+                <FontAwesome name={item.icon} size={14} color={ACCENT_COLOR} style={{ marginBottom: 4 }} />
+                <Text style={{ ...TextStyles.body, fontWeight: '700', color: '#fff', fontSize: 13 }} numberOfLines={1}>
                   {currencySymbol}{typeof item.value === 'number' ? item.value.toFixed(2) : item.value}
                 </Text>
-                <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', textAlign: 'center', marginTop: 3 }}>{item.label}</Text>
+                <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', textAlign: 'center', marginTop: 2, fontSize: 10 }}>{item.label}</Text>
               </View>
             ))}
           </View>
@@ -467,8 +421,30 @@ export default function OverviewScreen() {
         </View>
       )}
 
-      {/* ─── Bottom Photo Bleed — rotating hero images ────── */}
-      <TripPhotoBleed photos={ctx?.hero_images ?? []} />
+      </View>{/* end opaque content area */}
+
+      {/* ─── Bottom Photo Bleed — hero image fades back in ── */}
+      {(() => {
+        const heroUrl = ctx?.hero_image_url || ctx?.hero_images?.[0];
+        if (!heroUrl) return null;
+        return (
+          <View style={{ height: 360, overflow: 'hidden' }}>
+            <Image
+              source={{ uri: heroUrl.includes?.('googleusercontent.com') ? heroUrl.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : heroUrl }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              contentPosition="bottom"
+              cachePolicy="memory-disk"
+            />
+            <LinearGradient
+              colors={[isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)', 'rgba(0,0,0,0.3)', 'transparent']}
+              locations={[0, 0.35, 0.7]}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%' }}
+              pointerEvents="none"
+            />
+          </View>
+        );
+      })()}
 
     </ScrollView>
     </View>
@@ -476,41 +452,4 @@ export default function OverviewScreen() {
   );
 }
 
-// ─── Bottom photo mosaic — crossfades hero images ────────
-function TripPhotoBleed({ photos }: { photos: string[] }) {
-  const isDark = useColorScheme() === 'dark';
-  const [current, setCurrent] = useState(0);
 
-  useEffect(() => {
-    if (photos.length <= 1) return;
-    const interval = setInterval(() => setCurrent(c => (c + 1) % photos.length), 6000);
-    return () => clearInterval(interval);
-  }, [photos.length]);
-
-  if (photos.length === 0) return null;
-
-  return (
-    <View style={{ marginTop: 24, height: 320, overflow: 'hidden' }}>
-      {photos.map((src, i) => (
-        <Image
-          key={i}
-          source={{ uri: src.includes('googleusercontent.com') ? src.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : src }}
-          style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            opacity: i === current ? 1 : 0,
-          }}
-          contentFit="cover"
-          contentPosition="center"
-          transition={2000}
-          cachePolicy="memory-disk"
-        />
-      ))}
-      <LinearGradient
-        colors={[isDark ? '#000' : '#fff', 'transparent']}
-        locations={[0, 0.5]}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%' }}
-        pointerEvents="none"
-      />
-    </View>
-  );
-}

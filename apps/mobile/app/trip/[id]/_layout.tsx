@@ -338,11 +338,16 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
   const [fetchedHero, setFetchedHero] = useState<string | null>(null);
   useEffect(() => {
     if (staticHero || fetchedHero || !cityName || cityName === 'Destination') return;
-    const webApi = process.env.EXPO_PUBLIC_WEB_API_URL;
-    if (!webApi) return;
-    fetch(`${webApi}/api/images?q=${encodeURIComponent(cityName)}`)
+    // Try destination-specific endpoint first, then general images
+    fetch(`${WEB_API}/api/destination-image?destination=${encodeURIComponent(cityName)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.url) setFetchedHero(data.url); })
+      .then(data => {
+        if (data?.url) { setFetchedHero(data.url); return; }
+        // Fallback to general image search
+        return fetch(`${WEB_API}/api/images?q=${encodeURIComponent(cityName + ' landmark')}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d?.url) setFetchedHero(d.url); });
+      })
       .catch(() => {});
   }, [cityName, staticHero, fetchedHero]);
   const coverImage = staticHero || fetchedHero;
@@ -428,16 +433,17 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Text>
           <Pressable
             onPress={() => setEssentialsOpen(!essentialsOpen)}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 4,
-              backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-            }}
+            style={({ pressed }) => ({
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
-              {essentialsOpen ? 'Hide Info' : 'Trip Info'}
+            <FontAwesome name={essentialsOpen ? 'eye-slash' : 'eye'} size={10} color="rgba(255,255,255,0.7)" />
+            <Text style={{ ...TextStyles.xs, fontWeight: '600', letterSpacing: 0.5, color: 'rgba(255,255,255,0.85)' }}>
+              {essentialsOpen ? 'Hide' : 'Info'}
             </Text>
-            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={8} color="rgba(255,255,255,0.6)" />
           </Pressable>
         </View>
 
@@ -519,21 +525,41 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               );
             })()}
 
-            {/* Wiki excerpt — scrollable, 3-line window */}
+            {/* Safety badge + Wiki excerpt */}
+            {(() => {
+              const safety = trip?.trip_context?.safety as { score: number; message: string; level?: string } | undefined;
+              return (safety && safety.score > 0) ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+                  <View style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 4,
+                    backgroundColor: safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)',
+                    borderWidth: 1,
+                    borderColor: safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)',
+                    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3,
+                  }}>
+                    <FontAwesome name="shield" size={10} color={safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171'} />
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171' }}>
+                      {safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger'} ({safety.score})
+                    </Text>
+                  </View>
+                </View>
+              ) : null;
+            })()}
+
             {wikiText ? (
               <View style={{
-                marginTop: 10, borderRadius: 10,
+                marginTop: 8, borderRadius: 10,
                 backgroundColor: 'rgba(0,0,0,0.55)',
-                height: 19 * 3 + 18, // 3 lines × lineHeight + padding (tight clip)
+                height: 19 * 2 + 16, // 2 lines × lineHeight + padding
               }}>
                 <ScrollView
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
                   nestedScrollEnabled
                 >
                   <Text style={{
                     ...TextStyles.body, fontFamily: FontFamily.serif,
-                    color: '#fff', lineHeight: 19,
+                    color: '#fff', lineHeight: 19, fontSize: 13,
                   }}>
                     {wikiText}
                   </Text>
@@ -932,22 +958,8 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
     colors: { ...parentTheme.colors, background: 'transparent', card: 'transparent' },
   }), [parentTheme]);
 
-  const coverImage = trip?.trip_context?.hero_image_url;
-
   return (
     <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
-      {/* Full-screen hero image behind everything */}
-      {coverImage && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '70%', zIndex: 0 }}>
-          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.2)' }} />
-          <LinearGradient
-            colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']}
-            locations={[0, 0.4, 1]}
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-          />
-        </View>
-      )}
       <TripHero trip={trip} refetch={refetch} />
       <View style={{ flex: 1, position: 'relative', marginTop: -90 }}>
         <ThemeProvider value={transparentTheme}>

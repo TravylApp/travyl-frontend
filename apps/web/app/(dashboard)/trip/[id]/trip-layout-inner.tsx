@@ -155,8 +155,8 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
               <span className="text-[11px]" style={{ color: 'var(--magazine-text, #666)', opacity: 0.5 }}>{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-              {items.map((item: ExploreItem) => (
-                <div key={item.id} onClick={() => handleCardClick(item)}
+              {items.map((item: ExploreItem, idx: number) => (
+                <div key={`${item.id}-${idx}`} onClick={() => handleCardClick(item)}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
