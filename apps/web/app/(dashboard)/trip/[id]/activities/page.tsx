@@ -13,11 +13,6 @@ import { PinCard } from '@/components/PinCard';
 
 // ─── Config ─────────────────────────────────────────────────
 
-const CATEGORIES = [
-  'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
-  'shopping', 'nightlife', 'landmark',
-];
-
 const TABS = [
   { key: 'all', label: 'All', icon: Globe },
   { key: 'attraction', label: 'Attractions', icon: Landmark },
@@ -35,25 +30,39 @@ type SortKey = 'default' | 'rating' | 'name';
 async function fetchExplorePage(
   lat: number, lng: number, pageParam: number, city?: string, country?: string,
 ): Promise<PlaceItem[]> {
-  const catsPerPage = 3;
-  const startCat = (pageParam * catsPerPage) % CATEGORIES.length;
-  const cats: string[] = [];
-  for (let i = 0; i < catsPerPage; i++) {
-    cats.push(CATEGORIES[(startCat + i) % CATEGORIES.length]);
+  // Broad NLP queries — no hardcoded category list.
+  // The API returns items with whatever categories exist for this destination.
+  const cityName = city || '';
+  const queries = [
+    `${cityName} things to do`,
+    `${cityName} restaurants food`,
+    `${cityName} nightlife bars clubs`,
+    `${cityName} beaches outdoors`,
+    `${cityName} shopping markets`,
+    `${cityName} museums culture`,
+    `${cityName} parks nature`,
+    `${cityName} cafes coffee`,
+    `${cityName} hidden gems`,
+    `${cityName} viewpoints attractions`,
+  ];
+
+  // Pick 3 queries per page, rotating through for variety
+  const perPage = 3;
+  const start = (pageParam * perPage) % queries.length;
+  const pageQueries: string[] = [];
+  for (let i = 0; i < perPage; i++) {
+    pageQueries.push(queries[(start + i) % queries.length]);
   }
 
-  // Center + slight offset for variety
-  const offsets = [
-    { lat, lng },
-    { lat: lat + 0.015, lng: lng + 0.01 },
-  ];
-  const offset = offsets[pageParam % offsets.length];
+  // Slight coord offset per page for variety
+  const offsetLat = lat + (pageParam % 3) * 0.012;
+  const offsetLng = lng + (pageParam % 2) * 0.01;
 
-  const results = await Promise.all(
-    cats.map(async (cat) => {
+  const results: PlaceItem[][] = await Promise.all(
+    pageQueries.map(async (q) => {
       try {
         const res = await fetch(
-          `/api/places?lat=${offset.lat}&lng=${offset.lng}&category=${cat}&limit=12`,
+          `/api/places?q=${encodeURIComponent(q)}&lat=${offsetLat}&lng=${offsetLng}&limit=12`,
         );
         if (!res.ok) return [];
         return (await res.json()) as PlaceItem[];
@@ -63,8 +72,8 @@ async function fetchExplorePage(
     }),
   );
 
-  // Also fetch from Foursquare for restaurant variety
-  if (cats.includes('restaurant') || cats.includes('cafe')) {
+  // Also fetch from Foursquare on first page for photo variety
+  if (pageParam === 0) {
     try {
       const fsRes = await fetch(
         `/api/foursquare?lat=${lat}&lng=${lng}&category=restaurant&limit=8`,
@@ -72,31 +81,23 @@ async function fetchExplorePage(
       if (fsRes.ok) {
         const venues = await fsRes.json();
         if (Array.isArray(venues)) {
-          const mapped = venues
+          results.push(venues
             .filter((v: any) => v.image && !v.image.includes('categories_v2'))
             .map((v: any) => ({
-              id: `fs_${v.id}`,
-              name: v.name,
-              image: v.image,
+              id: `fs_${v.id}`, name: v.name, image: v.image,
               images: (v.images || []).filter((img: string) => !img.includes('categories_v2')),
-              type: 'restaurant' as const,
-              rating: v.rating ? v.rating / 2 : 0,
+              type: 'restaurant' as const, rating: v.rating ? v.rating / 2 : 0,
               tagline: v.address || v.category || 'Restaurant',
-              category: v.category || 'Restaurant',
-              description: v.tip || '',
-              latitude: v.lat,
-              longitude: v.lng,
-              address: v.address,
-              reviewCount: v.ratingCount,
-              tags: [v.category || 'Restaurant'],
-            }));
-          results.push(mapped);
+              category: v.category || 'Restaurant', description: v.tip || '',
+              latitude: v.lat, longitude: v.lng, address: v.address,
+              reviewCount: v.ratingCount, tags: [v.category || 'Restaurant'],
+            })));
         }
       }
     } catch {}
   }
 
-  // Fetch events (Eventbrite + PredictHQ) on first page
+  // Fetch events on first page
   if (pageParam === 0) {
     try {
       const evParams = new URLSearchParams({ limit: '6' });
@@ -105,24 +106,23 @@ async function fetchExplorePage(
       if (evRes.ok) {
         const events = await evRes.json();
         if (Array.isArray(events)) {
-          const mapped = events.filter((e: any) => e.title).map((e: any) => ({
+          results.push(events.filter((e: any) => e.title).map((e: any) => ({
             id: `ev_${e.id}`, name: e.title, image: e.image || '',
             type: 'event' as const, rating: 0,
             tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
             category: e.category || 'Event', description: e.description || '',
             tags: ['Event', e.category].filter(Boolean),
-          }));
-          results.push(mapped);
+          })));
         }
       }
     } catch {}
   }
 
-  // Deduplicate
+  // Deduplicate + filter out items without images
   const seen = new Set<string>();
   const seenNames = new Set<string>();
   return results.flat().filter((p) => {
-    if (!p.name || seen.has(p.id)) return false;
+    if (!p.name || !p.image || seen.has(p.id)) return false;
     const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (seenNames.has(norm)) return false;
     seen.add(p.id);
@@ -161,7 +161,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     if (pageData && pageData.length > 0) {
       setAllPlaces((prev) => {
         const seen = new Set(prev.map((p) => p.id));
-        const newItems = pageData.filter((p) => !seen.has(p.id));
+        const newItems = pageData.filter((p) => !seen.has(p.id) && !!p.image);
         return newItems.length > 0 ? [...prev, ...newItems] : prev;
       });
       setIsFetchingNextPage(false);
@@ -199,7 +199,6 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
-  const [activeSubcategory, setActiveSubcategory] = useState('');
   const [columnCount, setColumnCount] = useState(3);
   const [flush, setFlush] = useState(false);
 
@@ -215,7 +214,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     setFavorites((prev) => prev.includes(fid) ? prev.filter((f) => f !== fid) : [...prev, fid]);
   }, []);
 
-  const places = allPlaces;
+  const places = allPlaces.filter((p) => !!p.image);
 
   // Filter by tab
   const tabFiltered = useMemo(() => {
@@ -224,17 +223,9 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     return places.filter((p) => p.type === activeTab);
   }, [activeTab, favorites, places]);
 
-  // Subcategories
-  const subcategories = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const item of tabFiltered) counts[item.category] = (counts[item.category] || 0) + 1;
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([cat, count]) => ({ label: cat, count }));
-  }, [tabFiltered]);
-
   // Filter + sort
   const filtered = useMemo(() => {
     let items = tabFiltered;
-    if (activeSubcategory) items = items.filter((p) => p.category === activeSubcategory);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       items = items.filter((p) =>
@@ -248,7 +239,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     if (sortBy === 'rating') items = [...items].sort((a, b) => b.rating - a.rating);
     else if (sortBy === 'name') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     return items;
-  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
+  }, [tabFiltered, searchQuery, sortBy]);
 
   // ─── Render ─────────────────────────────────────────────────
 
@@ -262,7 +253,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
             {TABS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
+                onClick={() => { setActiveTab(key);  }}
                 className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
                   activeTab === key
                     ? 'font-semibold'
@@ -339,36 +330,6 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
           </div>
         </div>
 
-        {/* Row 3: Subcategory pills (always visible when available) */}
-        {subcategories.length > 1 && (
-          <div className="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-            <button
-              onClick={() => setActiveSubcategory('')}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition-all ${
-                !activeSubcategory
-                  ? 'text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
-              }`}
-              style={!activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
-            >
-              All
-            </button>
-            {subcategories.slice(0, 12).map(({ label, count }) => (
-              <button
-                key={label}
-                onClick={() => setActiveSubcategory(activeSubcategory === label ? '' : label)}
-                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition-all ${
-                  activeSubcategory === label
-                    ? 'text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
-                }`}
-                style={activeSubcategory === label ? { backgroundColor: 'var(--trip-base)' } : undefined}
-              >
-                {label} <span className="opacity-50">{count}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Title + count */}
@@ -394,7 +355,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
             <Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-sm text-gray-500">No places found</p>
             <button
-              onClick={() => { setSearchQuery(''); setActiveSubcategory(''); setActiveTab('all'); }}
+              onClick={() => { setSearchQuery('');  setActiveTab('all'); }}
               className="text-xs mt-2 hover:underline"
               style={{ color: 'var(--trip-base)' }}
             >

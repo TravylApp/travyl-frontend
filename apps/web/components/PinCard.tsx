@@ -34,6 +34,7 @@ const FLUSH_HEIGHT = 360;
 export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddToTrip, flush }: PinCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [fallbackSrc, setFallbackSrc] = useState<string | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [addedToTrip, setAddedToTrip] = useState(false);
   const hasAnimated = useRef(false);
@@ -91,12 +92,24 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={images[imgIdx]}
+              src={fallbackSrc || images[imgIdx]}
               alt={item.name}
-                            loading="lazy"
+              loading="lazy"
               decoding="async"
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              onError={() => setImgError(true)}
+              onError={() => {
+                if (!fallbackSrc) {
+                  // Try next image in the array, or use Unsplash fallback
+                  const nextIdx = imgIdx + 1;
+                  if (nextIdx < images.length) {
+                    setImgIdx(nextIdx);
+                  } else {
+                    setFallbackSrc(`https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fit=crop&q=80&fm=webp`);
+                  }
+                } else {
+                  setImgError(true);
+                }
+              }}
             />
           )}
 

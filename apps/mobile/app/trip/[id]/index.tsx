@@ -97,41 +97,30 @@ export default function OverviewScreen() {
   const destination = trip?.destination || '';
   const [liveExploreItems, setLiveExploreItems] = useState<any[]>([]);
   useEffect(() => {
-    // Use lat/lng if available, otherwise fetch by city name via places API
-    const fetchPlaces = async (lat: number, lng: number) => {
-      const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
-      const results = await Promise.all(cats.map(cat =>
-        fetch(`${WEB_API}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-          .then(r => r.ok ? r.json() : []).catch(() => [])
-      ));
-      const seen = new Set<string>();
-      return results.flat().filter((p: any) => {
-        if (!p.name || seen.has(p.id || p.name)) return false;
-        seen.add(p.id || p.name);
-        return true;
-      }).map((p: any) => ({
-        id: p.id, title: p.name, description: p.description || p.category,
-        category: p.category, image: upscaleGoogleImage(p.image) || p.image,
-      }));
-    };
+    // Fetch diverse places using city name NLP search (returns all categories)
+    const city = destination.split(',')[0].trim();
+    if (!city || city === 'Destination') return;
 
-    if (tripLat && tripLng) {
-      fetchPlaces(tripLat, tripLng).then(items => { if (items.length > 0) setLiveExploreItems(items); });
-    } else if (destination) {
-      // Geocode the destination city first
-      const city = destination.split(',')[0].trim();
-      fetch(`${WEB_API}/api/places?q=${encodeURIComponent(city)}&category=sightseeing&limit=8`)
-        .then(r => r.ok ? r.json() : [])
-        .then(items => {
-          if (Array.isArray(items) && items.length > 0) {
-            setLiveExploreItems(items.map((p: any) => ({
-              id: p.id, title: p.name, description: p.description || p.category,
-              category: p.category, image: p.image,
-            })));
-          }
-        })
-        .catch(() => {});
-    }
+    const query = tripLat && tripLng
+      ? `${WEB_API}/api/places?q=${encodeURIComponent(city + ' things to do')}&lat=${tripLat}&lng=${tripLng}&limit=20`
+      : `${WEB_API}/api/places?q=${encodeURIComponent(city + ' things to do')}&limit=20`;
+
+    fetch(query)
+      .then(r => r.ok ? r.json() : [])
+      .then((items: any[]) => {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const seen = new Set<string>();
+        const deduped = items.filter((p: any) => {
+          if (!p.name || seen.has(p.id || p.name)) return false;
+          seen.add(p.id || p.name);
+          return true;
+        }).map((p: any) => ({
+          id: p.id, title: p.name, description: p.description || p.category,
+          category: p.category, image: upscaleGoogleImage(p.image) || p.image,
+        }));
+        if (deduped.length > 0) setLiveExploreItems(deduped);
+      })
+      .catch(() => {});
   }, [tripLat, tripLng, destination]);
 
   // Use live data if available, fall back to trip_context

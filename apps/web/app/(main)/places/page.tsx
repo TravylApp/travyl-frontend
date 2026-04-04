@@ -75,7 +75,7 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   const lng = probeData[0]?.longitude
   if (lat == null || lng == null) {
     // Fallback: use q param for all
-    const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
+    const categories = BROWSE_CATEGORIES
     const results = await Promise.all(
       categories.map(async (cat) => {
         const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
@@ -88,8 +88,7 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   }
 
   // Step 2: fetch key categories from center + one offset neighborhood
-  // Reduced from 43 API calls to ~14 for much faster search (~2s vs ~8s)
-  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'landmark']
+  const categories = BROWSE_CATEGORIES
 
   const fetches: Promise<PlaceItemType[]>[] = []
 

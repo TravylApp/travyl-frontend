@@ -57,7 +57,7 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   );
 }
 
-// ─── Trip Explore Section (destination-specific categories) ──
+// ─── Trip Explore Section (overview page — shows trip_context data) ──
 
 export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
@@ -66,109 +66,75 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const [favorites, setFavorites] = useState<string[]>([]);
 
   type ExploreItem = { id: string; title?: string; name?: string; description?: string; category?: string; image?: string; images?: string[]; rating?: number; cuisines?: string[]; priceLevel?: string; tripAdvisorUrl?: string; lat?: number; lng?: number; address?: string; phone?: string; website?: string; reviewCount?: number };
-  const categories: { key: string; label: string; items: ExploreItem[] }[] = [];
 
-  // ── 1. Top Attractions ──
-  // Collect from explore_items (non-food/non-hotel) + foursquare attraction venues
-  const foodCatRe = /culinary|restaurant|food|dining|cafe|bakery|bistro/i;
-  const hotelCatRe = /hotel|hostel|lodge|motel|inn|resort|accommodation/i;
-  const attractionItems: ExploreItem[] = [
-    ...(ctx?.explore_items || []).filter(item => !foodCatRe.test(item.category || '') && !hotelCatRe.test(item.category || '')),
-    ...(ctx?.foursquare_venues || []).filter((v: any) => {
-      const cat = (v.category || '').toLowerCase();
-      return !foodCatRe.test(cat) && !hotelCatRe.test(cat) && !/restaurant|bar|club/i.test(cat);
-    }),
-  ];
-  // Only include items that have an image — no point showing empty cards
-  const withImage = (items: ExploreItem[]) => items.filter(i => !!i.image);
-
-  const visibleAttractions = withImage(attractionItems);
-  if (visibleAttractions.length > 0) {
-    categories.push({ key: 'attractions', label: 'Top Attractions', items: visibleAttractions });
+  // Collect ALL items from every source
+  const allItems: ExploreItem[] = [];
+  const seen = new Set<string>();
+  const addItems = (items: any[], fallbackCategory?: string) => {
+    for (const item of items) {
+      const key = item.id || item.title || item.name;
+      if (!key || seen.has(key) || !item.image) continue;
+      seen.add(key);
+      allItems.push({ ...item, title: item.title || item.name, category: item.category || fallbackCategory || 'Attraction' });
+    }
+  };
+  addItems(ctx?.explore_items || []);
+  addItems(ctx?.foursquare_venues || []);
+  if (ctx?.restaurants?.length) addItems(ctx.restaurants, 'Restaurant');
+  for (const e of (ctx?.events || []) as any[]) {
+    const key = e.id || e.title || e.name;
+    if (!key || seen.has(key) || !(e.image || e.photo_url)) continue;
+    seen.add(key);
+    allItems.push({ id: e.id, title: e.title || e.name, name: e.title || e.name, description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '', category: e.category || 'Event', image: e.image || e.photo_url });
   }
 
-  // ── 2. Restaurants ──
-  // Prefer TripAdvisor restaurants, fall back to food explore_items, then Foursquare food venues
-  const restaurantItems: ExploreItem[] = ctx?.restaurants?.length
-    ? (ctx.restaurants as ExploreItem[]).map(r => ({ ...r, category: foodCatRe.test(r.category || '') ? r.category : 'Restaurant' }))
-    : [
-        ...(ctx?.explore_items || []).filter(item => foodCatRe.test(item.category || '')),
-        ...(ctx?.foursquare_venues || []).filter((v: any) => foodCatRe.test(v.category || '') || /restaurant|café|cafe|dining/i.test(v.category || '')),
-      ];
-  const visibleRestaurants = withImage(restaurantItems);
-  if (visibleRestaurants.length > 0) {
-    categories.push({ key: 'restaurants', label: 'Restaurants', items: visibleRestaurants });
+  // Group by category dynamically
+  const grouped: Record<string, ExploreItem[]> = {};
+  for (const item of allItems) {
+    const cat = item.category || 'Other';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
   }
-
-  // ── 3. Events ──
-  const eventItems: ExploreItem[] = (ctx?.events || []).map((e: any) => ({
-    id: e.id, title: e.title || e.name, name: e.title || e.name,
-    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
-    category: e.category || 'Event', image: e.image || e.photo_url,
-  }));
-  const visibleEvents = withImage(eventItems);
-  if (visibleEvents.length > 0) {
-    categories.push({ key: 'events', label: 'Events', items: visibleEvents });
-  }
+  const toLabel = (cat: string) => cat.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const categories = Object.entries(grouped).filter(([, items]) => items.length > 0).map(([key, items]) => ({ key, label: toLabel(key), items }));
 
   if (categories.length === 0) return null;
 
-  // Convert an explore item to PlaceItem for PinCard + PlaceDetailOverlay
   const toPlaceItem = (item: ExploreItem): PlaceItem => ({
-    id: item.id,
-    name: item.title || item.name || '',
-    image: item.image || '',
+    id: item.id, name: item.title || item.name || '', image: item.image || '',
     images: item.images?.length ? item.images : item.image ? [item.image] : [],
     type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
-    rating: item.rating || 0,
-    tagline: item.description || item.category || '',
-    category: item.category || '',
-    description: item.description || '',
+    rating: item.rating || 0, tagline: item.description || item.category || '',
+    category: item.category || '', description: item.description || '',
     tags: item.cuisines || (item.category ? [item.category] : []),
     latitude: item.lat || (trip?.trip_context?.lat ?? undefined),
     longitude: item.lng || (trip?.trip_context?.lng ?? undefined),
-    address: item.address,
-    phone: item.phone,
-    website: item.website || item.tripAdvisorUrl,
+    address: item.address, phone: item.phone, website: item.website || item.tripAdvisorUrl,
     reviewCount: item.reviewCount,
     priceLevel: item.priceLevel === '$' ? 1 : item.priceLevel === '$$' ? 2 : item.priceLevel === '$$$' ? 3 : item.priceLevel === '$$$$' ? 4 : undefined,
   });
 
-  const handleCardClick = (item: ExploreItem) => {
-    setSelectedPlace(toPlaceItem(item));
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-20 py-8">
-      <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--magazine-heading, #1e3a5f)' }}>
-        Explore {city}
-      </h2>
-
+      <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--magazine-heading, #1e3a5f)' }}>Explore {city}</h2>
       <div className="space-y-6">
         {categories.map(({ key, label, items }) => (
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[14px] font-bold tracking-wide"
-                style={{ color: 'var(--magazine-heading, #1e3a5f)', opacity: 0.7 }}>
-                {label}
-              </h3>
+              <h3 className="text-[14px] font-bold tracking-wide" style={{ color: 'var(--magazine-heading, #1e3a5f)', opacity: 0.7 }}>{label}</h3>
               <span className="text-[11px]" style={{ color: 'var(--magazine-text, #666)', opacity: 0.5 }}>{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
               {items.map((item: ExploreItem, idx: number) => (
-                <div key={`${item.id}-${idx}`} onClick={() => handleCardClick(item)}
+                <div key={`${item.id}-${idx}`} onClick={() => setSelectedPlace(toPlaceItem(item))}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  {/* Favorite button */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
-                    className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}
-                  >
+                  <button onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
+                    className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill={favorites.includes(item.id) ? 'white' : 'none'} stroke="white" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                   </button>
-                  {/* Content overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-3.5">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-white/50 mb-1">{item.category}</p>
                     <p className="text-[15px] font-bold text-white leading-tight line-clamp-2 mb-1">{item.title || item.name}</p>
@@ -176,11 +142,8 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
                       <div className="flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                         <span className="text-[12px] font-semibold text-white/80">{item.rating}</span>
-                        {item.reviewCount && <span className="text-[10px] text-white/40">({item.reviewCount})</span>}
                       </div>
-                    ) : item.description ? (
-                      <p className="text-[11px] text-white/50 line-clamp-1">{item.description}</p>
-                    ) : null}
+                    ) : item.description ? (<p className="text-[11px] text-white/50 line-clamp-1">{item.description}</p>) : null}
                   </div>
                 </div>
               ))}
@@ -188,15 +151,10 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
           </div>
         ))}
       </div>
-
-      {/* Detail overlay — same as places page (image + map split) */}
       {selectedPlace && (
-        <PlaceDetailModal
-          place={selectedPlace}
-          isFavorited={favorites.includes(selectedPlace.id)}
+        <PlaceDetailModal place={selectedPlace} isFavorited={favorites.includes(selectedPlace.id)}
           onToggleFavorite={() => setFavorites((prev) => prev.includes(selectedPlace.id) ? prev.filter((f) => f !== selectedPlace.id) : [...prev, selectedPlace.id])}
-          onClose={() => setSelectedPlace(null)}
-        />
+          onClose={() => setSelectedPlace(null)} />
       )}
     </div>
   );

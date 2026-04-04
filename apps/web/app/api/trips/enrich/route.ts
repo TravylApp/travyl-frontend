@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const existing = trip.trip_context ?? {}
 
   // Skip if fully enriched (has all key fields including newer APIs)
-  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0 && existing.foursquare_venues?.length > 0
+  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0
     && existing.phrases && existing.nearby_cities && existing.cost_of_living && existing.safety && existing.timezone_info) {
     return NextResponse.json({ status: 'already_enriched' })
   }
@@ -79,54 +79,56 @@ export async function POST(req: NextRequest) {
   const selfProto = req.headers.get('x-forwarded-proto') || 'https'
   const baseUrl = selfHost ? `${selfProto}://${selfHost}` : req.nextUrl.origin
 
-  // Fetch explore items — try backend, fall back to Foursquare
+  // Fetch explore items — multiple broad NLP queries for diversity, categories come from the API
   let exploreItems: any[] = []
   if (lat && lng) {
+    const cityName = city || trip.destination?.split(',')[0]?.trim() || ''
+    // Broad queries — the API returns items with their own categories, we don't impose ours
+    const queries = [
+      `${cityName} things to do`,
+      `${cityName} nightlife bars clubs`,
+      `${cityName} beaches outdoors`,
+      `${cityName} shopping markets`,
+    ]
     try {
-      const cats = ['sightseeing', 'restaurant', 'museum']
       const results = await Promise.all(
-        cats.map(async (cat) => {
-          const r = await fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-          return r.ok ? r.json() : []
+        queries.map(async (q) => {
+          const r = await fetch(`${baseUrl}/api/places?q=${encodeURIComponent(q)}&lat=${lat}&lng=${lng}&limit=15`)
+          return r.ok ? r.json().catch(() => []) : []
         })
       )
       const seen = new Set<string>()
       exploreItems = results.flat().filter((p: any) => {
-        if (seen.has(p.id)) return false; seen.add(p.id); return true
-      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image }))
+        const key = p.id || p.name
+        if (!p.name || !key || seen.has(key)) return false; seen.add(key); return true
+      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image, lat: p.latitude, lng: p.longitude, rating: p.rating, address: p.address }))
     } catch {}
 
-    // Fallback 1: Foursquare (via backend /api/places/nearby)
+    // Fallback 1: Foursquare (via backend /api/places/nearby) — broad "all" query
     if (exploreItems.length === 0 && BACKEND_URL) {
       try {
-        const fsCats = ['attraction', 'restaurant', 'museum']
-        const results = await Promise.all(
-          fsCats.map(async (cat) => {
-            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-            return r.ok ? r.json() : []
-          })
-        )
-        const seen = new Set<string>()
-        exploreItems = results.flat().filter((p: any) => {
-          if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
-        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
+        const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&limit=40`)
+        if (r.ok) {
+          const items = await r.json()
+          const seen = new Set<string>()
+          exploreItems = (Array.isArray(items) ? items : []).filter((p: any) => {
+            if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
+          }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
+        }
       } catch {}
     }
 
     // Fallback 2: OpenTripMap (free, no key, Wikipedia-enriched descriptions)
     if (exploreItems.length === 0) {
       try {
-        const otmCats = ['interesting_places', 'cultural~museums', 'architecture']
-        const results = await Promise.all(
-          otmCats.map(async (cat) => {
-            const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-            return r.ok ? r.json() : []
-          })
-        )
-        const seen = new Set<string>()
-        exploreItems = results.flat().filter((p: any) => {
-          if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
-        }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: p.image }))
+        const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&limit=40`)
+        if (r.ok) {
+          const items = await r.json()
+          const seen = new Set<string>()
+          exploreItems = (Array.isArray(items) ? items : []).filter((p: any) => {
+            if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
+          }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: p.image }))
+        }
       } catch {}
     }
   }
@@ -137,10 +139,7 @@ export async function POST(req: NextRequest) {
   const endParam = trip.end_date || ''
   const enrichAbort = new AbortController()
   const enrichTimeout = setTimeout(() => enrichAbort.abort(), 15_000)
-  const sig = enrichAbort.signal
-  const safeFetch = (url: string, opts?: RequestInit) =>
-    fetch(url, { ...opts, signal: sig }).catch(() => null)
-  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
+  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
     (BACKEND_URL
       ? fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(city)}`)
           .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined)
@@ -167,13 +166,6 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/sunrise?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
-    // "What's Going On" — restaurants, parks, nightlife (distinct from explore_items which is sightseeing)
-    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=restaurant&limit=4`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=park&limit=3`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=nightlife&limit=3`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     // Real events (Eventbrite + PredictHQ — via backend)
     (BACKEND_URL
       ? fetch(`${BACKEND_URL}/api/events/search?city=${encodeURIComponent(city)}${startParam ? `&start_date=${startParam}` : ''}${endParam ? `&end_date=${endParam}` : ''}`)
@@ -226,17 +218,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Build "What's Going On" venues from different categories (with real Google Places photos)
-  const seen2 = new Set<string>()
-  const goingOnVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
-    .filter((v: any) => {
-      if (!v?.id || !v?.name || seen2.has(v.id)) return false
-      seen2.add(v.id)
-      return true
-    })
-    .map((v: any) => ({ id: v.id, title: v.name, description: v.description || v.tagline || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
-    .slice(0, 8)
-
   const fresh: Record<string, any> = {
     hero_image_url: landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl,
     hero_images: (landmarkPhotos?.length > 0
@@ -245,7 +226,6 @@ export async function POST(req: NextRequest) {
     lat, lng,
     lede_text: `A ${durationDays}-day trip to ${city}.`,
     explore_items: exploreItems,
-    foursquare_venues: goingOnVenues.length > 0 ? goingOnVenues : undefined,
     events: eventsData?.length > 0 ? eventsData : undefined,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
     hotels: hotelData?.length > 0 ? hotelData : undefined,
@@ -265,7 +245,8 @@ export async function POST(req: NextRequest) {
     aqi: aqiData ?? undefined,
     cost_of_living: costData ?? undefined,
     quick_facts: countryInfo ? {
-      currency: `${countryInfo.currency?.code} (${countryInfo.currency?.symbol})`,
+      currency: countryInfo.currency?.code || 'USD',
+      currency_symbol: countryInfo.currency?.symbol || '$',
       language: countryInfo.language,
       timezone: timezoneData?.timezone || countryInfo.timezone,
       emergency: countryInfo.emergency || '112',
@@ -288,7 +269,6 @@ export async function POST(req: NextRequest) {
   // Fill missing images for explore items and venues using Pexels/Unsplash
   const itemsMissingImages = [
     ...exploreItems.filter((e) => !e.image).map((e) => ({ ref: e, type: /restaurant|food|culinary|dining/i.test(e.category) ? 'restaurant' : 'activity' })),
-    ...goingOnVenues.filter((v: any) => !v.image).map((v: any) => ({ ref: v, type: /restaurant|food|culinary|dining/i.test(v.category) ? 'restaurant' : 'activity' })),
   ].slice(0, 6) // Limit to 6 image fetches to avoid rate limits
 
   if (itemsMissingImages.length > 0 && BACKEND_URL) {
@@ -315,7 +295,6 @@ export async function POST(req: NextRequest) {
   if (fresh.hero_image_url) fresh.hero_image_url = hiRes(fresh.hero_image_url)
   if (fresh.hero_images) fresh.hero_images = fresh.hero_images.map((u: string) => hiRes(u)).filter(Boolean)
   if (fresh.explore_items) fresh.explore_items = fresh.explore_items.map((e: any) => ({ ...e, image: hiRes(e.image) }))
-  if (fresh.foursquare_venues) fresh.foursquare_venues = fresh.foursquare_venues.map((v: any) => ({ ...v, image: hiRes(v.image) }))
   if (fresh.restaurants) fresh.restaurants = fresh.restaurants.map((r: any) => ({ ...r, image: hiRes(r.image) }))
   if (fresh.hotels) fresh.hotels = fresh.hotels.map((h: any) => ({ ...h, image: hiRes(h.image) }))
 

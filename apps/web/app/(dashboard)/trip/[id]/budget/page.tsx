@@ -146,7 +146,9 @@ function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: strin
   const ctx = trip.trip_context as any;
   const cost = ctx?.cost_of_living;
   const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
-  const tripCurrency: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
+  // Extract ISO code — handles old "EUR (€)" format and clean "EUR" format
+  const rawCur: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
+  const tripCurrency = rawCur.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
   const duration = trip.start_date && trip.end_date
     ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
     : ctx?.weather?.forecast?.length ?? 5;
@@ -181,7 +183,8 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   const { id } = use(params);
   const { isLoading, trip } = useItineraryScreen(id);
   const { format: formatHome } = useHomeCurrency();
-  const tripCurrency: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
+  const rawCur2: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
+  const tripCurrency = rawCur2.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
 
   /* ---- state ---- */
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));

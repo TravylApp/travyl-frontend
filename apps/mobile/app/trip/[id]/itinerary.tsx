@@ -2245,9 +2245,12 @@ export default function ItineraryScreen() {
           ),
         })),
       };
+      // Persist to Supabase — collect all activities from updated day
+      const allActivities = next[dayIndex].timeGroups.flatMap((g) => g.activities);
+      persistReorderedDay(dayIndex, allActivities);
       return next;
     });
-  }, []);
+  }, [persistReorderedDay]);
 
   // (Map is now a modal overlay — no need to collapse sections)
 

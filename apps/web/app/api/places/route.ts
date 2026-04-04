@@ -19,13 +19,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let data: BackendPlace[]
+    let data: BackendPlace[] = []
 
     // Natural language queries go through the NLP search endpoint (SerpAPI google_local).
     // Geocode + nearby is the fallback for structured results.
     if (q) {
       const nlpRes = await fetch(
-        `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}`,
+        `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}&lat=${lat}&lng=${lng}`,
         { headers: { Accept: 'application/json' } }
       )
       if (nlpRes.ok) {
@@ -44,7 +44,9 @@ export async function GET(req: NextRequest) {
             ? (r.price <= 15 ? '$' : r.price <= 35 ? '$$' : r.price <= 60 ? '$$$' : '$$$$')
             : null,
         }))
-      } else {
+      }
+      // Fall back to nearby search if NLP returned nothing or failed
+      if (!data || data.length === 0) {
         data = await fetchNearby(q, lat, lng, category, limit)
       }
     } else {
@@ -74,8 +76,10 @@ async function fetchNearby(
 ): Promise<BackendPlace[]> {
   let searchLat = defaultLat
   let searchLng = defaultLng
-  let geocoded = !q // If no query, lat/lng were provided directly
-  if (q) {
+  // If lat/lng were explicitly provided (not defaults), use them directly
+  const hasExplicitCoords = defaultLat !== '48.8566' && defaultLng !== '2.3522'
+  let geocoded = !q || hasExplicitCoords
+  if (q && !hasExplicitCoords) {
     try {
       const geoRes = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,

@@ -9,6 +9,13 @@ import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
 
+// Generic fallback image for broken/missing images
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fit=crop&q=80&fm=webp';
+const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  if (img.src !== FALLBACK_IMG) img.src = FALLBACK_IMG;
+};
+
 // ── Hooks ─────────────────────────────────────────────────────
 
 function useRevealOnScroll(ready: boolean) {
@@ -135,7 +142,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
             {items.map((item) => (
               <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
+                <img src={item.image} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute top-3 left-3">
                   <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"
@@ -172,7 +179,8 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
               className={`relative rounded-xl overflow-hidden cursor-pointer group ${flush ? '' : 'break-inside-avoid mb-3'}`}
               style={flush ? { height: 280 } : undefined}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt={item.title}                 className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
+              <img src={item.image} alt={item.title} onError={handleImgError}
+                className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
                 style={!flush ? { minHeight: 200 } : undefined} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               <div className="absolute top-2 left-2">
@@ -293,7 +301,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               {bgImage ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
+                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                 </>
               ) : (
@@ -361,7 +369,9 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
 
 // ── Cost of Living Section ────────────────────────────────────
 function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContextData['cost_of_living']>; currency?: string }) {
-  const symbol = currency || cost.currency || '$';
+  const codeToSymbol: Record<string, string> = { EUR: '€', USD: '$', GBP: '£', JPY: '¥', CHF: 'CHF', AUD: 'A$', CAD: 'C$', SEK: 'kr', NOK: 'kr', DKK: 'kr', PLN: 'zł', CZK: 'Kč', HUF: 'Ft', THB: '฿', BRL: 'R$', MXN: '$', INR: '₹', KRW: '₩', TRY: '₺' };
+  const raw = currency || cost.currency || '$';
+  const symbol = codeToSymbol[raw] || raw;
   const fmt = (v: number) => `${symbol}${v.toFixed(0)}`;
   const items = [
     { icon: UtensilsCrossed, label: 'Budget meal', value: fmt(cost.meal_cheap) },
@@ -650,17 +660,20 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   const news: NonNullable<TripContextData['news']> = trip?.trip_context?.news?.length ? trip.trip_context.news : (liveNews ?? []);
 
-  const { data: liveCuisine } = useQuery({
-    queryKey: ['trip-cuisine', tripCountryShort],
+  // Fetch real restaurants near the destination — replaces static cuisine dishes
+  const destLat = trip?.trip_context?.lat;
+  const destLng = trip?.trip_context?.lng;
+  const { data: liveRestaurants } = useQuery({
+    queryKey: ['trip-restaurants', trip?.id, destLat, destLng],
     queryFn: async () => {
-      if (!tripCountryShort) return [];
-      const res = await fetch(`/api/cuisine?country=${encodeURIComponent(tripCountryShort)}`);
+      if (!destLat || !destLng) return [];
+      const res = await fetch(`/api/places?lat=${destLat}&lng=${destLng}&category=restaurant&limit=8`);
       if (!res.ok) return [];
       const data = await res.json();
-      return Array.isArray(data) ? data.slice(0, 6) : [];
+      return (Array.isArray(data) ? data : []).filter((r: any) => r.image);
     },
-    enabled: !!tripCountryShort && !enriching && !(trip?.trip_context?.cuisine?.length),
-    staleTime: 60 * 60 * 1000,
+    enabled: !!destLat && !!destLng && !enriching,
+    staleTime: 30 * 60 * 1000,
   });
 
   const { data: livePhrases } = useQuery({
@@ -712,8 +725,9 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   }
 
   const hasExploreItems = exploreItems.length > 0;
-  const cuisineData = trip?.trip_context?.cuisine?.length ? trip.trip_context.cuisine : liveCuisine;
-  const hasCuisine = cuisineData && cuisineData.length > 0;
+  const ctxRestaurants = (trip?.trip_context?.restaurants as any[] | undefined)?.filter((r: any) => r.image) ?? [];
+  const restaurantData = ctxRestaurants.length > 0 ? ctxRestaurants : (liveRestaurants ?? []);
+  const hasRestaurants = restaurantData.length > 0;
   const phrasesData = trip?.trip_context?.phrases ?? livePhrases;
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNews = news.length > 0;
@@ -791,22 +805,45 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                 )}
               </div>
 
-              {/* Local Cuisine — scrollable cards matching Things to Do size */}
-              {hasCuisine && (
+              {/* Must-Try Restaurants — real places with photos, ratings, addresses */}
+              {hasRestaurants && (
                 <div className="shrink-0 w-full lg:w-[380px]">
                   <div className="mb-4">
                     <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-                      style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Local Cuisine</span>
-                    <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Must-Try Dishes</h3>
+                      style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Where To Eat</span>
+                    <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Must-Try Restaurants</h3>
                   </div>
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
-                    {cuisineData!.map((dish: { id: string; name: string; image: string }) => (
-                      <div key={dish.id} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start" style={{ height: 360 }}>
+                    {restaurantData.slice(0, 6).map((r: any) => (
+                      <div key={r.id} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer group" style={{ height: 360 }}
+                        onClick={() => setSelectedPlace({
+                          id: r.id, name: r.name, image: r.image || '', type: 'restaurant',
+                          images: r.images?.length ? r.images : r.image ? [r.image] : [],
+                          rating: r.rating || 0, tagline: r.tagline || r.category || '',
+                          category: r.category || 'Restaurant', description: r.description || '',
+                          tags: r.tags || [], latitude: r.latitude, longitude: r.longitude,
+                          address: r.address, website: r.website, reviewCount: r.reviewCount,
+                          phone: r.phone, hours: r.hours, priceLevel: r.priceLevel,
+                        })}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={dish.image} alt={dish.name} className="absolute inset-0 w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                        {/* Add to trip button */}
+                        <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+                          <AddToTripButton isAdded={addedItems.has(r.id)} onToggle={() => toggleAdd(r.id)} />
+                        </div>
                         <div className="absolute bottom-0 left-0 right-0 p-5">
-                          <h3 className="text-lg font-bold text-white leading-tight font-serif">{dish.name}</h3>
+                          {r.rating > 0 && (
+                            <div className="flex items-center gap-1 mb-1.5">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                              <span className="text-[12px] font-semibold text-white/80">{r.rating}</span>
+                              {r.reviewCount && <span className="text-[10px] text-white/40">({r.reviewCount.toLocaleString()})</span>}
+                            </div>
+                          )}
+                          <h3 className="text-lg font-bold text-white leading-tight font-serif">{r.name}</h3>
+                          {(r.tagline || r.address) && (
+                            <p className="text-[11px] text-white/50 mt-1 line-clamp-1">{r.tagline || r.address}</p>
+                          )}
                         </div>
                       </div>
                     ))}

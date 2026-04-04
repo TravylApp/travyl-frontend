@@ -32,13 +32,6 @@ import { useQuery } from '@tanstack/react-query';
    MOCK DATA — Paris trip: JFK <-> CDG
    ================================================================ */
 
-const POPULAR_AIRPORTS = [
-  { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
-  { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-  { code: 'EWR', name: 'Newark Liberty Intl', city: 'Newark' },
-  { code: 'LGA', name: 'LaGuardia', city: 'New York' },
-  { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
-];
 
 type BookedFlight = {
   id: string; type: 'outbound' | 'return'; flightNumber: string; airline: string;
@@ -206,17 +199,18 @@ const collapseVariants = {
    ================================================================ */
 
 function AirportInput({ label, value, onChange }: { label: string; value: string; onChange: (code: string) => void }) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value || '');
+  const [editing, setEditing] = useState(false);
   const [results, setResults] = useState<{ iata: string; name: string; city: string; country: string }[]>([]);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const selectingRef = useRef(false);
 
-  const cityName = POPULAR_AIRPORTS.find(a => a.code === value)?.city
-    || CITY_AIRPORTS_REVERSE[value]
-    || '';
+  // Sync external value changes
+  useEffect(() => { if (!editing) setQuery(value || ''); }, [value, editing]);
 
   useEffect(() => {
-    if (query.length < 2) { setResults([]); return; }
+    if (!editing || query.length < 2) { setResults([]); setOpen(false); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -228,27 +222,39 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
         }
       } catch {}
     }, 250);
-  }, [query]);
+  }, [query, editing]);
 
   return (
     <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 transition-colors relative">
       <p className="text-[9px] uppercase tracking-widest text-gray-400">{label}</p>
       <input
         type="text"
-        value={query || value}
-        onChange={(e) => { setQuery(e.target.value); }}
-        onFocus={() => { setQuery(''); }}
-        onBlur={() => setTimeout(() => setOpen(false), 200)}
-        placeholder={value || 'Search airport...'}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setEditing(true); }}
+        onFocus={() => { setEditing(true); setQuery(''); }}
+        onBlur={() => {
+          if (selectingRef.current) return;
+          setOpen(false);
+          setEditing(false);
+          // Restore value if user didn't pick anything
+          if (!query.trim()) setQuery(value || '');
+        }}
+        placeholder="Search airport..."
         className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 w-full focus:outline-none placeholder:text-gray-300"
       />
-      {cityName && !query && <p className="text-[10px] text-gray-400 truncate">{cityName}</p>}
       {open && results.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
           {results.map((r) => (
             <button
               key={r.iata}
-              onMouseDown={(e) => { e.preventDefault(); onChange(r.iata); setQuery(''); setOpen(false); }}
+              onMouseDown={(e) => { e.preventDefault(); selectingRef.current = true; }}
+              onClick={() => {
+                onChange(r.iata);
+                setQuery(r.iata);
+                setOpen(false);
+                setEditing(false);
+                selectingRef.current = false;
+              }}
               className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2"
             >
               <span className="text-xs font-bold text-[#2563eb] w-8">{r.iata}</span>
@@ -262,10 +268,6 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
   );
 }
 
-// Reverse lookup for city names from IATA codes
-const CITY_AIRPORTS_REVERSE: Record<string, string> = Object.fromEntries(
-  Object.entries(CITY_AIRPORTS).map(([city, code]) => [code, city])
-);
 
 /* ================================================================
    FLIGHT SEARCH SECTION

@@ -60,7 +60,8 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
           {enrichedPlace.image ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={enrichedPlace.image} alt={enrichedPlace.name} className="w-full h-full object-cover" style={{ minHeight: 250 }} />
+              <img src={enrichedPlace.image} alt={enrichedPlace.name} className="w-full h-full object-cover" style={{ minHeight: 250 }}
+                onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fit=crop&q=80&fm=webp'; }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </>
           ) : (
