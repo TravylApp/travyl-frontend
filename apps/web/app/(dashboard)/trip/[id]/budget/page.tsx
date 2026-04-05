@@ -1,12 +1,13 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plane, Building2, UtensilsCrossed, Compass, Car, ShoppingBag,
   MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
+import { supabase } from '@travyl/shared';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 
@@ -186,15 +187,42 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   const rawCur2: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
   const tripCurrency = rawCur2.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
 
-  /* ---- state ---- */
+  /* ---- state + persistence ---- */
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));
   const seeded = useRef(false);
+  const flushTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Load: prefer saved budget_data from trip_context, fall back to generated
   useEffect(() => {
     if (trip && !seeded.current) {
-      setBudgetData(generateBudgetFromTrip(trip, formatHome));
+      const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
+      if (saved?.length) {
+        setBudgetData(saved);
+      } else {
+        setBudgetData(generateBudgetFromTrip(trip, formatHome));
+      }
       seeded.current = true;
     }
   }, [trip, formatHome]);
+
+  // Persist: debounce-save budget to trip_context on every change
+  const persistBudget = useCallback((data: BudgetItem[]) => {
+    if (!trip || !seeded.current) return;
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(async () => {
+      const ctx = { ...(trip.trip_context ?? {}), budget_data: data };
+      await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+    }, 1500);
+  }, [trip, id]);
+
+  // Wrap setBudgetData to also trigger persistence
+  const updateBudget = useCallback((updater: BudgetItem[] | ((prev: BudgetItem[]) => BudgetItem[])) => {
+    setBudgetData((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistBudget(next);
+      return next;
+    });
+  }, [persistBudget]);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotal, setTempTotal] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -234,7 +262,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
     const newTotal = parseFloat(tempTotal) || 0;
     if (newTotal > 0 && totalBudgeted > 0) {
       const ratio = newTotal / totalBudgeted;
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => ({
           ...item,
           budgeted: Math.round(item.budgeted * ratio * 100) / 100,
@@ -252,7 +280,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   const handleSaveEdit = () => {
     if (editingItemId) {
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) =>
           item.id === editingItemId
             ? { ...item, budgeted: parseFloat(tempBudgeted) || 0 }
@@ -269,7 +297,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteCategory = (cid: string) => {
-    setBudgetData((prev) => prev.filter((item) => item.id !== cid));
+    updateBudget((prev) => prev.filter((item) => item.id !== cid));
   };
 
   const handleAddExpense = (categoryId: string) => {
@@ -279,7 +307,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
         description: newExpenseDesc,
         amount: parseFloat(newExpenseAmount) || 0,
       };
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => {
           if (item.id === categoryId) {
             const expenses = [...(item.expenses || []), expense];
@@ -296,7 +324,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteExpense = (categoryId: string, expenseId: string) => {
-    setBudgetData((prev) =>
+    updateBudget((prev) =>
       prev.map((item) => {
         if (item.id === categoryId) {
           const expenses = (item.expenses || []).filter((e) => e.id !== expenseId);
@@ -310,7 +338,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      setBudgetData((prev) => [
+      updateBudget((prev) => [
         ...prev,
         {
           id: `custom-${Date.now()}`,
