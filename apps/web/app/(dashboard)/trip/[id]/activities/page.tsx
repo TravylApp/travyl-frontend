@@ -149,26 +149,34 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   const [page, setPage] = useState(0);
   const [allPlaces, setAllPlaces] = useState<PlaceItem[]>([]);
   const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const [hasMorePages, setHasMorePages] = useState(true);
 
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['trip-explore', id, lat, lng, page],
     queryFn: () => fetchExplorePage(lat, lng, page, destination !== 'Destination' ? destination : undefined, destCountry),
     staleTime: 15 * 60 * 1000,
-    enabled: hasCoords,
+    enabled: hasCoords && hasMorePages,
   });
 
   useEffect(() => {
-    if (pageData && pageData.length > 0) {
+    if (pageData) {
+      if (pageData.length === 0) {
+        // No more results — stop loading
+        setHasMorePages(false);
+        setIsFetchingNextPage(false);
+        return;
+      }
       setAllPlaces((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         const newItems = pageData.filter((p) => !seen.has(p.id) && !!p.image);
+        if (newItems.length === 0) setHasMorePages(false);
         return newItems.length > 0 ? [...prev, ...newItems] : prev;
       });
       setIsFetchingNextPage(false);
     }
   }, [pageData]);
 
-  const hasNextPage = page < 20;
+  const hasNextPage = hasMorePages && page < 10;
 
   const fetchNextPage = useCallback(() => {
     setIsFetchingNextPage(true);

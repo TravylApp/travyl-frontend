@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList, Calendar } from 'lucide-react';
+import Link from 'next/link';
 import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
@@ -792,6 +793,21 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               </div>
             </div>
           )}
+
+          {/* ── Quick action: View Itinerary ── */}
+          <div className="px-6 sm:px-10 mt-4">
+            <Link href={`/trip/${id}/itinerary`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] backdrop-blur-md"
+              style={{
+                color: 'var(--trip-base, var(--magazine-accent))',
+                backgroundColor: 'color-mix(in srgb, var(--trip-base, var(--magazine-accent)) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--trip-base, var(--magazine-accent)) 25%, transparent)',
+              }}>
+              <Calendar size={14} />
+              <span>View Itinerary</span>
+              <span className="ml-0.5 text-[13px]">&rarr;</span>
+            </Link>
+          </div>
 
           {/* ── Row 1: Things to Do (left) + Cuisine (right) ── */}
           <div className="px-6 sm:px-10 mt-6">
