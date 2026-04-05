@@ -109,22 +109,12 @@ export function mapPrice(level: string | number | null | undefined): 1 | 2 | 3 |
 
 // ─── Fallback images ────────────────────────────────────────
 
-export const FALLBACK_PHOTOS = [
-  'photo-1488646953014-85cb44e25828', 'photo-1507525428034-b723cf961d3e',
-  'photo-1476514525535-07fb3b4ae5f1', 'photo-1469854523086-cc02fe5d8800',
-  'photo-1530789253388-582c481c54b0', 'photo-1502602898657-3e91760cbb34',
-  'photo-1493976040374-85c8e12f0c0e', 'photo-1504150558240-0b4fd8946624',
-  'photo-1528127269322-539801943592', 'photo-1558642452-9d2a7deb7f62',
-  'photo-1506929562872-bb421503ef21', 'photo-1501785888041-af3ef285b470',
-  'photo-1523906834658-6e24ef2386f9', 'photo-1504598318550-17eba1008a68',
-  'photo-1516483638261-f4dbaf036963', 'photo-1526129318478-62ed807ebdf9',
-];
+// No fallback photos — cards without real images show a clean placeholder via the UI
+export const FALLBACK_PHOTOS: string[] = [];
 
-export function getFallbackImage(name: string, idx: number): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-  const photoIdx = (Math.abs(hash) + idx) % FALLBACK_PHOTOS.length;
-  return `https://images.unsplash.com/${FALLBACK_PHOTOS[photoIdx]}?w=800&fit=crop&q=80&fm=webp`;
+export function getFallbackImage(_name: string, _idx: number): string {
+  // Return empty — the UI (PinCard, etc.) handles missing images with icon + gradient
+  return '';
 }
 
 // ─── Canonical mapper ───────────────────────────────────────

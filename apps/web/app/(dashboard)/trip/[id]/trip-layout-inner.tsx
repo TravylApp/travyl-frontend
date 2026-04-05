@@ -13,6 +13,7 @@ import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/I
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
+import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
 import type { PlaceItem } from '@travyl/shared';
 
@@ -359,6 +360,8 @@ function TripLayoutContent({
               mapOpen={mapOpen}
               onToggleMap={() => setMapOpen(!mapOpen)}
             />
+
+            {isOverview && <TripOnboardingBanner />}
 
             <div className="flex">
               <div

@@ -3,18 +3,16 @@
 import { use, useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList, Calendar } from 'lucide-react';
 import Link from 'next/link';
-import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage } from '@travyl/shared';
+import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
 
-// Generic fallback image for broken/missing images
-const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fit=crop&q=80&fm=webp';
+// Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-  const img = e.currentTarget;
-  if (img.src !== FALLBACK_IMG) img.src = FALLBACK_IMG;
+  e.currentTarget.style.display = 'none';
 };
 
 // ── Hooks ─────────────────────────────────────────────────────
@@ -541,11 +539,29 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   // news is computed below after liveNews is declared
 
+  // Log user actions to trip_context.user_history for the History panel
+  const logAction = useCallback(async (action: string) => {
+    if (!trip) return;
+    const existing = ((trip.trip_context as any)?.user_history ?? []) as any[];
+    const entry = { action, timestamp: new Date().toISOString(), actor: 'You' };
+    const history = [entry, ...existing].slice(0, 50); // keep last 50
+    const ctx = { ...(trip.trip_context ?? {}), user_history: history };
+    await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+  }, [trip, id]);
+
   const toggleAdd = (itemId: string) => {
     setAddedItems((prev) => {
       const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
+      const isAdding = !next.has(itemId);
+      if (isAdding) next.add(itemId);
+      else next.delete(itemId);
+
+      // Find the item name for the history log
+      const allItems = [...(exploreItems || []), ...(restaurantData || [])];
+      const item = allItems.find((i: any) => i.id === itemId);
+      const name = item?.title || item?.name || 'item';
+      logAction(isAdding ? `Added "${name}" to trip` : `Removed "${name}" from trip`);
+
       return next;
     });
   };

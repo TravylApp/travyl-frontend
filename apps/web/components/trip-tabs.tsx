@@ -5,11 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Calendar, CalendarDays, Plane, Building2, Compass,
-  Luggage, PieChart, Heart, Car, Settings,
+  Luggage, PieChart, Heart, Car, Settings, History,
   GripVertical, GripHorizontal,
   SlidersHorizontal, Check, X,
   type LucideIcon,
 } from "lucide-react";
+import { TripHistoryToggle } from "@/components/trip/TripHistoryPanel";
 import { useTripTheme } from "@/components/trip/TripThemeContext";
 
 // ─── Tab Configuration ──────────────────────────────────────
@@ -363,6 +364,9 @@ export default function TripTabs({
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* History button */}
+        <TripHistoryToggle tripId={tripId} variant="icon" dark={dark} />
 
         {/* Customize button */}
         <button
