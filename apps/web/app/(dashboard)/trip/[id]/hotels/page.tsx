@@ -1849,6 +1849,9 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
   const { id } = use(params);
   const { trip } = useItineraryScreen(id);
   const cs = useCurrencySymbol();
+  const accommodationType = (trip?.trip_context as any)?.quick_facts?.accommodation_type
+    || (trip?.trip_context as any)?.accommodation_type || null;
+  const skipHotelSearch = accommodationType === 'Staying with someone' || accommodationType === 'Own place';
 
   // Search query state — drives a new Foursquare fetch when submitted
   const [searchInput, setSearchInput] = useState('');

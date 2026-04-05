@@ -22,6 +22,7 @@ export interface TripExtraction {
   budget_level: string | null;
   daily_estimate_usd: number;
   pace: string | null;
+  accommodation_type?: string | null; // 'hotel' | 'airbnb' | 'hostel' | 'staying_with_someone' | 'own_place' | null
   [key: string]: unknown;
 }
 
