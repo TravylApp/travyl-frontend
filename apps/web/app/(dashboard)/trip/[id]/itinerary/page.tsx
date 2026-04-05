@@ -319,7 +319,7 @@ function GlanceView({
                               addActivity({
                                 id: `drop-${Date.now()}`,
                                 title: item.title || item.name,
-                                type: item.category || 'activity',
+                                type: item.category || '',
                                 day: i,
                                 startHour: TOD_START_HOURS[tod] || 9,
                                 duration: 2,
@@ -477,7 +477,7 @@ function GlanceView({
                                       addActivity({
                                         id: `quick-${Date.now()}`,
                                         title: item.name,
-                                        type: item.category || 'activity',
+                                        type: item.category || '',
                                         day: i,
                                         startHour: TOD_START_HOURS[tod] || 9,
                                         duration: 2,
@@ -658,7 +658,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       // 2. Activity table — best effort (may fail for anonymous users due to RLS)
       const rows = newActivities.map(a => ({
         trip_id: id, user_id: null,
-        activity_name: a.name, activity_type: a.category || 'sightseeing',
+        activity_name: a.name, activity_type: a.category || '',
         starting_date: a.dayDate, ending_date: a.dayDate,
         starting_time: a.startTime, ending_time: a.endTime,
         latitude: a.lat || 0, longitude: a.lng || 0,
@@ -693,8 +693,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       const pick = fresh[Math.floor(Math.random() * Math.min(fresh.length, 5))];
 
       if (pick && addActivity) {
-        const TOD_HOURS: Record<string, number> = { morning: 9, afternoon: 13, evening: 18, latenight: 21 };
-        const hour = TOD_HOURS[tod] || 12;
+        const hour = TOD_START_HOURS[tod] || 12;
         addActivity({
           id: `suggest-${Date.now()}`,
           title: pick.name,
@@ -766,9 +765,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
 
       // Fill 4 time slots: morning, afternoon, evening, late night
       const slots = [
-        { tod: 'morning', hour: 9, type: 'sightseeing' },
+        { tod: 'morning', hour: 9, type: '' },
         { tod: 'afternoon', hour: 13, type: 'dining' },
-        { tod: 'afternoon', hour: 15, type: 'sightseeing' },
+        { tod: 'afternoon', hour: 15, type: '' },
         { tod: 'evening', hour: 19, type: 'dining' },
       ];
 
@@ -840,8 +839,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         afternoon: 'activities things to do',
         evening: 'restaurants dinner',
       };
-      const TOD_HOURS: Record<string, number> = { morning: 9, afternoon: 14, evening: 19 };
-
       const startDate = trip.start_date || new Date().toISOString().split('T')[0];
       const dayDate = new Date(startDate);
       dayDate.setDate(dayDate.getDate() + dayIdx);
@@ -855,11 +852,11 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         const places = await res.json();
         const pick = places[Math.floor(Math.random() * Math.min(places.length, 3))];
         if (pick && addActivity) {
-          const hour = TOD_HOURS[tod] || 12;
+          const hour = TOD_START_HOURS[tod] || 12;
           addActivity({
             id: `fill-${Date.now()}-${tod}`,
             title: pick.name,
-            type: pick.category || 'activity',
+            type: pick.category || '',
             day: dayIdx,
             startHour: hour,
             duration: 2,
@@ -869,7 +866,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             color: 'var(--trip-base)',
           });
           added.push({
-            name: pick.name, category: pick.category || 'activity',
+            name: pick.name, category: pick.category || '',
             dayDate: dayDateStr, startTime: `${hour}:00`, endTime: `${hour + 2}:00`,
             lat: pick.latitude, lng: pick.longitude, image: pick.images?.[0] || pick.image,
           });
@@ -893,9 +890,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       const categories = ['attractions', 'restaurants', 'things to do', 'nightlife'];
       const HOUR_END: Record<number, string> = { 9: '11:00', 13: '15:00', 15: '17:00', 19: '21:00' };
       const slots = [
-        { hour: 9, type: 'sightseeing' },
+        { hour: 9, type: '' },
         { hour: 13, type: 'dining' },
-        { hour: 15, type: 'sightseeing' },
+        { hour: 15, type: '' },
         { hour: 19, type: 'dining' },
       ];
 
@@ -954,17 +951,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const contextHotels = trip?.trip_context?.hotels ?? (trip?.trip_context as any)?.all_hotels ?? [];
   const firstHotel = contextHotels[0] as any | undefined;
 
-  // Build flight info — destination airport from city name
-  const CITY_AIRPORTS: Record<string, string> = {
-    'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-    'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-    'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-    'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
-    'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
-    'Vienna': 'VIE', 'Dublin': 'DUB', 'Cancun': 'CUN', 'Reykjavik': 'KEF',
-  };
+  // Build flight info from trip_context flights data (no hardcoded airport lookup)
+  const contextFlights = trip?.trip_context?.flights ?? [];
   const city = trip?.destination?.split(',')[0]?.trim() ?? '';
-  const destAirport = CITY_AIRPORTS[city] || '';
+  const destAirport = (contextFlights[0] as any)?.dest_iata || '';
   const tripFlight = destAirport ? { destAirport, city } : null;
 
   const arrivalFlight: MockFlightDetail | undefined = undefined;
@@ -1026,7 +1016,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     addActivity({
       id: `cal-itin-${Date.now()}`,
       title: item.name,
-      type: item.category ?? 'sightseeing',
+      type: item.category ?? '',
       day: selectedDayIndex,
       startHour,
       duration,
@@ -1154,7 +1144,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     name: item.name,
     image: item.images?.[0] || '',
     images: item.images,
-    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
+    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : (item.category as PlaceItem['type']) || 'experience',
     rating: item.rating || 0,
     tagline: item.description || item.category || '',
     category: item.category || '',

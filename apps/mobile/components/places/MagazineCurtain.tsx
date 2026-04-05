@@ -290,10 +290,10 @@ export function MagazineCurtain({
             <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', flex: 1 }} numberOfLines={2}>
               {p.name}
             </Text>
-            {p.rating > 0 && (
+            {(p.rating ?? 0) > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                 <FontAwesome name="star" size={12} color="#facc15" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{p.rating.toFixed(1)}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{(p.rating ?? 0).toFixed(1)}</Text>
               </View>
             )}
           </View>

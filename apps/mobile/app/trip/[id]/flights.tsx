@@ -6,13 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-const POPULAR_AIRPORTS = [
-  { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
-  { code: 'LAX', name: 'Los Angeles Intl', city: 'Los Angeles' },
-  { code: 'ORD', name: "O'Hare Intl", city: 'Chicago' },
-  { code: 'LHR', name: 'Heathrow', city: 'London' },
-  { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-];
+// Airport cache — populated dynamically from API search results
+const airportCache: { code: string; name: string; city: string }[] = [];
 
 // Empty stubs — comparison and booking details are not wired to real data yet
 const COMPARISON_FLIGHTS: any[] = [];
@@ -84,8 +79,8 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
   const colors = useThemeColors();
   const [collapsed, setCollapsed] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState('JFK');
-  const [to, setTo] = useState(destination || 'CDG');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState(destination || '');
   const [travelers, setTravelers] = useState(2);
   const [cabinClass, setCabinClass] = useState<'economy' | 'premium' | 'business' | 'first'>('economy');
   const [nonstopOnly, setNonstopOnly] = useState(false);
@@ -102,7 +97,7 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
   // Search airports via API
   useEffect(() => {
     if (!airportQuery || airportQuery.length < 2) {
-      setAirportResults(POPULAR_AIRPORTS);
+      setAirportResults(airportCache);
       return;
     }
     setAirportLoading(true);
@@ -201,7 +196,7 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
           <View>
             <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Search Flights</Text>
             <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
-              {from} → {to} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}
+              {from || '?'} → {to || '?'} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}
             </Text>
           </View>
         </View>
@@ -240,12 +235,12 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
           {/* Search strip */}
           <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' }}>
             {/* From */}
-            <Pressable onPress={() => { setAirportPickerField('from'); setAirportQuery(''); setAirportResults(POPULAR_AIRPORTS); }}
+            <Pressable onPress={() => { setAirportPickerField('from'); setAirportQuery(''); setAirportResults(airportCache); }}
               style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ ...TextStyles.micro, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>From</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>{from}</Text>
-                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{POPULAR_AIRPORTS.find((a) => a.code === from)?.city || from}</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: from ? ACCENT : colors.textTertiary }}>{from || 'Select'}</Text>
+                {!!from && <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{airportCache.find((a) => a.code === from)?.city || ''}</Text>}
               </View>
             </Pressable>
 
@@ -260,12 +255,12 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
             </View>
 
             {/* To */}
-            <Pressable onPress={() => { setAirportPickerField('to'); setAirportQuery(''); setAirportResults(POPULAR_AIRPORTS); }}
+            <Pressable onPress={() => { setAirportPickerField('to'); setAirportQuery(''); setAirportResults(airportCache); }}
               style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ ...TextStyles.micro, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>To</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>{to}</Text>
-                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{POPULAR_AIRPORTS.find((a) => a.code === to)?.city || to}</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: to ? ACCENT : colors.textTertiary }}>{to || 'Select'}</Text>
+                {!!to && <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{airportCache.find((a) => a.code === to)?.city || ''}</Text>}
               </View>
             </Pressable>
 
@@ -474,9 +469,9 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
                   onPress={() => {
                     if (airportPickerField === 'from') setFrom(item.code);
                     else setTo(item.code);
-                    // Update POPULAR_AIRPORTS cache so name shows
-                    if (!POPULAR_AIRPORTS.find(a => a.code === item.code)) {
-                      POPULAR_AIRPORTS.push(item);
+                    // Update airportCache cache so name shows
+                    if (!airportCache.find(a => a.code === item.code)) {
+                      airportCache.push(item);
                     }
                     setAirportPickerField(null);
                   }}

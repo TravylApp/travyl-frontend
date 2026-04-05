@@ -369,10 +369,12 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
 
 // ── Cost of Living Section ────────────────────────────────────
 function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContextData['cost_of_living']>; currency?: string }) {
-  const codeToSymbol: Record<string, string> = { EUR: '€', USD: '$', GBP: '£', JPY: '¥', CHF: 'CHF', AUD: 'A$', CAD: 'C$', SEK: 'kr', NOK: 'kr', DKK: 'kr', PLN: 'zł', CZK: 'Kč', HUF: 'Ft', THB: '฿', BRL: 'R$', MXN: '$', INR: '₹', KRW: '₩', TRY: '₺' };
-  const raw = currency || cost.currency || '$';
-  const symbol = codeToSymbol[raw] || raw;
-  const fmt = (v: number) => `${symbol}${v.toFixed(0)}`;
+  const code = currency || cost.currency || 'USD';
+  const fmt = (v: number) => {
+    try {
+      return new Intl.NumberFormat('en', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+    } catch { return `${code} ${v.toFixed(0)}`; }
+  };
   const items = [
     { icon: UtensilsCrossed, label: 'Budget meal', value: fmt(cost.meal_cheap) },
     { icon: UtensilsCrossed, label: 'Mid-range meal', value: fmt(cost.meal_mid) },
@@ -568,27 +570,29 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   // Rotate explore queries each session for variety
   const [exploreOffset] = useState(() => Math.floor(Math.random() * 6));
+  const exploreLat = trip?.trip_context?.lat;
+  const exploreLng = trip?.trip_context?.lng;
   const { data: liveExploreItems } = useQuery({
-    queryKey: ['trip-explore', trip?.id, tripCity],
+    queryKey: ['trip-explore', trip?.id, tripCity, exploreLat, exploreLng],
     queryFn: async () => {
       if (!tripCity) return [];
+      // Broad queries — the API returns whatever categories exist for this destination
       const allQueries = [
-        `top attractions in ${tripCity}`,
-        `best restaurants in ${tripCity}`,
-        `hidden gems ${tripCity}`,
-        `things to do ${tripCity}`,
-        `nightlife ${tripCity}`,
-        `markets shopping ${tripCity}`,
-        `museums ${tripCity}`,
-        `parks nature ${tripCity}`,
-        `local food ${tripCity}`,
-        `viewpoints ${tripCity}`,
+        `${tripCity} things to do`,
+        `${tripCity} restaurants food`,
+        `${tripCity} nightlife bars clubs`,
+        `${tripCity} shopping markets`,
+        `${tripCity} hidden gems`,
+        `${tripCity} outdoor activities`,
+        `${tripCity} entertainment shows`,
+        `${tripCity} local favorites`,
       ];
       // Pick 6 starting from random offset
       const queries = Array.from({ length: 6 }, (_, i) => allQueries[(exploreOffset + i) % allQueries.length]);
+      const coordParams = exploreLat && exploreLng ? `&lat=${exploreLat}&lng=${exploreLng}` : '';
       const results = await Promise.all(
         queries.map(async (q) => {
-          const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=4`);
+          const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6${coordParams}`);
           if (!res.ok) return [];
           return res.json();
         })
@@ -607,7 +611,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       return all.slice(0, 20).map((p: any) => ({
         id: p.id, title: p.name,
         description: p.description || p.category || '',
-        category: p.category || 'attraction',
+        category: p.category || '',
         image: upscaleGoogleImage(p.images?.[0] || p.image) || p.image || '',
         tags: p.tags,
       }));
@@ -882,7 +886,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                 )}
                 {costData && (
                   <div className="flex-1 min-w-0">
-                    <CostOfLivingSection cost={costData} currency={trip?.trip_context?.country?.currency?.symbol} />
+                    <CostOfLivingSection cost={costData} currency={trip?.trip_context?.country?.currency?.code} />
                   </div>
                 )}
               </div>

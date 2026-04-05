@@ -86,28 +86,31 @@ function buildDiscoverItems(trip: any): any[] {
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
 
-// Generate mock coordinates spread around destination center for each activity
-function mockActivityCoords(index: number, total: number, centerLat: number, centerLng: number): { lat: number; lng: number } {
-  const spread = 0.018; // ~1.8km radius
-  const angle = (index / Math.max(total, 1)) * 2 * Math.PI;
-  const r = spread * (0.4 + (index % 3) * 0.3);
-  return {
-    lat: centerLat + r * Math.sin(angle),
-    lng: centerLng + r * Math.cos(angle),
-  };
+// Return real coordinates for an activity, or null if unavailable
+function realActivityCoords(activity: ActivityViewModel): { lat: number; lng: number } | null {
+  const lat = (activity as any).latitude ?? (activity as any).lat;
+  const lng = (activity as any).longitude ?? (activity as any).lng ?? (activity as any).lon;
+  if (typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0) {
+    return { lat, lng };
+  }
+  return null;
 }
 
-function buildMarkers(activities: ActivityViewModel[], accent: string, centerLat: number, centerLng: number): MapMarker[] {
-  return activities.map((a, i) => {
-    const coords = mockActivityCoords(i, activities.length, centerLat, centerLng);
-    return {
-      lat: coords.lat,
-      lng: coords.lng,
-      label: a.name,
-      color: accent,
-      number: i + 1,
-    };
+function buildMarkers(activities: ActivityViewModel[], accent: string, _centerLat: number, _centerLng: number): MapMarker[] {
+  const markers: MapMarker[] = [];
+  activities.forEach((a, i) => {
+    const coords = realActivityCoords(a);
+    if (coords) {
+      markers.push({
+        lat: coords.lat,
+        lng: coords.lng,
+        label: a.name,
+        color: accent,
+        number: i + 1,
+      });
+    }
   });
+  return markers;
 }
 
 function CollapsibleSection({ title, icon, accent, count, defaultOpen = false, children }: {
@@ -2085,6 +2088,8 @@ export default function ItineraryScreen() {
       name,
       image: '',
       category,
+      cost: null,
+      costCurrency: null,
       locationName: null,
       startTime: TOD_START_TIMES[timeOfDay] ?? '12:00 PM',
       endTime: formatHourToTime((TOD_START_HOURS[timeOfDay] ?? 12) + 1.5),
@@ -2406,19 +2411,18 @@ export default function ItineraryScreen() {
     const discoverMatch = discoverMatchMap.get(activity.id);
     if (discoverMatch) { setOpenPlace(discoverItemToPlaceItem(discoverMatch)); return; }
 
-    const idx = allActivities.indexOf(activity);
-    const coords = mockActivityCoords(idx, allActivities.length, centerLat, centerLng);
+    const coords = realActivityCoords(activity);
     setOpenPlace({
       id: activity.id,
       name: activity.name,
       image: '',
       type: 'attraction' as const,
-      rating: 4.5,
+      rating: 0,
       tagline: activity.locationName ?? '',
       category: activity.category ?? 'Activity',
       description: activity.notes ?? undefined,
-      latitude: coords.lat,
-      longitude: coords.lng,
+      latitude: coords?.lat,
+      longitude: coords?.lng,
       duration: activity.timeDisplay ?? undefined,
       admissionFee: activity.costDisplay ?? undefined,
       website: activity.bookingUrl ?? undefined,
