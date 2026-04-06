@@ -19,7 +19,7 @@ function CollapsibleSection({
   icon,
   badge,
   badgeColor,
-  bgClass = 'bg-white',
+  bgClass = 'bg-white dark:bg-white/[0.03]',
   children,
   defaultOpen = false,
 }: {
@@ -34,14 +34,14 @@ function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className={`${bgClass} rounded-xl shadow-md`}>
+    <div className={`${bgClass} rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm`}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full p-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors rounded-xl"
+        className="w-full p-3 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-xl"
       >
         <div className="flex items-center gap-2">
           {icon}
-          <h5 className="text-sm font-semibold text-gray-900">{title}</h5>
+          <h5 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h5>
           {badge && (
             <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor}`}>
               {badge}
@@ -100,9 +100,9 @@ function DetailCard({
     >
       <div className="flex items-center gap-2">
         {icon}
-        <p className={`text-sm text-gray-900 group-hover:${themeAccent}`}>{title}</p>
+        <p className={`text-sm text-gray-900 dark:text-white group-hover:${themeAccent}`}>{title}</p>
       </div>
-      <p className="text-xs text-gray-600 mt-1">{subtitle}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{subtitle}</p>
       <AnimatePresence>
         {expanded ? (
           <motion.div
@@ -112,7 +112,7 @@ function DetailCard({
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <p className="text-xs text-gray-700 mt-2 bg-white/80 p-2.5 rounded-lg border border-gray-200 leading-relaxed">
+            <p className="text-xs text-gray-700 dark:text-gray-300 mt-2 bg-white/80 dark:bg-white/[0.05] p-2.5 rounded-lg border border-gray-200 dark:border-white/[0.08] leading-relaxed">
               {detail}
             </p>
           </motion.div>
@@ -222,9 +222,9 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
   if (isLoading || !trip) {
     return (
       <div className="space-y-4">
-        <div className="h-32 rounded-xl bg-gray-200 animate-pulse" />
-        <div className="h-16 rounded-xl bg-gray-200 animate-pulse" />
-        <div className="h-16 rounded-xl bg-gray-200 animate-pulse" />
+        <div className="h-32 rounded-xl bg-gray-200 dark:bg-white/[0.08] animate-pulse" />
+        <div className="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08] animate-pulse" />
+        <div className="h-16 rounded-xl bg-gray-200 dark:bg-white/[0.08] animate-pulse" />
       </div>
     );
   }
@@ -268,7 +268,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             title="Getting Around"
             icon={<Train size={18} className="text-purple-600" />}
             badge="4 options"
-            badgeColor="bg-purple-100 text-purple-700"
+            badgeColor="bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300"
             defaultOpen
           >
             {transportOptions.map((t) => (
@@ -278,8 +278,8 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
                 title={t.name}
                 subtitle={t.subtitle}
                 detail={t.detail}
-                themeBg="bg-purple-50"
-                themeHover="hover:bg-purple-100"
+                themeBg="bg-purple-50 dark:bg-purple-500/10"
+                themeHover="hover:bg-purple-100 dark:hover:bg-purple-500/20"
                 themeAccent="text-purple-600"
               />
             ))}
@@ -290,7 +290,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             title="Must-Try Restaurants"
             icon={<Utensils size={18} className="text-red-600" />}
             badge="3 spots"
-            badgeColor="bg-red-100 text-red-700"
+            badgeColor="bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300"
           >
             {restaurantData.map((r: { name: string; subtitle: string; detail: string }) => (
               <DetailCard
@@ -299,8 +299,8 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
                 title={r.name}
                 subtitle={r.subtitle}
                 detail={r.detail}
-                themeBg="bg-red-50"
-                themeHover="hover:bg-red-100"
+                themeBg="bg-red-50 dark:bg-red-500/10"
+                themeHover="hover:bg-red-100 dark:hover:bg-red-500/20"
                 themeAccent="text-red-600"
               />
             ))}
@@ -314,7 +314,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             title="Transportation Passes"
             icon={<CreditCard size={18} className="text-blue-600" />}
             badge={`${transportOptions.length} options`}
-            badgeColor="bg-blue-100 text-blue-700"
+            badgeColor="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"
           >
             {transportOptions.map((p) => (
               <DetailCard
@@ -323,8 +323,8 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
                 title={p.name}
                 subtitle={p.subtitle}
                 detail={p.detail}
-                themeBg="bg-blue-50"
-                themeHover="hover:bg-blue-100"
+                themeBg="bg-blue-50 dark:bg-blue-500/10"
+                themeHover="hover:bg-blue-100 dark:hover:bg-blue-500/20"
                 themeAccent="text-blue-600"
               />
             ))}
@@ -335,7 +335,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             title="Must-Do Experiences"
             icon={<Camera size={18} className="text-green-600" />}
             badge={`${experiences.length} experiences`}
-            badgeColor="bg-green-100 text-green-700"
+            badgeColor="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300"
             defaultOpen
           >
             {experiences.map((e: { name: string; subtitle: string; detail: string }) => (
@@ -345,8 +345,8 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
                 title={e.name}
                 subtitle={e.subtitle}
                 detail={e.detail}
-                themeBg="bg-green-50"
-                themeHover="hover:bg-green-100"
+                themeBg="bg-green-50 dark:bg-green-500/10"
+                themeHover="hover:bg-green-100 dark:hover:bg-green-500/20"
                 themeAccent="text-green-600"
               />
             ))}
@@ -357,27 +357,27 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             title="Emergency Information"
             icon={<ShieldAlert size={18} className="text-red-700" />}
             badge="112 &bull; 15"
-            badgeColor="bg-red-200 text-red-800"
-            bgClass="bg-gradient-to-r from-red-50 to-rose-50"
+            badgeColor="bg-red-200 dark:bg-red-500/20 text-red-800 dark:text-red-300"
+            bgClass="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-500/10 dark:to-rose-500/10"
           >
             {/* Emergency Numbers */}
             <button
               onClick={() => {}}
-              className="w-full bg-white p-3 rounded-lg hover:bg-red-50 transition-all cursor-default text-left border border-red-200"
+              className="w-full bg-white dark:bg-white/[0.03] p-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-all cursor-default text-left border border-red-200 dark:border-red-500/20"
             >
               <div className="flex items-center gap-2 mb-2">
-                <Phone size={16} className="text-red-600" />
-                <p className="text-sm font-semibold text-gray-900">Emergency Numbers</p>
+                <Phone size={16} className="text-red-600 dark:text-red-400" />
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Emergency Numbers</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {emergencyNumbers.map((e) => (
                   <a
                     key={e.number}
                     href={`tel:${e.number}`}
-                    className="p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-center"
+                    className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors text-center"
                   >
-                    <p className="text-lg font-bold text-red-600">{e.number}</p>
-                    <p className="text-[11px] text-gray-600">{e.label}</p>
+                    <p className="text-lg font-bold text-red-600 dark:text-red-400">{e.number}</p>
+                    <p className="text-[11px] text-gray-600 dark:text-gray-400">{e.label}</p>
                   </a>
                 ))}
               </div>
@@ -386,30 +386,30 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
             {/* Hospitals */}
             <button
               onClick={() => {}}
-              className="w-full bg-white p-3 rounded-lg hover:bg-red-50 transition-all cursor-default text-left border border-red-200"
+              className="w-full bg-white dark:bg-white/[0.03] p-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-all cursor-default text-left border border-red-200 dark:border-red-500/20"
             >
               <div className="flex items-center gap-2 mb-2">
-                <Ambulance size={16} className="text-red-600" />
-                <p className="text-sm font-semibold text-gray-900">Hospitals & Medical</p>
+                <Ambulance size={16} className="text-red-600 dark:text-red-400" />
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Hospitals & Medical</p>
               </div>
               <div className="space-y-1.5">
-                <div className="text-xs text-gray-700">
+                <div className="text-xs text-gray-700 dark:text-gray-300">
                   <p className="font-medium">Hotel-Dieu Hospital</p>
-                  <p className="text-gray-500">1 Place du Parvis Notre-Dame, 75004</p>
-                  <a href="tel:+33142348234" className="text-blue-600 hover:underline">+33 1 42 34 82 34</a>
+                  <p className="text-gray-500 dark:text-gray-400">1 Place du Parvis Notre-Dame, 75004</p>
+                  <a href="tel:+33142348234" className="text-blue-600 dark:text-blue-400 hover:underline">+33 1 42 34 82 34</a>
                 </div>
-                <div className="text-xs text-gray-700">
+                <div className="text-xs text-gray-700 dark:text-gray-300">
                   <p className="font-medium">American Hospital of Paris</p>
-                  <p className="text-gray-500">63 Blvd Victor Hugo, 92200 Neuilly</p>
-                  <a href="tel:+33146412525" className="text-blue-600 hover:underline">+33 1 46 41 25 25</a>
+                  <p className="text-gray-500 dark:text-gray-400">63 Blvd Victor Hugo, 92200 Neuilly</p>
+                  <a href="tel:+33146412525" className="text-blue-600 dark:text-blue-400 hover:underline">+33 1 46 41 25 25</a>
                 </div>
               </div>
             </button>
 
             {/* Safety Tips */}
-            <div className="bg-white p-3 rounded-lg border border-amber-300">
-              <p className="text-xs font-semibold text-gray-900 mb-2">Important Safety Tips</p>
-              <ul className="text-xs text-gray-700 space-y-1">
+            <div className="bg-white dark:bg-white/[0.03] p-3 rounded-lg border border-amber-300 dark:border-amber-500/30">
+              <p className="text-xs font-semibold text-gray-900 dark:text-white mb-2">Important Safety Tips</p>
+              <ul className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
                 {safetyTips.map((tip, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     <span className="text-amber-500 shrink-0 mt-px">&#x2022;</span>

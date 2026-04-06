@@ -20,17 +20,17 @@ export default function HotelDetailPage({
   if (isLoading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-pulse">
-        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-        <div className="w-full h-[280px] bg-gray-200 dark:bg-gray-700 rounded-xl mb-6" />
-        <div className="h-7 w-2/3 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-        <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-4" />
-        <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-56 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-4" />
-        <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 w-32 bg-gray-200 dark:bg-white/[0.06] rounded mb-4" />
+        <div className="w-full h-[280px] bg-gray-200 dark:bg-white/[0.06] rounded-xl mb-6" />
+        <div className="h-7 w-2/3 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-1/3 bg-gray-200 dark:bg-white/[0.06] rounded mb-2" />
+        <div className="h-4 w-1/2 bg-gray-200 dark:bg-white/[0.06] rounded mb-6" />
+        <div className="h-px bg-gray-100 dark:bg-white/[0.06] mb-4" />
+        <div className="h-4 w-40 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-56 bg-gray-200 dark:bg-white/[0.06] rounded mb-6" />
+        <div className="h-px bg-gray-100 dark:bg-white/[0.06] mb-4" />
+        <div className="h-4 w-36 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-48 bg-gray-200 dark:bg-white/[0.06] rounded" />
       </div>
     )
   }
@@ -83,7 +83,7 @@ export default function HotelDetailPage({
       />
 
       {/* Overview */}
-      <div className="px-6 md:px-10 py-6 border-b border-gray-100">
+      <div className="px-6 md:px-10 py-6 border-b border-gray-100 dark:border-white/[0.06]">
         {data.star_rating !== null && (
           <div className="flex items-center gap-0.5 mb-2">
             {Array.from({ length: 5 }).map((_, i) => (
