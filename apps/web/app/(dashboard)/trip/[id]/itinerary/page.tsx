@@ -14,6 +14,7 @@ import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
+import { TripHistoryToggle } from '@/components/trip/TripHistoryPanel';
 import {
   ChevronDown, X, Search, Compass, LayoutList, Map, Calendar, RefreshCw,
   Landmark, UtensilsCrossed, Footprints, TreePine, Theater, ShoppingBag,
@@ -1171,7 +1172,12 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       if (place.name) {
         try {
           const dest = trip?.destination?.split(',')[0]?.trim() || '';
-          const res = await fetch(`/api/places?q=${encodeURIComponent(`${place.name} ${dest}`)}&limit=1`);
+          const tripLat = trip?.trip_context?.lat;
+          const tripLng = trip?.trip_context?.lng;
+          // Use lat/lng with q= to anchor search to the right city
+          const params = new URLSearchParams({ q: `${place.name} ${dest}`, limit: '1' });
+          if (tripLat && tripLng) { params.set('lat', String(tripLat)); params.set('lng', String(tripLng)); }
+          const res = await fetch(`/api/places?${params}`);
           if (res.ok) {
             const [found] = await res.json();
             if (found) {
@@ -1247,7 +1253,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               <h2 className="text-2xl sm:text-3xl font-normal font-serif text-white tracking-wide"
                 style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
             </div>
-            <div className="relative shrink-0 mr-2" ref={regenMenuRef}>
+            <div className="flex items-center gap-2 shrink-0 mr-2">
+              <TripHistoryToggle tripId={id} variant="pill" dark />
+              <div className="relative" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
@@ -1309,6 +1317,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                   </div>
                 </div>
               )}
+              </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md"
               style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
