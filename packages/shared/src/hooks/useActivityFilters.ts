@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useMemo, useEffect } from 'react';
 import type { DiscoverItem } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';

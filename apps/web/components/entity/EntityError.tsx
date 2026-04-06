@@ -37,11 +37,11 @@ export function EntityError({ type, variant, onRetry }: Props) {
       <div className="text-center max-w-md">
         {variant === '404' ? (
           <>
-            <p className="text-6xl font-serif font-normal text-gray-200 mb-4">404</p>
-            <h1 className="text-2xl font-serif font-normal text-[#1e3a5f] tracking-wide mb-3">
+            <p className="text-6xl font-semibold text-gray-200 dark:text-white/10 mb-4">404</p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
               We couldn&apos;t find this {label}
             </h1>
-            <p className="text-sm text-gray-500 mb-8">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
               It may have been removed or the link might be incorrect.
             </p>
             <Link
@@ -54,10 +54,10 @@ export function EntityError({ type, variant, onRetry }: Props) {
         ) : (
           <>
             <p className="text-6xl mb-4">⚠</p>
-            <h1 className="text-2xl font-serif font-normal text-[#1e3a5f] tracking-wide mb-3">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
               Something went wrong
             </h1>
-            <p className="text-sm text-gray-500 mb-8">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
               We had trouble loading this {label}. Please try again.
             </p>
             <div className="flex items-center justify-center gap-3">
@@ -71,7 +71,7 @@ export function EntityError({ type, variant, onRetry }: Props) {
               )}
               <Link
                 href={href}
-                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
               >
                 Browse {plural}
               </Link>

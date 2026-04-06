@@ -18,10 +18,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid prompt' }, { status: 400 })
   }
 
+  // Allowlist fields
+  const safeBody: Record<string, unknown> = { prompt: body.prompt }
+  if (typeof body.city === 'string') safeBody.city = body.city.slice(0, 100)
+  if (typeof body.country === 'string') safeBody.country = body.country.slice(0, 100)
+
   const res = await fetch(`${API_URL}/api/trips/extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(safeBody),
   })
 
   const data = await res.json()

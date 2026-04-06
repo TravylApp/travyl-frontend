@@ -31,17 +31,33 @@ export default function ProfilePage() {
   const loading = useAuthStore((s) => s.loading);
   const { data: profile } = useProfile();
 
-  // Allow unauthenticated preview with mock data
   const isAuthenticated = !!user;
   const displayName = isAuthenticated
-    ? (profile?.display_name ?? user.email?.split('@')[0] ?? 'User')
-    : 'Alex Rivera';
+    ? (profile?.display_name ?? user.email?.split('@')[0] ?? 'Traveler')
+    : 'Traveler';
   const initials = displayName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
   if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-[#1e3a5f]/10 flex items-center justify-center mx-auto mb-4">
+            <Globe2 size={32} className="text-[#1e3a5f]/40" />
+          </div>
+          <h2 className="text-xl font-serif font-bold text-gray-900 mb-2">Your Travel Profile</h2>
+          <p className="text-sm text-gray-500 mb-6">Sign in to track your trips, save favorites, and build your travel story.</p>
+          <Link href="/login" className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] text-white rounded-full text-sm font-semibold hover:bg-[#162d4a] transition-colors">
+            Log In to Get Started
+          </Link>
+        </div>
       </div>
     );
   }
@@ -165,9 +181,7 @@ function ProfileContent({
 
             <div className="flex items-center gap-6 mt-4 mb-6">
               {[
-                { value: '23', label: 'Countries' },
-                { value: '28', label: 'Places' },
-                { value: String(PROFILE_FAVORITES.length), label: 'Favorites' },
+                { value: String(PROFILE_FAVORITES.length), label: 'Saved Places' },
                 { value: String(TRAVEL_BOARDS.length), label: 'Boards' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
