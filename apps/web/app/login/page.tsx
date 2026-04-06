@@ -78,7 +78,11 @@ function LoginPageInner() {
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook' | 'azure' | 'apple') => {
     setError('');
-    const { error } = await supabase.auth.signInWithOAuth({ provider });
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    });
     if (error) setError(error.message);
   };
 
