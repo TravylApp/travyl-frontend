@@ -47,12 +47,14 @@ function toSuggestionCard(place: SerpLocalResult, category: string, index: numbe
 }
 
 /**
- * GET /places/search?q={query}&category={optional}&limit={optional}
+ * GET /places/search?q={query}&category={optional}&limit={optional}&lat={optional}&lng={optional}
  *
  * Natural language place search. Passes the raw query directly to SerpAPI's
  * google_local engine — no geocoding or destination extraction needed.
  * Queries like "hidden gem restaurant in Sedona" or "rooftop bars in Bangkok"
  * work natively.
+ * 
+ * Optional lat/lng params for geo-scoping results to a specific location.
  */
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
@@ -65,6 +67,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const category = event.queryStringParameters?.category
     const limit = Math.min(parseInt(event.queryStringParameters?.limit ?? '20', 10), 40)
+    const lat = event.queryStringParameters?.lat
+    const lng = event.queryStringParameters?.lng
 
     // Build the search query — prepend category if provided and not already in the query
     const searchQuery = category && !q.toLowerCase().includes(category.toLowerCase())
@@ -74,6 +78,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const url = new URL(SERPAPI_BASE)
     url.searchParams.set('engine', 'google_local')
     url.searchParams.set('q', searchQuery)
+    
+    // Add location bias if lat/lng provided
+    if (lat && lng) {
+      const latNum = parseFloat(lat)
+      const lngNum = parseFloat(lng)
+      if (!isNaN(latNum) && !isNaN(lngNum)) {
+        url.searchParams.set('ll', `@${latNum},${lngNum},14z`)
+        console.log('[place-search] geo-scoping to:', latNum, lngNum)
+      }
+    }
+    
     url.searchParams.set('api_key', Resource.SerpApiKey.value)
 
     const res = await fetch(url.toString(), {

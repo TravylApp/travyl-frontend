@@ -175,6 +175,11 @@ api.route('GET /places/search', {
   link: [supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
+api.route('GET /places/nearby', {
+  handler: 'services/places-nearby.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
 api.route('GET /api/images/search', {
   handler: 'services/image-search.handler',
   link: [pexels],
