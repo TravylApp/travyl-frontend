@@ -1064,6 +1064,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             bookedDay: day.dayNumber,
             bookedTime: a.startTime || undefined,
             bookingUrl: a.bookingUrl || undefined,
+            lat: (a as any).lat ?? undefined,
+            lng: (a as any).lng ?? undefined,
           });
         }
       }
@@ -1150,8 +1152,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     category: item.category || '',
     description: item.description,
     tags: item.tags,
-    latitude: trip?.trip_context?.lat,
-    longitude: trip?.trip_context?.lng,
+    latitude: (item as any).lat ?? trip?.trip_context?.lat,
+    longitude: (item as any).lng ?? trip?.trip_context?.lng,
     address: item.location,
     website: item.bookingUrl,
   }), [trip]);
@@ -1165,8 +1167,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       setSelectedPlace(place);
       // Don't open the trip map panel — PlaceDetailModal has its own map
 
-      // Enrich with real place data if we're missing image or details
-      if (!place.image && place.name) {
+      // Always enrich with real place data for images, description, coordinates
+      if (place.name) {
         try {
           const dest = trip?.destination?.split(',')[0]?.trim() || '';
           const res = await fetch(`/api/places?q=${encodeURIComponent(`${place.name} ${dest}`)}&limit=1`);
@@ -1602,6 +1604,27 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         )}
       </AnimatePresence>
       </div>{/* end z-10 */}
+
+      {/* ── Floating Add Activity Button ── */}
+      {selectedDay && !addingTo && !selectedPlace && (
+        <button
+          onClick={() => {
+            // Find the current time-of-day to pre-select the right section
+            const hour = new Date().getHours();
+            const tod = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late Night';
+            setAddingTo(tod);
+            setAddCategory('All');
+          }}
+          className="fixed bottom-8 right-8 z-30 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-xl"
+          style={{
+            backgroundColor: 'var(--trip-base, #1e3a5f)',
+            color: '#fff',
+          }}
+        >
+          <span className="text-lg leading-none">+</span>
+          <span className="text-sm font-semibold">Add Activity</span>
+        </button>
+      )}
     </div>
   );
 }

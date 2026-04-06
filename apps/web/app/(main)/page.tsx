@@ -277,6 +277,7 @@ export default function Home() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
   const [showQuestions, setShowQuestions] = useState(false);
   const skipQuestionsRef = useRef(false);
+  const clarifyRoundRef = useRef(0);
   const skipRetryCountRef = useRef(0);
 
   const isClarifying = planner.state.phase === 'clarifying';
@@ -465,6 +466,7 @@ export default function Home() {
     if (!val) return;
     skipQuestionsRef.current = true;
     skipRetryCountRef.current = 0;
+    clarifyRoundRef.current = 0;
     // Enhance short/vague prompts so the API has enough to plan with
     const words = val.split(/\s+/).length;
     const prompt = words <= 3 && !val.match(/\d/)
@@ -495,6 +497,20 @@ export default function Home() {
       setShowTakeoff(true);
       setLoadingError(null);
       setTakeoffCompleted(false);
+    }
+    if (planner.state.phase === 'clarifying' && showTakeoff) {
+      clarifyRoundRef.current += 1;
+      if (clarifyRoundRef.current >= 2 && planner.state.questions?.length) {
+        // Auto-answer with first option to break the loop
+        const autoAnswers: Record<string, string> = {};
+        for (const q of planner.state.questions) {
+          autoAnswers[q.id] = q.options?.[0] ?? '';
+        }
+        planner.submitAnswers(autoAnswers);
+      } else {
+        // First time — drop the overlay so user can answer
+        setShowTakeoff(false);
+      }
     }
     if (planner.state.phase === 'error' && showTakeoff) {
       setLoadingError(planner.state.message);
