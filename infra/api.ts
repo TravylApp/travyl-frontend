@@ -142,3 +142,11 @@ api.route('GET /places/search', {
   handler: 'services/place-search.handler',
   link: [supabaseSecretKey, supabaseUrl, serpApiKey],
 })
+
+api.route('GET /places/discover', {
+  handler: 'services/places-discover.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  environment: {
+    PLACE_INDEX_NAME: placeIndex.indexName,
+  },
+})
