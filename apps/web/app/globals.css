@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark *));
 
+/* Shimmer skeleton for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-skeleton {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Card fade-in — lightweight CSS animation instead of per-card Framer Motion */
+@keyframes card-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 :root {
   --background: #FFFFFF;
   --foreground: #111827;

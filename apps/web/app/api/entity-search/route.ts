@@ -11,8 +11,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: {} })
   }
 
+  // Allowlist query params to prevent SSRF via parameter injection
   const upstream = new URL(`${API_URL}/entity-search`)
-  upstream.search = searchParams.toString()
+  const ALLOWED_PARAMS = ['q', 'entityType', 'location', 'limit']
+  for (const key of ALLOWED_PARAMS) {
+    const val = searchParams.get(key)
+    if (val) upstream.searchParams.set(key, val)
+  }
 
   const res = await fetch(upstream.toString(), {
     headers: { Authorization: auth },

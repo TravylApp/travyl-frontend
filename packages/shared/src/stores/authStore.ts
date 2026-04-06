@@ -1,3 +1,5 @@
+'use client';
+
 import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 import type { User, Session } from '@supabase/supabase-js';
@@ -9,7 +11,7 @@ interface AuthState {
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
-  signInWithOAuth: (provider: 'google' | 'apple' | 'facebook') => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'apple' | 'facebook', redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -60,9 +62,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signInWithOAuth: async (provider) => {
+  signInWithOAuth: async (provider, redirectTo?) => {
     if (!supabase) throw new Error('Supabase is not configured');
-    await supabase.auth.signInWithOAuth({ provider });
+    await supabase.auth.signInWithOAuth({
+      provider,
+      options: redirectTo ? { redirectTo } : undefined,
+    });
   },
 
   signOut: async () => {

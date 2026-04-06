@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useCallback, useEffect } from "react";
+import { useRef, useMemo } from "react";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "motion/react";
 // motion.div used for progress bar; useTransform for progressX
 import { useState } from "react";
@@ -8,9 +8,9 @@ import { ArrowRight, Check, MessageSquare, Sparkles, CircleCheck } from "lucide-
 import { HOW_IT_WORKS_STEPS, usePlaceImages } from "@travyl/shared";
 
 const STEP_ICONS = [MessageSquare, Sparkles, CircleCheck];
-const STEP_IMAGES = ["Santorini Greece sunset", "Rome Colosseum", "Bali beach resort"];
+const STEP_IMAGES = ["Amalfi Coast Italy", "Rome Colosseum", "Bali beach resort"];
 const FALLBACK_IMAGES = [
-  "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=1200&fit=crop&fm=webp&q=80",
+  "https://images.unsplash.com/photo-1533104816931-20fa691ff6ca?w=1200&fit=crop&fm=webp&q=80",
   "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&fit=crop&fm=webp&q=80",
   "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&fit=crop&fm=webp&q=80",
 ];
@@ -24,8 +24,6 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
   const [activeStep, setActiveStep] = useState(0);
   const stepCount = HOW_IT_WORKS_STEPS.length;
   const prevStepRef = useRef(0);
-  const isSnapping = useRef(false);
-  const snapCooldown = useRef(0);
 
   const imageQueries = usePlaceImages(STEP_IMAGES);
   const images = useMemo(
@@ -38,7 +36,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
     offset: ["start center", "end center"],
   });
 
-  // Update active step based on scroll progress
+  // Update active step based on scroll progress — no snapping, just natural scroll
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     let step = 0;
     if (v > 0.66) step = 2;
@@ -48,67 +46,6 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
       setActiveStep(step);
     }
   });
-
-  // Snap to step boundaries on scroll
-  const snapToStep = useCallback((step: number) => {
-    const container = containerRef.current;
-    if (!container || isSnapping.current) return;
-
-    const rect = container.getBoundingClientRect();
-    const containerTop = window.scrollY + rect.top;
-    const containerHeight = rect.height;
-
-    // Each step occupies 1/3 of the container; snap to center of that zone
-    const stepCenter = containerTop + (step + 0.5) * (containerHeight / stepCount);
-    const targetScroll = stepCenter - window.innerHeight / 2;
-
-    isSnapping.current = true;
-    snapCooldown.current = Date.now();
-
-    window.scrollTo({ top: targetScroll, behavior: "smooth" });
-
-    // Release snap lock after animation
-    setTimeout(() => {
-      isSnapping.current = false;
-    }, 600);
-  }, [stepCount]);
-
-  // Wheel event handler — intercept scroll in the HowItWorks section
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // Don't intercept if we're snapping or cooling down
-      if (isSnapping.current || Date.now() - snapCooldown.current < 500) return;
-
-      const rect = container.getBoundingClientRect();
-      const stickyCard = container.querySelector(".sticky");
-      if (!stickyCard) return;
-
-      const cardRect = stickyCard.getBoundingClientRect();
-
-      // Only intercept when the sticky card is visible in viewport
-      if (cardRect.top > window.innerHeight || cardRect.bottom < 0) return;
-
-      // Check if the card is actually in "stuck" state (not at top/bottom of container)
-      const isStuck = rect.top < 0 && rect.bottom > window.innerHeight;
-      if (!isStuck) return;
-
-      const direction = e.deltaY > 0 ? 1 : -1;
-      const currentStep = prevStepRef.current;
-      const nextStep = currentStep + direction;
-
-      if (nextStep >= 0 && nextStep < stepCount) {
-        e.preventDefault();
-        snapToStep(nextStep);
-      }
-    };
-
-    // Use passive: false to allow preventDefault
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => window.removeEventListener("wheel", handleWheel);
-  }, [snapToStep, stepCount]);
 
   // Images now also transition via activeStep (matching text behavior)
 
@@ -128,7 +65,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
       </div>
 
       {/* Scroll container — the card sticks while you scroll through */}
-      <div ref={containerRef} className="max-w-6xl mx-auto" style={{ height: `${stepCount * 70}vh` }}>
+      <div ref={containerRef} className="max-w-6xl mx-auto" style={{ height: `${stepCount * 45}vh` }}>
         <div className="sticky top-[15vh]">
           <div className="rounded-3xl overflow-hidden bg-[#0f1f33] shadow-2xl shadow-black/20">
             <div className="flex flex-col md:flex-row" style={{ minHeight: 420 }}>
