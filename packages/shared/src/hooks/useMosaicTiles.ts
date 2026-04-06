@@ -1,9 +1,11 @@
 import { useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRef, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchMosaicTiles } from '../services/api';
 import { pickFresh } from '../utils';
-import { getShownIds } from '../utils/sessionTracker';
 import type { MosaicTile } from '../types';
+import { getShownIds } from '../utils/sessionTracker';
 
 const MOSAIC_DISPLAY_COUNT = 10;
 

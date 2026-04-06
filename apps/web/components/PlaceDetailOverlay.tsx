@@ -15,8 +15,6 @@ import { OceanWave } from '@/components/home/OceanWave';
 import { useSimilarPlaces, Navy } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
-const MOCK_PLACES: PlaceItem[] = [];
-
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 
 // ═══════════════════════════════════════════════════════════════════════════

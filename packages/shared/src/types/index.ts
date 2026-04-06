@@ -143,34 +143,7 @@ export interface MosaicTile {
   gridSpan: [number, number];
 }
 
-export interface InspirationCard {
-  id: string;
-  title: string;
-  destination: string;
-  image_url: string | null;
-}
 
-export interface ExplorePlaceRow {
-  title: string;
-  items: PlaceItem[];
-}
-
-// ─── Hero Config ─────────────────────────────────────────────
-
-export interface HeroSuggestion {
-  id: string;
-  label: string;
-  short_label: string | null;
-}
-
-export interface HeroConfig {
-  id: string;
-  title: string;
-  subtitle: string;
-  search_placeholder: string;
-  background_image_url: string | null;
-  suggestions: HeroSuggestion[];
-}
 
 // ─── Itinerary Data ─────────────────────────────────────────
 

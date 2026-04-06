@@ -31,15 +31,10 @@ export function upscaleGoogleImage(url: string | null | undefined, width = 600, 
  */
 export function getTripHeroImage(trip: { destination?: string | null; trip_context?: any } | null): string | null {
   const ctx = trip?.trip_context;
-  if (ctx?.hero_image_url) {
-    const url = ctx.hero_image_url as string;
-    return url.includes('googleusercontent.com')
-      ? url.replace(/=w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no').replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
-      : url;
-  }
-  if (ctx?.hero_images?.length && ctx.hero_images[0]) return ctx.hero_images[0];
-  if (ctx?.destination_photo_url) return ctx.destination_photo_url;
-  return null;
+  return upscaleGoogleImage(ctx?.hero_image_url, 1200, 800)
+    ?? (ctx?.hero_images?.length && ctx.hero_images[0] ? ctx.hero_images[0] : null)
+    ?? ctx?.destination_photo_url
+    ?? null;
 }
 
 // ─── Permissions ───────────────────────────────────────────────
@@ -127,7 +122,7 @@ export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
 // Gap computation (calendar time gaps)
-export { computeGaps as computeTimeGaps } from './gaps'
+export { computeGaps } from './gaps'
 export type { TimeGap } from './gaps'
 
 /** Returns distance in km between two lat/lng points (Haversine formula) */
@@ -143,7 +138,3 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 
 // Booking matcher utilities
 export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
-
-// Gap computation utility (day planner)
-export { computeGaps } from './gapCompute'
-export type { Gap } from './gapCompute'

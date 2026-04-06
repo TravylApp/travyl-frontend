@@ -4,6 +4,8 @@
 export interface TimeGap {
   /** Start of the gap in fractional hours (e.g. 9.5 = 9:30 AM) */
   startHour: number
+  /** End of the gap in fractional hours */
+  endHour: number
   /** Duration of the gap in fractional hours */
   durationHours: number
 }
@@ -23,7 +25,7 @@ export function computeGaps(
   activities: Array<{ startHour: number; duration: number }>,
 ): TimeGap[] {
   if (activities.length === 0) {
-    return [{ startHour: DAY_START, durationHours: DAY_END - DAY_START }]
+    return [{ startHour: DAY_START, endHour: DAY_END, durationHours: DAY_END - DAY_START }]
   }
 
   // Sort by start time
@@ -52,7 +54,7 @@ export function computeGaps(
     if (blockStart > cursor) {
       const duration = blockStart - cursor
       if (duration >= MIN_GAP) {
-        gaps.push({ startHour: cursor, durationHours: duration })
+        gaps.push({ startHour: cursor, endHour: blockStart, durationHours: duration })
       }
     }
     if (blockEnd > cursor) cursor = blockEnd
@@ -62,7 +64,7 @@ export function computeGaps(
   if (cursor < DAY_END) {
     const duration = DAY_END - cursor
     if (duration >= MIN_GAP) {
-      gaps.push({ startHour: cursor, durationHours: duration })
+      gaps.push({ startHour: cursor, endHour: DAY_END, durationHours: duration })
     }
   }
 

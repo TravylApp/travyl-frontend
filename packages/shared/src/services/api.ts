@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
+import type { Trip, Profile, SavedItem, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
 export async function fetchTrips(userId: string): Promise<Trip[]> {
   const { data, error } = await supabase
@@ -44,13 +44,75 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   } catch { return null; }
 }
 
-// ─── Home Page Data ──────────────────────────────────────────
+// ─── Mosaic Tiles ──────────────────────────────────────────
 
-// These tables don't exist in the current schema — return empty to avoid 404s
-export async function fetchMosaicTiles(): Promise<MosaicTile[]> { return []; }
-export async function fetchInspirationCards(): Promise<InspirationCard[]> { return []; }
-export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> { return []; }
-export async function fetchHeroConfig(): Promise<HeroConfig | null> { return null; }
+import { shuffle } from '../utils';
+import type { MosaicTile } from '../types';
+
+const ALL_MOSAIC_CITIES = [
+  { lat: '48.8566', lng: '2.3522' },   // Paris
+  { lat: '35.6762', lng: '139.6503' }, // Tokyo
+  { lat: '41.9028', lng: '12.4964' },  // Rome
+  { lat: '-8.4095', lng: '115.1889' }, // Bali
+  { lat: '40.7128', lng: '-74.0060' }, // New York
+  { lat: '41.3874', lng: '2.1686' },   // Barcelona
+  { lat: '51.5074', lng: '-0.1278' },  // London
+  { lat: '25.2048', lng: '55.2708' },  // Dubai
+  { lat: '-33.8688', lng: '151.2093' }, // Sydney
+  { lat: '37.9838', lng: '23.7275' },  // Athens
+  { lat: '13.7563', lng: '100.5018' }, // Bangkok
+  { lat: '38.7223', lng: '-9.1393' },  // Lisbon
+  { lat: '-22.9068', lng: '-43.1729' }, // Rio
+  { lat: '52.3676', lng: '4.9041' },   // Amsterdam
+  { lat: '37.7749', lng: '-122.4194' }, // San Francisco
+  { lat: '31.6295', lng: '-7.9811' },  // Marrakech
+  { lat: '19.4326', lng: '-99.1332' }, // Mexico City
+  { lat: '1.3521', lng: '103.8198' },  // Singapore
+];
+
+const MOSAIC_CATEGORIES: MosaicTile['category'][] = ['destination', 'attraction', 'dining', 'experience'];
+
+export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
+  const cities = shuffle(ALL_MOSAIC_CITIES).slice(0, 6);
+  const cats = shuffle(MOSAIC_CATEGORIES);
+
+  const results = await Promise.all(
+    cities.map(async (city, i) => {
+      const cat = cats[i % cats.length];
+      try {
+        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=3`);
+        if (!res.ok) return [];
+        return res.json();
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const typeMap: Record<string, MosaicTile['category']> = {
+    destination: 'destination', attraction: 'attraction',
+    restaurant: 'dining', experience: 'experience',
+  };
+
+  const seen = new Set<string>();
+  const tiles: MosaicTile[] = results.flat()
+    .filter((p: any) => {
+      if (!p?.image_url && !p?.image) return false;
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    })
+    .map((p: any, i: number) => ({
+      id: p.id,
+      name: p.name || p.title || 'Untitled',
+      category: typeMap[p.type] || cats[i % cats.length],
+      tagline: p.tagline || p.subtitle || '',
+      image_url: p.image_url || p.image || null,
+      gridSpan: [1, 1] as [number, number],
+    }));
+
+  return tiles;
+}
 
 // ─── Itinerary Data ─────────────────────────────────────────
 

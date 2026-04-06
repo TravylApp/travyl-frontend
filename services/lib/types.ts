@@ -1,5 +1,3 @@
-import type { SuggestionCard } from '@travyl/shared/types'
-
 export type { SuggestionCard } from '@travyl/shared/types'
 
 export interface SuggestResponse {

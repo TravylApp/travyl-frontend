@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import {
   TILE_CATEGORY_GRADIENTS,
   EASE_OUT_EXPO,
+  shuffle,
 } from "@travyl/shared";
 import type { TileCategory, MosaicTile } from "@travyl/shared";
 import { useQuery } from "@tanstack/react-query";
@@ -32,15 +33,6 @@ const ALL_MOSAIC_CITIES = [
 ];
 
 const MOSAIC_CATEGORIES = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'landmark', 'shopping'];
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 async function fetchMosaicTiles(): Promise<MosaicTile[]> {
   // Pick 6 random cities × random categories
