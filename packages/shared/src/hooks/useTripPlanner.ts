@@ -1,11 +1,12 @@
+'use client';
+
 import { useState, useCallback, useRef } from 'react';
 
 // On web: use our own API proxy routes (relative URLs, no prefix needed)
-// On mobile: use the backend API directly, falling back to web proxy
+// On mobile: use the web proxy (Next.js API routes for extract/plan), NOT the backend API
 const IS_WEB = typeof (globalThis as any).document !== 'undefined' && !process.env.EXPO_PUBLIC_SUPABASE_URL;
-const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL ?? process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
 const WEB_PROXY = process.env.EXPO_PUBLIC_WEB_API_URL;
-const API_URL = IS_WEB ? '' : (BACKEND_API ?? WEB_PROXY);
+const API_URL = IS_WEB ? '' : (WEB_PROXY ?? '');
 
 // Mirrors backend schemas
 export interface FollowUpQuestion {

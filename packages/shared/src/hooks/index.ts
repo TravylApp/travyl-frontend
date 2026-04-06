@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 export { useTrips, saveAnonTripId } from './useTrips';
 export { useHomeScreen } from './useHomeScreen';

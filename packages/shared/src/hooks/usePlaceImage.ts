@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery, useQueries } from '@tanstack/react-query';
 
 // Use our own Next.js API proxy to avoid CORS issues

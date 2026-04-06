@@ -56,11 +56,11 @@ const FALLBACK_BRAND = '#1e3a5f';
 // ─── Reusable small components ────────────────────────────────
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-xl font-serif font-normal text-gray-900 mb-4 tracking-wide">{children}</h2>;
+  return <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{children}</h2>;
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-sm font-medium text-gray-700 mb-1">{children}</label>;
+  return <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</label>;
 }
 
 function Input({
@@ -83,7 +83,7 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
+      className="w-full rounded-lg border border-gray-300 dark:border-white/[0.12] bg-white dark:bg-white/[0.05] px-3 py-2 text-sm text-gray-900 dark:text-white dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
       style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
     />
   );
@@ -105,11 +105,11 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
+      className="w-full rounded-lg border border-gray-300 dark:border-white/[0.12] px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-white/[0.05] focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
       style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
     >
       {options.map((o) => (
-        <option key={o.value} value={o.value}>
+        <option key={o.value} value={o.value} className="dark:bg-gray-900 dark:text-white">
           {o.label}
         </option>
       ))}
@@ -130,8 +130,8 @@ function Toggle({
     <button
       type="button"
       onClick={onToggle}
-      className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-      style={{ backgroundColor: enabled ? (color ?? FALLBACK_BRAND) : '#d1d5db' }}
+      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!enabled ? 'bg-gray-300 dark:bg-white/[0.15]' : ''}`}
+      style={enabled ? { backgroundColor: color ?? FALLBACK_BRAND } : undefined}
     >
       <span
         className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out"
@@ -239,40 +239,40 @@ function TripSharingSection({
     <div>
       <SectionHeading>Trip Sharing</SectionHeading>
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
-              <Globe size={16} className="text-blue-600" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50 dark:bg-blue-500/10">
+              <Globe size={16} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Make Public</p>
-              <p className="text-xs text-gray-500 mt-0.5">Allow anyone to discover and fork this trip</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Make Public</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Allow anyone to discover and fork this trip</p>
             </div>
           </div>
           <Toggle enabled={isPublic} onToggle={onTogglePublic} />
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50">
-              <Share2 size={16} className="text-purple-600" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-500/10">
+              <Share2 size={16} className="text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Share Link</p>
-              <p className="text-xs text-gray-500 mt-0.5">Generate a link to share with specific people</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Share Link</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Generate a link to share with specific people</p>
             </div>
           </div>
           <Toggle enabled={isShared} onToggle={onToggleShared} />
         </div>
 
         {isShared && shareToken && (
-          <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
+          <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] p-4 bg-gray-50 dark:bg-white/[0.03]">
             <div className="flex items-center gap-2 mb-2">
-              <Copy size={14} className="text-gray-500" />
-              <p className="text-sm font-medium text-gray-700">Share URL</p>
+              <Copy size={14} className="text-gray-500 dark:text-gray-400" />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Share URL</p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-lg bg-white border border-gray-200 px-3 py-2 text-xs text-gray-600 font-mono truncate">
+              <div className="flex-1 rounded-lg bg-white dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.08] px-3 py-2 text-xs text-gray-600 dark:text-gray-300 font-mono truncate">
                 {shareUrl}
               </div>
               <button
@@ -287,13 +287,13 @@ function TripSharingSection({
         )}
 
         {forkCount > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-4">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-50">
-              <GitFork size={16} className="text-green-600" />
+          <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-50 dark:bg-green-500/10">
+              <GitFork size={16} className="text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">{forkCount} Fork{forkCount === 1 ? '' : 's'}</p>
-              <p className="text-xs text-gray-500 mt-0.5">This trip has been forked by other users</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{forkCount} Fork{forkCount === 1 ? '' : 's'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">This trip has been forked by other users</p>
             </div>
           </div>
         )}
@@ -323,15 +323,15 @@ function DangerZoneSection({
   return (
     <div>
       <SectionHeading>Danger Zone</SectionHeading>
-      <div className="rounded-xl border-2 border-red-200 bg-red-50/50 p-5 space-y-4">
+      <div className="rounded-xl border-2 border-red-200 dark:border-red-500/30 bg-red-50/50 dark:bg-red-500/5 p-5 space-y-4">
         {isOwner ? (
           <>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle size={16} className="text-red-600" />
-                <p className="text-sm font-bold text-red-700">Delete Trip</p>
+                <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
+                <p className="text-sm font-bold text-red-700 dark:text-red-400">Delete Trip</p>
               </div>
-              <p className="text-xs text-red-600">
+              <p className="text-xs text-red-600 dark:text-red-400/80">
                 Permanently delete this trip and all associated data. This action cannot be undone.
               </p>
             </div>
@@ -339,7 +339,7 @@ function DangerZoneSection({
             {!showConfirm ? (
               <button
                 onClick={() => setShowConfirm(true)}
-                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 transition"
               >
                 <Trash2 size={14} />
                 Delete Trip
@@ -347,28 +347,28 @@ function DangerZoneSection({
             ) : (
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-red-700 mb-1.5">
+                  <p className="text-xs text-red-700 dark:text-red-400 mb-1.5">
                     Type <strong>{tripTitle}</strong> to confirm:
                   </p>
                   <input
                     value={confirmText}
                     onChange={(e) => setConfirmText(e.target.value)}
                     placeholder={tripTitle}
-                    className="w-full rounded-lg border border-red-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                    className="w-full rounded-lg border border-red-300 dark:border-red-500/30 bg-white dark:bg-white/[0.05] px-3 py-2 text-sm text-gray-900 dark:text-white dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={onDeleteTrip}
                     disabled={!canDelete}
-                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Trash2 size={14} />
                     Confirm Delete
                   </button>
                   <button
                     onClick={() => { setShowConfirm(false); setConfirmText(''); }}
-                    className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                    className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition"
                   >
                     Cancel
                   </button>
@@ -380,16 +380,16 @@ function DangerZoneSection({
           <>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <LogOut size={16} className="text-red-600" />
-                <p className="text-sm font-bold text-red-700">Leave Trip</p>
+                <LogOut size={16} className="text-red-600 dark:text-red-400" />
+                <p className="text-sm font-bold text-red-700 dark:text-red-400">Leave Trip</p>
               </div>
-              <p className="text-xs text-red-600">
+              <p className="text-xs text-red-600 dark:text-red-400/80">
                 Remove yourself from this trip. You will lose access to all trip data.
               </p>
             </div>
             <button
               onClick={onLeaveTrip}
-              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 transition"
             >
               <LogOut size={14} />
               Leave Trip
@@ -427,16 +427,16 @@ function Stepper({
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={disabled || value <= min}
-        className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-8 h-8 rounded-lg border border-gray-300 dark:border-white/[0.12] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Minus size={14} />
       </button>
-      <span className="w-6 text-center text-sm font-semibold text-gray-900 tabular-nums">{value}</span>
+      <span className="w-6 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{value}</span>
       <button
         type="button"
         onClick={() => onChange(value + 1)}
         disabled={disabled}
-        className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-8 h-8 rounded-lg border border-gray-300 dark:border-white/[0.12] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Plus size={14} />
       </button>
@@ -532,33 +532,33 @@ function TravelersSection({
     <div>
       <div className="flex items-center gap-2 mb-4">
         <SectionHeading>Travelers</SectionHeading>
-        {saving && <span className="text-xs text-gray-400 mb-3.5">Saving…</span>}
+        {saving && <span className="text-xs text-gray-400 dark:text-gray-500 mb-3.5">Saving…</span>}
       </div>
 
       <div className="space-y-3">
         {/* Adults */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
-              <Users size={16} className="text-blue-600" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50 dark:bg-blue-500/10">
+              <Users size={16} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Adults</p>
-              <p className="text-xs text-gray-500 mt-0.5">Age 18+</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Adults</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Age 18+</p>
             </div>
           </div>
           <Stepper value={travelers.adults} min={1} onChange={(v) => handleChange({ adults: v })} disabled={disabled} />
         </div>
 
         {/* Children */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50">
-              <Users size={16} className="text-purple-600" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-500/10">
+              <Users size={16} className="text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Children</p>
-              <p className="text-xs text-gray-500 mt-0.5">Ages 2–17</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Children</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ages 2-17</p>
             </div>
           </div>
           <Stepper value={travelers.children} min={0} onChange={(v) => handleChange({ children: v })} disabled={disabled} />
@@ -566,12 +566,12 @@ function TravelersSection({
 
         {/* Child ages — shown only when children > 0 */}
         {travelers.children > 0 && (
-          <div className="rounded-xl border border-gray-200 p-4 bg-gray-50 space-y-3">
-            <p className="text-xs font-medium text-gray-600">Child ages (optional)</p>
+          <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] p-4 bg-gray-50 dark:bg-white/[0.03] space-y-3">
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Child ages (optional)</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {Array.from({ length: travelers.children }).map((_, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <label className="text-xs text-gray-500 shrink-0">Child {i + 1}</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Child {i + 1}</label>
                   <input
                     type="number"
                     min={2}
@@ -580,7 +580,7 @@ function TravelersSection({
                     value={travelers.child_ages[i] !== undefined && travelers.child_ages[i] > 0 ? travelers.child_ages[i] : ''}
                     onChange={(e) => handleChildAge(i, e.target.value ? Number(e.target.value) : 0)}
                     disabled={disabled}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-100 disabled:text-gray-400"
+                    className="w-full rounded-lg border border-gray-300 dark:border-white/[0.12] bg-white dark:bg-white/[0.05] px-2 py-1.5 text-sm text-gray-900 dark:text-white dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
                     style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
                   />
                 </div>
@@ -590,21 +590,21 @@ function TravelersSection({
         )}
 
         {/* Infants */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-pink-50">
-              <Users size={16} className="text-pink-500" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-pink-50 dark:bg-pink-500/10">
+              <Users size={16} className="text-pink-500 dark:text-pink-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Infants</p>
-              <p className="text-xs text-gray-500 mt-0.5">Under 2</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Infants</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Under 2</p>
             </div>
           </div>
           <Stepper value={travelers.infants} min={0} onChange={(v) => handleChange({ infants: v })} disabled={disabled} />
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-gray-400">
+      <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
         Total: {travelers.adults + travelers.children + travelers.infants} traveler{travelers.adults + travelers.children + travelers.infants === 1 ? '' : 's'}
       </p>
     </div>
@@ -780,7 +780,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
 
   if (tripLoading && !trip) {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center text-gray-400 text-sm">
+      <div className="max-w-2xl mx-auto py-16 text-center text-gray-400 dark:text-gray-500 text-sm">
         Loading settings...
       </div>
     );
@@ -789,8 +789,8 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   if (!trip) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <p className="text-gray-500 mb-4">Trip not found or you don't have access.</p>
-        <button onClick={() => router.push('/trips')} className="text-sm text-blue-600 hover:underline">
+        <p className="text-gray-500 dark:text-gray-400 mb-4">Trip not found or you don&apos;t have access.</p>
+        <button onClick={() => router.push('/trips')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
           Back to trips
         </button>
       </div>
@@ -798,7 +798,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-24 divide-y divide-gray-200">
+    <div className="max-w-2xl mx-auto pb-24 divide-y divide-gray-200 dark:divide-white/[0.08]">
       {/* Theme & Colors */}
       <section className="py-8 first:pt-0">
         <SectionHeading>Theme & Colors</SectionHeading>
@@ -820,25 +820,25 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       {/* Manage Tabs */}
       <section className="py-8">
         <SectionHeading>Manage Tabs</SectionHeading>
-        <p className="text-sm text-gray-500 mb-4">Choose which tabs appear in your trip navigation.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose which tabs appear in your trip navigation.</p>
         <div className="space-y-1">
           {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
             const isEnabled = !hiddenTabs[segment];
             const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
             return (
-              <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 transition">
+              <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: isEnabled ? tabColor : '#d1d5db' }}>
-                    <Icon size={14} style={{ color: theme.textOnBase }} />
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!isEnabled ? 'bg-gray-300 dark:bg-white/[0.12]' : ''}`}
+                    style={isEnabled ? { backgroundColor: tabColor } : undefined}>
+                    <Icon size={14} style={isEnabled ? { color: theme.textOnBase } : undefined} className={!isEnabled ? 'text-gray-400 dark:text-gray-500' : ''} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{label}</p>
-                    {alwaysOn && <p className="text-[11px] text-gray-400">Always visible</p>}
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{label}</p>
+                    {alwaysOn && <p className="text-[11px] text-gray-400 dark:text-gray-500">Always visible</p>}
                   </div>
                 </div>
                 {alwaysOn ? (
-                  <div className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">Required</div>
+                  <div className="text-xs font-medium text-gray-400 dark:text-gray-500 px-2 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">Required</div>
                 ) : (
                   <Toggle enabled={isEnabled} onToggle={() => { setTabHidden(segment, isEnabled); markDirty(); }} color={theme.base} />
                 )}
@@ -891,14 +891,14 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
 
       {/* Floating save bar */}
       {dirty && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-3 shadow-xl">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-gray-900 px-5 py-3 shadow-xl">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             <AlertTriangle size={14} className="text-amber-500" />
             Unsaved changes
           </div>
           <button
             onClick={handleDiscard}
-            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition"
           >
             <X size={14} />
             Discard

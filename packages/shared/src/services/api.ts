@@ -746,6 +746,21 @@ export async function savePlanToSupabase(
     if (actErr) console.error('Failed to save activities:', actErr)
   }
 
+  // Fire enrichment in the background (fills wiki, news, phrases, cuisine, cost_of_living, etc.)
+  onProgress?.('Enriching trip details...', 95)
+  try {
+    const enrichBase = process.env.EXPO_PUBLIC_WEB_API_URL || ''
+    const enrichRes = await fetch(`${enrichBase}/api/trips/enrich`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId }),
+    })
+    if (!enrichRes.ok) console.error('Enrichment failed:', enrichRes.status)
+  } catch (e) {
+    // Non-blocking — overview page will auto-enrich on first visit as fallback
+    console.error('Enrichment error:', e)
+  }
+
   onProgress?.('Done!', 100)
   return tripId
 }

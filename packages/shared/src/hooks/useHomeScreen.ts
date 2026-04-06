@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '../stores';
 import { useTrips } from './useTrips';

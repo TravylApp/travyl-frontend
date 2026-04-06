@@ -54,10 +54,11 @@ interface HotelData {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock Data                                                          */
+/*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const SELECTED_HOTEL: HotelData = {
+// Mock data removed — hotels now come from trip_context only
+const _LEGACY_SELECTED_HOTEL: HotelData = {
   id: 'h1',
   name: 'H\u00f4tel Le Marais',
   stars: 4,
@@ -1297,12 +1298,14 @@ export default function HotelsScreen() {
       </View>
 
       {/* ── Other Hotels ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
-        {OTHER_HOTELS.map((h) => (
-          <OtherHotelCard key={h.id} hotel={h} />
-        ))}
-      </View>
+      {realHotels.length > 1 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
+          {realHotels.slice(1).map((h: any) => (
+            <OtherHotelCard key={h.id} hotel={h} />
+          ))}
+        </View>
+      )}
 
       {/* ── Add Hotel Button (dashed border) ── */}
       <View style={{ paddingHorizontal: 16, marginTop: 6 }}>
