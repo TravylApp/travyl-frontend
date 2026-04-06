@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, X, Check } from 'lucide-react';
-import { formatDateRange, useExchangeRates, updateTripDetails } from '@travyl/shared';
+import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
 function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
@@ -127,16 +127,15 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const [essentialsOpen, setEssentialsOpen] = useState(true);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
-  const [useFahrenheit, setUseFahrenheit] = useState(false);
-  useEffect(() => {
-    try {
-      const region = new Intl.Locale(navigator.language).region;
-      setUseFahrenheit(['US', 'BS', 'BZ', 'KY', 'PW', 'FM', 'MH', 'LR'].includes(region ?? ''));
-    } catch { /* default to Celsius */ }
-  }, []);
+  // Temperature unit follows user's distance preference: miles = °F, kilometers = °C
+  const distanceUnits = useSettingsStore((s) => s.distanceUnits);
+  const useFahrenheit = distanceUnits === 'miles';
   const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
-  const weather = trip?.trip_context?.weather?.current;
-  const forecast = trip?.trip_context?.weather?.forecast;
+  // Prefer live weather from backend, fall back to enrichment snapshot
+  const weatherCity = trip?.destination?.split(',')[0]?.trim() || '';
+  const { data: liveWeather } = useWeather(weatherCity);
+  const weather = liveWeather?.current ?? trip?.trip_context?.weather?.current;
+  const forecast = liveWeather?.forecast ?? trip?.trip_context?.weather?.forecast;
   const rawCover = overrideImage || (suppressFallback ? undefined : trip?.trip_context?.hero_image_url);
   const coverImage = rawCover?.includes('googleusercontent.com')
     ? rawCover.replace(/=w\d+-h\d+[^&]*/, '=w1600-h1000-k-no')
@@ -240,6 +239,19 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             >
               <ChevronDown size={16} className={`text-white/60 transition-transform duration-300 ${essentialsOpen ? 'rotate-180' : ''}`} />
             </button>
+          )}
+          {!compact && tripId && (
+            <a
+              href={`/trip/${tripId}/itinerary`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 backdrop-blur-sm ml-2"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'rgba(255,255,255,0.8)',
+              }}
+            >
+              View Itinerary &rarr;
+            </a>
           )}
         </div>
       </div>
@@ -365,19 +377,19 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
                         Air {aqi.level}
                       </span>
                     )}
+                    {safety && safety.score > 0 && (
+                      <SafetyBadge safety={safety} />
+                    )}
                   </div>
                   <QuickFactRow facts={[qf?.transport, qf?.taxi, qf?.tipping, qf?.water]} />
                 </>
               );
             })()}
 
-            {/* Badges: Safety + Holidays */}
-            {(safety?.score != null && safety.score > 0 || (tripHolidays && tripHolidays.length > 0)) && (
+            {/* Holidays */}
+            {tripHolidays && tripHolidays.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap" style={{ textShadow: 'none' }}>
-              {safety && safety.score > 0 && (
-                <SafetyBadge safety={safety} />
-              )}
-              {tripHolidays && tripHolidays.length > 0 && tripHolidays.map((h) => (
+              {tripHolidays.map((h) => (
                 <span key={h.date}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
                   style={{ backgroundColor: 'rgba(234,179,8,0.2)', border: '1px solid rgba(234,179,8,0.4)', color: '#fbbf24' }}>

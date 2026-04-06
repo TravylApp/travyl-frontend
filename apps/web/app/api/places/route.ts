@@ -47,7 +47,18 @@ export async function GET(req: NextRequest) {
       }
       // Fall back to nearby search if NLP returned nothing or failed
       if (!data || data.length === 0) {
-        data = await fetchNearby(q, lat, lng, category, limit)
+        // Extract a category hint from the NLP query text for better nearby results
+        const qLower = q.toLowerCase()
+        let nearbyCategory = category
+        if (/restaurant|food|dining|eat/.test(qLower)) nearbyCategory = 'restaurant'
+        else if (/nightlife|bar|club|lounge|pub/.test(qLower)) nearbyCategory = 'nightlife'
+        else if (/shop|market|mall/.test(qLower)) nearbyCategory = 'shopping'
+        else if (/beach|outdoor|park|nature|hike/.test(qLower)) nearbyCategory = 'park'
+        else if (/museum|culture|art|gallery/.test(qLower)) nearbyCategory = 'museum'
+        else if (/hotel|stay|accommodation/.test(qLower)) nearbyCategory = 'hotel'
+        else if (/cafe|coffee/.test(qLower)) nearbyCategory = 'cafe'
+        else if (/entertainment|show|theater/.test(qLower)) nearbyCategory = 'attraction'
+        data = await fetchNearby(null, lat, lng, nearbyCategory, limit)
       }
     } else {
       data = await fetchNearby(q, lat, lng, category, limit)

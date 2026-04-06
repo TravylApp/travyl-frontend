@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, memo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -8,10 +8,11 @@ import {
   TextInput,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, groupPlacesByCollection, TextStyles, FontSize, upscaleGoogleImage, useWeather, useDestinationImage, type PlaceItem } from '@travyl/shared';
+import { Navy, groupPlacesByCollection, TextStyles, FontSize, upscaleGoogleImage, type PlaceItem } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
@@ -89,14 +90,14 @@ async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItem[]>
   );
 }
 
-// Fetch suggested places for discovery (no hardcoded cities)
-async function fetchSuggestPlaces(page = 0): Promise<PlaceItem[]> {
+// Fetch a page of suggested places — returns items + pagination info
+async function fetchSuggestPage(page: number): Promise<{ items: PlaceItem[]; hasMore: boolean; nextPage: number | null }> {
   try {
     const res = await fetch(`${WEB_API}/api/places/suggest?destination=popular&category=all&page=${page}`);
-    if (!res.ok) return [];
+    if (!res.ok) return { items: [], hasMore: false, nextPage: null };
     const data = await res.json();
     const suggestions = data?.suggestions ?? [];
-    return suggestions.map((s: any): PlaceItem => ({
+    const items = suggestions.map((s: any): PlaceItem => ({
       id: s.id,
       name: s.name,
       image: s.imageUrl ?? s.imageUrls?.[0] ?? '',
@@ -110,19 +111,14 @@ async function fetchSuggestPlaces(page = 0): Promise<PlaceItem[]> {
       longitude: s.longitude,
       address: s.location,
     }));
-  } catch { return []; }
-}
-
-// Fast first batch: suggest page 0
-async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
-  const results = await fetchSuggestPlaces(0);
-  return dedup(results);
-}
-
-// Second batch: suggest page 1
-async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
-  const results = await fetchSuggestPlaces(1);
-  return dedup(results);
+    return {
+      items,
+      hasMore: data?.hasMore ?? items.length > 0,
+      nextPage: data?.nextPage ?? (items.length > 0 ? page + 1 : null),
+    };
+  } catch {
+    return { items: [], hasMore: false, nextPage: null };
+  }
 }
 
 function dedup(places: PlaceItem[]): PlaceItem[] {
@@ -338,19 +334,28 @@ export default function FavoritesScreen() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
-  // Phase 1: fast initial load (~1-2s)
-  const { data: fastPlaces = [] } = useQuery({
-    queryKey: ['mobile-places-fast', 'suggest'],
-    queryFn: fetchMobilePlacesFast,
+  // Infinite discovery feed — pages through /api/places/suggest
+  const {
+    data: suggestData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['mobile-places-discover'],
+    queryFn: ({ pageParam }) => fetchSuggestPage(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
     staleTime: 5 * 60 * 1000,
   });
-  // Phase 2: more results in background
-  const { data: morePlaces = [] } = useQuery({
-    queryKey: ['mobile-places-more', 'suggest'],
-    queryFn: fetchMobilePlacesMore,
-    staleTime: 5 * 60 * 1000,
-    enabled: fastPlaces.length > 0, // only after fast batch loads
-  });
+
+  // Flatten all loaded pages into a single deduped list
+  const discoveredPlaces = useMemo(() => {
+    if (!suggestData?.pages) return [];
+    const all = suggestData.pages.flatMap((p) => p.items);
+    return dedup(all);
+  }, [suggestData]);
+
   // API search — uses /api/places?q= which handles geocoding + backend search
   const { data: searchPlaces = [] } = useQuery({
     queryKey: ['mobile-places-search', searchCity],
@@ -399,13 +404,20 @@ export default function FavoritesScreen() {
     enabled: !!searchCity,
   });
 
-  // Merge and deduplicate — search results take priority
+  // Search results take priority, otherwise use infinite discover feed
   const PLACES = useMemo(() => {
     if (searchCity && searchPlaces.length > 0) return searchPlaces;
-    const all = [...fastPlaces, ...morePlaces];
-    const seen = new Set<string>();
-    return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-  }, [fastPlaces, morePlaces, searchCity, searchPlaces]);
+    return discoveredPlaces;
+  }, [discoveredPlaces, searchCity, searchPlaces]);
+
+  // Scroll handler — fetch next page when near bottom
+  const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 500 && hasNextPage && !isFetchingNextPage && !searchCity) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchCity]);
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) => {
@@ -482,7 +494,7 @@ export default function FavoritesScreen() {
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} onScroll={handleScroll} scrollEventThrottle={200}>
         {/* Header */}
         <View style={{ paddingHorizontal: PAD, paddingTop: insets.top + 8, paddingBottom: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -738,6 +750,23 @@ export default function FavoritesScreen() {
                 cardHeight={STACK_CARD_H}
               />
             )}
+          </View>
+        )}
+
+        {/* Infinite scroll loading indicator */}
+        {isFetchingNextPage && (
+          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={Navy.DEFAULT} />
+            <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 8 }}>
+              Discovering more places...
+            </Text>
+          </View>
+        )}
+        {!hasNextPage && discoveredPlaces.length > 0 && !searchCity && (
+          <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+            <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+              You've explored it all — for now
+            </Text>
           </View>
         )}
       </ScrollView>
