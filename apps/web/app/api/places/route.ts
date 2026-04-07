@@ -8,13 +8,18 @@ const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 
 export async function GET(req: NextRequest) {
-  const lat = req.nextUrl.searchParams.get('lat') ?? '48.8566'
-  const lng = req.nextUrl.searchParams.get('lng') ?? '2.3522'
+  const lat = req.nextUrl.searchParams.get('lat') ?? ''
+  const lng = req.nextUrl.searchParams.get('lng') ?? ''
   const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
   const limit = req.nextUrl.searchParams.get('limit') ?? '20'
   const q = req.nextUrl.searchParams.get('q')
 
   if (!API_URL) {
+    return NextResponse.json([])
+  }
+
+  // Must have either coordinates or a text query — never silently default to a location
+  if (!lat && !lng && !q) {
     return NextResponse.json([])
   }
 
@@ -87,8 +92,8 @@ async function fetchNearby(
 ): Promise<BackendPlace[]> {
   let searchLat = defaultLat
   let searchLng = defaultLng
-  // If lat/lng were explicitly provided (not defaults), use them directly
-  const hasExplicitCoords = defaultLat !== '48.8566' && defaultLng !== '2.3522'
+  // If lat/lng were explicitly provided, use them directly
+  const hasExplicitCoords = !!defaultLat && !!defaultLng
   let geocoded = !q || hasExplicitCoords
   if (q && !hasExplicitCoords) {
     try {

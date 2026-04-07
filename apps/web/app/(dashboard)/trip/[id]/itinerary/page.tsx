@@ -79,12 +79,14 @@ function SkeletonItinerary() {
 
 // ─── Glance Search Input ────────────────────────────────────────
 
-function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: {
+function GlanceSearchInput({ query, onChange, onClose, onSelect, destination, lat, lng }: {
   query: string;
   onChange: (q: string) => void;
   onClose: () => void;
   onSelect: (place: import('@travyl/shared').PlaceItem) => void;
   destination?: string;
+  lat?: number;
+  lng?: number;
 }) {
   const [results, setResults] = useState<import('@travyl/shared').PlaceItem[]>([]);
   useEffect(() => {
@@ -92,12 +94,13 @@ function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: 
     const timeout = setTimeout(async () => {
       try {
         const q = destination ? `${query} ${destination}` : query;
-        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6`);
+        const coordParams = lat && lng ? `&lat=${lat}&lng=${lng}` : '';
+        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6${coordParams}`);
         if (res.ok) setResults(await res.json());
       } catch { /* ignore */ }
     }, 300); // debounce
     return () => clearTimeout(timeout);
-  }, [query, destination]);
+  }, [query, destination, lat, lng]);
   return (
     <div className="mt-1">
       <div className="relative">
@@ -171,6 +174,8 @@ function GlanceView({
   moveActivityBefore,
   destination,
   heroImages,
+  tripLat,
+  tripLng,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -185,6 +190,8 @@ function GlanceView({
   removeActivity?: (id: string) => void;
   updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
   moveActivityBefore?: (dragId: string, targetId: string) => void;
+  tripLat?: number;
+  tripLng?: number;
   destination?: string;
   heroImages?: string[];
 }) {
@@ -447,6 +454,8 @@ function GlanceView({
                             onChange={setSearchQuery}
                             onClose={() => { setSearchSlot(null); setSearchQuery(''); }}
                             destination={destination}
+                            lat={tripLat}
+                            lng={tripLng}
                             onSelect={(place) => {
                               addActivity?.({
                                 id: `search-${Date.now()}`,
@@ -1403,6 +1412,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           moveActivityBefore={moveActivityBefore}
           destination={trip?.destination?.split(',')[0]?.trim()}
           heroImages={trip?.trip_context?.hero_images}
+          tripLat={trip?.trip_context?.lat}
+          tripLng={trip?.trip_context?.lng}
         />
 
       </section>
