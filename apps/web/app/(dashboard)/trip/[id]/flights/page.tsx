@@ -33,13 +33,7 @@ import { useQuery } from '@tanstack/react-query';
    MOCK DATA — Paris trip: JFK <-> CDG
    ================================================================ */
 
-const POPULAR_AIRPORTS = [
-  { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
-  { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-  { code: 'EWR', name: 'Newark Liberty Intl', city: 'Newark' },
-  { code: 'LGA', name: 'LaGuardia', city: 'New York' },
-  { code: 'ORY', name: 'Paris Orly', city: 'Paris' },
-];
+const POPULAR_AIRPORTS: { code: string; name: string; city: string }[] = [];
 
 type BookedFlight = {
   id: string; type: 'outbound' | 'return'; flightNumber: string; airline: string;

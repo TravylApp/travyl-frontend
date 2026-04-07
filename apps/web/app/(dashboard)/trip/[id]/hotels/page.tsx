@@ -341,6 +341,8 @@ function hotelToPlaceItem(h: HotelData): PlaceItem {
   };
 }
 
+const MOCK_HOTELS: HotelData[] = [];
+
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,
   Breakfast: <Coffee size={12} />,
