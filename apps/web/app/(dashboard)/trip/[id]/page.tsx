@@ -8,6 +8,7 @@ import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
+import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 
 // ── Hooks ─────────────────────────────────────────────────────
 
