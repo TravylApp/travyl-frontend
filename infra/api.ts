@@ -184,3 +184,10 @@ api.route('GET /api/images/destination', {
   handler: 'services/image-destination.handler',
   link: [pexels],
 })
+
+api.route('GET /api/exchange-rates', {
+  handler: 'services/exchange-rates.handler',
+  environment: {
+    OPENEXCHANGE_RATES_APP_ID: process.env.OPENEXCHANGE_RATES_APP_ID || '',
+  },
+})
