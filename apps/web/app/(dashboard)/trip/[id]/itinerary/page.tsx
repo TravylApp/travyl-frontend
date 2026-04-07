@@ -1393,7 +1393,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           </div>
         <div ref={contentRef}>
           {isFirstDay && arrivalFlight && (
-            <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
+            <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} onBookFlight={() => { window.location.href = `/trip/${id}/flights` }} />
           )}
           {/* Flight placeholder on first day — links to Flights tab */}
           {isFirstDay && !arrivalFlight && tripFlight && (
@@ -1557,7 +1557,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                   </div>
                 </section>
               )}
-              {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />}
+              {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} onBookFlight={() => { window.location.href = `/trip/${id}/flights` }} />}
               {!returnFlight && tripFlight && (
                 <section className="mb-3.5">
                   <a href={`/trip/${id}/flights`} className="block rounded-xl p-3 shadow-sm border border-blue-200/60 dark:border-blue-500/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 hover:shadow-md transition-shadow group">
