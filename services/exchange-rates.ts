@@ -1,4 +1,5 @@
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import { Resource } from 'sst'
 import { validateAuth } from './lib/auth'
 
 interface ExchangeRateResponse {
@@ -88,8 +89,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     let result = await fetchExchangeRates(base)
 
     // Fall back to Open Exchange Rates if configured and free API failed
-    if (!result && process.env.OPENEXCHANGE_RATES_APP_ID) {
-      result = await fetchWithOpenExchangeRates(process.env.OPENEXCHANGE_RATES_APP_ID, base)
+    if (!result && Resource.OpenExchangeRatesAppId?.value) {
+      result = await fetchWithOpenExchangeRates(Resource.OpenExchangeRatesAppId.value, base)
     }
 
     if (!result) {

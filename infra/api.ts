@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, openExchangeRatesAppId } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -187,7 +187,5 @@ api.route('GET /api/images/destination', {
 
 api.route('GET /api/exchange-rates', {
   handler: 'services/exchange-rates.handler',
-  environment: {
-    OPENEXCHANGE_RATES_APP_ID: process.env.OPENEXCHANGE_RATES_APP_ID || '',
-  },
+  link: [openExchangeRatesAppId],
 })

@@ -6,6 +6,13 @@ vi.mock('./lib/auth', () => ({
   validateAuth: vi.fn().mockResolvedValue('test-user-id'),
 }))
 
+// Mock SST Resource
+vi.mock('sst', () => ({
+  Resource: {
+    OpenExchangeRatesAppId: { value: 'test-app-id' },
+  },
+}))
+
 describe('exchange-rates handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
