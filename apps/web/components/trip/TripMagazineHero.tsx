@@ -216,7 +216,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
       )}
 
       {/* Hero text — aligned with content area (max-w-7xl + spine offset) */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-4">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-8">
         <p className="flex items-center gap-2 text-[10px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {flagUrl && <img src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Heart, MapPin, Star, Clock, Globe, DollarSign, Repeat, Timer, ChevronLeft, ChevronRight, Plus, Phone, Accessibility, MapPinned } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Navy } from '@travyl/shared';
@@ -15,8 +15,24 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
+// Height tiers — all divisible by 4 for clean grid alignment
+const ROW_UNIT = 4; // matches grid auto-rows (px)
+const GAP = 12; // vertical gap between cards (px)
+const HEIGHT_TIERS = [280, 320, 360, 400];
+
 function getCardHeight(id: string): number {
-  return 320 + (hashCode(id + 'h') % 100);
+  const tier = hashCode(id + 'h') % HEIGHT_TIERS.length;
+  return HEIGHT_TIERS[tier];
+}
+
+/**
+ * How many grid rows this card spans.
+ * Grid uses `grid-auto-rows: 4px` with `row-gap: 0`,
+ * so the span covers card height + the desired vertical gap.
+ */
+export function getCardRowSpan(id: string, flush?: boolean): number {
+  const h = flush ? 360 : getCardHeight(id);
+  return (h + GAP) / ROW_UNIT; // exact — all values are multiples of 4
 }
 
 export interface PinCardProps {
@@ -34,6 +50,7 @@ const FLUSH_HEIGHT = 360;
 export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddToTrip, flush }: PinCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [addedToTrip, setAddedToTrip] = useState(false);
   const hasAnimated = useRef(false);
@@ -41,6 +58,20 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
 
   const images = (item.images?.length ? item.images : [item.image]).filter(Boolean) as string[];
   const hasMultipleImages = images.length > 1;
+
+  // Timeout: if image hasn't loaded after 6s, try next or show fallback
+  useEffect(() => {
+    if (imgLoaded || imgError || images.length === 0) return;
+    const t = setTimeout(() => {
+      const nextIdx = imgIdx + 1;
+      if (nextIdx < images.length) {
+        setImgIdx(nextIdx);
+      } else {
+        setImgError(true);
+      }
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [imgIdx, imgLoaded, imgError, images.length]);
 
   // Only animate on first mount — never re-animate when grid is shown/hidden
   const shouldAnimate = !hasAnimated.current;
@@ -54,16 +85,18 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
   const prevImage = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setImgIdx((i) => (i === 0 ? images.length - 1 : i - 1));
+    setImgLoaded(false);
   }, [images.length]);
 
   const nextImage = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setImgIdx((i) => (i + 1) % images.length);
+    setImgLoaded(false);
   }, [images.length]);
 
   return (
     <div
-      className="break-inside-avoid min-w-0"
+      className="min-w-0"
       style={{
         perspective: 1000,
         animation: shouldAnimate ? `card-fade-in 0.3s ease-out ${Math.min(index * 0.02, 0.12)}s both` : undefined,
@@ -80,13 +113,28 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
           style={{ backfaceVisibility: 'hidden' }}
           onClick={() => onClick?.(item.id)}
         >
+          {/* Shimmer placeholder — visible until image loads */}
+          {!imgError && images.length > 0 && !imgLoaded && (
+            <div
+              className="absolute inset-0"
+              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}dd, #1e3a5f)` }}
+            >
+              <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <div className="h-3 rounded bg-white/10 w-2/3 mb-2" />
+                <div className="h-2 rounded bg-white/5 w-1/2" />
+              </div>
+            </div>
+          )}
+
           {imgError || images.length === 0 ? (
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center"
-              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
+              className="absolute inset-0 flex flex-col justify-end p-4"
+              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #1e3a5f)` }}
             >
-              <MapPin size={28} className="text-white/20 mb-2" />
-              <span className="text-white/40 text-[11px] font-medium leading-tight line-clamp-2">{item.name}</span>
+              <MapPin size={20} className="text-white/15 mb-auto mt-4 mx-auto" />
+              <h3 className="text-[14px] font-bold text-white/70 leading-tight line-clamp-2 mb-1">{item.name}</h3>
+              {item.tagline && <span className="text-[10px] text-white/35 truncate">{item.tagline}</span>}
             </div>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -95,12 +143,14 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
               alt={item.name}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={() => setImgLoaded(true)}
               onError={() => {
                 // Try next image in the array, then show icon placeholder
                 const nextIdx = imgIdx + 1;
                 if (nextIdx < images.length) {
                   setImgIdx(nextIdx);
+                  setImgLoaded(false);
                 } else {
                   setImgError(true);
                 }

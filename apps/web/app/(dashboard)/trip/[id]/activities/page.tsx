@@ -1,15 +1,14 @@
 'use client';
 
 import { use, useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
 import {
   Search, Globe, Landmark, UtensilsCrossed, Compass, CalendarDays, Heart,
-  X,
+  X, Wine, Coffee, TreePine, ShoppingBag, Camera, Sparkles,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
-import { PinCard } from '@/components/PinCard';
+import { PinCard, getCardRowSpan } from '@/components/PinCard';
 
 // ─── Config ─────────────────────────────────────────────────
 
@@ -24,6 +23,96 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 type SortKey = 'default' | 'rating' | 'name';
+
+// ─── Section definitions ─────────────────────────────────────
+
+const SECTIONS = [
+  { key: 'attraction', label: 'Top Attractions', icon: Landmark, color: '#f59e0b' },
+  { key: 'restaurant', label: 'Restaurants & Dining', icon: UtensilsCrossed, color: '#ef4444' },
+  { key: 'nightlife', label: 'Nightlife & Bars', icon: Wine, color: '#a855f7' },
+  { key: 'cafe', label: 'Cafés & Coffee', icon: Coffee, color: '#92400e' },
+  { key: 'outdoors', label: 'Parks & Nature', icon: TreePine, color: '#22c55e' },
+  { key: 'shopping', label: 'Shopping & Markets', icon: ShoppingBag, color: '#ec4899' },
+  { key: 'culture', label: 'Museums & Culture', icon: Camera, color: '#6366f1' },
+  { key: 'experience', label: 'Experiences', icon: Compass, color: '#0ea5e9' },
+  { key: 'event', label: 'Events & Festivals', icon: CalendarDays, color: '#f97316' },
+  { key: 'other', label: 'Hidden Gems', icon: Sparkles, color: '#64748b' },
+] as const;
+
+function classifyPlace(p: PlaceItem): string {
+  const text = [p.category, ...(p.tags || []), p.tagline].join(' ').toLowerCase();
+  if (/nightlife|bar\b|club|pub|lounge|disco|cocktail|beer|wine bar|speakeasy/i.test(text)) return 'nightlife';
+  if (/caf[eé]|coffee|bakery|tea house|patisserie|brunch/i.test(text)) return 'cafe';
+  if (/museum|gallery|art|theater|theatre|opera|heritage|monument|historical|cultural/i.test(text)) return 'culture';
+  if (/park|garden|nature|beach|hiking|trail|forest|lake|outdoor|zoo|botanical/i.test(text)) return 'outdoors';
+  if (/shop|market|mall|boutique|souvenir|store|retail/i.test(text)) return 'shopping';
+  if (p.type === 'event') return 'event';
+  if (p.type === 'attraction') return 'attraction';
+  if (p.type === 'restaurant') return 'restaurant';
+  if (p.type === 'experience') return 'experience';
+  return 'other';
+}
+
+interface PlaceSection {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color: string;
+  items: PlaceItem[];
+}
+
+function groupIntoSections(places: PlaceItem[]): PlaceSection[] {
+  const groups: Record<string, PlaceItem[]> = {};
+  for (const p of places) {
+    const key = classifyPlace(p);
+    (groups[key] ??= []).push(p);
+  }
+  return SECTIONS
+    .filter((s) => groups[s.key]?.length)
+    .map((s) => ({ ...s, items: groups[s.key] }));
+}
+
+// ─── Per-section query map (section key → search terms) ─────
+
+const SECTION_QUERIES: Record<string, string[]> = {
+  attraction: ['top attractions', 'landmarks sightseeing', 'viewpoints must see', 'famous places'],
+  restaurant: ['best restaurants food dining', 'local food places', 'popular restaurants'],
+  nightlife: ['nightlife bars clubs', 'cocktail bars lounges', 'pubs live music'],
+  cafe: ['cafes coffee shops', 'bakeries brunch spots', 'tea houses'],
+  outdoors: ['parks nature outdoors', 'beaches hiking trails', 'gardens botanical'],
+  shopping: ['shopping markets boutiques', 'malls souvenirs stores'],
+  culture: ['museums galleries culture', 'theaters heritage historical', 'art exhibitions'],
+  experience: ['experiences tours activities', 'adventure unique things to do'],
+  event: ['events festivals concerts', 'local events upcoming'],
+  other: ['hidden gems off beaten path', 'unique places local favorites'],
+};
+
+const SECTION_PREVIEW_COUNT = 6;
+
+async function fetchSectionMore(
+  sectionKey: string, lat: number, lng: number, page: number, city?: string,
+): Promise<PlaceItem[]> {
+  const queries = SECTION_QUERIES[sectionKey] ?? [`${city || ''} things to do`];
+  const cityName = city || '';
+  const q = queries[page % queries.length];
+  const fullQuery = `${cityName} ${q}`.trim();
+
+  // Offset coords slightly per page for variety
+  const offsetLat = lat + (page % 4) * 0.015;
+  const offsetLng = lng + (page % 3) * 0.012;
+
+  try {
+    const res = await fetch(
+      `/api/places?q=${encodeURIComponent(fullQuery)}&lat=${offsetLat}&lng=${offsetLng}&limit=16`,
+    );
+    if (!res.ok) return [];
+    const items = (await res.json()) as PlaceItem[];
+    // Only return items matching this section
+    return items.filter((p) => p.image && classifyPlace(p) === sectionKey);
+  } catch {
+    return [];
+  }
+}
 
 // ─── Data fetching ──────────────────────────────────────────
 
@@ -183,21 +272,13 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     setPage((p) => p + 1);
   }, []);
 
-  // Infinite scroll observer
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!hasNextPage) return;
-    const el = loadMoreRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
-      },
-      { rootMargin: '600px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  // Track which cards have already appeared — skip re-animation on data updates
+  const renderedIds = useRef(new Set<string>());
+  const getEntryAnimation = useCallback((id: string, i: number) => {
+    if (renderedIds.current.has(id)) return undefined;
+    renderedIds.current.add(id);
+    return `card-fade-in 0.3s ease-out ${Math.min(i * 0.025, 0.15)}s both`;
+  }, []);
 
   // State
   const validTabs = TABS.map(t => t.key) as readonly string[];
@@ -209,6 +290,23 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [columnCount, setColumnCount] = useState(3);
   const [flush, setFlush] = useState(false);
+
+  // Infinite scroll observer — disabled in sectioned view (sections have own "discover more")
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isSectionedView = activeTab === 'all' && !searchQuery && sortBy === 'default';
+  useEffect(() => {
+    if (!hasNextPage || isSectionedView) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
+      },
+      { rootMargin: '600px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isSectionedView]);
 
   useEffect(() => {
     const w = window.innerWidth;
@@ -249,10 +347,55 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     return items;
   }, [tabFiltered, searchQuery, sortBy]);
 
+  // Group into sections (only used in "all" tab with default sort)
+  const sections = useMemo(() => {
+    if (activeTab !== 'all' || searchQuery || sortBy !== 'default') return null;
+    return groupIntoSections(filtered);
+  }, [activeTab, searchQuery, sortBy, filtered]);
+
+  // Per-section "load more" state
+  const [sectionExtra, setSectionExtra] = useState<Record<string, PlaceItem[]>>({});
+  const [sectionPage, setSectionPage] = useState<Record<string, number>>({});
+  const [sectionLoading, setSectionLoading] = useState<Record<string, boolean>>({});
+  const [sectionDone, setSectionDone] = useState<Record<string, boolean>>({});
+
+  const loadMoreForSection = useCallback(async (sectionKey: string) => {
+    if (sectionLoading[sectionKey] || sectionDone[sectionKey]) return;
+    setSectionLoading((prev) => ({ ...prev, [sectionKey]: true }));
+
+    const nextPage = (sectionPage[sectionKey] ?? 0) + 1;
+    const results = await fetchSectionMore(sectionKey, lat, lng, nextPage, destination !== 'Destination' ? destination : undefined);
+
+    // Dedupe against existing items
+    const existingIds = new Set([
+      ...allPlaces.map((p) => p.id),
+      ...(sectionExtra[sectionKey] ?? []).map((p) => p.id),
+    ]);
+    const existingNames = new Set([
+      ...allPlaces.map((p) => p.name.toLowerCase().replace(/[^a-z0-9]/g, '')),
+      ...(sectionExtra[sectionKey] ?? []).map((p) => p.name.toLowerCase().replace(/[^a-z0-9]/g, '')),
+    ]);
+    const newItems = results.filter((p) => {
+      const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return !existingIds.has(p.id) && !existingNames.has(norm);
+    });
+
+    if (newItems.length === 0) {
+      setSectionDone((prev) => ({ ...prev, [sectionKey]: true }));
+    } else {
+      setSectionExtra((prev) => ({
+        ...prev,
+        [sectionKey]: [...(prev[sectionKey] ?? []), ...newItems],
+      }));
+    }
+    setSectionPage((prev) => ({ ...prev, [sectionKey]: nextPage }));
+    setSectionLoading((prev) => ({ ...prev, [sectionKey]: false }));
+  }, [sectionLoading, sectionDone, sectionPage, sectionExtra, lat, lng, destination, allPlaces]);
+
   // ─── Render ─────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-[60vh]">
+    <div className="flex flex-col min-h-[60vh]" style={{ overflowAnchor: 'auto' }}>
       {/* Sticky header */}
       <div className="sticky top-0 z-30">
         {/* Row 1: Tabs */}
@@ -353,9 +496,20 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
       {/* Card Grid / Masonry */}
       <div className="px-4 pb-8">
         {(isLoading || tripLoading) ? (
-          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-gray-100 dark:bg-white/5 animate-pulse" style={{ height: 320 + (i % 3) * 40 }} />
+          /* ─── Loading skeletons ─── */
+          <div>
+            {[0, 1].map((s) => (
+              <div key={s} className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                  <div className="h-4 w-32 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                </div>
+                <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="rounded-2xl bg-gray-100 dark:bg-white/5 animate-pulse" style={{ height: 320 + (i % 3) * 40 }} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -370,48 +524,149 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
               Clear all filters
             </button>
           </div>
+        ) : sections ? (
+          /* ─── Sectioned view (All tab, default sort) ─── */
+          <div className="flex flex-col gap-10">
+            {sections.map((section) => {
+              const SectionIcon = section.icon;
+              const extras = sectionExtra[section.key] ?? [];
+              const allItems = [...section.items, ...extras];
+              const totalCount = allItems.length;
+              const isLoadingMore = sectionLoading[section.key] ?? false;
+              const isDone = sectionDone[section.key] ?? false;
+
+              return (
+                <div key={section.key}>
+                  {/* Section header */}
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${section.color}18`, color: section.color }}
+                    >
+                      <SectionIcon size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
+                        {section.label}
+                      </h3>
+                      <p className="text-[11px] text-gray-400">
+                        {totalCount} {totalCount === 1 ? 'place' : 'places'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Section grid */}
+                  {flush ? (
+                    <div
+                      className="grid gap-3"
+                      style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
+                    >
+                      {allItems.map((place, i) => (
+                        <div
+                          key={place.id}
+                          style={{ animation: getEntryAnimation(place.id, i) }}
+                        >
+                          <PinCard
+                            item={place}
+                            index={i}
+                            isFavorited={favorites.includes(place.id)}
+                            onFavorite={toggleFavorite}
+                            flush
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className="grid"
+                      style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)`, gridAutoRows: '4px', columnGap: '12px' }}
+                    >
+                      {allItems.map((place, i) => (
+                        <div
+                          key={place.id}
+                          style={{
+                            gridRowEnd: `span ${getCardRowSpan(place.id)}`,
+                            animation: getEntryAnimation(place.id, i),
+                          }}
+                        >
+                          <PinCard
+                            item={place}
+                            index={i}
+                            isFavorited={favorites.includes(place.id)}
+                            onFavorite={toggleFavorite}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Load more button */}
+                  {!isDone && (
+                    <div className="flex justify-center mt-4">
+                      <button
+                        onClick={() => loadMoreForSection(section.key)}
+                        disabled={isLoadingMore}
+                        className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                        style={{
+                          color: section.color,
+                          backgroundColor: `${section.color}10`,
+                          border: `1px solid ${section.color}25`,
+                        }}
+                      >
+                        {isLoadingMore ? (
+                          <>
+                            <div
+                              className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
+                              style={{ borderColor: section.color, borderTopColor: 'transparent' }}
+                            />
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <span>Discover more {section.label.toLowerCase()}</span>
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : flush ? (
-          /* ─── Flush / Uniform Grid ─── */
+          /* ─── Flush / Uniform Grid (filtered tab) ─── */
           <div
             className="grid gap-3"
             style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
           >
-            <AnimatePresence mode="popLayout">
-              {filtered.map((place, i) => (
-                <motion.div
-                  key={place.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.2) }}
-                >
-                  <PinCard
-                    item={place}
-                    index={i}
-                    isFavorited={favorites.includes(place.id)}
-                    onFavorite={toggleFavorite}
-                    flush
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {filtered.map((place, i) => (
+              <div
+                key={place.id}
+                style={{ animation: getEntryAnimation(place.id, i) }}
+              >
+                <PinCard
+                  item={place}
+                  index={i}
+                  isFavorited={favorites.includes(place.id)}
+                  onFavorite={toggleFavorite}
+                  flush
+                />
+              </div>
+            ))}
           </div>
         ) : (
-          /* ─── Masonry / Pinterest layout ─── */
+          /* ─── Masonry / Pinterest layout (filtered tab) ─── */
           <div
-            className="gap-3"
-            style={{
-              columnCount,
-              columnGap: '12px',
-            }}
+            className="grid"
+            style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)`, gridAutoRows: '4px', columnGap: '12px' }}
           >
             {filtered.map((place, i) => (
               <div
                 key={place.id}
-                className="break-inside-avoid mb-3"
                 style={{
-                  animation: `card-fade-in 0.3s ease-out ${Math.min(i * 0.02, 0.2)}s both`,
+                  gridRowEnd: `span ${getCardRowSpan(place.id)}`,
+                  animation: getEntryAnimation(place.id, i),
                 }}
               >
                 <PinCard

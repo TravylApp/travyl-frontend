@@ -651,7 +651,15 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           }
         }
 
-        const { error: updateErr } = await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
+        // Append to user_history for the history panel
+        const userHistory = (tripData.trip_context.user_history ?? []) as any[];
+        const activityNames = newActivities.map(a => a.name);
+        const historyAction = replaceDayDate
+          ? `Regenerated day ${replaceDayDate} with ${activityNames.length} activities`
+          : `Added ${activityNames.map(n => `"${n}"`).join(', ')}`;
+        userHistory.push({ action: historyAction, timestamp: new Date().toISOString(), actor: 'You' });
+
+        const { error: updateErr } = await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary, user_history: userHistory } }).eq('id', id);
         if (updateErr) console.error('[persist] update failed:', updateErr.message);
         else console.log('[persist] trip_context updated successfully, days:', itinerary.map((d: any) => ({ day: d.day, slots: d.slots?.length })));
       }
@@ -1245,22 +1253,30 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         </div>
 
         {/* ── AT A GLANCE section ── */}
-        <section>
-          <div className="mb-4 flex items-end justify-between">
-            <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-white/70"
-                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-normal font-serif text-white tracking-wide"
-                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 mr-2">
+        <section className="rounded-2xl px-5 py-4 -mx-1" style={{
+          backgroundColor: 'rgba(10,20,35,0.65)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          {/* Header row — title + actions inline, nav far right */}
+          <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div>
+                <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-white/50">Your Itinerary</p>
+                <h2 className="text-2xl sm:text-3xl font-normal font-serif text-white tracking-wide">At a Glance</h2>
+              </div>
               <TripHistoryToggle tripId={id} variant="pill" dark />
               <div className="relative" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
-                style={{ border: '1px solid rgba(255,255,255,0.2)' }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all disabled:opacity-50"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.85)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
               >
                 <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
                 {regenerating ? 'Working...' : 'Regenerate'}
@@ -1318,9 +1334,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 </div>
               )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md"
-              style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+            </div>{/* end title + buttons group */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+              style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
               <span className="text-[11px] tabular-nums mr-1 text-white/70">
                 {selectedDayIndex + 1} / {days.length}
               </span>

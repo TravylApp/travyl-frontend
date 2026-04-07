@@ -176,25 +176,20 @@ function TripPhotoMosaic({ photos, destination }: { photos: string[]; destinatio
   }, [photos]);
 
   return (
-    <div className="w-full relative overflow-hidden" style={{ height: 600, marginTop: -40 }}>
+    <div className="w-full relative overflow-hidden" style={{ height: 600 }}>
       {photos.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={i}
           src={src}
           alt={destination || 'Trip photo'}
-                    className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
           style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
         />
       ))}
-      {/* Top fade */}
-      <div className="absolute top-0 left-0 right-0 pointer-events-none" style={{
-        height: '20%',
-        background: 'linear-gradient(to bottom, var(--magazine-bg, #f5f0eb) 0%, transparent 100%)',
-      }} />
       {/* Bottom fade */}
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
-        height: '20%',
+        height: '25%',
         background: 'linear-gradient(to top, var(--magazine-bg, #f5f0eb) 0%, transparent 100%)',
       }} />
     </div>

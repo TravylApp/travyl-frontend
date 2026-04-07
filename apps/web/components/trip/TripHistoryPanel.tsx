@@ -298,16 +298,16 @@ export function TripHistoryToggle({ tripId, variant = 'pill', dark = false }: { 
     <>
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] backdrop-blur-md"
+        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all duration-200"
         style={{
-          color: 'var(--magazine-heading, #f5efe8)',
-          backgroundColor: open ? 'rgba(200,169,106,0.15)' : 'var(--magazine-card-bg, rgba(255,255,255,0.08))',
-          border: `1px solid ${open ? 'rgba(200,169,106,0.25)' : 'var(--magazine-border, rgba(255,255,255,0.1))'}`,
+          color: 'rgba(255,255,255,0.85)',
+          backgroundColor: open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
+          border: `1px solid ${open ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)'}`,
         }}
         title="View trip history"
       >
-        <History size={14} />
-        <span>{open ? 'Hide History' : 'History'}</span>
+        <History size={12} />
+        <span>{open ? 'Hide' : 'History'}</span>
       </button>
       <HistoryPanel tripId={tripId} isOpen={open} onClose={() => setOpen(false)} />
     </>

@@ -140,7 +140,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
             {items.map((item) => (
               <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} />
+                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute top-3 left-3">
                   <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"

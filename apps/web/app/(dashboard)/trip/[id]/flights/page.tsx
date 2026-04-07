@@ -136,9 +136,9 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['flights-search', originAirport, destAirport, departDate, passengers, cabinClass],
     queryFn: async (): Promise<ComparisonFlight[]> => {
-      if (!destAirport && !destination) return [];
+      if (!originAirport || (!destAirport && !destination)) return [];
       const params = new URLSearchParams({
-        origin: originAirport || destination || '',
+        origin: originAirport,
         destination: destAirport || destination || '',
         date: departDate,
         passengers: String(passengers),
@@ -209,9 +209,15 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const selectingRef = useRef(false);
+  const prevValueRef = useRef(value);
 
-  // Sync external value changes
-  useEffect(() => { if (!editing) setQuery(value || ''); }, [value, editing]);
+  // Sync external value changes (e.g. async geolocation result) — only when not editing
+  useEffect(() => {
+    if (!editing && value !== prevValueRef.current) {
+      setQuery(value || '');
+      prevValueRef.current = value;
+    }
+  }, [value, editing]);
 
   useEffect(() => {
     if (!editing || query.length < 2) { setResults([]); setOpen(false); return; }
@@ -235,12 +241,12 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
         type="text"
         value={query}
         onChange={(e) => { setQuery(e.target.value); setEditing(true); }}
-        onFocus={() => { setEditing(true); setQuery(''); }}
+        onFocus={() => { setEditing(true); setQuery(query || ''); }}
         onBlur={() => {
           if (selectingRef.current) return;
           setOpen(false);
           setEditing(false);
-          // Restore value if user didn't pick anything
+          // Restore to last selected value if user cleared without picking
           if (!query.trim()) setQuery(value || '');
         }}
         placeholder="Search airport..."
@@ -248,9 +254,9 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
       />
       {open && results.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
-          {results.map((r) => (
+          {results.map((r, i) => (
             <button
-              key={r.iata}
+              key={`${r.iata}-${i}`}
               onMouseDown={(e) => { e.preventDefault(); selectingRef.current = true; }}
               onClick={() => {
                 onChange(r.iata);
@@ -258,6 +264,7 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
                 setOpen(false);
                 setEditing(false);
                 selectingRef.current = false;
+                prevValueRef.current = r.iata;
               }}
               className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2"
             >
@@ -289,8 +296,9 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
   const [travelers, setTravelers] = useState(defaultTravelers || 2);
   const [cabinClass, setCabinClass] = useState('economy');
 
-  // Sync destination when it arrives asynchronously from airport API lookup
+  // Sync when async airport lookups resolve
   useEffect(() => { if (defaultTo) setTo(defaultTo); }, [defaultTo]);
+  useEffect(() => { if (defaultFrom && !from) setFrom(defaultFrom); }, [defaultFrom]);
   const [nonstopOnly, setNonstopOnly] = useState(false);
   const [maxLayover, setMaxLayover] = useState(12);
   const [maxPrice, setMaxPrice] = useState(3000);
@@ -785,6 +793,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
 
   const destination = trip?.destination?.split(',')[0]?.trim();
   const [defaultTo, setDefaultTo] = useState<string | undefined>(undefined);
+  const [defaultFrom, setDefaultFrom] = useState<string>('');
   const defaultTravelers = trip?.travelers || 1;
 
   // Dynamically look up the destination airport IATA code from the city name
@@ -801,6 +810,28 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [destination]);
+
+  // Auto-detect origin airport from user's geolocation
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        fetch(`/api/airports/nearest?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`)
+          .then(res => res.ok ? res.json() : null)
+          .then((data: { iata: string; name: string } | null) => {
+            if (!cancelled && data?.iata) {
+              setDefaultFrom(data.iata);
+            }
+          })
+          .catch(() => {});
+      },
+      () => {}, // silently ignore denial
+      { timeout: 8000, maximumAge: 5 * 60 * 1000 }
+    );
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => {
     setSearchParams({
@@ -899,7 +930,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
 
       {/* 2. Flight Search Section — open by default when no flights yet */}
       <FlightSearchSection
-        defaultFrom=""
+        defaultFrom={defaultFrom}
         defaultTo={defaultTo}
         defaultTravelers={defaultTravelers}
         onSearch={handleSearch}
