@@ -7,11 +7,11 @@ import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip, useDestinationImage } from '@travyl/shared';
-import { OceanWave, Footer } from '@/components/home';
+import { useItineraryScreen, useAuthStore, canViewTrip } from '@travyl/shared';
+// Footer/OceanWave removed — trip pages use workspace layout
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
-import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
+import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
@@ -34,11 +34,8 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   if (!tab) return null;
   const Icon = tab.icon;
 
-  // Overview + Itinerary: clean magazine look — no header bar
-  if (segment === '' || segment === 'itinerary') return null;
-
   return (
-    <div className="shrink-0 px-5 md:pl-20 pt-4 pb-3 z-20">
+    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-16 pt-4 pb-3 sticky top-0 z-20">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 backdrop-blur-md" style={{ backgroundColor: `${tab.color}cc` }}>
           <Icon size={15} className="text-white" />
@@ -116,14 +113,19 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-20 py-8">
-      <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--magazine-heading, #1e3a5f)' }}>Explore {city}</h2>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-16 py-8">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+        Explore {city}
+      </h2>
+
       <div className="space-y-6">
         {categories.map(({ key, label, items }) => (
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[14px] font-bold tracking-wide" style={{ color: 'var(--magazine-heading, #1e3a5f)', opacity: 0.7 }}>{label}</h3>
-              <span className="text-[11px]" style={{ color: 'var(--magazine-text, #666)', opacity: 0.5 }}>{items.length} {items.length === 1 ? 'place' : 'places'}</span>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">
+                {label}
+              </h3>
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
               {items.map((item: ExploreItem, idx: number) => (
@@ -161,41 +163,6 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   );
 }
 
-// ─── Bottom Photo Mosaic (full-bleed, matches hero width) ───
-
-function TripPhotoMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    setCurrent(0);
-    if (photos.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrent((c) => (c + 1) % photos.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [photos]);
-
-  return (
-    <div className="w-full relative overflow-hidden" style={{ height: 600 }}>
-      {photos.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={i}
-          src={src}
-          alt={destination || 'Trip photo'}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
-          style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
-        />
-      ))}
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
-        height: '25%',
-        background: 'linear-gradient(to top, var(--magazine-bg, #f5f0eb) 0%, transparent 100%)',
-      }} />
-    </div>
-  );
-}
-
 // ─── Main Layout ────────────────────────────────────────────
 
 export default function TripLayoutInner({
@@ -225,8 +192,6 @@ function TripLayoutContent({
 }) {
   const [mapOpen, setMapOpen] = useState(false);
   const { trip, isLoading, refetch } = useItineraryScreen(tripId);
-  const tripCity = trip?.destination?.split(',')[0]?.trim();
-  const { data: destImageData, isLoading: destImageLoading } = useDestinationImage(tripCity || '');
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   useTripSettingsRegistration(tripId);
@@ -258,25 +223,6 @@ function TripLayoutContent({
   const currentSegment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const isOverview = currentSegment === '';
   const isCalendar = currentSegment === 'calendar';
-  const isMagazineLayout = !isCalendar; // All tabs get magazine treatment except calendar
-
-  // Track exit animation from magazine pages to prevent white flash
-  const [exitingFromMagazine, setExitingFromMagazine] = useState(false);
-  const wasMagazineRef = useRef(isMagazineLayout);
-
-  useEffect(() => {
-    if (wasMagazineRef.current && !isMagazineLayout) {
-      setExitingFromMagazine(true);
-    }
-    wasMagazineRef.current = isMagazineLayout;
-  }, [isMagazineLayout]);
-
-  const handleExitComplete = () => {
-    setExitingFromMagazine(false);
-  };
-
-  const isItinerary = currentSegment === 'itinerary';
-  const useOverviewBg = isMagazineLayout || exitingFromMagazine;
 
   const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
   const prevSegmentRef = useRef(currentSegment);
@@ -332,60 +278,49 @@ function TripLayoutContent({
   }
 
   return (
-    <div
-      className={`pb-14 md:pb-0 ${useOverviewBg ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
-      style={{ transition: 'background-color 0.5s ease' }}
-    >
-      {/* Trip navigation sidebar — vertical on desktop, bottom bar on mobile */}
-      <TripTabs tripId={tripId} position="left" dark={isMagazineLayout} />
+    <div className="pb-14 md:pb-0 bg-white dark:bg-[var(--background)]">
+      {/* Sidebar — always icon-only spine on desktop, bottom bar on mobile */}
+      <TripTabs tripId={tripId} position="left" />
 
-      {/* Hero banner — all tabs, compact on non-overview */}
-      <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
-        overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
+      {/* Compact trip header — all tabs */}
+      <CompactTripHeader tripId={tripId} trip={trip} onTripUpdate={refetch} />
 
+      {/* Content area */}
       <div className="mx-auto max-w-7xl">
-
-        {/* Content wrapper — flush, no card border */}
         <div className="relative z-10">
-        <div>
-          {/* Content area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <ContentHeader
-              tripId={tripId}
-              mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen(!mapOpen)}
-            />
+          <ContentHeader
+            tripId={tripId}
+            mapOpen={mapOpen}
+            onToggleMap={() => setMapOpen(!mapOpen)}
+          />
 
-            {isOverview && <TripOnboardingBanner />}
+          {isOverview && <TripOnboardingBanner />}
 
-            <div className="flex">
-              <div
-                className="flex-1 min-w-0 relative overflow-hidden md:pl-20"
-              >
-                <AnimatePresence mode="popLayout" initial={false} onExitComplete={handleExitComplete}>
-                  <motion.div
-                    key={`tab-${currentSegment}`}
-                    initial={pageVariants.initial}
-                    animate={pageVariants.animate}
-                    exit={pageVariants.exit}
-                    transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className={!isOverview && !isItinerary && !isCalendar ? 'px-4 sm:px-6 pt-2 pb-8 mb-8 rounded-2xl backdrop-blur-md' : ''}
-                    style={!isOverview && !isItinerary && !isCalendar ? { background: 'linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.98) 100%)' } : undefined}
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
+          <div className="flex">
+            {/* Main content */}
+            <div className="flex-1 min-w-0 relative overflow-hidden px-5 md:pl-16 pt-4 pb-5">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={`tab-${currentSegment}`}
+                  initial={pageVariants.initial}
+                  animate={pageVariants.animate}
+                  exit={pageVariants.exit}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
-              {/* Map side panel */}
-              <AnimatePresence>
+            {/* Map side panel */}
+            <AnimatePresence>
               {mapOpen && (
                 <motion.div
                   initial={{ width: 0, opacity: 0 }}
                   animate={{ width: '35%', opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="hidden md:block shrink-0 border-l border-gray-200 overflow-hidden rounded-r-2xl"
+                  className="hidden md:block shrink-0 border-l border-gray-200 dark:border-white/[0.08] overflow-hidden"
                 >
                   <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
@@ -439,32 +374,15 @@ function TripLayoutContent({
                   </div>
                 </motion.div>
               )}
-              </AnimatePresence>
-            </div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
-      </div>{/* end max-w-7xl */}
-
-      {/* Bottom photo mosaic — full-bleed, shown on overview + itinerary */}
-      {(isOverview || isItinerary) && (destImageData?.images?.length ?? 0) > 0 && (
-        <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
-      )}
-
-      {/* Trip Explore — only on overview page */}
+      {/* Explore section — overview only */}
       {isOverview && (
-        <div className="w-full relative z-10">
+        <div className="w-full relative z-10 bg-white dark:bg-[var(--background)]">
           <TripExploreSection trip={trip} />
-          <div className="h-24" />
-        </div>
-      )}
-
-      {/* Footer — only on overview */}
-      {isOverview && (
-        <div className="w-full relative z-20 bg-[var(--magazine-bg)] dark:bg-[var(--background)]">
-          <OceanWave />
-          <Footer />
         </div>
       )}
     </div>

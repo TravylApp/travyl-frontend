@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ChevronLeft, ChevronRight, MapPin, DollarSign, Bike, Zap, Globe, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
 import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
@@ -46,12 +46,16 @@ function useRevealOnScroll(ready: boolean) {
 function AddToTripButton({ isAdded, onToggle }: { isAdded: boolean; onToggle: () => void }) {
   return (
     <button onClick={onToggle}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-300 backdrop-blur-sm w-fit"
-      style={{
-        color: isAdded ? 'var(--magazine-success)' : 'var(--magazine-accent)',
-        border: `1px solid ${isAdded ? 'rgba(52,211,153,0.25)' : 'rgba(200,169,106,0.25)'}`,
-        backgroundColor: isAdded ? 'rgba(52,211,153,0.1)' : 'rgba(200,169,106,0.1)',
-      }}>
+      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all duration-300 w-fit border ${
+        isAdded
+          ? 'text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10'
+          : ''
+      }`}
+      style={!isAdded ? {
+        color: 'var(--trip-base)',
+        borderColor: 'color-mix(in srgb, var(--trip-base) 25%, transparent)',
+        backgroundColor: 'color-mix(in srgb, var(--trip-base) 10%, transparent)',
+      } : undefined}>
       {isAdded ? <span>✓ Added to trip</span> : <><Plus size={13} /><span>Add to trip</span></>}
     </button>
   );
@@ -88,41 +92,35 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
     <section>
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
-            style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Explore</span>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-white"
-            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Things to Do</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Things to Do</h2>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
-          style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
           {!gridView && (
             <>
-              <span className="text-[11px] tabular-nums mr-1 text-white/80">
+              <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
                 {activeIdx + 1} / {items.length}
               </span>
               <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-                <ChevronLeft size={14} className="text-white" />
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+                <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
               </button>
               <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-                <ChevronRight size={14} className="text-white" />
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+                <ChevronRight size={14} className="text-gray-600 dark:text-white" />
               </button>
             </>
           )}
           {gridView && (
             <button onClick={() => setFlush(f => !f)} title="Flush grid"
-              className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-              style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: flush ? 'rgba(255,255,255,0.2)' : 'transparent' }}>
-              <LayoutGrid size={12} className="text-white/70" />
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.12]"
+              style={{ backgroundColor: flush ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
+              <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />
             </button>
           )}
           <button onClick={() => setGridView(v => !v)} title={gridView ? 'Carousel view' : 'Grid view'}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-            style={{ border: '1px solid rgba(255,255,255,0.3)', backgroundColor: gridView ? 'rgba(255,255,255,0.2)' : 'transparent' }}>
-            {gridView ? <LayoutList size={12} className="text-white/70" /> : <LayoutGrid size={12} className="text-white/70" />}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.12]"
+            style={{ backgroundColor: gridView ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
+            {gridView ? <LayoutList size={12} className="text-gray-500 dark:text-white/70" /> : <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />}
           </button>
         </div>
       </div>
@@ -143,13 +141,12 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute top-3 left-3">
-                  <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"
-                    style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.2)' }}>
+                  <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
                     {item.category}
                   </span>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="text-lg font-bold text-white leading-tight mb-1 font-serif">{item.title}</h3>
+                  <h3 className="text-lg font-bold text-white leading-tight mb-1">{item.title}</h3>
                   <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
                   <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
                 </div>
@@ -163,7 +160,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 className="rounded-full transition-all duration-300"
                 style={{
                   width: i === activeIdx ? 16 : 5, height: 5,
-                  backgroundColor: i === activeIdx ? 'var(--magazine-accent)' : 'var(--magazine-border)',
+                  backgroundColor: i === activeIdx ? 'var(--trip-base)' : 'rgba(0,0,0,0.15)',
                 }} />
             ))}
           </div>
@@ -182,13 +179,12 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 style={!flush ? { minHeight: 200 } : undefined} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               <div className="absolute top-2 left-2">
-                <span className="text-[8px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full backdrop-blur-md"
-                  style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.2)' }}>
+                <span className="text-[8px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
                   {item.category}
                 </span>
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-3">
-                <h3 className="text-sm font-bold text-white leading-tight font-serif">{item.title}</h3>
+                <h3 className="text-sm font-bold text-white leading-tight">{item.title}</h3>
               </div>
             </div>
           ))}
@@ -204,29 +200,22 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
 
   return (
     <section>
-      <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
-        style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Latest</span>
-      <h2 className="text-2xl sm:text-3xl font-bold font-serif mb-4"
-        style={{ color: 'var(--magazine-heading)' }}>News</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">News</h2>
 
       {/* Scrollable news list capped to match What's Going On card height */}
       <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1">
-        <div className="divide-y" style={{ borderColor: 'var(--magazine-border, rgba(0,0,0,0.08))' }}>
+        <div className="divide-y divide-gray-200 dark:divide-white/[0.08]">
           {newsItems.map((item) => (
             <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
               className="block py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold"
-                  style={{ color: 'var(--magazine-accent)' }}>{item.category}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
                 {item.source && (
-                  <span className="text-[10px] uppercase tracking-wider font-bold"
-                    style={{ color: 'var(--magazine-accent)', opacity: 0.5 }}>· {item.source}</span>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
                 )}
               </div>
-              <h3 className="text-[14px] font-bold leading-snug mb-0.5 line-clamp-2"
-                style={{ color: 'var(--magazine-heading)' }}>{item.title}</h3>
-              <p className="text-[12px] leading-relaxed line-clamp-1"
-                style={{ color: 'var(--magazine-text)', opacity: 0.6 }}>{item.snippet}</p>
+              <h3 className="text-[14px] font-bold leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white">{item.title}</h3>
+              <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
             </a>
           ))}
         </div>
@@ -259,25 +248,19 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
     <section>
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full backdrop-blur-md"
-            style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>What&apos;s Happening</span>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif"
-            style={{ color: 'var(--magazine-heading)' }}>What&apos;s Going On</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">What&apos;s Going On</h2>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md"
-          style={{ backgroundColor: 'var(--magazine-bg, rgba(245,240,235,0.85))' }}>
-          <span className="text-[11px] tabular-nums mr-1" style={{ color: 'var(--magazine-heading)' }}>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
+          <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
             {activeIdx + 1} / {events.length}
           </span>
           <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-            style={{ border: '1px solid var(--magazine-border)' }}>
-            <ChevronLeft size={14} style={{ color: 'var(--magazine-heading)' }} />
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+            <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
           </button>
           <button onClick={() => { const i = Math.min(events.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === events.length - 1}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-            style={{ border: '1px solid var(--magazine-border)' }}>
-            <ChevronRight size={14} style={{ color: 'var(--magazine-heading)' }} />
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+            <ChevronRight size={14} className="text-gray-600 dark:text-white" />
           </button>
         </div>
       </div>
@@ -307,14 +290,13 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               )}
               {/* Category badge */}
               <div className="absolute top-3 left-3">
-                <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md"
-                  style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.2)' }}>
+                <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
                   {item.category}
                 </span>
               </div>
               {/* Content overlay on image */}
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h3 className="text-[15px] font-bold text-white leading-tight mb-0.5 font-serif line-clamp-2">
+                <h3 className="text-[15px] font-bold text-white leading-tight mb-0.5 line-clamp-2">
                   {item.title}
                 </h3>
                 <p className="text-[11px] text-white/60 leading-snug line-clamp-1 mb-2">{item.description}</p>
@@ -332,7 +314,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
             className="rounded-full transition-all duration-300"
             style={{
               width: i === activeIdx ? 16 : 5, height: 5,
-              backgroundColor: i === activeIdx ? 'var(--magazine-accent)' : 'var(--magazine-border)',
+              backgroundColor: i === activeIdx ? 'var(--trip-base)' : 'rgba(0,0,0,0.15)',
             }} />
         ))}
       </div>
@@ -345,19 +327,16 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
   if (!cities.length) return null;
   return (
     <section>
-      <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-        style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Day Trips</span>
-      <h3 className="text-2xl font-bold font-serif mb-4" style={{ color: 'var(--magazine-heading)' }}>Also Consider Visiting</h3>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Also Consider Visiting</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cities.map((city) => (
-          <div key={city.id} className="rounded-xl p-4 backdrop-blur-md transition-all hover:scale-[1.02]"
-            style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
+          <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02]">
             <div className="flex items-center gap-2 mb-1">
-              <MapPin size={12} style={{ color: 'var(--magazine-accent)' }} />
-              <span className="text-[14px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{city.name}</span>
+              <MapPin size={12} className="text-[color:var(--trip-base)]" />
+              <span className="text-[14px] font-bold text-gray-900 dark:text-white">{city.name}</span>
             </div>
-            <p className="text-[11px] opacity-60" style={{ color: 'var(--magazine-heading)' }}>{city.country}</p>
-            <p className="text-[11px] font-semibold mt-1" style={{ color: 'var(--magazine-accent)' }}>{Math.round(city.distance)} km away</p>
+            <p className="text-[11px] text-gray-600 dark:text-gray-400 opacity-60">{city.country}</p>
+            <p className="text-[11px] font-semibold mt-1 text-[color:var(--trip-base)]">{Math.round(city.distance)} km away</p>
           </div>
         ))}
       </div>
@@ -383,28 +362,25 @@ function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContext
   ];
   return (
     <section>
-      <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-        style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Budget</span>
-      <h3 className="text-2xl font-bold font-serif mb-4" style={{ color: 'var(--magazine-heading)' }}>Cost of Living</h3>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Cost of Living</h3>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {items.map(({ icon: Icon, label, value }) => (
-          <div key={label} className="rounded-xl p-3 text-center backdrop-blur-md"
-            style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
-            <Icon size={16} className="mx-auto mb-1.5" style={{ color: 'var(--magazine-accent)' }} />
-            <p className="text-[15px] font-bold" style={{ color: 'var(--magazine-heading)' }}>{value}</p>
-            <p className="text-[10px] opacity-50" style={{ color: 'var(--magazine-heading)' }}>{label}</p>
+          <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
+            <Icon size={16} className="mx-auto mb-1.5 text-[color:var(--trip-base)]" />
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white">{value}</p>
+            <p className="text-[10px] text-gray-600 dark:text-gray-400 opacity-50">{label}</p>
           </div>
         ))}
       </div>
-      <div className="flex gap-2 mt-3 rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
+      <div className="flex gap-2 mt-3 rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm">
         {[
           { label: 'Budget', range: fmt(cost.daily_budget_low) },
           { label: 'Mid-range', range: fmt(cost.daily_budget_mid) },
           { label: 'Luxury', range: fmt(cost.daily_budget_high) },
         ].map(({ label, range }, i) => (
-          <div key={label} className="flex-1 py-3 text-center" style={i < 2 ? { borderRight: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' } : undefined}>
-            <p className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--magazine-heading)', opacity: 0.4 }}>{label}</p>
-            <p className="text-[16px] font-bold" style={{ color: 'var(--magazine-accent)' }}>{range}<span className="text-[11px] font-normal opacity-60">/day</span></p>
+          <div key={label} className="flex-1 py-3 text-center" style={i < 2 ? { borderRight: '1px solid rgba(0,0,0,0.08)' } : undefined}>
+            <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-gray-900 dark:text-white opacity-40">{label}</p>
+            <p className="text-[16px] font-bold text-[color:var(--trip-base)]">{range}<span className="text-[11px] font-normal opacity-60">/day</span></p>
           </div>
         ))}
       </div>
@@ -458,29 +434,27 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
 
   return (
     <section>
-      <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-        style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>
-        <Languages size={10} className="inline mr-1" />{language || 'Local Language'}
-      </span>
-      <h3 className="text-2xl font-bold font-serif mb-4" style={{ color: 'var(--magazine-heading)' }}>Essential Phrases</h3>
+      <div className="flex items-center gap-2 mb-4">
+        <Languages size={14} className="text-[color:var(--trip-base)]" />
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Essential Phrases</h3>
+        {language && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">({language})</span>}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {entries.map(([english, translated]) => (
           <button key={english}
             onClick={() => speak(translated)}
-            className="flex items-center gap-3 rounded-xl px-4 py-3 backdrop-blur-md text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer group"
-            style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
-            <span className="text-[12px] font-medium opacity-60 flex-1" style={{ color: 'var(--magazine-heading)' }}>{english}</span>
-            <span className="text-[13px] font-bold" style={{ color: 'var(--magazine-accent)' }}>{translated}</span>
+            className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm px-4 py-3 text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer group">
+            <span className="text-[12px] font-medium text-gray-600 dark:text-gray-400 opacity-60 flex-1">{english}</span>
+            <span className="text-[13px] font-bold text-[color:var(--trip-base)]">{translated}</span>
             <Volume2
               size={14}
-              className={`shrink-0 transition-all ${speaking === translated ? 'animate-pulse' : 'opacity-30 group-hover:opacity-70'}`}
-              style={{ color: speaking === translated ? 'var(--magazine-accent)' : 'var(--magazine-heading)' }}
+              className={`shrink-0 transition-all ${speaking === translated ? 'animate-pulse text-[color:var(--trip-base)]' : 'text-gray-900 dark:text-white opacity-30 group-hover:opacity-70'}`}
             />
           </button>
         ))}
       </div>
       {allEntries.length > 6 && (
-        <button onClick={() => setShowAll(v => !v)} className="mt-2 text-[11px] font-medium hover:underline" style={{ color: 'var(--magazine-accent)' }}>
+        <button onClick={() => setShowAll(v => !v)} className="mt-2 text-[11px] font-medium hover:underline text-[color:var(--trip-base)]">
           {showAll ? 'Show less' : `Show ${allEntries.length - 6} more phrases`}
         </button>
       )}
@@ -567,9 +541,6 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
   // Fetch fresh "things to do" and events on each visit using trip coordinates
   // IMPORTANT: hooks must be called before any early return
-  const tripLat = trip?.trip_context?.lat;
-  const tripLng = trip?.trip_context?.lng;
-
   const tripCity = trip?.destination?.split(',')[0]?.trim();
   const tripCountryName = trip?.trip_context?.country?.name
     || trip?.destination?.split(',').slice(1).join(',').trim()
@@ -750,8 +721,6 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const hasRestaurants = restaurantData.length > 0;
   const phrasesData = trip?.trip_context?.phrases ?? livePhrases;
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
-  const hasNews = news.length > 0;
-  const hasEvents = news.some(n => n.category === 'event' || n.category === 'tip');
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
   // Merge tier1Events into events display if available
@@ -777,30 +746,29 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Weather Widget — only show if hero doesn't already have weather from trip_context ── */}
           {weatherData?.current && !trip?.trip_context?.weather?.current && (
-            <div className="px-6 sm:px-10 mt-4 mb-2">
-              <div className="inline-flex items-center gap-4 px-5 py-3 rounded-2xl backdrop-blur-md"
-                style={{ backgroundColor: 'var(--magazine-card-bg, rgba(255,255,255,0.08))', border: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
+            <div className="px-0 mt-4 mb-2">
+              <div className="inline-flex items-center gap-4 px-5 py-3 rounded-2xl backdrop-blur-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08]">
                 <div>
-                  <span className="text-3xl font-bold" style={{ color: 'var(--magazine-heading)' }}>{Math.round(weatherData.current.temp)}°</span>
+                  <span className="text-3xl font-bold text-gray-900 dark:text-white">{Math.round(weatherData.current.temp)}°</span>
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold" style={{ color: 'var(--magazine-heading)' }}>{weatherData.current.conditions}</p>
-                  <p className="text-[11px] opacity-50" style={{ color: 'var(--magazine-heading)' }}>
+                  <p className="text-[13px] font-semibold text-gray-900 dark:text-white">{weatherData.current.conditions}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
                     Feels like {Math.round(weatherData.current.feelslike)}° · {weatherData.current.humidity}% humidity
                   </p>
                 </div>
                 {/* Mini forecast — next 3 days */}
                 {weatherData.forecast && weatherData.forecast.length > 0 && (
-                  <div className="flex gap-3 ml-2 pl-4" style={{ borderLeft: '1px solid var(--magazine-border, rgba(255,255,255,0.1))' }}>
+                  <div className="flex gap-3 ml-2 pl-4 border-l border-gray-200 dark:border-white/[0.08]">
                     {weatherData.forecast.slice(0, 3).map((day) => (
                       <div key={day.date} className="text-center">
-                        <p className="text-[10px] opacity-40" style={{ color: 'var(--magazine-heading)' }}>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
                           {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
                         </p>
-                        <p className="text-[12px] font-bold" style={{ color: 'var(--magazine-heading)' }}>
+                        <p className="text-[12px] font-bold text-gray-900 dark:text-white">
                           {Math.round(day.high)}°<span className="opacity-40">/{Math.round(day.low)}°</span>
                         </p>
-                        <p className="text-[9px] opacity-50 truncate max-w-[60px]" style={{ color: 'var(--magazine-heading)' }}>{day.conditions}</p>
+                        <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[60px]">{day.conditions}</p>
                       </div>
                     ))}
                   </div>
@@ -810,7 +778,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           )}
 
           {/* ── Row 1: Things to Do (left) + Restaurants (right) ── */}
-          <div className="px-6 sm:px-10 mt-6">
+          <div className="px-0 mt-6">
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
@@ -829,9 +797,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               {hasRestaurants && (
                 <div className="shrink-0 w-full lg:w-[380px]">
                   <div className="mb-4">
-                    <span className="inline-block text-[10px] tracking-[0.3em] uppercase font-semibold mb-2 px-2.5 py-1 rounded-full"
-                      style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent)', border: '1px solid rgba(200,169,106,0.25)' }}>Where To Eat</span>
-                    <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Must-Try Restaurants</h3>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Must-Try Restaurants</h3>
                   </div>
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     {restaurantData.slice(0, 6).map((r: any) => (
@@ -860,7 +826,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                               {r.reviewCount && <span className="text-[10px] text-white/40">({r.reviewCount.toLocaleString()})</span>}
                             </div>
                           )}
-                          <h3 className="text-lg font-bold text-white leading-tight font-serif">{r.name}</h3>
+                          <h3 className="text-lg font-bold text-white leading-tight">{r.name}</h3>
                           {(r.tagline || r.address) && (
                             <p className="text-[11px] text-white/50 mt-1 line-clamp-1">{r.tagline || r.address}</p>
                           )}
@@ -875,7 +841,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
           {(hasNewsArticles || allEvents.length > 0) && (
-            <div className="relative z-10 px-6 sm:px-10 mt-8">
+            <div className="relative z-10 px-0 mt-8">
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
                   <div className="flex-1 min-w-0">
@@ -893,7 +859,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(phrasesData || costData) && (
-            <div className="relative z-10 px-6 sm:px-10 mt-8">
+            <div className="relative z-10 px-0 mt-8">
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {phrasesData && Object.keys(phrasesData).length > 0 && (
                   <div className="flex-1 min-w-0">
@@ -911,7 +877,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (
-            <div className="px-6 sm:px-10 mt-8">
+            <div className="px-0 mt-8">
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
           )}

@@ -10,15 +10,15 @@ import type { DiscoverItem } from '@travyl/shared';
 import { SplitScreenModal } from '@/components/itinerary';
 
 function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`rounded bg-gray-200 ${className}`} style={style} />;
+  return <div className={`rounded bg-gray-200 dark:bg-white/[0.08] ${className}`} style={style} />;
 }
 
 function FavoritesSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="h-[140px] bg-gray-100" />
+        <div key={i} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden">
+          <div className="h-[140px] bg-gray-100 dark:bg-white/[0.05]" />
           <div className="p-3">
             <Skeleton style={{ width: '70%', height: 14 }} />
             <Skeleton className="mt-2" style={{ width: '55%', height: 10 }} />
@@ -49,12 +49,12 @@ function FavoriteCard({
 
   return (
     <div
-      className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer relative border border-gray-100"
+      className="bg-white dark:bg-white/[0.03] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer relative border border-gray-200 dark:border-white/[0.08]"
       onClick={onClick}
     >
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
-        className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/95 hover:bg-red-50 rounded-full flex items-center justify-center shadow-md transition-all"
+        className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/95 dark:bg-white/[0.1] hover:bg-red-50 dark:hover:bg-red-500/20 rounded-full flex items-center justify-center shadow-md transition-all"
       >
         <Heart size={14} className="fill-red-500 text-red-500" />
       </button>
@@ -68,16 +68,16 @@ function FavoriteCard({
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-            <ImageIcon size={28} className="text-gray-300" />
+          <div className="w-full h-full bg-gray-100 dark:bg-white/[0.05] flex items-center justify-center">
+            <ImageIcon size={28} className="text-gray-300 dark:text-gray-600" />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
         {item.rating && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm">
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-white/80 dark:bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm">
             <Star size={10} className="text-amber-400" fill="#fbbf24" />
-            <span className="text-[11px] text-gray-900" style={{ fontWeight: 600 }}>{item.rating.toFixed(1)}</span>
+            <span className="text-[11px] text-gray-900 dark:text-white" style={{ fontWeight: 600 }}>{item.rating.toFixed(1)}</span>
           </div>
         )}
 
@@ -92,14 +92,14 @@ function FavoriteCard({
       </div>
 
       <div className="p-4">
-        <div className="flex items-center gap-1 text-[11px] text-gray-500 mb-1">
-          <MapPin size={10} className="text-gray-400" />
+        <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 mb-1">
+          <MapPin size={10} className="text-gray-400 dark:text-gray-500" />
           <span className="truncate">{item.location}</span>
         </div>
-        <h3 className="text-[16px] text-gray-900 mb-1 line-clamp-1" style={{ fontWeight: 700 }}>
+        <h3 className="text-[16px] text-gray-900 dark:text-white mb-1 line-clamp-1" style={{ fontWeight: 700 }}>
           {item.name}
         </h3>
-        <p className="text-[12px] text-gray-500 line-clamp-2 mb-3">{item.description}</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{item.description}</p>
 
         <div className="flex flex-wrap gap-1">
           {item.tags.slice(0, 3).map((tag, i) => (
@@ -124,14 +124,14 @@ function FavoriteCard({
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6">
-      <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#ef444415' }}>
-        <Heart size={24} style={{ color: '#ef4444' }} />
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 bg-red-500/10">
+        <Heart size={24} className="text-red-500" />
       </div>
-      <h3 className="text-[17px] font-serif font-normal text-gray-900 tracking-wide mb-1.5">No favorites yet</h3>
-      <p className="text-[13px] text-gray-500 text-center leading-5 mb-5">
+      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">No favorites yet</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400 text-center leading-5 mb-5">
         Save your favorite activities, restaurants, and places to quickly find them later.
       </p>
-      <div className="flex flex-wrap justify-center gap-3 text-sm text-gray-500">
+      <div className="flex flex-wrap justify-center gap-3 text-sm text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-1">
           <Camera size={16} className="text-teal-600" />
           <span>Activities</span>
@@ -199,23 +199,23 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-[#1e3a5f] to-[#2c4f7f] rounded-full mb-3">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-[#1e3a5f] to-[#2c4f7f] dark:from-[#2c4f7f] dark:to-[#3d6a9f] rounded-full mb-3">
           <Heart size={24} className="text-white fill-white" />
         </div>
-        <h2 className="text-xl font-serif font-normal text-gray-900 tracking-wide mb-1">Your Favorites</h2>
-        <p className="text-sm text-gray-600">{totalFavorites} saved items across all categories</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Your Favorites</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{totalFavorites} saved items across all categories</p>
       </div>
 
       {/* Activities Section */}
       {favoritedActivities.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200">
+        <div className="bg-white dark:bg-white/[0.03] rounded-xl p-5 shadow-sm border border-gray-200 dark:border-white/[0.08]">
+          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200 dark:border-white/[0.08]">
             <div className="w-10 h-10 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
               <Camera size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Activities & Attractions</h2>
-              <p className="text-sm text-gray-600">{favoritedActivities.length} saved</p>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Activities & Attractions</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{favoritedActivities.length} saved</p>
             </div>
           </div>
 
@@ -235,14 +235,14 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
 
       {/* Restaurants Section */}
       {favoritedRestaurants.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200">
+        <div className="bg-white dark:bg-white/[0.03] rounded-xl p-5 shadow-sm border border-gray-200 dark:border-white/[0.08]">
+          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200 dark:border-white/[0.08]">
             <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
               <UtensilsCrossed size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Restaurants & Dining</h2>
-              <p className="text-sm text-gray-600">{favoritedRestaurants.length} saved</p>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Restaurants & Dining</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{favoritedRestaurants.length} saved</p>
             </div>
           </div>
 
@@ -262,14 +262,14 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
 
       {/* Saved Destinations */}
       {favoritedDestinations.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200">
+        <div className="bg-white dark:bg-white/[0.03] rounded-xl p-5 shadow-sm border border-gray-200 dark:border-white/[0.08]">
+          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200 dark:border-white/[0.08]">
             <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
               <Compass size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Saved Destinations</h2>
-              <p className="text-sm text-gray-600">{favoritedDestinations.length} saved</p>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Saved Destinations</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{favoritedDestinations.length} saved</p>
             </div>
           </div>
 
@@ -288,17 +288,17 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
       )}
 
       {/* Hotels Section Placeholder */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200">
+      <div className="bg-white dark:bg-white/[0.03] rounded-xl p-5 shadow-sm border border-gray-200 dark:border-white/[0.08]">
+        <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-200 dark:border-white/[0.08]">
           <div className="w-10 h-10 bg-gradient-to-r from-blue-400 to-blue-500 rounded-lg flex items-center justify-center">
             <Building2 size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-serif font-normal text-gray-900 tracking-wide">Hotels & Accommodations</h2>
-            <p className="text-sm text-gray-600">0 saved</p>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Hotels & Accommodations</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">0 saved</p>
           </div>
         </div>
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           <p className="text-sm">Hotel favorites will appear here when you heart items in the Hotels tab</p>
         </div>
       </div>

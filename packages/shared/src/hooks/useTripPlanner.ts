@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useCallback, useRef } from 'react';
 
 // On web: use our own API proxy routes (relative URLs, no prefix needed)

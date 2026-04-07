@@ -340,6 +340,8 @@ function hotelToPlaceItem(h: HotelData, currencySymbol = '$'): PlaceItem {
   };
 }
 
+const MOCK_HOTELS: HotelData[] = [];
+
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,
   Breakfast: <Coffee size={12} />,
@@ -390,10 +392,10 @@ function ImageCarousel({
       />
       {images.length > 1 && (
         <>
-          <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md">
+          <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white dark:bg-black/60 dark:hover:bg-black/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md dark:text-white">
             <ChevronLeft size={16} />
           </button>
-          <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md">
+          <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white dark:bg-black/60 dark:hover:bg-black/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md dark:text-white">
             <ChevronRight size={16} />
           </button>
           <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
@@ -476,17 +478,17 @@ function HotelSearchFilter({
   }, [checkIn, checkOut]);
 
   return (
-    <div className="rounded-xl overflow-hidden bg-white dark:bg-[var(--background)] border border-gray-200 dark:border-white/[0.08] shadow-sm">
+    <div className="rounded-xl overflow-hidden bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] shadow-sm">
       {/* Header */}
       <button onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50">
+        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: 'rgba(200,169,106,0.15)', border: '1px solid rgba(200,169,106,0.25)' }}>
             <Hotel size={16} style={{ color: 'var(--magazine-accent, #c8a96a)' }} />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Update Hotel</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Update Hotel</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">{destination || 'Search hotels'} &middot; {nights} nights &middot; {guests} guests</p>
           </div>
         </div>
@@ -513,30 +515,30 @@ function HotelSearchFilter({
                     onChange={(e) => onSearchQueryChange(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') onSearch(); }}
                     placeholder="Hotel name or area..."
-                    className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                    className="w-full mt-0.5 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
                   />
                 </div>
                 <div className="flex-1 min-w-[120px]">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-in</label>
-                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
+                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
                 </div>
                 <div className="flex-1 min-w-[120px]">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-out</label>
-                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
+                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guests</label>
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1.5 py-1">
+                  <div className="flex items-center gap-1 border border-gray-200 dark:border-white/[0.08] rounded-lg px-1.5 py-1">
                     <button onClick={() => setGuests(Math.max(1, guests - 1))} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Minus size={12} /></button>
-                    <span className="text-xs font-medium w-5 text-center">{guests}</span>
+                    <span className="text-xs font-medium w-5 text-center text-gray-900 dark:text-white">{guests}</span>
                     <button onClick={() => setGuests(guests + 1)} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Plus size={12} /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rooms</label>
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1.5 py-1">
+                  <div className="flex items-center gap-1 border border-gray-200 dark:border-white/[0.08] rounded-lg px-1.5 py-1">
                     <button onClick={() => setRooms(Math.max(1, rooms - 1))} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Minus size={12} /></button>
-                    <span className="text-xs font-medium w-5 text-center">{rooms}</span>
+                    <span className="text-xs font-medium w-5 text-center text-gray-900 dark:text-white">{rooms}</span>
                     <button onClick={() => setRooms(rooms + 1)} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Plus size={12} /></button>
                   </div>
                 </div>
@@ -558,7 +560,7 @@ function HotelSearchFilter({
                 {/* Sort */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-600 dark:text-gray-300">Sort By</span>
-                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]">
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]">
                     <option value="recommended">Recommended</option>
                     <option value="price_low">Price: Low to High</option>
                     <option value="price_high">Price: High to Low</option>
@@ -578,7 +580,7 @@ function HotelSearchFilter({
                         min={0}
                         value={priceRange[0]}
                         onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        className="w-16 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
                         placeholder="Min"
                       />
                     </div>
@@ -590,7 +592,7 @@ function HotelSearchFilter({
                         min={0}
                         value={priceRange[1]}
                         onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        className="w-16 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
                         placeholder="Max"
                       />
                     </div>
@@ -608,7 +610,7 @@ function HotelSearchFilter({
                         className={`text-xs px-3 py-1 rounded-full border transition-colors ${
                           starFilter.includes(s)
                             ? 'bg-amber-400 border-amber-400 text-white'
-                            : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-amber-300'
+                            : 'border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-amber-300 dark:hover:border-amber-300/50'
                         }`}
                       >
                         {s} <Star size={9} className="inline -mt-0.5 fill-current" />
@@ -628,7 +630,7 @@ function HotelSearchFilter({
                         className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                           amenityFilter.includes(a)
                             ? 'bg-[#60a5fa] border-[#60a5fa] text-white'
-                            : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
+                            : 'border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
                         }`}
                       >
                         {AMENITY_ICONS[a]} {a}
@@ -648,7 +650,7 @@ function HotelSearchFilter({
                         className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                           brandFilter.includes(b)
                             ? 'bg-[#60a5fa] border-[#60a5fa] text-white'
-                            : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
+                            : 'border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
                         }`}
                       >
                         {b}
@@ -698,20 +700,20 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="text-white text-xs px-2.5 py-1 rounded-full font-medium bg-[#60a5fa]">Selected</span>
                 {hotel.source && <span className="text-[9px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500">{hotel.source === 'serpapi' ? 'Google Hotels' : hotel.source === 'foursquare' ? 'Foursquare' : hotel.source}</span>}
-                <span className="flex items-center gap-0.5 bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px]">
+                <span className="flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]">
                   <Star size={9} className="fill-blue-600 text-blue-600" />
                   <span className="font-medium">{hotel.rating}/10</span>
-                  <span className="text-blue-600">({hotel.reviews})</span>
+                  <span className="text-blue-600 dark:text-blue-400">({hotel.reviews})</span>
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{hotel.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{hotel.name}</h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {(hotel.checkIn || hotel.checkOut) && (
                 <span className="text-[10px] text-gray-600 dark:text-gray-300">
                   {hotel.checkIn && <>Check-in: {hotel.checkIn}</>}{hotel.checkIn && hotel.checkOut && <> &bull; </>}{hotel.checkOut && <>Check-out: {hotel.checkOut}</>}
                 </span>
                 )}
-                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-medium text-[10px] inline-flex items-center gap-0.5">
+                <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded font-medium text-[10px] inline-flex items-center gap-0.5">
                   <Shield size={9} /> {hotel.cancellation}
                 </span>
               </div>
@@ -747,7 +749,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                         <>
                           <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">{nights} nights</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span></div>
                           <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
-                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Total</span>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
                             <span className="font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span>
                           </div>
                         </>
@@ -766,7 +768,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
               >
                 <div className="flex items-center gap-2">
                   <Hotel size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Room Options</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">Room Options</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ color: 'var(--trip-base)', backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)', borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                     {hotel.roomTypes[selectedRoom].type}
                   </span>
@@ -806,9 +808,9 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   <div className="flex items-start justify-between gap-2">
                                     <div>
                                       <div className="flex items-center gap-2 mb-0.5">
-                                        <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
+                                        <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
                                         {isSelected && <span className="text-white text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--trip-base)' }}>Selected</span>}
-                                        {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">+{cs}{priceDiff}/nt</span>}
+                                        {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-700/30">+{cs}{priceDiff}/nt</span>}
                                       </div>
                                       <p className="text-[10px] text-gray-600 dark:text-gray-300">{room.beds}</p>
                                       <div className="flex items-center gap-2.5 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -817,7 +819,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                       </div>
                                     </div>
                                     <div className="text-right shrink-0">
-                                      <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{cs}{room.price}</p>
+                                      <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{cs}{room.price}</p>
                                       <p className="text-[9px] text-gray-500 dark:text-gray-400">per night</p>
                                     </div>
                                   </div>
@@ -829,7 +831,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                             <AnimatePresence>
                               {expandedRoom === roomKey && (
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                  <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
+                                  <div className="mt-1.5 bg-white dark:bg-white/[0.03] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
@@ -838,7 +840,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                     <div className="p-3 space-y-2">
                                       <div className="flex justify-between">
                                         <div>
-                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-gray-100">{room.type}</h6>
+                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-white">{room.type}</h6>
                                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{room.beds} &middot; {room.size} &middot; {room.guests} guests</p>
                                         </div>
                                         <div className="text-right">
@@ -870,15 +872,15 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
               <div className="grid grid-cols-3 gap-2">
                 <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                   <Phone size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Call</span>
+                  <span className="text-xs text-gray-900 dark:text-white font-medium">Call</span>
                 </a>
                 <a href={`mailto:${hotel.email}`} onClick={(e) => e.stopPropagation()} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                   <Mail size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Email</span>
+                  <span className="text-xs text-gray-900 dark:text-white font-medium">Email</span>
                 </a>
                 <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                   <MapPin size={14} className="text-[#8b6f47]" />
-                  <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Map</span>
+                  <span className="text-xs text-gray-900 dark:text-white font-medium">Map</span>
                 </button>
               </div>
 
@@ -887,7 +889,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                 <div className="flex items-start gap-2">
                   <MapPin size={14} className="text-[#8b6f47] mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-900 dark:text-gray-100 leading-snug">{hotel.address}</p>
+                    <p className="text-xs text-gray-900 dark:text-white leading-snug">{hotel.address}</p>
                     <p className="text-[10px] mt-0.5" style={{ color: 'var(--trip-base)' }}>{hotel.neighborhood}</p>
                   </div>
                 </div>
@@ -906,7 +908,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{hotel.guestRatings.label}</span>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.guestRatings.label}</span>
                       <span className="text-[10px] text-gray-400">&middot; {hotel.reviews} reviews</span>
                     </div>
                     <div className="flex flex-wrap gap-x-2 mt-1">
@@ -970,15 +972,15 @@ function BrowsingHotelGridCard({
   return (
     <div
       className={`rounded-xl border overflow-hidden transition-all flex flex-col cursor-pointer ${
-        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 bg-white dark:bg-[var(--background)] hover:shadow-md'
+        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:shadow-md dark:hover:border-white/15'
       }`}
       onClick={onViewDetails}
     >
       <ImageCarousel images={hotel.images} alt={hotel.name} height="h-44" />
-      <div className="p-3.5 flex flex-col flex-1 bg-white dark:bg-[var(--background)]">
+      <div className="p-3.5 flex flex-col flex-1 bg-white dark:bg-white/[0.03]">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{hotel.name}</h4>
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">{hotel.name}</h4>
             <StarRating count={hotel.stars} />
           </div>
           <div className="text-right shrink-0">
@@ -1025,18 +1027,18 @@ function BrowsingHotelListCard({
   return (
     <div
       className={`flex flex-col sm:flex-row rounded-xl border overflow-hidden transition-all cursor-pointer ${
-        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 bg-white dark:bg-[var(--background)] hover:shadow-md'
+        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:shadow-md dark:hover:border-white/15'
       }`}
       onClick={onViewDetails}
     >
       <div className="sm:w-60 flex-shrink-0">
         <ImageCarousel images={hotel.images} alt={hotel.name} height="h-48 sm:h-full" />
       </div>
-      <div className="flex-1 p-4 flex flex-col justify-between bg-white dark:bg-[var(--background)]">
+      <div className="flex-1 p-4 flex flex-col justify-between bg-white dark:bg-white/[0.03]">
         <div>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">{hotel.name}</h4>
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white">{hotel.name}</h4>
               <StarRating count={hotel.stars} />
             </div>
             <div className="text-right shrink-0">
@@ -1117,13 +1119,13 @@ function BrowsingHotelBookView({
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             style={{ transformOrigin: direction > 0 ? 'left center' : 'right center' }}
           >
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden shadow-md">
+            <div className="bg-white dark:bg-white/[0.03] rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden shadow-md">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 {/* Left page — large image */}
                 <div className="relative">
                   <ImageCarousel images={hotel.images} alt={hotel.name} height="h-72 md:h-96" />
                   {/* Page number badge */}
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[10px] font-semibold text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full shadow-sm">
+                  <div className="absolute top-3 left-3 bg-white/90 dark:bg-black/60 backdrop-blur-sm text-[10px] font-semibold text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full shadow-sm">
                     {page + 1} / {hotels.length}
                   </div>
                 </div>
@@ -1139,7 +1141,7 @@ function BrowsingHotelBookView({
                       {hotel.rating}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{hotel.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{hotel.name}</h3>
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
                     <MapPin size={12} />
                     <span>{hotel.neighborhood} &middot; {hotel.address}</span>
@@ -1157,7 +1159,7 @@ function BrowsingHotelBookView({
                         {hotel.guestRatings.overall}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{hotel.guestRatings.label}</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{hotel.guestRatings.label}</p>
                         <p className="text-[10px] text-gray-400">{hotel.reviews.toLocaleString()} reviews</p>
                       </div>
                     </div>
@@ -1176,9 +1178,9 @@ function BrowsingHotelBookView({
                       <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Room Types</p>
                       <div className="space-y-1">
                         {hotel.roomTypes.map((room, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2 border border-gray-100">
+                          <div key={i} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-white/[0.02] rounded-lg px-3 py-2 border border-gray-100 dark:border-white/[0.06]">
                             <div>
-                              <span className="font-medium text-gray-900 dark:text-gray-100">{room.type}</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{room.type}</span>
                               <span className="text-gray-400 ml-1.5">{room.beds}</span>
                             </div>
                             <span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{room.price}</span>
@@ -1199,7 +1201,7 @@ function BrowsingHotelBookView({
                     {/* Check-in/out */}
                     <div className="flex gap-2 text-[10px]">
                       <span className="text-gray-500 dark:text-gray-400">Check-in: <span className="font-medium text-gray-700 dark:text-gray-200">{hotel.checkIn}</span></span>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-300 dark:text-white/20">|</span>
                       <span className="text-gray-500 dark:text-gray-400">Check-out: <span className="font-medium text-gray-700 dark:text-gray-200">{hotel.checkOut}</span></span>
                     </div>
                   </div>
@@ -1222,7 +1224,7 @@ function BrowsingHotelBookView({
         <button
           onClick={() => goTo(Math.max(0, page - 1))}
           disabled={page === 0}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={14} />
           Previous
@@ -1233,7 +1235,7 @@ function BrowsingHotelBookView({
               key={i}
               onClick={() => goTo(i)}
               className={`w-2 h-2 rounded-full transition-all ${
-                i === page ? 'bg-[#60a5fa] w-5' : 'bg-gray-300 hover:bg-gray-400'
+                i === page ? 'bg-[#60a5fa] w-5' : 'bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/30'
               }`}
             />
           ))}
@@ -1241,7 +1243,7 @@ function BrowsingHotelBookView({
         <button
           onClick={() => goTo(Math.min(hotels.length - 1, page + 1))}
           disabled={page === hotels.length - 1}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           Next
           <ChevronRight size={14} />
@@ -1300,12 +1302,12 @@ function BrowsingHotelsSection({
   };
 
   return (
-    <div className="rounded-xl overflow-hidden bg-white dark:bg-[var(--background)] border border-gray-200 dark:border-white/[0.08] shadow-sm">
+    <div className="rounded-xl overflow-hidden bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] shadow-sm">
       <button onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50">
+        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
           <Search size={16} className="text-gray-400" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Browsing Hotels</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">Browsing Hotels</span>
           <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
             style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent, #c8a96a)', border: '1px solid rgba(200,169,106,0.25)' }}>{hotels.length} results</span>
         </div>
@@ -1346,7 +1348,7 @@ function BrowsingHotelsSection({
                         <X size={14} />
                       </button>
                     </div>
-                    <div className="bg-white dark:bg-[var(--background)]">
+                    <div className="bg-white dark:bg-white/[0.03]">
                       <HotelDetailPanel hotel={detailHotel} onSelect={onSelect} />
                     </div>
                   </motion.div>
@@ -1370,7 +1372,7 @@ function BrowsingHotelsSection({
                       className={`p-1.5 rounded-md transition-colors ${
                         viewMode === mode
                           ? 'bg-[#60a5fa] text-white'
-                          : 'bg-gray-100 text-gray-500 dark:text-gray-400 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
                       }`}
                       title={label}
                     >
@@ -1456,7 +1458,7 @@ function BookedHotelCard({
   const totalCost = nights ? hotel.price * nights : null;
 
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[var(--background)]">
+    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-white/[0.03]">
       {/* Gradient banner header */}
       <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))' }}>
         <div className="flex items-center justify-between text-white">
@@ -1480,35 +1482,35 @@ function BookedHotelCard({
             {/* Status badges */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-white text-[10px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--trip-base)' }}>Confirmed</span>
-              <span className="flex items-center gap-0.5 bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px]">
+              <span className="flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]">
                 <Star size={9} className="fill-blue-600 text-blue-600" />
                 <span className="font-medium">{hotel.rating}/10</span>
-                <span className="text-blue-600">({hotel.reviews})</span>
+                <span className="text-blue-600 dark:text-blue-400">({hotel.reviews})</span>
               </span>
             </div>
 
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{hotel.name}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{hotel.name}</h3>
 
             {/* Check-in / check-out */}
             {(hotel.checkIn || hotel.checkOut) && (
             <div className="flex gap-2">
               {hotel.checkIn && (
               <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 px-3 py-2">
-                <span className="text-[10px] text-blue-800 block font-medium">Check-in</span>
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{hotel.checkIn}</span>
+                <span className="text-[10px] text-blue-800 dark:text-blue-300 block font-medium">Check-in</span>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.checkIn}</span>
               </div>
               )}
               {hotel.checkOut && (
               <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 px-3 py-2">
-                <span className="text-[10px] text-blue-800 block font-medium">Check-out</span>
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{hotel.checkOut}</span>
+                <span className="text-[10px] text-blue-800 dark:text-blue-300 block font-medium">Check-out</span>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.checkOut}</span>
               </div>
               )}
             </div>
             )}
 
             {/* Cancellation badge */}
-            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-medium">
+            <span className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-medium">
               <Shield size={10} /> {hotel.cancellation}
             </span>
 
@@ -1533,13 +1535,13 @@ function BookedHotelCard({
                       </div>
                     </div>
                   </div>
-                  <div className="p-3 space-y-2.5 bg-white dark:bg-[var(--background)]">
+                  <div className="p-3 space-y-2.5 bg-white dark:bg-white/[0.03]">
                     {/* Room specs */}
                     <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
                       <span className="flex items-center gap-1"><Users size={12} style={{ color: 'var(--trip-base)' }} /> {room.guests} {room.guests === 1 ? 'Guest' : 'Guests'}</span>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-300 dark:text-white/20">|</span>
                       <span>{room.beds}</span>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-300 dark:text-white/20">|</span>
                       <span>{room.size}</span>
                     </div>
 
@@ -1548,7 +1550,7 @@ function BookedHotelCard({
                       <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Room Amenities</p>
                       <div className="flex flex-wrap gap-1.5">
                         {room.amenities.map((a, idx) => (
-                          <span key={idx} className="text-[10px] bg-gray-50 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md border border-gray-200 flex items-center gap-1">
+                          <span key={idx} className="text-[10px] bg-gray-50 dark:bg-white/[0.02] text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md border border-gray-200 dark:border-white/[0.08] flex items-center gap-1">
                             {AMENITY_ICONS[a] || null} {a}
                           </span>
                         ))}
@@ -1562,9 +1564,9 @@ function BookedHotelCard({
                         <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{nights ? (room.price * nights).toFixed(0) : room.price}</p>
                         <p className="text-[9px] text-gray-400">{nights} nights</p>
                       </div>
-                      <div className="rounded-md bg-gray-50 p-2 text-center">
+                      <div className="rounded-md bg-gray-50 dark:bg-white/[0.02] p-2 text-center">
                         <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-in</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{hotel.checkIn}</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{hotel.checkIn}</p>
                         <p className="text-[9px] text-gray-400">Mar 22</p>
                       </div>
                     </div>
@@ -1595,7 +1597,7 @@ function BookedHotelCard({
                         <>
                           <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">{nights} nights</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span></div>
                           <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
-                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Total</span>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
                             <span className="font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span>
                           </div>
                         </>
@@ -1611,7 +1613,7 @@ function BookedHotelCard({
               <button onClick={() => setRoomsOpen(!roomsOpen)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-2">
                   <Hotel size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Room Options</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">Room Options</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ color: 'var(--trip-base)', backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)', borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                     {hotel.roomTypes[selectedRoom].type}
                   </span>
@@ -1649,9 +1651,9 @@ function BookedHotelCard({
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
                                     <div className="flex items-center gap-2 mb-0.5">
-                                      <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
+                                      <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
                                       {isSelected && <span className="text-white text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--trip-base)' }}>Current</span>}
-                                      {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">+{cs}{priceDiff}/nt</span>}
+                                      {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-700/30">+{cs}{priceDiff}/nt</span>}
                                     </div>
                                     <p className="text-[10px] text-gray-600 dark:text-gray-300">{room.beds}</p>
                                     <div className="flex items-center gap-2.5 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1660,7 +1662,7 @@ function BookedHotelCard({
                                     </div>
                                   </div>
                                   <div className="text-right shrink-0">
-                                    <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{cs}{room.price}</p>
+                                    <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{cs}{room.price}</p>
                                     <p className="text-[9px] text-gray-500 dark:text-gray-400">per night</p>
                                   </div>
                                 </div>
@@ -1671,7 +1673,7 @@ function BookedHotelCard({
                             <AnimatePresence>
                               {expandedRoom === roomKey && (
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                  <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
+                                  <div className="mt-1.5 bg-white dark:bg-white/[0.03] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
@@ -1680,7 +1682,7 @@ function BookedHotelCard({
                                     <div className="p-3 space-y-2">
                                       <div className="flex justify-between">
                                         <div>
-                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-gray-100">{room.type}</h6>
+                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-white">{room.type}</h6>
                                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{room.beds} &middot; {room.size} &middot; {room.guests} guests</p>
                                         </div>
                                         <div className="text-right">
@@ -1712,20 +1714,20 @@ function BookedHotelCard({
               <p className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide">Booking Details</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                 <span className="text-gray-500 dark:text-gray-400">Confirmation #</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">HTL-2026-{hotel.id.toUpperCase()}</span>
+                <span className="font-medium text-gray-900 dark:text-white">HTL-2026-{hotel.id.toUpperCase()}</span>
                 <span className="text-gray-500 dark:text-gray-400">Property ID</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{hotel.id.toUpperCase()}-PAR</span>
+                <span className="font-medium text-gray-900 dark:text-white">{hotel.id.toUpperCase()}-PAR</span>
                 <span className="text-gray-500 dark:text-gray-400">Guest</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">2 Adults</span>
+                <span className="font-medium text-gray-900 dark:text-white">2 Adults</span>
                 <span className="text-gray-500 dark:text-gray-400">Payment</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1"><CreditCard size={10} /> **** 4242</span>
+                <span className="font-medium text-gray-900 dark:text-white flex items-center gap-1"><CreditCard size={10} /> **** 4242</span>
               </div>
             </div>
 
             {/* Hotel policies (collapsible) */}
             <div className="bg-white dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/[0.08] overflow-hidden">
               <button onClick={() => setPoliciesOpen(!policiesOpen)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Hotel Policies</span>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">Hotel Policies</span>
                 <ChevronDown size={14} className={`text-gray-400 transition-transform ${policiesOpen ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
@@ -1770,15 +1772,15 @@ function BookedHotelCard({
             <div className="grid grid-cols-3 gap-2">
               <a href={`tel:${hotel.phone}`} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                 <Phone size={14} style={{ color: 'var(--trip-base)' }} />
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Call</span>
+                <span className="text-xs text-gray-900 dark:text-white font-medium">Call</span>
               </a>
               <a href={`mailto:${hotel.email}`} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                 <Mail size={14} style={{ color: 'var(--trip-base)' }} />
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Email</span>
+                <span className="text-xs text-gray-900 dark:text-white font-medium">Email</span>
               </a>
               <button className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                 <Map size={14} className="text-[#8b6f47]" />
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Map</span>
+                <span className="text-xs text-gray-900 dark:text-white font-medium">Map</span>
               </button>
             </div>
 
@@ -1787,7 +1789,7 @@ function BookedHotelCard({
               <div className="flex items-start gap-2">
                 <MapPin size={14} className="text-[#8b6f47] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-900 dark:text-gray-100 leading-snug">{hotel.address}</p>
+                  <p className="text-xs text-gray-900 dark:text-white leading-snug">{hotel.address}</p>
                   <p className="text-[10px] mt-0.5" style={{ color: 'var(--trip-base)' }}>{hotel.neighborhood}</p>
                 </div>
               </div>
@@ -1806,7 +1808,7 @@ function BookedHotelCard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{hotel.guestRatings.label}</span>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.guestRatings.label}</span>
                     <span className="text-[10px] text-gray-400">&middot; {hotel.reviews} reviews</span>
                   </div>
                   <div className="flex flex-wrap gap-x-2.5 mt-1">

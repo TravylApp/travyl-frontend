@@ -288,6 +288,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
+  const [activeSubcategory, setActiveSubcategory] = useState('');
   const [columnCount, setColumnCount] = useState(3);
   const [flush, setFlush] = useState(false);
 
@@ -329,9 +330,17 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     return places.filter((p) => p.type === activeTab);
   }, [activeTab, favorites, places]);
 
+  // Subcategories
+  const subcategories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of tabFiltered) counts[item.category] = (counts[item.category] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([cat, count]) => ({ label: cat, count }));
+  }, [tabFiltered]);
+
   // Filter + sort
   const filtered = useMemo(() => {
     let items = tabFiltered;
+    if (activeSubcategory) items = items.filter((p) => p.category === activeSubcategory);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       items = items.filter((p) =>
@@ -345,7 +354,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
     if (sortBy === 'rating') items = [...items].sort((a, b) => b.rating - a.rating);
     else if (sortBy === 'name') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
     return items;
-  }, [tabFiltered, searchQuery, sortBy]);
+  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
 
   // Group into sections (only used in "all" tab with default sort)
   const sections = useMemo(() => {
@@ -397,18 +406,18 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   return (
     <div className="flex flex-col min-h-[60vh]" style={{ overflowAnchor: 'auto' }}>
       {/* Sticky header */}
-      <div className="sticky top-0 z-30">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[color-mix(in_srgb,var(--background)_95%,transparent)] backdrop-blur-md border-b border-gray-100 dark:border-white/[0.08]">
         {/* Row 1: Tabs */}
         <div className="px-4 pt-2 pb-0 overflow-x-auto scrollbar-hide">
           <div className="flex gap-0 -mb-px">
             {TABS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => { setActiveTab(key);  }}
+                onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
                 className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
                   activeTab === key
                     ? 'font-semibold'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                    : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
                 style={activeTab === key ? { borderColor: 'var(--trip-base)', color: 'var(--trip-base)' } : undefined}
               >
@@ -422,17 +431,17 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
         {/* Row 2: Search + Controls */}
         <div className="px-4 py-2 flex items-center gap-3">
           <div className="relative flex-1 min-w-0 max-w-xs">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder={`Search ${destination}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[12px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all"
+              className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] rounded-full text-[12px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all"
               style={{ '--tw-ring-color': 'var(--trip-base)' } as any}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                 <X size={12} />
               </button>
             )}
@@ -442,7 +451,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer"
+              className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer"
             >
               <option value="default">Default</option>
               <option value="rating">Top Rated</option>
@@ -455,7 +464,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
                   className={`w-7 h-7 rounded-md text-[11px] font-semibold transition-all ${
                     columnCount === n
                       ? 'bg-white dark:bg-white/20 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600'
+                      : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                   }`}>
                   {n}
                 </button>
@@ -467,7 +476,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 flush
                   ? 'bg-gray-900 dark:bg-white/90 text-white dark:text-gray-900'
-                  : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
               }`}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -481,6 +490,36 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
           </div>
         </div>
 
+        {/* Row 3: Subcategory pills (always visible when available) */}
+        {subcategories.length > 1 && (
+          <div className="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setActiveSubcategory('')}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition-all ${
+                !activeSubcategory
+                  ? 'text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
+              }`}
+              style={!activeSubcategory ? { backgroundColor: 'var(--trip-base)' } : undefined}
+            >
+              All
+            </button>
+            {subcategories.slice(0, 12).map(({ label, count }) => (
+              <button
+                key={label}
+                onClick={() => setActiveSubcategory(activeSubcategory === label ? '' : label)}
+                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition-all ${
+                  activeSubcategory === label
+                    ? 'text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
+                }`}
+                style={activeSubcategory === label ? { backgroundColor: 'var(--trip-base)' } : undefined}
+              >
+                {label} <span className="opacity-50">{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Title + count */}
@@ -489,7 +528,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
           <h2 className="text-lg font-bold text-gray-900 dark:text-white" style={{ color: 'var(--trip-base)' }}>
             Explore {destination}
           </h2>
-          <p className="text-[12px] text-gray-400">{filtered.length} places to discover</p>
+          <p className="text-[12px] text-gray-400 dark:text-gray-500">{filtered.length} places to discover</p>
         </div>
       </div>
 
@@ -515,9 +554,9 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500">No places found</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No places found</p>
             <button
-              onClick={() => { setSearchQuery('');  setActiveTab('all'); }}
+              onClick={() => { setSearchQuery(''); setActiveSubcategory(''); setActiveTab('all'); }}
               className="text-xs mt-2 hover:underline"
               style={{ color: 'var(--trip-base)' }}
             >

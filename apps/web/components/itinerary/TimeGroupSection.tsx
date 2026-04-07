@@ -107,8 +107,8 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
               {/* Inline add button */}
               <button
                 onClick={() => onAddActivity?.(group.timeOfDay)}
-                className="shrink-0 w-[200px] h-full min-h-[200px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed hover:border-solid hover:shadow-md transition-all cursor-pointer group"
-                style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.4)', color: 'var(--trip-base)', backgroundColor: 'var(--magazine-bg, rgba(255,255,255,0.85))' }}
+                className="shrink-0 w-[200px] h-full min-h-[200px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed hover:border-solid hover:shadow-md transition-all cursor-pointer group bg-white/85 dark:bg-white/[0.03]"
+                style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.4)', color: 'var(--trip-base)' }}
               >
                 <div className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
                   style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
@@ -134,8 +134,8 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
             ))}
             <button
               onClick={() => onAddActivity?.(group.timeOfDay)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed hover:border-solid hover:shadow-md transition-all cursor-pointer group backdrop-blur-md"
-              style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.4)', color: 'var(--trip-base)', backgroundColor: 'var(--magazine-bg, rgba(255,255,255,0.85))' }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-solid hover:shadow-md transition-all cursor-pointer group backdrop-blur-md bg-white/85 dark:bg-white/[0.03]"
+              style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.4)', color: 'var(--trip-base)' }}
             >
               <div className="w-7 h-7 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
                 style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>

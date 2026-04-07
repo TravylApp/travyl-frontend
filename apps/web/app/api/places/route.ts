@@ -3,6 +3,7 @@ import {
   BackendPlace,
   mapBackendToPlaceItem,
 } from '@travyl/shared'
+import { filterByRadius } from '@/lib/haversine'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
@@ -69,6 +70,12 @@ export async function GET(req: NextRequest) {
       data = await fetchNearby(q, lat, lng, category, limit)
     }
 
+    // Filter by geographic radius to avoid returning places from wrong cities
+    // (e.g. Universal Studios Orlando in a New Delhi trip)
+    const searchLat = parseFloat(lat)
+    const searchLng = parseFloat(lng)
+    data = filterByRadius(data, searchLat, searchLng, 50)
+
     // Map to PlaceItem format using the canonical shared mapper
     const requestedCat = category
     const places = data.map((p, idx) => mapBackendToPlaceItem(p, idx, requestedCat))
@@ -115,7 +122,7 @@ async function fetchNearby(
   // Don't silently fall back to default coords — return empty if location not found
   if (!geocoded) return []
   const res = await fetch(
-    `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}`,
+    `${API_URL}/api/places/nearby?lat=${searchLat}&lng=${searchLng}&category=${category}&limit=${limit}&radius_km=50`,
     { headers: { Accept: 'application/json' } }
   )
   if (!res.ok) return []

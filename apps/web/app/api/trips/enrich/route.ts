@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
 import { upscaleGoogleImage } from '@travyl/shared'
+import { filterByRadius } from '@/lib/haversine'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
@@ -107,14 +108,17 @@ export async function POST(req: NextRequest) {
     // Fallback 1: Foursquare (via backend /api/places/nearby) — broad "all" query
     if (exploreItems.length === 0 && BACKEND_URL) {
       try {
-        const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&limit=40`)
-        if (r.ok) {
-          const items = await r.json()
-          const seen = new Set<string>()
-          exploreItems = (Array.isArray(items) ? items : []).filter((p: any) => {
-            if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
-          }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
-        }
+        const fsCats = ['attraction', 'restaurant', 'museum']
+        const results = await Promise.all(
+          fsCats.map(async (cat) => {
+            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4&radius_km=50`)
+            return r.ok ? r.json() : []
+          })
+        )
+        const seen = new Set<string>()
+        exploreItems = results.flat().filter((p: any) => {
+          if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
+        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
       } catch {}
     }
 
@@ -133,6 +137,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Filter explore items by geographic radius to prevent wrong-city results
+  if (lat && lng && exploreItems.length > 0) {
+    exploreItems = filterByRadius(exploreItems, lat, lng, 50) as typeof exploreItems
+  }
+
   // Fetch all enrichment APIs in parallel with 15s timeout
   const countryCode = country.substring(0, 2).toUpperCase()
   const startParam = trip.start_date || ''
@@ -149,7 +158,7 @@ export async function POST(req: NextRequest) {
           .then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null)),
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
     fetch(`${baseUrl}/api/news?destination=${encodeURIComponent(city)}&limit=8`)
@@ -191,12 +200,12 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : null).catch(() => null),
     // TripAdvisor restaurants — real photos + ratings (via backend)
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
     // TripAdvisor attractions — supplement explore items (via backend)
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
   ])
@@ -204,8 +213,12 @@ export async function POST(req: NextRequest) {
 
   // Supplement explore_items with TripAdvisor attractions (better photos, more data)
   if (taAttractions?.length > 0) {
+    // Filter by radius to avoid wrong-city results
+    const filteredAttractions = lat && lng
+      ? filterByRadius(taAttractions, lat, lng, 50)
+      : taAttractions
     const existingIds = new Set(exploreItems.map((e) => e.title?.toLowerCase()))
-    for (const ta of taAttractions) {
+    for (const ta of filteredAttractions) {
       if (!ta.name || existingIds.has(ta.name.toLowerCase())) continue
       existingIds.add(ta.name.toLowerCase())
       exploreItems.push({

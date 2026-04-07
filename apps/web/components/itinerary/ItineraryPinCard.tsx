@@ -36,7 +36,7 @@ function hasTape(id: string): boolean {
 }
 
 const frameClasses: Record<FrameStyle, { container: string; image: string }> = {
-  polaroid: { container: 'rounded-sm bg-white p-1.5 pb-2.5 shadow-md', image: 'rounded-sm' },
+  polaroid: { container: 'rounded-sm bg-white dark:bg-white/[0.03] p-1.5 pb-2.5 shadow-md', image: 'rounded-sm' },
   rounded: { container: 'rounded-2xl overflow-hidden shadow-sm', image: 'rounded-2xl' },
   sharp: { container: 'rounded-none overflow-hidden shadow-sm', image: 'rounded-none' },
   asymmetric: { container: 'rounded-tl-3xl rounded-br-3xl rounded-tr-md rounded-bl-md overflow-hidden shadow-sm', image: 'rounded-tl-3xl rounded-br-3xl rounded-tr-md rounded-bl-md' },

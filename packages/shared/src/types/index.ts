@@ -6,10 +6,13 @@ export type CollaboratorRole = 'viewer' | 'editor'
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  city: string | null;
+  country: string | null;
   onboarding_completed: boolean;
+  preferences: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
