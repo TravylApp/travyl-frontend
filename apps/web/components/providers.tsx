@@ -6,6 +6,7 @@ import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/share
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
+import { Toaster } from './ui/sonner';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -52,10 +53,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClientRef.current}>
       <GlobalNavbar />
       {children}
       <SpotlightSearch />
+      <Toaster />
     </QueryClientProvider>
   );
 }
