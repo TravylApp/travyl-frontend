@@ -2,33 +2,45 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL ??
-  process.env.NEXT_PUBLIC_SUPABASE_URL;
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  'https://placeholder.supabase.co';
 
 const supabasePublishableKey =
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   'placeholder';
 
-// Helper function to check if Supabase is properly configured
-function isSupabaseConfigured(url?: string, key?: string): boolean {
-  if (!url || !key) return false;
-  if (url.includes('your-project') || url.includes('placeholder')) return false;
-  if (key === 'placeholder' || key === '') return false;
-  return true;
+// Lazy-initialized default client. On web, configureSupabase() replaces this
+// before first use, avoiding a duplicate GoTrue instance.
+// persistSession OFF by default to prevent auth leaking across users on SSR.
+// Web overrides via configureSupabase() with a cookie-based browser client.
+// Mobile overrides via configureSupabase() with an AsyncStorage-based client.
+let _client: SupabaseClient | null = null;
+
+function getDefaultClient(): SupabaseClient {
+  if (!_client) {
+    _client = createClient(supabaseUrl, supabasePublishableKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
+  }
+  return _client;
 }
 
-// Default client (localStorage-based — fine for mobile, overridden for web)
-// Only create client if credentials are properly configured
-export let supabase: SupabaseClient | null = isSupabaseConfigured(supabaseUrl, supabasePublishableKey)
-  ? createClient(supabaseUrl!, supabasePublishableKey!, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null;
+// Proxy that lazily resolves to the configured (or default) client.
+// This lets `configureSupabase` swap the underlying client before any
+// Supabase call happens, preventing duplicate GoTrue auth instances.
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getDefaultClient(), prop, receiver);
+  },
+});
 
 export function configureSupabase(client: SupabaseClient) {
-  supabase = client;
+  _client = client;
 }

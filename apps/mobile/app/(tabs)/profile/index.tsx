@@ -66,7 +66,7 @@ export default function ProfileScreen() {
   const isAuthenticated = !!user;
   const displayName = isAuthenticated
     ? (profile?.display_name ?? user.email?.split('@')[0] ?? 'User')
-    : 'Alex Rivera';
+    : 'Guest';
   const initials = displayName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
   const filteredFavorites = useMemo(() => {

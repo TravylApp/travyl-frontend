@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
+import { filterByRadius } from '@/lib/haversine'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
-
-// Lazy-init to avoid crashing at build time when env vars aren't set
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SECRET_KEY!
-  return createClient(url, key)
-}
 
 const COUNTRY_CUISINE: Record<string, string> = {
   France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
@@ -20,9 +15,20 @@ const COUNTRY_CUISINE: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = rateLimit(req, 'enrich', 3, 60_000)
+  if (blocked) return blocked
+
+  // Origin check — only accept requests from our own domain
+  const originHeader = req.headers.get('origin') || req.headers.get('referer') || ''
+  const host = req.headers.get('host') || ''
+  const IS_DEV = process.env.NODE_ENV === 'development'
+  if (!IS_DEV && originHeader && !originHeader.includes(host) && !['gotravyl.com', 'deeviaje.com', 'amplifyapp.com'].some(d => originHeader.includes(d))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = getSupabase()
   const { tripId } = await req.json()
-  if (!tripId) return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
+  if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
   // Fetch the trip
   const { data: trip, error: fetchErr } = await supabase
@@ -30,6 +36,18 @@ export async function POST(req: NextRequest) {
 
   if (fetchErr || !trip) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
+  }
+
+  // Ownership check: logged-in must own, anonymous can only enrich public unowned trips
+  const authHeader = req.headers.get('authorization')
+  if (authHeader) {
+    const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
+      { global: { headers: { Authorization: authHeader } } }).auth.getUser()
+    if (!user || (trip.user_id && trip.user_id !== user.id)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+  } else if (trip.user_id || trip.visibility !== 'public') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
   const existing = trip.trip_context ?? {}
@@ -88,7 +106,7 @@ export async function POST(req: NextRequest) {
         const fsCats = ['attraction', 'restaurant', 'museum']
         const results = await Promise.all(
           fsCats.map(async (cat) => {
-            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
+            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4&radius_km=50`)
             return r.ok ? r.json() : []
           })
         )
@@ -117,10 +135,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Fetch all enrichment APIs in parallel
+  // Filter explore items by geographic radius to prevent wrong-city results
+  if (lat && lng && exploreItems.length > 0) {
+    exploreItems = filterByRadius(exploreItems, lat, lng, 50) as typeof exploreItems
+  }
+
+  // Fetch all enrichment APIs in parallel with 15s timeout
   const countryCode = country.substring(0, 2).toUpperCase()
   const startParam = trip.start_date || ''
   const endParam = trip.end_date || ''
+  const enrichAbort = new AbortController()
+  const enrichTimeout = setTimeout(() => enrichAbort.abort(), 15_000)
+  const sig = enrichAbort.signal
+  const safeFetch = (url: string, opts?: RequestInit) =>
+    fetch(url, { ...opts, signal: sig }).catch(() => null)
   const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
     (BACKEND_URL
       ? fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(city)}`)
@@ -131,7 +159,7 @@ export async function POST(req: NextRequest) {
           .then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null)),
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
     fetch(`${baseUrl}/api/news?destination=${encodeURIComponent(city)}&limit=8`)
@@ -180,20 +208,25 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : null).catch(() => null),
     // TripAdvisor restaurants — real photos + ratings (via backend)
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
     // TripAdvisor attractions — supplement explore items (via backend)
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
   ])
+  clearTimeout(enrichTimeout)
 
   // Supplement explore_items with TripAdvisor attractions (better photos, more data)
   if (taAttractions?.length > 0) {
+    // Filter by radius to avoid wrong-city results
+    const filteredAttractions = lat && lng
+      ? filterByRadius(taAttractions, lat, lng, 50)
+      : taAttractions
     const existingIds = new Set(exploreItems.map((e) => e.title?.toLowerCase()))
-    for (const ta of taAttractions) {
+    for (const ta of filteredAttractions) {
       if (!ta.name || existingIds.has(ta.name.toLowerCase())) continue
       existingIds.add(ta.name.toLowerCase())
       exploreItems.push({
@@ -208,12 +241,14 @@ export async function POST(req: NextRequest) {
 
   // Build "What's Going On" venues from different categories (with real Google Places photos)
   const seen2 = new Set<string>()
-  const goingOnVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
+  const rawVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
     .filter((v: any) => {
       if (!v?.id || !v?.name || seen2.has(v.id)) return false
       seen2.add(v.id)
       return true
     })
+  // Filter by geographic radius
+  const goingOnVenues = (lat && lng ? filterByRadius(rawVenues, lat, lng, 50) : rawVenues)
     .map((v: any) => ({ id: v.id, title: v.name, description: v.description || v.tagline || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
     .slice(0, 8)
 
@@ -303,12 +338,66 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-generate packing suggestions if none exist yet
+  try {
+    const { count: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? 0) === 0) {
+      const { generatePackingSuggestions } = await import('@travyl/shared')
+      const userId = trip.user_id ?? ''
+      const suggestions = generatePackingSuggestions(
+        {
+          destination: trip.destination ?? '',
+          country: country,
+          startDate: trip.start_date ?? undefined,
+          endDate: trip.end_date ?? undefined,
+          durationDays,
+          weather: weatherData ? {
+            current: weatherData.current ? { temp_f: weatherData.current.temp_f, conditions: weatherData.current.conditions } : undefined,
+            forecast: weatherData.forecast?.map((d: any) => ({ high: d.high, low: d.low, conditions: d.conditions })),
+          } : undefined,
+          travelers: trip.trip_context?.travelers ?? undefined,
+        },
+        userId,
+      )
+
+      if (suggestions.length > 0) {
+        const rows = suggestions.map((s) => ({ ...s, trip_id: tripId }))
+        await supabase.from('packing_suggestions').insert(rows)
+      }
+    }
+  } catch {
+    // Non-critical — don't fail enrichment if packing generation fails
+  }
+
   // Update trip
   const { error: updateErr } = await supabase
     .from('trips').update({ trip_context: merged }).eq('id', tripId)
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
+
+  // Auto-generate packing suggestions via SST (fire-and-forget)
+  if (BACKEND_URL) {
+    const { data: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? []).length === 0) {
+      // Get auth token to forward to the packing-suggest SST function
+      const authHeader = req.headers.get('authorization')
+      const body = JSON.stringify({ tripId })
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authHeader) headers['Authorization'] = authHeader
+
+      fetch(`${BACKEND_URL}/packing-suggest`, { method: 'POST', headers, body })
+        .catch((err) => console.error('[enrich] packing-suggest failed:', err))
+    }
   }
 
   return NextResponse.json({ status: 'enriched', keys: Object.keys(merged) })

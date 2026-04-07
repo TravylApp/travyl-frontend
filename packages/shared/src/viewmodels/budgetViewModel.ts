@@ -1,5 +1,6 @@
 import type { ItineraryDayWithActivities, Flight, Hotel } from '../types';
 import { formatCurrency } from '../utils';
+import { convertToTripCurrency } from '../utils/currency';
 
 export interface BudgetCategory {
   label: string;
@@ -19,13 +20,15 @@ export function buildBudgetSummary(
   flights: Flight[],
   hotels: Hotel[],
   currency = 'USD',
+  rates: Record<string, number> | null = null,
 ): BudgetSummary {
   // Sum activity costs
   let activitiesCost = 0;
   for (const day of days) {
     for (const activity of day.activities) {
       if (activity.estimated_cost != null) {
-        activitiesCost += activity.estimated_cost;
+        const convertedCost = convertToTripCurrency(activity.estimated_cost, activity.currency, currency, rates);
+        activitiesCost += convertedCost;
       }
     }
   }
@@ -34,7 +37,8 @@ export function buildBudgetSummary(
   let flightsCost = 0;
   for (const flight of flights) {
     if (flight.data.price != null) {
-      flightsCost += flight.data.price;
+      const convertedPrice = convertToTripCurrency(flight.data.price, flight.data.currency ?? currency, currency, rates);
+      flightsCost += convertedPrice;
     }
   }
 
@@ -42,12 +46,14 @@ export function buildBudgetSummary(
   let hotelsCost = 0;
   for (const hotel of hotels) {
     if (hotel.data.total_price != null) {
-      hotelsCost += hotel.data.total_price;
+      const convertedTotal = convertToTripCurrency(hotel.data.total_price, hotel.data.currency ?? currency, currency, rates);
+      hotelsCost += convertedTotal;
     } else if (hotel.data.price_per_night != null) {
       const checkIn = new Date(hotel.data.check_in + 'T00:00:00');
       const checkOut = new Date(hotel.data.check_out + 'T00:00:00');
       const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
-      hotelsCost += hotel.data.price_per_night * nights;
+      const convertedNightly = convertToTripCurrency(hotel.data.price_per_night, hotel.data.currency ?? currency, currency, rates);
+      hotelsCost += convertedNightly * nights;
     }
   }
 

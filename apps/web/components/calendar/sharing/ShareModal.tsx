@@ -8,6 +8,7 @@ import { useCollaborators, useAuthStore, updateTripVisibility, ensureShareLinkTo
 import { InviteBar } from './InviteBar'
 import { CollaboratorList } from './CollaboratorList'
 import { LinkSharingSection } from './LinkSharingSection'
+import { PublicSharingSection } from './PublicSharingSection'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
@@ -157,6 +158,13 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
                 onRemove={removeCollaborator}
               />
             </div>
+            <PublicSharingSection
+              tripId={trip.id}
+              currentVisibility={trip.visibility}
+              currentLinkPermission={trip.link_permission}
+              isOwner={isOwner}
+              onSettingsChange={onSettingsChange ?? (() => Promise.resolve())}
+            />
             <LinkSharingSection
               visibility={trip.visibility}
               linkPermission={trip.link_permission}

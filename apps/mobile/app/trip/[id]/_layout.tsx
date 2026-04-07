@@ -33,14 +33,13 @@ const ALL_TABS = [
   { name: 'activities',  title: 'Explore',     icon: 'compass'     },
   { name: 'packing',     title: 'Packing',     icon: 'suitcase'    },
   { name: 'budget',      title: 'Budget',      icon: 'pie-chart'   },
-  { name: 'cars',        title: 'Car Rental',  icon: 'car'         },
   { name: 'favorites',   title: 'Favorites',   icon: 'heart'       },
   { name: 'settings',    title: 'Settings',    icon: 'cog'         },
 ] as const;
 
 const PERMANENT_TAB_NAMES = new Set(['index', 'itinerary']);
 const ADDABLE_TABS = ALL_TABS.filter(t => !PERMANENT_TAB_NAMES.has(t.name));
-const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'activities', 'packing', 'budget', 'cars', 'favorites', 'settings'];
+const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'activities', 'packing', 'budget', 'favorites', 'settings'];
 
 // ─── Types ──────────────────────────────────────────────
 type SpinePosition = 'top' | 'bottom' | 'left' | 'right';
@@ -322,7 +321,7 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: s
     .filter(({ route }) => enabledTabs.includes(route.name));
 }
 
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
+const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
 // ─── Trip Hero ───────────────────────────────────────────
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
@@ -976,7 +975,6 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
             <TopTabs.Screen name="activities" options={{ title: 'Explore' }} />
             <TopTabs.Screen name="packing" options={{ title: 'Packing' }} />
             <TopTabs.Screen name="budget" options={{ title: 'Budget' }} />
-            <TopTabs.Screen name="cars" options={{ title: 'Car Rental' }} />
             <TopTabs.Screen name="favorites" options={{ title: 'Favorites' }} />
             <TopTabs.Screen name="settings" options={{ title: 'Settings' }} />
           </TopTabs>

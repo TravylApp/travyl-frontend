@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
-
-function getServiceSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  )
-}
+import { getSupabase, supabaseUrl, supabaseKey } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
   // Try to get user session from cookies
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
@@ -27,10 +20,11 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (user) {
-    // Logged in: RLS returns only their trips
+    // Logged in: return only trips owned by this user
     const { data, error } = await supabase
       .from('trips')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -44,7 +38,8 @@ export async function GET(req: NextRequest) {
   const tripIds = ids.split(',').filter(Boolean).slice(0, 50)
   if (tripIds.length === 0) return NextResponse.json([])
 
-  const { data, error } = await getServiceSupabase()
+  // Anon key can read public trips via RLS policy
+  const { data, error } = await getSupabase()
     .from('trips')
     .select('*')
     .in('id', tripIds)

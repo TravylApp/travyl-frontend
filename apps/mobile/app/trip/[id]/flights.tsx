@@ -14,6 +14,16 @@ const POPULAR_AIRPORTS = [
   { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
 ];
 
+// Empty stubs — comparison and booking details are not wired to real data yet
+const COMPARISON_FLIGHTS: any[] = [];
+const BOOKING_DETAILS = {
+  confirmationNumber: '', pnr: '', ticketNumbers: [] as string[],
+  fareClass: '', fareType: '',
+  baggageAllowance: { carryOn: '', checked: '', fees: 0 },
+  cancellationPolicy: '', changePolicy: '', refundPolicy: '',
+  checkInUrl: '', checkInOpens: '',
+};
+
 // Convert trip_context.flights into the shape BookedFlightCard expects
 function contextFlightsToBooked(flights: any[], destination?: string): any[] {
   return (flights ?? []).map((f: any, i: number) => {
@@ -380,7 +390,7 @@ function FlightSearchSection() {
    BOOKED FLIGHT CARD
    ================================================================ */
 
-function BookedFlightCard({ flight }: { flight: (typeof BOOKED_FLIGHTS)[0] }) {
+function BookedFlightCard({ flight }: { flight: any }) {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);

@@ -15,7 +15,7 @@ import { PageTransition } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ACCENT_COLOR = '#c8a96a';
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'http://localhost:3000';
+const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
 // ─── Accent label + serif heading ────────────────────────
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;

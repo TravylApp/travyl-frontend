@@ -16,3 +16,19 @@ export interface Command {
   isEnabled: boolean
   execute: () => void
 }
+
+export interface LocalEvent {
+  id: string
+  name: string
+  category: 'music' | 'sports' | 'arts' | 'family' | 'festival' | 'other'
+  date: string
+  startTime: string
+  endTime?: string
+  venueName: string
+  venueAddress?: string
+  imageUrl?: string
+  ticketUrl?: string
+  priceMin?: number
+  priceMax?: number
+  currency?: string
+}

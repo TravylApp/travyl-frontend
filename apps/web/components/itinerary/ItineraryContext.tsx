@@ -29,6 +29,8 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
     endTime: a.endTime ?? null,
     timeDisplay: a.startTime && a.endTime ? `${a.startTime} – ${a.endTime}` : a.startTime ?? null,
     costDisplay: a.price ?? null,
+    cost: null,
+    costCurrency: null,
     bookingUrl: null,
     notes: null,
     image: a.image ?? null,
@@ -113,11 +115,13 @@ interface ItineraryContextValue {
   setAllCollapsedOverride: React.Dispatch<React.SetStateAction<boolean | null>>;
   selectedDayIndex: number;
   setSelectedDayIndex: React.Dispatch<React.SetStateAction<number>>;
+  swapDays: (fromIdx: number, toIdx: number) => void;
 }
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
 
-// Generate a full itinerary from all trip_context data sources
+// Generate itinerary from trip_context — prefer structured itinerary data from planner,
+// fall back to building from explore_items/venues/cuisine/events
 function generateFromTripContext(
   trip: import('@travyl/shared').Trip | null,
   durationDays: number,
@@ -125,43 +129,84 @@ function generateFromTripContext(
   const ctx = trip?.trip_context;
   if (!ctx) return { days: [], activities: [] };
 
-  // Collect all available items from every data source
+  const startDate = trip.start_date ? new Date(trip.start_date + 'T00:00:00') : new Date();
+  const themes = ['Explore & Discover', 'Culture & History', 'Food & Relaxation', 'Adventure', 'Local Life', 'Hidden Gems', 'Off the Beaten Path'];
+
+  // ── Path 1: Use structured itinerary from planner (preferred) ──
+  const plannerItinerary = ctx.itinerary as any[] | undefined;
+  if (plannerItinerary?.length) {
+    const days: BaseDayData[] = [];
+    const activities: CalendarActivity[] = [];
+
+    const dayCount = Math.min(plannerItinerary.length, durationDays);
+    for (let d = 0; d < dayCount; d++) {
+      const dayData = plannerItinerary[d];
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + d);
+      const dateStr = dayData.date
+        ? new Date(dayData.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+      days.push({
+        id: `day-${d}`,
+        dayNumber: d + 1,
+        dayLabel: `Day ${d + 1}`,
+        dateLabel: dateStr,
+        theme: themes[d % themes.length],
+      });
+
+      for (let s = 0; s < (dayData.slots ?? []).length; s++) {
+        const slot = dayData.slots[s];
+        const poi = slot.poi ?? {};
+        const startHour = slot.start_time ? parseInt(slot.start_time.split(':')[0]) : 9 + s * 3;
+        const endHour = slot.end_time ? parseInt(slot.end_time.split(':')[0]) : startHour + 2;
+        const startLabel = slot.start_time_12h ?? slot.start_time ?? `${startHour}:00`;
+        const endLabel = slot.end_time_12h ?? slot.end_time ?? `${endHour}:00`;
+
+        activities.push({
+          id: `cal-${d}-${s}-${poi.id || s}`,
+          title: poi.name || `Activity ${s + 1}`,
+          type: poi.category?.toLowerCase() ?? 'sightseeing',
+          day: d,
+          startHour,
+          duration: Math.max(1, endHour - startHour),
+          startTime: startLabel,
+          endTime: endLabel,
+          location: poi.name || undefined,
+          image: poi.photo_url || poi.image || undefined,
+          color: 'var(--trip-base)',
+          onCalendar: true,
+        });
+      }
+    }
+
+    return { days, activities };
+  }
+
+  // ── Path 2: Build from explore_items/venues/cuisine/events ──
   type Item = { id: string; title: string; category: string; image?: string; description?: string };
   const allItems: Item[] = [];
   const seen = new Set<string>();
   const add = (item: Item) => { if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); } };
 
-  // 1. Explore items (sightseeing, landmarks, museums)
   for (const e of ctx.explore_items ?? []) {
     add({ id: e.id, title: e.title, category: e.category || 'sightseeing', image: e.image, description: e.description });
   }
-
-  // 2. Foursquare venues (restaurants, nightlife, experiences)
   for (const v of ctx.foursquare_venues ?? []) {
     add({ id: v.id, title: v.title || v.name || '', category: v.category || 'venue', image: v.image });
   }
-
-  // 3. Cuisine dishes → "Try local cuisine" activities
   for (const c of ctx.cuisine ?? []) {
     add({ id: `cuisine-${c.id}`, title: `Try ${c.name}`, category: 'dining', image: c.image });
   }
-
-  // 4. Events (real events happening during travel dates)
   for (const e of ctx.events ?? []) {
     add({ id: e.id, title: e.title, category: e.category || 'event', image: e.image });
   }
 
   if (allItems.length === 0) return { days: [], activities: [] };
 
-  const startDate = trip.start_date ? new Date(trip.start_date + 'T00:00:00') : new Date();
-
   const days: BaseDayData[] = [];
   const activities: CalendarActivity[] = [];
 
-  // Day themes based on category mix
-  const themes = ['Explore & Discover', 'Culture & History', 'Food & Relaxation', 'Adventure', 'Local Life', 'Hidden Gems', 'Off the Beaten Path'];
-
-  // Time slots — fill 4 slots per day for a full itinerary
   const timeSlots = [
     { hour: 9,  label: '9:00 AM',  end: '11:00 AM',  duration: 2 },
     { hour: 12, label: '12:00 PM', end: '1:30 PM',   duration: 1.5 },
@@ -169,13 +214,11 @@ function generateFromTripContext(
     { hour: 19, label: '7:00 PM',  end: '9:00 PM',   duration: 2 },
   ];
 
-  // Separate items by type for balanced scheduling
   const sightseeing = allItems.filter(i => /sight|landmark|museum|monument|historic|architecture|attraction/i.test(i.category));
   const dining = allItems.filter(i => /dining|restaurant|food|café|cafe|cuisine/i.test(i.category));
   const nightlife = allItems.filter(i => /nightlife|bar|club|entertainment|event/i.test(i.category));
   const other = allItems.filter(i => !sightseeing.includes(i) && !dining.includes(i) && !nightlife.includes(i));
 
-  // Round-robin indices for each pool
   let sIdx = 0, dIdx = 0, nIdx = 0, oIdx = 0;
 
   for (let d = 0; d < durationDays; d++) {
@@ -191,7 +234,6 @@ function generateFromTripContext(
       theme: themes[d % themes.length],
     });
 
-    // Schedule: Morning=sightseeing, Lunch=dining, Afternoon=sightseeing/other, Evening=dining/nightlife
     const schedule: (Item | null)[] = [
       sightseeing[sIdx++ % sightseeing.length] ?? other[oIdx++ % Math.max(other.length, 1)] ?? null,
       dining[dIdx++ % Math.max(dining.length, 1)] ?? null,
@@ -233,7 +275,7 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     if (trip.start_date && trip.end_date) {
       duration = Math.max(1, Math.ceil(
         (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
-      ));
+      ) + 1);
     } else if (trip.trip_context?.weather?.forecast?.length) {
       duration = trip.trip_context.weather.forecast.length;
     }
@@ -243,15 +285,16 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
   const [activities, setActivities] = useState<CalendarActivity[]>([]);
   const [baseDays, setBaseDays] = useState<BaseDayData[]>([]);
 
-  // Seed activities from trip context when trip loads (only once)
-  const [seeded, setSeeded] = useState(false);
+  // Seed activities from trip context — re-seeds when dates change
+  const dateKey = `${trip?.start_date}-${trip?.end_date}`;
+  const [seededKey, setSeededKey] = useState('');
   useEffect(() => {
-    if (generated && !seeded && generated.days.length > 0) {
+    if (generated && generated.days.length > 0 && seededKey !== dateKey) {
       setBaseDays(generated.days);
       setActivities(generated.activities);
-      setSeeded(true);
+      setSeededKey(dateKey);
     }
-  }, [generated, seeded]);
+  }, [generated, dateKey, seededKey]);
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);
@@ -325,6 +368,25 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     });
   }, []);
 
+  // Swap two days — reorders baseDays and remaps activity day indices
+  const swapDays = useCallback((fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+    setBaseDays(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      // Renumber dayNumber
+      return next.map((d, i) => ({ ...d, dayNumber: i + 1, dayLabel: `Day ${i + 1}` }));
+    });
+    setActivities(prev => prev.map(a => {
+      if (a.day === fromIdx) return { ...a, day: toIdx };
+      // Shift activities between fromIdx and toIdx
+      if (fromIdx < toIdx && a.day > fromIdx && a.day <= toIdx) return { ...a, day: a.day - 1 };
+      if (fromIdx > toIdx && a.day >= toIdx && a.day < fromIdx) return { ...a, day: a.day + 1 };
+      return a;
+    }));
+  }, []);
+
   const value = useMemo(
     () => ({
       activities, setActivities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
@@ -333,10 +395,11 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
       collapsedSections, setCollapsedSections,
       allCollapsedOverride, setAllCollapsedOverride,
       selectedDayIndex, setSelectedDayIndex,
+      swapDays,
     }),
     [activities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
      mapMarkers, selectedMarkerId, requestMapOpen,
-     collapsedSections, allCollapsedOverride, selectedDayIndex],
+     collapsedSections, allCollapsedOverride, selectedDayIndex, swapDays],
   );
 
   return (

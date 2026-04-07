@@ -1,6 +1,7 @@
 export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
+  fetchCollaboratorTrips,
   fetchSavedItems,
   fetchProfile,
   updateProfile,
@@ -38,6 +39,7 @@ export {
   acceptInviteByToken,
   joinTripViaLink,
   findPendingInviteByEmail,
+  savePlanToSupabase,
 } from './api';
 export {
   fetchBudgetCategories,
@@ -57,3 +59,7 @@ export {
   updateSuggestionStatus,
   dismissAllSuggestions,
 } from './packingService';
+
+export {
+  generatePackingSuggestions,
+} from './packingSuggestions';

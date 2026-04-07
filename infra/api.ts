@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -35,7 +35,7 @@ const locationPolicy = new aws.iam.Policy('LocationSearchPolicy', {
 
 api.route('GET /suggest', {
   handler: 'services/suggest.handler',
-  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+  link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey],
   environment: {
     PLACE_INDEX_NAME: placeIndex.indexName,
   },
@@ -45,6 +45,11 @@ api.route('GET /suggest', {
       resources: [placeIndex.indexArn],
     },
   ],
+})
+
+api.route('POST /fill-gaps', {
+  handler: 'services/fill-gaps.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
 api.route('GET /search', {
@@ -122,6 +127,11 @@ api.route('GET /activity-intelligence', {
   link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
+api.route('GET /day-intelligence', {
+  handler: 'services/day-intelligence.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
 api.route('GET /discover', {
   handler: 'services/discover.handler',
   link: [activityCdn, cacheTable, supabaseSecretKey, supabaseUrl, serpApiKey],
@@ -138,7 +148,56 @@ api.route('GET /parse-intent', {
   ],
 })
 
+api.route('GET /search/quick', {
+  handler: 'services/search-quick.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/amazon.titan-embed-text-v2:0'],
+    },
+  ],
+})
+
+api.route('GET /search/deep', {
+  handler: 'services/search-deep.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey, cacheTable],
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
+    },
+  ],
+})
+
 api.route('GET /places/search', {
   handler: 'services/place-search.handler',
   link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+})
+
+api.route('GET /api/images/search', {
+  handler: 'services/image-search.handler',
+  link: [pexels],
+})
+
+api.route('GET /api/images/destination', {
+  handler: 'services/image-destination.handler',
+  link: [pexels],
+})
+
+api.route('GET /events', {
+  handler: 'services/events.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
+})
+
+api.route('POST /book/match', {
+  handler: 'services/book.handler',
+  link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],
+  timeout: '30 seconds',
+})
+
+api.route('GET /book/status/{tripId}', {
+  handler: 'services/book.statusHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
 })

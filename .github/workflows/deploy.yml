@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Set SST secrets
+        run: |
+          npx sst secret set SupabaseSecretKey "$SECRET_SUPABASE_SECRET_KEY" --stage production
+          npx sst secret set SupabaseUrl "$SECRET_SUPABASE_URL" --stage production
+          npx sst secret set SerpApiKey "$SECRET_SERP_API_KEY" --stage production
+          npx sst secret set FoursquareApiKey "$SECRET_FOURSQUARE_API_KEY" --stage production
+          npx sst secret set Pexels "$SECRET_PEXELS" --stage production
+          npx sst secret set TicketmasterApiKey "$SECRET_TICKETMASTER_API_KEY" --stage production
+          npx sst secret set OpenTableAffiliateKey "$SECRET_OPENTABLE_AFFILIATE_KEY" --stage production
+          npx sst secret set OpenExchangeRatesAppId "$SECRET_OPEN_EXCHANGE_RATES_APP_ID" --stage production
+        env:
+          SECRET_SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SECRET_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SECRET_SERP_API_KEY: ${{ secrets.SERP_API_KEY }}
+          SECRET_FOURSQUARE_API_KEY: ${{ secrets.FOURSQUARE_API_KEY }}
+          SECRET_PEXELS: ${{ secrets.PEXELS }}
+          SECRET_TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+          SECRET_OPENTABLE_AFFILIATE_KEY: ${{ secrets.OPENTABLE_AFFILIATE_KEY }}
+          SECRET_OPEN_EXCHANGE_RATES_APP_ID: ${{ secrets.OPEN_EXCHANGE_RATES_APP_ID }}
+
+      - name: Deploy with SST
+        run: npx sst deploy --stage production

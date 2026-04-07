@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Search } from 'iconoir-react'
+import { usePlaceImages } from '@travyl/shared'
 import { FOR_YOU_PANEL_DEFAULT_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
 import { SuggestionDetailDrawer } from './SuggestionDetailDrawer'
@@ -40,6 +41,25 @@ export function ForYouPanel({
   } = useSuggestions({ destination, scheduledActivityIds })
 
   const { trackEvent } = useInteractionTracking(tripId)
+
+  // Pexels as last-resort fallback only — suggestions already have real Foursquare photos from the API
+  const suggestionNames = useMemo(() => suggestions.map(s => s.name), [suggestions])
+  const imageResults = usePlaceImages(suggestionNames)
+
+  // Only apply Pexels when a suggestion has no image at all (Foursquare enrichment covers most cases)
+  const enrichedSuggestions = useMemo(() => {
+    if (!imageResults.length) return suggestions
+    return suggestions.map((suggestion, i) => {
+      if (suggestion.imageUrl) return suggestion
+      const pexelsUrl = imageResults[i]?.data?.url
+      if (!pexelsUrl) return suggestion
+      return {
+        ...suggestion,
+        imageUrl: pexelsUrl,
+        imageUrls: [pexelsUrl, ...(suggestion.imageUrls ?? [])],
+      }
+    })
+  }, [suggestions, imageResults])
 
   const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestionCardType | null>(null)
   const [isClosing, setIsClosing] = useState(false)
@@ -161,7 +181,7 @@ export function ForYouPanel({
         ) : (
           <>
             <div className="columns-2 gap-2">
-              {suggestions.map((suggestion) => (
+              {enrichedSuggestions.map((suggestion) => (
                 <SuggestionCard
                   key={suggestion.id}
                   suggestion={suggestion}
@@ -190,7 +210,7 @@ export function ForYouPanel({
       </div>
 
       {/* Footer hint */}
-      {suggestions.length > 0 && (
+      {enrichedSuggestions.length > 0 && (
         <div className="text-center text-[11px] text-[var(--cal-text-tertiary)] py-2.5 border-t border-[var(--cal-border-light)]">
           Drag any card onto the calendar to schedule it
         </div>

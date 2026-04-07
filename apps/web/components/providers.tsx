@@ -1,7 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
@@ -52,7 +52,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClientRef.current}>
+    <QueryClientProvider client={queryClient}>
       <GlobalNavbar />
       {children}
       <SpotlightSearch />

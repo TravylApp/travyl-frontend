@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Cloud, Droplets, Sun, ChevronDown, Shield } from 'lucide-react';
-import { formatDateRange, useExchangeRates } from '@travyl/shared';
+import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, X, Check } from 'lucide-react';
+import { formatDateRange, useExchangeRates, updateTripDetails } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
 function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
@@ -58,7 +58,7 @@ function useQuote() {
   return quote;
 }
 
-export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean }) {
+export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void }) {
   const bgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,9 +78,51 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
     };
   }, []);
 
+  const [editing, setEditing] = useState(false);
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
+  const [editTravelers, setEditTravelers] = useState(1);
+  const [editTitle, setEditTitle] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const openEditor = useCallback(() => {
+    setEditStart(trip?.start_date || '');
+    setEditEnd(trip?.end_date || '');
+    setEditTravelers(trip?.travelers || 1);
+    setEditTitle(trip?.title || '');
+    setEditing(true);
+  }, [trip]);
+
+  const saveEdits = useCallback(async () => {
+    if (!tripId || saving) return;
+    setSaving(true);
+    try {
+      await updateTripDetails(tripId, {
+        title: editTitle || undefined,
+        start_date: editStart || undefined,
+        end_date: editEnd || undefined,
+        travelers: editTravelers,
+      });
+      setEditing(false);
+      onTripUpdate?.();
+    } catch (e) {
+      console.error('Failed to update trip:', e);
+    } finally {
+      setSaving(false);
+    }
+  }, [tripId, editTitle, editStart, editEnd, editTravelers, saving, onTripUpdate]);
+
   const [essentialsOpen, setEssentialsOpen] = useState(true);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
+  const [useFahrenheit, setUseFahrenheit] = useState(false);
+  useEffect(() => {
+    try {
+      const region = new Intl.Locale(navigator.language).region;
+      setUseFahrenheit(['US', 'BS', 'BZ', 'KY', 'PW', 'FM', 'MH', 'LR'].includes(region ?? ''));
+    } catch { /* default to Celsius */ }
+  }, []);
+  const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
   const weather = trip?.trip_context?.weather?.current;
   const forecast = trip?.trip_context?.weather?.forecast;
   const rawCover = overrideImage || trip?.trip_context?.hero_image_url;
@@ -151,23 +193,22 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
     <>
       {/* Background image — bleeds behind nav and all content */}
       {coverImage && (
-        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '130vh' }}>
+        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '100vh' }}>
           <div ref={bgRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
             <Image src={coverImage} alt="" fill referrerPolicy="no-referrer" className="object-cover"
               style={{ objectPosition: 'center 30%' }} sizes="100vw" priority />
           </div>
-          {/* Gradient overlay — image visible at top, darkens for text readability, fades to bg */}
+          {/* Gradient overlay — fades to solid background by 70% so it doesn't bleed into content below */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 15%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0.65) 60%, var(--magazine-bg, var(--background)) 78%, var(--magazine-bg, var(--background)) 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 15%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.65) 50%, var(--magazine-bg, var(--background)) 68%, var(--magazine-bg, var(--background)) 100%)' }} />
         </div>
       )}
 
       {/* Hero text — aligned with content area (max-w-7xl + spine offset) */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-4">
         <p className="flex items-center gap-2 text-[10px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
-          {flagUrl && (
-            <Image src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px] shadow-sm" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {flagUrl && <img src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />}
           <span>{countryName || (trip ? 'Your Trip Guide' : '')}</span>
         </p>
         <div className="flex items-center gap-4">
@@ -204,13 +245,53 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
           <div className={`transition-all duration-300 overflow-hidden ${essentialsOpen ? `${essentialsMaxH} opacity-100` : 'max-h-0 opacity-0'}`}
             style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
 
-            {/* Dates + travelers */}
-            <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-4">
-              {dateStr && <span>{dateStr}</span>}
-              {dateStr && travelersStr && <span className="text-white/30">&middot;</span>}
-              {travelersStr && <span>{travelersStr}</span>}
-            </div>
+            {/* Dates + travelers — inline editable */}
+            {editing ? (
+              <div className="flex flex-wrap items-end gap-3 mb-4 animate-[fadeSlideIn_0.2s_ease-out]">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Title</label>
+                  <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 w-48" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Start</label>
+                  <input type="date" value={editStart} onChange={(e) => setEditStart(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 [color-scheme:dark]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">End</label>
+                  <input type="date" value={editEnd} onChange={(e) => setEditEnd(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 [color-scheme:dark]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Travelers</label>
+                  <input type="number" min={1} max={20} value={editTravelers} onChange={(e) => setEditTravelers(Number(e.target.value))}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 w-20" />
+                </div>
+                <button onClick={saveEdits} disabled={saving}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#0f1f33] text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-50">
+                  <Check size={14} /> {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={() => setEditing(false)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/20">
+                  <X size={14} /> Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-4">
+                {dateStr && <span>{dateStr}</span>}
+                {dateStr && travelersStr && <span className="text-white/30">&middot;</span>}
+                {travelersStr && <span>{travelersStr}</span>}
+                {tripId && (
+                  <button onClick={openEditor} className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors" title="Edit trip details">
+                    <Pencil size={13} />
+                  </button>
+                )}
+              </div>
+            )}
 
+            {/* Quick facts, holidays, weather */}
+            <div className="space-y-2.5 mb-4">
             {/* Quick facts — currency, language, timezone, emergency, sunrise/sunset */}
             {(trip?.trip_context?.quick_facts || exchangeFact || sunrise) && (() => {
               const qf = trip?.trip_context?.quick_facts;
@@ -228,7 +309,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
                 : undefined;
               return (
                 <>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] mb-3"
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px]"
                     style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
                     {qf?.currency && <span className="text-white/80"><span className="font-semibold text-white">{qf.currency.split(' · ')[0]}</span>{qf.currency.includes(' · ') ? ` · ${qf.currency.split(' · ').slice(1).join(' · ')}` : ''}</span>}
                     {/* Interactive currency converter */}
@@ -274,14 +355,14 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
                       </span>
                     )}
                   </div>
-                  <QuickFactRow facts={[qf?.transport, qf?.taxi, qf?.tipping, qf?.water]} className="mb-4" />
+                  <QuickFactRow facts={[qf?.transport, qf?.taxi, qf?.tipping, qf?.water]} />
                 </>
               );
             })()}
 
             {/* Badges: Safety + Holidays */}
-            {(safety?.score || tripHolidays?.length) && (
-            <div className="flex items-center gap-2 flex-wrap mb-4" style={{ textShadow: 'none' }}>
+            {(safety?.score != null && safety.score > 0 || (tripHolidays && tripHolidays.length > 0)) && (
+            <div className="flex items-center gap-2 flex-wrap" style={{ textShadow: 'none' }}>
               {safety && safety.score > 0 && (
                 <SafetyBadge safety={safety} />
               )}
@@ -295,48 +376,51 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact }: { tri
             </div>
             )}
 
-            {/* Weather + forecast */}
-            <div className="flex items-center gap-5 sm:gap-7 text-[12px] tracking-wider uppercase overflow-x-auto scrollbar-hide mb-4">
-              {weather && (
+            {/* Weather + forecast + sunrise — only render row if there's real data */}
+            {(typeof weather?.temp === 'number' || (forecast && forecast.length > 0) || (sunrise?.sunrise && sunrise?.sunset)) && (
+            <div className="flex items-center gap-4 sm:gap-6 text-[12px] tracking-wider uppercase overflow-x-auto scrollbar-hide">
+              {typeof weather?.temp === 'number' && (
                 <span className="flex items-center gap-2 shrink-0 font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
                   <WeatherIcon size={16} />
-                  <span className="font-bold">{weather.temp}&deg;</span>
-                  <span className="text-[10px]" style={{ opacity: 0.7 }}>{weather.conditions}</span>
+                  <span className="font-bold">{fmtTemp(weather.temp)}</span>
+                  {weather.conditions && <span className="text-[10px] normal-case" style={{ opacity: 0.7 }}>{weather.conditions}</span>}
                 </span>
               )}
-              {weather && forecast && forecast.length > 0 && (
-                <span className="text-white/40">|</span>
+              {typeof weather?.temp === 'number' && forecast && forecast.length > 0 && (
+                <span className="text-white/30">|</span>
               )}
               {forecast && forecast.length > 0 && (
-                forecast.slice(0, 5).map((d) => {
+                forecast.slice(0, 5).filter((d: any) => typeof d.high === 'number').map((d: any) => {
                   const day = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
                   const icon = d.icon?.includes('rain') ? '\u{1F327}' : d.icon?.includes('cloud') ? '\u2601\uFE0F' : d.icon?.includes('snow') ? '\u2744\uFE0F' : '\u2600\uFE0F';
                   return (
                     <span key={d.date} className="flex items-center gap-1.5 shrink-0">
-                      <span className="font-semibold text-white/70">{day}</span>
+                      <span className="font-semibold text-white/60">{day}</span>
                       <span className="text-[14px]">{icon}</span>
-                      <span className="font-bold text-white">{d.high}&deg;</span>
+                      <span className="font-bold text-white">{fmtTemp(d.high)}</span>
                     </span>
                   );
                 })
               )}
               {sunrise?.sunrise && sunrise?.sunset && (
                 <>
-                  <span className="text-white/40">|</span>
-                  <span className="flex items-center gap-3 shrink-0 text-white/80">
+                  {(typeof weather?.temp === 'number' || (forecast && forecast.length > 0)) && <span className="text-white/30">|</span>}
+                  <span className="flex items-center gap-3 shrink-0 text-white/80 whitespace-nowrap">
                     <span className="flex items-center gap-1">
-                      <Sun size={12} className="text-amber-400" />
-                      <span className="font-semibold text-white/60 normal-case">Sunrise</span>
-                      <span className="font-bold text-white">{(() => { try { return new Date(sunrise.sunrise).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); } catch { return ''; } })()}</span>
+                      <Sun size={12} className="text-amber-400 shrink-0" />
+                      <span className="font-semibold text-white/50 normal-case text-[11px]">Rise</span>
+                      <span className="font-bold text-white whitespace-nowrap">{(() => { try { return new Date(sunrise.sunrise).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); } catch { return ''; } })()}</span>
                     </span>
                     <span className="flex items-center gap-1">
-                      <Sun size={12} className="text-orange-400" />
-                      <span className="font-semibold text-white/60 normal-case">Sunset</span>
-                      <span className="font-bold text-white">{(() => { try { return new Date(sunrise.sunset).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); } catch { return ''; } })()}</span>
+                      <Sun size={12} className="text-orange-400 shrink-0" />
+                      <span className="font-semibold text-white/50 normal-case text-[11px]">Set</span>
+                      <span className="font-bold text-white whitespace-nowrap">{(() => { try { return new Date(sunrise.sunset).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); } catch { return ''; } })()}</span>
                     </span>
                   </span>
                 </>
               )}
+            </div>
+            )}
             </div>
 
             {/* Wiki + Quote — frosted glass backdrop for readability */}

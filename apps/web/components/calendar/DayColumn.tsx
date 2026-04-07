@@ -1,4 +1,5 @@
 'use client'
+import { useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
@@ -7,6 +8,11 @@ import type { CalendarActivity, UserAwareness, TimeRange } from './types'
 import type { TripNote, Poll } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
+import { useDayIntelligence } from './hooks/useDayIntelligence'
+import { getWmoWeather } from './utils/wmoWeatherCode'
+import DayHealthIndicator from './DayHealthIndicator'
+import TravelTimeBadge from './TravelTimeBadge'
+import { GhostEventBlock } from './GhostEventBlock'
 
 interface DayColumnProps {
   dayIndex: number
@@ -33,6 +39,12 @@ interface DayColumnProps {
   polls?: Map<string, Poll>
   pollUserId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  bookingStatuses?: Map<string, 'matched' | 'opened'>
+  tripId?: string
+  isDayView?: boolean
+  ghostActivities?: CalendarActivity[]
+  onConfirmGhost?: (activity: CalendarActivity) => void
+  onDismissGhost?: (id: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -97,7 +109,25 @@ export function DayColumn({
   polls,
   pollUserId,
   onVotePoll,
+  bookingStatuses,
+  tripId,
+  isDayView = false,
+  ghostActivities = [],
+  onConfirmGhost,
+  onDismissGhost,
 }: DayColumnProps) {
+  const date = useMemo(() => {
+    const d = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
+    return d.toISOString().slice(0, 10)
+  }, [tripStartDate, dayIndex])
+
+  const { data: dayIntel } = useDayIntelligence(tripId ?? null, date)
+
+  const sortedActivities = useMemo(
+    () => [...activities].sort((a, b) => a.startHour - b.startHour),
+    [activities],
+  )
+
   const dayCollaborators = viewers.filter(
     (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
@@ -172,7 +202,21 @@ export function DayColumn({
             : undefined
         }
       >
-        {label}
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {dayIntel?.weather && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--cal-text-secondary)]">
+              {getWmoWeather(dayIntel.weather.weatherCode).icon}
+              {dayIntel.weather.tempMaxC !== null && `${Math.round(dayIntel.weather.tempMaxC)}°`}
+            </span>
+          )}
+          {dayIntel && (
+            <DayHealthIndicator
+              hoursConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.hours).length}
+              travelTimeConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.travelTime).length}
+            />
+          )}
+        </span>
         {dayCollaborators.length > 0 && (
           <div
             className="flex items-center justify-center gap-0 mt-0.5"
@@ -248,6 +292,7 @@ export function DayColumn({
               poll={polls?.get(activity.id)}
               userId={pollUserId}
               onVote={onVotePoll}
+              bookingStatus={bookingStatuses?.get(activity.id) ?? null}
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}
@@ -303,6 +348,48 @@ export function DayColumn({
           tripStartDate={tripStartDate}
           timeRange={timeRange}
         />
+
+        {/* Travel time badges — day view only, shown between consecutive activities */}
+        {isDayView && dayIntel && sortedActivities.map((act, i) => {
+          if (i === 0) return null
+          const prev = sortedActivities[i - 1]
+          const intel = dayIntel.activities[act.id]
+          if (!intel?.logistics.travelTimeMinutes) return null
+          const travelMinutes = intel.logistics.travelTimeMinutes
+          const gapMinutes = Math.round((act.startHour - (prev.startHour + prev.duration)) * 60)
+          const midTop = ((prev.startHour + prev.duration + act.startHour) / 2 - timeRange.startHour) * HOUR_HEIGHT
+          return (
+            <div
+              key={`travel-${act.id}`}
+              className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none group"
+              style={{ top: midTop }}
+            >
+              <TravelTimeBadge
+                travelTimeMinutes={travelMinutes}
+                distanceKm={intel.logistics.distanceKm ?? 0}
+                gapMinutes={gapMinutes}
+                hasConflict={intel.conflicts.travelTime}
+              />
+            </div>
+          )
+        })}
+
+        {/* Ghost activity layer — above events (z-10), pointer-events only on blocks */}
+        {ghostActivities.length > 0 && (
+          <div className="absolute inset-0" style={{ pointerEvents: 'none', zIndex: 10 }}>
+            {ghostActivities
+              .filter((g) => g.day === dayIndex)
+              .map((ghost) => (
+                <GhostEventBlock
+                  key={ghost.id}
+                  activity={ghost}
+                  timeRangeStartHour={timeRange.startHour}
+                  onConfirm={(a) => onConfirmGhost?.(a)}
+                  onDismiss={(id) => onDismissGhost?.(id)}
+                />
+              ))}
+          </div>
+        )}
       </div>
     </div>
   )
