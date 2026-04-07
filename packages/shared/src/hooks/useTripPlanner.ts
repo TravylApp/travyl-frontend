@@ -24,6 +24,7 @@ export interface TripExtraction {
   budget_level: string | null;
   daily_estimate_usd: number;
   pace: string | null;
+  accommodation_type?: string | null; // 'hotel' | 'airbnb' | 'hostel' | 'staying_with_someone' | 'own_place' | null
   [key: string]: unknown;
 }
 
@@ -98,6 +99,32 @@ type PlannerState =
   | { phase: 'complete'; plan: PlanResponse }
   | { phase: 'error'; message: string };
 
+// Known ambiguous place names — same name, very different locations
+const AMBIGUOUS_PLACES: Record<string, { question: string; options: string[] }> = {
+  georgia: { question: 'Which Georgia do you mean?', options: ['Georgia, USA (state)', 'Georgia (country in the Caucasus)'] },
+  paris: { question: 'Which Paris do you mean?', options: ['Paris, France', 'Paris, Texas, USA'] },
+  portland: { question: 'Which Portland?', options: ['Portland, Oregon, USA', 'Portland, Maine, USA'] },
+  cambridge: { question: 'Which Cambridge?', options: ['Cambridge, Massachusetts, USA', 'Cambridge, England, UK'] },
+  birmingham: { question: 'Which Birmingham?', options: ['Birmingham, Alabama, USA', 'Birmingham, England, UK'] },
+  santiago: { question: 'Which Santiago?', options: ['Santiago, Chile', 'Santiago de Compostela, Spain'] },
+  valencia: { question: 'Which Valencia?', options: ['Valencia, Spain', 'Valencia, Venezuela'] },
+  tripoli: { question: 'Which Tripoli?', options: ['Tripoli, Libya', 'Tripoli, Lebanon'] },
+};
+
+function detectAmbiguousDestination(prompt: string, extracted: TripExtraction | null): { question: string; options: string[] } | null {
+  // If the extraction already resolved to a specific country, no ambiguity
+  if (extracted?.destination?.country) return null;
+
+  const lower = prompt.toLowerCase();
+  for (const [name, info] of Object.entries(AMBIGUOUS_PLACES)) {
+    // Check if the name appears in the prompt without a country qualifier
+    if (lower.includes(name) && !info.options.some(opt => lower.includes(opt.toLowerCase().split(',')[1]?.trim().toLowerCase() || ''))) {
+      return info;
+    }
+  }
+  return null;
+}
+
 export function useTripPlanner() {
   const [state, setState] = useState<PlannerState>({ phase: 'idle' });
   const promptRef = useRef('');
@@ -127,6 +154,21 @@ export function useTripPlanner() {
       if (!res.ok) throw new Error(`Extract failed: ${res.status}`);
       const data = await res.json() as PlanResponse;
 
+      // Check for ambiguous destination before proceeding
+      const ambiguity = detectAmbiguousDestination(prompt, data.extracted);
+      if (ambiguity && !context?.country) {
+        setState({
+          phase: 'clarifying',
+          questions: [{
+            id: 'disambiguate_destination',
+            question: ambiguity.question,
+            options: ambiguity.options,
+          }],
+          extracted: data.extracted,
+        });
+        return;
+      }
+
       if (data.status === 'needs_clarification' && data.questions?.length) {
         setState({
           phase: 'clarifying',
@@ -143,6 +185,12 @@ export function useTripPlanner() {
   }, []);
 
   const submitAnswers = useCallback(async (answers: Record<string, string>) => {
+    // Handle disambiguation answers — extract city/country from the selected option
+    const disambigAnswer = answers['disambiguate_destination'];
+    if (disambigAnswer) {
+      const parts = disambigAnswer.split(',').map(s => s.trim().replace(/\(.*\)/, '').trim());
+      contextRef.current = { city: parts[0], country: parts[parts.length - 1] };
+    }
     await runPlan(promptRef.current, answers);
   }, []);
 

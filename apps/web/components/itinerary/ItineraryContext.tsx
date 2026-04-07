@@ -1,10 +1,90 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, supabase } from '@travyl/shared';
 import type { MapLocation } from '@/components/leaflet-map';
+
+// ─── History persistence (fire-and-forget) ───────────────────
+
+function appendTripHistory(tripId: string, action: string) {
+  supabase
+    .from('trips')
+    .select('trip_context')
+    .eq('id', tripId)
+    .single()
+    .then(({ data }) => {
+      if (!data?.trip_context) return;
+      const ctx = data.trip_context as any;
+      const history = (ctx.user_history ?? []) as any[];
+      history.push({ action, timestamp: new Date().toISOString(), actor: 'You' });
+      supabase
+        .from('trips')
+        .update({ trip_context: { ...ctx, user_history: history } })
+        .eq('id', tripId)
+        .then(() => {}, () => {});
+    });
+}
+
+// ─── Itinerary persistence (debounced write-back to trip_context.itinerary) ──
+
+function activitiesToItineraryJson(
+  activities: CalendarActivity[],
+  baseDays: BaseDayData[],
+  trip: any,
+): any[] {
+  // Convert CalendarActivity[] back to the trip_context.itinerary format
+  const startDate = trip?.start_date ? new Date(trip.start_date) : new Date();
+  const itinerary: any[] = [];
+
+  for (let d = 0; d < baseDays.length; d++) {
+    const dayDate = new Date(startDate);
+    dayDate.setDate(dayDate.getDate() + d);
+    const dateStr = dayDate.toISOString().split('T')[0];
+
+    const dayActivities = activities.filter(
+      (a) => a.day === d && a.onCalendar !== false,
+    );
+
+    itinerary.push({
+      day: d + 1,
+      date: dateStr,
+      slots: dayActivities.map((a) => ({
+        start_time: a.startTime || '',
+        end_time: a.endTime || '',
+        poi: {
+          id: a.id,
+          name: a.title,
+          category: a.type || 'sightseeing',
+          image: a.image,
+          lat: (a as any).lat,
+          lng: (a as any).lng,
+        },
+      })),
+    });
+  }
+  return itinerary;
+}
+
+function syncItineraryToDb(tripId: string, itinerary: any[]) {
+  supabase
+    .from('trips')
+    .select('trip_context')
+    .eq('id', tripId)
+    .single()
+    .then(({ data }) => {
+      if (!data?.trip_context) return;
+      supabase
+        .from('trips')
+        .update({ trip_context: { ...data.trip_context, itinerary } })
+        .eq('id', tripId)
+        .then(
+          () => console.log('[itinerary-sync] saved', itinerary.length, 'days'),
+          (err) => console.warn('[itinerary-sync] failed:', err),
+        );
+    });
+}
 
 type BaseDayData = { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string };
 
@@ -339,15 +419,18 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
 
   const addActivity = useCallback((activity: CalendarActivity) => {
     setActivities((prev) => [...prev, activity]);
-  }, []);
+    if (tripId) appendTripHistory(tripId, `Added "${activity.title}"`);
+  }, [tripId]);
 
   const removeActivity = useCallback((id: string) => {
-    setActivities((prev) =>
-      prev.map((a) =>
+    setActivities((prev) => {
+      const match = prev.find((a) => a.id === id);
+      if (match && tripId) appendTripHistory(tripId, `Removed "${match.title}"`);
+      return prev.map((a) =>
         a.id === id ? { ...a, onCalendar: false, parentId: undefined } : a,
-      ),
-    );
-  }, []);
+      );
+    });
+  }, [tripId]);
 
   const updateActivity = useCallback((id: string, updates: Partial<CalendarActivity>) => {
     setActivities((prev) =>
@@ -386,6 +469,27 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
       return a;
     }));
   }, []);
+
+  // ─── Debounced persistence: sync activities → trip_context.itinerary ───
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasMounted = useRef(false);
+  useEffect(() => {
+    // Skip the initial seed render — only sync user-initiated changes
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+    if (!tripId || baseDays.length === 0) return;
+
+    // Debounce: write to DB 1.5s after last change
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      const itinerary = activitiesToItineraryJson(activities, baseDays, trip);
+      syncItineraryToDb(tripId, itinerary);
+    }, 1500);
+
+    return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
+  }, [activities, baseDays, tripId, trip]);
 
   const value = useMemo(
     () => ({

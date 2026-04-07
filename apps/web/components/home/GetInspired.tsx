@@ -103,8 +103,7 @@ function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolea
         fill
         className="absolute inset-0 w-full h-full object-cover"
         sizes="(max-width: 768px) 100vw, 380px"
-        referrerPolicy="no-referrer"
-      />
+              />
 
       {/* Gradient */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />

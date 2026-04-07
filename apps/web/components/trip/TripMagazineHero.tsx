@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, X, Check } from 'lucide-react';
-import { formatDateRange, useExchangeRates, updateTripDetails } from '@travyl/shared';
+import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
 function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
@@ -58,7 +58,7 @@ function useQuote() {
   return quote;
 }
 
-export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void }) {
+export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate, suppressFallback }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void; suppressFallback?: boolean }) {
   const bgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,6 +83,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const [editEnd, setEditEnd] = useState('');
   const [editTravelers, setEditTravelers] = useState(1);
   const [editTitle, setEditTitle] = useState('');
+  const [editDest, setEditDest] = useState('');
   const [saving, setSaving] = useState(false);
 
   const openEditor = useCallback(() => {
@@ -90,6 +91,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     setEditEnd(trip?.end_date || '');
     setEditTravelers(trip?.travelers || 1);
     setEditTitle(trip?.title || '');
+    setEditDest(trip?.destination || '');
     setEditing(true);
   }, [trip]);
 
@@ -97,14 +99,24 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     if (!tripId || saving) return;
     setSaving(true);
     try {
+      const destChanged = editDest && editDest !== trip?.destination;
       await updateTripDetails(tripId, {
         title: editTitle || undefined,
+        destination: editDest || undefined,
         start_date: editStart || undefined,
         end_date: editEnd || undefined,
         travelers: editTravelers,
       });
       setEditing(false);
       onTripUpdate?.();
+      // If destination changed, trigger re-enrichment to repopulate all data
+      if (destChanged) {
+        fetch(`/api/trips/enrich`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tripId }),
+        }).then(() => onTripUpdate?.()).catch(() => {});
+      }
     } catch (e) {
       console.error('Failed to update trip:', e);
     } finally {
@@ -115,17 +127,16 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const [essentialsOpen, setEssentialsOpen] = useState(true);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
-  const [useFahrenheit, setUseFahrenheit] = useState(false);
-  useEffect(() => {
-    try {
-      const region = new Intl.Locale(navigator.language).region;
-      setUseFahrenheit(['US', 'BS', 'BZ', 'KY', 'PW', 'FM', 'MH', 'LR'].includes(region ?? ''));
-    } catch { /* default to Celsius */ }
-  }, []);
+  // Temperature unit follows user's distance preference: miles = °F, kilometers = °C
+  const distanceUnits = useSettingsStore((s) => s.distanceUnits);
+  const useFahrenheit = distanceUnits === 'miles';
   const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
-  const weather = trip?.trip_context?.weather?.current;
-  const forecast = trip?.trip_context?.weather?.forecast;
-  const rawCover = overrideImage || trip?.trip_context?.hero_image_url;
+  // Prefer live weather from backend, fall back to enrichment snapshot
+  const weatherCity = trip?.destination?.split(',')[0]?.trim() || '';
+  const { data: liveWeather } = useWeather(weatherCity);
+  const weather = liveWeather?.current ?? trip?.trip_context?.weather?.current;
+  const forecast = liveWeather?.forecast ?? trip?.trip_context?.weather?.forecast;
+  const rawCover = overrideImage || (suppressFallback ? undefined : trip?.trip_context?.hero_image_url);
   const coverImage = rawCover?.includes('googleusercontent.com')
     ? rawCover.replace(/=w\d+-h\d+[^&]*/, '=w1600-h1000-k-no')
     : rawCover;
@@ -138,7 +149,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const conditions = weather?.conditions?.toLowerCase() ?? '';
   const WeatherIcon = conditions.includes('cloud') ? Cloud : conditions.includes('rain') ? Droplets : Sun;
 
-  const quote = useQuote();
+  // Quote removed per #547 — keep hero focused on trip data
   const rawWiki = trip?.trip_context?.wiki;
   const wiki = typeof rawWiki === 'string' ? { extract: rawWiki } : rawWiki;
 
@@ -186,26 +197,26 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const phrases = trip?.trip_context?.phrases as Record<string, string> | undefined;
   const phraseEntries = phrases ? Object.entries(phrases).slice(0, 4) : [];
 
-  const hasEssentials = !!(trip?.trip_context?.quick_facts || weather || wiki || quote || exchangeFact || safety || sunrise || tripHolidays?.length || aqi || phraseEntries.length);
+  const hasEssentials = !!(trip?.trip_context?.quick_facts || weather || wiki || exchangeFact || safety || sunrise || tripHolidays?.length || aqi || phraseEntries.length);
   const essentialsMaxH = 'max-h-[1200px]';
 
   return (
     <>
       {/* Background image — bleeds behind nav and all content */}
       {coverImage && (
-        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '100vh' }}>
+        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '160vh' }}>
           <div ref={bgRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
-            <Image src={coverImage} alt="" fill referrerPolicy="no-referrer" className="object-cover"
+            <Image src={coverImage} alt="" fill  className="object-cover"
               style={{ objectPosition: 'center 30%' }} sizes="100vw" priority />
           </div>
-          {/* Gradient overlay — fades to solid background by 70% so it doesn't bleed into content below */}
+          {/* Gradient overlay — longer fade so hero bleeds through Things to Do */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 15%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.65) 50%, var(--magazine-bg, var(--background)) 68%, var(--magazine-bg, var(--background)) 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 10%, rgba(0,0,0,0.35) 20%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.65) 50%, var(--magazine-bg, var(--background)) 75%, var(--magazine-bg, var(--background)) 100%)' }} />
         </div>
       )}
 
       {/* Hero text — aligned with content area (max-w-7xl + spine offset) */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-4">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-8">
         <p className="flex items-center gap-2 text-[10px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {flagUrl && <img src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />}
@@ -223,18 +234,24 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
           {hasEssentials && (
             <button
               onClick={() => setEssentialsOpen((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all shrink-0"
+              className="p-1.5 rounded-full transition-all shrink-0 hover:bg-white/15 active:scale-90"
+              title={essentialsOpen ? 'Hide trip info' : 'Show trip info'}
+            >
+              <ChevronDown size={16} className={`text-white/60 transition-transform duration-300 ${essentialsOpen ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+          {!compact && tripId && (
+            <a
+              href={`/trip/${tripId}/itinerary`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 backdrop-blur-sm ml-2"
               style={{
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                color: '#fff',
+                backgroundColor: 'rgba(255,255,255,0.12)',
                 border: '1px solid rgba(255,255,255,0.2)',
+                color: 'rgba(255,255,255,0.8)',
               }}
             >
-              <span>{essentialsOpen ? 'Hide Info' : 'Trip Info'}</span>
-              <ChevronDown size={10} className={`transition-transform ${essentialsOpen ? 'rotate-180' : ''}`} />
-            </button>
+              View Itinerary &rarr;
+            </a>
           )}
         </div>
       </div>
@@ -248,6 +265,12 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             {/* Dates + travelers — inline editable */}
             {editing ? (
               <div className="flex flex-wrap items-end gap-3 mb-4 animate-[fadeSlideIn_0.2s_ease-out]">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Destination</label>
+                  <input type="text" value={editDest} onChange={(e) => setEditDest(e.target.value)}
+                    placeholder="City, Country"
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 w-48" />
+                </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Title</label>
                   <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
@@ -354,19 +377,19 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
                         Air {aqi.level}
                       </span>
                     )}
+                    {safety && safety.score > 0 && (
+                      <SafetyBadge safety={safety} />
+                    )}
                   </div>
                   <QuickFactRow facts={[qf?.transport, qf?.taxi, qf?.tipping, qf?.water]} />
                 </>
               );
             })()}
 
-            {/* Badges: Safety + Holidays */}
-            {(safety?.score != null && safety.score > 0 || (tripHolidays && tripHolidays.length > 0)) && (
+            {/* Holidays */}
+            {tripHolidays && tripHolidays.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap" style={{ textShadow: 'none' }}>
-              {safety && safety.score > 0 && (
-                <SafetyBadge safety={safety} />
-              )}
-              {tripHolidays && tripHolidays.length > 0 && tripHolidays.map((h) => (
+              {tripHolidays.map((h) => (
                 <span key={h.date}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
                   style={{ backgroundColor: 'rgba(234,179,8,0.2)', border: '1px solid rgba(234,179,8,0.4)', color: '#fbbf24' }}>
@@ -423,25 +446,13 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             )}
             </div>
 
-            {/* Wiki + Quote — frosted glass backdrop for readability */}
-            {(wiki?.extract || quote) && (
-              <div className="rounded-xl px-4 py-3 space-y-3"
+            {/* Wiki summary — frosted glass backdrop for readability */}
+            {wiki?.extract && (
+              <div className="rounded-xl px-4 py-3"
                 style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
-                {wiki?.extract && (
-                  <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/90 font-serif line-clamp-3">
-                    {wiki.extract}
-                  </p>
-                )}
-                {quote && (
-                  <blockquote className="pl-3" style={{ borderLeft: '2px solid var(--magazine-accent, #c8a96a)' }}>
-                    <p className="text-[12px] sm:text-[13px] font-serif italic leading-[1.6] text-white/90">
-                      &ldquo;{quote.content}&rdquo;
-                    </p>
-                    <cite className="block mt-1 text-[10px] not-italic tracking-wider uppercase font-semibold" style={{ color: 'var(--magazine-accent, #c8a96a)', opacity: 0.7 }}>
-                      &mdash; {quote.author}
-                    </cite>
-                  </blockquote>
-                )}
+                <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/90 font-serif line-clamp-3">
+                  {wiki.extract}
+                </p>
               </div>
             )}
 

@@ -5,8 +5,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
-  FadeIn,
-  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -15,7 +13,16 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import MapView, { Marker } from 'react-native-maps';
+// Conditionally import react-native-maps (crashes on web)
+let MapView: any = View;
+let Marker: any = View;
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch {}
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PlaceItem } from '@travyl/shared';
 import { MagazineCurtain } from './MagazineCurtain';
@@ -59,13 +66,13 @@ export function CardStackCarousel({
   navColor,
 }: CardStackCarouselProps) {
   const insets = useSafeAreaInsets();
-  const CARD_W = cardWidth ?? SCREEN_WIDTH - 48;
-  const CARD_H = cardHeight ?? CARD_W * 1.3;
+  const CARD_W = cardWidth ?? SCREEN_WIDTH - 24;
+  const CARD_H = cardHeight ?? CARD_W * 1.25;
 
   const [currentIdx, setCurrentIdx] = useState(initialIndex);
   const [showMap, setShowMap] = useState(false);
   const [selfOverlay, setSelfOverlay] = useState(false); // promote to overlay for map
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const isAnimating = useRef(false);
   const clearAnimating = useCallback(() => { isAnimating.current = false; }, []);
   const showMapRef = useRef(showMap);
@@ -260,7 +267,7 @@ export function CardStackCarousel({
   const navRow = (
     <View style={{
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: 14, marginTop: 12, paddingBottom: 4,
+      gap: 14, marginTop: 8, paddingBottom: 0,
     }}>
       {/* Map toggle — only in overlay mode */}
       {overlay && hasCoords && (
@@ -326,71 +333,13 @@ export function CardStackCarousel({
     </Animated.View>
   );
 
-  const mapSection = showMap && hasCoords && (
-    <>
-      <RNAnimated.View style={{
-        height: mapHeight,
-        marginHorizontal: 0,
-        borderRadius: 0, overflow: 'hidden',
-      }}>
-        <MapView
-          ref={mapRef}
-          style={{ flex: 1 }}
-          initialRegion={{
-            latitude: place.latitude!, longitude: place.longitude!,
-            latitudeDelta: 0.02, longitudeDelta: 0.02,
-          }}
-          scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
-        >
-          <Marker coordinate={{ latitude: place.latitude!, longitude: place.longitude! }} title={place.name} />
-        </MapView>
-
-        {/* Place info pill */}
-        <View style={{
-          position: 'absolute', bottom: 10, left: 10, right: 10,
-          backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12,
-          paddingHorizontal: 12, paddingVertical: 10,
-          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4,
-        }}>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#333' }}>{place.name}</Text>
-          {place.tagline ? <Text style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{place.tagline}</Text> : null}
-          {/* Rating + reviews */}
-          {place.rating > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-              <FontAwesome name="star" size={10} color="#fbbf24" />
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#333' }}>{place.rating.toFixed(1)}</Text>
-              {place.reviewCount ? <Text style={{ fontSize: 10, color: '#999' }}>({place.reviewCount.toLocaleString()})</Text> : null}
-              {place.hours ? <Text style={{ fontSize: 10, color: '#10b981', marginLeft: 6 }}>{place.hours}</Text> : null}
-            </View>
-          )}
-          {/* Address */}
-          {place.address ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-              <FontAwesome name="map-marker" size={10} color="#999" />
-              <Text style={{ fontSize: 10, color: '#666', flex: 1 }} numberOfLines={1}>{place.address}</Text>
-            </View>
-          ) : null}
-          {/* Tags */}
-          {place.tags && place.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
-              {place.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#555' }}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </RNAnimated.View>
-
-    </>
-  );
+  // Old mapSection removed — map is now full-screen background in overlay mode
 
   /* ── Non-overlay: inline ── */
   if (!overlay) {
     return (
       <>
-        <View style={{ alignItems: 'center', paddingTop: 12 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'flex-end', flex: 1 }}>
           {magazineCard}
           {navRow}
         </View>
@@ -409,40 +358,156 @@ export function CardStackCarousel({
     );
   }
 
-  /* ── Overlay: full screen, card flush at bottom ── */
-  return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent>
-    <Animated.View
-      entering={FadeIn.duration(300)}
-      exiting={FadeOut.duration(200)}
-      style={{
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-      }}
-    >
-      {/* Tap dark area to close */}
-      <Pressable onPress={onClose} style={{ height: insets.top + 20 }} />
+  /* ── Overlay: Apple Maps-style — map behind, card as bottom sheet ── */
 
-      {/* Content — map flush at top, card below */}
-      <View style={{
-        flex: 1,
-        paddingBottom: insets.bottom,
-        overflow: 'hidden',
-      }}>
-        {showMap ? (
-          <>
-            {mapSection}
-            {magazineCard}
-            {navRow}
-          </>
+  // Sheet position — 0 = card at bottom (max map), 1 = card covers screen (min map)
+  const SHEET_TOP = insets.top + 50;           // card almost full screen
+  const SHEET_MID = SCREEN_H * 0.38;         // default
+  const SHEET_BOTTOM = SCREEN_H * 0.65;      // card minimized — mostly map
+  const sheetY = useRef(new RNAnimated.Value(SHEET_MID)).current;
+  const sheetYRef = useRef(SHEET_MID);
+
+  // Combined gesture: vertical drags on the handle/header resize the sheet,
+  // horizontal swipes on the card navigate between places
+  const gestureDirRef = useRef<'v' | 'h' | null>(null);
+  const combinedPan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) => {
+        if (Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.2) {
+          gestureDirRef.current = 'v';
+          return true;
+        }
+        if (Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2) {
+          gestureDirRef.current = 'h';
+          return true;
+        }
+        return false;
+      },
+      onPanResponderMove: (_, gs) => {
+        if (gestureDirRef.current === 'v') {
+          const newY = Math.max(SHEET_TOP, Math.min(SHEET_BOTTOM, sheetYRef.current + gs.dy));
+          sheetY.setValue(newY);
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gestureDirRef.current === 'v') {
+          const newY = Math.max(SHEET_TOP, Math.min(SHEET_BOTTOM, sheetYRef.current + gs.dy));
+          let snapTo = SHEET_MID;
+          if (gs.vy < -0.5 || newY < (SHEET_TOP + SHEET_MID) / 2) snapTo = SHEET_TOP;
+          else if (gs.vy > 0.5 || newY > (SHEET_MID + SHEET_BOTTOM) / 2) snapTo = SHEET_BOTTOM;
+
+          RNAnimated.spring(sheetY, {
+            toValue: snapTo, tension: 65, friction: 11, useNativeDriver: false,
+          }).start();
+          sheetYRef.current = snapTo;
+        } else if (gestureDirRef.current === 'h') {
+          if (gs.dx < -SWIPE_THRESHOLD) goNextRef.current();
+          else if (gs.dx > SWIPE_THRESHOLD) goPrevRef.current();
+        }
+        gestureDirRef.current = null;
+      },
+    })
+  ).current;
+
+  return (
+    <Modal visible transparent animationType="slide" statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+
+        {/* ── Map background (fills entire screen) ── */}
+        {hasCoords && Platform.OS !== 'web' ? (
+          <MapView
+            ref={mapRef}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            initialRegion={{
+              latitude: place.latitude!, longitude: place.longitude!,
+              latitudeDelta: 0.015, longitudeDelta: 0.015,
+            }}
+            scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
+          >
+            <Marker coordinate={{ latitude: place.latitude!, longitude: place.longitude! }} title={place.name} />
+          </MapView>
         ) : (
-          <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-            {magazineCard}
-            {navRow}
-          </View>
+          <View style={{ flex: 1, backgroundColor: '#1a1a2e' }} />
         )}
+
+        {/* No buttons on map — clean map view */}
+
+        {/* ── Bottom sheet — drags up/down to show/hide map ── */}
+        <RNAnimated.View
+          {...combinedPan.panHandlers}
+          style={{
+            position: 'absolute',
+            top: sheetY,
+            left: 0,
+            right: 0,
+            bottom: insets.bottom + 8,
+            backgroundColor: 'transparent',
+          }}
+        >
+          {/* Drag handle */}
+          <View style={{
+            alignItems: 'center', paddingTop: 8, paddingBottom: 4,
+          }}>
+            <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+          </View>
+
+          {/* Card + nav arrows as one unit — no white space */}
+          <View style={{ flex: 1, alignItems: 'center', paddingTop: 2 }}>
+            <Animated.View style={[
+              { width: SCREEN_WIDTH - 8, flex: 1 },
+              animatedCardStyle,
+            ]}>
+              {/* Magazine card fills the space */}
+              <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+                <MagazineCurtain
+                  place={place}
+                  isFav={isFav}
+                  onToggleFav={() => onToggleFav(place.id)}
+                  onClose={onClose}
+                  onMapPress={hasCoords ? toggleMap : undefined}
+                  width={SCREEN_WIDTH - 8}
+                  height={SCREEN_H * 0.48}
+                />
+
+                {/* Nav arrows — overlaid at bottom, fade out when sheet is pulled down */}
+                <RNAnimated.View pointerEvents="box-none" style={{
+                  position: 'absolute', bottom: 12, left: 0, right: 0,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                  gap: 14,
+                  opacity: sheetY.interpolate({
+                    inputRange: [SHEET_TOP, SHEET_MID, SHEET_BOTTOM],
+                    outputRange: [1, 1, 0],
+                    extrapolate: 'clamp',
+                  }),
+                }}>
+                  <Pressable onPress={goPrev} style={{
+                    width: 38, height: 38, borderRadius: 19,
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
+                  }}>
+                    <FontAwesome name="chevron-left" size={14} color="#333" />
+                  </Pressable>
+                  <Text style={{ fontSize: 13, color: '#fff', fontVariant: ['tabular-nums'],
+                    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+                  }}>
+                    {currentIdx + 1} / {places.length}
+                  </Text>
+                  <Pressable onPress={goNext} style={{
+                    width: 38, height: 38, borderRadius: 19,
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
+                  }}>
+                    <FontAwesome name="chevron-right" size={14} color="#333" />
+                  </Pressable>
+                </RNAnimated.View>
+              </View>
+            </Animated.View>
+          </View>
+        </RNAnimated.View>
+
       </View>
-    </Animated.View>
     </Modal>
   );
 }

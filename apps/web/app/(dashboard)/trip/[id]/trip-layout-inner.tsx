@@ -7,12 +7,13 @@ import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, formatDateRange, useAuthStore, isTripOwner, canViewTrip } from '@travyl/shared';
+import { useItineraryScreen, useAuthStore, canViewTrip } from '@travyl/shared';
 // Footer/OceanWave removed — trip pages use workspace layout
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
+import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
 import type { PlaceItem } from '@travyl/shared';
 
@@ -36,26 +37,25 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   return (
     <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-16 pt-4 pb-3 sticky top-0 z-20">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: tab.color }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 backdrop-blur-md" style={{ backgroundColor: `${tab.color}cc` }}>
           <Icon size={15} className="text-white" />
         </div>
         <div className="flex-1">
-          <h2 className="text-[17px] tracking-tight" style={{ color: 'var(--trip-base)', fontWeight: 700 }}>{tab.label}</h2>
-          <p className="text-[12px] text-gray-400 dark:text-gray-500">{tab.subtitle}</p>
+          <h2 className="text-[17px] tracking-tight text-white font-bold" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>{tab.label}</h2>
+          <p className="text-[12px] text-white/60" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
+          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-white/30 hover:bg-white/20 text-white'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
             <Map size={13} />
             <span className="text-[12px] font-medium">Map</span>
           </button>
         </div>
       </div>
-      <div className="mt-3 h-[2px] rounded-full opacity-80" style={{ background: `linear-gradient(90deg, ${tab.color}, ${tab.color}40, transparent)` }} />
     </div>
   );
 }
 
-// ─── Trip Explore Section (destination-specific categories) ──
+// ─── Trip Explore Section (overview page — shows trip_context data) ──
 
 export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
@@ -64,78 +64,53 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   const [favorites, setFavorites] = useState<string[]>([]);
 
   type ExploreItem = { id: string; title?: string; name?: string; description?: string; category?: string; image?: string; images?: string[]; rating?: number; cuisines?: string[]; priceLevel?: string; tripAdvisorUrl?: string; lat?: number; lng?: number; address?: string; phone?: string; website?: string; reviewCount?: number };
-  const categories: { key: string; label: string; items: ExploreItem[] }[] = [];
 
-  // Famous Attractions
-  if (ctx?.explore_items && ctx.explore_items.length > 0) {
-    categories.push({ key: 'attractions', label: 'Famous Attractions', items: ctx.explore_items });
-  }
-
-  // TripAdvisor restaurants (best data + real photos)
-  if (ctx?.restaurants && ctx.restaurants.length > 0) {
-    categories.push({ key: 'ta-restaurants', label: 'Top Restaurants', items: ctx.restaurants as ExploreItem[] });
-  }
-
-  // Categorize venues into specific buckets
-  const allVenues = ctx?.foursquare_venues || [];
-  const buckets: Record<string, ExploreItem[]> = { restaurants: [], museums: [], nightlife: [], shopping: [], parks: [], other: [] };
-
-  for (const v of allVenues) {
-    const cat = (v.category || '').toLowerCase();
-    if (/restaurant|food|café|cafe|dining|pizza|bistro|trattoria|culinary|bakery/i.test(cat)) {
-      buckets.restaurants.push(v);
-    } else if (/museum|gallery|theater|theatre|cultural|art|history/i.test(cat)) {
-      buckets.museums.push(v);
-    } else if (/bar|club|nightlife|entertainment|pub|lounge|cocktail/i.test(cat)) {
-      buckets.nightlife.push(v);
-    } else if (/shop|market|store|mall|boutique/i.test(cat)) {
-      buckets.shopping.push(v);
-    } else if (/park|garden|outdoor|nature|beach|trail/i.test(cat)) {
-      buckets.parks.push(v);
-    } else {
-      buckets.other.push(v);
+  // Collect ALL items from every source
+  const allItems: ExploreItem[] = [];
+  const seen = new Set<string>();
+  const addItems = (items: any[], fallbackCategory?: string) => {
+    for (const item of items) {
+      const key = item.id || item.title || item.name;
+      if (!key || seen.has(key) || !item.image) continue;
+      seen.add(key);
+      allItems.push({ ...item, title: item.title || item.name, category: item.category || fallbackCategory || 'Attraction' });
     }
+  };
+  addItems(ctx?.explore_items || []);
+  addItems(ctx?.foursquare_venues || []);
+  if (ctx?.restaurants?.length) addItems(ctx.restaurants, 'Restaurant');
+  for (const e of (ctx?.events || []) as any[]) {
+    const key = e.id || e.title || e.name;
+    if (!key || seen.has(key) || !(e.image || e.photo_url)) continue;
+    seen.add(key);
+    allItems.push({ id: e.id, title: e.title || e.name, name: e.title || e.name, description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '', category: e.category || 'Event', image: e.image || e.photo_url });
   }
 
-  // Only add Foursquare restaurants if no TripAdvisor data
-  if (!ctx?.restaurants?.length && buckets.restaurants.length > 0) categories.push({ key: 'restaurants', label: 'Restaurants & Cafes', items: buckets.restaurants });
-  if (buckets.museums.length > 0) categories.push({ key: 'museums', label: 'Museums & Culture', items: buckets.museums });
-  if (buckets.nightlife.length > 0) categories.push({ key: 'nightlife', label: 'Nightlife & Entertainment', items: buckets.nightlife });
-  if (buckets.shopping.length > 0) categories.push({ key: 'shopping', label: 'Shopping', items: buckets.shopping });
-  if (buckets.parks.length > 0) categories.push({ key: 'parks', label: 'Parks & Nature', items: buckets.parks });
-  if (buckets.other.length > 0) categories.push({ key: 'other', label: 'More to Explore', items: buckets.other });
-
-  // Hotels
-  if (ctx?.hotels && ctx.hotels.length > 0) {
-    categories.push({ key: 'hotels', label: `Hotels in ${city}`, items: ctx.hotels.map((h) => ({ id: h.id, title: h.name, name: h.name, description: h.tip || h.category || '', category: h.category || 'Hotel', image: h.image ?? undefined })) });
+  // Group by category dynamically
+  const grouped: Record<string, ExploreItem[]> = {};
+  for (const item of allItems) {
+    const cat = item.category || 'Other';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
   }
+  const toLabel = (cat: string) => cat.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const categories = Object.entries(grouped).filter(([, items]) => items.length > 0).map(([key, items]) => ({ key, label: toLabel(key), items }));
 
   if (categories.length === 0) return null;
 
-  // Convert an explore item to PlaceItem for PinCard + PlaceDetailOverlay
   const toPlaceItem = (item: ExploreItem): PlaceItem => ({
-    id: item.id,
-    name: item.title || item.name || '',
-    image: item.image || '',
+    id: item.id, name: item.title || item.name || '', image: item.image || '',
     images: item.images?.length ? item.images : item.image ? [item.image] : [],
     type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
-    rating: item.rating || 0,
-    tagline: item.description || item.category || '',
-    category: item.category || '',
-    description: item.description || '',
+    rating: item.rating || 0, tagline: item.description || item.category || '',
+    category: item.category || '', description: item.description || '',
     tags: item.cuisines || (item.category ? [item.category] : []),
     latitude: item.lat || (trip?.trip_context?.lat ?? undefined),
     longitude: item.lng || (trip?.trip_context?.lng ?? undefined),
-    address: item.address,
-    phone: item.phone,
-    website: item.website || item.tripAdvisorUrl,
+    address: item.address, phone: item.phone, website: item.website || item.tripAdvisorUrl,
     reviewCount: item.reviewCount,
     priceLevel: item.priceLevel === '$' ? 1 : item.priceLevel === '$$' ? 2 : item.priceLevel === '$$$' ? 3 : item.priceLevel === '$$$$' ? 4 : undefined,
   });
-
-  const handleCardClick = (item: ExploreItem) => {
-    setSelectedPlace(toPlaceItem(item));
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-16 py-8">
@@ -153,27 +128,16 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
               <span className="text-[11px] text-gray-400 dark:text-gray-500">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-              {items.map((item: ExploreItem) => (
-                <div key={item.id} onClick={() => handleCardClick(item)}
+              {items.map((item: ExploreItem, idx: number) => (
+                <div key={`${item.id}-${idx}`} onClick={() => setSelectedPlace(toPlaceItem(item))}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
-                  {item.image ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image} alt={item.title || item.name} referrerPolicy="no-referrer"
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    </>
-                  ) : (
-                    <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #1a1a2e, #16213e)' }} />
-                  )}
-                  {/* Favorite button */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
-                    className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}
-                  >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <button onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
+                    className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill={favorites.includes(item.id) ? 'white' : 'none'} stroke="white" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                   </button>
-                  {/* Content overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-3.5">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-white/50 mb-1">{item.category}</p>
                     <p className="text-[15px] font-bold text-white leading-tight line-clamp-2 mb-1">{item.title || item.name}</p>
@@ -181,11 +145,8 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
                       <div className="flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                         <span className="text-[12px] font-semibold text-white/80">{item.rating}</span>
-                        {item.reviewCount && <span className="text-[10px] text-white/40">({item.reviewCount})</span>}
                       </div>
-                    ) : item.description ? (
-                      <p className="text-[11px] text-white/50 line-clamp-1">{item.description}</p>
-                    ) : null}
+                    ) : item.description ? (<p className="text-[11px] text-white/50 line-clamp-1">{item.description}</p>) : null}
                   </div>
                 </div>
               ))}
@@ -193,15 +154,10 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
           </div>
         ))}
       </div>
-
-      {/* Detail overlay — same as places page (image + map split) */}
       {selectedPlace && (
-        <PlaceDetailModal
-          place={selectedPlace}
-          isFavorited={favorites.includes(selectedPlace.id)}
+        <PlaceDetailModal place={selectedPlace} isFavorited={favorites.includes(selectedPlace.id)}
           onToggleFavorite={() => setFavorites((prev) => prev.includes(selectedPlace.id) ? prev.filter((f) => f !== selectedPlace.id) : [...prev, selectedPlace.id])}
-          onClose={() => setSelectedPlace(null)}
-        />
+          onClose={() => setSelectedPlace(null)} />
       )}
     </div>
   );
@@ -338,6 +294,8 @@ function TripLayoutContent({
             onToggleMap={() => setMapOpen(!mapOpen)}
           />
 
+          {isOverview && <TripOnboardingBanner />}
+
           <div className="flex">
             {/* Main content */}
             <div className="flex-1 min-w-0 relative overflow-hidden px-5 md:pl-16 pt-4 pb-5">
@@ -369,7 +327,7 @@ function TripLayoutContent({
                       <div className="flex items-center gap-2">
                         <Map size={13} className="text-[var(--trip-base)]" />
                         <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                          {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Paris, France')}
+                          {hasMarkers ? `${mapMarkers.length} locations` : (trip?.destination || 'Destination')}
                         </span>
                       </div>
                       <button
@@ -408,7 +366,7 @@ function TripLayoutContent({
                         <div className="absolute bottom-0 inset-x-0 flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-black/80 backdrop-blur-md border-t border-gray-100 dark:border-white/[0.06]">
                           <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
                           <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300 truncate">
-                            {trip?.destination || 'Paris, France'}
+                            {trip?.destination || 'Destination'}
                           </span>
                         </div>
                       )}
@@ -421,7 +379,7 @@ function TripLayoutContent({
         </div>
       </div>
 
-      {/* Explore section — overview only (useful content, not decoration) */}
+      {/* Explore section — overview only */}
       {isOverview && (
         <div className="w-full relative z-10 bg-white dark:bg-[var(--background)]">
           <TripExploreSection trip={trip} />
