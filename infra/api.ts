@@ -250,6 +250,12 @@ api.route('GET /transit/directions', {
   timeout: '20 seconds',
 })
 
+api.route('POST /transit/optimize-route', {
+  handler: 'services/transit.optimizeHandler',
+  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
+  timeout: '30 seconds',
+})
+
 api.route('GET /timezone/convert', {
   handler: 'services/timezone.handler',
   link: [supabaseSecretKey, supabaseUrl],

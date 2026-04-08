@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { handler } from './transit'
+import { handler, optimizeHandler } from './transit'
 
 describe('GET /transit/directions', () => {
   const mockEvent = (queryParams: Record<string, string>, authHeader = 'Bearer valid-token') => ({
@@ -60,5 +60,45 @@ describe('GET /transit/directions', () => {
       () => {}
     )
     expect(result.statusCode).toBe(503)
+  })
+})
+
+describe('POST /transit/optimize-route', () => {
+  const mockOptimizeEvent = (body: object, authHeader = 'Bearer valid-token') => ({
+    headers: { authorization: authHeader },
+    body: JSON.stringify(body),
+  } as any)
+
+  it('returns 400 with less than 2 waypoints', async () => {
+    const result = await optimizeHandler(
+      mockOptimizeEvent({ waypoints: [{ lat: 37.7, lng: -122.4 }] }),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(400)
+    expect(JSON.parse(result.body).error).toContain('At least 2')
+  })
+
+  it('returns 400 with too many waypoints', async () => {
+    const waypoints = Array(25).fill({ lat: 37.7, lng: -122.4 })
+    const result = await optimizeHandler(
+      mockOptimizeEvent({ waypoints }),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(400)
+    expect(JSON.parse(result.body).error).toContain('Maximum 20')
+  })
+
+  it('returns 400 for invalid vehicle type', async () => {
+    const result = await optimizeHandler(
+      mockOptimizeEvent({
+        waypoints: [{ lat: 37.7, lng: -122.4 }, { lat: 37.8, lng: -122.3 }],
+        vehicle: 'helicopter'
+      }),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(400)
   })
 })
