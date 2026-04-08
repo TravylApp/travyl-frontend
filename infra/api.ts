@@ -243,3 +243,9 @@ api.route('GET /timezone/convert', {
   link: [supabaseSecretKey, supabaseUrl],
   timeout: '10 seconds',
 })
+
+api.route('GET /charging/stations', {
+  handler: 'services/charging.handler',
+  link: [supabaseSecretKey, supabaseUrl, openchargeApiKey],
+  timeout: '15 seconds',
+})
