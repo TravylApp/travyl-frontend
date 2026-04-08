@@ -250,40 +250,37 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
             </div>
           </div>
 
-          {/* Stats - Compact horizontal layout */}
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-4 lg:gap-6 shrink-0 py-6 md:py-0">
-            {/* Compact stats row */}
-            <div className="flex items-center gap-4 lg:gap-6 flex-wrap justify-center">
-              {/* Level Badge */}
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl shadow-lg">
-                <span className="text-white font-black text-sm uppercase tracking-wider">Lvl {level}</span>
+          {/* Stats - Organized compact layout */}
+          <div className="flex flex-col gap-2 md:gap-3 shrink-0 py-6 md:py-0 max-w-[200px]">
+            {/* Row 1: Level + XP Progress */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg shadow-sm">
+                <span className="text-white font-black text-xs uppercase tracking-wider">Lvl {level}</span>
               </div>
-
-              {/* Stats Pills */}
-              <div className="flex items-center gap-3">
-                <div className="text-center">
-                  <p className="text-white font-black text-xl lg:text-2xl leading-none">{tripsCount}</p>
-                  <p className="text-white/40 text-[8px] font-black uppercase tracking-wider">Trips</p>
-                </div>
-                <div className="w-px h-8 bg-white/10"></div>
-                <div className="text-center">
-                  <p className="text-white font-black text-xl lg:text-2xl leading-none">{citiesCount}</p>
-                  <p className="text-white/40 text-[8px] font-black uppercase tracking-wider">Cities</p>
-                </div>
-              </div>
-
-              {/* XP Progress */}
-              <div className="hidden lg:flex items-center gap-2 min-w-[120px]">
-                <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="flex-1 flex items-center gap-1.5 min-w-[80px]">
+                <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" style={{ width: `${xpProgress}%` }}></div>
                 </div>
-                <span className="text-blue-300 text-[10px] font-black uppercase tracking-wider whitespace-nowrap">{currentXP} XP</span>
+                <span className="text-blue-200 text-[9px] font-medium">{currentXP} XP</span>
               </div>
             </div>
 
-            {/* Travel DNA Tags */}
-            <div className="flex flex-wrap gap-2 justify-center max-w-[280px]">
-              {travelDNA.slice(0, 4).map((interest) => {
+            {/* Row 2: Trips & Cities */}
+            <div className="flex items-center justify-center md:justify-start gap-4">
+              <div className="text-center">
+                <p className="text-white font-black text-lg leading-none">{tripsCount}</p>
+                <p className="text-white/30 text-[8px] font-black uppercase tracking-wider">Trips</p>
+              </div>
+              <div className="w-px h-4 bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-white font-black text-lg leading-none">{citiesCount}</p>
+                <p className="text-white/30 text-[8px] font-black uppercase tracking-wider">Cities</p>
+              </div>
+            </div>
+
+            {/* Row 3: Travel DNA Tags */}
+            <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
+              {travelDNA.slice(0, 3).map((interest) => {
                 const colorMap: Record<string, string> = {
                   'Beach': 'from-cyan-400 to-blue-500',
                   'Adventure': 'from-emerald-400 to-teal-500',
@@ -297,7 +294,7 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
                 return (
                   <div
                     key={interest}
-                    className={`px-2.5 py-1 bg-gradient-to-r ${color} rounded-full text-white text-[10px] font-bold shadow-sm`}
+                    className={`px-2 py-0.5 bg-gradient-to-r ${color} rounded-full text-white text-[9px] font-semibold`}
                   >
                     {interest}
                   </div>
