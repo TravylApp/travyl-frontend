@@ -262,3 +262,9 @@ api.route('GET /api/health', {
   link: [supabaseUrl],
   timeout: '5 seconds',
 })
+
+api.route('GET /places/nearby', {
+  handler: 'services/places.handler',
+  link: [supabaseSecretKey, supabaseUrl, foursquareApiKey],
+  timeout: '15 seconds',
+})
