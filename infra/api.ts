@@ -103,6 +103,12 @@ api.route('GET /recommend', {
   link: [activityCdn, cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
 })
 
+api.route('GET /recommendations/generate', {
+  handler: 'services/recommend.generateHandler',
+  link: [cacheTable, userInteractions, supabaseSecretKey, supabaseUrl, serpApiKey],
+  timeout: '20 seconds',
+})
+
 api.route('POST /invite', {
   handler: 'services/invite.handler',
   link: [supabaseSecretKey, supabaseUrl, email],
