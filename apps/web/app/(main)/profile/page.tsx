@@ -340,7 +340,7 @@ export default function ProfilePage() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-[#f8fafc]">
-        <ProfileHeader />
+        <ProfileHeader trips={trips} />
         <ProfileTabs
           activeTab={activeTab}
           onTabChange={handleTabChange}
