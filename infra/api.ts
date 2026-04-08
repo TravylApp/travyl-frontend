@@ -255,3 +255,10 @@ api.route('GET /currency/convert', {
   link: [supabaseSecretKey, supabaseUrl, openExchangeRatesAppId],
   timeout: '10 seconds',
 })
+
+// Public health check (no auth required)
+api.route('GET /api/health', {
+  handler: 'services/health.handler',
+  link: [supabaseUrl],
+  timeout: '5 seconds',
+})
