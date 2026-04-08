@@ -119,3 +119,88 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
   }
 }
+
+// ─── GET /restaurants/{id}/availability ────────────────────────
+
+interface AvailabilitySlot {
+  time: string
+  available: boolean
+  partySize: number
+}
+
+interface AvailabilityResponse {
+  restaurantId: string
+  date: string
+  slots: AvailabilitySlot[]
+}
+
+export const availabilityHandler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    await validateAuth(event.headers.authorization)
+
+    const restaurantId = event.pathParameters?.id
+    const { date, partySize = '2' } = event.queryStringParameters ?? {}
+
+    if (!restaurantId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Restaurant ID required' }) }
+    }
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Date required (YYYY-MM-DD)' }) }
+    }
+
+    const apiKey = Resource.OpenTableAffiliateKey.value
+    if (!apiKey || apiKey === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Availability check unavailable' }) }
+    }
+
+    const size = parseInt(partySize, 10)
+    if (isNaN(size) || size < 1 || size > 20) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Party size must be 1-20' }) }
+    }
+
+    // OpenTable availability endpoint
+    const params = new URLSearchParams({
+      restaurantId,
+      date,
+      partySize: String(size),
+    })
+
+    const res = await fetch(`${BASE_URL}/availability?${params}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(5000),
+    })
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { statusCode: 404, body: JSON.stringify({ error: 'Restaurant not found' }) }
+      }
+      console.error('[availability] OpenTable error:', res.status)
+      return { statusCode: 502, body: JSON.stringify({ error: 'Failed to check availability' }) }
+    }
+
+    const data = await res.json()
+
+    const slots: AvailabilitySlot[] = (data.slots || []).map((s: any) => ({
+      time: s.time,
+      available: s.available ?? false,
+      partySize: size,
+    }))
+
+    const response: AvailabilityResponse = {
+      restaurantId,
+      date,
+      slots,
+    }
+
+    return { statusCode: 200, body: JSON.stringify(response) }
+  } catch (err: any) {
+    if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
+    }
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { statusCode: 504, body: JSON.stringify({ error: 'Availability check timeout' }) }
+    }
+    console.error('[availability] error:', err)
+    return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
+  }
+}

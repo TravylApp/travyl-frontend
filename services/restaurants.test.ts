@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { handler } from './restaurants'
+import { handler, availabilityHandler } from './restaurants'
 
 describe('GET /restaurants/search', () => {
   const mockEvent = (queryParams: Record<string, string>, authHeader = 'Bearer valid-token') => ({
@@ -35,5 +35,40 @@ describe('GET /restaurants/search', () => {
       () => {}
     )
     expect(result.statusCode).toBe(503)
+  })
+})
+
+describe('GET /restaurants/{id}/availability', () => {
+  const mockAvailEvent = (id: string, queryParams: Record<string, string>, authHeader = 'Bearer valid-token') => ({
+    headers: { authorization: authHeader },
+    pathParameters: { id },
+    queryStringParameters: queryParams,
+  } as any)
+
+  it('returns 400 when restaurant ID missing', async () => {
+    const result = await availabilityHandler(
+      mockAvailEvent('', { date: '2024-06-15' }),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(400)
+  })
+
+  it('returns 400 for invalid date format', async () => {
+    const result = await availabilityHandler(
+      mockAvailEvent('123', { date: '06/15/2024' }),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(400)
+  })
+
+  it('returns 400 for invalid party size', async () => {
+    const result = await availabilityHandler(
+      mockAvailEvent('123', { date: '2024-06-15', partySize: '25' }),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(400)
   })
 })

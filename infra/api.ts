@@ -208,6 +208,12 @@ api.route('GET /restaurants/search', {
   timeout: '15 seconds',
 })
 
+api.route('GET /restaurants/{id}/availability', {
+  handler: 'services/restaurants.availabilityHandler',
+  link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey],
+  timeout: '10 seconds',
+})
+
 api.route('GET /flights/search', {
   handler: 'services/flights.handler',
   link: [supabaseSecretKey, supabaseUrl, duffelApiToken],
