@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { Resource } from 'sst'
 import { createClient } from '@supabase/supabase-js'
 import { validateAuth } from './lib/auth'
+import { safeParseBody } from './lib/validation'
 
 const supabase = createClient(Resource.SupabaseUrl.value, Resource.SupabaseSecretKey.value)
 
@@ -115,6 +116,86 @@ export const itineraryHandler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
     }
     console.error('[trips/itinerary] error:', err)
+    return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
+  }
+}
+
+// ─── POST /trips/{id}/share ────────────────────────────────────
+
+interface ShareRequest {
+  permission: 'view' | 'edit'
+  expiresInDays?: number
+}
+
+interface ShareResponse {
+  shareId: string
+  shareUrl: string
+  expiresAt: string
+  permission: string
+}
+
+export const shareHandler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    const userId = await validateAuth(event.headers.authorization)
+    const tripId = event.pathParameters?.id
+
+    if (!tripId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Trip ID required' }) }
+    }
+
+    const parseResult = safeParseBody<ShareRequest>(event)
+    if (!parseResult.success) {
+      return parseResult.error
+    }
+
+    const { permission = 'view', expiresInDays = 7 } = parseResult.data
+
+    // Validate trip ownership
+    const { data: trip, error } = await supabase
+      .from('trips')
+      .select('id')
+      .eq('id', tripId)
+      .eq('user_id', userId)
+      .single()
+
+    if (error || !trip) {
+      return { statusCode: 404, body: JSON.stringify({ error: 'Trip not found' }) }
+    }
+
+    // Calculate expiration
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + Math.min(expiresInDays, 30))
+
+    // Create share record
+    const shareId = crypto.randomUUID()
+    const { error: insertError } = await supabase
+      .from('trip_shares')
+      .insert({
+        id: shareId,
+        trip_id: tripId,
+        owner_id: userId,
+        permission,
+        expires_at: expiresAt.toISOString(),
+      })
+
+    if (insertError) {
+      console.error('[trips/share] insert error:', insertError)
+      return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create share' }) }
+    }
+
+    const response: ShareResponse = {
+      shareId,
+      shareUrl: `${process.env.APP_URL || 'https://gotravyl.com'}/shared/${shareId}`,
+      expiresAt: expiresAt.toISOString(),
+      permission,
+    }
+
+    return { statusCode: 200, body: JSON.stringify(response) }
+  } catch (err: any) {
+    if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
+    }
+    console.error('[trips/share] error:', err)
     return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
   }
 }
