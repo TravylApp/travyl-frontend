@@ -200,6 +200,12 @@ api.route('GET /events', {
   link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
 })
 
+api.route('GET /restaurants/search', {
+  handler: 'services/restaurant-search.handler',
+  link: [cacheTable, serpApiKey, openTableAffiliateKey],
+  timeout: '10 seconds',
+})
+
 api.route('POST /book/match', {
   handler: 'services/book.handler',
   link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],
