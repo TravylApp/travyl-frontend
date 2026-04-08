@@ -213,3 +213,9 @@ api.route('GET /flights/search', {
   link: [supabaseSecretKey, supabaseUrl, duffelApiToken],
   timeout: '30 seconds',
 })
+
+api.route('GET /weather/forecast', {
+  handler: 'services/weather.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '15 seconds',
+})
