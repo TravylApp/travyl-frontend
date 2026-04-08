@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCollaborators, updateCollaboratorRole, removeCollaborator } from '../services/api';
 import type { CollaboratorRole } from '../types';

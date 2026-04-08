@@ -66,7 +66,7 @@ export function EntityHero({
         </p>
 
         {/* Title */}
-        <h1 className="font-serif font-normal tracking-wide text-3xl md:text-5xl text-white mb-4">
+        <h1 className="font-semibold tracking-tight text-3xl md:text-5xl text-white mb-4">
           {title}
         </h1>
 

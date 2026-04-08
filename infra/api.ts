@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, openExchangeRatesAppId, predicthqApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, openExchangeRatesAppId, predicthqApiKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -193,4 +193,21 @@ api.route('GET /api/exchange-rates', {
 api.route('GET /api/events/search', {
   handler: 'services/events-search.handler',
   link: [predicthqApiKey, cacheTable],
+})
+
+api.route('GET /events', {
+  handler: 'services/events.handler',
+  link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
+})
+
+api.route('POST /book/match', {
+  handler: 'services/book.handler',
+  link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],
+  timeout: '30 seconds',
+})
+
+api.route('GET /book/status/{tripId}', {
+  handler: 'services/book.statusHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
 })

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { Heart, MapPin, Star, Clock, Globe, DollarSign, Repeat, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Heart, MapPin, Star, Clock, Globe, DollarSign, Repeat, Timer, ChevronLeft, ChevronRight, Plus, Phone, Accessibility, MapPinned } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Navy } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
@@ -15,8 +15,24 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
+// Height tiers — all divisible by 4 for clean grid alignment
+const ROW_UNIT = 4; // matches grid auto-rows (px)
+const GAP = 12; // vertical gap between cards (px)
+const HEIGHT_TIERS = [280, 320, 360, 400];
+
 function getCardHeight(id: string): number {
-  return 320 + (hashCode(id + 'h') % 100);
+  const tier = hashCode(id + 'h') % HEIGHT_TIERS.length;
+  return HEIGHT_TIERS[tier];
+}
+
+/**
+ * How many grid rows this card spans.
+ * Grid uses `grid-auto-rows: 4px` with `row-gap: 0`,
+ * so the span covers card height + the desired vertical gap.
+ */
+export function getCardRowSpan(id: string, flush?: boolean): number {
+  const h = flush ? 360 : getCardHeight(id);
+  return (h + GAP) / ROW_UNIT; // exact — all values are multiples of 4
 }
 
 export interface PinCardProps {
@@ -25,20 +41,41 @@ export interface PinCardProps {
   isFavorited: boolean;
   onFavorite: (id: string) => void;
   onClick?: (id: string) => void;
+  onAddToTrip?: (item: PlaceItem) => void;
+  flush?: boolean;
 }
 
-export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCardProps) {
+const FLUSH_HEIGHT = 360;
+
+export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddToTrip, flush }: PinCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [addedToTrip, setAddedToTrip] = useState(false);
   const hasAnimated = useRef(false);
-  const cardHeight = getCardHeight(item.id);
+  const cardHeight = flush ? FLUSH_HEIGHT : getCardHeight(item.id);
 
-  const images = item.images?.length ? item.images : [item.image];
+  const images = (item.images?.length ? item.images : [item.image]).filter(Boolean) as string[];
   const hasMultipleImages = images.length > 1;
 
+  // Timeout: if image hasn't loaded after 6s, try next or show fallback
+  useEffect(() => {
+    if (imgLoaded || imgError || images.length === 0) return;
+    const t = setTimeout(() => {
+      const nextIdx = imgIdx + 1;
+      if (nextIdx < images.length) {
+        setImgIdx(nextIdx);
+      } else {
+        setImgError(true);
+      }
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [imgIdx, imgLoaded, imgError, images.length]);
+
+  // Only animate on first mount — never re-animate when grid is shown/hidden
   const shouldAnimate = !hasAnimated.current;
-  if (shouldAnimate) hasAnimated.current = true;
+  if (!hasAnimated.current) hasAnimated.current = true;
 
   const handleFlip = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,29 +85,22 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
   const prevImage = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setImgIdx((i) => (i === 0 ? images.length - 1 : i - 1));
+    setImgLoaded(false);
   }, [images.length]);
 
   const nextImage = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setImgIdx((i) => (i + 1) % images.length);
+    setImgLoaded(false);
   }, [images.length]);
 
-  const hasDetails = item.hours || item.address || item.website || item.duration ||
-    item.priceLevel || item.admissionFee || item.bestTimeToVisit ||
-    (item.tips && item.tips.length > 0) || item.description;
-
-  const Wrapper = shouldAnimate ? motion.div : 'div';
-  const wrapperProps = shouldAnimate ? {
-    initial: { opacity: 0, y: 28, scale: 0.93 },
-    animate: { opacity: 1, y: 0, scale: 1 },
-    transition: { duration: 0.5, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
-  } : {};
-
   return (
-    <Wrapper
-      {...wrapperProps}
-      className="break-inside-avoid min-w-0"
-      style={{ perspective: 1000 }}
+    <div
+      className="min-w-0"
+      style={{
+        perspective: 1000,
+        animation: shouldAnimate ? `card-fade-in 0.3s ease-out ${Math.min(index * 0.02, 0.12)}s both` : undefined,
+      }}
     >
       <motion.div
         animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -83,23 +113,48 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
           style={{ backfaceVisibility: 'hidden' }}
           onClick={() => onClick?.(item.id)}
         >
-          {imgError ? (
+          {/* Shimmer placeholder — visible until image loads */}
+          {!imgError && images.length > 0 && !imgLoaded && (
             <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
+              className="absolute inset-0"
+              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}dd, #1e3a5f)` }}
             >
-              <MapPin size={32} className="text-white/30" />
+              <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <div className="h-3 rounded bg-white/10 w-2/3 mb-2" />
+                <div className="h-2 rounded bg-white/5 w-1/2" />
+              </div>
+            </div>
+          )}
+
+          {imgError || images.length === 0 ? (
+            <div
+              className="absolute inset-0 flex flex-col justify-end p-4"
+              style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #1e3a5f)` }}
+            >
+              <MapPin size={20} className="text-white/15 mb-auto mt-4 mx-auto" />
+              <h3 className="text-[14px] font-bold text-white/70 leading-tight line-clamp-2 mb-1">{item.name}</h3>
+              {item.tagline && <span className="text-[10px] text-white/35 truncate">{item.tagline}</span>}
             </div>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={images[imgIdx]}
               alt={item.name}
-              referrerPolicy="no-referrer"
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              onError={() => setImgError(true)}
+              className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => {
+                // Try next image in the array, then show icon placeholder
+                const nextIdx = imgIdx + 1;
+                if (nextIdx < images.length) {
+                  setImgIdx(nextIdx);
+                  setImgLoaded(false);
+                } else {
+                  setImgError(true);
+                }
+              }}
             />
           )}
 
@@ -186,12 +241,31 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
             )}
           </div>
 
-          {/* Flip hint */}
-          {hasDetails && (
-            <button onClick={handleFlip} className="absolute bottom-3 right-3 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors" title="Tap for details">
-              <Repeat size={11} className="text-white/70" />
-            </button>
-          )}
+          {/* Action buttons */}
+          <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5">
+            {onAddToTrip && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToTrip(item);
+                  setAddedToTrip(true);
+                  setTimeout(() => setAddedToTrip(false), 2000);
+                }}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  addedToTrip
+                    ? 'bg-emerald-500 scale-110'
+                    : 'bg-white/20 backdrop-blur-sm hover:bg-sky-500 hover:scale-110'
+                }`}
+                title={addedToTrip ? 'Added!' : 'Add to trip'}
+              >
+                {addedToTrip ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                ) : (
+                  <Plus size={13} className="text-white" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ─── Back (only renders content when flipped) ─── */}
@@ -204,7 +278,7 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
           {isFlipped && !imgError && (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt="" referrerPolicy="no-referrer" loading="lazy" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md" />
+              <img src={item.image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md" />
               <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             </>
           )}
@@ -262,12 +336,45 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
               </div>
             )}
             {item.description && <p className="text-[10px] text-white/60 leading-relaxed line-clamp-3 mb-2">{item.description}</p>}
-            {item.website && (
-              <a href={item.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 mb-2 hover:text-sky-300 transition-colors">
-                <Globe size={10} className="text-sky-300/60 shrink-0" />
-                <span className="text-[10px] text-white/50 truncate hover:text-sky-300 transition-colors">{item.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</span>
-              </a>
+            {/* Contact & links */}
+            <div className="flex flex-col gap-1.5 mb-2">
+              {item.phone && (
+                <a href={`tel:${item.phone}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 hover:text-sky-300 transition-colors">
+                  <Phone size={10} className="text-sky-300/60 shrink-0" />
+                  <span className="text-[10px] text-white/50 hover:text-sky-300 transition-colors">{item.phone}</span>
+                </a>
+              )}
+              {item.website && (
+                <a href={item.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 hover:text-sky-300 transition-colors">
+                  <Globe size={10} className="text-sky-300/60 shrink-0" />
+                  <span className="text-[10px] text-white/50 truncate hover:text-sky-300 transition-colors">{item.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</span>
+                </a>
+              )}
+            </div>
+
+            {/* Accessibility */}
+            {item.accessibility && item.accessibility.length > 0 && (
+              <div className="mb-2">
+                <div className="flex items-center gap-1 mb-1">
+                  <Accessibility size={9} className="text-emerald-400/70" />
+                  <span className="text-[8px] text-white/40 uppercase font-semibold">Accessibility</span>
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {item.accessibility.slice(0, 4).map((feat) => (
+                    <span key={feat} className="px-1.5 py-0.5 bg-emerald-500/15 rounded text-[8px] text-emerald-300/80">{feat}</span>
+                  ))}
+                </div>
+              </div>
             )}
+
+            {/* Nearby places count */}
+            {item.nearbyPlaces && item.nearbyPlaces.length > 0 && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <MapPinned size={10} className="text-amber-400/60 shrink-0" />
+                <span className="text-[10px] text-white/50">{item.nearbyPlaces.length} nearby place{item.nearbyPlaces.length !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+
             {item.tips && item.tips.length > 0 && (
               <div className="mb-2">
                 <span className="text-[8px] text-white/40 uppercase font-semibold block mb-1">Tips</span>
@@ -283,6 +390,6 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick }: PinCa
           </div>
         </div>
       </motion.div>
-    </Wrapper>
+    </div>
   );
 }

@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "upload.wikimedia.org" },
       { protocol: "https", hostname: "**.foursquare.com" },
       { protocol: "https", hostname: "**.fsq.com" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
       // Catch-all for dynamic external image sources
       { protocol: "https", hostname: "**" },
     ],

@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
+
+// ─── Shared Supabase client for API routes ──────────────────
+
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+export const supabaseKey = (
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+)!
+
+export function getSupabase() {
+  return createClient(supabaseUrl, supabaseKey)
+}
 
 // ─── Parameter extraction + validation ───────────────────────
 
@@ -117,9 +130,8 @@ export async function proxyToBackend(
   if (!auth) {
     try {
       const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+        supabaseUrl,
+        supabaseKey,
         {
           cookies: {
             getAll() { return req.cookies.getAll() },
@@ -248,9 +260,46 @@ export function rateLimit(
 
 // ─── Standard error response ─────────────────────────────────
 
-/**
- * Return a JSON error response with a message and HTTP status code.
+/** Standard error payload returned by all API routes. */
+export interface ApiError {
+  error: string
+}
+
+/** Return a JSON error response with a message and HTTP status code.
  */
 export function errorResponse(message: string, status: number = 500): NextResponse {
   return NextResponse.json({ error: message }, { status })
+}
+
+/** Return a JSON success response, optionally with Cache-Control headers. */
+export function jsonResponse<T>(data: T, cacheSeconds?: number): NextResponse<T> {
+  const headers: HeadersInit = cacheSeconds
+    ? { 'Cache-Control': `public, s-maxage=${cacheSeconds}, stale-while-revalidate=86400` }
+    : {}
+  return NextResponse.json(data, { headers })
+}
+
+/**
+ * Read a required query parameter or throw a descriptive error string.
+ * Use inside a try/catch that calls `errorResponse`.
+ */
+export function requireParam(
+  params: URLSearchParams,
+  name: string,
+  hint?: string
+): string {
+  const value = params.get(name)
+  if (!value) {
+    const msg = hint ? `Missing ${name} parameter (${hint})` : `Missing ${name} parameter`
+    throw new MissingParamError(msg)
+  }
+  return value
+}
+
+/** Sentinel error thrown by `requireParam` so routes can distinguish it from upstream failures. */
+export class MissingParamError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'MissingParamError'
+  }
 }

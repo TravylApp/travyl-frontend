@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Plus, ShareAndroid, Clock } from 'iconoir-react'
+import { Plus, ShareAndroid, Clock, MagicWand, Calendar } from 'iconoir-react'
 import type { Trip } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
 import type { Command } from './types'
@@ -132,6 +132,20 @@ export interface CalendarToolbarProps {
   /** When true: read-only shared view — hides share and new activity controls */
   isSharedView?: boolean
   onOpenHistory?: () => void
+  onFillGaps?: () => void
+  isGapFilling?: boolean
+  hasGhosts?: boolean
+  hasGaps?: boolean
+  /** Called when user clicks "Book My Trip" */
+  onBookTrip?: () => void
+  /** When true, shows "View Bookings" button */
+  hasBookingMatches?: boolean
+  /** When true, "Book My Trip" button is disabled (match run in progress) */
+  isBookingInProgress?: boolean
+  /** Called when user clicks "View Bookings" */
+  onViewBookings?: () => void
+  showEvents?: boolean
+  onToggleEvents?: () => void
 }
 
 export function CalendarToolbar({
@@ -155,6 +169,16 @@ export function CalendarToolbar({
   onDeleteUnscheduled,
   isSharedView = false,
   onOpenHistory,
+  onFillGaps,
+  isGapFilling = false,
+  hasGhosts = false,
+  hasGaps = false,
+  onBookTrip,
+  hasBookingMatches = false,
+  isBookingInProgress = false,
+  onViewBookings,
+  showEvents = true,
+  onToggleEvents,
 }: CalendarToolbarProps) {
   const { canEdit } = useEffectivePermission()
   const [rescoperOpen, setRescoperOpen] = useState(false)
@@ -163,12 +187,13 @@ export function CalendarToolbar({
   return (
     <div className="flex flex-col shrink-0">
       {/* Connection status banner */}
-      {connectionStatus !== 'connected' && (
-        <div className="flex items-center justify-center gap-2 bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 text-sm text-yellow-600 dark:text-yellow-400">
-          <span className="inline-block h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+      {/* Connection banner — only show after 3s to avoid flash on initial load */}
+      {connectionStatus !== 'connected' && typeof window !== 'undefined' && performance.now() > 3000 && (
+        <div className="flex items-center justify-center gap-2 bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
           {connectionStatus === 'reconnecting'
-            ? 'Reconnecting to collaboration server\u2026'
-            : 'Disconnected \u2014 changes may not sync'}
+            ? 'Reconnecting\u2026'
+            : 'Offline \u2014 changes saved locally'}
         </div>
       )}
 
@@ -311,6 +336,57 @@ export function CalendarToolbar({
             </button>
           )}
 
+          {/* Events toggle */}
+          {onToggleEvents && (
+            <button
+              onClick={onToggleEvents}
+              title={showEvents ? 'Hide events' : 'Show events'}
+              className={[
+                'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
+                showEvents
+                  ? 'bg-[#003594]/10 text-[#003594]'
+                  : 'text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30',
+              ].join(' ')}
+            >
+              <Calendar width={14} height={14} strokeWidth={1.5} />
+              <span>Events</span>
+            </button>
+          )}
+
+          {/* Magic wand — gap filler */}
+          {!isSharedView && onFillGaps && (
+            <button
+              onClick={onFillGaps}
+              disabled={isGapFilling || (!hasGaps && !hasGhosts)}
+              title={
+                isGapFilling
+                  ? 'Finding suggestions…'
+                  : hasGhosts
+                  ? 'Clear suggestions'
+                  : hasGaps
+                  ? 'Fill day with AI suggestions'
+                  : 'Day is fully scheduled'
+              }
+              aria-label="Fill day with AI suggestions"
+              className={[
+                'p-1.5 rounded-lg transition-colors',
+                hasGhosts && !isGapFilling
+                  ? 'text-[var(--cal-accent)] bg-[color-mix(in_srgb,var(--cal-accent)_12%,transparent)]'
+                  : 'text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30',
+                (isGapFilling || (!hasGaps && !hasGhosts)) ? 'opacity-40 cursor-not-allowed' : '',
+              ].join(' ')}
+            >
+              {isGapFilling ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : (
+                <MagicWand className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           {/* Collaborator avatars */}
           {collaborators.length > 0 && (
             <div className="flex items-center shrink-0">
@@ -347,6 +423,32 @@ export function CalendarToolbar({
                 )
               })}
             </div>
+          )}
+
+          {/* Book My Trip */}
+          {!isSharedView && onBookTrip && (
+            <button
+              onClick={isBookingInProgress ? undefined : onBookTrip}
+              disabled={isBookingInProgress}
+              className={[
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors shrink-0',
+                isBookingInProgress
+                  ? 'bg-gray-100 dark:bg-[#1e3a5f]/20 text-gray-400 dark:text-[#4a7ab5] cursor-not-allowed'
+                  : 'border border-[#003594]/30 text-[#003594] dark:text-[#4a7ab5] hover:bg-[#003594]/5 dark:hover:bg-[#1e3a5f]/20',
+              ].join(' ')}
+            >
+              {isBookingInProgress ? 'Matching…' : 'Book My Trip'}
+            </button>
+          )}
+
+          {/* View Bookings (appears once matches exist) */}
+          {!isSharedView && hasBookingMatches && onViewBookings && (
+            <button
+              onClick={onViewBookings}
+              className="flex items-center gap-1.5 rounded-lg border border-green-300 dark:border-green-700/40 bg-green-50 dark:bg-green-900/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors shrink-0"
+            >
+              View Bookings
+            </button>
           )}
 
           {/* Share */}

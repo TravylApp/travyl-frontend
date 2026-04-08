@@ -13,7 +13,17 @@ import {
   Platform,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import MapView, { Marker } from 'react-native-maps';
+
+// Conditionally import react-native-maps (crashes on web)
+let MapView: any = View;
+let Marker: any = View;
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch {}
+}
 import { Navy, type PlaceItem, useSimilarPlaces } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -98,7 +108,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
   useEffect(() => { setImageIndex(0); }, [deckIndex]);
 
   // Map ref — recenter when place changes
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   useEffect(() => {
     if (currentPlace?.latitude != null && currentPlace?.longitude != null) {
       mapRef.current?.animateToRegion({

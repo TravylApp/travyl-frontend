@@ -72,17 +72,19 @@ export function useActivityMutations(
 
   const updateActivity = useCallback(
     (id: string, patch: Partial<CalendarActivity>): void => {
-      const yMap = activitiesMap.get(id)
+      let yMap = activitiesMap.get(id)
       if (!yMap) {
+        // Activity not yet in Yjs — create Y.Map entry so update can proceed
         console.warn(
-          `[useActivityMutations] updateActivity: no Y.Map for id=${id}`,
+          `[useActivityMutations] updateActivity: creating Y.Map for id=${id}`,
         )
-        return
+        yMap = new Y.Map<unknown>()
+        activitiesMap.set(id, yMap)
       }
 
       activitiesMap.doc?.transact(() => {
         for (const [key, val] of Object.entries(patch)) {
-          if (val !== undefined) yMap.set(key, val)
+          if (val !== undefined) yMap!.set(key, val)
         }
       })
       // Persistence handled by useYjsSync debounced flush
@@ -92,12 +94,13 @@ export function useActivityMutations(
 
   const moveActivity = useCallback(
     (id: string, newDay: number, newStartHour: number): void => {
-      const yMap = activitiesMap.get(id)
+      let yMap = activitiesMap.get(id)
       if (!yMap) {
         console.warn(
-          `[useActivityMutations] moveActivity: no Y.Map for id=${id}`,
+          `[useActivityMutations] moveActivity: creating Y.Map for id=${id}`,
         )
-        return
+        yMap = new Y.Map<unknown>()
+        activitiesMap.set(id, yMap)
       }
 
       const oldDay = (yMap.get('day') as number) ?? 0
@@ -105,9 +108,9 @@ export function useActivityMutations(
       const newEndDay = oldEndDay + (newDay - oldDay)
 
       activitiesMap.doc?.transact(() => {
-        yMap.set('day', newDay)
-        yMap.set('endDay', newEndDay)
-        yMap.set('startHour', newStartHour)
+        yMap!.set('day', newDay)
+        yMap!.set('endDay', newEndDay)
+        yMap!.set('startHour', newStartHour)
       })
       // Persistence handled by useYjsSync debounced flush
     },

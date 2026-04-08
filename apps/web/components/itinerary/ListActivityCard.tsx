@@ -41,8 +41,7 @@ export function ListActivityCard({
             <img
               src={imgSrc!}
               alt={activity.name}
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onError={() => setImgError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/5" />

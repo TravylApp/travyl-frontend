@@ -5,7 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
+import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -54,157 +54,10 @@ interface HotelData {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock Data                                                          */
+/*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const SELECTED_HOTEL: HotelData = {
-  id: 'h1',
-  name: 'H\u00f4tel Le Marais',
-  stars: 4,
-  rating: 9.2,
-  reviews: 847,
-  price: 285,
-  address: '16 Rue du Temple, 75004 Paris, France',
-  neighborhood: 'Le Marais',
-  images: [
-    'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800',
-    'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800',
-    'https://images.unsplash.com/photo-1590490360182-c33d7d9d4048?w=800',
-    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-  ],
-  amenities: ['WiFi', 'Breakfast', 'Spa', 'Parking', 'Gym', 'AC', 'Room Service', 'Bar'],
-  amenityCategories: [
-    {
-      category: 'Room',
-      items: [
-        { name: 'Free WiFi', icon: 'wifi' },
-        { name: 'Air Conditioning', icon: 'snowflake-o' },
-        { name: 'Minibar', icon: 'glass' },
-        { name: 'Safe', icon: 'lock' },
-      ],
-    },
-    {
-      category: 'Dining',
-      items: [
-        { name: 'Breakfast Buffet', icon: 'coffee' },
-        { name: 'Restaurant', icon: 'cutlery' },
-        { name: 'Bar / Lounge', icon: 'glass' },
-        { name: 'Room Service', icon: 'bell' },
-      ],
-    },
-    {
-      category: 'Wellness',
-      items: [
-        { name: 'Spa & Sauna', icon: 'leaf' },
-        { name: 'Fitness Center', icon: 'heartbeat' },
-      ],
-    },
-    {
-      category: 'Services',
-      items: [
-        { name: 'Concierge', icon: 'user' },
-        { name: 'Parking', icon: 'car' },
-        { name: 'Laundry', icon: 'recycle' },
-        { name: '24h Front Desk', icon: 'clock-o' },
-      ],
-    },
-  ],
-  roomTypes: [
-    {
-      type: 'Classic Double',
-      beds: '1 Queen Bed',
-      guests: 2,
-      size: '22m\u00b2',
-      price: 285,
-      image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400',
-      amenities: ['WiFi', 'AC', 'Minibar'],
-    },
-    {
-      type: 'Superior Double',
-      beds: '1 King Bed',
-      guests: 2,
-      size: '30m\u00b2',
-      price: 345,
-      image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400',
-      amenities: ['WiFi', 'AC', 'Minibar', 'Balcony'],
-    },
-    {
-      type: 'Junior Suite',
-      beds: '1 King Bed + Sofa',
-      guests: 3,
-      size: '42m\u00b2',
-      price: 425,
-      image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=400',
-      amenities: ['WiFi', 'AC', 'Minibar', 'Lounge', 'Balcony'],
-    },
-    {
-      type: 'Deluxe Suite',
-      beds: '1 King Bed + Living Room',
-      guests: 4,
-      size: '58m\u00b2',
-      price: 595,
-      image: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?w=400',
-      amenities: ['WiFi', 'AC', 'Minibar', 'Lounge', 'Balcony', 'Jacuzzi'],
-    },
-  ],
-  checkIn: '3:00 PM',
-  checkOut: '11:00 AM',
-  cancellation: 'Free cancellation until Mar 18',
-  phone: '+33-1-42-72-34-12',
-  email: 'reservations@hotelmarais.fr',
-  guestRatings: {
-    overall: 9.2,
-    label: 'Exceptional',
-    cleanliness: 9.5,
-    staff: 9.3,
-    location: 9.6,
-    comfort: 9.0,
-    value: 8.8,
-  },
-};
-
-const OTHER_HOTELS: { id: string; name: string; stars: number; rating: number; label: string; reviews: number; price: number; neighborhood: string; image: string }[] = [
-  {
-    id: 'h2',
-    name: 'Grand Hotel du Palais Royal',
-    stars: 5,
-    rating: 9.4,
-    label: 'Exceptional',
-    reviews: 632,
-    price: 420,
-    neighborhood: 'Near Louvre',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
-  },
-  {
-    id: 'h3',
-    name: 'Hotel des Arts Montmartre',
-    stars: 3,
-    rating: 8.1,
-    label: 'Very Good',
-    reviews: 1204,
-    price: 145,
-    neighborhood: 'Montmartre',
-    image: 'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=400',
-  },
-  {
-    id: 'h4',
-    name: 'Pullman Paris Tour Eiffel',
-    stars: 4,
-    rating: 8.7,
-    label: 'Excellent',
-    reviews: 978,
-    price: 310,
-    neighborhood: 'Trocad\u00e9ro',
-    image: 'https://images.unsplash.com/photo-1529551739587-e242c564f727?w=400',
-  },
-];
-
-const BROWSE_HOTELS = [
-  { id: 'h1', name: 'Hotel Le Marais', stars: 4, rating: 8.7, reviews: 1243, price: 189, neighborhood: 'Le Marais', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400', amenities: ['WiFi', 'Breakfast', 'AC'], brand: 'Accor', label: 'Great Value' },
-  { id: 'h2', name: 'Grand Hotel du Palais Royal', stars: 5, rating: 9.2, reviews: 876, price: 350, neighborhood: 'Louvre', image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400', amenities: ['WiFi', 'Breakfast', 'Pool', 'Spa', 'Gym'], brand: 'Marriott', label: 'Top Pick' },
-  { id: 'h3', name: 'Hotel des Arts Montmartre', stars: 3, rating: 8.1, reviews: 654, price: 120, neighborhood: 'Montmartre', image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400', amenities: ['WiFi', 'AC'], brand: 'Best Western', label: 'Budget Friendly' },
-  { id: 'h4', name: 'Pullman Paris Tour Eiffel', stars: 4, rating: 8.9, reviews: 2105, price: 275, neighborhood: 'Trocadero', image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=400', amenities: ['WiFi', 'Breakfast', 'Pool', 'Parking', 'Gym'], brand: 'Accor', label: 'Popular' },
-];
+// Legacy mock data removed — hotels now come from trip_context + live search only
 
 const FILTER_AMENITIES = ['WiFi', 'Breakfast', 'Pool', 'Parking', 'Gym', 'Spa'];
 const HOTEL_BRANDS = ['Accor', 'Marriott', 'Hilton', 'IHG', 'Best Western'];
@@ -579,7 +432,7 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
     { label: 'Location', value: ratings.location },
     { label: 'Comfort', value: ratings.comfort },
     { label: 'Value', value: ratings.value },
-  ];
+  ].filter(s => s.value > 0); // Only show real sub-ratings
 
   return (
     <View style={{ marginTop: 14 }}>
@@ -588,12 +441,12 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
         icon="star-half-full"
         isOpen={isOpen}
         onToggle={() => setIsOpen(!isOpen)}
-        badge={`${ratings.overall} ${ratings.label}`}
+        badge={`${ratings.overall}${ratings.label ? ` ${ratings.label}` : ''}`}
       />
       {isOpen && (
         <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
           {/* Overall score */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: subscores.length > 0 ? 16 : 0 }}>
             <View
               style={{
                 width: 48, height: 48, borderRadius: 12,
@@ -604,31 +457,33 @@ function GuestRatingsSection({ ratings, reviews }: { ratings: GuestRatings; revi
               <Text style={{ ...TextStyles.title, color: '#fff' }}>{ratings.overall}</Text>
             </View>
             <View>
-              <Text style={{ ...TextStyles.subhead, color: colors.text }}>{ratings.label}</Text>
-              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{reviews.toLocaleString()} reviews</Text>
+              {!!ratings.label && <Text style={{ ...TextStyles.subhead, color: colors.text }}>{ratings.label}</Text>}
+              {reviews > 0 && <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{reviews.toLocaleString()} reviews</Text>}
             </View>
           </View>
 
-          {/* Sub-scores with progress bars */}
-          <View style={{ gap: 10 }}>
-            {subscores.map((s) => (
-              <View key={s.label}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{s.label}</Text>
-                  <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{s.value}</Text>
+          {/* Sub-scores with progress bars — only shown if real data exists */}
+          {subscores.length > 0 && (
+            <View style={{ gap: 10 }}>
+              {subscores.map((s) => (
+                <View key={s.label}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{s.label}</Text>
+                    <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{s.value}</Text>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: colors.borderLight, borderRadius: 3 }}>
+                    <View
+                      style={{
+                        height: 6, borderRadius: 3,
+                        backgroundColor: ratingColor(s.value, ACCENT),
+                        width: `${(s.value / 10) * 100}%`,
+                      }}
+                    />
+                  </View>
                 </View>
-                <View style={{ height: 6, backgroundColor: colors.borderLight, borderRadius: 3 }}>
-                  <View
-                    style={{
-                      height: 6, borderRadius: 3,
-                      backgroundColor: ratingColor(s.value, ACCENT),
-                      width: `${(s.value / 10) * 100}%`,
-                    }}
-                  />
-                </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -688,7 +543,7 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
 /*  Other Hotel Compact Card                                           */
 /* ------------------------------------------------------------------ */
 
-function OtherHotelCard({ hotel }: { hotel: typeof OTHER_HOTELS[number] }) {
+function OtherHotelCard({ hotel }: { hotel: { id: string; name: string; stars: number; rating: number; label?: string; reviews: number; price: number; neighborhood: string; image: string } }) {
   const ACCENT = useTabAccent('hotels');
   const colors = useThemeColors();
   return (
@@ -889,7 +744,7 @@ function HotelFilterBar({
 /*  Browse Hotel Card                                                  */
 /* ------------------------------------------------------------------ */
 
-function BrowseHotelCard({ hotel }: { hotel: typeof BROWSE_HOTELS[number] }) {
+function BrowseHotelCard({ hotel }: { hotel: { id: string; name: string; stars: number; rating: number; reviews: number; price: number; neighborhood: string; image: string; amenities?: string[]; brand?: string; label?: string } }) {
   const ACCENT = useTabAccent('hotels');
   const colors = useThemeColors();
   return (
@@ -1042,25 +897,56 @@ export default function HotelsScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Use real hotels from trip_context, fallback to hardcoded
+  // Hotels from trip_context
   const ctx = trip?.trip_context as any;
-  const realHotels = useMemo(() => {
+  const contextHotels = useMemo(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
     if (source.length === 0) return [];
     return source.map((h: any, i: number) => ({
       id: h.id || `hotel-${i}`,
       name: h.name,
-      stars: h.stars ?? 3,
+      stars: h.stars ?? 0,
       rating: h.rating ?? 0,
       reviews: h.ratingCount ?? h.review_count ?? 0,
-      price: h.price ?? h.price_per_night ?? 100,
-      neighborhood: h.address?.split(',')[0] || 'City Center',
-      image: h.image ?? h.photo_url ?? `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400`,
-      amenities: h.amenities ?? ['WiFi'],
+      price: h.price ?? h.price_per_night ?? 0,
+      neighborhood: h.address?.split(',')[0] || '',
+      image: upscaleGoogleImage(h.image ?? h.photo_url) || h.image || h.photo_url || '',
+      amenities: h.amenities ?? [],
       brand: '',
       label: i === 0 ? 'Top Pick' : i < 3 ? 'Popular' : '',
     }));
   }, [ctx]);
+
+  // Live hotel search via backend API
+  const destination = trip?.destination?.split(',')[0]?.trim();
+  const { data: searchResults } = useHotelSearch({
+    destination,
+    checkIn: trip?.start_date ?? undefined,
+    checkOut: trip?.end_date ?? undefined,
+  });
+  const searchHotels = useMemo(() => {
+    const hotels = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? [];
+    return hotels.map((h: any, i: number) => ({
+      id: h.id || `search-${i}`,
+      name: h.name,
+      stars: h.stars ?? 0,
+      rating: h.rating ?? 0,
+      reviews: h.reviews ?? 0,
+      price: h.price ?? 0,
+      neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
+      image: h.images?.[0] ?? h.image ?? '',
+      amenities: h.amenities ?? [],
+      brand: '',
+      label: '',
+    }));
+  }, [searchResults]);
+
+  // Merge: context first, then search results (deduped by name)
+  const realHotels = useMemo(() => {
+    const seen = new Set(contextHotels.map((h: any) => h.name.toLowerCase()));
+    const extra = searchHotels.filter((h: any) => !seen.has(h.name.toLowerCase()));
+    return [...contextHotels, ...extra];
+  }, [contextHotels, searchHotels]);
 
   const filteredHotels = useMemo(() => {
     let result = [...realHotels];
@@ -1083,45 +969,58 @@ export default function HotelsScreen() {
     return result;
   }, [starFilter, amenityFilter, brandFilter, sortBy]);
 
-  // Use first real hotel from trip_context, fall back to mock
+  // Use first real hotel from trip_context — no fabricated defaults
   const hotel = useMemo<HotelData | null>(() => {
     const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
     const h = source[0];
     if (!h) return null;
-    const price = h.price ?? h.price_per_night ?? 100;
-    const stars = h.stars ?? (h.rating >= 4.5 ? 5 : h.rating >= 3.5 ? 4 : 3);
+    const price = h.price ?? h.price_per_night ?? 0;
+    const stars = h.stars ?? 0;
+    const rating = h.rating ?? 0;
+    const ratingLabel = rating >= 4.5 ? 'Superb' : rating >= 4 ? 'Excellent' : rating > 0 ? 'Very Good' : '';
+    // Only include room types if we have real room data from the API
+    const roomTypes: RoomType[] = Array.isArray(h.room_types) && h.room_types.length > 0
+      ? h.room_types.map((r: any) => ({
+          type: r.type || 'Room',
+          beds: r.beds || '',
+          guests: r.guests ?? 2,
+          size: r.size || '',
+          price: r.price ?? price,
+          image: r.image || '',
+          amenities: r.amenities ?? [],
+        }))
+      : price > 0
+        ? [{ type: 'Standard Room', beds: '', guests: 2, size: '', price, image: '', amenities: [] }]
+        : [];
     return {
       id: h.id || 'h1',
       name: h.name,
       stars,
-      rating: h.rating ?? 8.0,
+      rating,
       reviews: h.ratingCount ?? h.review_count ?? 0,
       price,
       address: h.address || '',
-      neighborhood: h.address?.split(',')[0] || 'City Center',
-      images: [h.image ?? h.photo_url ?? 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'].filter(Boolean),
-      amenities: (h.amenities ?? ['WiFi', 'Breakfast']).slice(0, 8),
+      neighborhood: h.address?.split(',')[0] || '',
+      images: [h.image ?? h.photo_url].filter(Boolean) as string[],
+      amenities: (h.amenities ?? []).slice(0, 8),
       amenityCategories: [
         { category: 'Room', items: (h.amenities ?? []).filter((a: string) => /wifi|tv|ac|air|heat|iron|kitchen/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
         { category: 'Services', items: (h.amenities ?? []).filter((a: string) => /park|shuttle|elevator|pet|smoke|wheel/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
       ].filter(c => c.items.length > 0),
-      roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price, image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400', amenities: ['WiFi', 'AC'] },
-        { type: stars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: stars >= 4 ? '35m²' : '26m²', price: Math.round(price * 1.4), image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400', amenities: ['WiFi', 'AC', 'Minibar'] },
-      ],
-      checkIn: trip?.start_date ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
-      checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',
-      cancellation: 'Free cancellation until 48h before',
+      roomTypes,
+      checkIn: trip?.start_date ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+      checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+      cancellation: '',
       phone: '',
       email: h.link ?? '',
       guestRatings: {
-        overall: h.rating ?? 8.0,
-        label: (h.rating ?? 8) >= 4.5 ? 'Superb' : (h.rating ?? 8) >= 4 ? 'Excellent' : 'Very Good',
-        cleanliness: Math.round(((h.rating ?? 8) + 0.1) * 10) / 10,
-        staff: Math.round((h.rating ?? 8) * 10) / 10,
-        location: Math.round(((h.rating ?? 8) + 0.2) * 10) / 10,
-        comfort: Math.round((h.rating ?? 8) * 10) / 10,
-        value: Math.round(((h.rating ?? 8) - 0.1) * 10) / 10,
+        overall: rating,
+        label: ratingLabel,
+        cleanliness: 0,
+        staff: 0,
+        location: 0,
+        comfort: 0,
+        value: 0,
       },
     };
   }, [ctx, trip]);
@@ -1136,7 +1035,7 @@ export default function HotelsScreen() {
       </PageTransition>
     );
   }
-  const currentRoom = hotel.roomTypes[selectedRoom];
+  const currentRoom = hotel.roomTypes.length > 0 ? hotel.roomTypes[selectedRoom] : null;
 
   const handleBook = () => {
     const conf = generateConfirmation();
@@ -1191,8 +1090,8 @@ export default function HotelsScreen() {
       {/* ── Selected Hotel Detail ── */}
       <View style={{ backgroundColor: colors.background, borderRadius: 0, overflow: 'hidden' }}>
 
-        {/* Image Carousel */}
-        <ImageCarousel images={hotel.images} height={240} />
+        {/* Image Carousel — only show if we have real images */}
+        {hotel.images.length > 0 && <ImageCarousel images={hotel.images} height={240} />}
 
         {/* Hotel Info Header */}
         <View style={{ padding: 16 }}>
@@ -1201,17 +1100,23 @@ export default function HotelsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={{ ...TextStyles.title, color: colors.text }}>{hotel.name}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                <StarRow count={hotel.stars} />
-                <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{hotel.stars}-star hotel</Text>
+              {hotel.stars > 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <StarRow count={hotel.stars} />
+                  <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{hotel.stars}-star hotel</Text>
+                </View>
+              )}
+            </View>
+            {hotel.rating > 0 && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <RatingBadge rating={hotel.rating} />
+                {!!hotel.guestRatings.label && (
+                  <Text style={{ ...TextStyles.smEm, color: ratingColor(hotel.rating, ACCENT), marginTop: 3 }}>
+                    {hotel.guestRatings.label}
+                  </Text>
+                )}
               </View>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <RatingBadge rating={hotel.rating} />
-              <Text style={{ ...TextStyles.smEm, color: ratingColor(hotel.rating, ACCENT), marginTop: 3 }}>
-                {hotel.guestRatings.label}
-              </Text>
-            </View>
+            )}
           </View>
 
           {/* Address */}
@@ -1220,44 +1125,60 @@ export default function HotelsScreen() {
             <Text style={{ ...TextStyles.body, color: colors.textSecondary, flex: 1 }}>{hotel.address}</Text>
           </View>
 
-          {/* Reviews count */}
-          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 4 }}>
-            {hotel.reviews.toLocaleString()} verified reviews
-          </Text>
+          {/* Reviews count — only show if we have real review data */}
+          {hotel.reviews > 0 && (
+            <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 4 }}>
+              {hotel.reviews.toLocaleString()} verified reviews
+            </Text>
+          )}
 
-          {/* Check-in / Check-out Badges */}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-            <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
-              <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-in</Text>
-              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Mar 22 {'\u00b7'} {hotel.checkIn}</Text>
+          {/* Check-in / Check-out Badges — only show if dates available */}
+          {(!!hotel.checkIn || !!hotel.checkOut) && (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              {!!hotel.checkIn && (
+                <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
+                  <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-in</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{hotel.checkIn}</Text>
+                </View>
+              )}
+              {!!hotel.checkOut && (
+                <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
+                  <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-out</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{hotel.checkOut}</Text>
+                </View>
+              )}
             </View>
-            <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
-              <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-out</Text>
-              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Mar 27 {'\u00b7'} {hotel.checkOut}</Text>
-            </View>
-          </View>
+          )}
 
-          {/* Cancellation */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: '#f0fdf4', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#bbf7d0' }}>
-            <FontAwesome name="shield" size={11} color="#16a34a" />
-            <Text style={{ ...TextStyles.captionEm, color: '#16a34a' }}>{hotel.cancellation}</Text>
-          </View>
+          {/* Cancellation — only show if policy text exists */}
+          {!!hotel.cancellation && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: '#f0fdf4', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#bbf7d0' }}>
+              <FontAwesome name="shield" size={11} color="#16a34a" />
+              <Text style={{ ...TextStyles.captionEm, color: '#16a34a' }}>{hotel.cancellation}</Text>
+            </View>
+          )}
 
           {/* ── Collapsible Sections ── */}
 
-          {/* Room Selection */}
-          <RoomSelection rooms={hotel.roomTypes} selectedRoom={selectedRoom} onSelect={setSelectedRoom} />
+          {/* Room Selection — only show if real room data exists */}
+          {hotel.roomTypes.length > 0 && currentRoom && (
+            <RoomSelection rooms={hotel.roomTypes} selectedRoom={selectedRoom} onSelect={setSelectedRoom} />
+          )}
 
-          {/* Price Breakdown */}
-          <PriceBreakdown room={currentRoom} pricePerNight={currentRoom.price} />
+          {/* Price Breakdown — only show if real room data exists */}
+          {currentRoom && currentRoom.price > 0 && (
+            <PriceBreakdown room={currentRoom} pricePerNight={currentRoom.price} />
+          )}
 
           {/* Contact & Location — only shown when at least one field is populated */}
           {(!!hotel.phone || !!hotel.email || !!hotel.address) && (
             <ContactActions phone={hotel.phone} email={hotel.email} address={hotel.address} />
           )}
 
-          {/* Guest Ratings */}
-          <GuestRatingsSection ratings={hotel.guestRatings} reviews={hotel.reviews} />
+          {/* Guest Ratings — only show if we have a real overall rating */}
+          {hotel.guestRatings.overall > 0 && (
+            <GuestRatingsSection ratings={hotel.guestRatings} reviews={hotel.reviews} />
+          )}
 
           {/* Amenities */}
           <AmenitiesSection categories={hotel.amenityCategories} />
@@ -1265,7 +1186,8 @@ export default function HotelsScreen() {
           {/* Hotel Policies */}
           <HotelPoliciesSection />
 
-          {/* Book Hotel Button */}
+          {/* Book Hotel Button — only show if rooms are available */}
+          {currentRoom && (
           <View style={{ marginTop: 20 }}>
             {booked ? (
               <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center' }}>
@@ -1273,7 +1195,7 @@ export default function HotelsScreen() {
                 <Text style={{ ...TextStyles.subhead, color: '#16a34a', marginTop: 8 }}>Hotel Booked!</Text>
                 <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
                 <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
-                  {currentRoom.type} {'\u00b7'} {'\u20ac'}{currentRoom.price}/night {'\u00b7'} 5 nights
+                  {currentRoom.type} {'\u00b7'} {'\u20ac'}{currentRoom.price}/night
                 </Text>
               </View>
             ) : (
@@ -1293,16 +1215,19 @@ export default function HotelsScreen() {
               </Pressable>
             )}
           </View>
+          )}
         </View>
       </View>
 
       {/* ── Other Hotels ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
-        {OTHER_HOTELS.map((h) => (
-          <OtherHotelCard key={h.id} hotel={h} />
-        ))}
-      </View>
+      {realHotels.length > 1 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
+          {realHotels.slice(1).map((h: any) => (
+            <OtherHotelCard key={h.id} hotel={h} />
+          ))}
+        </View>
+      )}
 
       {/* ── Add Hotel Button (dashed border) ── */}
       <View style={{ paddingHorizontal: 16, marginTop: 6 }}>

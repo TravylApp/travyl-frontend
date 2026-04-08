@@ -19,6 +19,7 @@ import {
   useTrips,
   Navy,
   formatDateRange,
+  upscaleGoogleImage,
   TextStyles,
   FontSize,
   FontFamily,
@@ -386,7 +387,11 @@ export default function TripsScreen() {
     trips && trips.length > 0
       ? trips.map((t) => ({
           ...t,
-          image: t.trip_context?.hero_image_url ?? '',
+          image: upscaleGoogleImage(
+            t.cover_image_url
+            ?? t.trip_context?.hero_image_url
+            ?? t.trip_context?.hero_images?.[0]
+          ) || t.cover_image_url || t.trip_context?.hero_image_url || t.trip_context?.hero_images?.[0] || '',
         }))
       : [];
 

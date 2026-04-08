@@ -14,7 +14,7 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
 }
 
 /** Upscale Google Places proxy image URLs from tiny thumbnails to usable sizes */
-export function upscaleGoogleImage(url: string | null | undefined, width = 600, height = 400): string | null {
+export function upscaleGoogleImage(url: string | null | undefined, width = 1200, height = 800): string | null {
   if (!url) return null;
   if (url.includes('googleusercontent.com')) {
     return url
@@ -126,6 +126,10 @@ export type { RescoperOperation } from './rescoper'
 export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
+// Gap computation (calendar time gaps)
+export { computeGaps as computeTimeGaps } from './gaps'
+export type { TimeGap } from './gaps'
+
 /** Returns distance in km between two lat/lng points (Haversine formula) */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
@@ -137,6 +141,11 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-// Gap computation utility
+// Booking matcher utilities
+export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
+
+// Gap computation utility (day planner)
 export { computeGaps } from './gapCompute'
 export type { Gap } from './gapCompute'
+
+export * from './places'

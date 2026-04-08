@@ -25,17 +25,17 @@ export default function FlightDetailPage({
   if (isLoading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-pulse">
-        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-        <div className="w-full h-[180px] bg-gray-200 dark:bg-gray-700 rounded-xl mb-6" />
-        <div className="h-7 w-2/3 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-        <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-4" />
-        <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-56 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-4" />
-        <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 w-32 bg-gray-200 dark:bg-white/[0.06] rounded mb-4" />
+        <div className="w-full h-[180px] bg-gray-200 dark:bg-white/[0.06] rounded-xl mb-6" />
+        <div className="h-7 w-2/3 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-1/3 bg-gray-200 dark:bg-white/[0.06] rounded mb-2" />
+        <div className="h-4 w-1/2 bg-gray-200 dark:bg-white/[0.06] rounded mb-6" />
+        <div className="h-px bg-gray-100 dark:bg-white/[0.06] mb-4" />
+        <div className="h-4 w-40 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-56 bg-gray-200 dark:bg-white/[0.06] rounded mb-6" />
+        <div className="h-px bg-gray-100 dark:bg-white/[0.06] mb-4" />
+        <div className="h-4 w-36 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-48 bg-gray-200 dark:bg-white/[0.06] rounded" />
       </div>
     )
   }
@@ -153,7 +153,7 @@ export default function FlightDetailPage({
             </p>
             {departureDate && (
               <>
-                <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-base font-semibold text-gray-900 dark:text-white">
                   {departureDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -176,7 +176,7 @@ export default function FlightDetailPage({
             </p>
             {arrivalDate && (
               <>
-                <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-base font-semibold text-gray-900 dark:text-white">
                   {arrivalDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -195,7 +195,7 @@ export default function FlightDetailPage({
 
         {/* Duration row */}
         {duration && (
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.06] flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <Clock className="w-4 h-4 text-gray-400 shrink-0" />
             <span>Duration: <span className="font-medium text-gray-800 dark:text-gray-200">{duration}</span></span>
           </div>

@@ -1,24 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { rateLimit } from '@/lib/api-utils'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
+import { filterByRadius } from '@/lib/haversine'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
-
-const COUNTRY_CUISINE: Record<string, string> = {
-  France: 'French', Spain: 'Spanish', Italy: 'Italian', Japan: 'Japanese',
-  Mexico: 'Mexican', India: 'Indian', China: 'Chinese', Thailand: 'Thai',
-  Morocco: 'Moroccan', Turkey: 'Turkish', Greece: 'Greek', Vietnam: 'Vietnamese',
-  UK: 'British', USA: 'American', Canada: 'Canadian', Ireland: 'Irish',
-  Portugal: 'Portuguese', Brazil: 'Brazilian', Egypt: 'Egyptian', Poland: 'Polish',
-  Germany: 'German', Netherlands: 'Dutch', Sweden: 'Swedish', Norway: 'Norwegian',
-}
 
 export async function POST(req: NextRequest) {
   const blocked = rateLimit(req, 'enrich', 3, 60_000)
@@ -44,10 +31,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
   }
 
+  // Ownership check: logged-in must own, anonymous can only enrich public unowned trips
+  const authHeader = req.headers.get('authorization')
+  if (authHeader) {
+    const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
+      { global: { headers: { Authorization: authHeader } } }).auth.getUser()
+    if (!user || (trip.user_id && trip.user_id !== user.id)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+  } else if (trip.user_id || trip.visibility !== 'public') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  }
+
   const existing = trip.trip_context ?? {}
 
   // Skip if fully enriched (has all key fields including newer APIs)
-  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0 && existing.foursquare_venues?.length > 0
+  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0
     && existing.phrases && existing.nearby_cities && existing.cost_of_living && existing.safety && existing.timezone_info) {
     return NextResponse.json({ status: 'already_enriched' })
   }
@@ -56,7 +55,7 @@ export async function POST(req: NextRequest) {
   const parts = (trip.destination || '').split(',')
   const city = parts[0]?.trim() || trip.destination
   const country = parts[parts.length - 1]?.trim() || ''
-  const cuisineArea = COUNTRY_CUISINE[country] ?? ''
+  const cuisineCountry = country
 
   // Geocode if no lat/lng
   let lat = existing.lat ?? 0
@@ -75,58 +74,72 @@ export async function POST(req: NextRequest) {
     ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
     : 5
 
-  const baseUrl = req.nextUrl.origin
+  // req.nextUrl.origin returns "https://localhost:3000" on Amplify SSR Lambda.
+  // Use the Host header or known domain to build the correct self-referencing URL.
+  const selfHost = req.headers.get('host') || req.headers.get('x-forwarded-host') || ''
+  const selfProto = req.headers.get('x-forwarded-proto') || 'https'
+  const baseUrl = selfHost ? `${selfProto}://${selfHost}` : req.nextUrl.origin
 
-  // Fetch explore items — try backend, fall back to Foursquare
+  // Fetch explore items — multiple broad NLP queries for diversity, categories come from the API
   let exploreItems: any[] = []
   if (lat && lng) {
+    const cityName = city || trip.destination?.split(',')[0]?.trim() || ''
+    // Broad queries — the API returns items with their own categories, we don't impose ours
+    const queries = [
+      `${cityName} things to do`,
+      `${cityName} nightlife bars clubs`,
+      `${cityName} beaches outdoors`,
+      `${cityName} shopping markets`,
+    ]
     try {
-      const cats = ['sightseeing', 'restaurant', 'museum']
       const results = await Promise.all(
-        cats.map(async (cat) => {
-          const r = await fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-          return r.ok ? r.json() : []
+        queries.map(async (q) => {
+          const r = await fetch(`${baseUrl}/api/places?q=${encodeURIComponent(q)}&lat=${lat}&lng=${lng}&limit=15`)
+          return r.ok ? r.json().catch(() => []) : []
         })
       )
       const seen = new Set<string>()
       exploreItems = results.flat().filter((p: any) => {
-        if (seen.has(p.id)) return false; seen.add(p.id); return true
-      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: p.image }))
+        const key = p.id || p.name
+        if (!p.name || !key || seen.has(key)) return false; seen.add(key); return true
+      }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category, category: p.category, image: upscaleGoogleImage(p.image) ?? p.image, lat: p.latitude, lng: p.longitude, rating: p.rating, address: p.address }))
     } catch {}
 
-    // Fallback 1: Foursquare (via backend /api/places/nearby)
+    // Fallback 1: Foursquare (via backend /api/places/nearby) — broad "all" query
     if (exploreItems.length === 0 && BACKEND_URL) {
       try {
         const fsCats = ['attraction', 'restaurant', 'museum']
         const results = await Promise.all(
           fsCats.map(async (cat) => {
-            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
+            const r = await fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=${cat}&limit=4&radius_km=50`)
             return r.ok ? r.json() : []
           })
         )
         const seen = new Set<string>()
         exploreItems = results.flat().filter((p: any) => {
           if (!p?.id || seen.has(p.id)) return false; seen.add(p.id); return true
-        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: p.image }))
+        }).map((p: any) => ({ id: p.id, title: p.name, description: p.tip || p.category || 'Popular spot', category: p.category || 'Attraction', image: upscaleGoogleImage(p.image) ?? p.image }))
       } catch {}
     }
 
     // Fallback 2: OpenTripMap (free, no key, Wikipedia-enriched descriptions)
     if (exploreItems.length === 0) {
       try {
-        const otmCats = ['interesting_places', 'cultural~museums', 'architecture']
-        const results = await Promise.all(
-          otmCats.map(async (cat) => {
-            const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-            return r.ok ? r.json() : []
-          })
-        )
-        const seen = new Set<string>()
-        exploreItems = results.flat().filter((p: any) => {
-          if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
-        }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: p.image }))
+        const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&limit=40`)
+        if (r.ok) {
+          const items = await r.json()
+          const seen = new Set<string>()
+          exploreItems = (Array.isArray(items) ? items : []).filter((p: any) => {
+            if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
+          }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: upscaleGoogleImage(p.image) ?? p.image }))
+        }
       } catch {}
     }
+  }
+
+  // Filter explore items by geographic radius to prevent wrong-city results
+  if (lat && lng && exploreItems.length > 0) {
+    exploreItems = filterByRadius(exploreItems, lat, lng, 50) as typeof exploreItems
   }
 
   // Fetch all enrichment APIs in parallel with 15s timeout
@@ -135,10 +148,7 @@ export async function POST(req: NextRequest) {
   const endParam = trip.end_date || ''
   const enrichAbort = new AbortController()
   const enrichTimeout = setTimeout(() => enrichAbort.abort(), 15_000)
-  const sig = enrichAbort.signal
-  const safeFetch = (url: string, opts?: RequestInit) =>
-    fetch(url, { ...opts, signal: sig }).catch(() => null)
-  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, fsAttractions, fsRestaurants, fsNightlife, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
+  const [heroImageUrl, weatherData, hotelData, newsData, landmarkPhotos, countryInfo, wikiData, holidays, cuisineData, sunriseData, eventsData, safetyData, nearbyCities, timezoneData, phrasesData, aqiData, costData, taRestaurants, taAttractions] = await Promise.all([
     (BACKEND_URL
       ? fetch(`${BACKEND_URL}/api/images/search?q=${encodeURIComponent(city)}`)
           .then(r => r.ok ? r.json().then((d: any) => d.url) : undefined).catch(() => undefined)
@@ -148,7 +158,7 @@ export async function POST(req: NextRequest) {
           .then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null)),
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=hotel&limit=5&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
     fetch(`${baseUrl}/api/news?destination=${encodeURIComponent(city)}&limit=8`)
@@ -161,17 +171,10 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(`${baseUrl}/api/holidays?country=${encodeURIComponent(countryCode)}&year=${new Date().getFullYear()}`)
       .then(r => r.ok ? r.json() : []).catch(() => []),
-    cuisineArea ? fetch(`${baseUrl}/api/cuisine?area=${encodeURIComponent(cuisineArea)}`)
+    cuisineCountry ? fetch(`${baseUrl}/api/cuisine?country=${encodeURIComponent(cuisineCountry)}`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/sunrise?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
-    // "What's Going On" — restaurants, parks, nightlife (distinct from explore_items which is sightseeing)
-    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=restaurant&limit=4`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=park&limit=3`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
-    lat ? fetch(`${baseUrl}/api/places?lat=${lat}&lng=${lng}&category=nightlife&limit=3`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     // Real events (Eventbrite + PredictHQ — via backend)
     (BACKEND_URL
       ? fetch(`${BACKEND_URL}/api/events/search?city=${encodeURIComponent(city)}${startParam ? `&start_date=${startParam}` : ''}${endParam ? `&end_date=${endParam}` : ''}`)
@@ -197,12 +200,12 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : null).catch(() => null),
     // TripAdvisor restaurants — real photos + ratings (via backend)
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=restaurants&limit=6&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
     // TripAdvisor attractions — supplement explore items (via backend)
     (lat && BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6`)
+      ? fetch(`${BACKEND_URL}/api/places/nearby?lat=${lat}&lng=${lng}&category=attractions&limit=6&radius_km=50`)
           .then(r => r.ok ? r.json() : []).catch(() => [])
       : Promise.resolve([])),
   ])
@@ -210,8 +213,12 @@ export async function POST(req: NextRequest) {
 
   // Supplement explore_items with TripAdvisor attractions (better photos, more data)
   if (taAttractions?.length > 0) {
+    // Filter by radius to avoid wrong-city results
+    const filteredAttractions = lat && lng
+      ? filterByRadius(taAttractions, lat, lng, 50)
+      : taAttractions
     const existingIds = new Set(exploreItems.map((e) => e.title?.toLowerCase()))
-    for (const ta of taAttractions) {
+    for (const ta of filteredAttractions) {
       if (!ta.name || existingIds.has(ta.name.toLowerCase())) continue
       existingIds.add(ta.name.toLowerCase())
       exploreItems.push({
@@ -224,29 +231,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Build "What's Going On" venues from different categories (with real Google Places photos)
-  const seen2 = new Set<string>()
-  const goingOnVenues = [...(fsAttractions || []), ...(fsRestaurants || []), ...(fsNightlife || [])]
-    .filter((v: any) => {
-      if (!v?.id || !v?.name || seen2.has(v.id)) return false
-      seen2.add(v.id)
-      return true
-    })
-    .map((v: any) => ({ id: v.id, title: v.name, description: v.description || v.tagline || v.category || 'Popular spot', category: v.category || 'Venue', image: v.image }))
-    .slice(0, 8)
-
   const fresh: Record<string, any> = {
-    hero_image_url: landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl,
+    hero_image_url: upscaleGoogleImage(landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl) ?? (landmarkPhotos?.[0]?.image || exploreItems[0]?.image || heroImageUrl),
     hero_images: (landmarkPhotos?.length > 0
-      ? landmarkPhotos.filter((p: any) => p.image).map((p: any) => p.image).slice(0, 8)
-      : exploreItems.filter((e) => e.image).map((e) => e.image).slice(0, 6)) || undefined,
+      ? landmarkPhotos.filter((p: any) => p.image).map((p: any) => upscaleGoogleImage(p.image) ?? p.image).slice(0, 8)
+      : exploreItems.filter((e) => e.image).map((e) => upscaleGoogleImage(e.image) ?? e.image).slice(0, 6)) || undefined,
     lat, lng,
     lede_text: `A ${durationDays}-day trip to ${city}.`,
     explore_items: exploreItems,
-    foursquare_venues: goingOnVenues.length > 0 ? goingOnVenues : undefined,
     events: eventsData?.length > 0 ? eventsData : undefined,
     weather: weatherData ? { current: weatherData.current, forecast: weatherData.forecast } : undefined,
-    hotels: hotelData?.length > 0 ? hotelData : undefined,
+    hotels: hotelData?.length > 0 ? hotelData.map((h: any) => ({ ...h, photo_url: upscaleGoogleImage(h.photo_url) ?? h.photo_url })) : undefined,
     news: newsData?.length > 0 ? newsData : undefined,
     country: countryInfo ?? undefined,
     wiki: wikiData ?? undefined,
@@ -258,12 +253,13 @@ export async function POST(req: NextRequest) {
       ? nearbyCities.filter((c: any) => c.name?.toLowerCase() !== city.toLowerCase()).slice(0, 4)
       : undefined,
     timezone_info: timezoneData ?? undefined,
-    restaurants: taRestaurants?.length > 0 ? taRestaurants : undefined,
+    restaurants: taRestaurants?.length > 0 ? taRestaurants.map((r: any) => ({ ...r, photo_url: upscaleGoogleImage(r.photo_url) ?? r.photo_url })) : undefined,
     phrases: phrasesData ?? undefined,
     aqi: aqiData ?? undefined,
     cost_of_living: costData ?? undefined,
     quick_facts: countryInfo ? {
-      currency: `${countryInfo.currency?.code} (${countryInfo.currency?.symbol})`,
+      currency: countryInfo.currency?.code || 'USD',
+      currency_symbol: countryInfo.currency?.symbol || '$',
       language: countryInfo.language,
       timezone: timezoneData?.timezone || countryInfo.timezone,
       emergency: countryInfo.emergency || '112',
@@ -286,7 +282,6 @@ export async function POST(req: NextRequest) {
   // Fill missing images for explore items and venues using Pexels/Unsplash
   const itemsMissingImages = [
     ...exploreItems.filter((e) => !e.image).map((e) => ({ ref: e, type: /restaurant|food|culinary|dining/i.test(e.category) ? 'restaurant' : 'activity' })),
-    ...goingOnVenues.filter((v: any) => !v.image).map((v: any) => ({ ref: v, type: /restaurant|food|culinary|dining/i.test(v.category) ? 'restaurant' : 'activity' })),
   ].slice(0, 6) // Limit to 6 image fetches to avoid rate limits
 
   if (itemsMissingImages.length > 0 && BACKEND_URL) {
@@ -308,6 +303,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Ensure all images are high-res before saving to Supabase
+  const hiRes = (url: string | undefined | null) => upscaleGoogleImage(url) || url || undefined
+  if (fresh.hero_image_url) fresh.hero_image_url = hiRes(fresh.hero_image_url)
+  if (fresh.hero_images) fresh.hero_images = fresh.hero_images.map((u: string) => hiRes(u)).filter(Boolean)
+  if (fresh.explore_items) fresh.explore_items = fresh.explore_items.map((e: any) => ({ ...e, image: hiRes(e.image) }))
+  if (fresh.restaurants) fresh.restaurants = fresh.restaurants.map((r: any) => ({ ...r, image: hiRes(r.image) }))
+  if (fresh.hotels) fresh.hotels = fresh.hotels.map((h: any) => ({ ...h, image: hiRes(h.image) }))
+
   // Merge: fill missing fields, replace empty arrays, and fix zero lat/lng
   const merged = { ...existing }
   for (const [key, value] of Object.entries(fresh)) {
@@ -321,12 +324,66 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-generate packing suggestions if none exist yet
+  try {
+    const { count: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? 0) === 0) {
+      const { generatePackingSuggestions } = await import('@travyl/shared')
+      const userId = trip.user_id ?? ''
+      const suggestions = generatePackingSuggestions(
+        {
+          destination: trip.destination ?? '',
+          country: country,
+          startDate: trip.start_date ?? undefined,
+          endDate: trip.end_date ?? undefined,
+          durationDays,
+          weather: weatherData ? {
+            current: weatherData.current ? { temp_f: weatherData.current.temp_f, conditions: weatherData.current.conditions } : undefined,
+            forecast: weatherData.forecast?.map((d: any) => ({ high: d.high, low: d.low, conditions: d.conditions })),
+          } : undefined,
+          travelers: trip.trip_context?.travelers ?? undefined,
+        },
+        userId,
+      )
+
+      if (suggestions.length > 0) {
+        const rows = suggestions.map((s) => ({ ...s, trip_id: tripId }))
+        await supabase.from('packing_suggestions').insert(rows)
+      }
+    }
+  } catch {
+    // Non-critical — don't fail enrichment if packing generation fails
+  }
+
   // Update trip
   const { error: updateErr } = await supabase
     .from('trips').update({ trip_context: merged }).eq('id', tripId)
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
+
+  // Auto-generate packing suggestions via SST (fire-and-forget)
+  if (BACKEND_URL) {
+    const { data: existingSuggestions } = await supabase
+      .from('packing_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+
+    if ((existingSuggestions ?? []).length === 0) {
+      // Get auth token to forward to the packing-suggest SST function
+      const authHeader = req.headers.get('authorization')
+      const body = JSON.stringify({ tripId })
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authHeader) headers['Authorization'] = authHeader
+
+      fetch(`${BACKEND_URL}/packing-suggest`, { method: 'POST', headers, body })
+        .catch((err) => console.error('[enrich] packing-suggest failed:', err))
+    }
   }
 
   return NextResponse.json({ status: 'enriched', keys: Object.keys(merged) })

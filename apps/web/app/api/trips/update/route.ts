@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
+import { getSupabase, supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
 
 const CITY_AIRPORTS: Record<string, string> = {
   'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
@@ -29,14 +23,10 @@ const CITY_AIRPORTS: Record<string, string> = {
  * after the lightweight create has already succeeded. Runs server-side so no CloudFront WAF limit.
  */
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase()
-  // Origin check
-  const origin = req.headers.get('origin') || req.headers.get('referer') || ''
-  const host = req.headers.get('host') || ''
-  if (origin && !origin.includes(host) && !origin.includes('localhost')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const blocked = checkOrigin(req) || rateLimit(req, 'trip-update', 10, 60_000)
+  if (blocked) return blocked
 
+  const supabase = getSupabase()
   const body = await req.json()
   const { tripId, trip_context, hotels, flights } = body
 
@@ -44,15 +34,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
   }
 
-  // Verify trip exists
+  // Verify trip exists and check ownership
   const { data: trip, error: fetchErr } = await supabase
     .from('trips')
-    .select('id, destination, start_date, end_date')
+    .select('id, destination, start_date, end_date, user_id, visibility')
     .eq('id', tripId)
     .single()
 
   if (fetchErr || !trip) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
+  }
+
+  // Ownership check: logged-in users must own the trip, anonymous can only update public unowned trips
+  const authHeader = req.headers.get('authorization')
+  if (authHeader) {
+    const { data: { user }, error: authErr } = await createClient(
+      supabaseUrl, supabaseKey,
+      { global: { headers: { Authorization: authHeader } } }
+    ).auth.getUser()
+    if (authErr || !user || (trip.user_id && trip.user_id !== user.id)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+  } else {
+    if (trip.user_id || trip.visibility !== 'public') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
   }
 
   // Update trip_context

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -7,20 +7,34 @@ import * as Linking from 'expo-linking';
 import { useAuthStore, supabase, Navy, TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
-function SocialButton({ label, iconName, iconColor, onPress }: {
-  label: string; iconName: string; iconColor?: string; onPress: () => void;
+// OAuth providers available on this build. Update when adding/removing
+// providers in Supabase Dashboard → Authentication → Providers.
+const OAUTH_PROVIDERS = [
+  { label: 'Google', iconName: 'google', iconColor: '#EA4335', provider: 'google' as const },
+  { label: 'Apple', iconName: 'apple', iconColor: '#000', provider: 'apple' as const },
+  { label: 'Facebook', iconName: 'facebook', iconColor: '#1877F2', provider: 'facebook' as const },
+  { label: 'Microsoft', iconName: 'windows', iconColor: '#00a4ef', provider: 'azure' as const },
+];
+
+function SocialButton({ label, iconName, iconColor, loading, onPress }: {
+  label: string; iconName: string; iconColor?: string; loading?: boolean; onPress: () => void;
 }) {
   const colors = useThemeColors();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={loading ? undefined : onPress}
       style={{
         height: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight,
         backgroundColor: colors.cardBackground, alignItems: 'center', justifyContent: 'center',
         flexDirection: 'row', gap: 8,
+        opacity: loading ? 0.6 : 1,
       }}
     >
-      <FontAwesome name={iconName as any} size={16} color={iconColor ?? Navy.DEFAULT} />
+      {loading ? (
+        <ActivityIndicator size="small" color={Navy.DEFAULT} />
+      ) : (
+        <FontAwesome name={iconName as any} size={16} color={iconColor ?? Navy.DEFAULT} />
+      )}
       <Text style={{ ...TextStyles.bodyLg, color: Navy.DEFAULT }}>{label}</Text>
     </Pressable>
   );
@@ -76,13 +90,23 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const [oauthLoading, setOAuthLoading] = useState<string | null>(null);
+
+  const handleOAuthSignIn = async (provider: typeof OAUTH_PROVIDERS[number]['provider']) => {
+    setOAuthLoading(provider);
+    setError('');
     const redirectTo = Linking.createURL('login-callback');
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider,
       options: { redirectTo },
     });
-    if (error) Alert.alert('Sign in failed', error.message);
+    if (error) {
+      const msg = error.message.includes('not configured') || error.message.includes('not enabled')
+        ? `${provider} sign-in is not available yet. Try Google or sign in with email.`
+        : error.message;
+      setError(msg);
+    }
+    setOAuthLoading(null);
   };
 
   return (
@@ -116,13 +140,25 @@ export default function LoginScreen() {
           ) : null}
 
           {/* Social login */}
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            <View style={{ flex: 1 }}><SocialButton label="Google" iconName="google" iconColor="#EA4335" onPress={handleGoogleSignIn} /></View>
-            <View style={{ flex: 1 }}><SocialButton label="Apple" iconName="apple" iconColor="#000" onPress={() => {}} /></View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-            <View style={{ flex: 1 }}><SocialButton label="Facebook" iconName="facebook" iconColor="#1877F2" onPress={() => {}} /></View>
-            <View style={{ flex: 1 }}><SocialButton label="Microsoft" iconName="windows" iconColor="#00a4ef" onPress={() => {}} /></View>
+          <View style={{ gap: 8, marginBottom: 20 }}>
+            {Array.from({ length: Math.ceil(OAUTH_PROVIDERS.length / 2) }, (_, rowIdx) => {
+              const rowProviders = OAUTH_PROVIDERS.slice(rowIdx * 2, rowIdx * 2 + 2);
+              return (
+                <View key={rowIdx} style={{ flexDirection: 'row', gap: 8 }}>
+                  {rowProviders.map((p) => (
+                    <View key={p.label} style={{ flex: 1 }}>
+                      <SocialButton
+                        label={p.label}
+                        iconName={p.iconName}
+                        iconColor={p.iconColor}
+                        loading={oauthLoading === p.provider}
+                        onPress={() => handleOAuthSignIn(p.provider)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
           </View>
 
           {/* Divider */}
