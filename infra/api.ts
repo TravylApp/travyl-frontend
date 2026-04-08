@@ -196,6 +196,12 @@ api.route('GET /events/{id}/details', {
   timeout: '10 seconds',
 })
 
+api.route('POST /bookings/validate', {
+  handler: 'services/bookings.validateHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '5 seconds',
+})
+
 api.route('POST /book/match', {
   handler: 'services/book.handler',
   link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],
