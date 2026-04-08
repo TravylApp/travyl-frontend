@@ -190,6 +190,12 @@ api.route('GET /events', {
   link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
 })
 
+api.route('GET /events/{id}/details', {
+  handler: 'services/events.detailsHandler',
+  link: [supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
+  timeout: '10 seconds',
+})
+
 api.route('POST /book/match', {
   handler: 'services/book.handler',
   link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],
