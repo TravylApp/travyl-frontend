@@ -219,3 +219,9 @@ api.route('GET /weather/forecast', {
   link: [supabaseSecretKey, supabaseUrl],
   timeout: '15 seconds',
 })
+
+api.route('GET /transit/directions', {
+  handler: 'services/transit.handler',
+  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
+  timeout: '20 seconds',
+})
