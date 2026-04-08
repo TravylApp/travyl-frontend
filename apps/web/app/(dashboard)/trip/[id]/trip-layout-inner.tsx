@@ -35,17 +35,17 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   const Icon = tab.icon;
 
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-16 pt-4 pb-3 sticky top-0 z-20">
+    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-[100px] pt-4 pb-3 sticky top-12 z-20">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0 backdrop-blur-md" style={{ backgroundColor: `${tab.color}cc` }}>
-          <Icon size={15} className="text-white" />
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: `${tab.color}18`, color: tab.color }}>
+          <Icon size={15} />
         </div>
         <div className="flex-1">
-          <h2 className="text-[17px] tracking-tight text-white font-bold" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>{tab.label}</h2>
-          <p className="text-[12px] text-white/60" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{tab.subtitle}</p>
+          <h2 className="text-[17px] tracking-wide font-normal text-gray-900 dark:text-white font-serif">{tab.label}</h2>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400">{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-white/30 hover:bg-white/20 text-white'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
+          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
             <Map size={13} />
             <span className="text-[12px] font-medium">Map</span>
           </button>
@@ -113,8 +113,8 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-16 py-8">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8">
+      <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-6 font-serif">
         Explore {city}
       </h2>
 
@@ -140,7 +140,7 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
                   </button>
                   <div className="absolute bottom-0 left-0 right-0 p-3.5">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-white/50 mb-1">{item.category}</p>
-                    <p className="text-[15px] font-bold text-white leading-tight line-clamp-2 mb-1">{item.title || item.name}</p>
+                    <p className="text-[15px] font-normal text-white leading-tight line-clamp-2 mb-1 font-serif">{item.title || item.name}</p>
                     {item.rating ? (
                       <div className="flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
@@ -385,7 +385,7 @@ function TripLayoutContent({
 
           <div className="flex">
             {/* Main content */}
-            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'md:pl-20' : 'px-5 md:pl-16 pt-4 pb-5'}`}>
+            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'md:pl-20' : 'px-5 md:pl-[100px] pt-4 pb-5'}`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}

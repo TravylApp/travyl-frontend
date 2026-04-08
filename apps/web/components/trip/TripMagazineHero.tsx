@@ -224,8 +224,8 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
         </p>
         <div className="flex items-center gap-4">
           {cityName ? (
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[0.95] font-serif"
-              style={{ letterSpacing: '0.02em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal text-white leading-[0.95] font-serif"
+              style={{ letterSpacing: '0.04em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
               {cityName.toUpperCase()}
             </h1>
           ) : (
