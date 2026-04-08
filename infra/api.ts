@@ -220,6 +220,12 @@ api.route('GET /flights/search', {
   timeout: '30 seconds',
 })
 
+api.route('GET /flights/{offerId}/details', {
+  handler: 'services/flights.detailsHandler',
+  link: [supabaseSecretKey, supabaseUrl, duffelApiToken],
+  timeout: '15 seconds',
+})
+
 api.route('GET /weather/forecast', {
   handler: 'services/weather.handler',
   link: [supabaseSecretKey, supabaseUrl],

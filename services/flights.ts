@@ -180,3 +180,72 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
   }
 }
+
+// ─── GET /flights/{offerId}/details ───────────────────────────
+
+interface FlightDetailsResponse extends Flight {
+  rawOffer: any
+}
+
+export const detailsHandler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    await validateAuth(event.headers.authorization)
+
+    const offerId = event.pathParameters?.offerId
+    if (!offerId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Offer ID required' }) }
+    }
+
+    const apiKey = Resource.DuffelApiToken.value
+    if (!apiKey || apiKey === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Flight details unavailable - API key not configured' }) }
+    }
+
+    const res = await fetch(`https://api.duffel.com/air/offers/${offerId}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Duffel-Version': 'v2',
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { statusCode: 404, body: JSON.stringify({ error: 'Offer not found' }) }
+      }
+      const errText = await res.text().catch(() => '')
+      console.error('[flights/details] Duffel error:', res.status, errText)
+      return { statusCode: 502, body: JSON.stringify({ error: 'Failed to fetch flight details' }) }
+    }
+
+    const data = await res.json()
+    const offer = data.data
+
+    if (!offer) {
+      return { statusCode: 404, body: JSON.stringify({ error: 'Offer not found' }) }
+    }
+
+    const flight: FlightDetailsResponse = {
+      id: offer.id,
+      price: parseFloat(offer.total_amount),
+      currency: offer.total_currency,
+      cabinClass: offer.slices?.[0]?.segments?.[0]?.passengers?.[0]?.cabin_class ?? 'economy',
+      outbound: mapSlice(offer.slices?.[0]),
+      return: mapSlice(offer.slices?.[1]),
+      bookingUrl: offer.payment_requirements?.requires_instant_payment ? null : `https://app.duffel.com/seller/offers/${offer.id}`,
+      rawOffer: offer,
+    }
+
+    return { statusCode: 200, body: JSON.stringify(flight) }
+  } catch (err: any) {
+    if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
+    }
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { statusCode: 504, body: JSON.stringify({ error: 'Flight details timeout' }) }
+    }
+    console.error('[flights/details] error:', err)
+    return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
+  }
+}

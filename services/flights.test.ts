@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { handler } from './flights'
+import { handler, detailsHandler } from './flights'
 
 describe('GET /flights/search', () => {
   const mockEvent = (queryParams: Record<string, string>, authHeader = 'Bearer valid-token') => ({
@@ -64,5 +64,26 @@ describe('GET /flights/search', () => {
       () => {}
     )
     expect(result.statusCode).toBe(503)
+  })
+})
+
+describe('GET /flights/{offerId}/details', () => {
+  const mockDetailsEvent = (offerId: string, authHeader = 'Bearer valid-token') => ({
+    headers: { authorization: authHeader },
+    pathParameters: { offerId },
+  } as any)
+
+  it('returns 400 when offer ID missing', async () => {
+    const result = await detailsHandler(mockDetailsEvent(''), {} as any, () => {})
+    expect(result.statusCode).toBe(400)
+  })
+
+  it('returns 401 with invalid auth', async () => {
+    const result = await detailsHandler(
+      mockDetailsEvent('off_123', 'Bearer invalid'),
+      {} as any,
+      () => {}
+    )
+    expect(result.statusCode).toBe(401)
   })
 })
