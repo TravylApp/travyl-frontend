@@ -220,6 +220,12 @@ api.route('POST /trips/{id}/share', {
   timeout: '5 seconds',
 })
 
+api.route('GET /user/stats', {
+  handler: 'services/user.statsHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+
 api.route('POST /book/match', {
   handler: 'services/book.handler',
   link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],
