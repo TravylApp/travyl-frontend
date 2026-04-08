@@ -201,3 +201,9 @@ api.route('GET /book/status/{tripId}', {
   link: [supabaseSecretKey, supabaseUrl],
   timeout: '10 seconds',
 })
+
+api.route('GET /restaurants/search', {
+  handler: 'services/restaurants.handler',
+  link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey],
+  timeout: '15 seconds',
+})
