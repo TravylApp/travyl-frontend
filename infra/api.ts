@@ -249,3 +249,9 @@ api.route('GET /charging/stations', {
   link: [supabaseSecretKey, supabaseUrl, openchargeApiKey],
   timeout: '15 seconds',
 })
+
+api.route('GET /currency/convert', {
+  handler: 'services/currency.handler',
+  link: [supabaseSecretKey, supabaseUrl, openExchangeRatesAppId],
+  timeout: '10 seconds',
+})
