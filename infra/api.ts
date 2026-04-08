@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
