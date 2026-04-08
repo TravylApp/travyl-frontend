@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { Resource } from 'sst'
 import { validateAuth } from './lib/auth'
 import { getCachedEvents, setCachedEvents } from './lib/cache'
+import { validateQueryParams, validateDateRange } from './lib/validation'
 import type { LocalEvent, EventsResponse } from './lib/types'
 
 const FESTIVAL_KEYWORDS = ['festival', 'fair', 'carnival', 'expo', 'parade']
@@ -63,11 +64,18 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     await validateAuth(event.headers.authorization)
 
     const { destination, startDate, endDate } = event.queryStringParameters ?? {}
-    if (!destination || !startDate || !endDate) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'destination, startDate, and endDate are required' }),
-      }
+
+    const paramsValid = validateQueryParams(
+      { destination, startDate, endDate },
+      ['destination', 'startDate', 'endDate'],
+    )
+    if (!paramsValid.success) {
+      return paramsValid.error
+    }
+
+    const dateRangeValid = validateDateRange(startDate!, endDate!)
+    if (!dateRangeValid.success) {
+      return dateRangeValid.error
     }
 
     const cached = await getCachedEvents(destination, startDate, endDate)

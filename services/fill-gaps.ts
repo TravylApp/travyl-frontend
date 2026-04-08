@@ -2,6 +2,7 @@ import type { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { validateAuth } from './lib/auth'
 import { getCachedGaps, setCachedGaps, type GapSuggestion } from './lib/cache'
 import { searchPlaces } from './lib/serpapi'
+import { safeParseBody, isValidDate } from './lib/validation'
 import { computeGaps } from '@travyl/shared'
 
 interface FillGapsRequestBody {
@@ -29,11 +30,31 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const userId = await validateAuth(event.headers.authorization)
     console.log('[fill-gaps] userId:', userId)
 
-    const body = JSON.parse(event.body ?? '{}') as FillGapsRequestBody
-    const { tripId, date, destination, activities = [] } = body
+    const parsed = safeParseBody<FillGapsRequestBody>(event)
+    if (!parsed.success) {
+      return parsed.error
+    }
+
+    const { tripId, date, destination, activities = [] } = parsed.data
 
     if (!tripId || !date || !destination) {
       return { statusCode: 400, body: JSON.stringify({ error: 'tripId, date, and destination required' }) }
+    }
+
+    if (!isValidDate(date)) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid date format (YYYY-MM-DD)' }) }
+    }
+
+    // Validate activity structure
+    if (activities.length > 0) {
+      for (const [i, activity] of activities.entries()) {
+        if (activity.startHour < 0 || activity.startHour > 23) {
+          return { statusCode: 400, body: JSON.stringify({ error: `Invalid startHour at index ${i}: must be 0-23` }) }
+        }
+        if (activity.duration <= 0 || activity.duration > 24) {
+          return { statusCode: 400, body: JSON.stringify({ error: `Invalid duration at index ${i}: must be positive and <= 24 hours` }) }
+        }
+      }
     }
 
     // Check cache

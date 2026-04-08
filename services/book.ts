@@ -30,8 +30,9 @@ async function matchActivity(activity: BookingActivity) {
   try {
     // if (provider === 'opentable') match = await searchOpenTable(activity)
     if (provider === 'ticketmaster') match = await searchTicketmaster(activity)
-  } catch {
-    // provider threw — treat as unmatched
+  } catch (err) {
+    // provider threw — treat as unmatched but log for debugging
+    console.error(`[booking] provider ${provider} failed for activity ${activity.id}:`, err)
   }
 
   if (!match) {
