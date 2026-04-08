@@ -263,6 +263,12 @@ api.route('GET /api/health', {
   timeout: '5 seconds',
 })
 
+// Public version endpoint (no auth required)
+api.route('GET /api/version', {
+  handler: 'services/version.handler',
+  timeout: '5 seconds',
+})
+
 api.route('GET /places/nearby', {
   handler: 'services/places.handler',
   link: [supabaseSecretKey, supabaseUrl, foursquareApiKey],
