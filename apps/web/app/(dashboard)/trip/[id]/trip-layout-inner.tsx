@@ -7,11 +7,11 @@ import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, useAuthStore, canViewTrip } from '@travyl/shared';
-// Footer/OceanWave removed — trip pages use workspace layout
+import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
+import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
@@ -73,7 +73,7 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
       const key = item.id || item.title || item.name;
       if (!key || seen.has(key) || !item.image) continue;
       seen.add(key);
-      allItems.push({ ...item, title: item.title || item.name, category: item.category || fallbackCategory || 'Attraction' });
+      allItems.push({ ...item, title: item.title || item.name, image: upscaleGoogleImage(item.image) || item.image, category: item.category || fallbackCategory || 'Attraction' });
     }
   };
   addItems(ctx?.explore_items || []);
@@ -163,6 +163,40 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
   );
 }
 
+// ─── Bottom Photo Mosaic (full-bleed, auto-rotating) ───
+
+function TripPhotoMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    setCurrent(0);
+    if (photos.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrent((c) => (c + 1) % photos.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [photos]);
+
+  return (
+    <div className="w-full relative overflow-hidden" style={{ height: 600 }}>
+      {photos.map((src, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={i}
+          src={src}
+          alt={destination || 'Trip photo'}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
+          style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
+        />
+      ))}
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
+        height: '25%',
+        background: 'linear-gradient(to top, white 0%, transparent 100%)',
+      }} />
+    </div>
+  );
+}
+
 // ─── Main Layout ────────────────────────────────────────────
 
 export default function TripLayoutInner({
@@ -195,6 +229,23 @@ function TripLayoutContent({
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   useTripSettingsRegistration(tripId);
+
+  // Layout mode toggle — persisted in localStorage
+  const [layoutMode, setLayoutMode] = useState<'magazine' | 'compact'>('compact');
+  useEffect(() => {
+    const saved = localStorage.getItem('travyl-layout-mode');
+    if (saved === 'magazine' || saved === 'compact') setLayoutMode(saved);
+  }, []);
+  const toggleLayout = () => {
+    const next = layoutMode === 'magazine' ? 'compact' : 'magazine';
+    setLayoutMode(next);
+    localStorage.setItem('travyl-layout-mode', next);
+  };
+  const isMagazine = layoutMode === 'magazine';
+
+  // Destination image for magazine hero
+  const city = trip?.destination?.split(',')[0]?.trim();
+  const { data: destImageData, isLoading: destImageLoading } = useDestinationImage(city || '');
 
   // Redirect to login if the trip has loaded and the user can't view it
   useEffect(() => {
@@ -277,28 +328,64 @@ function TripLayoutContent({
     );
   }
 
-  return (
-    <div className="pb-14 md:pb-0 bg-white dark:bg-[var(--background)]">
-      {/* Sidebar — always icon-only spine on desktop, bottom bar on mobile */}
-      <TripTabs tripId={tripId} position="left" />
+  // Layout toggle button (floating, bottom-right)
+  const layoutToggle = (
+    <button
+      onClick={toggleLayout}
+      className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-xs font-medium transition-all hover:scale-105"
+      style={{
+        backgroundColor: isMagazine ? 'rgba(30,58,95,0.9)' : 'rgba(255,255,255,0.95)',
+        borderColor: isMagazine ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+        color: isMagazine ? 'white' : '#1e3a5f',
+        backdropFilter: 'blur(12px)',
+      }}
+      title={`Switch to ${isMagazine ? 'compact' : 'magazine'} layout`}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {isMagazine ? (
+          <><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>
+        ) : (
+          <><rect x="2" y="2" width="20" height="20" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></>
+        )}
+      </svg>
+      {isMagazine ? 'Compact' : 'Magazine'}
+    </button>
+  );
 
-      {/* Compact trip header — all tabs */}
-      <CompactTripHeader tripId={tripId} trip={trip} onTripUpdate={refetch} />
+  return (
+    <div
+      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
+      style={{ transition: 'background-color 0.3s ease' }}
+    >
+      {layoutToggle}
+
+      {/* Sidebar */}
+      <TripTabs tripId={tripId} position="left" dark={isMagazine} />
+
+      {/* Header — magazine hero or compact */}
+      {isMagazine ? (
+        <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
+          overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
+      ) : (
+        <CompactTripHeader tripId={tripId} trip={trip} onTripUpdate={refetch} overrideImage={destImageData?.url ?? undefined} />
+      )}
 
       {/* Content area */}
       <div className="mx-auto max-w-7xl">
         <div className="relative z-10">
-          <ContentHeader
-            tripId={tripId}
-            mapOpen={mapOpen}
-            onToggleMap={() => setMapOpen(!mapOpen)}
-          />
+          {!isMagazine && (
+            <ContentHeader
+              tripId={tripId}
+              mapOpen={mapOpen}
+              onToggleMap={() => setMapOpen(!mapOpen)}
+            />
+          )}
 
           {isOverview && <TripOnboardingBanner />}
 
           <div className="flex">
             {/* Main content */}
-            <div className="flex-1 min-w-0 relative overflow-hidden px-5 md:pl-16 pt-4 pb-5">
+            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'md:pl-20' : 'px-5 md:pl-16 pt-4 pb-5'}`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
@@ -306,6 +393,8 @@ function TripLayoutContent({
                   animate={pageVariants.animate}
                   exit={pageVariants.exit}
                   transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className={isMagazine && !isOverview && currentSegment !== 'itinerary' ? 'px-4 sm:px-6 pt-2 pb-8 mb-8 rounded-2xl backdrop-blur-md' : ''}
+                  style={isMagazine && !isOverview && currentSegment !== 'itinerary' ? { background: 'linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.98) 100%)' } : undefined}
                 >
                   {children}
                 </motion.div>
@@ -378,6 +467,11 @@ function TripLayoutContent({
           </div>
         </div>
       </div>
+
+      {/* Bottom photo mosaic — overview only */}
+      {isOverview && (destImageData?.images?.length ?? 0) > 0 && (
+        <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
+      )}
 
       {/* Explore section — overview only */}
       {isOverview && (

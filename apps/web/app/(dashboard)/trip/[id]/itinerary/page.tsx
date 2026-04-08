@@ -1269,8 +1269,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             <div className="flex items-center gap-3">
               <div>
                 <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white tracking-wide"
-                  style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white tracking-wide">At a Glance</h2>
               </div>
               <TripHistoryToggle tripId={id} variant="pill" dark />
             </div>

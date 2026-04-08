@@ -724,7 +724,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
-  // Merge tier1Events into events display if available
+  // Merge tier1Events (from useEvents hook → TRA-436 aggregated API) into display
   const tier1EventsMapped = (tier1Events || []).map((e) => ({
     id: e.id,
     title: e.name,
@@ -732,12 +732,18 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     category: e.category || 'Event',
     image: e.photo_url || '',
   }));
-  // Use: live events → tier1 events → trip_context.foursquare_venues (best photos) → trip_context events
-  const contextVenues = (trip?.trip_context?.foursquare_venues || []) as any[];
+  // Fallback: use explore_items as "What's Going On" when no real events exist
+  const exploreFallback = exploreItems.slice(0, 6).map((e: any) => ({
+    id: e.id || e.name,
+    title: e.title || e.name,
+    description: e.description || e.category || '',
+    category: e.category || 'Attraction',
+    image: hiRes(e.image),
+  }));
+  // Priority: live events → tier1 events → trip_context events → explore_items fallback
   const allEvents = events.length > 0 ? events
     : tier1EventsMapped.length > 0 ? tier1EventsMapped
-    : contextVenues.length > 0 ? contextVenues
-    : [];
+    : exploreFallback;
 
   return (
     <div className="relative overflow-hidden">

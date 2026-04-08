@@ -10,10 +10,12 @@ export function CompactTripHeader({
   tripId,
   trip,
   onTripUpdate,
+  overrideImage,
 }: {
   tripId: string;
   trip: Trip | null;
   onTripUpdate?: () => void;
+  overrideImage?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -22,7 +24,9 @@ export function CompactTripHeader({
   const [editTravelers, setEditTravelers] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  const rawCover = trip?.trip_context?.hero_image_url;
+  // Best available image — Unsplash override first, then hero_images, then hero_image_url
+  const heroImages = trip?.trip_context?.hero_images as string[] | undefined;
+  const rawCover = overrideImage || heroImages?.[0] || trip?.trip_context?.hero_image_url;
   const coverImage = rawCover?.includes('googleusercontent.com')
     ? rawCover.replace(/=w\d+-h\d+[^&]*/, '=w1600-h600-k-no')
     : rawCover;
@@ -36,6 +40,28 @@ export function CompactTripHeader({
   const countryFlag = trip?.trip_context?.country?.flag as string | undefined;
   const countryCca2 = trip?.trip_context?.country?.cca2 as string | undefined;
   const flagUrl = countryFlag || (countryCca2 ? `https://flagcdn.com/24x18/${countryCca2.toLowerCase()}.png` : null);
+
+  // Quick info from trip_context
+  const ctx = trip?.trip_context as Record<string, any> | undefined;
+  const weather = ctx?.weather?.current;
+  const safety = ctx?.safety;
+  const tz = ctx?.country?.timezone;
+  const aqi = ctx?.aqi?.aqi;
+  const aqiLevel = ctx?.aqi?.level;
+  const currency = ctx?.country?.currency;
+  const nextHoliday = (ctx?.holidays as { name: string; date: string }[] | undefined)?.[0];
+
+  const infoPills: { label: string; color?: string }[] = [];
+  if (weather?.temp_f) infoPills.push({ label: `${Math.round(weather.temp_f)}°F ${weather.conditions || weather.condition || ''}`.trim() });
+  else if (weather?.conditions) infoPills.push({ label: weather.conditions });
+  if (currency) infoPills.push({ label: `${currency.symbol} ${currency.code}` });
+  if (tz) infoPills.push({ label: tz });
+  if (aqiLevel) infoPills.push({ label: `Air ${aqiLevel}`, color: aqi <= 50 ? '#4ade80' : aqi <= 100 ? '#facc15' : '#f87171' });
+  if (safety) {
+    const s = safety.score;
+    infoPills.push({ label: `Safe (${s.toFixed(1)})`, color: s <= 2.5 ? '#4ade80' : s <= 3.5 ? '#facc15' : '#f87171' });
+  }
+  if (nextHoliday) infoPills.push({ label: `${nextHoliday.name} · ${new Date(nextHoliday.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` });
 
   const openEditor = useCallback(() => {
     setEditTitle(trip?.title || '');
@@ -65,7 +91,7 @@ export function CompactTripHeader({
   }, [tripId, editTitle, editStart, editEnd, editTravelers, saving, onTripUpdate]);
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: 180 }}>
+    <div className="relative w-full overflow-hidden" style={{ height: 260 }}>
       {/* Background image */}
       {coverImage ? (
         <Image
@@ -74,7 +100,7 @@ export function CompactTripHeader({
           fill
           referrerPolicy="no-referrer"
           className="object-cover"
-          style={{ objectPosition: 'center 30%' }}
+          style={{ objectPosition: 'center 35%' }}
           sizes="100vw"
           priority
         />
@@ -83,58 +109,63 @@ export function CompactTripHeader({
       )}
 
       {/* Gradient overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.7) 100%)',
-        }}
-      />
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.75) 100%)',
+      }} />
 
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pb-5">
         {/* Country tag */}
-        <p className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase font-semibold mb-1.5"
-          style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+        <p className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase font-semibold mb-1.5 text-white/70">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {flagUrl && <img src={flagUrl} alt="flag" width={20} height={15} className="rounded-[2px]" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />}
+          {flagUrl && <img src={flagUrl} alt="flag" width={20} height={15} className="rounded-[2px] shadow-sm" />}
           <span>{countryName || ''}</span>
         </p>
 
-        {/* Title row */}
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1
-              className="text-3xl sm:text-4xl font-bold text-white leading-tight font-serif"
-              style={{ letterSpacing: '0.02em', textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
-            >
-              {cityName || trip?.title || 'Untitled Trip'}
-            </h1>
+        {/* Title */}
+        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight font-serif tracking-tight">
+          {cityName || trip?.title || 'Untitled Trip'}
+        </h1>
 
-            {/* Meta row */}
-            {!editing && (
-              <div className="flex items-center gap-3 mt-1.5 text-[13px] text-white/80">
-                {dateStr && (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar size={12} className="text-white/50" />
-                    {dateStr}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  <Users size={12} className="text-white/50" />
-                  {travelersCount} {travelersCount === 1 ? 'traveler' : 'travelers'}
-                </span>
-                <button
-                  onClick={openEditor}
-                  className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors"
-                  title="Edit trip details"
-                >
-                  <Pencil size={12} />
-                </button>
-              </div>
+        {/* Meta row */}
+        {!editing && (
+          <div className="flex items-center gap-3 mt-1.5 text-[13px] text-white/80">
+            {dateStr && (
+              <span className="flex items-center gap-1.5">
+                <Calendar size={12} className="text-white/50" />
+                {dateStr}
+              </span>
             )}
+            <span className="flex items-center gap-1.5">
+              <Users size={12} className="text-white/50" />
+              {travelersCount} {travelersCount === 1 ? 'traveler' : 'travelers'}
+            </span>
+            <button
+              onClick={openEditor}
+              className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors"
+              title="Edit trip details"
+            >
+              <Pencil size={12} />
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* Info pills — inside the hero */}
+        {infoPills.length > 0 && !editing && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            {infoPills.map((pill, i) => (
+              <span key={i}
+                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold backdrop-blur-md"
+                style={{
+                  backgroundColor: pill.color ? pill.color + '25' : 'rgba(255,255,255,0.15)',
+                  border: `1px solid ${pill.color ? pill.color + '50' : 'rgba(255,255,255,0.25)'}`,
+                  color: pill.color || 'rgba(255,255,255,0.9)',
+                }}>
+                {pill.label}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Inline editor */}
         {editing && (
