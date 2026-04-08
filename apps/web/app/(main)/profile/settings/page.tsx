@@ -10,8 +10,8 @@ import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
 import { useAuthStore, supabase } from '@travyl/shared';
-import { fetchProfile, updateProfile, updateUserMetadata, updateUserPassword } from '@travyl/shared';
-import type { Profile } from '@travyl/shared';
+import { fetchProfile, updateProfile, updateUserMetadata, updateUserPassword, fetchTrips } from '@travyl/shared';
+import type { Profile, Trip } from '@travyl/shared';
 
 // ─── Types ─────────────────────────────────────────────
 import { useSettingsStore } from '@travyl/shared';
@@ -211,6 +211,7 @@ export default function ProfileSettings() {
   // ─── Profile Data ──────────────────────────────────
   const [formData, setFormData] = useState<ProfileData>({} as ProfileData);
   const [originalFormData, setOriginalFormData] = useState<ProfileData>({} as ProfileData);
+  const [trips, setTrips] = useState<Trip[]>([]);
 
   // ─── Travel Style ──────────────────────────────────
   const [homeAirport, setHomeAirport] = useState<string>('');
@@ -364,6 +365,15 @@ export default function ProfileSettings() {
           distanceUnit: user.user_metadata?.distanceUnit || 'Miles',
           temperatureUnit: user.user_metadata?.temperatureUnit || '°F',
         });
+
+        // Fetch user's trips for stats
+        try {
+          const userTrips = await fetchTrips(user.id);
+          setTrips(userTrips);
+        } catch (tripErr) {
+          console.error('Error loading trips:', tripErr);
+          // Continue without trips - stats will show 0
+        }
 
       } catch (err) {
         console.error('Error loading profile:', err);
@@ -568,8 +578,44 @@ export default function ProfileSettings() {
   const toggleArray = (arr: string[], item: string): string[] =>
     arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
 
-  const xpCurrent = 620;
-  const xpMax = 1000;
+  // Calculate user stats from trips
+  const calculateUserStats = () => {
+    const tripsCount = trips.length;
+
+    // Extract unique cities from trip destinations
+    const uniqueCities = new Set<string>();
+    trips.forEach(trip => {
+      if (trip.destination) {
+        uniqueCities.add(trip.destination);
+      }
+    });
+    const citiesCount = uniqueCities.size || Math.max(tripsCount * 2, 0);
+
+    // Calculate XP
+    let xp = 100; // Base XP for signing up
+    trips.forEach(trip => {
+      xp += 50; // Base XP per trip
+      if (trip.trip_context?.explore_items) {
+        xp += trip.trip_context.explore_items.length * 10;
+      }
+    });
+
+    const currentLevel = Math.floor(xp / 1000) + 1;
+    const xpForCurrentLevel = currentLevel * 1000;
+    const xpInCurrentLevel = xp % 1000;
+    const xpProgress = (xpInCurrentLevel / 1000) * 100;
+
+    return {
+      tripsCount,
+      citiesCount,
+      xpCurrent: xp,
+      xpMax: xpForCurrentLevel,
+      xpProgress,
+      level: currentLevel
+    };
+  };
+
+  const userStats = calculateUserStats();
 
   const travelerSummary = () => {
     const parts: string[] = [];
@@ -685,16 +731,16 @@ export default function ProfileSettings() {
                        <div className="mt-6 space-y-2">
                           <div className="flex items-center justify-between px-1">
                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</span>
-                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{xpCurrent}/{xpMax} XP</span>
+                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{userStats.xpCurrent}/{userStats.xpMax} XP</span>
                           </div>
                           <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                             <div className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${(xpCurrent/xpMax)*100}%` }} />
+                             <div className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${userStats.xpProgress}%` }} />
                           </div>
                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-6 mt-10 pt-8 border-t border-gray-200 w-full">
-                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Trips</p><p className="text-2xl font-black text-gray-900 leading-none">24</p></div>
-                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Cities</p><p className="text-2xl font-black text-gray-900 leading-none">112</p></div>
+                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Trips</p><p className="text-2xl font-black text-gray-900 leading-none">{userStats.tripsCount}</p></div>
+                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Cities</p><p className="text-2xl font-black text-gray-900 leading-none">{userStats.citiesCount}</p></div>
                     </div>
                   </div>
 

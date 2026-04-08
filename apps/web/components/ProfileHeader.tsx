@@ -47,7 +47,6 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
 
   const currentXP = calculateXP();
   const level = Math.floor(currentXP / 1000) + 1;
-  const xpForNextLevel = level * 1000;
   const xpProgress = ((currentXP % 1000) / 1000) * 100;
 
   // Extract travel interests from explore items
@@ -251,46 +250,40 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
             </div>
           </div>
 
-          {/* Stats - Level, Trips, Cities, XP */}
-          <div className="flex flex-col items-center md:items-end gap-6 lg:gap-8 shrink-0 py-6 md:py-0">
-            {/* Level Badge */}
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl shadow-lg">
-                <span className="text-white font-black text-sm uppercase tracking-wider">Level {level}</span>
+          {/* Stats - Compact horizontal layout */}
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-4 lg:gap-6 shrink-0 py-6 md:py-0">
+            {/* Compact stats row */}
+            <div className="flex items-center gap-4 lg:gap-6 flex-wrap justify-center">
+              {/* Level Badge */}
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl shadow-lg">
+                <span className="text-white font-black text-sm uppercase tracking-wider">Lvl {level}</span>
               </div>
-              <div className="text-right">
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Status</p>
-                <p className="text-white font-bold text-sm">Verified Explorer</p>
-              </div>
-            </div>
 
-            {/* Trip & City Stats */}
-            <div className="flex gap-6 lg:gap-8">
-              <div className="text-center md:text-right">
-                <p className="text-white font-black text-3xl lg:text-4xl">{tripsCount}</p>
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-1">Trips</p>
+              {/* Stats Pills */}
+              <div className="flex items-center gap-3">
+                <div className="text-center">
+                  <p className="text-white font-black text-xl lg:text-2xl leading-none">{tripsCount}</p>
+                  <p className="text-white/40 text-[8px] font-black uppercase tracking-wider">Trips</p>
+                </div>
+                <div className="w-px h-8 bg-white/10"></div>
+                <div className="text-center">
+                  <p className="text-white font-black text-xl lg:text-2xl leading-none">{citiesCount}</p>
+                  <p className="text-white/40 text-[8px] font-black uppercase tracking-wider">Cities</p>
+                </div>
               </div>
-              <div className="w-px bg-white/10"></div>
-              <div className="text-center md:text-right">
-                <p className="text-white font-black text-3xl lg:text-4xl">{citiesCount}</p>
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-1">Cities</p>
-              </div>
-            </div>
 
-            {/* XP Progress Bar */}
-            <div className="w-full max-w-[280px]">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Progress</span>
-                <span className="text-blue-300 text-[10px] font-black uppercase tracking-widest">{currentXP}/{xpForNextLevel} XP</span>
-              </div>
-              <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden shadow-inner">
-                <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${xpProgress}%` }}></div>
+              {/* XP Progress */}
+              <div className="hidden lg:flex items-center gap-2 min-w-[120px]">
+                <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" style={{ width: `${xpProgress}%` }}></div>
+                </div>
+                <span className="text-blue-300 text-[10px] font-black uppercase tracking-wider whitespace-nowrap">{currentXP} XP</span>
               </div>
             </div>
 
             {/* Travel DNA Tags */}
-            <div className="flex flex-wrap gap-2 justify-center md:justify-end max-w-[280px]">
-              {travelDNA.map((interest) => {
+            <div className="flex flex-wrap gap-2 justify-center max-w-[280px]">
+              {travelDNA.slice(0, 4).map((interest) => {
                 const colorMap: Record<string, string> = {
                   'Beach': 'from-cyan-400 to-blue-500',
                   'Adventure': 'from-emerald-400 to-teal-500',
@@ -304,7 +297,7 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
                 return (
                   <div
                     key={interest}
-                    className={`px-3 py-1.5 bg-gradient-to-r ${color} rounded-full text-white text-xs font-bold shadow-md`}
+                    className={`px-2.5 py-1 bg-gradient-to-r ${color} rounded-full text-white text-[10px] font-bold shadow-sm`}
                   >
                     {interest}
                   </div>
