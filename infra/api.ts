@@ -225,3 +225,9 @@ api.route('GET /transit/directions', {
   link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
   timeout: '20 seconds',
 })
+
+api.route('GET /timezone/convert', {
+  handler: 'services/timezone.handler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
