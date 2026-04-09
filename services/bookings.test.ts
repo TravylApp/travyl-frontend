@@ -20,12 +20,12 @@ describe('POST /bookings/validate', () => {
 
   it('returns 400 for invalid booking type', async () => {
     const result = await validateHandler(
-      mockEvent({ type: 'hotel', providerId: '123', date: '2024-06-15' }),
+      mockEvent({ type: 'hotel', providerId: '123', date: '2026-06-15' }),
       {} as any,
       () => {}
     )
     expect(result.statusCode).toBe(400)
-    expect(JSON.parse(result.body).errors).toContain('Invalid booking type')
+    expect(JSON.parse(result.body).errors.some((e: string) => e.includes('Invalid booking type'))).toBe(true)
   })
 
   it('returns 400 for missing providerId', async () => {
@@ -45,7 +45,7 @@ describe('POST /bookings/validate', () => {
       () => {}
     )
     expect(result.statusCode).toBe(400)
-    expect(JSON.parse(result.body).errors).toContain('YYYY-MM-DD')
+    expect(JSON.parse(result.body).errors.some((e: string) => e.includes('YYYY-MM-DD'))).toBe(true)
   })
 
   it('returns 400 for past date', async () => {
@@ -55,12 +55,12 @@ describe('POST /bookings/validate', () => {
       () => {}
     )
     expect(result.statusCode).toBe(400)
-    expect(JSON.parse(result.body).errors).toContain('past')
+    expect(JSON.parse(result.body).errors.some((e: string) => e.includes('past'))).toBe(true)
   })
 
   it('returns 200 for valid restaurant booking', async () => {
     const result = await validateHandler(
-      mockEvent({ type: 'restaurant', providerId: '123', date: '2025-06-15', time: '19:00', partySize: 4 }),
+      mockEvent({ type: 'restaurant', providerId: '123', date: '2027-06-15', time: '19:00', partySize: 4 }),
       {} as any,
       () => {}
     )

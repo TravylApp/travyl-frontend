@@ -1,4 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
+vi.mock('sst', () => ({
+  Resource: {
+    OpenTableAffiliateKey: { value: 'placeholder' }
+  }
+}))
+vi.mock('./lib/auth', () => ({
+  validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' })
+}))
 import { handler, availabilityHandler } from './restaurants'
 
 describe('GET /restaurants/search', () => {
@@ -23,12 +31,6 @@ describe('GET /restaurants/search', () => {
   })
 
   it('returns 503 when API key is placeholder', async () => {
-    vi.mock('sst', () => ({
-      Resource: {
-        OpenTableAffiliateKey: { value: 'placeholder' }
-      }
-    }))
-
     const result = await handler(
       mockEvent({ lat: '37.7749', lng: '-122.4194' }),
       {} as any,

@@ -1,4 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
+vi.mock('sst', () => ({
+  Resource: {
+    GraphhopperApiKey: { value: 'placeholder' }
+  }
+}))
+vi.mock('./lib/auth', () => ({
+  validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' })
+}))
 import { handler, optimizeHandler } from './transit'
 
 describe('GET /transit/directions', () => {
@@ -48,12 +56,6 @@ describe('GET /transit/directions', () => {
   })
 
   it('returns 503 when API key is placeholder', async () => {
-    vi.mock('sst', () => ({
-      Resource: {
-        GraphhopperApiKey: { value: 'placeholder' }
-      }
-    }))
-
     const result = await handler(
       mockEvent({ originLat: '37.7', originLng: '-122.4', destLat: '37.8', destLng: '-122.3' }),
       {} as any,

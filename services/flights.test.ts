@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
+vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
+vi.mock('sst', () => ({ Resource: { DuffelApiToken: { value: 'placeholder' } } }))
 import { handler, detailsHandler } from './flights'
 
 describe('GET /flights/search', () => {
@@ -52,12 +54,6 @@ describe('GET /flights/search', () => {
   })
 
   it('returns 503 when API key is placeholder', async () => {
-    vi.mock('sst', () => ({
-      Resource: {
-        DuffelApiToken: { value: 'placeholder' }
-      }
-    }))
-
     const result = await handler(
       mockEvent({ origin: 'JFK', destination: 'LHR', date: '2024-06-15' }),
       {} as any,

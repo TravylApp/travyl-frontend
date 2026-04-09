@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
+vi.mock('sst', () => ({ Resource: { FoursquareApiKey: { value: 'placeholder' } } }))
 import { handler } from './places'
 
 describe('GET /places/nearby', () => {

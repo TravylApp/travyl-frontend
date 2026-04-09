@@ -148,14 +148,14 @@ export const availabilityHandler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Date required (YYYY-MM-DD)' }) }
     }
 
-    const apiKey = Resource.OpenTableAffiliateKey.value
-    if (!apiKey || apiKey === 'placeholder') {
-      return { statusCode: 503, body: JSON.stringify({ error: 'Availability check unavailable' }) }
-    }
-
     const size = parseInt(partySize, 10)
     if (isNaN(size) || size < 1 || size > 20) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Party size must be 1-20' }) }
+    }
+
+    const apiKey = Resource.OpenTableAffiliateKey.value
+    if (!apiKey || apiKey === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Availability check unavailable' }) }
     }
 
     // OpenTable availability endpoint

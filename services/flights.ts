@@ -108,11 +108,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Return date must be YYYY-MM-DD format' }) }
     }
 
-    const apiKey = Resource.DuffelApiToken.value
-    if (!apiKey || apiKey === 'placeholder') {
-      return { statusCode: 503, body: JSON.stringify({ error: 'Flight search unavailable - API key not configured' }) }
-    }
-
     const passengerCount = parseInt(passengers, 10)
     if (isNaN(passengerCount) || passengerCount < 1 || passengerCount > 9) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Passengers must be 1-9' }) }
@@ -121,6 +116,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const validCabins = ['economy', 'premium_economy', 'business', 'first']
     if (!validCabins.includes(cabin)) {
       return { statusCode: 400, body: JSON.stringify({ error: `Cabin must be one of: ${validCabins.join(', ')}` }) }
+    }
+
+    const apiKey = Resource.DuffelApiToken.value
+    if (!apiKey || apiKey === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Flight search unavailable - API key not configured' }) }
     }
 
     // Build slices (outbound + optional return)

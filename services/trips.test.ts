@@ -1,7 +1,15 @@
 import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('sst', () => ({
+  Resource: {
+    SupabaseUrl: { value: 'https://test.supabase.co' },
+    SupabaseAnonKey: { value: 'test-key' }
+  }
+}))
 vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
 vi.mock('./lib/db', () => ({ getTrip: vi.fn(), updateTrip: vi.fn() }))
-import { itineraryHandler, shareHandler, duplicateHandler } from './trips'
+
+const { itineraryHandler, shareHandler, duplicateHandler } = await import('./trips')
 
 describe('GET /trips/{id}/itinerary', () => {
   const mockEvent = (id: string, authHeader = 'Bearer valid-token') => ({
