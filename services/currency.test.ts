@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
+vi.mock('./lib/validation', () => ({ 
+  validateQueryParams: vi.fn((params, required) => {
+    const missing = required.filter((r: string) => !params[r])
+    if (missing.length > 0) return { success: false, error: { statusCode: 400, body: JSON.stringify({ error: `Missing: ${missing.join(', ')}` }) } }
+    return { success: true }
+  }), 
+  isValidDate: vi.fn(() => true) 
+}))
 import { handler } from './currency'
 
 describe('GET /currency/convert', () => {

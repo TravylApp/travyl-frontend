@@ -1,4 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
+vi.mock('./lib/validation', () => ({ 
+  safeParseBody: vi.fn((event) => {
+    try {
+      return { success: true, data: JSON.parse(event.body || '{}') }
+    } catch {
+      return { success: false, error: { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) } }
+    }
+  }),
+  isValidDate: vi.fn(() => true) 
+}))
 import { validateHandler } from './bookings'
 
 describe('POST /bookings/validate', () => {
