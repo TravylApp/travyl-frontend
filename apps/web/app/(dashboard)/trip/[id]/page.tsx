@@ -396,29 +396,30 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   const langCode = language ? langMap[language.toLowerCase()] || language.slice(0, 2).toLowerCase() : '';
 
   const speak = (text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
     setSpeaking(text);
-    // Use Google Translate TTS for natural-sounding pronunciation
-    const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${langCode || 'ja'}&q=${encodeURIComponent(text)}`);
-    audio.onended = () => setSpeaking(null);
-    audio.onerror = () => {
-      // Fallback to browser TTS
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode));
-        if (match) utterance.voice = match;
-        utterance.rate = 0.85;
-        utterance.onend = () => setSpeaking(null);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setSpeaking(null);
-      }
+    window.speechSynthesis.cancel();
+
+    const doSpeak = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode))
+        || voices.find(v => v.lang.toLowerCase().includes(langCode));
+      if (match) utterance.voice = match;
+      utterance.rate = 0.85;
+      utterance.onend = () => setSpeaking(null);
+      utterance.onerror = () => setSpeaking(null);
+      window.speechSynthesis.speak(utterance);
     };
-    audio.play().catch(() => {
-      // If autoplay blocked, fall back to browser TTS
-      audio.onerror?.(new Event('error'));
-    });
+
+    // Voices load async — wait for them if needed
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => { doSpeak(); window.speechSynthesis.onvoiceschanged = null; };
+      // Fallback if event never fires
+      setTimeout(doSpeak, 200);
+    }
   };
 
   return (
@@ -468,8 +469,18 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [isMagazine, setIsMagazine] = useState(false);
   const enrichAttempted = useRef(false);
   const revealRef = useRevealOnScroll(!!trip);
+
+  // Detect magazine layout for per-section glass card styling
+  useEffect(() => {
+    const check = () => setIsMagazine(localStorage.getItem('travyl-layout-mode') === 'magazine');
+    check();
+    window.addEventListener('layout-mode-change', check);
+    window.addEventListener('storage', check);
+    return () => { window.removeEventListener('layout-mode-change', check); window.removeEventListener('storage', check); };
+  }, []);
 
   // Auto-enrich: if trip exists but trip_context is incomplete, trigger enrichment and poll
   const autoEnrich = useCallback(async () => {
@@ -722,8 +733,8 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   }));
   // Fallback: use explore_items that AREN'T already in "Things to Do" (which shows the first items)
   // Take from the back half of the list to avoid duplicates
-  const exploreFallback = exploreItems.length > 6
-    ? exploreItems.slice(-6).map((e: any) => ({
+  const exploreFallback = exploreItems.length > 2
+    ? exploreItems.slice(-Math.min(6, exploreItems.length)).map((e: any) => ({
         id: e.id || e.name,
         title: e.title || e.name,
         description: e.description || e.category || '',
@@ -736,6 +747,8 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     : tier1EventsMapped.length > 0 ? tier1EventsMapped
     : exploreFallback;
 
+  const sectionCard = isMagazine ? 'bg-white/85 backdrop-blur-xl rounded-2xl p-5' : '';
+
   return (
     <div className="relative overflow-hidden">
       {/* Header image bleeds down naturally from TripMagazineHero — no separate background needed */}
@@ -745,7 +758,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           {/* Weather is now shown in the compact header toggle — removed duplicate widget */}
 
           {/* ── Row 1: Things to Do (left) + Restaurants (right) ── */}
-          <div className="px-0 mt-6">
+          <div className={`mt-6 ${sectionCard}`}>
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
@@ -808,7 +821,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
           {(hasNewsArticles || allEvents.length > 0) && (
-            <div className="relative z-10 px-0 mt-8">
+            <div className={`relative z-10 mt-8 ${sectionCard}`}>
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
                   <div className="flex-1 min-w-0">
@@ -826,7 +839,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(phrasesData || costData) && (
-            <div className="relative z-10 px-0 mt-8">
+            <div className={`relative z-10 mt-8 ${sectionCard}`}>
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {phrasesData && Object.keys(phrasesData).length > 0 && (
                   <div className="flex-1 min-w-0">
@@ -844,7 +857,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (
-            <div className="px-0 mt-8">
+            <div className={`mt-8 ${sectionCard}`}>
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
           )}

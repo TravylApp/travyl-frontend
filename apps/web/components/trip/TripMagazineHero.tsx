@@ -60,6 +60,7 @@ function useQuote() {
 
 export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate, suppressFallback }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void; suppressFallback?: boolean }) {
   const bgRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     const el = bgRef.current;
@@ -68,7 +69,10 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     const handleScroll = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        el.style.transform = `translateY(${window.scrollY * 0.15}px)`;
+        const y = window.scrollY;
+        setScrollY(y);
+        // Ken Burns zoom — subtle scale increase as you scroll
+        el.style.transform = `scale(${1 + y * 0.0003})`;
       });
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -76,7 +80,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [compact]);
 
   const [editing, setEditing] = useState(false);
   const [editStart, setEditStart] = useState('');
@@ -124,7 +128,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     }
   }, [tripId, editTitle, editStart, editEnd, editTravelers, saving, onTripUpdate]);
 
-  const [essentialsOpen, setEssentialsOpen] = useState(true);
+  const [essentialsOpen, setEssentialsOpen] = useState(!compact);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
   // Temperature unit follows user's distance preference: miles = °F, kilometers = °C
@@ -202,68 +206,69 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
 
   return (
     <>
-      {/* Background image — bleeds behind nav and all content */}
+      {/* Pinned background image — all tabs */}
       {coverImage && (
-        <div className="absolute inset-x-0 top-0 z-0 pointer-events-none overflow-hidden" style={{ height: '160vh' }}>
+        <div className="fixed inset-0 z-0 pointer-events-none">
           <div ref={bgRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
-            <Image src={coverImage} alt="" fill  className="object-cover"
-              style={{ objectPosition: 'center 30%' }} sizes="100vw" priority />
+            <Image src={coverImage} alt="" fill className="object-cover"
+              style={{ objectPosition: 'center center' }} sizes="100vw" priority />
           </div>
-          {/* Gradient overlay — longer fade so hero bleeds through Things to Do */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 10%, rgba(0,0,0,0.35) 20%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.65) 50%, var(--magazine-bg, var(--background)) 75%, var(--magazine-bg, var(--background)) 100%)' }} />
+            style={{ background: compact
+              ? 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0.7) 100%)'
+              : 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.7) 100%)'
+            }} />
         </div>
       )}
 
-      {/* Hero text — aligned with content area (max-w-7xl + spine offset) */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 pt-[68px] pb-8">
-        <p className="flex items-center gap-2 text-[10px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {flagUrl && <img src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />}
-          <span>{countryName || (trip ? 'Your Trip Guide' : '')}</span>
-        </p>
-        <div className="flex items-center gap-4">
-          {cityName ? (
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal text-white leading-[0.95] font-serif"
-              style={{ letterSpacing: '0.04em', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
-              {cityName.toUpperCase()}
-            </h1>
-          ) : (
-            <div className="h-14 sm:h-16 md:h-20 w-[60%] rounded-lg bg-white/15 animate-pulse" />
-          )}
-          {hasEssentials && (
-            <button
-              onClick={() => setEssentialsOpen((v) => !v)}
-              className="p-1.5 rounded-full transition-all shrink-0 hover:bg-white/15 active:scale-90"
-              title={essentialsOpen ? 'Hide trip info' : 'Show trip info'}
-            >
-              <ChevronDown size={16} className={`text-white/60 transition-transform duration-300 ${essentialsOpen ? 'rotate-180' : ''}`} />
-            </button>
-          )}
-          {!compact && tripId && (
-            <a
-              href={`/trip/${tripId}/itinerary`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 backdrop-blur-sm ml-2"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: 'rgba(255,255,255,0.8)',
-              }}
-            >
-              View Itinerary &rarr;
-            </a>
-          )}
+      {/* Hero text — unified for all tabs, just different height */}
+      <div className="relative z-10 flex flex-col justify-end" style={{ height: compact ? '35vh' : '70vh' }}>
+        <div className="w-full px-6 sm:px-10 md:pl-[120px] pb-2"
+          style={!compact ? { opacity: Math.max(0, 1 - scrollY / 800) } : undefined}>
+          <p className="flex items-center gap-2 text-[11px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {flagUrl && <img src={flagUrl} alt="flag" width={24} height={18} className="rounded-[2px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />}
+            <span>{countryName || (trip ? 'Your Trip Guide' : '')}</span>
+          </p>
+          <div className="flex items-center gap-3">
+            {cityName ? (
+              <h1 className={`font-normal text-white leading-[0.9] font-serif ${compact ? 'text-4xl sm:text-5xl md:text-6xl' : 'text-5xl sm:text-6xl md:text-7xl lg:text-8xl'}`}
+                style={{ letterSpacing: '0.03em', textShadow: '0 4px 40px rgba(0,0,0,0.4)' }}>
+                {cityName.toUpperCase()}
+              </h1>
+            ) : (
+              <div className={`${compact ? 'h-14 sm:h-16 md:h-20' : 'h-16 sm:h-20 md:h-24'} w-[60%] rounded-lg bg-white/15 animate-pulse`} />
+            )}
+            {hasEssentials && (
+              <button
+                onClick={() => setEssentialsOpen((v) => !v)}
+                className="p-1.5 rounded-full transition-all shrink-0 hover:bg-white/15 active:scale-90"
+                title={essentialsOpen ? 'Hide trip info' : 'Show trip info'}
+              >
+                <ChevronDown size={18} className={`text-white/50 transition-transform duration-300 ${essentialsOpen ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Collapsible trip info */}
-      {hasEssentials && (
-        <div className={`relative z-10 max-w-7xl mx-auto px-6 sm:px-10 md:pl-24 transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-0'}`}>
-          <div className={`transition-all duration-300 overflow-hidden ${essentialsOpen ? `${essentialsMaxH} opacity-100` : 'max-h-0 opacity-0'}`}
-            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
+      {/* Trip meta + collapsible details */}
+      <div className={`relative z-10 px-6 sm:px-10 md:pl-[120px] transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
+        style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
 
-            {/* Dates + travelers — inline editable */}
-            {editing ? (
+        {/* Dates + travelers — always visible */}
+        {!editing ? (
+          <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-3">
+            {dateStr && <span>{dateStr}</span>}
+            {dateStr && travelersStr && <span className="text-white/30">&middot;</span>}
+            {travelersStr && <span>{travelersStr}</span>}
+            {tripId && (
+              <button onClick={openEditor} className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors" title="Edit trip details">
+                <Pencil size={13} />
+              </button>
+            )}
+          </div>
+        ) : (
               <div className="flex flex-wrap items-end gap-3 mb-4 animate-[fadeSlideIn_0.2s_ease-out]">
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Destination</label>
@@ -300,19 +305,11 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
                   <X size={14} /> Cancel
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-4">
-                {dateStr && <span>{dateStr}</span>}
-                {dateStr && travelersStr && <span className="text-white/30">&middot;</span>}
-                {travelersStr && <span>{travelersStr}</span>}
-                {tripId && (
-                  <button onClick={openEditor} className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors" title="Edit trip details">
-                    <Pencil size={13} />
-                  </button>
-                )}
-              </div>
             )}
 
+        {/* Collapsible details */}
+        {hasEssentials && (
+          <div className={`transition-all duration-300 overflow-hidden ${essentialsOpen ? `${essentialsMaxH} opacity-100` : 'max-h-0 opacity-0'}`}>
             {/* Quick facts, holidays, weather */}
             <div className="space-y-2.5 mb-4">
             {/* Quick facts — currency, language, timezone, emergency, sunrise/sunset */}
@@ -456,9 +453,9 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
               </div>
             )}
 
-          </div>{/* end collapsible */}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </>
   );
 }

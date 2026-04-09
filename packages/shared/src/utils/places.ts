@@ -1,4 +1,4 @@
-import { upscaleGoogleImage } from './index';
+import { upscaleGoogleImage, isValidImageUrl } from './index';
 import type { PlaceItem } from '../types';
 
 // ─── Backend response shape ─────────────────────────────────
@@ -120,10 +120,11 @@ export function getFallbackImage(_name: string, _idx: number): string {
 // ─── Canonical mapper ───────────────────────────────────────
 
 export function mapBackendToPlaceItem(p: BackendPlace, idx = 0, requestedCategory?: string): PlaceItem {
+  const img = upscaleGoogleImage(p.photo_url);
   return {
     id: p.id,
     name: p.name,
-    image: upscaleGoogleImage(p.photo_url) ?? getFallbackImage(p.name, idx),
+    image: isValidImageUrl(img) ? img! : '',
     type: mapType(p.category, requestedCategory),
     rating: p.rating ?? 0,
     tagline: p.description?.split('.')[0] ?? p.category,

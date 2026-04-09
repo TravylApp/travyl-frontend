@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Map, X } from 'lucide-react';
@@ -15,6 +15,7 @@ import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
+import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
@@ -57,46 +58,139 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
 
 // ─── Trip Explore Section (overview page — shows trip_context data) ──
 
-export function TripExploreSection({ trip }: { trip: Trip | null }) {
-  const city = trip?.destination?.split(',')[0]?.trim() || 'Destination';
-  const ctx = trip?.trip_context;
+export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embedded?: boolean }) {
+  const city = trip?.destination?.split(',')[0]?.trim() || '';
+  const lat = trip?.trip_context?.lat as number | undefined;
+  const lng = trip?.trip_context?.lng as number | undefined;
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [extraItems, setExtraItems] = useState<Record<string, ExploreItem[]>>({});
+  const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
+  const loadingRef = useRef<Record<string, boolean>>({});
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
-  type ExploreItem = { id: string; title?: string; name?: string; description?: string; category?: string; image?: string; images?: string[]; rating?: number; cuisines?: string[]; priceLevel?: string; tripAdvisorUrl?: string; lat?: number; lng?: number; address?: string; phone?: string; website?: string; reviewCount?: number };
-
-  // Collect ALL items from every source
-  const allItems: ExploreItem[] = [];
-  const seen = new Set<string>();
-  const addItems = (items: any[], fallbackCategory?: string) => {
-    for (const item of items) {
-      const key = item.id || item.title || item.name;
-      if (!key || seen.has(key) || !item.image) continue;
-      seen.add(key);
-      allItems.push({ ...item, title: item.title || item.name, image: upscaleGoogleImage(item.image) || item.image, category: item.category || fallbackCategory || 'Attraction' });
-    }
+  // Strip items with no real image URL or known broken ones
+  const hasValidImage = (item: ExploreItem) => {
+    const url = item.image;
+    if (!url || url.length < 10) return false;
+    if (brokenImages.has(item.id)) return false;
+    return true;
   };
-  addItems(ctx?.explore_items || []);
-  addItems(ctx?.foursquare_venues || []);
-  if (ctx?.restaurants?.length) addItems(ctx.restaurants, 'Restaurant');
-  for (const e of (ctx?.events || []) as any[]) {
-    const key = e.id || e.title || e.name;
-    if (!key || seen.has(key) || !(e.image || e.photo_url)) continue;
-    seen.add(key);
-    allItems.push({ id: e.id, title: e.title || e.name, name: e.title || e.name, description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '', category: e.category || 'Event', image: e.image || e.photo_url });
-  }
+  const onImgError = (id: string) => {
+    setBrokenImages(prev => new Set(prev).add(id));
+  };
 
-  // Group by category dynamically
-  const grouped: Record<string, ExploreItem[]> = {};
-  for (const item of allItems) {
-    const cat = item.category || 'Other';
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(item);
-  }
-  const toLabel = (cat: string) => cat.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  const categories = Object.entries(grouped).filter(([, items]) => items.length > 0).map(([key, items]) => ({ key, label: toLabel(key), items }));
+  type ExploreItem = { id: string; title?: string; name?: string; description?: string; category?: string; image?: string; images?: string[]; rating?: number; lat?: number; lng?: number; address?: string; phone?: string; website?: string; reviewCount?: number; priceLevel?: string; cuisines?: string[] };
 
-  if (categories.length === 0) return null;
+  const coordParams = lat && lng ? `&lat=${lat}&lng=${lng}` : '';
+
+  const mapPlace = (p: any): ExploreItem => ({
+    id: p.id, title: p.name, name: p.name,
+    description: p.description || p.tagline || '',
+    category: p.category || '',
+    image: upscaleGoogleImage(p.images?.[0] || p.image) || p.image || '',
+    images: p.images, rating: p.rating,
+    lat: p.latitude, lng: p.longitude,
+    address: p.address, phone: p.phone, website: p.website,
+    reviewCount: p.reviewCount, priceLevel: p.priceLevel,
+  });
+
+  // Fetch places across all categories the API supports — uses lat/lng + category param
+  const { data: liveCategories, isLoading: liveFetching } = useQuery({
+    queryKey: ['explore-section', trip?.id, city, lat, lng],
+    queryFn: async () => {
+      if (!city && !lat) return [];
+      // First: discover available categories by fetching with text query
+      const discoveryRes = await fetch(`/api/places?q=${encodeURIComponent(city)}&limit=30${coordParams}`);
+      const discoveryPlaces: any[] = discoveryRes.ok ? await discoveryRes.json() : [];
+
+      // Extract unique category params from what came back, plus use nearby endpoint
+      const seenCats = new Set(discoveryPlaces.map((p: any) => p.type || '').filter(Boolean));
+      // Also fetch from the nearby endpoint which returns different (Foursquare) results
+      const nearbyCats = lat && lng ? ['sightseeing', 'restaurant', 'nightlife', 'shopping', 'park', 'museum'] : [];
+      const nearbyResults = await Promise.all(
+        nearbyCats.map(async (cat) => {
+          try {
+            const res = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=15`);
+            if (!res.ok) return [];
+            return res.json();
+          } catch { return []; }
+        })
+      );
+
+      // Merge all results, deduplicate by name, group by display category
+      const allPlaces = [...discoveryPlaces, ...nearbyResults.flat()];
+      const seen = new Set<string>();
+      const grouped: Record<string, ExploreItem[]> = {};
+      for (const p of allPlaces) {
+        if (!p.name || seen.has(p.name)) continue;
+        const img = p.images?.[0] || p.image;
+        if (!img) continue;
+        seen.add(p.name);
+        const cat = p.category || 'Other';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(mapPlace(p));
+      }
+
+      return Object.entries(grouped)
+        .filter(([, items]) => items.length >= 3)
+        .map(([key, items]) => ({ key, label: `${key} in ${city}`, items }));
+    },
+    enabled: !!(city || lat),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Load more — text search to get SerpAPI results (different source than initial nearby/Foursquare)
+  const loadMore = useCallback(async (catKey: string, existingNames: Set<string>) => {
+    if (loadingRef.current[catKey]) return;
+    loadingRef.current[catKey] = true;
+    setLoadingMore(prev => ({ ...prev, [catKey]: true }));
+    try {
+      const url = `/api/places?q=${encodeURIComponent(`${city} ${catKey}`)}&limit=20${coordParams}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const places: any[] = await res.json();
+      const newItems: ExploreItem[] = places
+        .filter((p: any) => p.name && (p.images?.[0] || p.image) && !existingNames.has(p.name))
+        .map((p: any) => mapPlace(p));
+      if (newItems.length > 0) {
+        setExtraItems(prev => ({ ...prev, [catKey]: [...(prev[catKey] || []), ...newItems] }));
+      }
+    } catch { /* ignore */ } finally {
+      loadingRef.current[catKey] = false;
+      setLoadingMore(prev => ({ ...prev, [catKey]: false }));
+    }
+  }, [city, coordParams]);
+
+  const handleRowScroll = useCallback((e: React.UIEvent<HTMLDivElement>, catKey: string, allNames: Set<string>) => {
+    const el = e.currentTarget;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 400) {
+      loadMore(catKey, allNames);
+    }
+  }, [loadMore]);
+
+  // Fallback: trip_context data while live data loads
+  const ctx = trip?.trip_context;
+  const fallbackCategories = (() => {
+    if (liveCategories && liveCategories.length > 0) return null;
+    const allItems: ExploreItem[] = [];
+    const seen = new Set<string>();
+    const add = (items: any[], fallbackCat?: string) => {
+      for (const item of items) {
+        const key = item.id || item.title || item.name;
+        if (!key || seen.has(key) || !item.image) continue;
+        seen.add(key);
+        allItems.push({ ...item, title: item.title || item.name, image: upscaleGoogleImage(item.image) || item.image, category: item.category || fallbackCat || 'Attraction' });
+      }
+    };
+    add(ctx?.explore_items || []);
+    add(ctx?.foursquare_venues || []);
+    if (ctx?.restaurants?.length) add(ctx.restaurants as any[], 'Restaurant');
+    if (!allItems.length) return null;
+    return [{ key: 'all', label: `Explore ${city}`, items: allItems }];
+  })();
+
+  const categories = liveCategories ?? fallbackCategories ?? [];
 
   const toPlaceItem = (item: ExploreItem): PlaceItem => ({
     id: item.id, name: item.title || item.name || '', image: item.image || '',
@@ -105,34 +199,57 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
     rating: item.rating || 0, tagline: item.description || item.category || '',
     category: item.category || '', description: item.description || '',
     tags: item.cuisines || (item.category ? [item.category] : []),
-    latitude: item.lat || (trip?.trip_context?.lat ?? undefined),
-    longitude: item.lng || (trip?.trip_context?.lng ?? undefined),
-    address: item.address, phone: item.phone, website: item.website || item.tripAdvisorUrl,
+    latitude: item.lat || lat, longitude: item.lng || lng,
+    address: item.address, phone: item.phone, website: item.website,
     reviewCount: item.reviewCount,
     priceLevel: item.priceLevel === '$' ? 1 : item.priceLevel === '$$' ? 2 : item.priceLevel === '$$$' ? 3 : item.priceLevel === '$$$$' ? 4 : undefined,
   });
 
+  if (categories.length === 0 && !liveFetching) return null;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8">
-      <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-6 font-serif">
-        Explore {city}
+    <div className={embedded ? 'py-2' : 'max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8'}>
+      <h2 className={`text-xl font-normal tracking-wide mb-6 font-serif ${embedded ? 'text-white' : 'text-gray-900 dark:text-white'}`}
+        style={embedded ? { textShadow: '0 2px 10px rgba(0,0,0,0.5)' } : undefined}>
+        Explore {city || 'Destination'}
       </h2>
 
+      {liveFetching && categories.length === 0 && (
+        <div className="space-y-6">
+          {[1, 2, 3].map(i => (
+            <div key={i}>
+              <div className={`h-4 w-48 rounded mb-3 animate-pulse ${embedded ? 'bg-white/10' : 'bg-gray-200'}`} />
+              <div className="flex gap-3">
+                {[1, 2, 3, 4].map(j => (
+                  <div key={j} className={`flex-shrink-0 w-[220px] rounded-2xl animate-pulse ${embedded ? 'bg-white/10' : 'bg-gray-100'}`} style={{ height: 280 }} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-6">
-        {categories.map(({ key, label, items }) => (
+        {categories.map(({ key, label, items }) => {
+          const merged = [...items, ...(extraItems[key] || [])].filter(hasValidImage);
+          const nameSet = new Set(merged.map(i => (i.title || i.name || '')));
+          const totalCount = merged.length;
+          if (totalCount === 0) return null;
+          return (
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">
+              <h3 className={`text-sm font-semibold tracking-wide ${embedded ? 'text-white/80' : 'text-gray-700 dark:text-gray-300'}`}>
                 {label}
               </h3>
-              <span className="text-[11px] text-gray-400 dark:text-gray-500">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
+              <span className={`text-[11px] ${embedded ? 'text-white/40' : 'text-gray-400 dark:text-gray-500'}`}>{totalCount} {totalCount === 1 ? 'place' : 'places'}</span>
             </div>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-              {items.map((item: ExploreItem, idx: number) => (
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
+              onScroll={(e) => handleRowScroll(e, key, nameSet)}>
+              {merged.map((item: ExploreItem, idx: number) => (
                 <div key={`${item.id}-${idx}`} onClick={() => setSelectedPlace(toPlaceItem(item))}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={() => onImgError(item.id)} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <button onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
                     className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}>
@@ -150,9 +267,15 @@ export function TripExploreSection({ trip }: { trip: Trip | null }) {
                   </div>
                 </div>
               ))}
+              {loadingMore[key] && (
+                <div className="flex-shrink-0 w-[220px] rounded-2xl flex items-center justify-center" style={{ height: 280 }}>
+                  <div className={`w-6 h-6 border-2 rounded-full animate-spin ${embedded ? 'border-white/20 border-t-white/60' : 'border-gray-200 border-t-gray-500'}`} />
+                </div>
+              )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       {selectedPlace && (
         <PlaceDetailModal place={selectedPlace} isFavorited={favorites.includes(selectedPlace.id)}
@@ -240,6 +363,7 @@ function TripLayoutContent({
     const next = layoutMode === 'magazine' ? 'compact' : 'magazine';
     setLayoutMode(next);
     localStorage.setItem('travyl-layout-mode', next);
+    window.dispatchEvent(new Event('layout-mode-change'));
   };
   const isMagazine = layoutMode === 'magazine';
 
@@ -371,8 +495,8 @@ function TripLayoutContent({
       )}
 
       {/* Content area */}
-      <div className="mx-auto max-w-7xl">
-        <div className="relative z-10">
+      <div className="relative z-10">
+        <div className={isMagazine ? '' : 'mx-auto max-w-7xl'}>
           {!isMagazine && (
             <ContentHeader
               tripId={tripId}
@@ -385,7 +509,7 @@ function TripLayoutContent({
 
           <div className="flex">
             {/* Main content */}
-            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'md:pl-20' : 'px-5 md:pl-[100px] pt-4 pb-5'}`}>
+            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'px-6 sm:px-10 md:pl-[120px] md:pr-10' : 'px-5 md:pl-[100px] pt-4 pb-5'}`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
@@ -393,8 +517,8 @@ function TripLayoutContent({
                   animate={pageVariants.animate}
                   exit={pageVariants.exit}
                   transition={{ duration: 0.18, ease: 'easeOut' }}
-                  className={isMagazine && !isOverview && currentSegment !== 'itinerary' ? 'px-4 sm:px-6 pt-2 pb-8 mb-8 rounded-2xl backdrop-blur-md' : ''}
-                  style={isMagazine && !isOverview && currentSegment !== 'itinerary' ? { background: 'linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.98) 100%)' } : undefined}
+                  className={isMagazine && isOverview ? 'pt-2' : ''}
+                  style={undefined}
                 >
                   {children}
                 </motion.div>
@@ -468,16 +592,28 @@ function TripLayoutContent({
         </div>
       </div>
 
-      {/* Bottom photo mosaic — overview only */}
-      {isOverview && (destImageData?.images?.length ?? 0) > 0 && (
-        <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
+      {/* Below-the-fold content */}
+      {isOverview && (
+        <div className="relative z-10">
+          {!isMagazine && (destImageData?.images?.length ?? 0) > 0 && (
+            <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
+          )}
+          {isMagazine ? (
+            <div className="px-6 sm:px-10 md:pl-[120px] md:pr-10 mt-4 pb-8">
+              <TripExploreSection trip={trip} embedded />
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-[var(--background)]">
+              <TripExploreSection trip={trip} />
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Explore section — overview only */}
-      {isOverview && (
-        <div className="w-full relative z-10 bg-white dark:bg-[var(--background)]">
-          <TripExploreSection trip={trip} />
-        </div>
+      {/* Magazine footer — gradient floor so the page has a defined end */}
+      {isMagazine && (
+        <div className="relative z-10 h-40 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.85) 100%)' }} />
       )}
     </div>
   );

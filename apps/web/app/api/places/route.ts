@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   BackendPlace,
   mapBackendToPlaceItem,
+  isValidImageUrl,
 } from '@travyl/shared'
 import { filterByRadius } from '@/lib/haversine'
 
@@ -76,9 +77,11 @@ export async function GET(req: NextRequest) {
     const searchLng = parseFloat(lng)
     data = filterByRadius(data, searchLat, searchLng, 50)
 
-    // Map to PlaceItem format using the canonical shared mapper
+    // Map to PlaceItem format using the canonical shared mapper — strip items with no valid image
     const requestedCat = category
-    const places = data.map((p, idx) => mapBackendToPlaceItem(p, idx, requestedCat))
+    const places = data
+      .map((p, idx) => mapBackendToPlaceItem(p, idx, requestedCat))
+      .filter(p => isValidImageUrl(p.image))
 
     const res_out = NextResponse.json(places)
     // Cache for 1 hour, revalidate in background for 24h
