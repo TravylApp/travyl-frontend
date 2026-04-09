@@ -341,7 +341,7 @@ export default function ProfilePage() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-[#f8fafc]">
+      <div className="min-h-screen bg-background">
         <ProfileHeader trips={trips} />
         <ProfileTabs
           activeTab={activeTab}
@@ -356,21 +356,21 @@ export default function ProfilePage() {
               {/* Toolbar: Search + Actions */}
               <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-8">
                 <div className="relative flex-1 group">
-                  <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1e3a5f]" />
+                  <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={`Search through ${activeTab === "boards" ? "travel boards" : "favorites"}...`}
-                    className="w-full pl-12 pr-11 py-4 bg-white border border-gray-200 rounded-2xl text-[#314158] placeholder-[#9ca3af] outline-none transition-all focus:border-[#1e3a5f]/40 focus:ring-4 focus:ring-[#1e3a5f]/5 shadow-sm"
+                    className="w-full pl-12 pr-11 py-4 bg-card border border-border rounded-2xl text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/5 shadow-sm"
                     style={{ fontSize: "15px" }}
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
                     >
-                      <X size={16} className="text-[#6b7280]" />
+                      <X size={16} className="text-muted-foreground" />
                     </button>
                   )}
                 </div>
@@ -378,7 +378,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3 shrink-0 h-[58px]">
                   <button
                     onClick={() => router.push('/')}
-                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 h-full bg-[#1e3a5f] text-white rounded-2xl hover:bg-[#2a4a6f] transition-all shadow-md hover:shadow-xl active:scale-95 text-base font-bold"
+                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 h-full bg-primary text-primary-foreground rounded-2xl hover:bg-primary/90 transition-all shadow-md hover:shadow-xl active:scale-95 text-base font-bold"
                   >
                     <Plus size={20} />
                     <span>Create {activeTab === "boards" ? "Board" : "Trip"}</span>
@@ -387,9 +387,9 @@ export default function ProfilePage() {
               </div>
 
               {/* Filters & View Controls */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-5 border-y border-gray-100 mb-8 bg-white/50 px-6 rounded-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-5 border-y border-border mb-8 bg-card/50 px-6 rounded-2xl">
                 <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                  <div className="flex items-center gap-2 mr-3 text-gray-400 shrink-0">
+                  <div className="flex items-center gap-2 mr-3 text-muted-foreground shrink-0">
                     <Filter size={16} />
                     <span className="text-xs font-bold uppercase tracking-widest">Categories</span>
                   </div>
@@ -397,8 +397,8 @@ export default function ProfilePage() {
                     onClick={() => setSelectedCategory(null)}
                     className={`px-5 py-2 rounded-xl transition-all whitespace-nowrap text-sm font-bold ${
                       !selectedCategory
-                        ? "bg-[#1e3a5f] text-white shadow-lg"
-                        : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
+                        ? "bg-primary text-primary-foreground shadow-lg"
+                        : "bg-card text-muted-foreground border border-border hover:border-border/80"
                     }`}
                   >
                     All
@@ -409,8 +409,8 @@ export default function ProfilePage() {
                       onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
                       className={`px-5 py-2 rounded-xl transition-all whitespace-nowrap text-sm font-bold ${
                         selectedCategory === cat
-                          ? "bg-[#1e3a5f] text-white shadow-lg"
-                          : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
+                          ? "bg-primary text-primary-foreground shadow-lg"
+                          : "bg-card text-muted-foreground border border-border hover:border-border/80"
                       }`}
                     >
                       {cat} <span className="ml-1 opacity-50 font-medium">({categoryCounts[cat] || 0})</span>
@@ -419,16 +419,16 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex items-center gap-5 shrink-0">
-                  <div className="h-8 w-px bg-gray-200 hidden md:block" />
+                  <div className="h-8 w-px bg-border hidden md:block" />
 
                   {/* View toggles */}
-                  <div className="flex items-center bg-gray-100/80 rounded-xl p-1.5 shadow-inner">
+                  <div className="flex items-center bg-muted rounded-xl p-1.5 shadow-inner">
                     <button
                       onClick={() => setViewMode("grid")}
                       className={`p-2.5 rounded-lg transition-all ${
                         viewMode === "grid"
-                          ? "bg-white text-[#1e3a5f] shadow-md scale-105"
-                          : "text-gray-400 hover:text-gray-600"
+                          ? "bg-card text-primary shadow-md scale-105"
+                          : "text-muted-foreground hover:text-foreground"
                       }`}
                       title="Grid View"
                     >
@@ -438,8 +438,8 @@ export default function ProfilePage() {
                       onClick={() => setViewMode("list")}
                       className={`p-2.5 rounded-lg transition-all ${
                         viewMode === "list"
-                          ? "bg-white text-[#1e3a5f] shadow-md scale-105"
-                          : "text-gray-400 hover:text-gray-600"
+                          ? "bg-card text-primary shadow-md scale-105"
+                          : "text-muted-foreground hover:text-foreground"
                       }`}
                       title="List View"
                     >
@@ -485,22 +485,22 @@ export default function ProfilePage() {
                     exit={{ opacity: 0, height: 0 }}
                     className="flex items-center justify-between mb-8"
                   >
-                    <div className="flex items-center gap-3 px-4 py-2 bg-[#1e3a5f]/5 text-[#1e3a5f] rounded-xl border border-[#1e3a5f]/10 shadow-sm">
+                    <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 text-primary rounded-xl border border-primary/10 shadow-sm">
                       <span className="text-sm font-bold">
                         Found {currentResults.length} {currentResults.length === 1 ? 'trip' : 'trips'}
-                        {searchQuery && <span className="text-[#1e3a5f]/60 font-medium italic"> for "{searchQuery}"</span>}
-                        {selectedCategory && <span className="text-[#1e3a5f]/60 font-medium italic"> in {selectedCategory}</span>}
+                        {searchQuery && <span className="text-primary/60 font-medium italic"> for "{searchQuery}"</span>}
+                        {selectedCategory && <span className="text-primary/60 font-medium italic"> in {selectedCategory}</span>}
                       </span>
                       <button
                         onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
-                        className="hover:bg-[#1e3a5f]/10 p-1 rounded-full transition-colors"
+                        className="hover:bg-primary/10 p-1 rounded-full transition-colors"
                       >
                         <X size={14} />
                       </button>
                     </div>
                     <button
                       onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
-                      className="text-sm font-bold text-[#1e3a5f] hover:underline hover:text-[#2a4a6f] transition-all"
+                      className="text-sm font-bold text-primary hover:underline hover:text-primary/80 transition-all"
                     >
                       Reset all filters
                     </button>
@@ -512,10 +512,10 @@ export default function ProfilePage() {
 
           {/* Loading State */}
           {isLoading && (
-            <div className="flex flex-col items-center justify-center py-40 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100 shadow-sm px-6">
-              <Loader2 size={48} className="text-[#1e3a5f] animate-spin mb-6" />
-              <h3 className="text-[#314158] text-2xl font-bold mb-3">Loading Your Trips</h3>
-              <p className="text-gray-400 max-w-md mx-auto text-lg">
+            <div className="flex flex-col items-center justify-center py-40 text-center bg-card rounded-[32px] border-2 border-dashed border-border shadow-sm px-6">
+              <Loader2 size={48} className="text-primary animate-spin mb-6" />
+              <h3 className="text-foreground text-2xl font-bold mb-3">Loading Your Trips</h3>
+              <p className="text-muted-foreground max-w-md mx-auto text-lg">
                 Fetching your travel adventures...
               </p>
             </div>
@@ -523,17 +523,17 @@ export default function ProfilePage() {
 
           {/* Error State */}
           {error && !isLoading && (
-            <div className="flex flex-col items-center justify-center py-40 text-center bg-white rounded-[32px] border-2 border-dashed border-red-100 shadow-sm px-6">
-              <div className="w-28 h-28 bg-red-50 rounded-full flex items-center justify-center mb-10 relative shadow-inner">
-                <X size={56} className="text-red-200" />
+            <div className="flex flex-col items-center justify-center py-40 text-center bg-card rounded-[32px] border-2 border-dashed border-red-100 dark:border-red-900/20 shadow-sm px-6">
+              <div className="w-28 h-28 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-10 relative shadow-inner">
+                <X size={56} className="text-red-200 dark:text-red-400" />
               </div>
-              <h3 className="text-[#314158] text-3xl font-bold mb-4">Unable to Load Trips</h3>
-              <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
+              <h3 className="text-foreground text-3xl font-bold mb-4">Unable to Load Trips</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg leading-relaxed">
                 {error}
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
+                className="px-10 py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
               >
                 <Loader2 size={20} />
                 Try Again
@@ -543,17 +543,17 @@ export default function ProfilePage() {
 
           {/* Empty State */}
           {!isLoading && !error && trips.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-40 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100 shadow-sm px-6">
-              <div className="w-28 h-28 bg-blue-50 rounded-full flex items-center justify-center mb-10 relative shadow-inner">
-                <Plus size={56} className="text-blue-200" />
+            <div className="flex flex-col items-center justify-center py-40 text-center bg-card rounded-[32px] border-2 border-dashed border-border shadow-sm px-6">
+              <div className="w-28 h-28 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mb-10 relative shadow-inner">
+                <Plus size={56} className="text-primary/50 dark:text-primary/70" />
               </div>
-              <h3 className="text-[#314158] text-3xl font-bold mb-4">No Trips Yet</h3>
-              <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
+              <h3 className="text-foreground text-3xl font-bold mb-4">No Trips Yet</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg leading-relaxed">
                 Start planning your next adventure! Your trips will appear here once you create them.
               </p>
               <button
                 onClick={() => router.push('/')}
-                className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
+                className="px-10 py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
               >
                 <Plus size={20} />
                 Create Your First Trip
@@ -582,17 +582,17 @@ export default function ProfilePage() {
                     listDensity={listDensity}
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100 shadow-sm">
-                    <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-8 shadow-inner">
-                      <Search size={40} className="text-gray-300" />
+                  <div className="flex flex-col items-center justify-center py-32 text-center bg-card rounded-[32px] border-2 border-dashed border-border shadow-sm">
+                    <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-8 shadow-inner">
+                      <Search size={40} className="text-muted-foreground" />
                     </div>
-                    <h3 className="text-[#314158] text-2xl font-bold mb-3">No matching boards</h3>
-                    <p className="text-gray-400 max-w-sm mx-auto mb-10 text-base">
+                    <h3 className="text-foreground text-2xl font-bold mb-3">No matching boards</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto mb-10 text-base">
                       Try adjusting your search or category filters to find the travel boards you're looking for.
                     </p>
                     <button
                       onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
-                      className="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl transition-all font-bold text-base shadow-sm"
+                      className="px-8 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-2xl transition-all font-bold text-base shadow-sm"
                     >
                       Clear all filters
                     </button>
@@ -624,17 +624,17 @@ export default function ProfilePage() {
                         listDensity={listDensity}
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100 shadow-sm">
-                        <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-8 shadow-inner">
-                          <Search size={40} className="text-gray-300" />
+                      <div className="flex flex-col items-center justify-center py-32 text-center bg-card rounded-[32px] border-2 border-dashed border-border shadow-sm">
+                        <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-8 shadow-inner">
+                          <Search size={40} className="text-muted-foreground" />
                         </div>
-                        <h3 className="text-[#314158] text-2xl font-bold mb-3">No favorites found</h3>
-                        <p className="text-gray-400 max-w-sm mx-auto mb-10 text-base">
+                        <h3 className="text-foreground text-2xl font-bold mb-3">No favorites found</h3>
+                        <p className="text-muted-foreground max-w-sm mx-auto mb-10 text-base">
                           Your search or filter criteria didn't match any of your favorited destinations.
                         </p>
                         <button
                           onClick={() => { setSearchQuery(""); setSelectedCategory(null); }}
-                          className="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl transition-all font-bold text-base shadow-sm"
+                          className="px-8 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-2xl transition-all font-bold text-base shadow-sm"
                         >
                           Clear filters
                         </button>
@@ -642,18 +642,18 @@ export default function ProfilePage() {
                     )}
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-40 text-center bg-white rounded-[32px] border-2 border-dashed border-gray-100 shadow-sm px-6">
-                    <div className="w-28 h-28 bg-red-50 rounded-full flex items-center justify-center mb-10 relative shadow-inner">
-                      <Heart size={56} className="text-red-200 fill-red-50" />
+                  <div className="flex flex-col items-center justify-center py-40 text-center bg-card rounded-[32px] border-2 border-dashed border-border shadow-sm px-6">
+                    <div className="w-28 h-28 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-10 relative shadow-inner">
+                      <Heart size={56} className="text-red-200 dark:text-red-400 fill-red-50 dark:fill-red-900/20" />
                       <Plus size={24} className="absolute bottom-3 right-3 bg-red-500 text-white rounded-full p-0.5 border-4 border-white shadow-md" />
                     </div>
-                    <h3 className="text-[#314158] text-3xl font-bold mb-4">Your heart is empty</h3>
-                    <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
+                    <h3 className="text-foreground text-3xl font-bold mb-4">Your heart is empty</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg leading-relaxed">
                       Every great adventure starts with a single wish. Start exploring and heart the places that inspire you!
                     </p>
                     <button
                       onClick={() => router.push('/')}
-                      className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
+                      className="px-10 py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
                     >
                       <Search size={20} />
                       Discover Destinations

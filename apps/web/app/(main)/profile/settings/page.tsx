@@ -519,11 +519,11 @@ export default function ProfileSettings() {
   // ─── Render ───────────────────────────────────────────
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-6">
         <div className="text-center">
-          <Loader2 size={48} className="text-[#1e3a5f] animate-spin mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-2">Loading Settings</h2>
-          <p className="text-gray-500">Please wait while we load your profile...</p>
+          <Loader2 size={48} className="text-primary animate-spin mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Loading Settings</h2>
+          <p className="text-muted-foreground">Please wait while we load your profile...</p>
         </div>
       </div>
     );
@@ -531,16 +531,16 @@ export default function ProfileSettings() {
 
   if (error && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={40} className="text-red-500" />
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center bg-card rounded-3xl shadow-2xl border border-border p-10">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} className="text-red-500 dark:text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-3">Authentication Required</h2>
-          <p className="text-gray-600 mb-8">{error}</p>
+          <h2 className="text-2xl font-bold text-foreground mb-3">Authentication Required</h2>
+          <p className="text-muted-foreground mb-8">{error}</p>
           <a
             href="/login"
-            className="inline-flex items-center gap-2 px-8 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all font-bold shadow-lg"
           >
             Sign In to Continue
           </a>
@@ -551,16 +551,16 @@ export default function ProfileSettings() {
 
   if (error && supabase) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={40} className="text-orange-500" />
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center bg-card rounded-3xl shadow-2xl border border-border p-10">
+          <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} className="text-orange-500 dark:text-orange-400" />
           </div>
-          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-3">Unable to Load Profile</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h2 className="text-2xl font-bold text-foreground mb-3">Unable to Load Profile</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all font-bold shadow-lg"
           >
             <Loader2 size={18} className="animate-spin" />
             Try Again
@@ -641,14 +641,14 @@ export default function ProfileSettings() {
 
   // ─── Render ────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <LoadingBar isLoading={isLoading || isTabLoading || isSaving} />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-12">
         {/* Back Button */}
         <button
           onClick={() => router.push('/profile')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 group"
         >
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
           <span className="font-medium">Back to Profile</span>
@@ -656,7 +656,7 @@ export default function ProfileSettings() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-5xl text-gray-950 tracking-tight font-bold">Settings</h1>
+          <h1 className="text-5xl text-foreground tracking-tight font-bold">Settings</h1>
           <p className="text-xl text-gray-500 mt-2">Manage your profile, preferences and security</p>
         </div>
 
