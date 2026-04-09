@@ -90,7 +90,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Main list area */}
         <div className="flex-1 min-w-0 flex flex-col overflow-auto">
-          <SpotlightSearch existingItems={items} onAddItem={addItem as (name: string, category: string) => void} />
+          <SpotlightSearch existingItems={items} onAddItem={(name: string, category: string) => addItem(name, category as any, filterBy === 'mine')} />
           <div className="flex-1 overflow-auto mt-4">
             <PackingCategoryList
               orderedCategories={filteredOrderedCategories}

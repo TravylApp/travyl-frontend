@@ -185,7 +185,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden shrink-0">
               {profile.avatar_url ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={profile.avatar_url} alt="" width={80} height={80} referrerPolicy="no-referrer" className="object-cover" />
+                <img src={profile.avatar_url} alt="" width={80} height={80}  className="object-cover" />
               ) : (
                 <span className="text-2xl font-bold text-white">
                   {(profile.display_name || 'U')[0].toUpperCase()}

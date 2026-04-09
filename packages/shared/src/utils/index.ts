@@ -14,7 +14,7 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
 }
 
 /** Upscale Google Places proxy image URLs from tiny thumbnails to usable sizes */
-export function upscaleGoogleImage(url: string | null | undefined, width = 600, height = 400): string | null {
+export function upscaleGoogleImage(url: string | null | undefined, width = 1200, height = 800): string | null {
   if (!url) return null;
   if (url.includes('googleusercontent.com')) {
     return url
@@ -147,3 +147,5 @@ export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from
 // Gap computation utility (day planner)
 export { computeGaps } from './gapCompute'
 export type { Gap } from './gapCompute'
+
+export * from './places'

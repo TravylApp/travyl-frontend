@@ -38,10 +38,57 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
-    if (error) return null;
+      .maybeSingle();
+
+    // If profile doesn't exist yet, create a default one
+    if (error || !data) {
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          display_name: null,
+          avatar_url: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) return null;
+      return newProfile;
+    }
+
     return data;
   } catch { return null; }
+}
+
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country'>>): Promise<Profile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUserMetadata(metadata: Record<string, unknown>): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { error } = await supabase.auth.updateUser({
+    data: metadata,
+  });
+
+  if (error) throw error;
+}
+
+export async function updateUserPassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) throw error;
 }
 
 // ─── Home Page Data ──────────────────────────────────────────
@@ -329,6 +376,20 @@ export async function updateTripDetails(
     if (itinerary && itinerary.length > newDuration) {
       const trimmed = itinerary.slice(0, newDuration)
       const ctx = { ...existing!.trip_context, itinerary: trimmed }
+      const { error } = await supabase.from('trips').update({ ...updates, trip_context: ctx }).eq('id', tripId)
+      if (error) throw error
+      return
+    }
+  }
+
+  // If destination changed, clear stale trip_context so re-enrichment repopulates
+  if (updates.destination) {
+    const { data: existing } = await supabase.from('trips').select('trip_context, destination').eq('id', tripId).single()
+    if (existing && updates.destination !== existing.destination) {
+      const ctx = { ...(existing.trip_context || {}) }
+      for (const key of ['wiki', 'country', 'cuisine', 'phrases', 'cost_of_living', 'safety', 'sunrise', 'aqi', 'timezone_info', 'holidays', 'nearby_cities', 'hero_image_url', 'hero_images', 'explore_items', 'foursquare_venues', 'events', 'news', 'restaurants', 'hotels', 'lat', 'lng', 'quick_facts']) {
+        delete ctx[key]
+      }
       const { error } = await supabase.from('trips').update({ ...updates, trip_context: ctx }).eq('id', tripId)
       if (error) throw error
       return

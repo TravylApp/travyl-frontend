@@ -31,26 +31,26 @@ const SHARING_SETTINGS: SettingToggle[] = [
   { key: 'sharePhotos', label: 'Auto-Share Photos', description: 'Share trip photos with group', icon: 'camera', defaultValue: false },
 ];
 
-// ─── Initial mock data ────────────────────────────────────────
+// ─── Empty initial state — populated from real user data when available ──
 
 const INITIAL_PROFILE = {
-  firstName: 'Alex',
-  lastName: 'Rivera',
-  email: 'alex.rivera@email.com',
-  phone: '+1 (555) 123-4567',
-  dob: '1992-06-15',
-  nationality: 'United States',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dob: '',
+  nationality: '',
 };
 
 const INITIAL_DOCUMENTS = {
-  passportNumber: 'X12345678',
-  passportExpiry: '2029-03-20',
+  passportNumber: '',
+  passportExpiry: '',
 };
 
 const INITIAL_EMERGENCY = {
-  name: 'Jordan Rivera',
-  phone: '+1 (555) 987-6543',
-  relationship: 'Sibling',
+  name: '',
+  phone: '',
+  relationship: '',
 };
 
 interface SavedCard {
@@ -60,11 +60,7 @@ interface SavedCard {
   isDefault: boolean;
 }
 
-const INITIAL_CARDS: SavedCard[] = [
-  { id: '1', brand: 'Visa', last4: '4242', isDefault: true },
-  { id: '2', brand: 'Mastercard', last4: '8888', isDefault: false },
-  { id: '3', brand: 'Amex', last4: '1234', isDefault: false },
-];
+const INITIAL_CARDS: SavedCard[] = [];
 
 // ─── Reusable components ──────────────────────────────────────
 

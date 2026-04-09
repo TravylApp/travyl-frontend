@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import * as Y from 'yjs'
-import { supabase, toCalendarActivity, type ActivityRow, type Trip } from '@travyl/shared'
+import { supabase, toCalendarActivity, mapToDbType, type ActivityRow, type Trip } from '@travyl/shared'
 import { useYjsTripContext } from '../providers/YjsTripProvider'
 import { CALENDAR_ACTIVITY_KEYS } from './yMapToCalendarActivity'
 
@@ -74,6 +74,7 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
       if (rows.length === 0 && fetchedTrip.trip_context?.itinerary?.length) {
         const itinerary = fetchedTrip.trip_context.itinerary as any[]
         const seedRows: Record<string, unknown>[] = []
+        let sortIdx = 0
         for (const day of itinerary) {
           const dayDate = day.date || fetchedTrip.start_date
           for (const slot of day.slots ?? []) {
@@ -82,14 +83,15 @@ export function useTripActivities(tripId: string): UseTripActivitiesReturn {
               trip_id: tripId,
               user_id: null,
               activity_name: poi.name || 'Activity',
-              activity_type: poi.category || 'sightseeing',
+              activity_type: mapToDbType(poi.category || 'sightseeing'),
               starting_date: dayDate,
               ending_date: dayDate,
               starting_time: slot.start_time || '09:00',
               ending_time: slot.end_time || '11:00',
-              latitude: poi.lat || null,
-              longitude: poi.lng || null,
-              notes: null,
+              latitude: poi.lat || 0,
+              longitude: poi.lng || 0,
+              sort_order: sortIdx++,
+              notes: '',
               activity_data: {
                 category: poi.category,
                 location_name: poi.name,

@@ -69,10 +69,12 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
   const progress = useMemo(() => computePackingProgress(items), [items])
 
   const addItemMutation = useMutation({
-    mutationFn: async ({ name, category }: { name: string; category: PackingCategory }) => {
+    mutationFn: async ({ name, category, personal }: { name: string; category: PackingCategory; personal?: boolean }) => {
       const catItems = items.filter((i) => i.category === category)
       const maxSort = catItems.length > 0 ? Math.max(...catItems.map((i) => i.sort_order)) : -1
-      const newItem = await insertPackingItem(tripId!, userId || null as any, name, category, maxSort + 1)
+      // If personal=true, set owner_id to current user so it shows under "mine"
+      const ownerId = personal && userId ? userId : undefined
+      const newItem = await insertPackingItem(tripId!, userId || null as any, name, category, maxSort + 1, ownerId)
       await insertAuditEntry(tripId!, userId || null as any, newItem.id, 'added', name).catch(() => {})
       return newItem
     },
@@ -199,7 +201,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     },
   })
 
-  const addItem = useCallback((name: string, category: PackingCategory) => addItemMutation.mutate({ name, category }), [addItemMutation])
+  const addItem = useCallback((name: string, category: PackingCategory, personal?: boolean) => addItemMutation.mutate({ name, category, personal }), [addItemMutation])
 
   const togglePacked = useCallback((itemId: string) => {
     const item = items.find((i) => i.id === itemId)
