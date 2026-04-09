@@ -65,10 +65,10 @@ const TABS: { id: TabId; icon: any; label: string }[] = [
 
 function SectionCard({ children, className = '', title }: { children: React.ReactNode; className?: string; title?: string }) {
   return (
-    <div className={`bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col ${className}`}>
+    <div className={`bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col ${className}`}>
       {title && (
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-          <span className="text-sm font-bold tracking-[1.5px] text-gray-400 uppercase">{title}</span>
+        <div className="px-6 py-4 border-b border-border bg-muted/50 flex items-center justify-between">
+          <span className="text-sm font-bold tracking-[1.5px] text-muted-foreground uppercase">{title}</span>
         </div>
       )}
       <div className="p-6 flex-1">{children}</div>
@@ -77,11 +77,11 @@ function SectionCard({ children, className = '', title }: { children: React.Reac
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-bold tracking-[1.2px] text-gray-400 uppercase mb-4">{children}</p>;
+  return <p className="text-sm font-bold tracking-[1.2px] text-muted-foreground uppercase mb-4">{children}</p>;
 }
 
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-500 mb-2 uppercase tracking-tight">{children}</label>;
+  return <label htmlFor={htmlFor} className="block text-sm font-semibold text-muted-foreground mb-2 uppercase tracking-tight">{children}</label>;
 }
 
 function SettingsInput({ id, label, value, onChange, placeholder, type = 'text', disabled, suffix }: {
@@ -95,7 +95,7 @@ function SettingsInput({ id, label, value, onChange, placeholder, type = 'text',
         <input
           id={id} type={type} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} disabled={disabled}
-          className="w-full h-12 px-4 text-lg text-gray-900 bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/20 disabled:opacity-50 transition-all"
+          className="w-full h-12 px-4 text-lg text-card-foreground bg-card border border-border rounded-xl hover:border-border/80 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 transition-all"
         />
         {suffix && <div className="absolute right-4 top-1/2 -translate-y-1/2">{suffix}</div>}
       </div>
@@ -107,7 +107,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   return (
     <button
       type="button" onClick={onChange} disabled={disabled}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 focus-visible:outline-none ${checked ? 'bg-blue-500' : 'bg-gray-200'} ${disabled ? 'opacity-50' : ''}`}
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 focus-visible:outline-none ${checked ? 'bg-primary' : 'bg-muted'} ${disabled ? 'opacity-50' : ''}`}
       role="switch" aria-checked={checked}
     >
       <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${checked ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
@@ -121,7 +121,7 @@ function Chip({ label, selected, onClick, color }: { label: string; selected: bo
     <button
       type="button" onClick={onClick}
       className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border transition-all ${
-        selected ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+        selected ? 'bg-primary/10 border-primary/20 text-primary font-semibold shadow-sm' : 'bg-card border-border text-muted-foreground hover:border-border/80'
       }`}
     >
       {color && (
@@ -130,7 +130,7 @@ function Chip({ label, selected, onClick, color }: { label: string; selected: bo
         </span>
       )}
       <span className="truncate max-w-[120px]">{label}</span>
-      {selected && <Check size={14} className="text-blue-500 shrink-0" />}
+      {selected && <Check size={14} className="text-primary shrink-0" />}
     </button>
   );
 }
@@ -140,7 +140,7 @@ function PillToggle({ label, selected, onClick }: { label: string; selected: boo
     <button
       type="button" onClick={onClick}
       className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-        selected ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+        selected ? 'bg-foreground text-background border-foreground shadow-md' : 'bg-card text-muted-foreground border-border hover:border-border/80'
       }`}
     >
       {label}
@@ -154,14 +154,14 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
   onChange: (id: T) => void;
 }): React.ReactNode {
   return (
-    <div className="flex gap-4 mb-6 border-b border-gray-100">
+    <div className="flex gap-4 mb-6 border-b border-border">
       {tabs.map(tab => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
           className={`flex items-center gap-2 px-2 py-3 text-sm font-bold transition-all border-b-2 -mb-px ${
-            active === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+            active === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
           {tab.label}
@@ -174,13 +174,13 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
 function CounterInline({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (v: number) => void; min?: number }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="text-base text-gray-600 font-medium">{label}</span>
+      <span className="text-base text-card-foreground font-medium">{label}</span>
       <div className="flex items-center gap-3">
         <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-900 text-lg font-bold transition-all">-</button>
-        <span className="w-6 text-center text-base font-bold text-gray-900">{value}</span>
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground text-lg font-bold transition-all">-</button>
+        <span className="w-6 text-center text-base font-bold text-card-foreground">{value}</span>
         <button type="button" onClick={() => onChange(value + 1)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-900 text-lg font-bold transition-all">+</button>
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground text-lg font-bold transition-all">+</button>
       </div>
     </div>
   );
@@ -657,11 +657,11 @@ export default function ProfileSettings() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-5xl text-foreground tracking-tight font-bold">Settings</h1>
-          <p className="text-xl text-gray-500 mt-2">Manage your profile, preferences and security</p>
+          <p className="text-xl text-muted-foreground mt-2">Manage your profile, preferences and security</p>
         </div>
 
         {/* Tabs — Matches Main Layout Style */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide border-b border-gray-100">
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide border-b border-border">
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -669,8 +669,8 @@ export default function ProfileSettings() {
               disabled={isTabLoading}
               className={`flex items-center gap-2.5 px-6 py-3 rounded-2xl text-lg whitespace-nowrap transition-all touch-manipulation font-semibold ${
                 activeTab === tab.id
-                  ? 'bg-gray-900 text-white shadow-lg'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'bg-foreground text-background shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               } ${isTabLoading ? 'opacity-50' : ''}`}
             >
               <tab.icon size={20} />
@@ -684,43 +684,43 @@ export default function ProfileSettings() {
 
         {/* Content Area — Condensing Philosophy Applied */}
         {isLoading || isTabLoading ? (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"><Skeleton /></div>
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden"><Skeleton /></div>
         ) : (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden divide-y divide-gray-100">
+          <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden divide-y divide-border">
 
             {/* ═══════ PROFILE ═══════ */}
             {activeTab === 'profile' && (
               <div className="p-6 sm:p-10 space-y-8">
                 <div className="flex flex-col lg:flex-row gap-10">
                   {/* Left: Bio/Avatar Info */}
-                  <div className="lg:w-[320px] flex flex-col items-center text-center p-8 rounded-[32px] bg-gray-50/50 border border-gray-100 shadow-inner shrink-0">
+                  <div className="lg:w-[320px] flex flex-col items-center text-center p-8 rounded-[32px] bg-muted/50 border border-border shadow-inner shrink-0">
                     <AvatarUpload currentImage={formData.profilePhoto || undefined} onImageChange={url => updateForm('profilePhoto', url)} hideButtons />
                     <div className="mt-6 w-full">
                        {isEditingName ? (
                          <div className="flex flex-col gap-3">
                             <SettingsInput id="f" label="FIRST NAME" value={formData.firstName} onChange={v => updateForm('firstName', v)} />
                             <SettingsInput id="l" label="LAST NAME" value={formData.lastName} onChange={v => updateForm('lastName', v)} />
-                            <button onClick={() => setIsEditingName(false)} className="h-10 bg-blue-600 text-white rounded-xl text-sm font-bold w-full mt-2 shadow-md hover:bg-blue-700 transition-colors">Save Name</button>
+                            <button onClick={() => setIsEditingName(false)} className="h-10 bg-primary text-primary-foreground rounded-xl text-sm font-bold w-full mt-2 shadow-md hover:bg-primary/90 transition-colors">Save Name</button>
                          </div>
                        ) : (
                          <div className="group cursor-pointer flex items-center justify-center gap-2" onClick={() => setIsEditingName(true)}>
-                            <h2 className="text-2xl font-black text-gray-900 group-hover:text-blue-600 transition-colors tracking-tight">{formData.firstName} {formData.lastName}</h2>
-                            <Pencil size={16} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                            <h2 className="text-2xl font-black text-card-foreground group-hover:text-primary transition-colors tracking-tight">{formData.firstName} {formData.lastName}</h2>
+                            <Pencil size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                          </div>
                        )}
                        <div className="mt-6 space-y-2">
                           <div className="flex items-center justify-between px-1">
-                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</span>
-                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{userStats.xpCurrent}/{userStats.xpMax} XP</span>
+                             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Progress</span>
+                             <span className="text-[10px] font-black text-primary uppercase tracking-widest">{userStats.xpCurrent}/{userStats.xpMax} XP</span>
                           </div>
-                          <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                             <div className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${userStats.xpProgress}%` }} />
+                          <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden shadow-inner">
+                             <div className="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${userStats.xpProgress}%` }} />
                           </div>
                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-6 mt-10 pt-8 border-t border-gray-200 w-full">
-                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Trips</p><p className="text-2xl font-black text-gray-900 leading-none">{userStats.tripsCount}</p></div>
-                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Cities</p><p className="text-2xl font-black text-gray-900 leading-none">{userStats.citiesCount}</p></div>
+                    <div className="grid grid-cols-2 gap-6 mt-10 pt-8 border-t border-border w-full">
+                       <div className="text-left"><p className="text-[10px] font-black text-muted-foreground uppercase tracking-[2px] leading-none mb-2">Trips</p><p className="text-2xl font-black text-card-foreground leading-none">{userStats.tripsCount}</p></div>
+                       <div className="text-left"><p className="text-[10px] font-black text-muted-foreground uppercase tracking-[2px] leading-none mb-2">Cities</p><p className="text-2xl font-black text-card-foreground leading-none">{userStats.citiesCount}</p></div>
                     </div>
                   </div>
 
@@ -782,20 +782,20 @@ export default function ProfileSettings() {
                              <SettingsInput id="ha" label="HOME AIRPORT" value={homeAirport} onChange={setHomeAirport} />
                              <div>
                                 <FieldLabel>TYPICAL DURATION</FieldLabel>
-                                <div className="flex items-center h-12 bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-400/20 transition-all">
-                                   <button onClick={() => setTypicalDuration(Math.max(1, typicalDuration-1))} className="w-12 h-full bg-gray-50 text-gray-400 hover:text-gray-900 font-black text-xl transition-colors border-r border-gray-100">-</button>
-                                   <span className="flex-1 text-center text-sm font-bold text-gray-900 tracking-tight">{typicalDuration} Days</span>
-                                   <button onClick={() => setTypicalDuration(typicalDuration+1)} className="w-12 h-full bg-gray-50 text-gray-400 hover:text-gray-900 font-black text-xl transition-colors border-l border-gray-100">+</button>
+                                <div className="flex items-center h-12 bg-card border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                   <button onClick={() => setTypicalDuration(Math.max(1, typicalDuration-1))} className="w-12 h-full bg-muted text-muted-foreground hover:text-foreground font-black text-xl transition-colors border-r border-border">-</button>
+                                   <span className="flex-1 text-center text-sm font-bold text-card-foreground tracking-tight">{typicalDuration} Days</span>
+                                   <button onClick={() => setTypicalDuration(typicalDuration+1)} className="w-12 h-full bg-muted text-muted-foreground hover:text-foreground font-black text-xl transition-colors border-l border-border">+</button>
                                 </div>
                              </div>
                              <SettingsInput id="bdg" label="AVG BUDGET" value={budget} onChange={setBudget} />
                              <div>
                                 <FieldLabel>TRAVEL PACE</FieldLabel>
                                 <div className="relative">
-                                  <select value={travelPace} onChange={e => setTravelPace(e.target.value)} className="w-full h-12 px-4 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all font-bold appearance-none cursor-pointer">
+                                  <select value={travelPace} onChange={e => setTravelPace(e.target.value)} className="w-full h-12 px-4 text-sm bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold appearance-none cursor-pointer">
                                      {['Relaxed', 'Balanced', 'Fast-Paced'].map(p => <option key={p} value={p}>{p}</option>)}
                                   </select>
-                                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                                 </div>
                              </div>
                           </div>
@@ -852,8 +852,8 @@ export default function ProfileSettings() {
                             { key: 'push' as const, title: 'Push Alerts', desc: 'Real-time flight and booking notifications' },
                             { key: 'sms' as const, title: 'SMS Messaging', desc: 'Critical flight updates and travel alerts' },
                           ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                               <div className="pr-6"><p className="text-base font-bold text-gray-900 leading-tight">{item.title}</p><p className="text-sm text-gray-400 mt-1">{item.desc}</p></div>
+                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-card hover:bg-muted transition-colors border border-transparent hover:border-border">
+                               <div className="pr-6"><p className="text-base font-bold text-card-foreground leading-tight">{item.title}</p><p className="text-sm text-muted-foreground mt-1">{item.desc}</p></div>
                                <Toggle checked={notifications[item.key]} onChange={() => setNotifications(p => ({ ...p, [item.key]: !p[item.key] }))} />
                             </div>
                           ))}
@@ -866,8 +866,8 @@ export default function ProfileSettings() {
                             { key: 'priceDropAlerts' as const, title: 'Price Watches', desc: 'Notifications for saved destination fare changes' },
                             { key: 'eventAlerts' as const, title: 'Local Events', desc: 'Festivals and happenings in your current location' },
                           ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                               <div className="pr-6"><p className="text-base font-bold text-gray-900 leading-tight">{item.title}</p><p className="text-sm text-gray-400 mt-1">{item.desc}</p></div>
+                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-card hover:bg-muted transition-colors border border-transparent hover:border-border">
+                               <div className="pr-6"><p className="text-base font-bold text-card-foreground leading-tight">{item.title}</p><p className="text-sm text-muted-foreground mt-1">{item.desc}</p></div>
                                <Toggle checked={notifications[item.key]} onChange={() => setNotifications(p => ({ ...p, [item.key]: !p[item.key] }))} />
                             </div>
                           ))}
@@ -885,21 +885,21 @@ export default function ProfileSettings() {
                     <div className="space-y-8">
                        <SectionCard title="Security Credentials">
                           <div className="space-y-6">
-                             <SettingsInput id="cpw" label="CURRENT PASSWORD" value={formData.currentPassword} onChange={v => updateForm('currentPassword', v)} type={showCurrentPassword ? 'text' : 'password'} suffix={<button onClick={() => setShowCurrentPassword(!showCurrentPassword)}><Eye size={18} className="text-gray-300 hover:text-gray-500 transition-colors" /></button>} />
-                             <SettingsInput id="npw" label="NEW PASSWORD" value={formData.newPassword} onChange={v => updateForm('newPassword', v)} type={showNewPassword ? 'text' : 'password'} placeholder="min. 8 characters" suffix={<button onClick={() => setShowNewPassword(!showNewPassword)}><Eye size={18} className="text-gray-300 hover:text-gray-500 transition-colors" /></button>} />
+                             <SettingsInput id="cpw" label="CURRENT PASSWORD" value={formData.currentPassword} onChange={v => updateForm('currentPassword', v)} type={showCurrentPassword ? 'text' : 'password'} suffix={<button onClick={() => setShowCurrentPassword(!showCurrentPassword)}><Eye size={18} className="text-muted-foreground hover:text-foreground transition-colors" /></button>} />
+                             <SettingsInput id="npw" label="NEW PASSWORD" value={formData.newPassword} onChange={v => updateForm('newPassword', v)} type={showNewPassword ? 'text' : 'password'} placeholder="min. 8 characters" suffix={<button onClick={() => setShowNewPassword(!showNewPassword)}><Eye size={18} className="text-muted-foreground hover:text-foreground transition-colors" /></button>} />
                              {formData.newPassword && <PasswordStrengthMeter password={formData.newPassword} />}
 
-                             <div className="pt-8 mt-8 border-t border-gray-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3"><Shield size={20} className="text-blue-500" /><span className="text-base font-bold text-gray-900 uppercase tracking-tight">2FA Protection</span></div>
+                             <div className="pt-8 mt-8 border-t border-border flex items-center justify-between">
+                                <div className="flex items-center gap-3"><Shield size={20} className="text-primary" /><span className="text-base font-bold text-card-foreground uppercase tracking-tight">2FA Protection</span></div>
                                 <Toggle checked={twoFactorEnabled} onChange={() => setTwoFactorEnabled(!twoFactorEnabled)} />
                              </div>
 
                              {/* Linked Accounts & Devices Dropdown - Dependent on 2FA */}
                              {twoFactorEnabled && (
-                                <div className="mt-4 border border-gray-100 rounded-2xl overflow-hidden transition-all shadow-sm">
+                                <div className="mt-4 border border-border rounded-2xl overflow-hidden transition-all shadow-sm">
                                    <button
                                       onClick={() => setShowLinkedAccountsDropdown(!showLinkedAccountsDropdown)}
-                                      className="w-full flex items-center justify-between p-5 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+                                      className="w-full flex items-center justify-between p-5 bg-muted/50 hover:bg-muted transition-colors"
                                    >
                                       <div className="flex items-center gap-3">
                                          <Activity size={18} className="text-gray-400" />
@@ -915,7 +915,7 @@ export default function ProfileSettings() {
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
                                             transition={{ duration: 0.3, ease: 'easeOut' }}
-                                            className="overflow-hidden bg-white border-t border-gray-100"
+                                            className="overflow-hidden bg-card border-t border-border"
                                          >
                                             <div className="p-6 space-y-6">
                                                <SubTabs tabs={[{ id: 'password', label: 'OAuth Profiles' }, { id: 'sessions', label: 'Active Sessions' }]} active={accountSecurityTab} onChange={setAccountSecurityTab} />
@@ -927,12 +927,12 @@ export default function ProfileSettings() {
                                                        { name: 'Apple', detail: 'Authorized with FaceID', linked: true, color: '#000' },
                                                        { name: 'Meta', detail: 'Not connected', linked: false, color: '#1877f2' }
                                                      ].map(acc => (
-                                                       <div key={acc.name} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/30 border border-gray-100 transition-all hover:shadow-sm">
+                                                       <div key={acc.name} className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border transition-all hover:shadow-sm">
                                                           <div className="flex items-center gap-4">
                                                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black shadow-inner" style={{ backgroundColor: acc.color }}>{acc.name[0]}</div>
-                                                             <div className="min-w-0"><p className="text-sm font-black text-gray-900 leading-none mb-1">{acc.name}</p><p className="text-xs text-gray-400 truncate">{acc.detail}</p></div>
+                                                             <div className="min-w-0"><p className="text-sm font-black text-card-foreground leading-none mb-1">{acc.name}</p><p className="text-xs text-muted-foreground truncate">{acc.detail}</p></div>
                                                           </div>
-                                                          <button className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg border transition-all ${acc.linked ? 'text-gray-400 border-gray-200 hover:bg-gray-100' : 'text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100'}`}>{acc.linked ? 'Revoke' : 'Link'}</button>
+                                                          <button className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg border transition-all ${acc.linked ? 'text-muted-foreground border-border hover:bg-muted' : 'text-primary border-primary/20 bg-primary/10 hover:bg-primary/20'}`}>{acc.linked ? 'Revoke' : 'Link'}</button>
                                                        </div>
                                                      ))}
                                                   </div>
@@ -942,10 +942,10 @@ export default function ProfileSettings() {
                                                        { device: 'iPhone 15 Pro', loc: 'San Francisco, CA', time: 'Active now', main: true },
                                                        { device: 'MacBook Pro 16"', loc: 'San Francisco, CA', time: 'Yesterday', main: false },
                                                      ].map((s, i) => (
-                                                       <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 border border-gray-100 transition-all hover:shadow-sm">
+                                                       <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border transition-all hover:shadow-sm">
                                                           <div className="flex items-center gap-4">
-                                                             <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center shadow-sm"><Smartphone size={18} className="text-gray-400" /></div>
-                                                             <div><p className="text-sm font-black text-gray-900 leading-none mb-1">{s.device}</p><p className="text-xs text-gray-400">{s.loc} · {s.time}</p></div>
+                                                             <div className="w-10 h-10 bg-card border border-border rounded-xl flex items-center justify-center shadow-sm"><Smartphone size={18} className="text-muted-foreground" /></div>
+                                                             <div><p className="text-sm font-black text-card-foreground leading-none mb-1">{s.device}</p><p className="text-xs text-muted-foreground">{s.loc} · {s.time}</p></div>
                                                           </div>
                                                           {s.main ? <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">Primary Device</span> : <button className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline">Log out</button>}
                                                        </div>
@@ -967,12 +967,12 @@ export default function ProfileSettings() {
                        <SectionCard title="Visibility Control">
                           <div className="grid grid-cols-3 gap-2 mb-8">
                              {['Public', 'Friends', 'Private'].map(v => (
-                               <button key={v} onClick={() => setProfileVisibility(v)} className={`py-3 text-sm font-black rounded-xl border transition-all ${profileVisibility === v ? 'bg-gray-900 text-white border-gray-900 shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>{v}</button>
+                               <button key={v} onClick={() => setProfileVisibility(v)} className={`py-3 text-sm font-black rounded-xl border transition-all ${profileVisibility === v ? 'bg-foreground text-background border-foreground shadow-lg scale-105' : 'bg-card text-muted-foreground border-border hover:bg-muted'}`}>{v}</button>
                              ))}
                           </div>
                           <div className="space-y-4">
                              {[{ key: 'showEmail', label: 'Display email on profile' }, { key: 'showActivity', label: 'Show live travel activity' }, { key: 'analytics', label: 'Allow anonymous telemetry' }].map(p => (
-                               <div key={p.key} className="flex items-center justify-between p-2"><span className="text-sm font-bold text-gray-600">{p.label}</span><Toggle checked={(privacyControls as any)[p.key]} onChange={() => setPrivacyControls(prev => ({ ...prev, [p.key]: !(prev as any)[p.key] }))} /></div>
+                               <div key={p.key} className="flex items-center justify-between p-2"><span className="text-sm font-bold text-card-foreground">{p.label}</span><Toggle checked={(privacyControls as any)[p.key]} onChange={() => setPrivacyControls(prev => ({ ...prev, [p.key]: !(prev as any)[p.key] }))} /></div>
                              ))}
                           </div>
                        </SectionCard>
@@ -984,7 +984,7 @@ export default function ProfileSettings() {
                             { label: 'Sign Out', icon: LogOut, red: true },
                             { label: 'Delete Account', icon: Trash2, red: true },
                           ].map(b => (
-                            <button key={b.label} className={`flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl border text-sm font-black uppercase tracking-widest transition-all ${b.red ? 'text-red-500 border-red-100 hover:bg-red-50' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
+                            <button key={b.label} className={`flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl border text-sm font-black uppercase tracking-widest transition-all ${b.red ? 'text-red-500 border-red-100 hover:bg-red-50' : 'text-muted-foreground border-border hover:bg-muted'}`}>
                               <b.icon size={18} /> {b.label}
                             </button>
                           ))}
@@ -995,14 +995,14 @@ export default function ProfileSettings() {
             )}
 
             {/* ═══════ SAVE BAR ═══════ */}
-            <div ref={inlineSaveRef} className="p-8 sm:p-12 bg-gray-50/30">
+            <div ref={inlineSaveRef} className="p-8 sm:p-12 bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="min-h-[32px]">
                   {hasChanges && !isSaving && (
                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
                        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                        <span className="text-sm font-black text-amber-600 uppercase tracking-[2px]">Unsaved Modifications</span>
-                       <button onClick={handleDiscardChanges} className="text-sm font-black text-gray-400 hover:text-red-500 underline underline-offset-4 uppercase tracking-[2px] ml-4 transition-all">Discard</button>
+                       <button onClick={handleDiscardChanges} className="text-sm font-black text-muted-foreground hover:text-red-500 underline underline-offset-4 uppercase tracking-[2px] ml-4 transition-all">Discard</button>
                     </div>
                   )}
                 </div>
@@ -1010,7 +1010,7 @@ export default function ProfileSettings() {
                   onClick={handleSave}
                   disabled={!hasChanges || isSaving}
                   className={`flex items-center gap-3 px-10 py-4 rounded-2xl text-base font-black uppercase tracking-widest transition-all ${
-                    !hasChanges || isSaving ? 'bg-gray-100 text-gray-300' : 'bg-gray-900 text-white hover:bg-gray-800 shadow-2xl scale-105 active:scale-95'
+                    !hasChanges || isSaving ? 'bg-muted text-muted-foreground' : 'bg-foreground text-background hover:bg-foreground/90 shadow-2xl scale-105 active:scale-95'
                   }`}
                 >
                   {isSaving && <Loader2 size={18} className="animate-spin" />}
@@ -1031,7 +1031,7 @@ export default function ProfileSettings() {
       <div className={`fixed bottom-10 right-10 z-40 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${
         !inlineSaveVisible && hasChanges ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-16 opacity-0 scale-90 pointer-events-none'
       }`}>
-        <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-3 px-8 py-5 bg-gray-900 text-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-gray-800 active:scale-95 transition-all border border-white/10 group">
+        <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-3 px-8 py-5 bg-foreground text-background rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-foreground/90 active:scale-95 transition-all border border-white/10 group">
            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />}
            <span className="text-base font-black uppercase tracking-widest">Apply Updates</span>
         </button>

@@ -20,8 +20,8 @@ import { useAuthStore } from "@travyl/shared";
 const GlobeView = dynamic(() => import("@/components/GlobeView").then(mod => mod.GlobeView), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[600px] bg-gray-100 animate-pulse rounded-2xl flex items-center justify-center">
-      <p className="text-gray-400 font-medium">Loading Interactive Map...</p>
+    <div className="w-full h-[600px] bg-muted animate-pulse rounded-2xl flex items-center justify-center">
+      <p className="text-muted-foreground font-medium">Loading Interactive Map...</p>
     </div>
   )
 });
@@ -448,13 +448,13 @@ export default function ProfilePage() {
                   </div>
 
                   {viewMode === "list" && (
-                    <div className="flex items-center bg-gray-100/80 rounded-xl p-1.5 shadow-inner">
+                    <div className="flex items-center bg-muted/80 rounded-xl p-1.5 shadow-inner">
                       <button
                         onClick={() => setListDensity("comfortable")}
                         className={`p-2.5 rounded-lg transition-all ${
                           listDensity === "comfortable"
-                            ? "bg-white text-[#1e3a5f] shadow-md scale-105"
-                            : "text-gray-400 hover:text-gray-600"
+                            ? "bg-card text-card-foreground shadow-md scale-105"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                         title="Comfortable"
                       >
@@ -464,8 +464,8 @@ export default function ProfilePage() {
                         onClick={() => setListDensity("compact")}
                         className={`p-2.5 rounded-lg transition-all ${
                           listDensity === "compact"
-                            ? "bg-white text-[#1e3a5f] shadow-md scale-105"
-                            : "text-gray-400 hover:text-gray-600"
+                            ? "bg-card text-card-foreground shadow-md scale-105"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                         title="Compact"
                       >
@@ -688,7 +688,7 @@ export default function ProfilePage() {
               <motion.button
                 key="scroll-top"
                 onClick={scrollToTop}
-                className="fixed bottom-10 right-10 bg-[#1e3a5f] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(30,58,95,0.5)] hover:bg-[#2a4a6f] hover:scale-110 transition-all z-50 group border-2 border-white/20"
+                className="fixed bottom-10 right-10 bg-primary text-primary-foreground rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-primary/90 hover:scale-110 transition-all z-50 group border-2 border-white/20"
                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8, y: 20 }}
