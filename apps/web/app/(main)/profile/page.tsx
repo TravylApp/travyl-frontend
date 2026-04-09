@@ -7,7 +7,7 @@ import { ProfileTabs } from "@/components/ProfileTabs";
 import { FavoriteCard } from "@/components/FavoriteCard";
 import { DraggableCard } from "@/components/DraggableCard";
 import { NEARBY_PLACES } from "@/components/GlobeData";
-import { Heart, Search, X, ArrowUp, LayoutGrid, List, AlignJustify, Plus, Filter, Map as MapIcon, Loader2 } from "lucide-react";
+import { Heart, Search, X, ArrowUp, LayoutGrid, List, AlignJustify, Plus, Filter, Map as MapIcon, Loader2, AlertCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -125,7 +125,7 @@ import { Footer, OceanWave } from "@/components/home";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const { user, session, loading: authLoading } = useAuthStore();
   const [activeTab, setActiveTab] = useState<"boards" | "favorites" | "globe">("boards");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,6 +144,18 @@ export default function ProfilePage() {
   // Fetch trips on mount
   useEffect(() => {
     async function loadTrips() {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+
+      // Check if user is authenticated
+      if (!user || !session) {
+        setError('Authentication Required');
+        setIsLoading(false);
+        return;
+      }
+
       // Check if Supabase is configured
       if (!supabase) {
         setError("Supabase is not configured. Please add your credentials to .env.local");
@@ -154,12 +166,6 @@ export default function ProfilePage() {
       try {
         setIsLoading(true);
         setError(null);
-
-        if (!user?.id) {
-          setError("User not authenticated");
-          setIsLoading(false);
-          return;
-        }
 
         const fetchedTrips = await fetchTrips(user.id);
         setTrips(fetchedTrips);
@@ -203,7 +209,7 @@ export default function ProfilePage() {
     }
 
     loadTrips();
-  }, []);
+  }, [user, session, authLoading]);
 
   const toggleFavorite = (id: string) => {
     setFavoritedNames((prev) => {
@@ -338,6 +344,74 @@ export default function ProfilePage() {
       return updated;
     });
   }, []);
+
+  // Loading state
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc]">
+        <div className="flex items-center justify-center p-6 pt-24">
+          <div className="text-center">
+            {/* Travyl Logo */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-3xl font-black text-[#1e3a5f] tracking-wider">TRAVYL</span>
+              <svg
+                viewBox="0 0 64 64"
+                className="w-10 h-10"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M60 10 L20 36 L6 34 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+                <path d="M48 48 L30 40 L26 38 L60 10 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+                <path d="M52 16 L26 38 L24 50 L20 36 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+              </svg>
+            </div>
+
+            <Loader2 size={48} className="text-[#1e3a5f] animate-spin mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-[#1e3a5f] mb-2">Loading Profile</h2>
+            <p className="text-gray-500">Please wait while we load your profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Authentication error state
+  if (error && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe]">
+        <div className="flex items-center justify-center p-6 pt-24">
+          <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
+          {/* Travyl Logo */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <span className="text-3xl font-black text-[#1e3a5f] tracking-wider">TRAVYL</span>
+            <svg
+              viewBox="0 0 64 64"
+              className="w-10 h-10"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M60 10 L20 36 L6 34 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+              <path d="M48 48 L30 40 L26 38 L60 10 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+              <path d="M52 16 L26 38 L24 50 L20 36 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+            </svg>
+          </div>
+
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} className="text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Access Denied</h2>
+          <h3 className="text-2xl font-bold text-[#1e3a5f] mb-6">{error}</h3>
+          <a
+            href="/login"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
+          >
+            Sign In
+          </a>
+        </div>
+      </div>
+    </div>
+    );
+  }
 
   return (
     <DndProvider backend={HTML5Backend}>
