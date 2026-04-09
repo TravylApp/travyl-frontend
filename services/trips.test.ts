@@ -3,11 +3,12 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('sst', () => ({
   Resource: {
     SupabaseUrl: { value: 'https://test.supabase.co' },
-    SupabaseAnonKey: { value: 'test-key' }
+    SupabaseSecretKey: { value: 'test-secret-key' }
   }
 }))
 vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
 vi.mock('./lib/db', () => ({ getTrip: vi.fn(), updateTrip: vi.fn() }))
+vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn() })) })) })) })) }))
 
 const { itineraryHandler, shareHandler, duplicateHandler } = await import('./trips')
 
