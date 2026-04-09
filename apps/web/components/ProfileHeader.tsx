@@ -255,26 +255,26 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
             {/* Row 1: Level + XP Progress */}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-lg shadow-sm">
-                <span className="text-white font-black text-xs uppercase tracking-wider">Lvl {level}</span>
+                <span className="text-white font-black text-sm uppercase tracking-wider">Lvl {level}</span>
               </div>
               <div className="flex-1 flex items-center gap-2 min-w-[100px]">
                 <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" style={{ width: `${xpProgress}%` }}></div>
                 </div>
-                <span className="text-blue-200 text-[11px] font-semibold">{currentXP} XP</span>
+                <span className="text-blue-200 text-[13px] font-semibold">{currentXP} XP</span>
               </div>
             </div>
 
             {/* Row 2: Trips & Cities */}
             <div className="flex items-center justify-center md:justify-start gap-4">
               <div className="text-center">
-                <p className="text-white font-black text-xl leading-none">{tripsCount}</p>
-                <p className="text-white/30 text-[9px] font-black uppercase tracking-wider">Trips</p>
+                <p className="text-white font-black text-[22px] leading-none">{tripsCount}</p>
+                <p className="text-white/30 text-[11px] font-black uppercase tracking-wider">Trips</p>
               </div>
               <div className="w-px h-5 bg-white/10"></div>
               <div className="text-center">
-                <p className="text-white font-black text-xl leading-none">{citiesCount}</p>
-                <p className="text-white/30 text-[9px] font-black uppercase tracking-wider">Cities</p>
+                <p className="text-white font-black text-[22px] leading-none">{citiesCount}</p>
+                <p className="text-white/30 text-[11px] font-black uppercase tracking-wider">Cities</p>
               </div>
             </div>
 
@@ -295,7 +295,7 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
                 return (
                   <div
                     key={interest}
-                    className={`px-2.5 py-1 bg-gradient-to-r ${color} rounded-full text-white text-[10px] font-bold shadow-sm`}
+                    className={`px-2.5 py-1 bg-gradient-to-r ${color} rounded-full text-white text-[12px] font-bold shadow-sm`}
                   >
                     {interest}
                   </div>

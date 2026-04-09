@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import { FavoriteCard } from "@/components/FavoriteCard";
@@ -123,6 +124,7 @@ function CardGrid({
 import { Footer, OceanWave } from "@/components/home";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<"boards" | "favorites" | "globe">("boards");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -374,7 +376,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0 h-[58px]">
-                  <button className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 h-full bg-[#1e3a5f] text-white rounded-2xl hover:bg-[#2a4a6f] transition-all shadow-md hover:shadow-xl active:scale-95 text-base font-bold">
+                  <button
+                    onClick={() => router.push('/')}
+                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 h-full bg-[#1e3a5f] text-white rounded-2xl hover:bg-[#2a4a6f] transition-all shadow-md hover:shadow-xl active:scale-95 text-base font-bold"
+                  >
                     <Plus size={20} />
                     <span>Create {activeTab === "boards" ? "Board" : "Trip"}</span>
                   </button>
@@ -546,7 +551,10 @@ export default function ProfilePage() {
               <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
                 Start planning your next adventure! Your trips will appear here once you create them.
               </p>
-              <button className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95">
+              <button
+                onClick={() => router.push('/')}
+                className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
+              >
                 <Plus size={20} />
                 Create Your First Trip
               </button>
@@ -643,7 +651,10 @@ export default function ProfilePage() {
                     <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
                       Every great adventure starts with a single wish. Start exploring and heart the places that inspire you!
                     </p>
-                    <button className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95">
+                    <button
+                      onClick={() => router.push('/')}
+                      className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
+                    >
                       <Search size={20} />
                       Discover Destinations
                     </button>

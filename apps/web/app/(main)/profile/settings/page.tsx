@@ -654,30 +654,10 @@ export default function ProfileSettings() {
           <span className="font-medium">Back to Profile</span>
         </button>
 
-        {/* Header — Matches Main Layout */}
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h1 className="text-4xl text-gray-950 tracking-tight font-bold">Settings</h1>
-            <p className="text-lg text-gray-500 mt-2">Manage your profile, preferences and security</p>
-          </div>
-          <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-2xl border border-gray-100">
-            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center border-2 border-white shadow-sm">
-              {formData.profilePhoto ? (
-                <img src={formData.profilePhoto} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <User size={24} className="text-gray-400" />
-              )}
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-xl text-gray-950 font-bold leading-none mb-1.5">
-                {formData.firstName || 'Loading...'} {formData.lastName || ''}
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-blue-500 text-white text-[10px] font-black uppercase rounded tracking-wider">Level 3</span>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-tighter">Verified Explorer</p>
-              </div>
-            </div>
-          </div>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-5xl text-gray-950 tracking-tight font-bold">Settings</h1>
+          <p className="text-xl text-gray-500 mt-2">Manage your profile, preferences and security</p>
         </div>
 
         {/* Tabs — Matches Main Layout Style */}
