@@ -144,7 +144,7 @@ export function CardDetailModal({
 
           {/* Modal card */}
           <motion.div
-            className="relative bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col md:flex-row w-[95vw] max-w-[960px] max-h-[90vh] md:max-h-[85vh]"
+            className="relative bg-card rounded-xl overflow-hidden shadow-2xl flex flex-col md:flex-row w-[95vw] max-w-[960px] max-h-[90vh] md:max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -189,15 +189,15 @@ export function CardDetailModal({
                 <>
                   <button
                     onClick={prev}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors z-10"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-card/90 flex items-center justify-center shadow-md hover:bg-card transition-colors z-10"
                   >
-                    <ChevronLeft size={16} className="text-[#314158]" />
+                    <ChevronLeft size={16} className="text-card-foreground" />
                   </button>
                   <button
                     onClick={next}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors z-10"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-card/90 flex items-center justify-center shadow-md hover:bg-card transition-colors z-10"
                   >
-                    <ChevronRight size={16} className="text-[#314158]" />
+                    <ChevronRight size={16} className="text-card-foreground" />
                   </button>
                 </>
               )}
@@ -237,23 +237,23 @@ export function CardDetailModal({
             {/* Info panel */}
             <div className="flex-1 flex flex-col min-w-0 md:w-[40%]">
               {/* Header row */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-[#314158] truncate"
+                    className="text-card-foreground truncate"
                     style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.2px" }}
                   >
                     {name}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
-                      className="inline-block bg-[#f0f4f8] px-2.5 py-0.5 rounded-full text-[#1e3a5f]"
+                      className="inline-block bg-muted px-2.5 py-0.5 rounded-full text-primary"
                       style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.3px" }}
                     >
                       {category}
                     </span>
                     {duration && (
-                      <span className="flex items-center gap-1 text-[#9ca3af]" style={{ fontSize: "11px" }}>
+                      <span className="flex items-center gap-1 text-muted-foreground" style={{ fontSize: "11px" }}>
                         <Calendar size={11} />
                         {duration}
                       </span>
@@ -268,7 +268,7 @@ export function CardDetailModal({
                   className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                     isFavorited
                       ? "bg-red-50 hover:bg-red-100"
-                      : "bg-gray-100 hover:bg-gray-200"
+                      : "bg-muted hover:bg-muted/80"
                   }`}
                 >
                   <Heart
@@ -276,7 +276,7 @@ export function CardDetailModal({
                     className={
                       isFavorited
                         ? "text-red-500 fill-red-500"
-                        : "text-[#9ca3af]"
+                        : "text-muted-foreground"
                     }
                   />
                 </button>
@@ -288,7 +288,7 @@ export function CardDetailModal({
                 {places && places.length > 0 && (
                   <div className="flex items-start gap-2 mb-3">
                     <MapPin size={14} className="text-[#4a9fd8] mt-0.5 shrink-0" />
-                    <p className="text-[#6b7280]" style={{ fontSize: "12px" }}>
+                    <p className="text-muted-foreground" style={{ fontSize: "12px" }}>
                       {places.join(" · ")}
                     </p>
                   </div>
@@ -302,7 +302,7 @@ export function CardDetailModal({
                       {highlights.map((h) => (
                         <span
                           key={h}
-                          className="bg-[#f5f3ff] text-[#7c3aed] px-2.5 py-0.5 rounded-full"
+                          className="bg-muted text-[#7c3aed] px-2.5 py-0.5 rounded-full"
                           style={{ fontSize: "11px", fontWeight: 500 }}
                         >
                           {h}
@@ -317,7 +317,7 @@ export function CardDetailModal({
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <MapPin size={14} className="text-[#10b981] shrink-0" />
-                      <p className="text-[#314158]" style={{ fontSize: "13px", fontWeight: 600 }}>
+                      <p className="text-card-foreground" style={{ fontSize: "13px", fontWeight: 600 }}>
                         Nearby Places
                       </p>
                       <span
@@ -333,7 +333,7 @@ export function CardDetailModal({
                         return (
                           <div
                             key={place.name}
-                            className="flex items-start gap-2.5 px-3 py-2 rounded-lg bg-[#f8fafc] hover:bg-[#f0f4f8] transition-colors"
+                            className="flex items-start gap-2.5 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
                           >
                             <div
                               className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
@@ -343,7 +343,7 @@ export function CardDetailModal({
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-[#314158] truncate" style={{ fontSize: "12px", fontWeight: 600 }}>
+                                <p className="text-card-foreground truncate" style={{ fontSize: "12px", fontWeight: 600 }}>
                                   {place.name}
                                 </p>
                                 <span
@@ -358,7 +358,7 @@ export function CardDetailModal({
                                   {place.type}
                                 </span>
                               </div>
-                              <p className="text-[#9ca3af] mt-0.5" style={{ fontSize: "11px", lineHeight: 1.4 }}>
+                              <p className="text-muted-foreground mt-0.5" style={{ fontSize: "11px", lineHeight: 1.4 }}>
                                 {place.note}
                               </p>
                             </div>
@@ -396,9 +396,9 @@ export function CardDetailModal({
                 )}
 
                 {/* Trip Notes */}
-                <div className="border-t border-gray-100 pt-3">
+                <div className="border-t border-border pt-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[#314158]" style={{ fontSize: "13px", fontWeight: 600 }}>
+                    <p className="text-card-foreground" style={{ fontSize: "13px", fontWeight: 600 }}>
                       Trip Notes
                     </p>
                     {!isEditing && (
@@ -422,21 +422,21 @@ export function CardDetailModal({
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         placeholder="Write about how your trip went..."
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[#314158] placeholder-[#9ca3af] resize-none focus:outline-none focus:ring-2 focus:ring-[#4a9fd8]/30 focus:border-[#4a9fd8]"
+                        className="w-full border border-border rounded-xl px-3 py-2.5 text-card-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-card"
                         style={{ fontSize: "13px", minHeight: "100px" }}
                         autoFocus
                       />
                       <div className="flex justify-end gap-2 mt-2">
                         <button
                           onClick={handleCancel}
-                          className="px-3 py-1.5 rounded-lg text-[#6b7280] hover:bg-gray-100 transition-colors"
+                          className="px-3 py-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
                           style={{ fontSize: "12px", fontWeight: 500 }}
                         >
                           Cancel
                         </button>
                         <button
                           onClick={handleSave}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1e3a5f] text-white hover:bg-[#2a4a6f] transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                           style={{ fontSize: "12px", fontWeight: 500 }}
                         >
                           <Check size={12} />
@@ -446,13 +446,13 @@ export function CardDetailModal({
                     </div>
                   ) : description ? (
                     <p
-                      className="text-[#6b7280] whitespace-pre-wrap break-words"
+                      className="text-muted-foreground whitespace-pre-wrap break-words"
                       style={{ fontSize: "13px", lineHeight: "1.6", overflowWrap: "break-word", wordBreak: "break-word" }}
                     >
                       {description}
                     </p>
                   ) : (
-                    <p className="text-[#b0b8c1] italic" style={{ fontSize: "13px" }}>
+                    <p className="text-muted-foreground italic" style={{ fontSize: "13px" }}>
                       No trip notes yet. Click "Add notes" to describe your experience.
                     </p>
                   )}
