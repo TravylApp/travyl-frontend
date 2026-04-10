@@ -9,7 +9,23 @@ vi.mock('sst', () => ({
 }))
 vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
 vi.mock('./lib/db', () => ({ getUserStats: vi.fn() }))
-vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn() })) })) })) })) }))
+vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ from: vi.fn((table: string) => {
+        // Return different mock chains based on table
+        if (table === 'users') {
+          return { select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(() => Promise.resolve({ data: { created_at: '2024-01-01' }, error: null })) })) })) }
+        }
+        // For trips table - handle both count queries and country queries
+        return {
+          select: vi.fn((cols: string, opts?: any) => {
+            if (opts?.head) {
+              // Count query
+              return { eq: vi.fn(() => ({ gte: vi.fn(() => ({ count: 2 })), count: 5 })) }
+            }
+            // Regular select for countries/types
+            return { eq: vi.fn(() => ({ data: [{ country: 'USA' }, { country: 'France' }] })) }
+          })
+        }
+      }) })) }))
 
 // Import after mocks
 const { statsHandler } = await import('./user')

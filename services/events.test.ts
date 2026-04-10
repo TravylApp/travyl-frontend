@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 vi.mock('./lib/auth', () => ({ validateAuth: vi.fn((auth: string) => { if (auth?.includes('invalid')) throw new Error('Invalid token'); return 'user-123' }) }))
-vi.mock('./lib/validation', () => ({ 
+vi.mock('./lib/validation', () => ({
   validateQueryParams: vi.fn((params, required) => {
     const missing = required.filter((r: string) => !params[r])
     if (missing.length > 0) return { success: false, error: { statusCode: 400, body: JSON.stringify({ error: `Missing: ${missing.join(', ')}` }) } }
     return { success: true }
-  }), 
-  isValidDate: vi.fn(() => true) 
+  }),
+  isValidDate: vi.fn(() => true),
+  validateDateRange: vi.fn(() => ({ success: true }))
 }))
 import { handler, detailsHandler } from './events'
 
@@ -16,14 +17,14 @@ describe('GET /events', () => {
     queryStringParameters: queryParams,
   } as any)
 
-  it('returns 400 when lat/lng missing', async () => {
+  it('returns 400 when required params missing', async () => {
     const result = await handler(mockEvent({}), {} as any, () => {})
     expect(result.statusCode).toBe(400)
   })
 
-  it('returns 400 for invalid coordinates', async () => {
+  it('returns 400 when destination missing', async () => {
     const result = await handler(
-      mockEvent({ lat: '100', lng: '0' }),
+      mockEvent({ startDate: '2026-04-10', endDate: '2026-04-12' }),
       {} as any,
       () => {}
     )
@@ -32,7 +33,7 @@ describe('GET /events', () => {
 
   it('returns 401 with invalid auth', async () => {
     const result = await handler(
-      mockEvent({ lat: '40.7', lng: '-74.0' }, 'Bearer invalid'),
+      mockEvent({ destination: 'New York', startDate: '2026-04-10', endDate: '2026-04-12' }, 'Bearer invalid'),
       {} as any,
       () => {}
     )
