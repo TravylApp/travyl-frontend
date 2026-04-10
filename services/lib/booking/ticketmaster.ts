@@ -42,7 +42,6 @@ export async function searchTicketmaster(
     const res = await fetch(`${BASE_URL}/events.json?${params}`, {
       signal: controller.signal,
     })
-    clearTimeout(timeout)
 
     if (!res.ok) return null
     const data = await res.json()
@@ -63,8 +62,11 @@ export async function searchTicketmaster(
       lat,
       lng,
     }
-  } catch {
-    clearTimeout(timeout)
+  } catch (err) {
+    // Log error for debugging but return null to indicate no match
+    console.error(`[ticketmaster] search failed for ${activity.title}:`, err)
     return null
+  } finally {
+    clearTimeout(timeout)
   }
 }
