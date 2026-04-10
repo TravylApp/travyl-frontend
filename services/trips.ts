@@ -150,6 +150,11 @@ export const shareHandler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const { permission = 'view', expiresInDays = 7 } = parseResult.data
 
+    // Validate permission value
+    if (permission !== 'view' && permission !== 'edit') {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid permission. Must be "view" or "edit"' }) }
+    }
+
     // Validate trip ownership
     const { data: trip, error } = await supabase
       .from('trips')
