@@ -118,15 +118,18 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
         })
       );
 
-      // Merge all results, deduplicate by name, group by display category
+      // Merge all results, deduplicate by normalized name, group by display category
       const allPlaces = [...discoveryPlaces, ...nearbyResults.flat()];
       const seen = new Set<string>();
+      const normalize = (n: string) => n.toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim();
       const grouped: Record<string, ExploreItem[]> = {};
       for (const p of allPlaces) {
-        if (!p.name || seen.has(p.name)) continue;
+        if (!p.name) continue;
+        const key = normalize(p.name);
+        if (seen.has(key)) continue;
         const img = p.images?.[0] || p.image;
         if (!img) continue;
-        seen.add(p.name);
+        seen.add(key);
         const cat = p.category || 'Other';
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(mapPlace(p));
@@ -150,8 +153,9 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       const res = await fetch(url);
       if (!res.ok) return;
       const places: any[] = await res.json();
+      const norm = (n: string) => n.toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim();
       const newItems: ExploreItem[] = places
-        .filter((p: any) => p.name && (p.images?.[0] || p.image) && !existingNames.has(p.name))
+        .filter((p: any) => p.name && (p.images?.[0] || p.image) && !existingNames.has(norm(p.name)))
         .map((p: any) => mapPlace(p));
       if (newItems.length > 0) {
         setExtraItems(prev => ({ ...prev, [catKey]: [...(prev[catKey] || []), ...newItems] }));
@@ -232,7 +236,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       <div className="space-y-6">
         {categories.map(({ key, label, items }) => {
           const merged = [...items, ...(extraItems[key] || [])].filter(hasValidImage);
-          const nameSet = new Set(merged.map(i => (i.title || i.name || '')));
+          const nameSet = new Set(merged.map(i => (i.title || i.name || '').toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim()));
           const totalCount = merged.length;
           if (totalCount === 0) return null;
           return (
