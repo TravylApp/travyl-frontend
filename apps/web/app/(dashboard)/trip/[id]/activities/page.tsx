@@ -525,7 +525,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
       {/* Title + count */}
       <div className="px-4 pt-4 pb-2 flex items-baseline justify-between">
         <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white" style={{ color: 'var(--trip-base)' }}>
+          <h2 className="text-lg font-normal tracking-wide text-gray-900 dark:text-white font-serif" style={{ color: 'var(--trip-base)' }}>
             Explore {destination}
           </h2>
           <p className="text-[12px] text-gray-400 dark:text-gray-500">{filtered.length} places to discover</p>
@@ -585,7 +585,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
                       <SectionIcon size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
+                      <h3 className="text-[15px] font-normal text-gray-900 dark:text-white leading-tight font-serif">
                         {section.label}
                       </h3>
                       <p className="text-[11px] text-gray-400">

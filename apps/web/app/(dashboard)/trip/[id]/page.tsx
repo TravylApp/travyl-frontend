@@ -93,7 +93,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
     <section>
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Things to Do</h2>
+          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Things to Do</h2>
         </div>
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
           {!gridView && (
@@ -111,18 +111,6 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
               </button>
             </>
           )}
-          {gridView && (
-            <button onClick={() => setFlush(f => !f)} title="Flush grid"
-              className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.12]"
-              style={{ backgroundColor: flush ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
-              <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />
-            </button>
-          )}
-          <button onClick={() => setGridView(v => !v)} title={gridView ? 'Carousel view' : 'Grid view'}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.12]"
-            style={{ backgroundColor: gridView ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
-            {gridView ? <LayoutList size={12} className="text-gray-500 dark:text-white/70" /> : <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />}
-          </button>
         </div>
       </div>
 
@@ -147,7 +135,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                   </span>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="text-lg font-bold text-white leading-tight mb-1">{item.title}</h3>
+                  <h3 className="text-lg font-normal text-white leading-tight mb-1 font-serif">{item.title}</h3>
                   <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
                   <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
                 </div>
@@ -185,7 +173,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 </span>
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-3">
-                <h3 className="text-sm font-bold text-white leading-tight">{item.title}</h3>
+                <h3 className="text-sm font-normal text-white leading-tight font-serif">{item.title}</h3>
               </div>
             </div>
           ))}
@@ -201,7 +189,7 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
 
   return (
     <section>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">News</h2>
+      <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">News</h2>
 
       {/* Scrollable news list capped to match What's Going On card height */}
       <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1">
@@ -215,7 +203,7 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
                   <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
                 )}
               </div>
-              <h3 className="text-[14px] font-bold leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white">{item.title}</h3>
+              <h3 className="text-[14px] font-normal leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white font-serif">{item.title}</h3>
               <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
             </a>
           ))}
@@ -249,7 +237,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
     <section>
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">What&apos;s Going On</h2>
+          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">What&apos;s Going On</h2>
         </div>
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
           <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
@@ -297,7 +285,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               </div>
               {/* Content overlay on image */}
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h3 className="text-[15px] font-bold text-white leading-tight mb-0.5 line-clamp-2">
+                <h3 className="text-[15px] font-normal text-white leading-tight mb-0.5 line-clamp-2 font-serif">
                   {item.title}
                 </h3>
                 <p className="text-[11px] text-white/60 leading-snug line-clamp-1 mb-2">{item.description}</p>
@@ -328,13 +316,13 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
   if (!cities.length) return null;
   return (
     <section>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Also Consider Visiting</h3>
+      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Also Consider Visiting</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cities.map((city) => (
           <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02]">
             <div className="flex items-center gap-2 mb-1">
               <MapPin size={12} className="text-[color:var(--trip-base)]" />
-              <span className="text-[14px] font-bold text-gray-900 dark:text-white">{city.name}</span>
+              <span className="text-[14px] font-normal text-gray-900 dark:text-white font-serif">{city.name}</span>
             </div>
             <p className="text-[11px] text-gray-600 dark:text-gray-400 opacity-60">{city.country}</p>
             <p className="text-[11px] font-semibold mt-1 text-[color:var(--trip-base)]">{Math.round(city.distance)} km away</p>
@@ -363,7 +351,7 @@ function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContext
   ];
   return (
     <section>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Cost of Living</h3>
+      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost of Living</h3>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {items.map(({ icon: Icon, label, value }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
@@ -408,36 +396,37 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   const langCode = language ? langMap[language.toLowerCase()] || language.slice(0, 2).toLowerCase() : '';
 
   const speak = (text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
     setSpeaking(text);
-    // Use Google Translate TTS for natural-sounding pronunciation
-    const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${langCode || 'ja'}&q=${encodeURIComponent(text)}`);
-    audio.onended = () => setSpeaking(null);
-    audio.onerror = () => {
-      // Fallback to browser TTS
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode));
-        if (match) utterance.voice = match;
-        utterance.rate = 0.85;
-        utterance.onend = () => setSpeaking(null);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setSpeaking(null);
-      }
+    window.speechSynthesis.cancel();
+
+    const doSpeak = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode))
+        || voices.find(v => v.lang.toLowerCase().includes(langCode));
+      if (match) utterance.voice = match;
+      utterance.rate = 0.85;
+      utterance.onend = () => setSpeaking(null);
+      utterance.onerror = () => setSpeaking(null);
+      window.speechSynthesis.speak(utterance);
     };
-    audio.play().catch(() => {
-      // If autoplay blocked, fall back to browser TTS
-      audio.onerror?.(new Event('error'));
-    });
+
+    // Voices load async — wait for them if needed
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => { doSpeak(); window.speechSynthesis.onvoiceschanged = null; };
+      // Fallback if event never fires
+      setTimeout(doSpeak, 200);
+    }
   };
 
   return (
     <section>
       <div className="flex items-center gap-2 mb-4">
         <Languages size={14} className="text-[color:var(--trip-base)]" />
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Essential Phrases</h3>
+        <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Essential Phrases</h3>
         {language && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">({language})</span>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -480,8 +469,18 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [isMagazine, setIsMagazine] = useState(false);
   const enrichAttempted = useRef(false);
   const revealRef = useRevealOnScroll(!!trip);
+
+  // Detect magazine layout for per-section glass card styling
+  useEffect(() => {
+    const check = () => setIsMagazine(localStorage.getItem('travyl-layout-mode') === 'magazine');
+    check();
+    window.addEventListener('layout-mode-change', check);
+    window.addEventListener('storage', check);
+    return () => { window.removeEventListener('layout-mode-change', check); window.removeEventListener('storage', check); };
+  }, []);
 
   // Auto-enrich: if trip exists but trip_context is incomplete, trigger enrichment and poll
   const autoEnrich = useCallback(async () => {
@@ -724,7 +723,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
-  // Merge tier1Events into events display if available
+  // Merge tier1Events (from useEvents hook → TRA-436 aggregated API) into display
   const tier1EventsMapped = (tier1Events || []).map((e) => ({
     id: e.id,
     title: e.name,
@@ -732,12 +731,23 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     category: e.category || 'Event',
     image: e.photo_url || '',
   }));
-  // Use: live events → tier1 events → trip_context.foursquare_venues (best photos) → trip_context events
-  const contextVenues = (trip?.trip_context?.foursquare_venues || []) as any[];
+  // Fallback: use explore_items that AREN'T already in "Things to Do" (which shows the first items)
+  // Take from the back half of the list to avoid duplicates
+  const exploreFallback = exploreItems.length > 2
+    ? exploreItems.slice(-Math.min(6, exploreItems.length)).map((e: any) => ({
+        id: e.id || e.name,
+        title: e.title || e.name,
+        description: e.description || e.category || '',
+        category: e.category || 'Attraction',
+        image: hiRes(e.image),
+      }))
+    : [];
+  // Priority: live events → tier1 events → trip_context events → explore_items fallback
   const allEvents = events.length > 0 ? events
     : tier1EventsMapped.length > 0 ? tier1EventsMapped
-    : contextVenues.length > 0 ? contextVenues
-    : [];
+    : exploreFallback;
+
+  const sectionCard = isMagazine ? 'bg-white/85 backdrop-blur-xl rounded-2xl p-5' : '';
 
   return (
     <div className="relative overflow-hidden">
@@ -745,41 +755,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       <div className="relative z-10">
         <div ref={revealRef}>
 
-          {/* ── Weather Widget — only show if hero doesn't already have weather from trip_context ── */}
-          {weatherData?.current && !trip?.trip_context?.weather?.current && (
-            <div className="px-0 mt-4 mb-2">
-              <div className="inline-flex items-center gap-4 px-5 py-3 rounded-2xl backdrop-blur-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08]">
-                <div>
-                  <span className="text-3xl font-bold text-gray-900 dark:text-white">{Math.round(weatherData.current.temp)}°</span>
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-gray-900 dark:text-white">{weatherData.current.conditions}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Feels like {Math.round(weatherData.current.feelslike)}° · {weatherData.current.humidity}% humidity
-                  </p>
-                </div>
-                {/* Mini forecast — next 3 days */}
-                {weatherData.forecast && weatherData.forecast.length > 0 && (
-                  <div className="flex gap-3 ml-2 pl-4 border-l border-gray-200 dark:border-white/[0.08]">
-                    {weatherData.forecast.slice(0, 3).map((day) => (
-                      <div key={day.date} className="text-center">
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                          {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
-                        </p>
-                        <p className="text-[12px] font-bold text-gray-900 dark:text-white">
-                          {Math.round(day.high)}°<span className="opacity-40">/{Math.round(day.low)}°</span>
-                        </p>
-                        <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[60px]">{day.conditions}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Weather is now shown in the compact header toggle — removed duplicate widget */}
 
           {/* ── Row 1: Things to Do (left) + Restaurants (right) ── */}
-          <div className="px-0 mt-6">
+          <div className={`mt-6 ${sectionCard}`}>
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
@@ -798,7 +777,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               {hasRestaurants && (
                 <div className="shrink-0 w-full lg:w-[380px]">
                   <div className="mb-4">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Must-Try Restaurants</h3>
+                    <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Must-Try Restaurants</h3>
                   </div>
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     {restaurantData.slice(0, 6).map((r: any) => (
@@ -827,7 +806,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                               {r.reviewCount && <span className="text-[10px] text-white/40">({r.reviewCount.toLocaleString()})</span>}
                             </div>
                           )}
-                          <h3 className="text-lg font-bold text-white leading-tight">{r.name}</h3>
+                          <h3 className="text-lg font-normal text-white leading-tight font-serif">{r.name}</h3>
                           {(r.tagline || r.address) && (
                             <p className="text-[11px] text-white/50 mt-1 line-clamp-1">{r.tagline || r.address}</p>
                           )}
@@ -842,7 +821,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
           {(hasNewsArticles || allEvents.length > 0) && (
-            <div className="relative z-10 px-0 mt-8">
+            <div className={`relative z-10 mt-8 ${sectionCard}`}>
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
                   <div className="flex-1 min-w-0">
@@ -860,7 +839,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(phrasesData || costData) && (
-            <div className="relative z-10 px-0 mt-8">
+            <div className={`relative z-10 mt-8 ${sectionCard}`}>
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {phrasesData && Object.keys(phrasesData).length > 0 && (
                   <div className="flex-1 min-w-0">
@@ -878,7 +857,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (
-            <div className="px-0 mt-8">
+            <div className={`mt-8 ${sectionCard}`}>
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
           )}

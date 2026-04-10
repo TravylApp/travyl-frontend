@@ -107,7 +107,6 @@ export function CompactTripHeader({
             src={coverImage}
             alt={destination || ''}
             fill
-            referrerPolicy="no-referrer"
             className="object-cover"
             style={{ objectPosition: 'center center' }}
             sizes="100vw"
@@ -207,8 +206,8 @@ export function CompactTripHeader({
       </div>
 
       {/* Expanded details — dropdown below header */}
-      {expanded && (
-        <div className="relative z-20 px-6 sm:px-10 md:pl-[100px] py-4">
+      {hasExpandContent && (
+        <div className={`relative z-20 px-6 sm:px-10 md:pl-[100px] overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-h-[400px] opacity-100 py-4' : 'max-h-0 opacity-0'}`}>
           <div className="max-w-3xl flex flex-col gap-2.5">
             {/* Forecast row */}
             {forecast && forecast.length > 0 && !isNaN(forecast[0]?.high) && (
