@@ -68,6 +68,23 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
   const loadingRef = useRef<Record<string, boolean>>({});
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+  const exploreRef = useRef<HTMLDivElement>(null);
+
+  // Scan page for place names rendered above the explore section
+  const getAboveNames = useCallback(() => {
+    const el = exploreRef.current;
+    if (!el) return new Set<string>();
+    const norm = (n: string) => n.toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim();
+    const names = new Set<string>();
+    const allCards = document.querySelectorAll('.font-serif');
+    allCards.forEach(card => {
+      if (el.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_PRECEDING) {
+        const text = card.textContent?.trim();
+        if (text && text.length > 2 && text.length < 100) names.add(norm(text));
+      }
+    });
+    return names;
+  }, []);
 
   // Strip items with no real image URL or known broken ones
   const hasValidImage = (item: ExploreItem) => {
@@ -100,6 +117,8 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
     queryKey: ['explore-section', trip?.id, city, lat, lng],
     queryFn: async () => {
       if (!city && !lat) return [];
+      // Wait a tick so overview sections render first — then we can scan their names
+      await new Promise(r => setTimeout(r, 500));
       // First: discover available categories by fetching with text query
       const discoveryRes = await fetch(`/api/places?q=${encodeURIComponent(city)}&limit=30${coordParams}`);
       const discoveryPlaces: any[] = discoveryRes.ok ? await discoveryRes.json() : [];
@@ -118,15 +137,19 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
         })
       );
 
-      // Merge all results, deduplicate by name, group by display category
+      // Merge all results, deduplicate by normalized name, group by display category
       const allPlaces = [...discoveryPlaces, ...nearbyResults.flat()];
-      const seen = new Set<string>();
+      const normalize = (n: string) => n.toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim();
+      // Start with names already shown in overview sections above (scan DOM at fetch time)
+      const seen = getAboveNames();
       const grouped: Record<string, ExploreItem[]> = {};
       for (const p of allPlaces) {
-        if (!p.name || seen.has(p.name)) continue;
+        if (!p.name) continue;
+        const key = normalize(p.name);
+        if (seen.has(key)) continue;
         const img = p.images?.[0] || p.image;
         if (!img) continue;
-        seen.add(p.name);
+        seen.add(key);
         const cat = p.category || 'Other';
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(mapPlace(p));
@@ -150,8 +173,9 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       const res = await fetch(url);
       if (!res.ok) return;
       const places: any[] = await res.json();
+      const norm = (n: string) => n.toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim();
       const newItems: ExploreItem[] = places
-        .filter((p: any) => p.name && (p.images?.[0] || p.image) && !existingNames.has(p.name))
+        .filter((p: any) => p.name && (p.images?.[0] || p.image) && !existingNames.has(norm(p.name)))
         .map((p: any) => mapPlace(p));
       if (newItems.length > 0) {
         setExtraItems(prev => ({ ...prev, [catKey]: [...(prev[catKey] || []), ...newItems] }));
@@ -208,7 +232,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   if (categories.length === 0 && !liveFetching) return null;
 
   return (
-    <div className={embedded ? 'py-2' : 'max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8'}>
+    <div ref={exploreRef} className={embedded ? 'py-2' : 'max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8'}>
       <h2 className={`text-xl font-normal tracking-wide mb-6 font-serif ${embedded ? 'text-white' : 'text-gray-900 dark:text-white'}`}
         style={embedded ? { textShadow: '0 2px 10px rgba(0,0,0,0.5)' } : undefined}>
         Explore {city || 'Destination'}
@@ -232,7 +256,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       <div className="space-y-6">
         {categories.map(({ key, label, items }) => {
           const merged = [...items, ...(extraItems[key] || [])].filter(hasValidImage);
-          const nameSet = new Set(merged.map(i => (i.title || i.name || '')));
+          const nameSet = new Set(merged.map(i => (i.title || i.name || '').toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim()));
           const totalCount = merged.length;
           if (totalCount === 0) return null;
           return (
