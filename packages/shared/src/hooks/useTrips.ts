@@ -16,6 +16,7 @@ async function getAnonTripIds(): Promise<string[]> {
 
   // Mobile: AsyncStorage
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const AsyncStorage = require('@react-native-async-storage/async-storage')?.default;
     if (AsyncStorage) {
       const stored = await AsyncStorage.getItem('my-trip-ids');
@@ -37,6 +38,7 @@ export async function saveAnonTripId(tripId: string): Promise<void> {
   } catch {}
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const AsyncStorage = require('@react-native-async-storage/async-storage')?.default;
     if (AsyncStorage) await AsyncStorage.setItem('my-trip-ids', json);
   } catch {}
