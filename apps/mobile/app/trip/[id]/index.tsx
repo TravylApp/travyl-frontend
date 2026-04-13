@@ -161,11 +161,10 @@ export default function OverviewScreen() {
         showsVerticalScrollIndicator={false}
       >
 
-      {/* Gradient fade from hero into content */}
+      {/* Smooth fade from hero into content */}
       <LinearGradient
-        colors={['transparent', isDark ? 'rgba(13,13,13,0.6)' : 'rgba(248,247,245,0.6)', isDark ? '#0d0d0d' : '#f8f7f5']}
-        locations={[0, 0.4, 1]}
-        style={{ height: 40 }}
+        colors={['transparent', isDark ? '#0d0d0d' : '#f8f7f5']}
+        style={{ height: 20 }}
       />
 
       {/* Opaque content area */}
