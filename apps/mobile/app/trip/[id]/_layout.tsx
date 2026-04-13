@@ -413,10 +413,14 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tripId: trip.id }),
         }).then(() => {
-          // Refetch at intervals as enrichment data arrives
-          setTimeout(() => refetch(), 2000);
-          setTimeout(() => refetch(), 5000);
-          setTimeout(() => refetch(), 10000);
+          // Refetch trip + trips list at intervals as enrichment data arrives
+          const refresh = () => {
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+          };
+          setTimeout(refresh, 2000);
+          setTimeout(refresh, 5000);
+          setTimeout(refresh, 10000);
         }).catch(() => {});
       }
     } catch (e) {
