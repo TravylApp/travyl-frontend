@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
 
@@ -73,25 +74,21 @@ async function resolveArea(country: string): Promise<string | null> {
   return null
 }
 
-// ─── SerpAPI: find real restaurants for dishes (1 credit) ──────────────
+// ─── SerpAPI: find real restaurants (1 credit) ─────────────────────────
 
 interface CuisineResult {
   id: string
-  name: string        // dish name
-  image: string       // real restaurant/food photo
-  restaurant?: string // real restaurant name
+  name: string
+  image: string
+  restaurant?: string
   rating?: number
   address?: string
   priceLevel?: string
 }
 
-async function enrichWithRealRestaurants(
-  dishNames: string[],
-  city: string,
-): Promise<CuisineResult[]> {
+async function fetchLocalRestaurants(city: string): Promise<any[]> {
   if (!SERPAPI_KEY || !city) return []
 
-  // One SerpAPI call: search for top local food in the city
   const params = new URLSearchParams({
     engine: 'google_maps',
     q: `best traditional local food restaurant ${city}`,
@@ -105,30 +102,25 @@ async function enrichWithRealRestaurants(
       headers: { Accept: 'application/json' },
     })
     if (!res.ok) return []
-
     const data = await res.json()
-    const results = data.local_results ?? []
-    if (!Array.isArray(results) || results.length === 0) return []
-
-    // Map each dish to a real restaurant result
-    return dishNames.slice(0, 6).map((dishName, i) => {
-      const restaurant = results[i % results.length]
-      const photo = restaurant?.thumbnail ??
-        (restaurant?.photos ?? restaurant?.images ?? [])[0]?.image ??
-        (restaurant?.photos ?? restaurant?.images ?? [])[0]?.thumbnail ?? ''
-
-      return {
-        id: `cuisine-${i}`,
-        name: dishName,
-        image: photo,
-        restaurant: restaurant?.title ?? restaurant?.name,
-        rating: restaurant?.rating,
-        address: restaurant?.address,
-        priceLevel: restaurant?.price,
-      }
-    })
+    return data.local_results ?? []
   } catch {
     return []
+  }
+}
+
+function mapRestaurant(restaurant: any, i: number, dishName?: string): CuisineResult {
+  const rawPhoto = restaurant?.thumbnail ?? ''
+  const photo = upscaleGoogleImage(rawPhoto) || rawPhoto
+
+  return {
+    id: `cuisine-${i}`,
+    name: dishName || restaurant?.title || restaurant?.name || 'Local Dish',
+    image: photo,
+    restaurant: restaurant?.title ?? restaurant?.name,
+    rating: restaurant?.rating,
+    address: restaurant?.address,
+    priceLevel: restaurant?.price,
   }
 }
 
@@ -153,23 +145,33 @@ export async function GET(req: NextRequest) {
       if (resolved) dishes = await fetchMealNames(resolved)
     }
 
-    // Step 2: If we have a city + SerpAPI key, enrich with real restaurants
-    if (city && SERPAPI_KEY && dishes.length > 0) {
-      const enriched = await enrichWithRealRestaurants(
-        dishes.slice(0, 6).map(d => d.name),
-        city,
-      )
-      if (enriched.length > 0) {
-        // Merge: prefer TheMealDB food photo (real dish), fall back to restaurant photo
-        return NextResponse.json(enriched.map((e, i) => ({
-          ...e,
-          image: dishes[i]?.image || e.image || '',
-        })))
+    // Step 2: Fetch real restaurants from Google Maps
+    const restaurants = city ? await fetchLocalRestaurants(city) : []
+
+    // Step 3: Merge — dish names from TheMealDB + restaurant data from Google Maps
+    if (restaurants.length > 0) {
+      if (dishes.length > 0) {
+        // Have both: use dish names + TheMealDB food photos + restaurant info
+        return NextResponse.json(dishes.slice(0, 6).map((dish, i) => {
+          const r = restaurants[i % restaurants.length]
+          const mapped = mapRestaurant(r, i, dish.name)
+          return { ...mapped, image: dish.image || mapped.image }
+        }))
       }
+      // No TheMealDB data: use restaurants directly as "must-try" spots
+      return NextResponse.json(restaurants.slice(0, 6).map((r: any, i: number) => {
+        const mapped = mapRestaurant(r, i)
+        mapped.name = r.description?.split('·')[0]?.trim() || r.title || 'Local Spot'
+        return mapped
+      }))
     }
 
-    // Fallback: return TheMealDB data as before
-    return NextResponse.json(dishes.slice(0, 6))
+    // Fallback: TheMealDB only
+    if (dishes.length > 0) {
+      return NextResponse.json(dishes.slice(0, 6))
+    }
+
+    return NextResponse.json([])
   } catch {
     return NextResponse.json([], { status: 500 })
   }

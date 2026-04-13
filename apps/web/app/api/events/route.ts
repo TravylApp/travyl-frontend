@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOptionalParam, BACKEND_URL } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
 
@@ -35,15 +36,14 @@ async function fetchSerpEvents(city: string, limit: number): Promise<EventResult
     const data = await res.json()
     const results = data.events_results ?? []
 
-    // Prefer non-Google-proxied images; upscale Google thumbnails as fallback
     const pickImage = (e: any): string => {
+      // Prefer non-proxied images, then upscale Google-hosted ones
       for (const url of [e.image, e.thumbnail]) {
-        if (url && !url.includes('encrypted-tbn')) return url
+        if (!url) continue
+        if (!url.includes('encrypted-tbn')) return upscaleGoogleImage(url) || url
       }
-      // Google-proxied: append size hint for higher res
-      const gImg = e.image || e.thumbnail
-      if (gImg) return gImg + '&w=600'
-      return ''
+      // encrypted-tbn images: still use them, upscale won't help but they're better than nothing
+      return e.image || e.thumbnail || ''
     }
 
     return results.slice(0, limit).map((e: any, i: number) => ({
