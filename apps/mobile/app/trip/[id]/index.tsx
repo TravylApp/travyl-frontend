@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import {
-  View, ScrollView, Text, Pressable, Linking,
+  View, ScrollView, Text, Pressable, Modal, Linking,
   Dimensions, useColorScheme,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -11,7 +12,11 @@ import {
   useItineraryScreen,
   upscaleGoogleImage,
   TextStyles, FontFamily,
+  type PlaceItem,
 } from '@travyl/shared';
+import FlipCard from '../../../components/places/FlipCard';
+import CardFront from '../../../components/places/CardFront';
+import CardBack from '../../../components/places/CardBack';
 import { PageTransition } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -84,12 +89,13 @@ function getCurrencySymbol(ctx: any): string {
 // ─── Main Screen ─────────────────────────────────────────
 export default function OverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { trip } = useItineraryScreen(id);
+  const { trip, refetch } = useItineraryScreen(id);
   const isDark = useColorScheme() === 'dark';
   const scrollRef = useRef<ScrollView>(null);
 
   const ctx = trip?.trip_context as any;
   const storedExploreItems = buildExploreItems(ctx);
+  const events = ctx?.events ?? [];
   const news = ctx?.news ?? [];
   const currencySymbol = getCurrencySymbol(ctx);
   const tripLat = ctx?.lat;
@@ -128,6 +134,27 @@ export default function OverviewScreen() {
   // Use live data if available, fall back to trip_context
   const exploreItems = liveExploreItems.length > 0 ? liveExploreItems : storedExploreItems;
 
+  // ─── Auto-enrich if missing events, cuisine, or news ────
+  const enrichedRef = useRef(false);
+  useEffect(() => {
+    if (!trip?.id || enrichedRef.current) return;
+    const missing = !ctx?.events?.length || !ctx?.cuisine?.length || !ctx?.news?.length;
+    if (!missing) return;
+    enrichedRef.current = true;
+    const enrichBase = process.env.EXPO_PUBLIC_WEB_API_URL || '';
+    fetch(`${enrichBase}/api/trips/enrich`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId: trip.id }),
+    }).then(r => {
+      if (r.ok) {
+        setTimeout(() => refetch(), 2000);
+        setTimeout(() => refetch(), 6000);
+        setTimeout(() => refetch(), 12000);
+      }
+    }).catch(() => {});
+  }, [trip?.id, ctx?.events, ctx?.cuisine, ctx?.news]);
+
   // Quote removed — matching web
 
   // ─── Normalize phrases to array ───────────────────────
@@ -150,6 +177,31 @@ export default function OverviewScreen() {
       { label: 'Water', value: c.water_bottle, icon: 'tint' as const },
     ].filter(i => i.value != null);
   }, [ctx?.cost_of_living]);
+
+  // ─── Flip card state for explore items ────────────────
+  const [flippedIdx, setFlippedIdx] = useState<number | null>(null);
+  const explorePlaces: PlaceItem[] = useMemo(() =>
+    exploreItems.map((item: any, i: number) => ({
+      id: item.id || `explore-${i}`,
+      name: item.title || item.name || '',
+      image: item.image || '',
+      images: item.image ? [item.image] : [],
+      type: 'attraction' as const,
+      rating: item.rating ?? 4.0,
+      tagline: item.description || '',
+      category: item.category || '',
+      description: item.description,
+      tags: item.tags ?? [item.category].filter(Boolean),
+      latitude: item.lat,
+      longitude: item.lng,
+      website: item.website,
+      address: item.address,
+    })),
+    [exploreItems],
+  );
+
+  // ─── News reader state ──────────────────────────────
+  const [newsItem, setNewsItem] = useState<any>(null);
 
   return (
     <PageTransition>
@@ -175,51 +227,43 @@ export default function OverviewScreen() {
         <View style={{ paddingHorizontal: 20 }}>
           <SectionHeader dark={isDark} accent="Explore" title="Things to Do" />
         </View>
-        {exploreItems.length > 0 ? (
+        {explorePlaces.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+            pagingEnabled
+            contentContainerStyle={{ paddingHorizontal: 0 }}
             decelerationRate="fast"
-            snapToInterval={CONTENT_WIDTH - 28}
-            pagingEnabled={false}
           >
-            {exploreItems.map((item: any, idx: number) => (
-              <View key={item.id || idx} style={{
-                width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
-              }}>
-                {item.image ? (
-                  <Image source={{ uri: item.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                ) : (
-                  <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
-                    <FontAwesome name="compass" size={32} color="rgba(255,255,255,0.3)" />
-                  </View>
-                )}
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
-                  locations={[0, 0.4, 1]}
-                  pointerEvents="none"
-                  style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-                />
-                <View style={{
-                  position: 'absolute', top: 10, left: 10,
-                  backgroundColor: 'rgba(200,169,106,0.15)', borderWidth: 1,
-                  borderColor: 'rgba(200,169,106,0.2)', borderRadius: 12,
-                  paddingHorizontal: 10, paddingVertical: 4,
-                }}>
-                  <Text style={{
-                    ...TextStyles.xs, fontWeight: '700', letterSpacing: 0.5,
-                    textTransform: 'uppercase', color: ACCENT_COLOR,
-                  }}>{item.category}</Text>
-                </View>
-                <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
-                  <Text style={{
-                    ...TextStyles.title, fontSize: 17, color: '#fff', marginBottom: 4,
-                  }}>{item.title}</Text>
-                  <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.75)', lineHeight: 16 }} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                </View>
+            {explorePlaces.map((place, idx) => (
+              <View key={place.id} style={{ width: CONTENT_WIDTH, paddingHorizontal: 20 }}>
+              <FlipCard
+                isFlipped={flippedIdx === idx}
+                onFlip={() => setFlippedIdx(flippedIdx === idx ? null : idx)}
+                width={CONTENT_WIDTH - 40}
+                height={240}
+                front={
+                  <CardFront
+                    place={place}
+                    isFav={false}
+                    onToggleFav={() => {}}
+                    onFlip={() => setFlippedIdx(flippedIdx === idx ? null : idx)}
+                    width={CONTENT_WIDTH - 40}
+                    height={240}
+                  />
+                }
+                back={
+                  <CardBack
+                    place={place}
+                    isFav={false}
+                    onToggleFav={() => {}}
+                    onFlip={() => setFlippedIdx(flippedIdx === idx ? null : idx)}
+                    onSearchTag={() => {}}
+                    width={CONTENT_WIDTH - 40}
+                    height={240}
+                  />
+                }
+              />
               </View>
             ))}
           </ScrollView>
@@ -235,35 +279,107 @@ export default function OverviewScreen() {
 
       {/* Quote removed — matching web */}
 
-      {/* ─── What's Going On — dark gradient news cards ───── */}
-      {news.length > 0 && (
-        <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-          <SectionHeader dark={isDark} accent="What's Happening" title="What's Going On" />
+      {/* ─── What's Going On — events only ───── */}
+      {events.length > 0 && (
+        <View style={{ marginTop: 8 }}>
+          <View style={{ paddingHorizontal: 20 }}>
+            <SectionHeader dark={isDark} accent="What's Happening" title="What's Going On" />
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10 }}
+            pagingEnabled
+            contentContainerStyle={{ paddingHorizontal: 0 }}
             decelerationRate="fast"
-            snapToInterval={CONTENT_WIDTH - 60}
+          >
+            {events.map((item: any, i: number) => {
+              const hasImage = !!item.image;
+              return (
+                <View key={item.id || i} style={{ width: CONTENT_WIDTH, paddingHorizontal: 20 }}>
+                <Pressable
+                  onPress={() => item.ticketUrl && WebBrowser.openBrowserAsync(item.ticketUrl)}
+                  style={{ width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden' }}
+                >
+                  {hasImage && (
+                    <Image
+                      source={{ uri: item.image, headers: { Referer: '' } }}
+                      style={{ position: 'absolute', width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                  )}
+                  <LinearGradient
+                    colors={hasImage
+                      ? ['transparent', 'rgba(0,0,0,0.85)']
+                      : ['#1a1a2e', '#16213e']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    locations={hasImage ? [0.2, 1] : undefined}
+                    style={{ flex: 1, justifyContent: 'flex-end', padding: 16 }}
+                  >
+                    <Text style={{
+                      ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
+                      textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
+                    }}>
+                      {item.category ?? 'Event'}
+                      {item.date ? <Text style={{ opacity: 0.5 }}> · {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text> : null}
+                    </Text>
+                    <Text style={{
+                      ...TextStyles.subhead, fontSize: 16, fontFamily: FontFamily.serif,
+                      color: '#fff', lineHeight: 21, marginBottom: 4,
+                    }} numberOfLines={2}>{item.title}</Text>
+                    {item.venue && (
+                      <Text style={{
+                        ...TextStyles.caption, color: 'rgba(255,255,255,0.55)', lineHeight: 17,
+                      }} numberOfLines={1}>{item.venue}</Text>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* ─── In the News — always its own section ───── */}
+      {news.length > 0 && (
+        <View style={{ marginTop: 16 }}>
+          <View style={{ paddingHorizontal: 20 }}>
+            <SectionHeader dark={isDark} accent="Travel Updates" title="In the News" />
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            pagingEnabled
+            contentContainerStyle={{ paddingHorizontal: 0 }}
+            decelerationRate="fast"
           >
             {news.map((item: any, i: number) => {
               const gradients: [string, string][] = [['#1a1a2e', '#16213e'], ['#0f3460', '#1a1a2e'], ['#2c3e50', '#1a1a2e'], ['#1b2838', '#0f3460']];
               const grad = gradients[i % gradients.length];
+              const hasImage = !!item.image;
               return (
+                <View key={item.id || i} style={{ width: CONTENT_WIDTH, paddingHorizontal: 20 }}>
                 <Pressable
-                  key={item.id || i}
-                  onPress={() => item.url && Linking.openURL(item.url)}
-                  style={{ width: CONTENT_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
+                  onPress={() => setNewsItem(item)}
+                  style={{ width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden' }}
                 >
+                  {hasImage && (
+                    <Image
+                      source={{ uri: item.image, headers: { Referer: '' } }}
+                      style={{ position: 'absolute', width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                  )}
                   <LinearGradient
-                    colors={[grad[0], grad[1]]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    colors={hasImage
+                      ? ['transparent', 'rgba(0,0,0,0.85)']
+                      : [grad[0], grad[1]]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    locations={hasImage ? [0.25, 1] : undefined}
                     style={{ flex: 1, justifyContent: 'flex-end', padding: 16 }}
                   >
-                    <View style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-                      backgroundColor: 'rgba(200,169,106,0.3)',
-                    }} />
                     <Text style={{
                       ...TextStyles.xs, fontWeight: '700', letterSpacing: 1.5,
                       textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
@@ -273,14 +389,14 @@ export default function OverviewScreen() {
                     </Text>
                     <Text style={{
                       ...TextStyles.subhead, fontSize: 16, fontFamily: FontFamily.serif,
-                      fontWeight: '700',
-                      color: '#fff', lineHeight: 21, marginBottom: 6,
+                      color: '#fff', lineHeight: 21, marginBottom: 4,
                     }} numberOfLines={2}>{item.title}</Text>
                     <Text style={{
-                      ...TextStyles.caption, color: 'rgba(255,255,255,0.65)', lineHeight: 17,
+                      ...TextStyles.caption, color: 'rgba(255,255,255,0.6)', lineHeight: 17,
                     }} numberOfLines={2}>{item.snippet}</Text>
                   </LinearGradient>
                 </Pressable>
+                </View>
               );
             })}
           </ScrollView>
@@ -296,13 +412,13 @@ export default function OverviewScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+            pagingEnabled
+            contentContainerStyle={{ paddingHorizontal: 0 }}
             decelerationRate="fast"
-            snapToInterval={CONTENT_WIDTH - 28}
-            pagingEnabled={false}
           >
             {(ctx.cuisine as any[]).map((dish: any, idx: number) => (
-              <View key={dish.id || idx} style={{
+              <View key={dish.id || idx} style={{ width: CONTENT_WIDTH, paddingHorizontal: 20 }}>
+              <View style={{
                 width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {dish.image ? (
@@ -313,12 +429,23 @@ export default function OverviewScreen() {
                   </View>
                 )}
                 <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.7)']}
-                  locations={[0.4, 1]}
+                  colors={['transparent', 'rgba(0,0,0,0.75)']}
+                  locations={[0.35, 1]}
                   style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}
                 >
                   <Text style={{ ...TextStyles.subhead, fontWeight: '700', color: '#fff', fontFamily: FontFamily.serif }}>{dish.name}</Text>
+                  {dish.restaurant && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                      <FontAwesome name="map-marker" size={12} color={ACCENT_COLOR} style={{ marginRight: 5 }} />
+                      <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }} numberOfLines={1}>
+                        {dish.restaurant}
+                        {dish.rating ? ` · ★ ${dish.rating}` : ''}
+                        {dish.priceLevel ? ` · ${dish.priceLevel}` : ''}
+                      </Text>
+                    </View>
+                  )}
                 </LinearGradient>
+              </View>
               </View>
             ))}
           </ScrollView>
@@ -439,6 +566,95 @@ export default function OverviewScreen() {
       })()}
 
     </ScrollView>
+
+    {/* ─── News Reader Modal ───────────────────────────────── */}
+    {newsItem && (
+      <Modal
+        visible
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setNewsItem(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0d0d0d' : '#fff' }}>
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+            borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          }}>
+            <Pressable onPress={() => setNewsItem(null)} hitSlop={12}>
+              <FontAwesome name="times" size={22} color={isDark ? '#fff' : '#333'} />
+            </Pressable>
+            <Text style={{
+              ...TextStyles.xs, textTransform: 'uppercase', letterSpacing: 1.2,
+              color: ACCENT_COLOR, fontWeight: '700',
+            }}>
+              {newsItem.category}
+            </Text>
+            {newsItem.url ? (
+              <Pressable onPress={() => Linking.openURL(newsItem.url)} hitSlop={12}>
+                <FontAwesome name="external-link" size={18} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'} />
+              </Pressable>
+            ) : <View style={{ width: 22 }} />}
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            {/* Source + date */}
+            <Text style={{
+              ...TextStyles.caption, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)',
+              marginBottom: 8,
+            }}>
+              {newsItem.source}{newsItem.date ? ` · ${new Date(newsItem.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+            </Text>
+
+            {/* Title */}
+            <Text style={{
+              fontFamily: FontFamily.serif, fontSize: 24,
+              color: isDark ? '#fff' : '#1a1a1a', lineHeight: 32, marginBottom: 16,
+            }}>
+              {newsItem.title}
+            </Text>
+
+            {/* Image if available */}
+            {newsItem.image && (
+              <Image
+                source={{ uri: newsItem.image, headers: { Referer: '' } }}
+                style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 16 }}
+                contentFit="cover"
+              />
+            )}
+
+            {/* Snippet */}
+            <Text style={{
+              fontSize: 16, lineHeight: 26,
+              color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
+            }}>
+              {newsItem.snippet}
+            </Text>
+
+            {/* Read full article button */}
+            {newsItem.url && (
+              <Pressable
+                onPress={() => Linking.openURL(newsItem.url)}
+                style={{
+                  marginTop: 24, paddingVertical: 14, borderRadius: 12,
+                  backgroundColor: isDark ? 'rgba(212,181,122,0.15)' : 'rgba(212,181,122,0.1)',
+                  borderWidth: 1, borderColor: 'rgba(212,181,122,0.3)',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{
+                  ...TextStyles.subhead, color: ACCENT_COLOR, fontWeight: '700',
+                }}>
+                  Read Full Article <FontAwesome name="external-link" size={13} color={ACCENT_COLOR} />
+                </Text>
+              </Pressable>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+    )}
+
     </View>
     </PageTransition>
   );

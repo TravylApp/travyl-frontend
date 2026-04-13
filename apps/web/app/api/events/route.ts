@@ -1,42 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOptionalParam, BACKEND_URL } from '@/lib/api-utils'
 
-export async function GET(req: NextRequest) {
-  const city = getOptionalParam(req, 'city', '')
-  if (!city) return NextResponse.json([])
+const SERPAPI_KEY = process.env.SERPAPI_KEY
 
-  const start_date = getOptionalParam(req, 'start', '')
-  const end_date = getOptionalParam(req, 'end', '')
+interface EventResult {
+  id: string
+  title: string
+  description: string
+  category: string
+  date: string
+  venue: string
+  image: string
+  ticketUrl: string
+}
 
-  // Backend GET /events requires destination + date range
-  if (!start_date || !end_date) return NextResponse.json([])
+// ─── SerpAPI Google Events (1 credit per call) ──────────────────────
 
-  if (!BACKEND_URL) {
-    return NextResponse.json({ error: 'Backend URL not configured' }, { status: 503 })
+async function fetchSerpEvents(city: string, limit: number): Promise<EventResult[]> {
+  if (!SERPAPI_KEY) return []
+
+  const params = new URLSearchParams({
+    engine: 'google_events',
+    q: `Events in ${city}`,
+    api_key: SERPAPI_KEY,
+    hl: 'en',
+  })
+
+  try {
+    const res = await fetch(`https://serpapi.com/search.json?${params}`, {
+      headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) return []
+
+    const data = await res.json()
+    const results = data.events_results ?? []
+
+    return results.slice(0, limit).map((e: any, i: number) => ({
+      id: `event-${i}`,
+      title: e.title ?? '',
+      description: e.description ?? '',
+      category: e.event_location_map?.type ?? 'Event',
+      date: e.date?.start_date ?? e.date?.when ?? '',
+      venue: e.venue?.name ?? e.address?.[0] ?? '',
+      image: e.thumbnail ?? e.image ?? '',
+      ticketUrl: e.link ?? e.ticket_info?.link ?? '',
+    }))
+  } catch {
+    return []
   }
+}
+
+// ─── Backend fallback (Eventbrite + PredictHQ) ──────────────────────
+
+async function fetchBackendEvents(
+  req: NextRequest,
+  city: string,
+  startDate: string,
+  endDate: string,
+): Promise<EventResult[]> {
+  if (!BACKEND_URL || !startDate || !endDate) return []
 
   const url = new URL('/events', BACKEND_URL)
   url.searchParams.set('destination', city)
-  url.searchParams.set('startDate', start_date)
-  url.searchParams.set('endDate', end_date)
+  url.searchParams.set('startDate', startDate)
+  url.searchParams.set('endDate', endDate)
 
-  // Forward auth header
   const headers: HeadersInit = {}
   const auth = req.headers.get('authorization')
   if (auth) headers['Authorization'] = auth
 
   try {
     const res = await fetch(url.toString(), { headers })
-    if (!res.ok) {
-      console.error('[/api/events] Backend error:', res.status)
-      return NextResponse.json([])
-    }
+    if (!res.ok) return []
 
     const data = await res.json()
-    // Backend returns { events: [...] }, callers expect flat array
     const events = Array.isArray(data?.events) ? data.events : []
-    // Map backend field names to what callers expect
-    const mapped = events.map((e: any) => ({
+    return events.map((e: any) => ({
       id: e.id,
       title: e.name,
       description: e.category ?? '',
@@ -46,9 +85,25 @@ export async function GET(req: NextRequest) {
       image: e.imageUrl,
       ticketUrl: e.ticketUrl,
     }))
-    return NextResponse.json(mapped)
-  } catch (err) {
-    console.error('[/api/events] error:', err)
-    return NextResponse.json([])
+  } catch {
+    return []
   }
+}
+
+// ─── Route handler ──────────────────────────────────────────────────
+
+export async function GET(req: NextRequest) {
+  const city = getOptionalParam(req, 'city', '')
+  if (!city) return NextResponse.json([])
+
+  const startDate = getOptionalParam(req, 'start', '')
+  const endDate = getOptionalParam(req, 'end', '')
+  const limit = parseInt(getOptionalParam(req, 'limit', '8'), 10)
+
+  // Try SerpAPI first (returns images), fall back to backend
+  const serpEvents = await fetchSerpEvents(city, limit)
+  if (serpEvents.length > 0) return NextResponse.json(serpEvents)
+
+  const backendEvents = await fetchBackendEvents(req, city, startDate, endDate)
+  return NextResponse.json(backendEvents)
 }

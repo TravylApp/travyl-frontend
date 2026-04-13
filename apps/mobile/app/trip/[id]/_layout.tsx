@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal, ScrollView,
+  View, Text, Pressable, Share, Modal, ScrollView, TextInput,
   Platform, PanResponder, Animated, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -11,7 +11,8 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, TextStyles, FontFamily } from '@travyl/shared';
+import { useQueryClient } from '@tanstack/react-query';
+import { useItineraryScreen, formatDateRange, resolveTheme, updateTripDetails, TextStyles, FontFamily } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -327,6 +328,7 @@ const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.d
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
   const { theme, essentialsOpen, setEssentialsOpen, heroImageOverride } = useContext(TabCtx);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
 
@@ -368,6 +370,60 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       .catch(() => {});
   }, [cityName, existingWiki]);
   const wikiText = existingWiki || fetchedWiki;
+
+  // Inline editing state
+  const [editing, setEditing] = useState(false);
+  const [editDest, setEditDest] = useState('');
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
+  const [editTravelers, setEditTravelers] = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  const openEditor = () => {
+    setEditDest(trip?.destination || '');
+    setEditStart(trip?.start_date || '');
+    setEditEnd(trip?.end_date || '');
+    setEditTravelers(trip?.travelers || 1);
+    setEditing(true);
+  };
+
+  const saveEdits = async () => {
+    if (!trip?.id || saving) return;
+    setSaving(true);
+    const destChanged = editDest && editDest !== trip.destination;
+    try {
+      await updateTripDetails(trip.id, {
+        destination: editDest || undefined,
+        start_date: editStart || undefined,
+        end_date: editEnd || undefined,
+        travelers: editTravelers,
+      });
+      setSaving(false);
+      setEditing(false);
+      // Refetch fresh data + invalidate trips list so trips page updates
+      setTimeout(() => {
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ['trips'] });
+      }, 100);
+      // Re-enrich if destination changed (fills wiki, weather, places, etc.)
+      if (destChanged) {
+        const enrichBase = process.env.EXPO_PUBLIC_WEB_API_URL || '';
+        fetch(`${enrichBase}/api/trips/enrich`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tripId: trip.id }),
+        }).then(() => {
+          // Refetch at intervals as enrichment data arrives
+          setTimeout(() => refetch(), 2000);
+          setTimeout(() => refetch(), 5000);
+          setTimeout(() => refetch(), 10000);
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('Failed to update trip:', e);
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={{ position: 'relative', minHeight: essentialsOpen ? 280 : 200 }}>
@@ -448,8 +504,8 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Pressable>
         </View>
 
-        {/* Date + travelers + safety — always visible */}
-        {trip && (
+        {/* Date + travelers + safety — always visible, with edit */}
+        {trip && !editing && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
             {[
               formatDateRange(trip.start_date, trip.end_date),
@@ -478,6 +534,71 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
                 </View>
               );
             })()}
+            <Pressable onPress={openEditor} hitSlop={8} style={{ marginLeft: 2, padding: 4, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)' }}>
+              <FontAwesome name="pencil" size={11} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+          </View>
+        )}
+
+        {/* Inline editor */}
+        {trip && editing && (
+          <View style={{ marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+              <View style={{ flex: 1, minWidth: 160 }}>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Destination</Text>
+                <TextInput
+                  value={editDest}
+                  onChangeText={setEditDest}
+                  placeholder="City, Country"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#fff' }}
+                />
+              </View>
+              <View style={{ width: 70 }}>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Travelers</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6 }}>
+                  <Pressable onPress={() => setEditTravelers(Math.max(1, editTravelers - 1))} hitSlop={6}>
+                    <FontAwesome name="minus" size={10} color="rgba(255,255,255,0.6)" />
+                  </Pressable>
+                  <Text style={{ flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '700', color: '#fff' }}>{editTravelers}</Text>
+                  <Pressable onPress={() => setEditTravelers(editTravelers + 1)} hitSlop={6}>
+                    <FontAwesome name="plus" size={10} color="rgba(255,255,255,0.6)" />
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Start</Text>
+                <TextInput
+                  value={editStart}
+                  onChangeText={setEditStart}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#fff' }}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>End</Text>
+                <TextInput
+                  value={editEnd}
+                  onChangeText={setEditEnd}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#fff' }}
+                />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable onPress={saveEdits} disabled={saving} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}>
+                <FontAwesome name="check" size={12} color="#0f1f33" />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f1f33' }}>{saving ? 'Saving...' : 'Save'}</Text>
+              </Pressable>
+              <Pressable onPress={() => setEditing(false)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}>
+                <FontAwesome name="times" size={12} color="rgba(255,255,255,0.7)" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Cancel</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 

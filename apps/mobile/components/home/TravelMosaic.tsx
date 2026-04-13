@@ -45,7 +45,7 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
   const { width, height: screenH } = useWindowDimensions();
   const contentWidth = width - PADDING * 2;
   const containerY = useSharedValue(99999);
-  const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
+  const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.gotravyl.com';
   const { data: fetchedData } = useQuery({
     queryKey: ['mobile-mosaic'],
     queryFn: async (): Promise<{ tiles: MosaicTile[]; places: PlaceItem[] }> => {

@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabase()
-  const { tripId } = await req.json()
+  const reqBody = await req.json()
+  const tripId = reqBody.tripId
+  const force = reqBody.force === true
   if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
   // Fetch the trip
@@ -46,9 +48,14 @@ export async function POST(req: NextRequest) {
   const existing = trip.trip_context ?? {}
 
   // Skip if fully enriched (has all key fields including newer APIs)
-  if (existing.hero_image_url && existing.wiki && existing.quick_facts && existing.explore_items?.length > 0
-    && existing.phrases && existing.nearby_cities && existing.cost_of_living && existing.safety && existing.timezone_info) {
-    return NextResponse.json({ status: 'already_enriched' })
+  if (!force) {
+    const hasAllFields = existing.hero_image_url && existing.wiki && existing.quick_facts
+      && existing.explore_items?.length > 0 && existing.phrases && existing.nearby_cities
+      && existing.cost_of_living && existing.safety && existing.timezone_info
+      && existing.events?.length > 0 && existing.cuisine?.length > 0 && existing.news?.length > 0
+    if (hasAllFields) {
+      return NextResponse.json({ status: 'already_enriched' })
+    }
   }
 
   // Parse destination
@@ -171,15 +178,13 @@ export async function POST(req: NextRequest) {
       .then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(`${baseUrl}/api/holidays?country=${encodeURIComponent(countryCode)}&year=${new Date().getFullYear()}`)
       .then(r => r.ok ? r.json() : []).catch(() => []),
-    cuisineCountry ? fetch(`${baseUrl}/api/cuisine?country=${encodeURIComponent(cuisineCountry)}`)
+    cuisineCountry ? fetch(`${baseUrl}/api/cuisine?country=${encodeURIComponent(cuisineCountry)}&city=${encodeURIComponent(city)}`)
       .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
     lat ? fetch(`${baseUrl}/api/sunrise?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
-    // Real events (Eventbrite + PredictHQ — via backend)
-    (BACKEND_URL
-      ? fetch(`${BACKEND_URL}/api/events/search?city=${encodeURIComponent(city)}${startParam ? `&start_date=${startParam}` : ''}${endParam ? `&end_date=${endParam}` : ''}`)
-          .then(r => r.ok ? r.json() : []).catch(() => [])
-      : Promise.resolve([])),
+    // Real events (SerpAPI Google Events → backend fallback)
+    fetch(`${baseUrl}/api/events?city=${encodeURIComponent(city)}${startParam ? `&start=${startParam}` : ''}${endParam ? `&end=${endParam}` : ''}&limit=8`)
+      .then(r => r.ok ? r.json() : []).catch(() => []),
     // Travel safety advisory
     countryCode ? fetch(`${baseUrl}/api/safety?country=${encodeURIComponent(countryCode)}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
