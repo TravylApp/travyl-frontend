@@ -35,6 +35,14 @@ async function fetchSerpEvents(city: string, limit: number): Promise<EventResult
     const data = await res.json()
     const results = data.events_results ?? []
 
+    // Filter out low-res Google-proxied thumbnails (encrypted-tbn0)
+    const pickImage = (e: any): string => {
+      for (const url of [e.image, e.thumbnail]) {
+        if (url && !url.includes('encrypted-tbn0.gstatic.com')) return url
+      }
+      return ''
+    }
+
     return results.slice(0, limit).map((e: any, i: number) => ({
       id: `event-${i}`,
       title: e.title ?? '',
@@ -42,7 +50,7 @@ async function fetchSerpEvents(city: string, limit: number): Promise<EventResult
       category: e.event_location_map?.type ?? 'Event',
       date: e.date?.start_date ?? e.date?.when ?? '',
       venue: e.venue?.name ?? e.address?.[0] ?? '',
-      image: e.thumbnail ?? e.image ?? '',
+      image: pickImage(e),
       ticketUrl: e.link ?? e.ticket_info?.link ?? '',
     }))
   } catch {

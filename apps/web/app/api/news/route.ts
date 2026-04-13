@@ -53,16 +53,21 @@ async function fetchSerpNews(destination: string, limit: number): Promise<NewsAr
     const data = await res.json()
     const results = data.news_results ?? []
 
-    return results.slice(0, limit).map((item: any, i: number) => ({
-      id: `news-${i}-${Date.now()}`,
-      title: item.title ?? '',
-      source: item.source?.name ?? item.source ?? 'News',
-      date: item.date ?? new Date().toISOString(),
-      url: item.link ?? '',
-      snippet: item.snippet ?? item.title ?? '',
-      category: categorize(item.title ?? ''),
-      ...(item.thumbnail ? { image: item.thumbnail } : {}),
-    }))
+    return results.slice(0, limit).map((item: any, i: number) => {
+      // Use high-res thumbnail, skip Google-proxied low-res ones
+      const thumb = item.thumbnail
+      const hasGoodImage = thumb && !thumb.includes('encrypted-tbn') && !thumb.includes('news.google.com/api')
+      return {
+        id: `news-${i}-${Date.now()}`,
+        title: item.title ?? '',
+        source: item.source?.name ?? item.source ?? 'News',
+        date: item.iso_date ?? item.date ?? new Date().toISOString(),
+        url: item.link ?? '',
+        snippet: item.snippet ?? '',
+        category: categorize(item.title ?? ''),
+        ...(hasGoodImage ? { image: thumb } : {}),
+      }
+    })
   } catch {
     return []
   }

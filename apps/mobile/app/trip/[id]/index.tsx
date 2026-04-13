@@ -14,9 +14,7 @@ import {
   TextStyles, FontFamily,
   type PlaceItem,
 } from '@travyl/shared';
-import FlipCard from '../../../components/places/FlipCard';
-import CardFront from '../../../components/places/CardFront';
-import CardBack from '../../../components/places/CardBack';
+import PlaceDetailModal from '../../../components/places/PlaceDetailModal';
 import { PageTransition } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -178,8 +176,8 @@ export default function OverviewScreen() {
     ].filter(i => i.value != null);
   }, [ctx?.cost_of_living]);
 
-  // ─── Flip card state for explore items ────────────────
-  const [flippedIdx, setFlippedIdx] = useState<number | null>(null);
+  // ─── Place detail modal state ────────────────────────
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const explorePlaces: PlaceItem[] = useMemo(() =>
     exploreItems.map((item: any, i: number) => ({
       id: item.id || `explore-${i}`,
@@ -235,35 +233,45 @@ export default function OverviewScreen() {
             contentContainerStyle={{ paddingHorizontal: 0 }}
             decelerationRate="fast"
           >
-            {explorePlaces.map((place, idx) => (
+            {explorePlaces.map((place) => (
               <View key={place.id} style={{ width: CONTENT_WIDTH, paddingHorizontal: 20 }}>
-              <FlipCard
-                isFlipped={flippedIdx === idx}
-                onFlip={() => setFlippedIdx(flippedIdx === idx ? null : idx)}
-                width={CONTENT_WIDTH - 40}
-                height={240}
-                front={
-                  <CardFront
-                    place={place}
-                    isFav={false}
-                    onToggleFav={() => {}}
-                    onFlip={() => setFlippedIdx(flippedIdx === idx ? null : idx)}
-                    width={CONTENT_WIDTH - 40}
-                    height={240}
-                  />
-                }
-                back={
-                  <CardBack
-                    place={place}
-                    isFav={false}
-                    onToggleFav={() => {}}
-                    onFlip={() => setFlippedIdx(flippedIdx === idx ? null : idx)}
-                    onSearchTag={() => {}}
-                    width={CONTENT_WIDTH - 40}
-                    height={240}
-                  />
-                }
-              />
+              <Pressable
+                onPress={() => setSelectedPlace(place)}
+                style={{ width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden' }}
+              >
+                {place.image ? (
+                  <Image source={{ uri: place.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                ) : (
+                  <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+                    <FontAwesome name="compass" size={32} color="rgba(255,255,255,0.3)" />
+                  </View>
+                )}
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
+                  locations={[0, 0.4, 1]}
+                  pointerEvents="none"
+                  style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+                />
+                <View style={{
+                  position: 'absolute', top: 10, left: 10,
+                  backgroundColor: 'rgba(200,169,106,0.15)', borderWidth: 1,
+                  borderColor: 'rgba(200,169,106,0.2)', borderRadius: 12,
+                  paddingHorizontal: 10, paddingVertical: 4,
+                }}>
+                  <Text style={{
+                    ...TextStyles.xs, fontWeight: '700', letterSpacing: 0.5,
+                    textTransform: 'uppercase', color: ACCENT_COLOR,
+                  }}>{place.category}</Text>
+                </View>
+                <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14 }}>
+                  <Text style={{
+                    ...TextStyles.title, fontSize: 17, color: '#fff', marginBottom: 4,
+                  }}>{place.name}</Text>
+                  <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.75)', lineHeight: 16 }} numberOfLines={2}>
+                    {place.tagline}
+                  </Text>
+                </View>
+              </Pressable>
               </View>
             ))}
           </ScrollView>
@@ -566,6 +574,18 @@ export default function OverviewScreen() {
       })()}
 
     </ScrollView>
+
+    {/* ─── Place Detail Modal (map + card view) ─────────────── */}
+    {selectedPlace && (
+      <PlaceDetailModal
+        place={selectedPlace}
+        allPlaces={explorePlaces}
+        onClose={() => setSelectedPlace(null)}
+        favorites={[]}
+        onToggleFav={() => {}}
+        onSearchTag={() => {}}
+      />
+    )}
 
     {/* ─── News Reader Modal ───────────────────────────────── */}
     {newsItem && (
