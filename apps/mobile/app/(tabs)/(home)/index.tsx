@@ -395,8 +395,9 @@ export default function HomeScreen() {
           const tripId = await savePlanToSupabase(s.plan as any);
           await saveAnonTripId(tripId);
           planner.reset();
-          setShowTakeoff(false);
+          // Navigate first, THEN hide takeoff — prevents flash of home screen
           router.push(`/trip/${tripId}` as any);
+          setTimeout(() => setShowTakeoff(false), 500);
         } catch (err: any) {
           console.error('Failed to save trip:', err?.message || err);
           planner.reset();

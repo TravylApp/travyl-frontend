@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, groupPlacesByCollection, TextStyles, FontSize, upscaleGoogleImage, type PlaceItem } from '@travyl/shared';
+import { Navy, TextStyles, FontSize, upscaleGoogleImage, mapCategory, type PlaceItem } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
@@ -32,11 +32,11 @@ function mapToPlaceItem(p: any): PlaceItem {
     id: p.id,
     name: p.name,
     image: upscaleGoogleImage(p.image || p.photo_url) ?? '',
-    images: p.images,
+    images: p.images?.map((img: string) => upscaleGoogleImage(img) ?? img),
     type: p.type || 'attraction',
     rating: p.rating || 0,
     tagline: p.tagline || p.description?.split('.')[0] || p.category || '',
-    category: p.category || '',
+    category: mapCategory(p.category || ''),
     description: p.description || '',
     tags: p.tags || [p.category].filter(Boolean),
     latitude: p.latitude ?? p.lat,
@@ -91,30 +91,50 @@ async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItem[]>
 }
 
 // Fetch a page of suggested places — returns items + pagination info
+// Popular cities with coords for the discovery feed — rotated through for variety
+const DISCOVER_CITIES = [
+  { name: 'Paris', lat: 48.8566, lng: 2.3522 },
+  { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+  { name: 'New York', lat: 40.7128, lng: -74.006 },
+  { name: 'London', lat: 51.5074, lng: -0.1278 },
+  { name: 'Rome', lat: 41.9028, lng: 12.4964 },
+  { name: 'Barcelona', lat: 41.3874, lng: 2.1686 },
+  { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
+  { name: 'Istanbul', lat: 41.0082, lng: 28.9784 },
+  { name: 'Dubai', lat: 25.2048, lng: 55.2708 },
+  { name: 'Sydney', lat: -33.8688, lng: 151.2093 },
+];
+const DISCOVER_CATS = ['sightseeing', 'restaurant', 'cafe', 'entertainment'];
+
 async function fetchSuggestPage(page: number): Promise<{ items: PlaceItem[]; hasMore: boolean; nextPage: number | null }> {
   try {
-    const res = await fetch(`${WEB_API}/api/places/suggest?destination=popular&category=all&page=${page}`);
+    // First page: fetch multiple cities in parallel for a rich initial load
+    if (page === 0) {
+      const fetches = DISCOVER_CITIES.slice(0, 5).flatMap(city =>
+        DISCOVER_CATS.slice(0, 2).map(cat =>
+          fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=8`)
+            .then(r => r.ok ? r.json() : [])
+            .then((data: any[]) => data.map(mapToPlaceItem))
+            .catch(() => [] as PlaceItem[])
+        )
+      );
+      const results = await Promise.all(fetches);
+      const items = results.flat();
+      return { items, hasMore: true, nextPage: 1 };
+    }
+    // Subsequent pages: one city+category at a time
+    const cityIdx = (page - 1) % DISCOVER_CITIES.length;
+    const catIdx = Math.floor((page - 1) / DISCOVER_CITIES.length) % DISCOVER_CATS.length;
+    const city = DISCOVER_CITIES[cityIdx];
+    const cat = DISCOVER_CATS[catIdx];
+    const res = await fetch(`${WEB_API}/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`);
     if (!res.ok) return { items: [], hasMore: false, nextPage: null };
-    const data = await res.json();
-    const suggestions = data?.suggestions ?? [];
-    const items = suggestions.map((s: any): PlaceItem => ({
-      id: s.id,
-      name: s.name,
-      image: s.imageUrl ?? s.imageUrls?.[0] ?? '',
-      type: 'destination',
-      rating: s.rating ?? 0,
-      tagline: s.description?.split('.')[0] ?? s.location ?? '',
-      category: s.category ?? '',
-      description: s.description ?? '',
-      tags: s.category ? [s.category] : [],
-      latitude: s.latitude,
-      longitude: s.longitude,
-      address: s.location,
-    }));
+    const data: any[] = await res.json();
+    const items = data.map(mapToPlaceItem);
     return {
       items,
-      hasMore: data?.hasMore ?? items.length > 0,
-      nextPage: data?.nextPage ?? (items.length > 0 ? page + 1 : null),
+      hasMore: page < DISCOVER_CITIES.length * DISCOVER_CATS.length,
+      nextPage: items.length > 0 ? page + 1 : null,
     };
   } catch {
     return { items: [], hasMore: false, nextPage: null };
@@ -208,7 +228,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
         borderWidth: 1, borderColor: colors.border,
       }}>
         <View style={{ height: imgH, position: 'relative' }}>
-          <Image source={imgs[imgIdx]} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+          <Image source={{ uri: imgs[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
 
           {hasMultiple && (
             <Pressable
@@ -464,7 +484,30 @@ export default function FavoritesScreen() {
     return result;
   }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
 
-  const baseSections = useMemo(() => groupPlacesByCollection(filteredPlaces), [filteredPlaces]);
+  const baseSections = useMemo(() => {
+    // Group by API category first (Landmark, Culinary, Museum, etc.) — always works
+    const byCategory: Record<string, typeof filteredPlaces> = {};
+    for (const place of filteredPlaces) {
+      const cat = place.category || 'Other';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(place);
+    }
+    const sections = Object.entries(byCategory)
+      .filter(([, places]) => places.length >= 2)
+      .sort(([, a], [, b]) => b.length - a.length)
+      .map(([cat, places]) => ({
+        collection: { key: cat.toLowerCase(), label: cat, match: {} },
+        places,
+      }));
+    // Fallback if no categories have 2+ items
+    if (sections.length === 0 && filteredPlaces.length > 0) {
+      sections.push({
+        collection: { key: 'all', label: 'Places', match: {} },
+        places: filteredPlaces,
+      });
+    }
+    return { sections, remaining: [] as typeof filteredPlaces };
+  }, [filteredPlaces]);
 
   // Prepend "Near You" as the first section when available
   const themedSections = useMemo(() => {

@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
   const originCountry = getOptionalParam(req, 'origin_country', 'US')
   const destCountry = getOptionalParam(req, 'destination_country', '')
   extra.origin_country = originCountry
-  // If destination_country not provided, use destination as-is (backend can resolve)
-  extra.destination_country = destCountry || params.destination
+  // destination_country is required by backend; use provided value, fall back to empty
+  // (backend resolves IATA codes directly when destination is a 3-letter code)
+  extra.destination_country = destCountry
 
   const returnDate = getOptionalParam(req, 'return', '')
   if (returnDate) extra.return_date = returnDate

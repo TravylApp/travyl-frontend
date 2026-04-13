@@ -17,23 +17,25 @@ import { PageTransition } from './_layout';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SIDEBAR_W = 30; // matches SIDE_TAB_W in _layout
 const CONTENT_WIDTH = SCREEN_WIDTH - SIDEBAR_W;
-const ACCENT_COLOR = '#c8a96a';
+const ACCENT_COLOR = '#d4b57a';
 const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
 // ─── Accent label + serif heading ────────────────────────
 const TEXT_SHADOW = { textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;
 
-function SectionHeader({ accent, title }: { accent: string; title: string }) {
+function SectionHeader({ accent, title, dark }: { accent: string; title: string; dark?: boolean }) {
   return (
-    <View style={{ marginBottom: 12 }}>
+    <View style={{ marginBottom: 14 }}>
       <Text style={{
-        ...TextStyles.xs, fontWeight: '700', letterSpacing: 3,
-        textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 4,
-        ...TEXT_SHADOW,
+        fontSize: 11, fontWeight: '800', letterSpacing: 3,
+        textTransform: 'uppercase', marginBottom: 4,
+        fontFamily: 'Satoshi-Bold',
+        color: dark ? ACCENT_COLOR : '#6b5a3e',
       }}>{accent}</Text>
       <Text style={{
-        ...TextStyles.headline, fontSize: 22, color: '#fff',
-        ...TEXT_SHADOW,
+        fontSize: 26, lineHeight: 32,
+        fontFamily: 'Satoshi-Light',
+        color: dark ? ACCENT_COLOR : '#1e3a5f',
       }}>{title}</Text>
     </View>
   );
@@ -161,18 +163,18 @@ export default function OverviewScreen() {
 
       {/* Gradient fade from hero into content */}
       <LinearGradient
-        colors={['transparent', isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)', isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)']}
+        colors={['transparent', isDark ? 'rgba(13,13,13,0.6)' : 'rgba(248,247,245,0.6)', isDark ? '#0d0d0d' : '#f8f7f5']}
         locations={[0, 0.4, 1]}
-        style={{ height: 80 }}
+        style={{ height: 40 }}
       />
 
-      {/* Opaque content area — prevents hero bleed between sections */}
-      <View style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)' }}>
+      {/* Opaque content area */}
+      <View style={{ backgroundColor: isDark ? '#0d0d0d' : '#f8f7f5' }}>
 
       {/* ─── Things to Do — horizontal scroll cards ───────── */}
       <View>
         <View style={{ paddingHorizontal: 20 }}>
-          <SectionHeader accent="Explore" title="Things to Do" />
+          <SectionHeader dark={isDark} accent="Explore" title="Things to Do" />
         </View>
         {exploreItems.length > 0 ? (
           <ScrollView
@@ -188,7 +190,7 @@ export default function OverviewScreen() {
                 width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {item.image ? (
-                  <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  <Image source={{ uri: item.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                 ) : (
                   <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="compass" size={32} color="rgba(255,255,255,0.3)" />
@@ -215,7 +217,7 @@ export default function OverviewScreen() {
                   <Text style={{
                     ...TextStyles.title, fontSize: 17, color: '#fff', marginBottom: 4,
                   }}>{item.title}</Text>
-                  <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.6)', lineHeight: 16 }} numberOfLines={2}>
+                  <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.75)', lineHeight: 16 }} numberOfLines={2}>
                     {item.description}
                   </Text>
                 </View>
@@ -225,7 +227,7 @@ export default function OverviewScreen() {
         ) : (
           <View style={{ paddingHorizontal: 20, paddingVertical: 24, alignItems: 'center' }}>
             <FontAwesome name="compass" size={28} color={isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'} />
-            <Text style={{ ...TextStyles.caption, color: isDark ? '#7a7268' : '#a39688', marginTop: 8, textAlign: 'center' }}>
+            <Text style={{ ...TextStyles.caption, color: isDark ? '#a09488' : '#8a7e72', marginTop: 8, textAlign: 'center' }}>
               Explore items will appear here once your trip is enriched
             </Text>
           </View>
@@ -237,7 +239,7 @@ export default function OverviewScreen() {
       {/* ─── What's Going On — dark gradient news cards ───── */}
       {news.length > 0 && (
         <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-          <SectionHeader accent="What's Happening" title="What's Going On" />
+          <SectionHeader dark={isDark} accent="What's Happening" title="What's Going On" />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -271,12 +273,12 @@ export default function OverviewScreen() {
                       {item.source ? <Text style={{ opacity: 0.5 }}> · {item.source}</Text> : null}
                     </Text>
                     <Text style={{
-                      ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
+                      ...TextStyles.subhead, fontSize: 16, fontFamily: FontFamily.serif,
                       fontWeight: '700',
-                      color: 'rgba(255,255,255,0.9)', lineHeight: 20, marginBottom: 6,
+                      color: '#fff', lineHeight: 21, marginBottom: 6,
                     }} numberOfLines={2}>{item.title}</Text>
                     <Text style={{
-                      ...TextStyles.caption, color: 'rgba(255,255,255,0.5)', lineHeight: 16,
+                      ...TextStyles.caption, color: 'rgba(255,255,255,0.65)', lineHeight: 17,
                     }} numberOfLines={2}>{item.snippet}</Text>
                   </LinearGradient>
                 </Pressable>
@@ -290,7 +292,7 @@ export default function OverviewScreen() {
       {(ctx?.cuisine ?? []).length > 0 && (
         <View style={{ marginTop: 24 }}>
           <View style={{ paddingHorizontal: 20 }}>
-            <SectionHeader accent="Local Cuisine" title="Must-Try Dishes" />
+            <SectionHeader dark={isDark} accent="Local Cuisine" title="Must-Try Dishes" />
           </View>
           <ScrollView
             horizontal
@@ -305,7 +307,7 @@ export default function OverviewScreen() {
                 width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {dish.image ? (
-                  <Image source={{ uri: dish.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  <Image source={{ uri: dish.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                 ) : (
                   <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="cutlery" size={28} color="rgba(255,255,255,0.3)" />
@@ -327,7 +329,7 @@ export default function OverviewScreen() {
       {/* ─── Essential Phrases — vertical scroll, 2 per row ── */}
       {phrases.length > 0 && (
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
-          <SectionHeader accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
+          <SectionHeader dark={isDark} accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
           <View style={{
             height: 52 * 2 + 8, // 2 visible rows + gap
             borderRadius: 12, overflow: 'hidden',
@@ -349,12 +351,12 @@ export default function OverviewScreen() {
                     return (
                       <View key={colIdx} style={{
                         flex: 1,
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
                         borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
-                        borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
                       }}>
-                        <Text style={{ ...TextStyles.xs, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 2 }}>{en}</Text>
-                        <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: ACCENT_COLOR, fontFamily: FontFamily.serif }} numberOfLines={1}>{local}</Text>
+                        <Text style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#8a7e72', marginBottom: 2 }}>{en}</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: isDark ? ACCENT_COLOR : '#1e3a5f', fontFamily: FontFamily.serif }} numberOfLines={1}>{local}</Text>
                       </View>
                     );
                   })}
@@ -368,19 +370,20 @@ export default function OverviewScreen() {
       {/* ─── Cost of Living ────────────────────────────────── */}
       {costItems.length > 0 && (
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
-          <SectionHeader accent="Budget" title="Cost of Living" />
+          <SectionHeader dark={isDark} accent="Budget" title="Cost of Living" />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {costItems.map((item, idx) => (
               <View key={idx} style={{
                 width: '31%', alignItems: 'center',
-                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                borderRadius: 10, paddingVertical: 10, paddingHorizontal: 4,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+                borderRadius: 10, paddingVertical: 12, paddingHorizontal: 4,
+                borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
               }}>
-                <FontAwesome name={item.icon} size={14} color={ACCENT_COLOR} style={{ marginBottom: 4 }} />
-                <Text style={{ ...TextStyles.body, fontWeight: '700', color: '#fff', fontSize: 13 }} numberOfLines={1}>
+                <FontAwesome name={item.icon} size={14} color={isDark ? ACCENT_COLOR : '#8b7355'} style={{ marginBottom: 6 }} />
+                <Text style={{ fontFamily: 'Satoshi-Bold', fontSize: 15, color: isDark ? '#fff' : '#1e3a5f' }} numberOfLines={1}>
                   {currencySymbol}{typeof item.value === 'number' ? item.value.toFixed(2) : item.value}
                 </Text>
-                <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', textAlign: 'center', marginTop: 2, fontSize: 10 }}>{item.label}</Text>
+                <Text style={{ fontSize: 10, color: isDark ? 'rgba(255,255,255,0.45)' : '#8a7e72', textAlign: 'center', marginTop: 2 }}>{item.label}</Text>
               </View>
             ))}
           </View>
@@ -390,19 +393,20 @@ export default function OverviewScreen() {
       {/* ─── Nearby Cities / Day Trips ─────────────────────── */}
       {(ctx?.nearby_cities ?? []).length > 0 && (
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
-          <SectionHeader accent="Day Trips" title="Also Consider Visiting" />
+          <SectionHeader dark={isDark} accent="Day Trips" title="Also Consider Visiting" />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {(ctx.nearby_cities as any[]).map((city: any) => (
               <View key={city.id || city.name} style={{
                 width: (SCREEN_WIDTH - 50) / 2,
-                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
                 borderRadius: 12, padding: 14,
+                borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <FontAwesome name="map-marker" size={12} color={ACCENT_COLOR} />
-                  <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: '#fff' }}>{city.name}</Text>
+                  <FontAwesome name="map-marker" size={12} color={isDark ? ACCENT_COLOR : '#8b7355'} />
+                  <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: isDark ? '#fff' : '#1e3a5f' }}>{city.name}</Text>
                 </View>
-                {city.country && <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688' }}>{city.country}</Text>}
+                {city.country && <Text style={{ ...TextStyles.xs, color: isDark ? 'rgba(255,255,255,0.45)' : '#8a7e72' }}>{city.country}</Text>}
                 {city.distance && <Text style={{ ...TextStyles.xs, fontWeight: '600', color: ACCENT_COLOR, marginTop: 4 }}>{Math.round(city.distance)} km away</Text>}
               </View>
             ))}
@@ -419,14 +423,14 @@ export default function OverviewScreen() {
         return (
           <View style={{ height: 360, overflow: 'hidden' }}>
             <Image
-              source={{ uri: heroUrl.includes?.('googleusercontent.com') ? heroUrl.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : heroUrl }}
+              source={{ uri: heroUrl.includes?.('googleusercontent.com') ? heroUrl.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : heroUrl, headers: { Referer: '' } }}
               style={{ width: '100%', height: '100%' }}
               contentFit="cover"
               contentPosition="bottom"
               cachePolicy="memory-disk"
             />
             <LinearGradient
-              colors={[isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)', 'rgba(0,0,0,0.3)', 'transparent']}
+              colors={[isDark ? '#0d0d0d' : '#f8f7f5', 'rgba(0,0,0,0.3)', 'transparent']}
               locations={[0, 0.35, 0.7]}
               style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%' }}
               pointerEvents="none"

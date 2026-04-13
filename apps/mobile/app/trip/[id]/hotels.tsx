@@ -170,7 +170,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
 
   return (
     <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
-      <Image source={{ uri: images[idx] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       {images.length > 1 && (
         <>
           <Pressable
@@ -253,7 +253,7 @@ function RoomSelection({
                 }}
               >
                 <Image
-                  source={{ uri: room.image }}
+                  source={{ uri: room.image, headers: { Referer: '' } }}
                   style={{ width: 80, height: 90 }}
                   resizeMode="cover"
                 />
@@ -553,7 +553,7 @@ function OtherHotelCard({ hotel }: { hotel: { id: string; name: string; stars: n
         borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
       }}
     >
-      <Image source={{ uri: hotel.image }} style={{ width: 90, height: 100 }} resizeMode="cover" />
+      <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" />
       <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -754,7 +754,7 @@ function BrowseHotelCard({ hotel }: { hotel: { id: string; name: string; stars: 
         borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
       }}
     >
-      <Image source={{ uri: hotel.image }} style={{ width: 110, height: 120 }} resizeMode="cover" />
+      <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 110, height: 120 }} resizeMode="cover" />
       <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

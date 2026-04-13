@@ -9,6 +9,8 @@ import { useItineraryScreen } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 import { PinCard, getCardRowSpan } from '@/components/PinCard';
+import { AnimatePresence } from 'motion/react';
+import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 
 // ─── Config ─────────────────────────────────────────────────
 
@@ -287,6 +289,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [columnCount, setColumnCount] = useState(3);
@@ -610,6 +613,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
                             index={i}
                             isFavorited={favorites.includes(place.id)}
                             onFavorite={toggleFavorite}
+                            onClick={() => setSelectedPlace(place)}
                             flush
                           />
                         </div>
@@ -633,6 +637,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
                             index={i}
                             isFavorited={favorites.includes(place.id)}
                             onFavorite={toggleFavorite}
+                            onClick={() => setSelectedPlace(place)}
                           />
                         </div>
                       ))}
@@ -689,6 +694,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
                   index={i}
                   isFavorited={favorites.includes(place.id)}
                   onFavorite={toggleFavorite}
+                  onClick={() => setSelectedPlace(place)}
                   flush
                 />
               </div>
@@ -713,6 +719,7 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
                   index={i}
                   isFavorited={favorites.includes(place.id)}
                   onFavorite={toggleFavorite}
+                  onClick={() => setSelectedPlace(place)}
                 />
               </div>
             ))}
@@ -727,6 +734,19 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
           </div>
         )}
       </div>
+
+      {/* Place detail overlay — same as Places page */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailOverlay
+            place={selectedPlace}
+            isFavorited={favorites.includes(selectedPlace.id)}
+            onToggleFavorite={() => toggleFavorite(selectedPlace.id)}
+            onClose={() => setSelectedPlace(null)}
+            minimal
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

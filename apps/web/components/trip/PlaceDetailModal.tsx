@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Heart, MapPin, Star, ExternalLink, Phone, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { PlaceItem } from '@travyl/shared';
@@ -40,7 +41,7 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
 
   const hasCoords = enrichedPlace.latitude && enrichedPlace.longitude && (enrichedPlace.latitude !== 0 || enrichedPlace.longitude !== 0);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -177,6 +178,7 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

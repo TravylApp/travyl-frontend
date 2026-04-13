@@ -73,13 +73,16 @@ export function mapCategory(cat: string, sub?: string): string {
   const c = (sub ?? cat).toLowerCase();
   if (['restaurant', 'dining'].includes(c)) return 'Culinary';
   if (c === 'cafe') return 'Culinary';
-  if (c === 'bar' || c === 'nightlife') return 'Music Festival';
-  if (c === 'museum') return 'Historical';
+  if (c === 'bar' || c === 'nightlife' || c === 'club') return 'Nightlife';
+  if (c === 'museum' || c === 'gallery') return 'Museum';
+  if (c === 'cultural' || c === 'culture') return 'Arts & Culture';
   if (['attraction', 'landmark', 'monument', 'sightseeing'].includes(c)) return 'Landmark';
-  if (['park', 'garden'].includes(c)) return 'Nature';
+  if (['park', 'garden', 'outdoor'].includes(c)) return 'Nature';
   if (c === 'beach') return 'Coastal';
-  if (c === 'shopping') return 'Market';
-  return 'Cultural';
+  if (c === 'shopping' || c === 'market') return 'Shopping';
+  if (c === 'entertainment' || c === 'theater' || c === 'show') return 'Entertainment';
+  if (c === 'tour' || c === 'experience') return 'Tours';
+  return 'Attraction';
 }
 
 export function mapTags(cat: string, backendTags?: string[], cuisine?: string | null): string[] {
@@ -119,7 +122,7 @@ export function getFallbackImage(_name: string, _idx: number): string {
 
 // ─── Canonical mapper ───────────────────────────────────────
 
-export function mapBackendToPlaceItem(p: BackendPlace, idx = 0, requestedCategory?: string): PlaceItem {
+export function mapBackendToPlaceItem(p: BackendPlace, _idx = 0, requestedCategory?: string): PlaceItem {
   const img = upscaleGoogleImage(p.photo_url);
   return {
     id: p.id,

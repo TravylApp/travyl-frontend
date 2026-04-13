@@ -12,7 +12,7 @@ import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/I
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
 import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
-import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
+import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
 import { useQuery } from '@tanstack/react-query';
@@ -112,35 +112,48 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
     reviewCount: p.reviewCount, priceLevel: p.priceLevel,
   });
 
-  // Fetch places across all categories the API supports — uses lat/lng + category param
+  // Fetch places across Foursquare categories + SerpAPI text search for diversity
   const { data: liveCategories, isLoading: liveFetching } = useQuery({
     queryKey: ['explore-section', trip?.id, city, lat, lng],
     queryFn: async () => {
       if (!city && !lat) return [];
       // Wait a tick so overview sections render first — then we can scan their names
       await new Promise(r => setTimeout(r, 500));
-      // First: discover available categories by fetching with text query
-      const discoveryRes = await fetch(`/api/places?q=${encodeURIComponent(city)}&limit=30${coordParams}`);
-      const discoveryPlaces: any[] = discoveryRes.ok ? await discoveryRes.json() : [];
 
-      // Extract unique category params from what came back, plus use nearby endpoint
-      const seenCats = new Set(discoveryPlaces.map((p: any) => p.type || '').filter(Boolean));
-      // Also fetch from the nearby endpoint which returns different (Foursquare) results
-      const nearbyCats = lat && lng ? ['sightseeing', 'restaurant', 'nightlife', 'shopping', 'park', 'museum'] : [];
-      const nearbyResults = await Promise.all(
-        nearbyCats.map(async (cat) => {
+      // Categories that produce distinct Foursquare results → display label
+      const catLabel: Record<string, string> = {
+        sightseeing: 'Landmark', restaurant: 'Culinary', nightlife: 'Nightlife',
+        shopping: 'Shopping', cafe: 'Cafes', entertainment: 'Entertainment',
+      };
+
+      // Nearby Foursquare fetches — reliable, category-specific results
+      const nearbyResults = lat && lng ? await Promise.all(
+        Object.entries(catLabel).map(async ([api, label]) => {
           try {
-            const res = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=15`);
+            const res = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${api}&limit=20`);
             if (!res.ok) return [];
-            return res.json();
+            const places = await res.json();
+            return (places as any[]).map((p: any) => ({ ...p, category: label }));
+          } catch { return []; }
+        })
+      ) : [];
+
+      // Text search supplements with SerpAPI results (different source when available)
+      // Uses category-specific queries for diversity; falls back to Foursquare if SerpAPI unavailable
+      const textCats = ['sightseeing', 'dining', 'nightlife', 'cultural', 'shopping', 'museum', 'cafe'];
+      const textResults = await Promise.all(
+        textCats.map(async (cat) => {
+          try {
+            const res = await fetch(`/api/places?q=${encodeURIComponent(city)}&category=${cat}&limit=15${coordParams}`);
+            if (!res.ok) return [];
+            return (await res.json()) as any[];
           } catch { return []; }
         })
       );
 
       // Merge all results, deduplicate by normalized name, group by display category
-      const allPlaces = [...discoveryPlaces, ...nearbyResults.flat()];
+      const allPlaces = [...nearbyResults.flat(), ...textResults.flat()];
       const normalize = (n: string) => n.toLowerCase().replace(/[®™''""·\-–—]/g, '').replace(/\s+/g, ' ').trim();
-      // Start with names already shown in overview sections above (scan DOM at fetch time)
       const seen = getAboveNames();
       const grouped: Record<string, ExploreItem[]> = {};
       for (const p of allPlaces) {
@@ -156,7 +169,8 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       }
 
       return Object.entries(grouped)
-        .filter(([, items]) => items.length >= 3)
+        .filter(([, items]) => items.length >= 2)
+        .sort(([, a], [, b]) => b.length - a.length)
         .map(([key, items]) => ({ key, label: `${key} in ${city}`, items }));
     },
     enabled: !!(city || lat),
@@ -273,7 +287,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
                 <div key={`${item.id}-${idx}`} onClick={() => setSelectedPlace(toPlaceItem(item))}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={() => onImgError(item.id)} />
+                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={() => onImgError(item.id)} referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <button onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
                     className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}>
@@ -302,9 +316,9 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
         })}
       </div>
       {selectedPlace && (
-        <PlaceDetailModal place={selectedPlace} isFavorited={favorites.includes(selectedPlace.id)}
+        <PlaceDetailOverlay place={selectedPlace} isFavorited={favorites.includes(selectedPlace.id)}
           onToggleFavorite={() => setFavorites((prev) => prev.includes(selectedPlace.id) ? prev.filter((f) => f !== selectedPlace.id) : [...prev, selectedPlace.id])}
-          onClose={() => setSelectedPlace(null)} />
+          onClose={() => setSelectedPlace(null)} minimal />
       )}
     </div>
   );
@@ -439,42 +453,21 @@ function TripLayoutContent({
   const hasMarkers = mapMarkers.length > 0;
   const dir = directionRef.current;
 
-  // Skip fancy animation when coming from/going to calendar — it causes a jarring flash
+  // Track if we just came from/going to calendar to suppress the inner tab animation
+  // (the outer layout crossfade already handles the transition)
   const wasCalendarRef = useRef(isCalendar);
   useEffect(() => { wasCalendarRef.current = isCalendar; }, [isCalendar]);
-  const skipAnimation = isCalendar || wasCalendarRef.current;
+  const fromCalendar = wasCalendarRef.current && !isCalendar;
 
-  const pageVariants = skipAnimation ? {
-    initial: { opacity: 1 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0 },
-  } : {
-    initial: { opacity: 0, y: dir > 0 ? 20 : -20 },
+  const pageVariants = fromCalendar ? {
+    initial: { opacity: 1, y: 0 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0 },
+  } : {
+    initial: { opacity: 0, y: dir > 0 ? 14 : -14 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
   };
-
-  // Calendar gets full-screen layout with hover-reveal sidebar
-  if (isCalendar) {
-    return (
-      <TripThemeProvider trip={trip}>
-        <ItineraryProvider tripId={tripId}>
-          <div className="w-screen overflow-hidden relative" style={{ height: 'calc(100vh - 48px)', marginTop: 48 }}>
-            {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
-            <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
-              {/* Thin hover trigger strip */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 rounded-r-full bg-white/10 group-hover:opacity-0 transition-opacity" />
-              {/* Sidebar — slides in on hover */}
-              <div className="h-full opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out pointer-events-none group-hover:pointer-events-auto">
-                <TripTabs tripId={tripId} position="left" dark />
-              </div>
-            </div>
-            {children}
-          </div>
-        </ItineraryProvider>
-      </TripThemeProvider>
-    );
-  }
 
   // Layout toggle button (floating, bottom-right)
   const layoutToggle = (
@@ -501,9 +494,34 @@ function TripLayoutContent({
   );
 
   return (
-    <div
+    <AnimatePresence mode="sync">
+    {isCalendar ? (
+      <motion.div
+        key="calendar-layout"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="w-screen overflow-hidden relative"
+        style={{ height: 'calc(100vh - 48px)', marginTop: 48, position: 'fixed', inset: 0, top: 48, zIndex: 40 }}
+      >
+        {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
+        <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 rounded-r-full bg-white/10 group-hover:opacity-0 transition-opacity" />
+          <div className="h-full opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out pointer-events-none group-hover:pointer-events-auto">
+            <TripTabs tripId={tripId} position="left" dark />
+          </div>
+        </div>
+        {children}
+      </motion.div>
+    ) : (
+    <motion.div
+      key="standard-layout"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
       className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
-      style={{ transition: 'background-color 0.3s ease' }}
     >
       {layoutToggle}
 
@@ -540,9 +558,8 @@ function TripLayoutContent({
                   initial={pageVariants.initial}
                   animate={pageVariants.animate}
                   exit={pageVariants.exit}
-                  transition={{ duration: 0.18, ease: 'easeOut' }}
-                  className={isMagazine && isOverview ? 'pt-2' : ''}
-                  style={undefined}
+                  transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                  className={isMagazine ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8') : ''}
                 >
                   {children}
                 </motion.div>
@@ -639,6 +656,8 @@ function TripLayoutContent({
         <div className="relative z-10 h-40 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.85) 100%)' }} />
       )}
-    </div>
+    </motion.div>
+    )}
+    </AnimatePresence>
   );
 }

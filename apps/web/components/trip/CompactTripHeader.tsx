@@ -99,8 +99,8 @@ export function CompactTripHeader({
 
   return (
     <div className="relative w-full">
-      {/* Fixed-height hero */}
-      <div className="relative w-full overflow-hidden" style={{ height: 300 }}>
+      {/* Hero — grows when expanded to keep content on the image */}
+      <div className="relative w-full overflow-hidden" style={{ minHeight: 300 }}>
         {/* Background image */}
         {coverImage ? (
           <Image
@@ -118,11 +118,11 @@ export function CompactTripHeader({
 
         {/* Gradient overlay */}
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.7) 85%, rgba(0,0,0,0.8) 100%)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%)',
         }} />
 
-        {/* Content */}
-        <div className="relative z-10 h-full flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 md:pl-[100px] pb-5">
+        {/* Content — all on the hero image */}
+        <div className="relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 md:pl-[100px] pb-5" style={{ minHeight: 300 }}>
           {/* Country tag */}
           <p className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase font-semibold mb-1.5 text-white/70">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -181,6 +181,37 @@ export function CompactTripHeader({
             </div>
           )}
 
+          {/* Expanded details — on the hero image, matching magazine style */}
+          {hasExpandContent && (
+            <div className={`overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-h-[400px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+              <div className="flex flex-col gap-2.5">
+                {/* Forecast row */}
+                {forecast && forecast.length > 0 && !isNaN(forecast[0]?.high) && (
+                  <div className="flex flex-wrap items-center gap-3 text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                    {temp != null && (
+                      <span className="text-xl font-semibold tabular-nums">{Math.round(temp)}°</span>
+                    )}
+                    <span className="text-white/20">|</span>
+                    {forecast.slice(0, 5).map((day) => (
+                      <span key={day.date} className="text-[12px] tabular-nums">
+                        <span className="text-white/60">{new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}</span>{' '}
+                        <span className="font-semibold text-white">{Math.round(day.high)}°</span>
+                        <span className="text-white/50">/{Math.round(day.low)}°</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Wiki */}
+                {wiki && (
+                  <p className="text-[13px] leading-relaxed text-white/80 font-serif line-clamp-4 backdrop-blur-sm bg-black/25 rounded-lg px-4 py-3"
+                    style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
+                    {wiki}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Inline editor */}
           {editing && (
             <div className="flex flex-wrap items-end gap-2.5 mt-2">
@@ -204,36 +235,6 @@ export function CompactTripHeader({
           )}
         </div>
       </div>
-
-      {/* Expanded details — dropdown below header */}
-      {hasExpandContent && (
-        <div className={`relative z-20 px-6 sm:px-10 md:pl-[100px] overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-h-[400px] opacity-100 py-4' : 'max-h-0 opacity-0'}`}>
-          <div className="max-w-3xl flex flex-col gap-2.5">
-            {/* Forecast row */}
-            {forecast && forecast.length > 0 && !isNaN(forecast[0]?.high) && (
-              <div className="flex items-center gap-3 text-gray-800">
-                {temp != null && (
-                  <span className="text-xl font-semibold tabular-nums">{Math.round(temp)}°</span>
-                )}
-                <span className="text-gray-300">|</span>
-                {forecast.slice(0, 5).map((day) => (
-                  <span key={day.date} className="text-[11px] tabular-nums">
-                    <span className="text-gray-500">{new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}</span>{' '}
-                    <span className="font-medium">{Math.round(day.high)}°</span>
-                    <span className="text-gray-400">/{Math.round(day.low)}°</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* Wiki */}
-            {wiki && (
-              <p className="text-[12px] leading-relaxed text-gray-500 font-serif line-clamp-2">
-                {wiki}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

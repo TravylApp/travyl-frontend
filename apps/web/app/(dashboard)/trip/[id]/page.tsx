@@ -8,7 +8,6 @@ import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
-import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 
 // Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -127,7 +126,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
             {items.map((item) => (
               <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} />
+                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} referrerPolicy="no-referrer" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute top-3 left-3">
                   <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
@@ -271,7 +270,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               {bgImage ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} />
+                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} referrerPolicy="no-referrer" />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                 </>
               ) : (
@@ -792,7 +791,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                           phone: r.phone, hours: r.hours, priceLevel: r.priceLevel,
                         })}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} />
+                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} referrerPolicy="no-referrer" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                         {/* Add to trip button */}
                         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>

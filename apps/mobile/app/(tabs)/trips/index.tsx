@@ -149,10 +149,10 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
       style={({ pressed }) => ({ opacity: pressed ? 0.95 : 1 })}
     >
       <View style={{ height, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.border }}>
-        <Image source={{ uri: trip.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <Image source={{ uri: trip.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         <LinearGradient
-          colors={['rgba(0,0,0,0.25)', 'transparent', 'rgba(0,0,0,0.75)']}
-          locations={[0, 0.3, 1]}
+          colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.85)']}
+          locations={[0, 0.25, 0.6, 1]}
           pointerEvents="none"
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
         />
@@ -177,7 +177,7 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
                     marginLeft: mi > 0 ? -8 : 0,
                   }}>
                     {m.avatar ? (
-                      <Image source={{ uri: m.avatar }} style={{ width: 20, height: 20, borderRadius: 10 }} />
+                      <Image source={{ uri: m.avatar, headers: { Referer: '' } }} style={{ width: 20, height: 20, borderRadius: 10 }} />
                     ) : (
                       <Text style={{ ...TextStyles.xs, color: '#fff' }}>{m.name.charAt(0)}</Text>
                     )}
@@ -208,16 +208,16 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
             </View>
           )}
           <Text style={{
-            ...TextStyles.subhead, color: '#fff',
-            textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+            ...TextStyles.subhead, color: '#fff', fontWeight: '700',
+            textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8,
           }} numberOfLines={1}>
             {trip.title}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
             <FontAwesome name="map-marker" size={11} color="rgba(255,255,255,0.7)" />
             <Text style={{
-              ...TextStyles.body, color: 'rgba(255,255,255,0.9)',
-              textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+              ...TextStyles.body, color: '#fff',
+              textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
             }} numberOfLines={1}>
               {trip.destination}
             </Text>
@@ -259,7 +259,7 @@ function FeedCard({ item, onPress }: { item: MockTripCard; onPress: () => void }
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.95 : 1 })}>
       <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: colors.cardBackground }}>
         <View style={{ height: 280 }}>
-          <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <Image source={{ uri: item.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           <LinearGradient
             colors={['rgba(0,0,0,0.2)', 'transparent', 'rgba(0,0,0,0.8)']}
             locations={[0, 0.3, 1]}

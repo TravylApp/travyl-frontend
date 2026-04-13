@@ -120,7 +120,7 @@ function ActivityCard({
         {/* Full-bleed image */}
         {hasImage ? (
           <Image
-            source={{ uri: item.images[0] }}
+            source={{ uri: item.images[0], headers: { Referer: '' } }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             resizeMode="cover"
             onError={() => setImgError(true)}
@@ -328,7 +328,7 @@ function ActivityDetailSheet({
                 {/* Image */}
                 {hasImage ? (
                   <Image
-                    source={{ uri: item.images[0] }}
+                    source={{ uri: item.images[0], headers: { Referer: '' } }}
                     style={{ width: '100%', height: 200 }}
                     resizeMode="cover"
                     onError={() => setImgError(true)}
@@ -525,7 +525,7 @@ function ActivityDetailSheet({
                           >
                             {sim.images.length > 0 ? (
                               <Image
-                                source={{ uri: sim.images[0] }}
+                                source={{ uri: sim.images[0], headers: { Referer: '' } }}
                                 style={{ width: 150, height: 90 }}
                                 resizeMode="cover"
                               />
@@ -687,9 +687,9 @@ function ActivityDetailFooter({
                 })}
               >
                 {sim.images?.length ? (
-                  <Image source={{ uri: sim.images[0] }} style={{ width: 150, height: 90 }} resizeMode="cover" />
+                  <Image source={{ uri: sim.images[0], headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
                 ) : sim.image ? (
-                  <Image source={{ uri: sim.image }} style={{ width: 150, height: 90 }} resizeMode="cover" />
+                  <Image source={{ uri: sim.image, headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
                 ) : (
                   <View style={{ width: 150, height: 90, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="image" size={20} color={colors.border} />

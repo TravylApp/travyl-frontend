@@ -714,6 +714,7 @@ export async function savePlanToSupabase(
   // Save itinerary activities to activity table (powers the calendar)
   onProgress?.('Saving activities...', 90)
   const activityRows: Record<string, unknown>[] = []
+  let sortOrder = 0
   for (const day of cappedItinerary) {
     const dayDate = day.date || ext.dates.start
     for (const slot of day.slots ?? []) {
@@ -730,6 +731,7 @@ export async function savePlanToSupabase(
         latitude: poi.lat || null,
         longitude: poi.lng || null,
         notes: poi.description || null,
+        sort_order: sortOrder++,
         activity_data: {
           category: poi.category,
           location_name: poi.name,
