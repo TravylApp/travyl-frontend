@@ -424,7 +424,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
         <Text style={{ ...TextStyles.xs, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
           {countryName || 'Your Trip Guide'}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <Text style={{
             ...TextStyles.display, color: '#fff',
             textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12,
@@ -433,55 +433,72 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Text>
           <Pressable
             onPress={() => setEssentialsOpen(!essentialsOpen)}
+            hitSlop={8}
             style={({ pressed }) => ({
               flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+              backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <FontAwesome name={essentialsOpen ? 'eye-slash' : 'eye'} size={10} color="rgba(255,255,255,0.7)" />
-            <Text style={{ ...TextStyles.xs, fontWeight: '600', letterSpacing: 0.5, color: 'rgba(255,255,255,0.85)' }}>
-              {essentialsOpen ? 'Hide' : 'Info'}
+            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={10} color="rgba(255,255,255,0.8)" />
+            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.5, color: '#fff' }}>
+              {essentialsOpen ? 'Hide' : 'Show'}
             </Text>
           </Pressable>
         </View>
 
-        {/* Collapsible essentials */}
+        {/* Date + travelers + safety — always visible */}
+        {trip && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            {[
+              formatDateRange(trip.start_date, trip.end_date),
+              `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
+              qf?.timezone ? (qf.timezone as string).split(' · ')[0] : null,
+            ].filter(Boolean).map((text, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)', marginRight: 6 }}>·</Text>}
+                <Text style={{
+                  ...TextStyles.bodyLg, fontWeight: '600', color: '#fff',
+                  textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+                }}>{text}</Text>
+              </View>
+            ))}
+            {(() => {
+              const safety = trip?.trip_context?.safety as { score: number; message: string } | undefined;
+              if (!safety || safety.score <= 0) return null;
+              const color = safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171';
+              const bg = safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)';
+              const border = safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)';
+              const label = safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger';
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <FontAwesome name="shield" size={9} color={color} />
+                  <Text style={{ fontSize: 10, fontWeight: '600', color }}>{label} ({safety.score})</Text>
+                </View>
+              );
+            })()}
+          </View>
+        )}
+
+        {/* Collapsible essentials — extra details */}
         {essentialsOpen && trip && (
           <View>
-            {/* Date + travelers + currency + timezone + safety */}
+            {/* Currency + timezone — expanded details */}
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {[
-                formatDateRange(trip.start_date, trip.end_date),
-                `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
                 qf?.currency ? (qf.currency as string).split(' · ')[0] : null,
                 qf?.language ? (qf.language as string).split(' · ')[0] : null,
-                qf?.timezone ? (qf.timezone as string).split(' · ')[0] : null,
               ].filter(Boolean).map((text, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)', marginRight: 6 }}>·</Text>}
                   <Text style={{
-                    ...TextStyles.bodyLg, fontWeight: i >= 2 ? '700' : '600',
+                    ...TextStyles.bodyLg, fontWeight: '700',
                     color: '#fff',
                     textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
                   }}>{text}</Text>
                 </View>
               ))}
-              {(() => {
-                const safety = trip?.trip_context?.safety as { score: number; message: string } | undefined;
-                if (!safety || safety.score <= 0) return null;
-                const color = safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171';
-                const bg = safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)';
-                const border = safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)';
-                const label = safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger';
-                return (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                    <FontAwesome name="shield" size={9} color={color} />
-                    <Text style={{ fontSize: 10, fontWeight: '600', color }}>{label} ({safety.score})</Text>
-                  </View>
-                );
-              })()}
             </View>
 
             {/* Weather + forecast */}
