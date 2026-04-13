@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '@/lib/api-utils'
 
+const SERPAPI_KEY = process.env.SERPAPI_KEY
+
 // ─── Response types ──────────────────────────────────────────────────────────
 
 type ArticleCategory = 'news' | 'advisory' | 'event' | 'tip'
@@ -16,7 +18,7 @@ interface NewsArticle {
   image?: string
 }
 
-// ─── RSS parsing helpers ─────────────────────────────────────────────────────
+// ─── Category detection ─────────────────────────────────────────────────────
 
 const CATEGORY_PATTERNS: Array<[RegExp, ArticleCategory]> = [
   [/warning|advisory|alert|danger|avoid|scam|safety/, 'advisory'],
@@ -28,6 +30,45 @@ function categorize(title: string): ArticleCategory {
   const lower = title.toLowerCase()
   return CATEGORY_PATTERNS.find(([re]) => re.test(lower))?.[1] ?? 'news'
 }
+
+// ─── SerpAPI Google News (1 credit — returns real thumbnails) ───────────────
+
+async function fetchSerpNews(destination: string, limit: number): Promise<NewsArticle[]> {
+  if (!SERPAPI_KEY) return []
+
+  const params = new URLSearchParams({
+    engine: 'google_news',
+    q: `${destination} travel`,
+    api_key: SERPAPI_KEY,
+    hl: 'en',
+    gl: 'us',
+  })
+
+  try {
+    const res = await fetch(`https://serpapi.com/search.json?${params}`, {
+      headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) return []
+
+    const data = await res.json()
+    const results = data.news_results ?? []
+
+    return results.slice(0, limit).map((item: any, i: number) => ({
+      id: `news-${i}-${Date.now()}`,
+      title: item.title ?? '',
+      source: item.source?.name ?? item.source ?? 'News',
+      date: item.date ?? new Date().toISOString(),
+      url: item.link ?? '',
+      snippet: item.snippet ?? item.title ?? '',
+      category: categorize(item.title ?? ''),
+      ...(item.thumbnail ? { image: item.thumbnail } : {}),
+    }))
+  } catch {
+    return []
+  }
+}
+
+// ─── RSS fallback (free, no images) ─────────────────────────────────────────
 
 function extractTag(xml: string, tag: string): string {
   const cdataRe = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`)
@@ -48,23 +89,6 @@ function decodeHTMLEntities(text: string): string {
     .replace(/&#39;|&#x27;/g, "'")
 }
 
-function extractImage(item: string): string | undefined {
-  // Try <media:content url="...">
-  const mediaMatch = item.match(/<media:content[^>]+url="([^"]+)"/)
-  if (mediaMatch) return mediaMatch[1]
-  // Try <enclosure url="...">
-  const encMatch = item.match(/<enclosure[^>]+url="([^"]+)"/)
-  if (encMatch) return encMatch[1]
-  // Try <image><url>...</url></image>
-  const imgTag = item.match(/<image>[\s\S]*?<url>([^<]+)<\/url>/)
-  if (imgTag) return imgTag[1]
-  // Try img src in description HTML (Google News encodes as HTML entities)
-  const desc = decodeHTMLEntities(extractTag(item, 'description'))
-  const imgSrc = desc.match(/<img[^>]+src="([^"]+)"/)
-  if (imgSrc) return imgSrc[1]
-  return undefined
-}
-
 function parseRSS(xml: string, limit: number): NewsArticle[] {
   const articles: NewsArticle[] = []
   const itemRe = /<item>([\s\S]*?)<\/item>/g
@@ -76,7 +100,6 @@ function parseRSS(xml: string, limit: number): NewsArticle[] {
     if (!title) continue
 
     const description = extractTag(item, 'description')
-    const image = extractImage(item)
 
     articles.push({
       id: `news-${articles.length}-${Date.now()}`,
@@ -86,30 +109,37 @@ function parseRSS(xml: string, limit: number): NewsArticle[] {
       url: extractTag(item, 'link') || '',
       snippet: description ? decodeHTMLEntities(description).replace(/<[^>]*>/g, '').slice(0, 200) : '',
       category: categorize(title),
-      ...(image ? { image } : {}),
     })
   }
 
   return articles
 }
 
-// ─── Route handler ───────────────────────────────────────────────────────────
+async function fetchRSSNews(destination: string, limit: number): Promise<NewsArticle[]> {
+  const query = `${destination} travel`
+  const res = await fetch(
+    `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`,
+    CACHE_1H
+  )
+  if (!res.ok) return []
+  const xml = await res.text()
+  return parseRSS(xml, limit)
+}
+
+// ─── Route handler ──────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   try {
     const destination = requireParam(req.nextUrl.searchParams, 'destination')
     const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10', 10)
 
-    const query = `${destination} travel`
-    const res = await fetch(
-      `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`,
-      CACHE_1H
-    )
+    // Try SerpAPI first (returns real thumbnail images)
+    const serpNews = await fetchSerpNews(destination, limit)
+    if (serpNews.length > 0) return jsonResponse(serpNews)
 
-    if (!res.ok) return errorResponse('News fetch failed', res.status)
-
-    const xml = await res.text()
-    return jsonResponse(parseRSS(xml, limit))
+    // Fallback to free Google News RSS (no images)
+    const rssNews = await fetchRSSNews(destination, limit)
+    return jsonResponse(rssNews)
   } catch (err) {
     if (err instanceof MissingParamError) return errorResponse(err.message, 400)
     return errorResponse('News service unavailable', 500)
