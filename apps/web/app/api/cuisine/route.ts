@@ -160,10 +160,10 @@ export async function GET(req: NextRequest) {
         city,
       )
       if (enriched.length > 0) {
-        // Merge: use real restaurant photo if available, fall back to MealDB
+        // Merge: prefer TheMealDB food photo (real dish), fall back to restaurant photo
         return NextResponse.json(enriched.map((e, i) => ({
           ...e,
-          image: e.image || dishes[i]?.image || '',
+          image: dishes[i]?.image || e.image || '',
         })))
       }
     }

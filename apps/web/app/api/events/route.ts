@@ -35,11 +35,14 @@ async function fetchSerpEvents(city: string, limit: number): Promise<EventResult
     const data = await res.json()
     const results = data.events_results ?? []
 
-    // Filter out low-res Google-proxied thumbnails (encrypted-tbn0)
+    // Prefer non-Google-proxied images; upscale Google thumbnails as fallback
     const pickImage = (e: any): string => {
       for (const url of [e.image, e.thumbnail]) {
-        if (url && !url.includes('encrypted-tbn0.gstatic.com')) return url
+        if (url && !url.includes('encrypted-tbn')) return url
       }
+      // Google-proxied: append size hint for higher res
+      const gImg = e.image || e.thumbnail
+      if (gImg) return gImg + '&w=600'
       return ''
     }
 
@@ -48,7 +51,7 @@ async function fetchSerpEvents(city: string, limit: number): Promise<EventResult
       title: e.title ?? '',
       description: e.description ?? '',
       category: e.event_location_map?.type ?? 'Event',
-      date: e.date?.start_date ?? e.date?.when ?? '',
+      date: e.date?.when ?? e.date?.start_date ?? '',
       venue: e.venue?.name ?? e.address?.[0] ?? '',
       image: pickImage(e),
       ticketUrl: e.link ?? e.ticket_info?.link ?? '',

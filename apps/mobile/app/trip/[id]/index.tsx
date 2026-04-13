@@ -329,7 +329,7 @@ export default function OverviewScreen() {
                       textTransform: 'uppercase', color: ACCENT_COLOR, marginBottom: 6,
                     }}>
                       {item.category ?? 'Event'}
-                      {item.date ? <Text style={{ opacity: 0.5 }}> · {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text> : null}
+                      {item.date ? <Text style={{ opacity: 0.5 }}> · {item.date}</Text> : null}
                     </Text>
                     <Text style={{
                       ...TextStyles.subhead, fontSize: 16, fontFamily: FontFamily.serif,
