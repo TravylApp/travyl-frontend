@@ -153,7 +153,15 @@ export async function proxyToBackend(
   }
 
   try {
-    const res = await fetch(url.toString(), { headers })
+    const isPost = req.method === 'POST'
+    const fetchOpts: RequestInit = { headers }
+    if (isPost) {
+      fetchOpts.method = 'POST'
+      headers['Content-Type'] = 'application/json'
+      fetchOpts.body = await req.text()
+    }
+
+    const res = await fetch(url.toString(), fetchOpts)
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')
@@ -190,8 +198,17 @@ export function checkOrigin(req: NextRequest): NextResponse | null {
   const referer = req.headers.get('referer') || ''
   const host = req.headers.get('host') || ''
 
-  // No origin header = same-origin or server-to-server (OK)
-  if (!origin && !referer) return null
+  // No origin/referer on mutation methods = likely CSRF (block unless auth present)
+  const method = req.method.toUpperCase()
+  if (!origin && !referer && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Allow if a valid Supabase session token is present (API calls from mobile SDK, etc.)
+    const auth = req.headers.get('authorization')
+    if (!auth) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } else if (!origin && !referer) {
+    return null // GET/HEAD from server-to-server (OK)
+  }
 
   const source = origin || referer
   if (host && source.includes(host)) return null

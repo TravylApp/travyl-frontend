@@ -36,8 +36,7 @@ export async function fetchActivityIntelligence(
   const token = session?.access_token
   if (!token) throw new Error('Not authenticated')
 
-  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? ''
-  const url = `${apiUrl}/activity-intelligence?activityId=${activityId}&tripId=${tripId}`
+  const url = `/api/calendar/activity-intelligence?activityId=${activityId}&tripId=${tripId}`
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) throw new Error(`intelligence fetch failed: ${res.status}`)
   return res.json()
