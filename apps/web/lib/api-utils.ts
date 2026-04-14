@@ -198,8 +198,17 @@ export function checkOrigin(req: NextRequest): NextResponse | null {
   const referer = req.headers.get('referer') || ''
   const host = req.headers.get('host') || ''
 
-  // No origin header = same-origin or server-to-server (OK)
-  if (!origin && !referer) return null
+  // No origin/referer on mutation methods = likely CSRF (block unless auth present)
+  const method = req.method.toUpperCase()
+  if (!origin && !referer && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Allow if a valid Supabase session token is present (API calls from mobile SDK, etc.)
+    const auth = req.headers.get('authorization')
+    if (!auth) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } else if (!origin && !referer) {
+    return null // GET/HEAD from server-to-server (OK)
+  }
 
   const source = origin || referer
   if (host && source.includes(host)) return null
