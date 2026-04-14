@@ -44,8 +44,7 @@ export function useGapFiller({
       const token = session?.access_token
       if (!token) throw new Error('Not authenticated')
 
-      const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? ''
-      const res = await fetch(`${apiUrl}/fill-gaps`, {
+      const res = await fetch('/api/calendar/fill-gaps', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

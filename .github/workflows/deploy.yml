@@ -38,21 +38,49 @@ jobs:
         run: |
           npx sst secret set SupabaseSecretKey "$SECRET_SUPABASE_SECRET_KEY" --stage production
           npx sst secret set SupabaseUrl "$SECRET_SUPABASE_URL" --stage production
+          npx sst secret set SupabaseAnonKey "$SECRET_SUPABASE_ANON_KEY" --stage production
+          npx sst secret set SupabasePublishableKey "$SECRET_SUPABASE_PUBLISHABLE_KEY" --stage production
           npx sst secret set SerpApiKey "$SECRET_SERP_API_KEY" --stage production
           npx sst secret set FoursquareApiKey "$SECRET_FOURSQUARE_API_KEY" --stage production
+          npx sst secret set FoursquareClientId "$SECRET_FOURSQUARE_CLIENT_ID" --stage production
+          npx sst secret set FoursquareClientSecret "$SECRET_FOURSQUARE_CLIENT_SECRET" --stage production
+          npx sst secret set TripadvisorApiKey "$SECRET_TRIPADVISOR_API_KEY" --stage production
+          npx sst secret set GeonamesUsername "$SECRET_GEONAMES_USERNAME" --stage production
+          npx sst secret set OpentripmapApiKey "$SECRET_OPENTRIPMAP_API_KEY" --stage production
           npx sst secret set Pexels "$SECRET_PEXELS" --stage production
+          npx sst secret set DuffelApiToken "$SECRET_DUFFEL_API_TOKEN" --stage production
+          npx sst secret set VisualCrossingApiKey "$SECRET_VISUAL_CROSSING_API_KEY" --stage production
+          npx sst secret set GraphhopperApiKey "$SECRET_GRAPHHOPPER_API_KEY" --stage production
+          npx sst secret set TimezonedbApiKey "$SECRET_TIMEZONEDB_API_KEY" --stage production
+          npx sst secret set EventbriteApiKey "$SECRET_EVENTBRITE_API_KEY" --stage production
+          npx sst secret set PredicthqApiKey "$SECRET_PREDICTHQ_API_KEY" --stage production
           npx sst secret set TicketmasterApiKey "$SECRET_TICKETMASTER_API_KEY" --stage production
           npx sst secret set OpenTableAffiliateKey "$SECRET_OPENTABLE_AFFILIATE_KEY" --stage production
           npx sst secret set OpenExchangeRatesAppId "$SECRET_OPEN_EXCHANGE_RATES_APP_ID" --stage production
+          npx sst secret set OpenchargeApiKey "$SECRET_OPENCHARGE_API_KEY" --stage production
         env:
           SECRET_SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           SECRET_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SECRET_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SECRET_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           SECRET_SERP_API_KEY: ${{ secrets.SERP_API_KEY }}
           SECRET_FOURSQUARE_API_KEY: ${{ secrets.FOURSQUARE_API_KEY }}
+          SECRET_FOURSQUARE_CLIENT_ID: ${{ secrets.FOURSQUARE_CLIENT_ID }}
+          SECRET_FOURSQUARE_CLIENT_SECRET: ${{ secrets.FOURSQUARE_CLIENT_SECRET }}
+          SECRET_TRIPADVISOR_API_KEY: ${{ secrets.TRIPADVISOR_API_KEY }}
+          SECRET_GEONAMES_USERNAME: ${{ secrets.GEONAMES_USERNAME }}
+          SECRET_OPENTRIPMAP_API_KEY: ${{ secrets.OPENTRIPMAP_API_KEY }}
           SECRET_PEXELS: ${{ secrets.PEXELS }}
+          SECRET_DUFFEL_API_TOKEN: ${{ secrets.DUFFEL_API_TOKEN }}
+          SECRET_VISUAL_CROSSING_API_KEY: ${{ secrets.VISUAL_CROSSING_API_KEY }}
+          SECRET_GRAPHHOPPER_API_KEY: ${{ secrets.GRAPHHOPPER_API_KEY }}
+          SECRET_TIMEZONEDB_API_KEY: ${{ secrets.TIMEZONEDB_API_KEY }}
+          SECRET_EVENTBRITE_API_KEY: ${{ secrets.EVENTBRITE_API_KEY }}
+          SECRET_PREDICTHQ_API_KEY: ${{ secrets.PREDICTHQ_API_KEY }}
           SECRET_TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
           SECRET_OPENTABLE_AFFILIATE_KEY: ${{ secrets.OPENTABLE_AFFILIATE_KEY }}
           SECRET_OPEN_EXCHANGE_RATES_APP_ID: ${{ secrets.OPEN_EXCHANGE_RATES_APP_ID }}
+          SECRET_OPENCHARGE_API_KEY: ${{ secrets.OPENCHARGE_API_KEY }}
 
       - name: Deploy with SST
         run: npx sst deploy --stage production

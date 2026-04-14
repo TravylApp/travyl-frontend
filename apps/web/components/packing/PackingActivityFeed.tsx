@@ -99,16 +99,16 @@ export function PackingActivityFeed({ entries, defaultCollapsed = false, current
     return (
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)]">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Activity
           </h3>
           <div className="flex gap-1">
             <button onClick={() => setFilterMine(false)}
-              className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+              className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
               All
             </button>
             <button onClick={() => setFilterMine(true)}
-              className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+              className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
               Mine
             </button>
           </div>
@@ -137,11 +137,11 @@ export function PackingActivityFeed({ entries, defaultCollapsed = false, current
         </button>
         <div className="flex gap-1">
           <button onClick={() => setFilterMine(false)}
-            className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+            className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
             All
           </button>
           <button onClick={() => setFilterMine(true)}
-            className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+            className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
             Mine
           </button>
         </div>

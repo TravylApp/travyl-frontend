@@ -214,7 +214,6 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
 
   const { matches: bookingMatches, hasMatches: hasBookingMatches, startRealtimeAndMatch, markOpened } = useBookingMatches({
     tripId,
-    apiUrl: process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? '',
     authToken: session?.access_token ?? '',
   })
 

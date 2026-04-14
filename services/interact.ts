@@ -2,19 +2,25 @@ import { Resource } from 'sst'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge'
 import { validateAuth } from './lib/auth'
+import { safeParseBody } from './lib/validation'
 import type { InteractRequest } from './lib/types'
 
-const eb = new EventBridgeClient({})
+const eb = new EventBridgeClient({
+  requestHandler: {
+    // Set connection timeout to prevent hanging on SDK initialization
+    connectionTimeout: 3000,
+  },
+})
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     const userId = await validateAuth(event.headers.authorization)
 
-    if (!event.body) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'body required' }) }
+    const parsed = safeParseBody<InteractRequest>(event)
+    if (!parsed.success) {
+      return parsed.error
     }
-
-    const body: InteractRequest = JSON.parse(event.body)
+    const body = parsed.data
     const { suggestionId, action, tripId, category } = body
 
     if (!suggestionId || !action || !tripId) {

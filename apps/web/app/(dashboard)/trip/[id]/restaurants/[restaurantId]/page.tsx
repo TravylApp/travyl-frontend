@@ -32,16 +32,16 @@ export default function RestaurantDetailPage({
   if (isLoading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 pb-24 animate-pulse">
-        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-        <div className="h-8 w-2/3 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-        <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-4" />
-        <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-56 bg-gray-200 dark:bg-gray-700 rounded mb-6" />
-        <div className="h-px bg-gray-100 dark:bg-gray-800 mb-4" />
-        <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-        <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 w-32 bg-gray-200 dark:bg-white/[0.06] rounded mb-4" />
+        <div className="h-8 w-2/3 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-5 w-20 bg-gray-200 dark:bg-white/[0.06] rounded mb-2" />
+        <div className="h-4 w-1/3 bg-gray-200 dark:bg-white/[0.06] rounded mb-6" />
+        <div className="h-px bg-gray-100 dark:bg-white/[0.06] mb-4" />
+        <div className="h-4 w-40 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-56 bg-gray-200 dark:bg-white/[0.06] rounded mb-6" />
+        <div className="h-px bg-gray-100 dark:bg-white/[0.06] mb-4" />
+        <div className="h-4 w-36 bg-gray-200 dark:bg-white/[0.06] rounded mb-3" />
+        <div className="h-4 w-48 bg-gray-200 dark:bg-white/[0.06] rounded" />
       </div>
     )
   }
@@ -90,16 +90,15 @@ export default function RestaurantDetailPage({
       />
 
       {/* Overview */}
-      <div className="px-6 md:px-10 py-6 border-b border-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+      <div className="px-6 md:px-10 py-6 border-b border-gray-100 dark:border-white/[0.06]">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
           {activity.name}
         </h1>
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Category badge */}
           <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-            style={{ backgroundColor: '#8b5cf6' }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white bg-violet-500"
           >
             <UtensilsCrossed className="w-3.5 h-3.5" />
             {categoryLabel}

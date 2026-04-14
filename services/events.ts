@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { Resource } from 'sst'
 import { validateAuth } from './lib/auth'
 import { getCachedEvents, setCachedEvents } from './lib/cache'
+import { validateQueryParams, validateDateRange } from './lib/validation'
 import type { LocalEvent, EventsResponse } from './lib/types'
 
 const FESTIVAL_KEYWORDS = ['festival', 'fair', 'carnival', 'expo', 'parade']
@@ -63,11 +64,18 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     await validateAuth(event.headers.authorization)
 
     const { destination, startDate, endDate } = event.queryStringParameters ?? {}
-    if (!destination || !startDate || !endDate) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'destination, startDate, and endDate are required' }),
-      }
+
+    const paramsValid = validateQueryParams(
+      { destination, startDate, endDate },
+      ['destination', 'startDate', 'endDate'],
+    )
+    if (!paramsValid.success) {
+      return paramsValid.error
+    }
+
+    const dateRangeValid = validateDateRange(startDate!, endDate!)
+    if (!dateRangeValid.success) {
+      return dateRangeValid.error
     }
 
     const cached = await getCachedEvents(destination, startDate, endDate)
@@ -116,6 +124,102 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
     }
     console.error('[events] error:', err)
+    return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
+  }
+}
+
+// ─── GET /events/{id}/details ─────────────────────────────────
+
+interface EventDetails extends LocalEvent {
+  description?: string
+  ticketInfo: {
+    minPrice?: number
+    maxPrice?: number
+    currency?: string
+    onSale: boolean
+    purchaseUrl: string
+  }
+  venue: {
+    name: string
+    address: string
+    city: string
+    coordinates: { lat: number; lng: number }
+  }
+}
+
+const TM_BASE_URL = 'https://app.ticketmaster.com/discovery/v2'
+
+export const detailsHandler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    await validateAuth(event.headers.authorization)
+
+    const eventId = event.pathParameters?.id
+    if (!eventId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Event ID required' }) }
+    }
+
+    const apiKey = Resource.TicketmasterApiKey.value
+    if (!apiKey || apiKey === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Event details unavailable' }) }
+    }
+
+    const params = new URLSearchParams({
+      apikey: apiKey,
+    })
+
+    const res = await fetch(`${TM_BASE_URL}/events/${eventId}?${params}`, {
+      signal: AbortSignal.timeout(5000),
+    })
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { statusCode: 404, body: JSON.stringify({ error: 'Event not found' }) }
+      }
+      console.error('[events/details] Ticketmaster error:', res.status)
+      return { statusCode: 502, body: JSON.stringify({ error: 'Failed to fetch event details' }) }
+    }
+
+    const data = await res.json()
+
+    const priceRanges = data.priceRanges?.[0] || {}
+    const venue = data._embedded?.venues?.[0] || {}
+
+    const response: EventDetails = {
+      id: data.id,
+      name: data.name,
+      category: mapCategory(data.classifications?.[0]?.segment?.name, data.name),
+      date: data.dates?.start?.localDate,
+      startTime: data.dates?.start?.localTime?.slice(0, 5),
+      venueName: venue.name || 'Unknown venue',
+      venueAddress: venue.address?.line1,
+      description: data.description || data.pleaseNote,
+      ticketInfo: {
+        minPrice: priceRanges.min,
+        maxPrice: priceRanges.max,
+        currency: priceRanges.currency,
+        onSale: data.dates?.status?.code === 'onsale',
+        purchaseUrl: data.url,
+      },
+      venue: {
+        name: venue.name,
+        address: venue.address?.line1 || '',
+        city: venue.city?.name || '',
+        coordinates: {
+          lat: parseFloat(venue.location?.latitude || '0'),
+          lng: parseFloat(venue.location?.longitude || '0'),
+        },
+      },
+    }
+
+    return { statusCode: 200, body: JSON.stringify(response) }
+  } catch (err: any) {
+    if (err.message === 'Invalid token' || err.message?.includes('Authorization')) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) }
+    }
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { statusCode: 504, body: JSON.stringify({ error: 'Event details timeout' }) }
+    }
+    console.error('[events/details] error:', err)
     return { statusCode: 500, body: JSON.stringify({ error: 'Internal server error' }) }
   }
 }

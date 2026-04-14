@@ -40,8 +40,7 @@ export async function fetchDayIntelligence(
   const token = session?.access_token
   if (!token) throw new Error('Not authenticated')
 
-  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? ''
-  const url = `${apiUrl}/day-intelligence?tripId=${tripId}&date=${date}`
+  const url = `/api/calendar/day-intelligence?tripId=${tripId}&date=${date}`
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) throw new Error(`intelligence fetch failed: ${res.status}`)
   return res.json()

@@ -1,12 +1,13 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plane, Building2, UtensilsCrossed, Compass, Car, ShoppingBag,
   MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
+import { supabase } from '@travyl/shared';
 import type { LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 
@@ -58,19 +59,19 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 };
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; bar: string; bgStyle?: React.CSSProperties; textStyle?: React.CSSProperties; barStyle?: React.CSSProperties }> = {
-  Flights:         { bg: 'bg-blue-100',       text: 'text-blue-600',     bar: 'bg-blue-500' },
-  Hotels:          { bg: 'bg-orange-100',      text: 'text-orange-600',   bar: 'bg-orange-500' },
+  Flights:         { bg: 'bg-blue-100 dark:bg-blue-500/15',       text: 'text-blue-600 dark:text-blue-400',     bar: 'bg-blue-500' },
+  Hotels:          { bg: 'bg-orange-100 dark:bg-orange-500/15',   text: 'text-orange-600 dark:text-orange-400',  bar: 'bg-orange-500' },
   'Food & Dining': { bg: '',                   text: '',                  bar: '',
                      bgStyle: { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' },
                      textStyle: { color: 'var(--trip-base)' },
                      barStyle: { backgroundColor: 'var(--trip-base)' } },
-  Activities:      { bg: 'bg-teal-100',        text: 'text-teal-600',     bar: 'bg-teal-500' },
-  Transportation:  { bg: 'bg-purple-100',      text: 'text-purple-600',   bar: 'bg-purple-500' },
-  Shopping:        { bg: 'bg-green-100',        text: 'text-green-600',    bar: 'bg-green-500' },
-  Other:           { bg: 'bg-gray-100',        text: 'text-gray-600',     bar: 'bg-gray-500' },
+  Activities:      { bg: 'bg-teal-100 dark:bg-teal-500/15',      text: 'text-teal-600 dark:text-teal-400',     bar: 'bg-teal-500' },
+  Transportation:  { bg: 'bg-purple-100 dark:bg-purple-500/15',   text: 'text-purple-600 dark:text-purple-400',  bar: 'bg-purple-500' },
+  Shopping:        { bg: 'bg-green-100 dark:bg-green-500/15',     text: 'text-green-600 dark:text-green-400',    bar: 'bg-green-500' },
+  Other:           { bg: 'bg-gray-100 dark:bg-gray-500/15',      text: 'text-gray-600 dark:text-gray-400',     bar: 'bg-gray-500' },
 };
 
-const DEFAULT_COLORS: typeof CATEGORY_COLORS[string] = { bg: 'bg-gray-100', text: 'text-gray-600', bar: 'bg-gray-500' };
+const DEFAULT_COLORS: typeof CATEGORY_COLORS[string] = { bg: 'bg-gray-100 dark:bg-gray-500/15', text: 'text-gray-600 dark:text-gray-400', bar: 'bg-gray-500' };
 
 /* ------------------------------------------------------------------ */
 /*  Skeleton                                                           */
@@ -81,18 +82,18 @@ function BudgetSkeleton() {
     <div>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {['Total Budget', 'Total Spent', 'Remaining'].map((label) => (
-          <div key={label} className="rounded-lg p-3 border border-gray-200 bg-white">
-            <p className="text-[10px] text-gray-600 uppercase tracking-wide">{label}</p>
+          <div key={label} className="rounded-xl p-3 border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
+            <p className="text-[10px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">{label}</p>
             <Skeleton className="h-6 w-16 mt-1.5" />
           </div>
         ))}
       </div>
-      <div className="bg-gray-200 rounded-full h-2.5 mb-6 overflow-hidden">
+      <div className="bg-gray-200 dark:bg-white/[0.08] rounded-full h-2.5 mb-6 overflow-hidden">
         <div className="h-full rounded-full" style={{ width: '65%', backgroundColor: 'var(--trip-base)' }} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-lg p-3.5 border border-gray-200 bg-white">
+          <div key={i} className="rounded-xl p-3.5 border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2.5">
                 <Skeleton className="w-9 h-9 rounded-[10px]" />
@@ -117,23 +118,20 @@ function BudgetSkeleton() {
 
 /** Dynamic background class based on budget health percentage. */
 function healthBg(pct: number) {
-  if (pct >= 100) return 'bg-red-50 border-red-200';
-  if (pct >= 90)  return 'bg-amber-50 border-amber-200';
-  if (pct >= 75)  return 'bg-blue-50 border-blue-200';
-  return 'bg-white border-gray-200';
+  if (pct >= 100) return 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20';
+  if (pct >= 90)  return 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20';
+  if (pct >= 75)  return 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20';
+  return 'bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08]';
 }
 
 /** Per-category card background (green when healthy). */
 function categoryHealthBg(pct: number): { className: string; style?: React.CSSProperties } {
-  if (pct >= 100) return { className: 'bg-red-50 border-red-200' };
-  if (pct >= 90)  return { className: 'bg-amber-50 border-amber-200' };
-  if (pct >= 75)  return { className: 'bg-blue-50 border-blue-200' };
+  if (pct >= 100) return { className: 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20' };
+  if (pct >= 90)  return { className: 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20' };
+  if (pct >= 75)  return { className: 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20' };
   return {
-    className: 'border',
-    style: {
-      backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)',
-      borderColor: 'rgb(var(--trip-base-rgb) / 0.2)',
-    },
+    className: 'border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]',
+    style: {},
   };
 }
 
@@ -146,7 +144,9 @@ function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: strin
   const ctx = trip.trip_context as any;
   const cost = ctx?.cost_of_living;
   const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
-  const tripCurrency: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
+  // Extract ISO code — handles old "EUR (€)" format and clean "EUR" format
+  const rawCur: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
+  const tripCurrency = rawCur.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
   const duration = trip.start_date && trip.end_date
     ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
     : ctx?.weather?.forecast?.length ?? 5;
@@ -181,17 +181,45 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   const { id } = use(params);
   const { isLoading, trip } = useItineraryScreen(id);
   const { format: formatHome } = useHomeCurrency();
-  const tripCurrency: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
+  const rawCur2: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
+  const tripCurrency = rawCur2.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
 
-  /* ---- state ---- */
+  /* ---- state + persistence ---- */
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));
   const seeded = useRef(false);
+  const flushTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Load: prefer saved budget_data from trip_context, fall back to generated
   useEffect(() => {
     if (trip && !seeded.current) {
-      setBudgetData(generateBudgetFromTrip(trip, formatHome));
+      const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
+      if (saved?.length) {
+        setBudgetData(saved);
+      } else {
+        setBudgetData(generateBudgetFromTrip(trip, formatHome));
+      }
       seeded.current = true;
     }
   }, [trip, formatHome]);
+
+  // Persist: debounce-save budget to trip_context on every change
+  const persistBudget = useCallback((data: BudgetItem[]) => {
+    if (!trip || !seeded.current) return;
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(async () => {
+      const ctx = { ...(trip.trip_context ?? {}), budget_data: data };
+      await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+    }, 1500);
+  }, [trip, id]);
+
+  // Wrap setBudgetData to also trigger persistence
+  const updateBudget = useCallback((updater: BudgetItem[] | ((prev: BudgetItem[]) => BudgetItem[])) => {
+    setBudgetData((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistBudget(next);
+      return next;
+    });
+  }, [persistBudget]);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [tempTotal, setTempTotal] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -231,7 +259,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
     const newTotal = parseFloat(tempTotal) || 0;
     if (newTotal > 0 && totalBudgeted > 0) {
       const ratio = newTotal / totalBudgeted;
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => ({
           ...item,
           budgeted: Math.round(item.budgeted * ratio * 100) / 100,
@@ -249,7 +277,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   const handleSaveEdit = () => {
     if (editingItemId) {
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) =>
           item.id === editingItemId
             ? { ...item, budgeted: parseFloat(tempBudgeted) || 0 }
@@ -266,7 +294,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteCategory = (cid: string) => {
-    setBudgetData((prev) => prev.filter((item) => item.id !== cid));
+    updateBudget((prev) => prev.filter((item) => item.id !== cid));
   };
 
   const handleAddExpense = (categoryId: string) => {
@@ -276,7 +304,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
         description: newExpenseDesc,
         amount: parseFloat(newExpenseAmount) || 0,
       };
-      setBudgetData((prev) =>
+      updateBudget((prev) =>
         prev.map((item) => {
           if (item.id === categoryId) {
             const expenses = [...(item.expenses || []), expense];
@@ -293,7 +321,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteExpense = (categoryId: string, expenseId: string) => {
-    setBudgetData((prev) =>
+    updateBudget((prev) =>
       prev.map((item) => {
         if (item.id === categoryId) {
           const expenses = (item.expenses || []).filter((e) => e.id !== expenseId);
@@ -307,7 +335,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      setBudgetData((prev) => [
+      updateBudget((prev) => [
         ...prev,
         {
           id: `custom-${Date.now()}`,
@@ -329,20 +357,20 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
   /* ---- render ---- */
   return (
-    <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden p-4 space-y-4">
+    <div className="space-y-4">
       {/* ===== Summary Cards (3-column) ===== */}
       <div className="grid grid-cols-3 gap-2">
         {/* Total Budget — editable */}
-        <div className={`${overallBg} rounded-lg p-2 transition-colors`}>
+        <div className={`${overallBg} rounded-xl p-2 transition-colors`}>
           <div className="flex items-center justify-between mb-0.5">
-            <span className="text-[10px] sm:text-xs text-gray-600">Total Budget</span>
+            <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">Total Budget</span>
             {!isEditingTotal ? (
               <button
                 onClick={() => {
                   setIsEditingTotal(true);
                   setTempTotal(totalBudgeted.toString());
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <Edit2 size={12} />
               </button>
@@ -350,13 +378,13 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleSaveTotalBudget}
-                  className="text-emerald-600 hover:text-emerald-700"
+                  className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
                   <Check size={12} />
                 </button>
                 <button
                   onClick={() => setIsEditingTotal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X size={12} />
                 </button>
@@ -364,7 +392,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
             )}
           </div>
           {!isEditingTotal ? (
-            <div className="text-base sm:text-xl font-bold text-gray-900">
+            <div className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">
               {formatHome(totalBudgeted, tripCurrency)}
             </div>
           ) : (
@@ -372,23 +400,23 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
               type="number"
               value={tempTotal}
               onChange={(e) => setTempTotal(e.target.value)}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm font-bold"
+              className="w-full px-2 py-1 border border-gray-300 dark:border-white/[0.12] rounded text-sm font-bold bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white"
               autoFocus
             />
           )}
         </div>
 
         {/* Total Spent */}
-        <div className={`${overallBg} rounded-lg p-2 transition-colors`}>
-          <span className="text-[10px] sm:text-xs text-gray-600 block mb-0.5">Total Spent</span>
-          <div className="text-base sm:text-xl font-bold text-gray-900">
+        <div className={`${overallBg} rounded-xl p-2 transition-colors`}>
+          <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 block mb-0.5">Total Spent</span>
+          <div className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">
             {formatHome(totalActual, tripCurrency)}
           </div>
         </div>
 
         {/* Remaining */}
-        <div className={`${overallBg} rounded-lg p-2 transition-colors`}>
-          <span className="text-[10px] sm:text-xs text-gray-600 block mb-0.5">Remaining</span>
+        <div className={`${overallBg} rounded-xl p-2 transition-colors`}>
+          <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 block mb-0.5">Remaining</span>
           <div
             className={`text-base sm:text-xl font-bold ${
               remaining >= 0 ? 'text-emerald-600' : 'text-red-600'
@@ -400,12 +428,12 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
       </div>
 
       {/* ===== Overall Progress Bar ===== */}
-      <div className={`${overallBg} rounded-lg p-3 transition-colors`}>
+      <div className={`${overallBg} rounded-xl p-3 transition-colors`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Budget Progress</span>
-          <span className="text-sm font-semibold text-gray-900">{pctUsed.toFixed(1)}%</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Budget Progress</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">{pctUsed.toFixed(1)}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+        <div className="w-full bg-gray-200 dark:bg-white/[0.08] rounded-full h-2.5 overflow-hidden">
           <div
             className={`h-full transition-all duration-300 ${
               pctUsed > 100
@@ -445,7 +473,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
           return (
             <div
               key={item.id}
-              className={`${healthResult.className} rounded-lg hover:shadow-md transition-shadow ${
+              className={`${healthResult.className} rounded-xl hover:shadow-md dark:hover:shadow-none transition-shadow ${
                 isExpanded ? 'p-4' : 'p-3'
               }`}
               style={healthResult.style}
@@ -460,9 +488,9 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                     <Icon size={18} />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900 text-left">{item.category}</div>
+                    <div className="font-semibold text-gray-900 dark:text-white text-left">{item.category}</div>
                     {!isExpanded && (
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         {formatHome(item.budgeted, tripCurrency)}
                       </div>
                     )}
@@ -476,14 +504,14 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                         e.stopPropagation();
                         handleStartEdit(item);
                       }}
-                      className="p-1 text-gray-400 hover:text-gray-600"
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       <Edit2 size={14} />
                     </button>
                   )}
                   {!isEditing && (
                     <ChevronDown
-                      className={`w-5 h-5 text-gray-400 transition-transform ${
+                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${
                         isExpanded ? 'rotate-180' : ''
                       }`}
                     />
@@ -508,32 +536,32 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                           {/* Budgeted / Actual */}
                           <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
-                              <div className="text-xs text-gray-600 mb-1">Budgeted</div>
-                              <div className="text-lg font-bold text-gray-900">
+                              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Budgeted</div>
+                              <div className="text-lg font-bold text-gray-900 dark:text-white">
                                 {formatHome(item.budgeted, tripCurrency)}
                               </div>
                             </div>
                             <div>
                               <div className="flex items-center justify-between mb-1">
-                                <div className="text-xs text-gray-600">Actual</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">Actual</div>
                                 <div className="flex items-center gap-1">
                                   <button
                                     onClick={() => handleStartEdit(item)}
-                                    className="p-1 text-gray-400 hover:text-gray-600"
+                                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                   >
                                     <Edit2 size={14} />
                                   </button>
                                   {!item.fixed && (
                                     <button
                                       onClick={() => handleDeleteCategory(item.id)}
-                                      className="p-1 text-gray-400 hover:text-red-600"
+                                      className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                                     >
                                       <Trash2 size={14} />
                                     </button>
                                   )}
                                 </div>
                               </div>
-                              <div className="text-lg font-bold text-gray-900">
+                              <div className="text-lg font-bold text-gray-900 dark:text-white">
                                 {formatHome(item.actual, tripCurrency)}
                               </div>
                             </div>
@@ -541,7 +569,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
                           {/* Category progress bar */}
                           <div className="mb-2">
-                            <div className="w-full bg-white rounded-full h-2 overflow-hidden">
+                            <div className="w-full bg-gray-200 dark:bg-white/[0.08] rounded-full h-2 overflow-hidden">
                               <div
                                 className={`h-full transition-all ${progressBar}`}
                                 style={{ width: `${Math.min(itemPct, 100)}%`, ...progressBarStyle }}
@@ -551,35 +579,35 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
                           {/* Under / over indicator */}
                           <div className="flex items-center justify-between text-xs mb-3">
-                            <span className="text-gray-600">{itemPct.toFixed(0)}% used</span>
+                            <span className="text-gray-600 dark:text-gray-400">{itemPct.toFixed(0)}% used</span>
                             {itemDiff > 0 ? (
-                              <span className="text-emerald-600 font-medium">
+                              <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                                 {formatHome(itemDiff, tripCurrency)} under
                               </span>
                             ) : itemDiff < 0 ? (
-                              <span className="text-red-600 font-medium">
+                              <span className="text-red-600 dark:text-red-400 font-medium">
                                 {formatHome(Math.abs(itemDiff), tripCurrency)} over
                               </span>
                             ) : (
-                              <span className="text-gray-600">On track</span>
+                              <span className="text-gray-600 dark:text-gray-400">On track</span>
                             )}
                           </div>
 
                           {/* Expenses section */}
-                          <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/[0.08]">
                             {item.expenses && item.expenses.length > 0 && (
                               <div className="mb-3">
                                 {/* Collapsible expenses header */}
                                 <button
                                   onClick={() => toggleExpenses(item.id)}
-                                  className="w-full flex items-center justify-between mb-2 hover:bg-white/50 rounded px-2 py-1 transition-colors"
+                                  className="w-full flex items-center justify-between mb-2 hover:bg-white/50 dark:hover:bg-white/[0.04] rounded px-2 py-1 transition-colors"
                                 >
-                                  <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                                     {item.expenses.length}{' '}
                                     {item.expenses.length === 1 ? 'Expense' : 'Expenses'}
                                   </div>
                                   <ChevronDown
-                                    className={`w-5 h-5 text-gray-500 transition-transform ${
+                                    className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform ${
                                       expandedExpenses.has(item.id) ? 'rotate-180' : ''
                                     }`}
                                   />
@@ -600,22 +628,22 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                                         {item.expenses.map((expense) => (
                                           <div
                                             key={expense.id}
-                                            className="group flex items-start justify-between bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                                            className="group flex items-start justify-between bg-white dark:bg-white/[0.04] px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] hover:border-gray-300 dark:hover:border-white/[0.15] transition-colors"
                                           >
                                             <div className="flex-1 min-w-0 mr-3">
-                                              <p className="text-xs text-gray-800 leading-relaxed">
+                                              <p className="text-xs text-gray-800 dark:text-gray-300 leading-relaxed">
                                                 {expense.description}
                                               </p>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                              <span className="text-sm font-semibold text-gray-900">
+                                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
                                                 {formatHome(expense.amount, tripCurrency)}
                                               </span>
                                               <button
                                                 onClick={() =>
                                                   handleDeleteExpense(item.id, expense.id)
                                                 }
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded transition-all"
                                                 title="Delete expense"
                                               >
                                                 <Trash2 size={12} />
@@ -632,29 +660,29 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
 
                             {/* Add expense form / button */}
                             {addingExpenseFor === item.id ? (
-                              <div className="space-y-2.5 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                              <div className="space-y-2.5 bg-white dark:bg-white/[0.04] p-3 rounded-lg border border-gray-200 dark:border-white/[0.08] shadow-sm">
                                 <div>
-                                  <label className="text-xs font-medium text-gray-700 mb-1.5 block">
+                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
                                     Description
                                   </label>
                                   <input
                                     type="text"
                                     value={newExpenseDesc}
                                     onChange={(e) => setNewExpenseDesc(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded-lg text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
                                     placeholder="e.g., Round trip to Paris"
                                     autoFocus
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-gray-700 mb-1.5 block">
+                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
                                     Amount
                                   </label>
                                   <input
                                     type="number"
                                     value={newExpenseAmount}
                                     onChange={(e) => setNewExpenseAmount(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded-lg text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
                                     placeholder="0.00"
                                   />
                                 </div>
@@ -672,7 +700,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                                       setNewExpenseDesc('');
                                       setNewExpenseAmount('');
                                     }}
-                                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors"
+                                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.10] text-sm font-medium transition-colors"
                                   >
                                     Cancel
                                   </button>
@@ -681,7 +709,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                             ) : (
                               <button
                                 onClick={() => setAddingExpenseFor(item.id)}
-                                className="w-full px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                                className="w-full px-3 py-2 bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/[0.12] rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:border-gray-400 dark:hover:border-white/[0.20] text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                               >
                                 <Plus size={14} />
                                 Add Expense
@@ -693,12 +721,12 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                         /* Editing budgeted amount */
                         <div className="space-y-2">
                           <div>
-                            <label className="text-xs text-gray-600 mb-1 block">Budgeted</label>
+                            <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Budgeted</label>
                             <input
                               type="number"
                               value={tempBudgeted}
                               onChange={(e) => setTempBudgeted(e.target.value)}
-                              className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm bg-white"
+                              className="w-full px-3 py-1.5 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                               placeholder="0.00"
                             />
                           </div>
@@ -712,7 +740,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                             </button>
                             <button
                               onClick={handleCancelEdit}
-                              className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors"
+                              className="flex-1 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.10] text-sm font-medium transition-colors"
                             >
                               Cancel
                             </button>
@@ -731,17 +759,17 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
         {!showAddCategory ? (
           <button
             onClick={() => setShowAddCategory(true)}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-trip-base hover:bg-trip-base/5 transition-colors flex flex-col items-center justify-center gap-2 min-h-[200px]"
+            className="border-2 border-dashed border-gray-300 dark:border-white/[0.12] rounded-xl p-4 hover:border-trip-base dark:hover:border-trip-base hover:bg-trip-base/5 transition-colors flex flex-col items-center justify-center gap-2 min-h-[200px]"
           >
-            <Plus size={24} className="text-gray-400" />
-            <span className="text-sm font-medium text-gray-600">Add Category</span>
+            <Plus size={24} className="text-gray-400 dark:text-gray-500" />
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Add Category</span>
           </button>
         ) : (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
-            className="rounded-lg border-2 p-4"
+            className="rounded-xl border-2 p-4"
             style={{
               backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)',
               borderColor: 'rgb(var(--trip-base-rgb) / 0.3)',
@@ -749,39 +777,39 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
           >
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-700 mb-1 block font-medium">
+                <label className="text-xs text-gray-700 dark:text-gray-300 mb-1 block font-medium">
                   Category Name
                 </label>
                 <input
                   type="text"
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="e.g., Insurance"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-700 mb-1 block font-medium">
+                <label className="text-xs text-gray-700 dark:text-gray-300 mb-1 block font-medium">
                   Budgeted Amount
                 </label>
                 <input
                   type="number"
                   value={newBudgeted}
                   onChange={(e) => setNewBudgeted(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="0.00"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-700 mb-1 block font-medium">
+                <label className="text-xs text-gray-700 dark:text-gray-300 mb-1 block font-medium">
                   Actual Spent
                 </label>
                 <input
                   type="number"
                   value={newActual}
                   onChange={(e) => setNewActual(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="0.00"
                 />
               </div>
@@ -800,7 +828,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
                     setNewBudgeted('');
                     setNewActual('');
                   }}
-                  className="flex-1 px-3 py-2 bg-white text-gray-700 rounded hover:bg-gray-100 text-sm font-medium border border-gray-300"
+                  className="flex-1 px-3 py-2 bg-white dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-white/[0.10] text-sm font-medium border border-gray-300 dark:border-white/[0.12]"
                 >
                   Cancel
                 </button>

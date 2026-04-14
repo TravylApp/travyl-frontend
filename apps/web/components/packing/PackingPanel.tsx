@@ -28,7 +28,7 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-[var(--cal-border,#334155)] border-t-[#003594] rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-gray-200 dark:border-white/[0.08] border-t-[#003594] rounded-full animate-spin" />
       </div>
     )
   }
@@ -36,7 +36,7 @@ export function PackingPanel({ tripId }: PackingPanelProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-[13px] text-red-400">Failed to load packing list.</p>
+        <p className="text-sm text-red-500 dark:text-red-400">Failed to load packing list.</p>
       </div>
     )
   }

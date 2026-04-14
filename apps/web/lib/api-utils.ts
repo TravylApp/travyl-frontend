@@ -153,7 +153,15 @@ export async function proxyToBackend(
   }
 
   try {
-    const res = await fetch(url.toString(), { headers })
+    const isPost = req.method === 'POST'
+    const fetchOpts: RequestInit = { headers }
+    if (isPost) {
+      fetchOpts.method = 'POST'
+      headers['Content-Type'] = 'application/json'
+      fetchOpts.body = await req.text()
+    }
+
+    const res = await fetch(url.toString(), fetchOpts)
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')

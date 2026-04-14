@@ -10,7 +10,7 @@ import {
   Phone, Mail, Map, X, Camera, Shield, CreditCard, Share2,
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
-import { useItineraryScreen, useHotels as useDbHotels } from '@travyl/shared';
+import { useItineraryScreen, useHotels as useDbHotels, useHomeCurrency } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import { PinCard } from '@/components/PinCard';
@@ -57,6 +57,7 @@ interface HotelData {
     comfort: number;
     value: number;
   };
+  source?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,12 +69,13 @@ interface HotelData {
 function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[] {
   return hotels.map((h: any, i: number) => {
     const idx = i + idx_offset;
-    // Use REAL data from SerpAPI/planner when available, fallback to estimates
-    const realStars = h.stars ?? (h.price ? Math.min(h.price + 2, 5) : 3);
-    const realPrice = h.price ?? h.price_per_night ?? (realStars >= 4 ? 180 + i * 30 : 100 + i * 20);
-    const realRating = h.rating ?? (8.0 + (i % 5) * 0.15);
+    // Only use REAL data — never fabricate prices or ratings
+    const realStars = h.stars ?? h.star_rating ?? 0;
+    // Foursquare's `price` field is a 1-4 level, not a dollar amount — only use price_per_night
+    const realPrice = h.price_per_night ?? (typeof h.price === 'number' && h.price > 10 ? h.price : 0);
+    const realRating = h.rating ?? 0;
     const realReviews = h.ratingCount ?? h.review_count ?? 0;
-    const realAmenities = h.amenities?.length ? h.amenities : ['WiFi', 'Breakfast'];
+    const realAmenities = h.amenities?.length ? h.amenities : [];
     const mainImage = h.image ?? h.photo_url ?? '';
     const realImages = [mainImage, ...(h.images ?? [])].filter(Boolean);
 
@@ -85,28 +87,24 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
       reviews: realReviews,
       price: realPrice,
       address: h.address ?? '',
-      neighborhood: h.category ?? 'City Center',
+      neighborhood: h.category ?? '',
       lat: h.lat ?? 0,
       lng: h.lng ?? 0,
       images: realImages.length > 0 ? realImages : [],
       amenities: realAmenities,
-      roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: '', amenities: ['WiFi', 'AC'] },
-        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: '', amenities: ['WiFi', 'AC', 'Minibar'] },
-      ],
-      checkIn: '3:00 PM',
-      checkOut: '11:00 AM',
-      cancellation: 'Free cancellation until 48h before',
+      roomTypes: realPrice > 0 ? [
+        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '', price: realPrice, image: '', amenities: [] },
+      ] : [],
+      checkIn: '',
+      checkOut: '',
+      cancellation: '',
       phone: '',
       email: h.link ?? '',
+      source: 'foursquare',
       guestRatings: {
         overall: realRating,
         label: realRating >= 4.5 ? 'Superb' : realRating >= 4.0 ? 'Excellent' : realRating >= 3.5 ? 'Very Good' : 'Good',
-        cleanliness: Math.round((realRating + 0.1) * 10) / 10,
-        staff: Math.round((realRating) * 10) / 10,
-        location: Math.round((realRating + 0.2) * 10) / 10,
-        comfort: Math.round((realRating) * 10) / 10,
-        value: Math.round((realRating - 0.1) * 10) / 10,
+        cleanliness: 0, staff: 0, location: 0, comfort: 0, value: 0,
       },
     };
   });
@@ -116,12 +114,12 @@ function convertFoursquareToHotelData(hotels: any[], idx_offset = 0): HotelData[
 function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
   return hotels.map((h: any, i: number) => {
     const d = h.data ?? {};
-    const realStars = d.star_rating ?? (d.rating >= 4.5 ? 5 : d.rating >= 3.5 ? 4 : 3);
-    const realPrice = d.price_per_night ?? 150;
-    const realRating = d.rating ?? 8.0;
+    const realStars = d.star_rating ?? 0;
+    const realPrice = d.price_per_night ?? 0;
+    const realRating = d.rating ?? 0;
     const mainImage = d.image_url ?? '';
     const realImages = [mainImage].filter(Boolean);
-    const realAmenities = d.amenities?.length ? d.amenities.slice(0, 8) : ['WiFi', 'Breakfast'];
+    const realAmenities = d.amenities?.length ? d.amenities.slice(0, 8) : [];
 
     return {
       id: h.id,
@@ -131,34 +129,30 @@ function convertDbHotelsToHotelData(hotels: any[]): HotelData[] {
       reviews: 0,
       price: realPrice,
       address: d.address ?? '',
-      neighborhood: 'City Center',
+      neighborhood: '',
       lat: d.latitude ?? 0,
       lng: d.longitude ?? 0,
       images: realImages,
       amenities: realAmenities,
-      roomTypes: [
-        { type: 'Standard Room', beds: '1 Queen Bed', guests: 2, size: '22m²', price: realPrice, image: '', amenities: ['WiFi', 'AC'] },
-        { type: realStars >= 4 ? 'Deluxe Suite' : 'Superior Room', beds: '1 King Bed', guests: 2, size: realStars >= 4 ? '35m²' : '26m²', price: Math.round(realPrice * 1.4), image: '', amenities: ['WiFi', 'AC', 'Minibar'] },
-      ],
-      checkIn: d.check_in ? new Date(d.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '3:00 PM',
-      checkOut: d.check_out ? new Date(d.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '11:00 AM',
-      cancellation: 'Free cancellation until 48h before',
+      roomTypes: realPrice > 0 ? [
+        { type: 'Standard Room', beds: '', guests: 2, size: '', price: realPrice, image: '', amenities: [] },
+      ] : [],
+      checkIn: d.check_in ? new Date(d.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+      checkOut: d.check_out ? new Date(d.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+      cancellation: '',
       phone: '',
       email: d.booking_url ?? '',
+      source: 'saved',
       guestRatings: {
         overall: realRating,
         label: realRating >= 4.5 ? 'Superb' : realRating >= 4.0 ? 'Excellent' : realRating >= 3.5 ? 'Very Good' : 'Good',
-        cleanliness: Math.round((realRating + 0.1) * 10) / 10,
-        staff: Math.round(realRating * 10) / 10,
-        location: Math.round((realRating + 0.2) * 10) / 10,
-        comfort: Math.round(realRating * 10) / 10,
-        value: Math.round((realRating - 0.1) * 10) / 10,
+        cleanliness: 0, staff: 0, location: 0, comfort: 0, value: 0,
       },
     };
   });
 }
 
-function useHotels(tripId: string, searchQuery?: string) {
+function useHotels(tripId: string, searchQuery?: string): HotelData[] {
   const { trip } = useItineraryScreen(tripId);
   const destination = trip?.destination;
 
@@ -204,7 +198,7 @@ function useHotels(tripId: string, searchQuery?: string) {
     enabled: !!destination && !!(lat && lng),
   });
 
-  // 4. SerpAPI Google Hotels search
+  // 4. SerpAPI Google Hotels search — real-time pricing
   const { data: serpHotels = [] } = useQuery({
     queryKey: ['hotels-serp', destination, trip?.start_date, trip?.end_date],
     queryFn: async () => {
@@ -218,43 +212,115 @@ function useHotels(tripId: string, searchQuery?: string) {
       return (json.hotels ?? []).map((h: any, i: number): HotelData => ({
         id: h.id || `serp-${i}`,
         name: h.name,
-        stars: h.stars,
-        rating: h.rating,
-        reviews: h.reviews,
+        stars: typeof h.stars === 'string' ? parseInt(h.stars) || 0 : h.stars ?? 0,
+        rating: h.rating ?? 0,
+        reviews: h.reviews ?? 0,
         price: h.price ?? 0,
-        address: h.address,
-        neighborhood: h.neighborhood,
-        lat: h.lat,
-        lng: h.lng,
+        address: h.address ?? '',
+        neighborhood: h.neighborhood ?? '',
+        lat: h.lat ?? 0,
+        lng: h.lng ?? 0,
         images: h.images ?? [],
         amenities: h.amenities ?? [],
         roomTypes: [],
-        checkIn: h.checkIn ?? '3:00 PM',
-        checkOut: h.checkOut ?? '11:00 AM',
+        checkIn: h.checkIn ?? '',
+        checkOut: h.checkOut ?? '',
         cancellation: 'See hotel policy',
         phone: '',
-        email: '',
-        guestRatings: { overall: h.rating, label: 'Good', cleanliness: 0, comfort: 0, location: 0, staff: 0, value: 0 },
+        email: h.link ?? '',
+        source: h.source ?? 'serpapi',
+        guestRatings: {
+          overall: h.rating ?? 0,
+          label: (h.rating ?? 0) >= 4.5 ? 'Superb' : (h.rating ?? 0) >= 4.0 ? 'Excellent' : (h.rating ?? 0) >= 3.5 ? 'Very Good' : 'Good',
+          cleanliness: 0, comfort: 0, location: 0, staff: 0, value: 0,
+        },
       }));
     },
     staleTime: 15 * 60 * 1000,
     enabled: !!destination,
   });
 
-  // Combine: DB first, then context, then Foursquare, then SerpAPI — deduplicate by name
-  return useMemo(() => {
-    const seen = new Set<string>();
-    return [...fromDb, ...fromContext, ...fetchedHotels, ...serpHotels].filter((h) => {
-      const key = h.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  // Combine: DB first, then context, then Foursquare, then SerpAPI
+  // When duplicates found, prefer the version with images
+  const combined = useMemo(() => {
+    const byName: Record<string, HotelData> = {};
+    const order: string[] = [];
+    for (const h of [...fromDb, ...fromContext, ...fetchedHotels, ...serpHotels]) {
+      const key = h.name.toLowerCase().trim();
+      const existing = byName[key];
+      if (!existing) {
+        byName[key] = h;
+        order.push(key);
+      } else {
+        const existingImgs = existing.images.filter(Boolean).length;
+        const newImgs = h.images.filter(Boolean).length;
+        if (newImgs > existingImgs) {
+          byName[key] = { ...existing, images: h.images };
+        }
+      }
+    }
+    return order.map((k) => byName[k]);
   }, [fromDb, fromContext, fetchedHotels, serpHotels]);
+
+  // 5. Auto-fetch images for hotels that have none (search Foursquare by name)
+  const imagelessNames = useMemo(
+    () => combined.filter((h) => h.images.filter(Boolean).length === 0).map((h) => h.name).join('|'),
+    [combined],
+  );
+
+  const { data: imagePatches } = useQuery({
+    queryKey: ['hotel-images', imagelessNames, lat, lng],
+    queryFn: async () => {
+      if (!lat || !lng || !imagelessNames) return {};
+      const names = imagelessNames.split('|');
+      const patches: Record<string, string[]> = {};
+      const usedImages = new Set<string>(); // prevent same image on multiple hotels
+      await Promise.all(
+        names.map(async (name) => {
+          try {
+            const params = new URLSearchParams({ lat: String(lat), lng: String(lng), category: 'hotel', limit: '5', q: name });
+            const res = await fetch(`/api/foursquare?${params}`);
+            if (!res.ok) return;
+            const results = await res.json();
+            // Find best name match from results
+            const nameWords = name.toLowerCase().split(/\s+/);
+            const match = results?.find((r: any) => {
+              const rWords = (r.name || '').toLowerCase().split(/\s+/);
+              // At least one significant word must overlap (skip "the", "hotel", etc.)
+              const skip = new Set(['the', 'hotel', 'hostel', 'inn', 'b&b', 'a', 'di', 'del', 'la', 'il']);
+              return nameWords.some((w: string) => w.length > 2 && !skip.has(w) && rWords.some((rw: string) => rw.includes(w) || w.includes(rw)));
+            });
+            if (match) {
+              const imgs = [match.image, ...(match.images ?? [])].filter(
+                (img: string) => img && !img.includes('categories_v2') && !usedImages.has(img),
+              );
+              if (imgs.length > 0) {
+                imgs.forEach((img: string) => usedImages.add(img));
+                patches[name.toLowerCase().trim()] = imgs;
+              }
+            }
+          } catch { /* skip */ }
+        }),
+      );
+      return patches;
+    },
+    staleTime: 30 * 60 * 1000,
+    enabled: !!imagelessNames && !!(lat && lng),
+  });
+
+  // Merge patched images into the combined list
+  return useMemo(() => {
+    if (!imagePatches || Object.keys(imagePatches).length === 0) return combined;
+    return combined.map((h) => {
+      if (h.images.filter(Boolean).length > 0) return h;
+      const patch = imagePatches[h.name.toLowerCase().trim()];
+      return patch ? { ...h, images: patch } : h;
+    });
+  }, [combined, imagePatches]);
 }
 
-function hotelToPlaceItem(h: HotelData): PlaceItem {
-  const priceTag = h.price ? `€${h.price}/night` : '';
+function hotelToPlaceItem(h: HotelData, currencySymbol = '$'): PlaceItem {
+  const priceTag = h.price ? `${currencySymbol}${h.price}/night` : '';
   const starTag = h.stars ? '★'.repeat(h.stars) : '';
   return {
     id: h.id,
@@ -273,6 +339,8 @@ function hotelToPlaceItem(h: HotelData): PlaceItem {
     reviewCount: h.reviews,
   };
 }
+
+const MOCK_HOTELS: HotelData[] = [];
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,
@@ -320,15 +388,14 @@ function ImageCarousel({
       <img
         src={images[idx]}
         alt={`${alt} ${idx + 1}`}
-        referrerPolicy="no-referrer"
-        className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
       />
       {images.length > 1 && (
         <>
-          <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md">
+          <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white dark:bg-black/60 dark:hover:bg-black/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md dark:text-white">
             <ChevronLeft size={16} />
           </button>
-          <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md">
+          <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white dark:bg-black/60 dark:hover:bg-black/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md dark:text-white">
             <ChevronRight size={16} />
           </button>
           <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
@@ -411,17 +478,17 @@ function HotelSearchFilter({
   }, [checkIn, checkOut]);
 
   return (
-    <div className="rounded-xl overflow-hidden bg-white dark:bg-[var(--background)] border border-gray-200 dark:border-white/[0.08] shadow-sm">
+    <div className="rounded-xl overflow-hidden bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] shadow-sm">
       {/* Header */}
       <button onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50">
+        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: 'rgba(200,169,106,0.15)', border: '1px solid rgba(200,169,106,0.25)' }}>
             <Hotel size={16} style={{ color: 'var(--magazine-accent, #c8a96a)' }} />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Update Hotel</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Update Hotel</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">{destination || 'Search hotels'} &middot; {nights} nights &middot; {guests} guests</p>
           </div>
         </div>
@@ -448,30 +515,30 @@ function HotelSearchFilter({
                     onChange={(e) => onSearchQueryChange(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') onSearch(); }}
                     placeholder="Hotel name or area..."
-                    className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                    className="w-full mt-0.5 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
                   />
                 </div>
                 <div className="flex-1 min-w-[120px]">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-in</label>
-                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
+                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
                 </div>
                 <div className="flex-1 min-w-[120px]">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-out</label>
-                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
+                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full mt-0.5 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]" />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guests</label>
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1.5 py-1">
+                  <div className="flex items-center gap-1 border border-gray-200 dark:border-white/[0.08] rounded-lg px-1.5 py-1">
                     <button onClick={() => setGuests(Math.max(1, guests - 1))} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Minus size={12} /></button>
-                    <span className="text-xs font-medium w-5 text-center">{guests}</span>
+                    <span className="text-xs font-medium w-5 text-center text-gray-900 dark:text-white">{guests}</span>
                     <button onClick={() => setGuests(guests + 1)} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Plus size={12} /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rooms</label>
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1.5 py-1">
+                  <div className="flex items-center gap-1 border border-gray-200 dark:border-white/[0.08] rounded-lg px-1.5 py-1">
                     <button onClick={() => setRooms(Math.max(1, rooms - 1))} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Minus size={12} /></button>
-                    <span className="text-xs font-medium w-5 text-center">{rooms}</span>
+                    <span className="text-xs font-medium w-5 text-center text-gray-900 dark:text-white">{rooms}</span>
                     <button onClick={() => setRooms(rooms + 1)} className="text-gray-400 hover:text-gray-600 dark:text-gray-300"><Plus size={12} /></button>
                   </div>
                 </div>
@@ -493,7 +560,7 @@ function HotelSearchFilter({
                 {/* Sort */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-600 dark:text-gray-300">Sort By</span>
-                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]">
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]">
                     <option value="recommended">Recommended</option>
                     <option value="price_low">Price: Low to High</option>
                     <option value="price_high">Price: High to Low</option>
@@ -507,25 +574,25 @@ function HotelSearchFilter({
                   <span className="text-xs text-gray-600 dark:text-gray-300">Price Range (per night)</span>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-gray-400">&euro;</span>
+                      <span className="text-[10px] text-gray-400">$</span>
                       <input
                         type="number"
                         min={0}
                         value={priceRange[0]}
                         onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        className="w-16 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
                         placeholder="Min"
                       />
                     </div>
                     <span className="text-[10px] text-gray-400">&ndash;</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-gray-400">&euro;</span>
+                      <span className="text-[10px] text-gray-400">$</span>
                       <input
                         type="number"
                         min={0}
                         value={priceRange[1]}
                         onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                        className="w-16 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
+                        className="w-16 text-xs border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#60a5fa]"
                         placeholder="Max"
                       />
                     </div>
@@ -543,7 +610,7 @@ function HotelSearchFilter({
                         className={`text-xs px-3 py-1 rounded-full border transition-colors ${
                           starFilter.includes(s)
                             ? 'bg-amber-400 border-amber-400 text-white'
-                            : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-amber-300'
+                            : 'border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-amber-300 dark:hover:border-amber-300/50'
                         }`}
                       >
                         {s} <Star size={9} className="inline -mt-0.5 fill-current" />
@@ -563,7 +630,7 @@ function HotelSearchFilter({
                         className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                           amenityFilter.includes(a)
                             ? 'bg-[#60a5fa] border-[#60a5fa] text-white'
-                            : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
+                            : 'border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
                         }`}
                       >
                         {AMENITY_ICONS[a]} {a}
@@ -583,7 +650,7 @@ function HotelSearchFilter({
                         className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                           brandFilter.includes(b)
                             ? 'bg-[#60a5fa] border-[#60a5fa] text-white'
-                            : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
+                            : 'border-gray-200 dark:border-white/[0.08] text-gray-600 dark:text-gray-300 hover:border-[#60a5fa]/50'
                         }`}
                       >
                         {b}
@@ -605,18 +672,23 @@ function HotelSearchFilter({
 /* ------------------------------------------------------------------ */
 
 function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h: HotelData) => void }) {
+  const cs = useCurrencySymbol();
   const [selectedRoom, setSelectedRoom] = useState(0);
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
   const [expandedRoom, setExpandedRoom] = useState<string | null>(null);
 
-  const nights = 5;
   const displayPrice = hotel.roomTypes[selectedRoom]?.price || hotel.price;
-  const baseTotal = displayPrice * nights;
-  const cityTax = 3.5 * 2 * nights;
-  const serviceFee = 12;
-  const vat = baseTotal * 0.1;
-  const totalCost = baseTotal + cityTax + serviceFee + vat;
+  // Calculate nights from checkIn/checkOut date strings if available
+  const nights = (() => {
+    if (!hotel.checkIn || !hotel.checkOut) return null;
+    const d1 = new Date(hotel.checkIn);
+    const d2 = new Date(hotel.checkOut);
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : null;
+  })();
+  const totalCost = nights ? displayPrice * nights : null;
 
   return (
       <div className="px-4 md:px-6 py-4">
@@ -627,18 +699,21 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
             <div>
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="text-white text-xs px-2.5 py-1 rounded-full font-medium bg-[#60a5fa]">Selected</span>
-                <span className="flex items-center gap-0.5 bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px]">
+                {hotel.source && <span className="text-[9px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500">{hotel.source === 'serpapi' ? 'Google Hotels' : hotel.source === 'foursquare' ? 'Foursquare' : hotel.source}</span>}
+                <span className="flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]">
                   <Star size={9} className="fill-blue-600 text-blue-600" />
                   <span className="font-medium">{hotel.rating}/10</span>
-                  <span className="text-blue-600">({hotel.reviews})</span>
+                  <span className="text-blue-600 dark:text-blue-400">({hotel.reviews})</span>
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{hotel.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{hotel.name}</h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {(hotel.checkIn || hotel.checkOut) && (
                 <span className="text-[10px] text-gray-600 dark:text-gray-300">
-                  Check-in: {hotel.checkIn} &bull; Check-out: {hotel.checkOut}
+                  {hotel.checkIn && <>Check-in: {hotel.checkIn}</>}{hotel.checkIn && hotel.checkOut && <> &bull; </>}{hotel.checkOut && <>Check-out: {hotel.checkOut}</>}
                 </span>
-                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-medium text-[10px] inline-flex items-center gap-0.5">
+                )}
+                <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded font-medium text-[10px] inline-flex items-center gap-0.5">
                   <Shield size={9} /> {hotel.cancellation}
                 </span>
               </div>
@@ -656,11 +731,11 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                 className="w-full flex items-center justify-between p-3 hover:bg-trip-base/10 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Total Cost</span>
-                  <span className="text-xs text-gray-400">({nights} nights)</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">{totalCost ? 'Total Cost' : 'Nightly Rate'}</span>
+                  {nights && <span className="text-xs text-gray-400">({nights} nights)</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{totalCost.toFixed(2)}</span>
+                  <span className="font-bold" style={{ color: 'var(--trip-base)' }}>{totalCost ? `${cs}${totalCost.toFixed(2)}` : `${cs}${displayPrice}/night`}</span>
                   <ChevronDown size={14} className={`transition-transform ${priceOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--trip-base)' }} />
                 </div>
               </button>
@@ -668,19 +743,17 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                 {priceOpen && (
                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                     <div className="px-3 pb-3 space-y-1.5 border-t" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
-                      <div className="pt-2 flex justify-between text-xs"><span className="text-gray-500 dark:text-gray-400">Room</span><span className="font-medium" style={{ color: 'var(--trip-base)' }}>{hotel.roomTypes[selectedRoom].type}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">Rate</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{displayPrice}/night</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">{nights} nights subtotal</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{baseTotal.toFixed(2)}</span></div>
-                      <div className="pt-1.5 border-t space-y-1" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Taxes & Fees</span>
-                        <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">City Tax</span><span>&euro;{cityTax.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">Service Fee</span><span>&euro;{serviceFee.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">VAT (10%)</span><span>&euro;{vat.toFixed(2)}</span></div>
-                      </div>
-                      <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Total</span>
-                        <span className="font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{totalCost.toFixed(2)}</span>
-                      </div>
+                      {hotel.roomTypes[selectedRoom] && <div className="pt-2 flex justify-between text-xs"><span className="text-gray-500 dark:text-gray-400">Room</span><span className="font-medium" style={{ color: 'var(--trip-base)' }}>{hotel.roomTypes[selectedRoom].type}</span></div>}
+                      <div className={`flex justify-between text-xs ${hotel.roomTypes[selectedRoom] ? '' : 'pt-2'}`}><span className="text-gray-600 dark:text-gray-300">Rate</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{displayPrice}/night</span></div>
+                      {nights && totalCost && (
+                        <>
+                          <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">{nights} nights</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span></div>
+                          <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
+                            <span className="font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -695,7 +768,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
               >
                 <div className="flex items-center gap-2">
                   <Hotel size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Room Options</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">Room Options</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ color: 'var(--trip-base)', backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)', borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                     {hotel.roomTypes[selectedRoom].type}
                   </span>
@@ -726,7 +799,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                  <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                   <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                     <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                   </div>
@@ -735,9 +808,9 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                   <div className="flex items-start justify-between gap-2">
                                     <div>
                                       <div className="flex items-center gap-2 mb-0.5">
-                                        <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
+                                        <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
                                         {isSelected && <span className="text-white text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--trip-base)' }}>Selected</span>}
-                                        {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">+&euro;{priceDiff}/nt</span>}
+                                        {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-700/30">+{cs}{priceDiff}/nt</span>}
                                       </div>
                                       <p className="text-[10px] text-gray-600 dark:text-gray-300">{room.beds}</p>
                                       <div className="flex items-center gap-2.5 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -746,7 +819,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                                       </div>
                                     </div>
                                     <div className="text-right shrink-0">
-                                      <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>&euro;{room.price}</p>
+                                      <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{cs}{room.price}</p>
                                       <p className="text-[9px] text-gray-500 dark:text-gray-400">per night</p>
                                     </div>
                                   </div>
@@ -758,21 +831,21 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                             <AnimatePresence>
                               {expandedRoom === roomKey && (
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                  <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
+                                  <div className="mt-1.5 bg-white dark:bg-white/[0.03] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                      <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={(e) => { e.stopPropagation(); setExpandedRoom(null); }} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
                                       <div className="flex justify-between">
                                         <div>
-                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-gray-100">{room.type}</h6>
+                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-white">{room.type}</h6>
                                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{room.beds} &middot; {room.size} &middot; {room.guests} guests</p>
                                         </div>
                                         <div className="text-right">
-                                          <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{room.price}<span className="text-[10px] text-gray-400 font-normal">/nt</span></p>
-                                          <p className="text-[10px] text-gray-500 dark:text-gray-400">&euro;{room.price * nights} total</p>
+                                          <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{room.price}<span className="text-[10px] text-gray-400 font-normal">/nt</span></p>
+                                          {nights && <p className="text-[10px] text-gray-500 dark:text-gray-400">{cs}{room.price * nights} total</p>}
                                         </div>
                                       </div>
                                       <div className="flex flex-wrap gap-1">
@@ -799,15 +872,15 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
               <div className="grid grid-cols-3 gap-2">
                 <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                   <Phone size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Call</span>
+                  <span className="text-xs text-gray-900 dark:text-white font-medium">Call</span>
                 </a>
                 <a href={`mailto:${hotel.email}`} onClick={(e) => e.stopPropagation()} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                   <Mail size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Email</span>
+                  <span className="text-xs text-gray-900 dark:text-white font-medium">Email</span>
                 </a>
                 <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                   <MapPin size={14} className="text-[#8b6f47]" />
-                  <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Map</span>
+                  <span className="text-xs text-gray-900 dark:text-white font-medium">Map</span>
                 </button>
               </div>
 
@@ -816,7 +889,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                 <div className="flex items-start gap-2">
                   <MapPin size={14} className="text-[#8b6f47] mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-900 dark:text-gray-100 leading-snug">{hotel.address}</p>
+                    <p className="text-xs text-gray-900 dark:text-white leading-snug">{hotel.address}</p>
                     <p className="text-[10px] mt-0.5" style={{ color: 'var(--trip-base)' }}>{hotel.neighborhood}</p>
                   </div>
                 </div>
@@ -835,7 +908,7 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{hotel.guestRatings.label}</span>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.guestRatings.label}</span>
                       <span className="text-[10px] text-gray-400">&middot; {hotel.reviews} reviews</span>
                     </div>
                     <div className="flex flex-wrap gap-x-2 mt-1">
@@ -888,30 +961,30 @@ function HotelDetailPanel({ hotel, onSelect }: { hotel: HotelData; onSelect: (h:
 }
 
 function BrowsingHotelGridCard({
-  hotel,
-  onViewDetails,
+  hotel, onViewDetails,
   isActive,
 }: {
   hotel: HotelData;
   onViewDetails: () => void;
   isActive: boolean;
 }) {
+  const cs = useCurrencySymbol();
   return (
     <div
       className={`rounded-xl border overflow-hidden transition-all flex flex-col cursor-pointer ${
-        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 bg-white dark:bg-[var(--background)] hover:shadow-md'
+        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:shadow-md dark:hover:border-white/15'
       }`}
       onClick={onViewDetails}
     >
       <ImageCarousel images={hotel.images} alt={hotel.name} height="h-44" />
-      <div className="p-3.5 flex flex-col flex-1 bg-white dark:bg-[var(--background)]">
+      <div className="p-3.5 flex flex-col flex-1 bg-white dark:bg-white/[0.03]">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{hotel.name}</h4>
+            <h4 className="text-sm font-normal text-gray-900 dark:text-white truncate font-serif">{hotel.name}</h4>
             <StarRating count={hotel.stars} />
           </div>
           <div className="text-right shrink-0">
-            <p className="text-lg font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}</p>
+            <p className="text-lg font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{hotel.price}</p>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">per night</p>
           </div>
         </div>
@@ -950,25 +1023,26 @@ function BrowsingHotelListCard({
   onViewDetails: () => void;
   isActive: boolean;
 }) {
+  const cs = useCurrencySymbol();
   return (
     <div
       className={`flex flex-col sm:flex-row rounded-xl border overflow-hidden transition-all cursor-pointer ${
-        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 bg-white dark:bg-[var(--background)] hover:shadow-md'
+        isActive ? 'border-[var(--trip-base)] shadow-md ring-2 ring-[var(--trip-base)]/20' : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:shadow-md dark:hover:border-white/15'
       }`}
       onClick={onViewDetails}
     >
       <div className="sm:w-60 flex-shrink-0">
         <ImageCarousel images={hotel.images} alt={hotel.name} height="h-48 sm:h-full" />
       </div>
-      <div className="flex-1 p-4 flex flex-col justify-between bg-white dark:bg-[var(--background)]">
+      <div className="flex-1 p-4 flex flex-col justify-between bg-white dark:bg-white/[0.03]">
         <div>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">{hotel.name}</h4>
+              <h4 className="text-sm font-normal text-gray-900 dark:text-white font-serif">{hotel.name}</h4>
               <StarRating count={hotel.stars} />
             </div>
             <div className="text-right shrink-0">
-              <p className="text-lg font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}</p>
+              <p className="text-lg font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{hotel.price}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400">per night</p>
             </div>
           </div>
@@ -1006,6 +1080,7 @@ function BrowsingHotelBookView({
   hotels: HotelData[];
   onSelect: (h: HotelData) => void;
 }) {
+  const cs = useCurrencySymbol();
   const [page, setPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const hotel = hotels[page];
@@ -1044,13 +1119,13 @@ function BrowsingHotelBookView({
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             style={{ transformOrigin: direction > 0 ? 'left center' : 'right center' }}
           >
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden shadow-md">
+            <div className="bg-white dark:bg-white/[0.03] rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden shadow-md">
               <div className="grid grid-cols-1 md:grid-cols-2">
                 {/* Left page — large image */}
                 <div className="relative">
                   <ImageCarousel images={hotel.images} alt={hotel.name} height="h-72 md:h-96" />
                   {/* Page number badge */}
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[10px] font-semibold text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full shadow-sm">
+                  <div className="absolute top-3 left-3 bg-white/90 dark:bg-black/60 backdrop-blur-sm text-[10px] font-semibold text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full shadow-sm">
                     {page + 1} / {hotels.length}
                   </div>
                 </div>
@@ -1066,7 +1141,7 @@ function BrowsingHotelBookView({
                       {hotel.rating}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{hotel.name}</h3>
+                  <h3 className="text-xl font-normal text-gray-900 dark:text-white font-serif tracking-wide">{hotel.name}</h3>
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
                     <MapPin size={12} />
                     <span>{hotel.neighborhood} &middot; {hotel.address}</span>
@@ -1084,7 +1159,7 @@ function BrowsingHotelBookView({
                         {hotel.guestRatings.overall}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{hotel.guestRatings.label}</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{hotel.guestRatings.label}</p>
                         <p className="text-[10px] text-gray-400">{hotel.reviews.toLocaleString()} reviews</p>
                       </div>
                     </div>
@@ -1093,7 +1168,7 @@ function BrowsingHotelBookView({
                     <div className="rounded-lg p-3 flex items-baseline justify-between" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)' }}>
                       <span className="text-sm text-gray-600 dark:text-gray-300">From</span>
                       <div className="text-right">
-                        <span className="text-2xl font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}</span>
+                        <span className="text-2xl font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{hotel.price}</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">/ night</span>
                       </div>
                     </div>
@@ -1103,12 +1178,12 @@ function BrowsingHotelBookView({
                       <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Room Types</p>
                       <div className="space-y-1">
                         {hotel.roomTypes.map((room, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-2 border border-gray-100">
+                          <div key={i} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-white/[0.02] rounded-lg px-3 py-2 border border-gray-100 dark:border-white/[0.06]">
                             <div>
-                              <span className="font-medium text-gray-900 dark:text-gray-100">{room.type}</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{room.type}</span>
                               <span className="text-gray-400 ml-1.5">{room.beds}</span>
                             </div>
-                            <span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{room.price}</span>
+                            <span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{room.price}</span>
                           </div>
                         ))}
                       </div>
@@ -1126,7 +1201,7 @@ function BrowsingHotelBookView({
                     {/* Check-in/out */}
                     <div className="flex gap-2 text-[10px]">
                       <span className="text-gray-500 dark:text-gray-400">Check-in: <span className="font-medium text-gray-700 dark:text-gray-200">{hotel.checkIn}</span></span>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-300 dark:text-white/20">|</span>
                       <span className="text-gray-500 dark:text-gray-400">Check-out: <span className="font-medium text-gray-700 dark:text-gray-200">{hotel.checkOut}</span></span>
                     </div>
                   </div>
@@ -1149,7 +1224,7 @@ function BrowsingHotelBookView({
         <button
           onClick={() => goTo(Math.max(0, page - 1))}
           disabled={page === 0}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={14} />
           Previous
@@ -1160,7 +1235,7 @@ function BrowsingHotelBookView({
               key={i}
               onClick={() => goTo(i)}
               className={`w-2 h-2 rounded-full transition-all ${
-                i === page ? 'bg-[#60a5fa] w-5' : 'bg-gray-300 hover:bg-gray-400'
+                i === page ? 'bg-[#60a5fa] w-5' : 'bg-gray-300 dark:bg-white/20 hover:bg-gray-400 dark:hover:bg-white/30'
               }`}
             />
           ))}
@@ -1168,7 +1243,7 @@ function BrowsingHotelBookView({
         <button
           onClick={() => goTo(Math.min(hotels.length - 1, page + 1))}
           disabled={page === hotels.length - 1}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           Next
           <ChevronRight size={14} />
@@ -1189,6 +1264,7 @@ function BrowsingHotelsSection({
   onToggle: () => void;
   onSelect: (h: HotelData) => void;
 }) {
+  const cs = useCurrencySymbol();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'book'>('grid');
   const [detailHotel, setDetailHotel] = useState<HotelData | null>(null);
   const { setMapMarkers, setSelectedMarkerId, setRequestMapOpen } = useItineraryContext();
@@ -1201,7 +1277,7 @@ function BrowsingHotelsSection({
         lng: h.lng,
         name: h.name,
         color: h.rating >= 9 ? '#10b981' : h.rating >= 8 ? 'var(--trip-base)' : '#f97316',
-        category: `${h.stars}★ · €${h.price}/night`,
+        category: `${h.stars}★ · ${cs}${h.price}/night`,
       })),
     [hotels],
   );
@@ -1226,12 +1302,12 @@ function BrowsingHotelsSection({
   };
 
   return (
-    <div className="rounded-xl overflow-hidden bg-white dark:bg-[var(--background)] border border-gray-200 dark:border-white/[0.08] shadow-sm">
+    <div className="rounded-xl overflow-hidden bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] shadow-sm">
       <button onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50">
+        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
           <Search size={16} className="text-gray-400" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Browsing Hotels</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">Browsing Hotels</span>
           <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
             style={{ backgroundColor: 'rgba(200,169,106,0.15)', color: 'var(--magazine-accent, #c8a96a)', border: '1px solid rgba(200,169,106,0.25)' }}>{hotels.length} results</span>
         </div>
@@ -1272,7 +1348,7 @@ function BrowsingHotelsSection({
                         <X size={14} />
                       </button>
                     </div>
-                    <div className="bg-white dark:bg-[var(--background)]">
+                    <div className="bg-white dark:bg-white/[0.03]">
                       <HotelDetailPanel hotel={detailHotel} onSelect={onSelect} />
                     </div>
                   </motion.div>
@@ -1296,7 +1372,7 @@ function BrowsingHotelsSection({
                       className={`p-1.5 rounded-md transition-colors ${
                         viewMode === mode
                           ? 'bg-[#60a5fa] text-white'
-                          : 'bg-gray-100 text-gray-500 dark:text-gray-400 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
                       }`}
                       title={label}
                     >
@@ -1316,10 +1392,11 @@ function BrowsingHotelsSection({
                       onClick={() => setDetailHotel(detailHotel?.id === hotel.id ? null : hotel)}
                     >
                       <PinCard
-                        item={hotelToPlaceItem(hotel)}
+                        item={hotelToPlaceItem(hotel, cs)}
                         index={i}
                         isFavorited={false}
                         onFavorite={() => {}}
+                        flush
                       />
                     </div>
                   ))}
@@ -1362,21 +1439,26 @@ function BookedHotelCard({
   hotel: HotelData;
   onCancel: () => void;
 }) {
+  const cs = useCurrencySymbol();
   const [priceOpen, setPriceOpen] = useState(false);
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [policiesOpen, setPoliciesOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(0);
   const [expandedRoom, setExpandedRoom] = useState<string | null>(null);
 
-  const nights = 5;
-  const baseTotal = hotel.price * nights;
-  const cityTax = 3.5 * 2 * nights;
-  const serviceFee = 12;
-  const vat = baseTotal * 0.1;
-  const totalCost = baseTotal + cityTax + serviceFee + vat;
+  // Calculate nights from checkIn/checkOut date strings if available
+  const nights = (() => {
+    if (!hotel.checkIn || !hotel.checkOut) return null;
+    const d1 = new Date(hotel.checkIn);
+    const d2 = new Date(hotel.checkOut);
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : null;
+  })();
+  const totalCost = nights ? hotel.price * nights : null;
 
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[var(--background)]">
+    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-white/[0.03]">
       {/* Gradient banner header */}
       <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, var(--trip-base), var(--trip-base-light))' }}>
         <div className="flex items-center justify-between text-white">
@@ -1385,7 +1467,7 @@ function BookedHotelCard({
             <div>
               <p className="text-sm font-semibold">{hotel.name}</p>
               <p className="text-[11px] opacity-80">
-                <StarRating count={hotel.stars} /> &middot; &euro;{hotel.price}/night &middot; {nights} nights
+                <StarRating count={hotel.stars} /> &middot; {cs}{hotel.price}/night{nights ? ` \u00b7 ${nights} nights` : ''}
               </p>
             </div>
           </div>
@@ -1400,29 +1482,35 @@ function BookedHotelCard({
             {/* Status badges */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-white text-[10px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--trip-base)' }}>Confirmed</span>
-              <span className="flex items-center gap-0.5 bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px]">
+              <span className="flex items-center gap-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px]">
                 <Star size={9} className="fill-blue-600 text-blue-600" />
                 <span className="font-medium">{hotel.rating}/10</span>
-                <span className="text-blue-600">({hotel.reviews})</span>
+                <span className="text-blue-600 dark:text-blue-400">({hotel.reviews})</span>
               </span>
             </div>
 
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{hotel.name}</h3>
+            <h3 className="text-lg font-normal text-gray-900 dark:text-white font-serif tracking-wide">{hotel.name}</h3>
 
             {/* Check-in / check-out */}
+            {(hotel.checkIn || hotel.checkOut) && (
             <div className="flex gap-2">
+              {hotel.checkIn && (
               <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 px-3 py-2">
-                <span className="text-[10px] text-blue-800 block font-medium">Check-in</span>
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Mar 22 &middot; {hotel.checkIn}</span>
+                <span className="text-[10px] text-blue-800 dark:text-blue-300 block font-medium">Check-in</span>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.checkIn}</span>
               </div>
+              )}
+              {hotel.checkOut && (
               <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 px-3 py-2">
-                <span className="text-[10px] text-blue-800 block font-medium">Check-out</span>
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Mar 27 &middot; {hotel.checkOut}</span>
+                <span className="text-[10px] text-blue-800 dark:text-blue-300 block font-medium">Check-out</span>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.checkOut}</span>
               </div>
+              )}
             </div>
+            )}
 
             {/* Cancellation badge */}
-            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-medium">
+            <span className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-medium">
               <Shield size={10} /> {hotel.cancellation}
             </span>
 
@@ -1433,27 +1521,27 @@ function BookedHotelCard({
                 <div className="rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                   <div className="relative h-40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                      <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <div className="flex items-end justify-between">
                         <div>
                           <span className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white">Your Room</span>
-                          <h4 className="text-sm font-bold text-white mt-1">{room.type}</h4>
+                          <h4 className="text-sm font-normal text-white mt-1 font-serif">{room.type}</h4>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-white">&euro;{room.price}<span className="text-[10px] font-normal opacity-70">/night</span></p>
+                          <p className="text-lg font-bold text-white">{cs}{room.price}<span className="text-[10px] font-normal opacity-70">/night</span></p>
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="p-3 space-y-2.5 bg-white dark:bg-[var(--background)]">
+                  <div className="p-3 space-y-2.5 bg-white dark:bg-white/[0.03]">
                     {/* Room specs */}
                     <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
                       <span className="flex items-center gap-1"><Users size={12} style={{ color: 'var(--trip-base)' }} /> {room.guests} {room.guests === 1 ? 'Guest' : 'Guests'}</span>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-300 dark:text-white/20">|</span>
                       <span>{room.beds}</span>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-gray-300 dark:text-white/20">|</span>
                       <span>{room.size}</span>
                     </div>
 
@@ -1462,7 +1550,7 @@ function BookedHotelCard({
                       <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Room Amenities</p>
                       <div className="flex flex-wrap gap-1.5">
                         {room.amenities.map((a, idx) => (
-                          <span key={idx} className="text-[10px] bg-gray-50 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md border border-gray-200 flex items-center gap-1">
+                          <span key={idx} className="text-[10px] bg-gray-50 dark:bg-white/[0.02] text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md border border-gray-200 dark:border-white/[0.08] flex items-center gap-1">
                             {AMENITY_ICONS[a] || null} {a}
                           </span>
                         ))}
@@ -1472,13 +1560,13 @@ function BookedHotelCard({
                     {/* Quick info grid */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)' }}>
-                        <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Stay</p>
-                        <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{(room.price * nights).toFixed(0)}</p>
+                        <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">{nights ? 'Total Stay' : 'Per Night'}</p>
+                        <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{nights ? (room.price * nights).toFixed(0) : room.price}</p>
                         <p className="text-[9px] text-gray-400">{nights} nights</p>
                       </div>
-                      <div className="rounded-md bg-gray-50 p-2 text-center">
+                      <div className="rounded-md bg-gray-50 dark:bg-white/[0.02] p-2 text-center">
                         <p className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Check-in</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{hotel.checkIn}</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{hotel.checkIn}</p>
                         <p className="text-[9px] text-gray-400">Mar 22</p>
                       </div>
                     </div>
@@ -1491,11 +1579,11 @@ function BookedHotelCard({
             <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)' }}>
               <button onClick={() => setPriceOpen(!priceOpen)} className="w-full flex items-center justify-between p-3 hover:bg-trip-base/10 transition-colors">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Total Cost</span>
-                  <span className="text-xs text-gray-400">({nights} nights)</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">{totalCost ? 'Total Cost' : 'Nightly Rate'}</span>
+                  {nights && <span className="text-xs text-gray-400">({nights} nights)</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{totalCost.toFixed(2)}</span>
+                  <span className="font-bold" style={{ color: 'var(--trip-base)' }}>{totalCost ? `${cs}${totalCost.toFixed(2)}` : `${cs}${hotel.price}/night`}</span>
                   <ChevronDown size={14} className={`transition-transform ${priceOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--trip-base)' }} />
                 </div>
               </button>
@@ -1503,19 +1591,17 @@ function BookedHotelCard({
                 {priceOpen && (
                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                     <div className="px-3 pb-3 space-y-1.5 border-t" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
-                      <div className="pt-2 flex justify-between text-xs"><span className="text-gray-500 dark:text-gray-400">Room</span><span className="font-medium" style={{ color: 'var(--trip-base)' }}>{hotel.roomTypes[selectedRoom].type}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">Rate</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{hotel.price}/night</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">{nights} nights subtotal</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>&euro;{baseTotal.toFixed(2)}</span></div>
-                      <div className="pt-1.5 border-t space-y-1" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Taxes & Fees</span>
-                        <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">City Tax</span><span>&euro;{cityTax.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">Service Fee</span><span>&euro;{serviceFee.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">VAT (10%)</span><span>&euro;{vat.toFixed(2)}</span></div>
-                      </div>
-                      <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Total</span>
-                        <span className="font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{totalCost.toFixed(2)}</span>
-                      </div>
+                      {hotel.roomTypes[selectedRoom] && <div className="pt-2 flex justify-between text-xs"><span className="text-gray-500 dark:text-gray-400">Room</span><span className="font-medium" style={{ color: 'var(--trip-base)' }}>{hotel.roomTypes[selectedRoom].type}</span></div>}
+                      <div className={`flex justify-between text-xs ${hotel.roomTypes[selectedRoom] ? '' : 'pt-2'}`}><span className="text-gray-600 dark:text-gray-300">Rate</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{hotel.price}/night</span></div>
+                      {nights && totalCost && (
+                        <>
+                          <div className="flex justify-between text-xs"><span className="text-gray-600 dark:text-gray-300">{nights} nights</span><span className="font-semibold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span></div>
+                          <div className="pt-1.5 border-t flex justify-between" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
+                            <span className="font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{totalCost.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -1527,7 +1613,7 @@ function BookedHotelCard({
               <button onClick={() => setRoomsOpen(!roomsOpen)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-2">
                   <Hotel size={14} style={{ color: 'var(--trip-base)' }} />
-                  <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Room Options</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">Room Options</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full border" style={{ color: 'var(--trip-base)', backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)', borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                     {hotel.roomTypes[selectedRoom].type}
                   </span>
@@ -1556,7 +1642,7 @@ function BookedHotelCard({
                                 onClick={(e) => { e.stopPropagation(); setExpandedRoom(expandedRoom === roomKey ? null : roomKey); }}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                  <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all flex items-center justify-center">
                                   <Camera size={14} className="text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity drop-shadow-lg" />
                                 </div>
@@ -1565,9 +1651,9 @@ function BookedHotelCard({
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
                                     <div className="flex items-center gap-2 mb-0.5">
-                                      <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
+                                      <span className={`text-xs font-semibold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{room.type}</span>
                                       {isSelected && <span className="text-white text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--trip-base)' }}>Current</span>}
-                                      {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">+&euro;{priceDiff}/nt</span>}
+                                      {priceDiff > 0 && !isSelected && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-700/30">+{cs}{priceDiff}/nt</span>}
                                     </div>
                                     <p className="text-[10px] text-gray-600 dark:text-gray-300">{room.beds}</p>
                                     <div className="flex items-center gap-2.5 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1576,7 +1662,7 @@ function BookedHotelCard({
                                     </div>
                                   </div>
                                   <div className="text-right shrink-0">
-                                    <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-gray-100'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>&euro;{room.price}</p>
+                                    <p className={`text-sm font-bold ${isSelected ? '' : 'text-gray-900 dark:text-white'}`} style={isSelected ? { color: 'var(--trip-base)' } : undefined}>{cs}{room.price}</p>
                                     <p className="text-[9px] text-gray-500 dark:text-gray-400">per night</p>
                                   </div>
                                 </div>
@@ -1587,21 +1673,21 @@ function BookedHotelCard({
                             <AnimatePresence>
                               {expandedRoom === roomKey && (
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                  <div className="mt-1.5 bg-white dark:bg-[var(--background)] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
+                                  <div className="mt-1.5 bg-white dark:bg-white/[0.03] rounded-lg border-2 overflow-hidden" style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.2)' }}>
                                     <div className="relative w-full h-48">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={room.image} alt={room.type} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                      <img src={room.image} alt={room.type} className="absolute inset-0 w-full h-full object-cover" />
                                       <button onClick={() => setExpandedRoom(null)} className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"><X size={12} /></button>
                                     </div>
                                     <div className="p-3 space-y-2">
                                       <div className="flex justify-between">
                                         <div>
-                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-gray-100">{room.type}</h6>
+                                          <h6 className="text-xs font-semibold text-gray-900 dark:text-white">{room.type}</h6>
                                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{room.beds} &middot; {room.size} &middot; {room.guests} guests</p>
                                         </div>
                                         <div className="text-right">
-                                          <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>&euro;{room.price}<span className="text-[10px] text-gray-400 font-normal">/nt</span></p>
-                                          <p className="text-[10px] text-gray-500 dark:text-gray-400">&euro;{room.price * nights} total</p>
+                                          <p className="text-sm font-bold" style={{ color: 'var(--trip-base)' }}>{cs}{room.price}<span className="text-[10px] text-gray-400 font-normal">/nt</span></p>
+                                          {nights && <p className="text-[10px] text-gray-500 dark:text-gray-400">{cs}{room.price * nights} total</p>}
                                         </div>
                                       </div>
                                       <div className="flex flex-wrap gap-1">
@@ -1628,30 +1714,29 @@ function BookedHotelCard({
               <p className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide">Booking Details</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                 <span className="text-gray-500 dark:text-gray-400">Confirmation #</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">HTL-2026-{hotel.id.toUpperCase()}</span>
+                <span className="font-medium text-gray-900 dark:text-white">HTL-2026-{hotel.id.toUpperCase()}</span>
                 <span className="text-gray-500 dark:text-gray-400">Property ID</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{hotel.id.toUpperCase()}-PAR</span>
+                <span className="font-medium text-gray-900 dark:text-white">{hotel.id.toUpperCase()}-PAR</span>
                 <span className="text-gray-500 dark:text-gray-400">Guest</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">2 Adults</span>
+                <span className="font-medium text-gray-900 dark:text-white">2 Adults</span>
                 <span className="text-gray-500 dark:text-gray-400">Payment</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1"><CreditCard size={10} /> **** 4242</span>
+                <span className="font-medium text-gray-900 dark:text-white flex items-center gap-1"><CreditCard size={10} /> **** 4242</span>
               </div>
             </div>
 
             {/* Hotel policies (collapsible) */}
             <div className="bg-white dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/[0.08] overflow-hidden">
               <button onClick={() => setPoliciesOpen(!policiesOpen)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">Hotel Policies</span>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">Hotel Policies</span>
                 <ChevronDown size={14} className={`text-gray-400 transition-transform ${policiesOpen ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
                 {policiesOpen && (
                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                     <div className="px-3 pb-3 border-t border-gray-100 dark:border-white/[0.06] space-y-1.5 pt-2 text-xs text-gray-600 dark:text-gray-300">
-                      <p>Check-in from {hotel.checkIn}, Check-out by {hotel.checkOut}</p>
+                      {(hotel.checkIn || hotel.checkOut) && <p>{hotel.checkIn && `Check-in from ${hotel.checkIn}`}{hotel.checkIn && hotel.checkOut && ', ' }{hotel.checkOut && `Check-out by ${hotel.checkOut}`}</p>}
                       <p>{hotel.cancellation}</p>
-                      <p>No smoking. Pets allowed upon request (+&euro;25/night).</p>
-                      <p>City tax of &euro;3.50 per person per night (included in total).</p>
+                      <p>Contact hotel for additional policies.</p>
                     </div>
                   </motion.div>
                 )}
@@ -1687,15 +1772,15 @@ function BookedHotelCard({
             <div className="grid grid-cols-3 gap-2">
               <a href={`tel:${hotel.phone}`} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                 <Phone size={14} style={{ color: 'var(--trip-base)' }} />
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Call</span>
+                <span className="text-xs text-gray-900 dark:text-white font-medium">Call</span>
               </a>
               <a href={`mailto:${hotel.email}`} className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                 <Mail size={14} style={{ color: 'var(--trip-base)' }} />
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Email</span>
+                <span className="text-xs text-gray-900 dark:text-white font-medium">Email</span>
               </a>
               <button className="flex flex-col items-center justify-center gap-1.5 bg-white dark:bg-white/5 rounded-md p-2.5 border border-gray-200 dark:border-white/[0.08] hover:border-trip-base hover:shadow-sm transition-all">
                 <Map size={14} className="text-[#8b6f47]" />
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">Map</span>
+                <span className="text-xs text-gray-900 dark:text-white font-medium">Map</span>
               </button>
             </div>
 
@@ -1704,7 +1789,7 @@ function BookedHotelCard({
               <div className="flex items-start gap-2">
                 <MapPin size={14} className="text-[#8b6f47] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-900 dark:text-gray-100 leading-snug">{hotel.address}</p>
+                  <p className="text-xs text-gray-900 dark:text-white leading-snug">{hotel.address}</p>
                   <p className="text-[10px] mt-0.5" style={{ color: 'var(--trip-base)' }}>{hotel.neighborhood}</p>
                 </div>
               </div>
@@ -1723,7 +1808,7 @@ function BookedHotelCard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{hotel.guestRatings.label}</span>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">{hotel.guestRatings.label}</span>
                     <span className="text-[10px] text-gray-400">&middot; {hotel.reviews} reviews</span>
                   </div>
                   <div className="flex flex-wrap gap-x-2.5 mt-1">
@@ -1753,9 +1838,22 @@ function BookedHotelCard({
 /*  Main Page Component                                                */
 /* ------------------------------------------------------------------ */
 
+// Get currency symbol from user preferences via Intl — used by all hotel components
+function useCurrencySymbol(): string {
+  const { currency } = useHomeCurrency();
+  try {
+    return new Intl.NumberFormat('en', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
+      .format(0).replace(/[\d.,\s]/g, '').trim() || currency;
+  } catch { return currency; }
+}
+
 export default function Hotels({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { trip } = useItineraryScreen(id);
+  const cs = useCurrencySymbol();
+  const accommodationType = (trip?.trip_context as any)?.quick_facts?.accommodation_type
+    || (trip?.trip_context as any)?.accommodation_type || null;
+  const skipHotelSearch = accommodationType === 'Staying with someone' || accommodationType === 'Own place';
 
   // Search query state — drives a new Foursquare fetch when submitted
   const [searchInput, setSearchInput] = useState('');
