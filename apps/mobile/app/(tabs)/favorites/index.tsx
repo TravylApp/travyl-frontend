@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, groupPlacesByCollection, TextStyles, FontSize, FontFamily, type PlaceItem } from '@travyl/shared';
+import { Navy, groupPlacesByCollection, TextStyles, FontSize, FontFamily, KNOWN_CITIES, type PlaceItem } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ExplorePreview } from '@/components/home/ExplorePreview';
@@ -23,22 +23,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // In dev: localhost:3000, in production: deeviaje.com
 const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 const WEB_API = BACKEND_API;
-
-const KNOWN_CITIES: Record<string, { lat: string; lng: string }> = {
-  'paris': { lat: '48.8566', lng: '2.3522' }, 'london': { lat: '51.5074', lng: '-0.1278' },
-  'rome': { lat: '41.9028', lng: '12.4964' }, 'tokyo': { lat: '35.6762', lng: '139.6503' },
-  'barcelona': { lat: '41.3874', lng: '2.1686' }, 'new york': { lat: '40.7128', lng: '-74.0060' },
-  'bali': { lat: '-8.4095', lng: '115.1889' }, 'dubai': { lat: '25.2048', lng: '55.2708' },
-  'bangkok': { lat: '13.7563', lng: '100.5018' }, 'amsterdam': { lat: '52.3676', lng: '4.9041' },
-  'sydney': { lat: '-33.8688', lng: '151.2093' }, 'istanbul': { lat: '41.0082', lng: '28.9784' },
-  'lisbon': { lat: '38.7223', lng: '-9.1393' }, 'singapore': { lat: '1.3521', lng: '103.8198' },
-  'seoul': { lat: '37.5665', lng: '126.9780' }, 'athens': { lat: '37.9838', lng: '23.7275' },
-  'prague': { lat: '50.0755', lng: '14.4378' }, 'marrakech': { lat: '31.6295', lng: '-7.9811' },
-  'cape town': { lat: '-33.9249', lng: '18.4241' }, 'mexico city': { lat: '19.4326', lng: '-99.1332' },
-  'rio de janeiro': { lat: '-22.9068', lng: '-43.1729' }, 'miami': { lat: '25.7617', lng: '-80.1918' },
-  'san francisco': { lat: '37.7749', lng: '-122.4194' }, 'los angeles': { lat: '34.0522', lng: '-118.2437' },
-  'cancun': { lat: '21.1619', lng: '-86.8515' }, 'berlin': { lat: '52.5200', lng: '13.4050' },
-};
 
 // Upscale Google Places thumbnails to usable resolution
 function upscaleImage(url: string | null | undefined): string {

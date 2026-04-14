@@ -52,6 +52,8 @@ export * from './packingCatalog';
 
 export * from './typography';
 
+export { KNOWN_CITIES } from './knownCities';
+
 // UI content data (login, profile, travel boards)
 export * from './mockLoginData';
 export * from './mockProfileData';
