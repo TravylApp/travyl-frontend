@@ -5,9 +5,20 @@ import {
   isValidImageUrl,
 } from '@travyl/shared'
 import { filterByRadius } from '@/lib/haversine'
+import { createServerClient } from '@supabase/ssr'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)!
 
+// Map category names that Foursquare doesn't recognise to ones it does
+const FOURSQUARE_CAT_MAP: Record<string, string> = {
+  dining: 'restaurant',
+  cultural: 'museum',
+  outdoor: 'park',
+  tour: 'attraction',
+  all: 'sightseeing',
+}
 
 export async function GET(req: NextRequest) {
   const lat = req.nextUrl.searchParams.get('lat') ?? ''
@@ -25,6 +36,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json([])
   }
 
+  // Extract auth from Supabase cookies so backend Lambdas can validate the user
+  let authHeader: string | undefined
+  try {
+    const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
+      cookies: { getAll() { return req.cookies.getAll() }, setAll() {} },
+    })
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) authHeader = `Bearer ${session.access_token}`
+  } catch { /* continue without auth */ }
+
   try {
     let data: BackendPlace[] = []
 
@@ -33,7 +54,7 @@ export async function GET(req: NextRequest) {
     if (q) {
       const nlpRes = await fetch(
         `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}&lat=${lat}&lng=${lng}`,
-        { headers: { Accept: 'application/json' } }
+        { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
       )
       if (nlpRes.ok) {
         const nlpData = await nlpRes.json()
@@ -56,7 +77,7 @@ export async function GET(req: NextRequest) {
       if (!data || data.length === 0) {
         // Extract a category hint from the NLP query text for better nearby results
         const qLower = q.toLowerCase()
-        let nearbyCategory = category
+        let nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
         if (/restaurant|food|dining|eat/.test(qLower)) nearbyCategory = 'restaurant'
         else if (/nightlife|bar|club|lounge|pub/.test(qLower)) nearbyCategory = 'nightlife'
         else if (/shop|market|mall/.test(qLower)) nearbyCategory = 'shopping'

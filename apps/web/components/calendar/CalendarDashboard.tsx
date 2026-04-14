@@ -582,9 +582,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   }, [moveActivity, updateActivity, queryClient])
 
   // Early returns for loading / error states (must come after all hooks)
-  if (isLoading) return <CalendarSkeleton />
+  if (isLoading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}><CalendarSkeleton /></motion.div>
   if (error) return <CalendarError message={error} />
-  if (!trip) return <CalendarSkeleton />
+  if (!trip) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}><CalendarSkeleton /></motion.div>
 
   // Event handlers
   const handleSelectEvent = (id: string, anchorEl?: HTMLElement) => {
@@ -709,7 +709,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <TripPermissionProvider trip={trip!} collaborators={tripCollaborators} isSharedView={isSharedView}>
     <div className={theme === 'dark' ? 'dark' : ''}>
-    <div className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
@@ -963,7 +967,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           )}
         </DndContext>
       </div>
-    </div>
+    </motion.div>
     </div>
     <CardPopover
       anchorEl={popoverAnchor}

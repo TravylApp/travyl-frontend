@@ -24,7 +24,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
         {/* Image area */}
         <View style={{ height: 140, position: 'relative' }}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
+            <Image source={{ uri: imageUrl, headers: { Referer: '' } }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: typeColor.bg }}>
               <FontAwesome name="picture-o" size={24} color={typeColor.primary + '30'} />

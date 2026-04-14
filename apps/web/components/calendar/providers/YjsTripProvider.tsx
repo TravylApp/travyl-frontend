@@ -53,28 +53,42 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
   }, [])
 
   useEffect(() => {
-    const provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase, {
-      awareness: true,
-      persistence: {
-        table: 'yjs_documents',
-        roomColumn: 'room',
-        stateColumn: 'state',
-        storeTimeout: 1000,
-      },
-    })
+    let provider: SupabaseProvider | null = null
+    let destroyed = false
 
-    provider.on('status', (status) => {
-      if (status === 'connected') setConnectionStatus('connected')
-      else if (status === 'connecting') setConnectionStatus('reconnecting')
-      else if (status === 'disconnected') setConnectionStatus('disconnected')
-    })
+    try {
+      provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase, {
+        awareness: true,
+        persistence: {
+          table: 'yjs_documents',
+          roomColumn: 'room',
+          stateColumn: 'state',
+          storeTimeout: 1000,
+        },
+      })
 
-    provider.on('error', (err) => {
-      console.error('[YjsTripProvider]', err.message)
-    })
+      provider.on('status', (status) => {
+        if (destroyed) return
+        if (status === 'connected') setConnectionStatus('connected')
+        else if (status === 'connecting') setConnectionStatus('reconnecting')
+        else if (status === 'disconnected') setConnectionStatus('disconnected')
+      })
+
+      provider.on('error', (err) => {
+        // Log once and destroy — prevents infinite reconnect loop when channel is unavailable
+        console.warn('[YjsTripProvider] sync unavailable:', err.message)
+        if (!destroyed && provider) {
+          provider.destroy()
+          provider = null
+        }
+      })
+    } catch (err) {
+      console.warn('[YjsTripProvider] failed to initialise:', err)
+    }
 
     return () => {
-      provider.destroy()
+      destroyed = true
+      provider?.destroy()
     }
   }, [tripId, doc])
 

@@ -299,10 +299,14 @@ export function TripHistoryToggle({ tripId, variant = 'pill', dark = false }: { 
       <button
         onClick={() => setOpen(!open)}
         className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all duration-200"
-        style={{
+        style={dark ? {
           color: 'rgba(255,255,255,0.85)',
           backgroundColor: open ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
           border: `1px solid ${open ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)'}`,
+        } : {
+          color: open ? '#1e3a5f' : '#475569',
+          backgroundColor: open ? 'rgba(30,58,95,0.1)' : 'rgba(0,0,0,0.05)',
+          border: `1px solid ${open ? 'rgba(30,58,95,0.25)' : 'rgba(0,0,0,0.12)'}`,
         }}
         title="View trip history"
       >
