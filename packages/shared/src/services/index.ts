@@ -4,6 +4,9 @@ export {
   fetchCollaboratorTrips,
   fetchSavedItems,
   fetchProfile,
+  updateProfile,
+  updateUserMetadata,
+  updateUserPassword,
   fetchMosaicTiles,
   fetchInspirationCards,
   fetchExploreRows,
@@ -56,3 +59,7 @@ export {
   updateSuggestionStatus,
   dismissAllSuggestions,
 } from './packingService';
+
+export {
+  generatePackingSuggestions,
+} from './packingSuggestions';

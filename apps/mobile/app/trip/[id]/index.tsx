@@ -9,11 +9,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useItineraryScreen,
+  upscaleGoogleImage,
   TextStyles, FontFamily,
 } from '@travyl/shared';
 import { PageTransition } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SIDEBAR_W = 30; // matches SIDE_TAB_W in _layout
+const CONTENT_WIDTH = SCREEN_WIDTH - SIDEBAR_W;
 const ACCENT_COLOR = '#c8a96a';
 const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
 
@@ -41,17 +44,18 @@ function buildExploreItems(ctx: any) {
   if (!ctx) return [];
   const items: any[] = [];
   const seen = new Set<string>();
+  const hiRes = (url: string | undefined) => upscaleGoogleImage(url) || url;
   for (const e of ctx.explore_items ?? []) {
-    if (e.title && !seen.has(e.title)) {
+    if (e.title && !seen.has(e.title) && e.image) {
       seen.add(e.title);
-      items.push({ id: e.id || e.title, title: e.title, description: e.description || '', category: e.category || 'Sightseeing', image: e.image });
+      items.push({ id: e.id || e.title, title: e.title, description: e.description || '', category: e.category || 'Sightseeing', image: hiRes(e.image) });
     }
   }
   for (const v of ctx.foursquare_venues ?? []) {
     const name = v.title || v.name;
-    if (name && !seen.has(name)) {
+    if (name && !seen.has(name) && v.image) {
       seen.add(name);
-      items.push({ id: v.id || name, title: name, description: v.description || v.category || '', category: v.category || 'Venue', image: v.image });
+      items.push({ id: v.id || name, title: name, description: v.description || v.category || '', category: v.category || 'Venue', image: hiRes(v.image) });
     }
   }
   let rc = 0;
@@ -59,7 +63,7 @@ function buildExploreItems(ctx: any) {
     if (rc >= 3) break;
     if (r.name && !seen.has(r.name)) {
       seen.add(r.name);
-      items.push({ id: r.id || r.name, title: r.name, description: r.tip || r.category || 'Restaurant', category: 'Dining', image: r.image });
+      items.push({ id: r.id || r.name, title: r.name, description: r.tip || r.category || 'Restaurant', category: 'Dining', image: hiRes(r.image) });
       rc++;
     }
   }
@@ -93,54 +97,36 @@ export default function OverviewScreen() {
   const destination = trip?.destination || '';
   const [liveExploreItems, setLiveExploreItems] = useState<any[]>([]);
   useEffect(() => {
-    // Use lat/lng if available, otherwise fetch by city name via places API
-    const fetchPlaces = async (lat: number, lng: number) => {
-      const cats = ['sightseeing', 'restaurant', 'museum', 'park'];
-      const results = await Promise.all(cats.map(cat =>
-        fetch(`${WEB_API}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=4`)
-          .then(r => r.ok ? r.json() : []).catch(() => [])
-      ));
-      const seen = new Set<string>();
-      return results.flat().filter((p: any) => {
-        if (!p.name || seen.has(p.id || p.name)) return false;
-        seen.add(p.id || p.name);
-        return true;
-      }).map((p: any) => ({
-        id: p.id, title: p.name, description: p.description || p.category,
-        category: p.category, image: p.image,
-      }));
-    };
+    // Fetch diverse places using city name NLP search (returns all categories)
+    const city = destination.split(',')[0].trim();
+    if (!city || city === 'Destination') return;
 
-    if (tripLat && tripLng) {
-      fetchPlaces(tripLat, tripLng).then(items => { if (items.length > 0) setLiveExploreItems(items); });
-    } else if (destination) {
-      // Geocode the destination city first
-      const city = destination.split(',')[0].trim();
-      fetch(`${WEB_API}/api/places?q=${encodeURIComponent(city)}&category=sightseeing&limit=8`)
-        .then(r => r.ok ? r.json() : [])
-        .then(items => {
-          if (Array.isArray(items) && items.length > 0) {
-            setLiveExploreItems(items.map((p: any) => ({
-              id: p.id, title: p.name, description: p.description || p.category,
-              category: p.category, image: p.image,
-            })));
-          }
-        })
-        .catch(() => {});
-    }
+    const query = tripLat && tripLng
+      ? `${WEB_API}/api/places?q=${encodeURIComponent(city + ' things to do')}&lat=${tripLat}&lng=${tripLng}&limit=20`
+      : `${WEB_API}/api/places?q=${encodeURIComponent(city + ' things to do')}&limit=20`;
+
+    fetch(query)
+      .then(r => r.ok ? r.json() : [])
+      .then((items: any[]) => {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const seen = new Set<string>();
+        const deduped = items.filter((p: any) => {
+          if (!p.name || seen.has(p.id || p.name)) return false;
+          seen.add(p.id || p.name);
+          return true;
+        }).map((p: any) => ({
+          id: p.id, title: p.name, description: p.description || p.category,
+          category: p.category, image: upscaleGoogleImage(p.image) || p.image,
+        }));
+        if (deduped.length > 0) setLiveExploreItems(deduped);
+      })
+      .catch(() => {});
   }, [tripLat, tripLng, destination]);
 
   // Use live data if available, fall back to trip_context
   const exploreItems = liveExploreItems.length > 0 ? liveExploreItems : storedExploreItems;
 
-  // ─── Fetch quote from API ──────────────────────────────
-  const [quote, setQuote] = useState<{ content: string; author: string } | null>(null);
-  useEffect(() => {
-    fetch(`${WEB_API}/api/quote?tag=travel`)
-      .then(r => r.json())
-      .then(d => { if (d?.content) setQuote(d); })
-      .catch(() => setQuote({ content: 'To travel is to live.', author: 'Hans Christian Andersen' }));
-  }, []);
+  // Quote removed — matching web
 
   // ─── Normalize phrases to array ───────────────────────
   const phrases = useMemo(() => {
@@ -169,12 +155,22 @@ export default function OverviewScreen() {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 0 }}
         showsVerticalScrollIndicator={false}
       >
 
+      {/* Gradient fade from hero into content */}
+      <LinearGradient
+        colors={['transparent', isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)', isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)']}
+        locations={[0, 0.4, 1]}
+        style={{ height: 80 }}
+      />
+
+      {/* Opaque content area — prevents hero bleed between sections */}
+      <View style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)' }}>
+
       {/* ─── Things to Do — horizontal scroll cards ───────── */}
-      <View style={{ marginTop: 20 }}>
+      <View>
         <View style={{ paddingHorizontal: 20 }}>
           <SectionHeader accent="Explore" title="Things to Do" />
         </View>
@@ -184,12 +180,12 @@ export default function OverviewScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
             decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH - 28}
+            snapToInterval={CONTENT_WIDTH - 28}
             pagingEnabled={false}
           >
             {exploreItems.map((item: any, idx: number) => (
               <View key={item.id || idx} style={{
-                width: SCREEN_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
+                width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {item.image ? (
                   <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -236,21 +232,7 @@ export default function OverviewScreen() {
         )}
       </View>
 
-      {/* ─── Quote Divider ────────────────────────────────── */}
-      {quote && (
-        <View style={{ paddingHorizontal: 32, paddingVertical: 24, alignItems: 'center' }}>
-          <Text style={{
-            ...TextStyles.subhead, fontSize: 15, fontFamily: FontFamily.serif,
-            fontStyle: 'italic',
-            textAlign: 'center', color: 'rgba(255,255,255,0.6)',
-            lineHeight: 22,
-            ...TEXT_SHADOW,
-          }}>
-            &ldquo;{quote.content}&rdquo;
-            {quote.author ? <Text style={{ fontStyle: 'normal', opacity: 0.5 }}>{' '}— {quote.author}</Text> : null}
-          </Text>
-        </View>
-      )}
+      {/* Quote removed — matching web */}
 
       {/* ─── What's Going On — dark gradient news cards ───── */}
       {news.length > 0 && (
@@ -261,7 +243,7 @@ export default function OverviewScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 10 }}
             decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH - 60}
+            snapToInterval={CONTENT_WIDTH - 60}
           >
             {news.map((item: any, i: number) => {
               const gradients: [string, string][] = [['#1a1a2e', '#16213e'], ['#0f3460', '#1a1a2e'], ['#2c3e50', '#1a1a2e'], ['#1b2838', '#0f3460']];
@@ -270,7 +252,7 @@ export default function OverviewScreen() {
                 <Pressable
                   key={item.id || i}
                   onPress={() => item.url && Linking.openURL(item.url)}
-                  style={{ width: SCREEN_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
+                  style={{ width: CONTENT_WIDTH - 60, height: 200, borderRadius: 14, overflow: 'hidden' }}
                 >
                   <LinearGradient
                     colors={[grad[0], grad[1]]}
@@ -315,12 +297,12 @@ export default function OverviewScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
             decelerationRate="fast"
-            snapToInterval={SCREEN_WIDTH - 28}
+            snapToInterval={CONTENT_WIDTH - 28}
             pagingEnabled={false}
           >
             {(ctx.cuisine as any[]).map((dish: any, idx: number) => (
               <View key={dish.id || idx} style={{
-                width: SCREEN_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
+                width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {dish.image ? (
                   <Image source={{ uri: dish.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -342,34 +324,44 @@ export default function OverviewScreen() {
         </View>
       )}
 
-      {/* ─── Essential Phrases — horizontal scroll pills ───── */}
+      {/* ─── Essential Phrases — vertical scroll, 2 per row ── */}
       {phrases.length > 0 && (
-        <View style={{ marginTop: 24 }}>
-          <View style={{ paddingHorizontal: 20 }}>
-            <SectionHeader accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-            decelerationRate="fast"
-          >
-            {phrases.slice(0, 12).map((phrase: any, idx: number) => {
-              const en = phrase.english || phrase.en || Object.keys(phrase)[0];
-              const local = phrase.local || phrase.translation || Object.values(phrase)[0];
-              return (
-                <View key={idx} style={{
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
-                  borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
-                  borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                  minWidth: 140,
-                }}>
-                  <Text style={{ ...TextStyles.caption, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 4 }}>{en}</Text>
-                  <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: ACCENT_COLOR, fontFamily: FontFamily.serif }}>{local}</Text>
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <SectionHeader accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
+          <View style={{
+            height: 52 * 2 + 8, // 2 visible rows + gap
+            borderRadius: 12, overflow: 'hidden',
+          }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {phrases.slice(0, 12).reduce((rows: any[][], phrase: any, idx: number) => {
+                if (idx % 2 === 0) rows.push([phrase]);
+                else rows[rows.length - 1].push(phrase);
+                return rows;
+              }, []).map((pair: any[], rowIdx: number) => (
+                <View key={rowIdx} style={{ flexDirection: 'row', gap: 8 }}>
+                  {pair.map((phrase: any, colIdx: number) => {
+                    const en = phrase.english || phrase.en || Object.keys(phrase)[0];
+                    const local = phrase.local || phrase.translation || Object.values(phrase)[0];
+                    return (
+                      <View key={colIdx} style={{
+                        flex: 1,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                        borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+                        borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                      }}>
+                        <Text style={{ ...TextStyles.xs, color: isDark ? '#9e9689' : '#7a6e63', marginBottom: 2 }}>{en}</Text>
+                        <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: ACCENT_COLOR, fontFamily: FontFamily.serif }} numberOfLines={1}>{local}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
-              );
-            })}
-          </ScrollView>
+              ))}
+            </ScrollView>
+          </View>
         </View>
       )}
 
@@ -377,18 +369,18 @@ export default function OverviewScreen() {
       {costItems.length > 0 && (
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
           <SectionHeader accent="Budget" title="Cost of Living" />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {costItems.map((item, idx) => (
               <View key={idx} style={{
-                width: (SCREEN_WIDTH - 50) / 3, alignItems: 'center',
+                width: '31%', alignItems: 'center',
                 backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                borderRadius: 12, paddingVertical: 14, paddingHorizontal: 8,
+                borderRadius: 10, paddingVertical: 10, paddingHorizontal: 4,
               }}>
-                <FontAwesome name={item.icon} size={16} color={ACCENT_COLOR} style={{ marginBottom: 8 }} />
-                <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: '#fff' }}>
+                <FontAwesome name={item.icon} size={14} color={ACCENT_COLOR} style={{ marginBottom: 4 }} />
+                <Text style={{ ...TextStyles.body, fontWeight: '700', color: '#fff', fontSize: 13 }} numberOfLines={1}>
                   {currencySymbol}{typeof item.value === 'number' ? item.value.toFixed(2) : item.value}
                 </Text>
-                <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', textAlign: 'center', marginTop: 3 }}>{item.label}</Text>
+                <Text style={{ ...TextStyles.xs, color: isDark ? '#7a7268' : '#a39688', textAlign: 'center', marginTop: 2, fontSize: 10 }}>{item.label}</Text>
               </View>
             ))}
           </View>
@@ -418,8 +410,30 @@ export default function OverviewScreen() {
         </View>
       )}
 
-      {/* ─── Bottom Photo Bleed — rotating hero images ────── */}
-      <TripPhotoBleed photos={ctx?.hero_images ?? []} />
+      </View>{/* end opaque content area */}
+
+      {/* ─── Bottom Photo Bleed — hero image fades back in ── */}
+      {(() => {
+        const heroUrl = ctx?.hero_image_url || ctx?.hero_images?.[0];
+        if (!heroUrl) return null;
+        return (
+          <View style={{ height: 360, overflow: 'hidden' }}>
+            <Image
+              source={{ uri: heroUrl.includes?.('googleusercontent.com') ? heroUrl.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : heroUrl }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              contentPosition="bottom"
+              cachePolicy="memory-disk"
+            />
+            <LinearGradient
+              colors={[isDark ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.92)', 'rgba(0,0,0,0.3)', 'transparent']}
+              locations={[0, 0.35, 0.7]}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%' }}
+              pointerEvents="none"
+            />
+          </View>
+        );
+      })()}
 
     </ScrollView>
     </View>
@@ -427,41 +441,4 @@ export default function OverviewScreen() {
   );
 }
 
-// ─── Bottom photo mosaic — crossfades hero images ────────
-function TripPhotoBleed({ photos }: { photos: string[] }) {
-  const isDark = useColorScheme() === 'dark';
-  const [current, setCurrent] = useState(0);
 
-  useEffect(() => {
-    if (photos.length <= 1) return;
-    const interval = setInterval(() => setCurrent(c => (c + 1) % photos.length), 6000);
-    return () => clearInterval(interval);
-  }, [photos.length]);
-
-  if (photos.length === 0) return null;
-
-  return (
-    <View style={{ marginTop: 24, height: 320, overflow: 'hidden' }}>
-      {photos.map((src, i) => (
-        <Image
-          key={i}
-          source={{ uri: src.includes('googleusercontent.com') ? src.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : src }}
-          style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            opacity: i === current ? 1 : 0,
-          }}
-          contentFit="cover"
-          contentPosition="center"
-          transition={2000}
-          cachePolicy="memory-disk"
-        />
-      ))}
-      <LinearGradient
-        colors={[isDark ? '#000' : '#fff', 'transparent']}
-        locations={[0, 0.5]}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%' }}
-        pointerEvents="none"
-      />
-    </View>
-  );
-}

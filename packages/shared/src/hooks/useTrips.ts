@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery } from '@tanstack/react-query';
 import { fetchTrips, fetchCollaboratorTrips } from '../services/api';
 import { supabase } from '../services/supabase';

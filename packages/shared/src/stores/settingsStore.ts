@@ -1,3 +1,5 @@
+'use client';
+
 // packages/shared/src/stores/settingsStore.ts
 import { create } from 'zustand';
 import { supabase } from '../services/supabase';

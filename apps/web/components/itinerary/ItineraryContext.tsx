@@ -1,10 +1,90 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { CalendarActivity } from '@travyl/shared';
 import type { ItineraryDayViewModel, ActivityViewModel, TimeGroup } from '@travyl/shared';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, supabase } from '@travyl/shared';
 import type { MapLocation } from '@/components/leaflet-map';
+
+// ─── History persistence (fire-and-forget) ───────────────────
+
+function appendTripHistory(tripId: string, action: string) {
+  supabase
+    .from('trips')
+    .select('trip_context')
+    .eq('id', tripId)
+    .single()
+    .then(({ data }) => {
+      if (!data?.trip_context) return;
+      const ctx = data.trip_context as any;
+      const history = (ctx.user_history ?? []) as any[];
+      history.push({ action, timestamp: new Date().toISOString(), actor: 'You' });
+      supabase
+        .from('trips')
+        .update({ trip_context: { ...ctx, user_history: history } })
+        .eq('id', tripId)
+        .then(() => {}, () => {});
+    });
+}
+
+// ─── Itinerary persistence (debounced write-back to trip_context.itinerary) ──
+
+function activitiesToItineraryJson(
+  activities: CalendarActivity[],
+  baseDays: BaseDayData[],
+  trip: any,
+): any[] {
+  // Convert CalendarActivity[] back to the trip_context.itinerary format
+  const startDate = trip?.start_date ? new Date(trip.start_date) : new Date();
+  const itinerary: any[] = [];
+
+  for (let d = 0; d < baseDays.length; d++) {
+    const dayDate = new Date(startDate);
+    dayDate.setDate(dayDate.getDate() + d);
+    const dateStr = dayDate.toISOString().split('T')[0];
+
+    const dayActivities = activities.filter(
+      (a) => a.day === d && a.onCalendar !== false,
+    );
+
+    itinerary.push({
+      day: d + 1,
+      date: dateStr,
+      slots: dayActivities.map((a) => ({
+        start_time: a.startTime || '',
+        end_time: a.endTime || '',
+        poi: {
+          id: a.id,
+          name: a.title,
+          category: a.type || 'sightseeing',
+          image: a.image,
+          lat: (a as any).lat,
+          lng: (a as any).lng,
+        },
+      })),
+    });
+  }
+  return itinerary;
+}
+
+function syncItineraryToDb(tripId: string, itinerary: any[]) {
+  supabase
+    .from('trips')
+    .select('trip_context')
+    .eq('id', tripId)
+    .single()
+    .then(({ data }) => {
+      if (!data?.trip_context) return;
+      supabase
+        .from('trips')
+        .update({ trip_context: { ...data.trip_context, itinerary } })
+        .eq('id', tripId)
+        .then(
+          () => console.log('[itinerary-sync] saved', itinerary.length, 'days'),
+          (err) => console.warn('[itinerary-sync] failed:', err),
+        );
+    });
+}
 
 type BaseDayData = { id: string; dayNumber: number; dayLabel: string; dateLabel: string; theme?: string; notes?: string };
 
@@ -115,6 +195,7 @@ interface ItineraryContextValue {
   setAllCollapsedOverride: React.Dispatch<React.SetStateAction<boolean | null>>;
   selectedDayIndex: number;
   setSelectedDayIndex: React.Dispatch<React.SetStateAction<number>>;
+  swapDays: (fromIdx: number, toIdx: number) => void;
 }
 
 const ItineraryContext = createContext<ItineraryContextValue | null>(null);
@@ -137,7 +218,8 @@ function generateFromTripContext(
     const days: BaseDayData[] = [];
     const activities: CalendarActivity[] = [];
 
-    for (let d = 0; d < plannerItinerary.length; d++) {
+    const dayCount = Math.min(plannerItinerary.length, durationDays);
+    for (let d = 0; d < dayCount; d++) {
       const dayData = plannerItinerary[d];
       const date = new Date(startDate);
       date.setDate(date.getDate() + d);
@@ -273,7 +355,7 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     if (trip.start_date && trip.end_date) {
       duration = Math.max(1, Math.ceil(
         (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
-      ));
+      ) + 1);
     } else if (trip.trip_context?.weather?.forecast?.length) {
       duration = trip.trip_context.weather.forecast.length;
     }
@@ -283,15 +365,16 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
   const [activities, setActivities] = useState<CalendarActivity[]>([]);
   const [baseDays, setBaseDays] = useState<BaseDayData[]>([]);
 
-  // Seed activities from trip context when trip loads (only once)
-  const [seeded, setSeeded] = useState(false);
+  // Seed activities from trip context — re-seeds when dates change
+  const dateKey = `${trip?.start_date}-${trip?.end_date}`;
+  const [seededKey, setSeededKey] = useState('');
   useEffect(() => {
-    if (generated && !seeded && generated.days.length > 0) {
+    if (generated && generated.days.length > 0 && seededKey !== dateKey) {
       setBaseDays(generated.days);
       setActivities(generated.activities);
-      setSeeded(true);
+      setSeededKey(dateKey);
     }
-  }, [generated, seeded]);
+  }, [generated, dateKey, seededKey]);
   const [mapMarkers, setMapMarkers] = useState<MapLocation[]>([]);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | undefined>();
   const [requestMapOpen, setRequestMapOpen] = useState(false);
@@ -336,15 +419,18 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
 
   const addActivity = useCallback((activity: CalendarActivity) => {
     setActivities((prev) => [...prev, activity]);
-  }, []);
+    if (tripId) appendTripHistory(tripId, `Added "${activity.title}"`);
+  }, [tripId]);
 
   const removeActivity = useCallback((id: string) => {
-    setActivities((prev) =>
-      prev.map((a) =>
+    setActivities((prev) => {
+      const match = prev.find((a) => a.id === id);
+      if (match && tripId) appendTripHistory(tripId, `Removed "${match.title}"`);
+      return prev.map((a) =>
         a.id === id ? { ...a, onCalendar: false, parentId: undefined } : a,
-      ),
-    );
-  }, []);
+      );
+    });
+  }, [tripId]);
 
   const updateActivity = useCallback((id: string, updates: Partial<CalendarActivity>) => {
     setActivities((prev) =>
@@ -365,6 +451,46 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
     });
   }, []);
 
+  // Swap two days — reorders baseDays and remaps activity day indices
+  const swapDays = useCallback((fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+    setBaseDays(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      // Renumber dayNumber
+      return next.map((d, i) => ({ ...d, dayNumber: i + 1, dayLabel: `Day ${i + 1}` }));
+    });
+    setActivities(prev => prev.map(a => {
+      if (a.day === fromIdx) return { ...a, day: toIdx };
+      // Shift activities between fromIdx and toIdx
+      if (fromIdx < toIdx && a.day > fromIdx && a.day <= toIdx) return { ...a, day: a.day - 1 };
+      if (fromIdx > toIdx && a.day >= toIdx && a.day < fromIdx) return { ...a, day: a.day + 1 };
+      return a;
+    }));
+  }, []);
+
+  // ─── Debounced persistence: sync activities → trip_context.itinerary ───
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasMounted = useRef(false);
+  useEffect(() => {
+    // Skip the initial seed render — only sync user-initiated changes
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+    if (!tripId || baseDays.length === 0) return;
+
+    // Debounce: write to DB 1.5s after last change
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      const itinerary = activitiesToItineraryJson(activities, baseDays, trip);
+      syncItineraryToDb(tripId, itinerary);
+    }, 1500);
+
+    return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
+  }, [activities, baseDays, tripId, trip]);
+
   const value = useMemo(
     () => ({
       activities, setActivities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
@@ -373,10 +499,11 @@ export function ItineraryProvider({ children, tripId }: { children: React.ReactN
       collapsedSections, setCollapsedSections,
       allCollapsedOverride, setAllCollapsedOverride,
       selectedDayIndex, setSelectedDayIndex,
+      swapDays,
     }),
     [activities, days, addActivity, removeActivity, updateActivity, moveActivityBefore,
      mapMarkers, selectedMarkerId, requestMapOpen,
-     collapsedSections, allCollapsedOverride, selectedDayIndex],
+     collapsedSections, allCollapsedOverride, selectedDayIndex, swapDays],
   );
 
   return (
