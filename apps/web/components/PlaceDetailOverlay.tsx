@@ -12,10 +12,10 @@ import {
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { Footer } from '@/components/home/Footer';
 import { OceanWave } from '@/components/home/OceanWave';
-import { useSimilarPlaces, Navy } from '@travyl/shared';
+import { useSimilarPlaces, usePlaceDetail, usePlaceEnrich, usePlaceMenu, Navy } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
-const MOCK_PLACES: PlaceItem[] = [];
+// No mock data — similar places come from real API data
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 
@@ -30,6 +30,8 @@ interface PlaceDetailOverlayProps {
   onClose: () => void;
   onNavigate?: (place: PlaceItem) => void;
   onSearchTag?: (tag: string) => void;
+  /** When true, shows only the card + map — no search, explore, footer */
+  minimal?: boolean;
 }
 
 export function PlaceDetailOverlay({
@@ -39,22 +41,40 @@ export function PlaceDetailOverlay({
   onClose,
   onNavigate,
   onSearchTag,
+  minimal = false,
 }: PlaceDetailOverlayProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [direction, setDirection] = useState(0);
 
-  const similarPlaces = useSimilarPlaces(place, MOCK_PLACES, 12);
+  const similarPlaces = useSimilarPlaces(place, [], 12);
 
   const [discoveryIndex, setDiscoveryIndex] = useState(-1);
 
-  const currentPlace = discoveryIndex === -1 ? place : similarPlaces[discoveryIndex];
+  // Skip detail/menu hooks for internal itinerary IDs (they 404)
+  const isInternalId = /^(cal-|ctx-)/.test(place.id);
+  const { data: detailData } = usePlaceDetail(isInternalId ? '' : place.id);
+  const { data: enrichPhotos } = usePlaceEnrich(isInternalId ? '' : place.id, isInternalId ? '' : place.name);
+  const { data: menuData } = usePlaceMenu(
+    !isInternalId && place.type === 'restaurant' ? place.name : undefined,
+  );
+
+  // Merge enriched data — detail takes priority, but skip null values so PlaceItem types stay valid
+  const enrichedPlace = detailData
+    ? { ...place, ...Object.fromEntries(Object.entries(detailData).filter(([, v]) => v != null)) }
+    : place;
+  // Merge extra photos into images array
+  if (enrichPhotos?.photos?.length && enrichedPlace) {
+    enrichedPlace.images = [...(enrichedPlace.images ?? []), ...enrichPhotos.photos];
+  }
+
+  const currentPlace = discoveryIndex === -1 ? enrichedPlace : similarPlaces[discoveryIndex];
   const totalCount = similarPlaces.length + 1;
   const currentNum = discoveryIndex + 2;
 
   const searchResults = searchQuery.trim().length >= 2
-    ? MOCK_PLACES.filter((p) =>
+    ? similarPlaces.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.tagline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -126,19 +146,19 @@ export function PlaceDetailOverlay({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { delay: 0.2, duration: 0.15 } }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 overflow-y-auto bg-gray-50"
+      className={`fixed z-50 overflow-y-auto ${minimal ? 'inset-0 top-[56px] md:left-[68px]' : 'inset-0'}`}
       onClick={onClose}
     >
       <button
         onClick={onClose}
-        className="fixed top-4 right-4 z-[60] w-9 h-9 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+        className={`fixed z-[60] w-9 h-9 rounded-full bg-white/15 border border-white/20 shadow-md flex items-center justify-center hover:bg-white/25 transition-colors text-white ${minimal ? 'top-[68px] right-4' : 'top-4 right-4'}`}
       >
         <X size={16} className="text-gray-600" />
       </button>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4">
-        {/* Search bar */}
-        <div className="relative mb-3" onClick={(e) => e.stopPropagation()}>
+        {/* Search bar — hidden in minimal mode */}
+        {!minimal && <div className="relative mb-3" onClick={(e) => e.stopPropagation()}>
           <div className="relative">
             <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
@@ -192,16 +212,16 @@ export function PlaceDetailOverlay({
             </div>
           )}
 
-        </div>
+        </div>}
 
         {/* Card column + Map column */}
         <div className="flex flex-col md:flex-row gap-4">
           {/* Left: Card + Discovery arrows */}
           <motion.div
-            initial={{ opacity: 0, x: -60, scale: 0.96 }}
+            initial={{ opacity: 0, x: -120, scale: 0.92 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -60, scale: 0.96, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
-            transition={{ duration: 0.35, ease: [0, 0, 0.2, 1] }}
+            exit={{ opacity: 0, x: -120, scale: 0.92 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="w-full md:flex-1 flex flex-col gap-3"
           >
             <div className="relative rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden" style={{ minHeight: 520 }} onClick={(e) => e.stopPropagation()}>
@@ -435,14 +455,14 @@ export function PlaceDetailOverlay({
           {/* Right: Map + Action buttons */}
           {hasCoords && (
             <motion.div
-              initial={{ opacity: 0, x: 80, rotate: 4, scale: 0.94 }}
-              animate={{ opacity: 1, x: 0, rotate: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 80, rotate: 4, scale: 0.94, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
-              transition={{ duration: 0.35, delay: 0.06, ease: [0, 0, 0.2, 1] }}
+              initial={{ opacity: 0, x: 120, scale: 0.92 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 120, scale: 0.92 }}
+              transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="hidden md:flex flex-1 flex-col gap-3"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden relative" style={{ height: 520 }}>
+              <div className="rounded-2xl shadow-2xl border border-white/10 overflow-hidden relative" style={{ height: 520 }}>
                 <Suspense fallback={
                   <div className="flex items-center justify-center h-full w-full bg-gray-50">
                     <span className="text-sm text-gray-400">Loading map...</span>
@@ -473,17 +493,17 @@ export function PlaceDetailOverlay({
         transition={{ duration: 0.35, delay: 0.15, ease: [0, 0, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
-        <ExplorePreview onItemClick={(item) => {
+        {!minimal && <ExplorePreview onItemClick={(item) => {
           handleSelectSearchResult(item);
           window.scrollTo({ top: 0, behavior: 'smooth' });
-        }} />
+        }} />}
       </motion.div>
 
-      {/* Ocean Wave + Footer */}
-      <div onClick={(e) => e.stopPropagation()}>
+      {/* Ocean Wave + Footer — hidden in minimal mode */}
+      {!minimal && <div onClick={(e) => e.stopPropagation()}>
         <OceanWave />
         <Footer />
-      </div>
+      </div>}
     </motion.div>
   );
 }
@@ -503,7 +523,7 @@ function WebCardFront({
   onToggleFav?: () => void;
   onFlip: () => void;
 }) {
-  const images = place.images?.length ? place.images : [place.image];
+  const images = (place.images?.length ? place.images : [place.image]).filter(Boolean) as string[];
   const hasMultiple = images.length > 1;
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [imgErrors, setImgErrors] = useState<Set<number>>(new Set());
@@ -523,12 +543,15 @@ function WebCardFront({
       style={{ minHeight: 480 }}
       onClick={onFlip}
     >
-      {imgErrors.has(currentImgIndex) ? (
+      {imgErrors.has(currentImgIndex) || !images.length ? (
         <div
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6"
           style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #2563eb)` }}
         >
           <MapPin size={36} className="text-white/30" />
+          <h3 className="text-xl font-bold text-white text-center">{place.name}</h3>
+          {place.tagline && <p className="text-sm text-white/60 text-center">{place.tagline}</p>}
+          <p className="text-xs text-white/40 mt-2">Tap for details</p>
         </div>
       ) : (
         <AnimatePresence mode="popLayout">
@@ -611,7 +634,7 @@ function WebCardBack({
   onSearchTag?: (tag: string) => void;
 }) {
   const hasCoords = !!(place.latitude && place.longitude);
-  const images = place.images?.length ? place.images : [place.image];
+  const images = (place.images?.length ? place.images : [place.image]).filter(Boolean) as string[];
 
   return (
     <div

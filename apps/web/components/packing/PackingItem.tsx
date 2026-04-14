@@ -168,13 +168,13 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
       {/* Claim/Release buttons — appear on hover */}
       {!item.owner_id && !item.group_tag && onClaim && (
         <button onClick={() => onClaim(item.id)}
-          className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 hover:text-blue-800 transition-opacity">
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-opacity">
           Claim
         </button>
       )}
       {item.owner_id === currentUserId && onRelease && (
         <button onClick={() => onRelease(item.id)}
-          className="opacity-0 group-hover:opacity-100 text-[10px] text-gray-500 hover:text-gray-700 transition-opacity">
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-opacity">
           Release
         </button>
       )}

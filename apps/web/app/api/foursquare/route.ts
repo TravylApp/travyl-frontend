@@ -7,6 +7,7 @@ import {
   errorResponse,
   CACHE_1H,
 } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 interface BackendPlace {
   id: string
@@ -54,9 +55,9 @@ export async function GET(req: NextRequest) {
     const venues = data.map((place) => {
       const lat = place.latitude ?? place.lat ?? 0
       const lng = place.longitude ?? place.lng ?? 0
-      const mainPhoto = place.photo_url || null
+      const mainPhoto = upscaleGoogleImage(place.photo_url) ?? place.photo_url ?? null
       const images = place.photos?.length
-        ? place.photos
+        ? place.photos.map((p: string) => upscaleGoogleImage(p) ?? p)
         : mainPhoto
           ? [mainPhoto]
           : []

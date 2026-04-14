@@ -13,15 +13,28 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   }).format(amount);
 }
 
-/** Upscale Google Places proxy image URLs from tiny thumbnails to usable sizes */
-export function upscaleGoogleImage(url: string | null | undefined, width = 600, height = 400): string | null {
-  if (!url) return null;
+/** Upscale image URLs from various sources to usable sizes */
+export function upscaleGoogleImage(url: string | null | undefined, width = 1200, height = 800): string | null {
+  if (!url || url.length < 10) return null;
+  // Google Places / googleusercontent thumbnails
   if (url.includes('googleusercontent.com')) {
     return url
       .replace(/=w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
       .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`);
   }
+  // Foursquare — replace size tokens with 'original' for full res
+  if (url.includes('4sqi.net') || url.includes('foursquare.com') || url.includes('fsq.com')) {
+    return url.replace(/\/(\d+x\d+|cap\d+|width\d+)\//, '/original/');
+  }
   return url;
+}
+
+/** Check if an image URL looks valid enough to render */
+export function isValidImageUrl(url: string | null | undefined): boolean {
+  if (!url || url.length < 10) return false;
+  // Must start with http
+  if (!url.startsWith('http')) return false;
+  return true;
 }
 
 /**
@@ -147,3 +160,5 @@ export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from
 // Gap computation utility (day planner)
 export { computeGaps } from './gapCompute'
 export type { Gap } from './gapCompute'
+
+export * from './places'

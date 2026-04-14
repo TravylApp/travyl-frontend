@@ -17,7 +17,6 @@ export interface BookingMatch {
 
 interface UseBookingMatchesOptions {
   tripId: string
-  apiUrl: string
   authToken: string
 }
 
@@ -34,7 +33,6 @@ interface UseBookingMatchesReturn {
 
 export function useBookingMatches({
   tripId,
-  apiUrl,
   authToken,
 }: UseBookingMatchesOptions): UseBookingMatchesReturn {
   const [matches, setMatches] = useState<Map<string, BookingMatch>>(new Map())
@@ -84,15 +82,15 @@ export function useBookingMatches({
     channelRef.current = channel
   }, [tripId, applyRows])
 
-  // Fetch current status from Lambda
+  // Fetch current status from proxy
   const fetchStatus = useCallback(async () => {
-    const res = await fetch(`${apiUrl}/book/status/${tripId}`, {
+    const res = await fetch(`/api/calendar/book/status/${tripId}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     })
     if (!res.ok) return
     const data = await res.json()
     applyRows(data.matches ?? [])
-  }, [tripId, apiUrl, authToken, applyRows])
+  }, [tripId, authToken, applyRows])
 
   // Subscribe Realtime first, then fire POST /book/match
   const startRealtimeAndMatch = useCallback(async (activities: Array<{
@@ -101,7 +99,7 @@ export function useBookingMatches({
   }>) => {
     subscribeRealtime()
 
-    const res = await fetch(`${apiUrl}/book/match`, {
+    const res = await fetch('/api/calendar/book/match', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -112,7 +110,7 @@ export function useBookingMatches({
     if (!res.ok) throw new Error('match request failed')
     const data = await res.json()
     return data as { total: number; matches: BookingMatch[] }
-  }, [tripId, apiUrl, authToken, subscribeRealtime])
+  }, [tripId, authToken, subscribeRealtime])
 
   // Mark activities as opened in Supabase (client-side update, constrained by RLS to 'opened' only)
   const markOpened = useCallback(async (activityIds: string[]) => {

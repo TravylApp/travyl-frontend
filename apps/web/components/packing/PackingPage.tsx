@@ -31,7 +31,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-[var(--cal-border,#334155)] border-t-[#003594] rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-gray-200 dark:border-white/[0.08] border-t-[#003594] rounded-full animate-spin" />
       </div>
     )
   }
@@ -39,7 +39,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-[13px] text-red-400">Failed to load packing list.</p>
+        <p className="text-sm text-red-500 dark:text-red-400">Failed to load packing list.</p>
       </div>
     )
   }
@@ -72,12 +72,14 @@ export function PackingPage({ tripId }: PackingPageProps) {
         </button>
       </div>
 
-      {/* Filter toolbar */}
+      {/* Filter toolbar — show personal filters only when logged in */}
       <div className="flex items-center gap-1.5 mb-4">
-        {['all', 'mine', 'shared', 'kids', 'adults'].map((filter) => (
+        {(userId ? ['all', 'mine', 'shared', 'kids', 'adults'] : ['all', 'kids', 'adults']).map((filter) => (
           <button key={filter} onClick={() => setFilterBy(filter)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              filterBy === filter ? 'bg-[#1e3a5f] text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10'
+              filterBy === filter
+                ? 'bg-[#1e3a5f] text-white'
+                : 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-white/[0.03] hover:bg-gray-100 dark:hover:bg-white/[0.06]'
             }`}>
             {filter === 'all' ? 'All' : filter === 'mine' ? 'My Items' : filter.charAt(0).toUpperCase() + filter.slice(1)}
           </button>
@@ -88,7 +90,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Main list area */}
         <div className="flex-1 min-w-0 flex flex-col overflow-auto">
-          <SpotlightSearch existingItems={items} onAddItem={addItem as (name: string, category: string) => void} />
+          <SpotlightSearch existingItems={items} onAddItem={(name: string, category: string) => addItem(name, category as any, filterBy === 'mine')} />
           <div className="flex-1 overflow-auto mt-4">
             <PackingCategoryList
               orderedCategories={filteredOrderedCategories}
@@ -125,7 +127,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
 
         {/* Collapsible activity sidebar */}
         {sidebarOpen && (
-          <div className="w-72 shrink-0 border-l border-gray-200 dark:border-white/10 pl-4 overflow-auto">
+          <div className="w-72 shrink-0 border-l border-gray-200 dark:border-white/[0.08] pl-4 overflow-auto">
             <PackingActivityFeed entries={auditLog} currentUserId={userId} />
           </div>
         )}
