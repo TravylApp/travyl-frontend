@@ -1,3 +1,4 @@
+export { DiscoveryFeed } from './DiscoveryFeed';
 export { HowItWorks } from './HowItWorks';
 export { GetInspired } from './GetInspired';
 export { TravelMosaic } from './TravelMosaic';

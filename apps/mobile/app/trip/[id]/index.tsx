@@ -123,6 +123,8 @@ export default function OverviewScreen() {
         }).map((p: any) => ({
           id: p.id, title: p.name, description: p.description || p.category,
           category: p.category, image: upscaleGoogleImage(p.image) || p.image,
+          lat: p.lat ?? p.latitude, lng: p.lng ?? p.longitude,
+          address: p.address, website: p.website, rating: p.rating,
         }));
         if (deduped.length > 0) setLiveExploreItems(deduped);
       })

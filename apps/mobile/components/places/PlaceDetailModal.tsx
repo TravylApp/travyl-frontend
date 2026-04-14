@@ -165,8 +165,8 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
 
   const hasLocation = currentPlace?.latitude != null && currentPlace?.longitude != null;
   const cardW = SCREEN_WIDTH - 32;
-  const [showMap, setShowMap] = useState(false);
-  const mapPanelSlide = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const [showMap, setShowMap] = useState(hasLocation);
+  const mapPanelSlide = useRef(new Animated.Value(hasLocation ? 0 : SCREEN_WIDTH)).current;
 
   const toggleMap = useCallback(() => {
     const opening = !showMap;
@@ -187,17 +187,18 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
     }
   }, [showMap, currentPlace]);
 
-  // Reset map panel when place changes
+  // Reset map when place changes — show map if place has coords
   useEffect(() => {
-    setShowMap(false);
-    mapPanelSlide.setValue(SCREEN_WIDTH);
+    const hasCoords = currentPlace?.latitude != null && currentPlace?.longitude != null;
+    setShowMap(hasCoords);
+    mapPanelSlide.setValue(hasCoords ? 0 : SCREEN_WIDTH);
   }, [place?.id]);
 
   return (
     <Modal visible animationType="none" transparent onRequestClose={handleClose}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        {/* Backdrop */}
-        <Pressable onPress={handleClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+        {/* Backdrop — hidden when map is showing */}
+        <Pressable onPress={handleClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: hasLocation ? 'transparent' : 'rgba(0,0,0,0.5)' }} />
 
         {/* ── Map panel — slides in from the right ── */}
         {hasLocation && (
@@ -281,28 +282,14 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           transform: [{ translateY: contentSlide }],
           overflow: 'hidden',
+          zIndex: 20,
         }}>
-          {/* Drag handle + map button row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16 }}>
-            <View style={{ flex: 1 }} />
-            <View
-              {...sheetPanResponder.panHandlers}
-              style={{ paddingHorizontal: 20, paddingVertical: 4 }}
-            >
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              {hasLocation && (
-                <Pressable onPress={toggleMap} hitSlop={8} style={{
-                  width: 32, height: 32, borderRadius: 16,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1, borderColor: colors.border,
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <FontAwesome name="map" size={13} color={Navy.DEFAULT} />
-                </Pressable>
-              )}
-            </View>
+          {/* Drag handle */}
+          <View
+            {...sheetPanResponder.panHandlers}
+            style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 6 }}
+          >
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
           </View>
           {/* Close button */}
           <Pressable onPress={handleClose} style={{

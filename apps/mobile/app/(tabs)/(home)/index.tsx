@@ -40,6 +40,7 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { PaperPlane } from '@/components/icons/PaperPlane';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import {
+  DiscoveryFeed,
   HowItWorks,
   GetInspired,
   TravelMosaic,
@@ -824,6 +825,9 @@ export default function HomeScreen() {
           </View>
         </FadeInOnScroll>
       )}
+
+      {/* ─── Discovery Feed — infinite scroll ────────────────── */}
+      <DiscoveryFeed />
 
       {/* ─── Scroll-animated Sections ─────────────────────────── */}
       <FadeInOnScroll scrollY={scrollY}>

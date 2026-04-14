@@ -686,17 +686,17 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
             {wikiText ? (
               <View style={{
                 marginTop: 8, borderRadius: 10,
-                backgroundColor: 'rgba(0,0,0,0.55)',
-                height: 19 * 2 + 16, // 2 lines × lineHeight + padding
+                backgroundColor: 'rgba(0,0,0,0.45)',
+                maxHeight: 20 * 4 + 20, // 4 lines + padding
               }}>
                 <ScrollView
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}
                   nestedScrollEnabled
                 >
                   <Text style={{
                     ...TextStyles.body, fontFamily: FontFamily.serif,
-                    color: '#fff', lineHeight: 19, fontSize: 13,
+                    color: 'rgba(255,255,255,0.9)', lineHeight: 20, fontSize: 13,
                   }}>
                     {wikiText}
                   </Text>
