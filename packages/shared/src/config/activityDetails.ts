@@ -1,5 +1,6 @@
 // Activity detail data for Rome itinerary
 // Images are Unsplash URLs (no figma:asset imports needed in Next.js)
+/* eslint-disable @typescript-eslint/no-magic-numbers -- Mock data with real-world values */
 
 const phoneBookingApp = 'https://images.unsplash.com/photo-1730818029039-662126e61821?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';
 const phoneMapApp = 'https://images.unsplash.com/photo-1507617819282-1c1d659895e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';

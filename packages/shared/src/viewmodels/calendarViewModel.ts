@@ -57,15 +57,19 @@ export function getActivityColorDarkBorder(type: string): string {
   return ACTIVITY_COLORS_DARK_BORDER[type] ?? DEFAULT_ACTIVITY_COLOR_DARK_BORDER
 }
 
+const MINUTES_PER_HOUR = 60
+const TIME_PAD_LENGTH = 2
+const PRICE_DECIMAL_PLACES = 2
+
 function parseTimeToHours(time: string): number {
   const [h, m] = time.split(':').map(Number)
-  return h + m / 60
+  return h + m / MINUTES_PER_HOUR
 }
 
 function hoursToTimeString(hours: number): string {
   const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const m = Math.round((hours - h) * MINUTES_PER_HOUR)
+  return `${String(h).padStart(TIME_PAD_LENGTH, '0')}:${String(m).padStart(TIME_PAD_LENGTH, '0')}`
 }
 
 export function activityToCalendarActivity(
@@ -82,7 +86,7 @@ export function activityToCalendarActivity(
     startHour,
     duration: endHour - startHour,
     location: activity.location_name ?? undefined,
-    price: activity.estimated_cost != null ? `$${activity.estimated_cost.toFixed(2)}` : undefined,
+    price: activity.estimated_cost != null ? `$${activity.estimated_cost.toFixed(PRICE_DECIMAL_PLACES)}` : undefined,
     notes: activity.notes ?? undefined,
   }
 }
@@ -103,18 +107,20 @@ export interface TimeRange {
   endHour: number
 }
 
+const DEFAULT_START = 7
+const DEFAULT_END = 23
+const HOUR_BUFFER = 1
+
 export function computeTimeRange(
   activities: Pick<CalendarActivity, 'startHour' | 'duration'>[],
 ): TimeRange {
-  const DEFAULT_START = 7
-  const DEFAULT_END = 23
   if (activities.length === 0) return { startHour: DEFAULT_START, endHour: DEFAULT_END }
   let min = DEFAULT_START
   let max = DEFAULT_END
   for (const a of activities) {
-    if (a.startHour < min) min = a.startHour - 1
+    if (a.startHour < min) min = a.startHour - HOUR_BUFFER
     const end = a.startHour + a.duration
-    if (end > max) max = end + 1
+    if (end > max) max = end + HOUR_BUFFER
   }
   return { startHour: Math.floor(min), endHour: Math.ceil(max) }
 }

@@ -1,4 +1,5 @@
 // ─── How It Works ─────────────────────────────────────────────
+/* eslint-disable @typescript-eslint/no-magic-numbers -- Step numbers in content data */
 export const HOW_IT_WORKS_STEPS = [
   {
     step: 1,

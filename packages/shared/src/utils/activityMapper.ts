@@ -1,25 +1,35 @@
 import { getActivityColor } from '../viewmodels/calendarViewModel'
 import type { CalendarActivity, ActivityData } from '../types'
 
+// ─── Time Constants ─────────────────────────────────────────
+const MINUTES_PER_HOUR = 60
+const HOURS_PER_DAY = 24
+const MS_PER_SECOND = 1000
+const MS_PER_MINUTE = MS_PER_SECOND * MINUTES_PER_HOUR
+const MS_PER_HOUR = MS_PER_MINUTE * MINUTES_PER_HOUR
+const MS_PER_DAY = MS_PER_HOUR * HOURS_PER_DAY
+const ISO_DATE_LENGTH = 10
+const TIME_PAD_LENGTH = 2
+
 // ─── Time utilities ─────────────────────────────────────────
 
 /** "14:30" → 14.5 */
 export function parseTime(time: string): number {
   const [h, m] = time.split(':').map(Number)
-  return h + m / 60
+  return h + m / MINUTES_PER_HOUR
 }
 
 /** 14.5 → "14:30" */
 export function hourToTime(hours: number): string {
   const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const m = Math.round((hours - h) * MINUTES_PER_HOUR)
+  return `${String(h).padStart(TIME_PAD_LENGTH, '0')}:${String(m).padStart(TIME_PAD_LENGTH, '0')}`
 }
 
 /** Clamp a time string so it never exceeds "23:59" (DB constraint). */
 export function clampTime(time: string): string {
   const [h] = time.split(':').map(Number)
-  if (h >= 24) return '23:59'
+  if (h >= HOURS_PER_DAY) return '23:59'
   return time
 }
 
@@ -34,14 +44,14 @@ export function hoursBetween(start: string, end: string): number {
 export function daysBetween(start: string, end: string): number {
   const a = new Date(start + 'T00:00:00Z')
   const b = new Date(end + 'T00:00:00Z')
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
+  return Math.round((b.getTime() - a.getTime()) / MS_PER_DAY)
 }
 
 /** Add days to an ISO date string */
 export function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
+  return d.toISOString().slice(0, ISO_DATE_LENGTH)
 }
 
 // ─── DB type mapping ─────────────────────────────────────────

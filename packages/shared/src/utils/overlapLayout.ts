@@ -5,6 +5,10 @@ export interface OverlapLayoutItem {
 }
 
 const MAX_VISIBLE_COLUMNS = 3
+const HIDDEN_COLUMN = -1
+const DEFAULT_SPAN = 1
+const INITIAL_COLUMN = 0
+const PROPAGATION_PASSES = 2
 
 interface LayoutInput {
   id: string
@@ -45,7 +49,7 @@ export function computeOverlapLayout(
 
   for (const act of sorted) {
     let placed = false
-    for (let c = 0; c < columns.length; c++) {
+    for (let c = INITIAL_COLUMN; c < columns.length; c++) {
       if (act.startHour >= columns[c].endHour) {
         columns[c].endHour = act.startHour + act.duration
         assignments.set(act.id, c)
@@ -76,7 +80,7 @@ export function computeOverlapLayout(
   // Step 3: Propagate totalCols across overlap groups
   // Single pass is sufficient for pairwise propagation in sorted order,
   // but we do a second pass to catch reverse-direction propagation.
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = INITIAL_COLUMN; pass < PROPAGATION_PASSES; pass++) {
     for (const act of sorted) {
       for (const other of sorted) {
         if (other.id === act.id) continue
@@ -91,18 +95,18 @@ export function computeOverlapLayout(
 
   // Step 4: Build result with column span
   for (const act of sorted) {
-    let col = assignments.get(act.id)!
-    const totalCols = Math.min(totalColsMap.get(act.id) ?? 1, MAX_VISIBLE_COLUMNS)
+    const col = assignments.get(act.id)!
+    const totalCols = Math.min(totalColsMap.get(act.id) ?? DEFAULT_SPAN, MAX_VISIBLE_COLUMNS)
 
     // Hide events beyond the visible column cap
     if (col >= MAX_VISIBLE_COLUMNS) {
-      result.set(act.id, { column: -1, totalColumns: totalCols, columnSpan: 1 })
+      result.set(act.id, { column: HIDDEN_COLUMN, totalColumns: totalCols, columnSpan: DEFAULT_SPAN })
       continue
     }
 
     // Compute column span: expand rightward into empty columns
-    let span = 1
-    for (let c = col + 1; c < totalCols; c++) {
+    let span = DEFAULT_SPAN
+    for (let c = col + DEFAULT_SPAN; c < totalCols; c++) {
       const blocked = sorted.some(
         (other) => other.id !== act.id && assignments.get(other.id) === c && overlaps(act, other),
       )

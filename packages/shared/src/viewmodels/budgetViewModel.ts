@@ -14,6 +14,10 @@ export interface BudgetSummary {
   currency: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Standard time conversion
+const MS_PER_DAY = 1000 * 60 * 60 * 24
+const MIN_NIGHTS = 1
+
 export function buildBudgetSummary(
   days: ItineraryDayWithActivities[],
   flights: Flight[],
@@ -46,7 +50,7 @@ export function buildBudgetSummary(
     } else if (hotel.data.price_per_night != null) {
       const checkIn = new Date(hotel.data.check_in + 'T00:00:00');
       const checkOut = new Date(hotel.data.check_out + 'T00:00:00');
-      const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+      const nights = Math.max(MIN_NIGHTS, Math.round((checkOut.getTime() - checkIn.getTime()) / MS_PER_DAY));
       hotelsCost += hotel.data.price_per_night * nights;
     }
   }

@@ -13,8 +13,11 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   }).format(amount);
 }
 
+const DEFAULT_IMAGE_WIDTH = 600
+const DEFAULT_IMAGE_HEIGHT = 400
+
 /** Upscale Google Places proxy image URLs from tiny thumbnails to usable sizes */
-export function upscaleGoogleImage(url: string | null | undefined, width = 600, height = 400): string | null {
+export function upscaleGoogleImage(url: string | null | undefined, width = DEFAULT_IMAGE_WIDTH, height = DEFAULT_IMAGE_HEIGHT): string | null {
   if (!url) return null;
   if (url.includes('googleusercontent.com')) {
     return url
@@ -126,13 +129,17 @@ export type { RescoperOperation } from './rescoper'
 export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
+const EARTH_RADIUS_KM = 6371
+const DEGREES_PER_RADIAN = 180
+const HAVERSINE_FACTOR = 2
+
 /** Returns distance in km between two lat/lng points (Haversine formula) */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const toRad = (d: number) => (d * Math.PI) / 180
+  const toRad = (d: number) => (d * Math.PI) / DEGREES_PER_RADIAN
   const dLat = toRad(lat2 - lat1)
   const dLng = toRad(lng2 - lng1)
   const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    Math.sin(dLat / HAVERSINE_FACTOR) ** HAVERSINE_FACTOR +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / HAVERSINE_FACTOR) ** HAVERSINE_FACTOR
+  return EARTH_RADIUS_KM * HAVERSINE_FACTOR * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }

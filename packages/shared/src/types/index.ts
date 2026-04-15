@@ -435,6 +435,7 @@ export interface PlaceItem {
   longitude?: number;
 
   // Rich detail fields
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Price level enum (1-4)
   priceLevel?: 1 | 2 | 3 | 4;
   hours?: string;
   phone?: string;
@@ -587,6 +588,7 @@ export interface DestinationDetail {
   currency: string
   timezone: string
   bestTimeToVisit: string
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Budget level enum (1-4)
   budgetLevel: 1 | 2 | 3 | 4
   tags: string[]
   image: string

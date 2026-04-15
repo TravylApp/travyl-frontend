@@ -17,6 +17,13 @@ import { convertToTripCurrency } from '../utils/currency'
 import { useAuthStore } from '../stores/authStore'
 import type { TripBudgetCategory, TripManualExpense, BudgetCategoryData } from '../types'
 
+// ─── Time Constants ─────────────────────────────────────────
+const MS_PER_SECOND = 1000
+const MS_PER_MINUTE = MS_PER_SECOND * 60
+const MS_PER_HOUR = MS_PER_MINUTE * 60
+const MS_PER_DAY = MS_PER_HOUR * 24
+const MIN_NIGHTS = 1
+
 export function useTripBudget(tripId: string | undefined, tripCurrency = 'USD') {
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
@@ -95,7 +102,7 @@ export function useTripBudget(tripId: string | undefined, tripCurrency = 'USD') 
       if (cost == null && hotel.data.price_per_night != null) {
         const checkIn = new Date(hotel.data.check_in + 'T00:00:00')
         const checkOut = new Date(hotel.data.check_out + 'T00:00:00')
-        const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)))
+        const nights = Math.max(MIN_NIGHTS, Math.round((checkOut.getTime() - checkIn.getTime()) / MS_PER_DAY))
         cost = hotel.data.price_per_night * nights
       }
       if (cost == null) continue

@@ -25,11 +25,14 @@ export interface TripDateRangeDisplay {
   nightsLabel: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Standard time conversion
+const MS_PER_DAY = 1000 * 60 * 60 * 24
+
 export function getTripDateRange(trip: Pick<Trip, 'start_date' | 'end_date'>): TripDateRangeDisplay {
   const start = new Date(trip.start_date);
   const end = new Date(trip.end_date);
   const ms = end.getTime() - start.getTime();
-  const nights = Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
+  const nights = Math.max(0, Math.round(ms / MS_PER_DAY));
 
   const shortFmt = (d: Date) =>
     d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

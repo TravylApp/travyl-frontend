@@ -3,23 +3,29 @@ import { formatCurrency, upscaleGoogleImage } from '../utils';
 
 // ─── Time helpers ──────────────────────────────────────────────
 
+const NOON_HOUR = 12
+const AFTERNOON_HOUR = 17
+const EVENING_HOUR = 21
+const TIME_PAD_LENGTH = 2
+const HOURS_PER_HALF_DAY = 12
+
 type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
 
 function getTimeOfDay(time: string | null): TimeOfDay {
   if (!time) return 'morning';
   const hour = parseInt(time.split(':')[0], 10);
-  if (hour < 12) return 'morning';
-  if (hour < 17) return 'afternoon';
-  if (hour < 21) return 'evening';
+  if (hour < NOON_HOUR) return 'morning';
+  if (hour < AFTERNOON_HOUR) return 'afternoon';
+  if (hour < EVENING_HOUR) return 'evening';
   return 'latenight';
 }
 
 function formatTime(time: string | null): string | null {
   if (!time) return null;
   const [h, m] = time.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const hour12 = h % 12 || 12;
-  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+  const period = h >= NOON_HOUR ? 'PM' : 'AM';
+  const hour12 = h % HOURS_PER_HALF_DAY || HOURS_PER_HALF_DAY;
+  return `${hour12}:${String(m).padStart(TIME_PAD_LENGTH, '0')} ${period}`;
 }
 
 function formatDayDate(dateStr: string): string {
@@ -196,6 +202,7 @@ export function buildHotelViewModel(hotel: Hotel): HotelViewModel {
   const checkInDate = new Date(d.check_in + 'T00:00:00');
   const checkOutDate = new Date(d.check_out + 'T00:00:00');
   const ms = checkOutDate.getTime() - checkInDate.getTime();
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Standard time conversion
   const nights = Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)));
 
   let priceDisplay: string | null = null;

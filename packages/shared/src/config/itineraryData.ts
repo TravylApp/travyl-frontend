@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-magic-numbers -- Time config values and mock data */
 import type { DiscoverItem } from '../types';
 
 // Navy and TAB_COLORS are now exported from colors.ts via config/index.ts

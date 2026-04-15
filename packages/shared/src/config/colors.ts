@@ -10,7 +10,9 @@
 
 // ─── Utility ──────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Hex parsing algorithm
 export function hexToRgba(hex: string, alpha: number): string {
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Hex color byte positions
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -18,6 +20,7 @@ export function hexToRgba(hex: string, alpha: number): string {
 }
 
 // ─── Color Scales ─────────────────────────────────────────────────
+/* eslint-disable @typescript-eslint/no-magic-numbers -- Design token scale indices (50-900) */
 
 export const Blue = {
   50:  '#EFF4FF',
@@ -95,6 +98,8 @@ export const Navy = {
   light: '#2d4a6f',
   dark: '#162d4a',
 } as const;
+
+/* eslint-enable @typescript-eslint/no-magic-numbers */
 
 // ─── Semantic Colors ──────────────────────────────────────────────
 
