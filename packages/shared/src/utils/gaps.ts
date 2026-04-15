@@ -1,4 +1,15 @@
 /**
+ * @module gaps
+ * Gap detection helpers for the calendar's free-time suggestion system.
+ * Detects free time slots by merging overlapping activity blocks and finding
+ * windows ≥ 45 minutes within the meaningful day window (8 AM – 10 PM).
+ *
+ * This module is distinct from `gapCompute.ts`: it merges overlapping activities
+ * before gap detection and uses a minimum threshold of 45 minutes. Used by the
+ * AI suggestion engine to identify slots worth recommending.
+ */
+
+/**
  * Represents a free time slot (gap) in a day's schedule.
  */
 export interface TimeGap {
@@ -8,16 +19,31 @@ export interface TimeGap {
   durationHours: number
 }
 
-const DAY_START = 8   // 8 AM — earliest meaningful slot
-const DAY_END = 22    // 10 PM — latest meaningful slot
-const MIN_GAP = 0.75  // 45 minutes minimum to be worth suggesting
+/** Earliest hour considered part of the meaningful day (8 AM) */
+const DAY_START = 8
+/** Latest hour considered part of the meaningful day (10 PM) */
+const DAY_END = 22
+/** Minimum gap duration in hours to be worth suggesting (45 minutes) */
+const MIN_GAP = 0.75
 
 /**
- * Computes free time gaps in a day's schedule.
+ * Computes free time gaps in a day's schedule by merging overlapping activity
+ * blocks and finding windows within [DAY_START, DAY_END].
  *
- * @param activities - Scheduled activities for the day, each with startHour and duration.
- * @returns An array of free time slots that are at least MIN_GAP hours long,
- *          bounded to the window [DAY_START, DAY_END].
+ * Algorithm:
+ * 1. Sort activities by start time.
+ * 2. Merge overlapping or adjacent blocks into contiguous spans.
+ * 3. Enumerate gaps between merged spans (clipped to the day window).
+ * 4. Return only gaps ≥ MIN_GAP (45 minutes).
+ *
+ * If there are no activities, the entire day window is returned as one gap.
+ *
+ * @param activities - Scheduled activities for the day, each with `startHour` and `duration`
+ * @returns Array of free {@link TimeGap} slots that are at least 45 minutes long,
+ *          bounded to the window [DAY_START, DAY_END]
+ * @example
+ * computeGaps([{ startHour: 9, duration: 2 }, { startHour: 10, duration: 3 }])
+ * // overlapping blocks merged → busy 9–12, gap 8–9 and 12–22
  */
 export function computeGaps(
   activities: Array<{ startHour: number; duration: number }>,

@@ -1,3 +1,9 @@
+/**
+ * @module viewmodels
+ * Barrel export for all shared view model modules.
+ * Import from `@travyl/shared` rather than referencing sub-modules directly.
+ */
+
 export {
   getTripStatusDisplay,
   getTripDateRange,
