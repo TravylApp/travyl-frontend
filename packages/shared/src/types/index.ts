@@ -55,21 +55,22 @@ export interface TripContextData {
     url?: string;
     image?: string;
   }[];
-  hotels?: any[];
-  foursquare_venues?: any[];
-  events?: any[];
-  cuisine?: any[];
-  phrases?: any[];
-  cost_of_living?: any;
-  nearby_cities?: any[];
-  safety?: any;
-  timezone_info?: any;
-  sunrise?: any;
-  aqi?: any;
+  // External API data — loosely structured (using unknown for safety)
+  hotels?: unknown[];
+  foursquare_venues?: unknown[];
+  events?: unknown[];
+  cuisine?: unknown[];
+  phrases?: unknown[];
+  cost_of_living?: unknown;
+  nearby_cities?: unknown[];
+  safety?: unknown;
+  timezone_info?: unknown;
+  sunrise?: unknown;
+  aqi?: unknown;
   wiki?: string | { extract?: string };
-  country?: any;
-  holidays?: any[];
-  restaurants?: any[];
+  country?: unknown;
+  holidays?: unknown[];
+  restaurants?: unknown[];
 }
 
 export interface Trip {
@@ -203,6 +204,8 @@ export interface Activity {
   notes: string | null;
   source: 'agent' | 'user' | 'search';
   created_at: string;
+  /** Image URL from activity_data JSONB */
+  image?: string | null;
 }
 
 export interface FlightData {

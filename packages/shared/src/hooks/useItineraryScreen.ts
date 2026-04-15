@@ -11,9 +11,27 @@ import {
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
+import type { Trip, ExploreItem, ItinerarySlot } from '../types';
+
+// ─── Local Types ───────────────────────────────────────────────
+interface TripContext {
+  explore_items?: ExploreItem[];
+  itinerary?: Array<{
+    day: number;
+    date: string;
+    slots?: ItinerarySlot[];
+  }>;
+}
+
+type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
+
+interface ActivityGroup {
+  timeOfDay: TimeOfDay;
+  activities: unknown[];
+}
 
 /** Build basic itinerary days from explore_items for trips that have no stored itinerary */
-function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayViewModel[] {
+function buildDaysFromExploreItems(tripContext: TripContext, trip?: Trip | null): ItineraryDayViewModel[] {
   const explore = tripContext?.explore_items ?? [];
   if (explore.length === 0) return [];
 
@@ -26,9 +44,8 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
   }
 
   // Split explore items across days (restaurants + attractions interleaved)
-  const restaurants = explore.filter((e: any) => /restaurant|food|dining|café|bar/i.test(e.category || ''));
-  const attractions = explore.filter((e: any) => !/restaurant|food|dining|café|bar/i.test(e.category || ''));
-  type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
+  const restaurants = explore.filter((e) => /restaurant|food|dining|café|bar/i.test(e.category || ''));
+  const attractions = explore.filter((e) => !/restaurant|food|dining|café|bar/i.test(e.category || ''));
   const tods: TimeOfDay[] = ['morning', 'afternoon', 'evening'];
   const todTimes: Record<string, string> = { morning: '09:00', afternoon: '14:00', evening: '19:00' };
   const fmt12 = (t: string) => { const [h, m] = t.split(':').map(Number); const p = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`; };
@@ -43,9 +60,9 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
     const dateObj = dateStr ? new Date(dateStr + 'T00:00:00') : null;
     const dateLabel = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
 
-    const groups: { timeOfDay: TimeOfDay; activities: any[] }[] = [];
+    const groups: ActivityGroup[] = [];
     for (const tod of tods) {
-      const acts: any[] = [];
+      const acts: unknown[] = [];
       // Add 1-2 items per time slot
       const itemsForSlot = tod === 'evening' ? 1 : 2;
       for (let s = 0; s < itemsForSlot; s++) {
@@ -92,16 +109,15 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
 
 /** Build ItineraryDayViewModels from trip_context.itinerary when DB tables don't exist.
  *  Falls back to distributing explore_items across days if no itinerary exists. */
-function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewModel[] {
+function buildDaysFromContext(tripContext: TripContext, trip?: Trip | null): ItineraryDayViewModel[] {
   const itinerary = tripContext?.itinerary;
   if (!Array.isArray(itinerary) || itinerary.length === 0) {
     // Fallback: build basic days from explore_items for older trips
     return buildDaysFromExploreItems(tripContext, trip);
   }
 
-  return itinerary.map((day: any) => {
+  return itinerary.map((day) => {
     const slots = day.slots ?? [];
-    type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
     const getToD = (t: string): TimeOfDay => {
       const h = parseInt(t?.split(':')[0], 10);
       if (isNaN(h)) return 'morning';
@@ -117,7 +133,7 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
       return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`;
     };
 
-    const activityVMs = slots.map((slot: any, i: number) => ({
+    const activityVMs = slots.map((slot, i: number) => ({
       id: slot.poi?.id ?? `ctx-${day.day}-${i}`,
       name: slot.poi?.name ?? 'Activity',
       category: slot.poi?.category ?? 'other',
@@ -200,7 +216,7 @@ export function useItineraryScreen(tripId: string | undefined) {
     );
     // If DB budget is empty, compute from trip_context hotels
     if (dbBudget.total === 0 && tripQuery.data?.trip_context) {
-      const ctx = tripQuery.data.trip_context as any;
+      const ctx = tripQuery.data.trip_context as { hotels?: unknown[]; itinerary?: unknown[] };
       const currency = tripQuery.data.currency ?? 'USD';
       const ctxHotels = ctx.hotels ?? [];
       const firstHotel = ctxHotels[0];
@@ -226,7 +242,8 @@ export function useItineraryScreen(tripId: string | undefined) {
   const isLoading = (tripQuery.isLoading || (!tripQuery.data && !tripQuery.error)) && !!tripId;
 
   const trip = tripQuery.data ?? null;
-  const hasContextItinerary = Array.isArray((trip?.trip_context as any)?.itinerary) && (trip?.trip_context as any).itinerary.length > 0;
+  const tripContext = trip?.trip_context as { itinerary?: unknown[] } | undefined;
+  const hasContextItinerary = Array.isArray(tripContext?.itinerary) && tripContext.itinerary.length > 0;
   const isEmpty = !isLoading && days.length === 0 && !hasContextItinerary && flights.length === 0 && hotels.length === 0;
 
   const refetch = useCallback(() => {

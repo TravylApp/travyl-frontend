@@ -1,6 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { DiscoverItem } from '../types';
+import type { DiscoverItem, ExploreItem } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
+
+// ─── Local Types ───────────────────────────────────────────────
+interface TripContext {
+  explore_items?: ExploreItem[];
+  foursquare_venues?: unknown[];
+  restaurants?: unknown[];
+}
 
 // ─── Constants (shared between web + mobile) ──────────────────
 export const ACTIVITY_CATEGORIES = ['All', 'Tours', 'Museums', 'Monuments', 'Sightseeing', 'Nature', 'Events'] as const;
@@ -83,7 +90,7 @@ export function buildBookedActivities(days: ItineraryDayViewModel[]): DiscoverIt
 }
 
 // ─── Hook ─────────────────────────────────────────────────────
-export function useActivityFilters(days: ItineraryDayViewModel[], tripContext?: any) {
+export function useActivityFilters(days: ItineraryDayViewModel[], tripContext?: TripContext | null) {
   const bookedItems = useMemo(() => buildBookedActivities(days), [days]);
 
   // Build discover items from trip_context (explore_items, foursquare, restaurants)

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers -- Mock data with sample values */
 import type { ItineraryDayViewModel, TimeGroup, ActivityViewModel, FlightViewModel, HotelViewModel } from '../viewmodels/itineraryViewModel';
 import type { BudgetSummary } from '../viewmodels/budgetViewModel';
-import type { Trip, BudgetItem, PackingList, WeatherInfo, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
+import type { Trip, BudgetItem, PackingList, DiscoverItem, CalendarActivity, WeatherForecast, UserAwareness } from '../types';
 
 // ─── Mock Activities ────────────────────────────────────────
 

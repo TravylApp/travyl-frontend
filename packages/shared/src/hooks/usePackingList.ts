@@ -26,7 +26,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     const channel = supabase
       .channel(`packing-${tripId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_items', filter: `trip_id=eq.${tripId}` }, (payload) => {
-        const record = (payload.new ?? payload.old) as any
+        const record = (payload.new ?? payload.old) as { user_id?: string } | null
         if (record?.user_id === userId) return
         queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
         queryClient.invalidateQueries({ queryKey: ['packingAuditLog', tripId] })

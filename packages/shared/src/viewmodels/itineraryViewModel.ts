@@ -71,7 +71,7 @@ function buildActivityViewModel(activity: Activity): ActivityViewModel {
       : null,
     bookingUrl: activity.booking_url,
     notes: activity.notes,
-    image: upscaleGoogleImage((activity as any).image) ?? null,
+    image: upscaleGoogleImage(activity.image) ?? null,
     source: activity.source,
     timeOfDay: getTimeOfDay(activity.start_time),
   };

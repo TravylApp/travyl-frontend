@@ -2,8 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import type { Trip } from '../types';
 import { fetchTripById } from '../services/api';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const _g = globalThis as any;
+// Global type with storage APIs for web/mobile compatibility
+type GlobalWithStorage = typeof globalThis & {
+  sessionStorage?: { getItem(key: string): string | null };
+  localStorage?: { getItem(key: string): string | null };
+};
+
+const _g = globalThis as GlobalWithStorage;
 
 async function fetchTripWithFallback(tripId: string): Promise<Trip> {
   // Local trip (Supabase insert failed, stored in sessionStorage)

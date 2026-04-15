@@ -1,6 +1,17 @@
 import { supabase } from './supabase'
 import type { DbPackingItem, PackingAuditEntry, PackingSuggestion } from '../types'
 
+// ─── Database Row Types ─────────────────────────────────────────
+interface PackingItemRow extends Record<string, unknown> {
+  user?: { display_name?: string | null; avatar_url?: string | null } | null;
+  owner?: { display_name?: string | null } | null;
+}
+
+interface AuditLogRow extends Record<string, unknown> {
+  user?: { display_name?: string | null; email?: string | null } | null;
+  target?: { display_name?: string | null; email?: string | null } | null;
+}
+
 export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
   const { data, error } = await supabase
     .from('packing_items')
@@ -9,7 +20,7 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
     .order('category')
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: PackingItemRow) => ({
     ...row,
     user_display_name: row.user?.display_name ?? null,
     user_avatar_url: row.user?.avatar_url ?? null,
@@ -27,7 +38,7 @@ export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: AuditLogRow) => ({
     ...row,
     user_display_name: row.user?.display_name ?? row.user?.email ?? null,
     target_display_name: row.target?.display_name ?? row.target?.email ?? null,

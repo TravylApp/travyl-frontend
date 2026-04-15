@@ -32,10 +32,16 @@ export function upscaleGoogleImage(url: string | null | undefined, width = DEFAU
  * Tries: hero_image_url → hero_images[0] → destination_photo_url.
  * Returns null if none found — caller should fetch dynamically.
  */
-export function getTripHeroImage(trip: { destination?: string | null; trip_context?: any } | null): string | null {
+interface TripHeroContext {
+  hero_image_url?: string;
+  hero_images?: string[];
+  destination_photo_url?: string;
+}
+
+export function getTripHeroImage(trip: { destination?: string | null; trip_context?: TripHeroContext } | null): string | null {
   const ctx = trip?.trip_context;
   if (ctx?.hero_image_url) {
-    const url = ctx.hero_image_url as string;
+    const url = ctx.hero_image_url;
     return url.includes('googleusercontent.com')
       ? url.replace(/=w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no').replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
       : url;

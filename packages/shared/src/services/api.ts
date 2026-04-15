@@ -1,6 +1,67 @@
 import { supabase } from './supabase';
 import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
+// ─── Planner Types ──────────────────────────────────────────────
+interface PlannerWeather {
+  high_c?: number;
+  low_c?: number;
+  condition?: string;
+  icon?: string;
+}
+
+interface PlannerSlot {
+  poi: {
+    id: string;
+    name: string;
+    description?: string;
+    category: string;
+    photo_url?: string;
+    tags?: string[];
+  };
+  start_time: string;
+  end_time: string;
+  start_time_12h?: string;
+  end_time_12h?: string;
+}
+
+interface PlannerDay {
+  day: number;
+  date: string;
+  weather?: PlannerWeather;
+  slots?: PlannerSlot[];
+}
+
+interface PlannerHotel {
+  name?: string;
+  photo_url?: string;
+  rating?: number;
+  price_per_night?: number;
+  stars?: number;
+  amenities?: string[];
+  address?: string;
+  link?: string;
+  lat?: number;
+  lng?: number;
+}
+
+interface PlannerFlight {
+  airline?: string;
+  price?: number;
+  departure_time?: string;
+  arrival_time?: string;
+  stops?: number;
+  duration?: string;
+  origin?: string;
+  destination?: string;
+  dest_iata?: string;
+}
+
+interface ItineraryDayData {
+  day_number: number;
+  date: string;
+  activities?: Activity[];
+}
+
 export async function fetchTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
@@ -83,7 +144,7 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   if (error) throw error;
   // If schema uses owner_id + JSONB data column, remap; otherwise return as-is
   if (data && 'owner_id' in data && !('user_id' in data)) {
-    const { data: tripData, owner_id, ...rest } = data as any;
+    const { data: tripData, owner_id, ...rest } = data as Record<string, unknown>;
     return { ...rest, ...(typeof tripData === 'object' ? tripData : {}), user_id: owner_id } as Trip;
   }
   return data as Trip;
@@ -97,7 +158,7 @@ export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWi
     .from('itinerary_days').select('*, activities(*)')
     .eq('trip_id', tripId).order('day_number', { ascending: true });
   if (error) return []; // Table doesn't exist yet — fall back to trip_context
-  return (data ?? []).map((day: any) => ({
+  return (data ?? []).map((day: ItineraryDayData) => ({
     ...day,
     activities: (day.activities ?? []).sort(
       (a: Activity, b: Activity) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
@@ -153,7 +214,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   if (!user) throw new Error('User not authenticated');
 
   // 2. Create new trip with fork attribution
-  const { forked_from_trip_id, fork_count, is_public, created_at, updated_at, id, ...tripData } = originalTrip;
+  const { forked_from_trip_id, fork_count, is_public, created_at, updated_at, id, ...tripData } = originalTrip as Omit<Trip, 'forked_from_trip_id' | 'fork_count' | 'is_public' | 'created_at' | 'updated_at' | 'id'>;
   const newTripData = {
     ...tripData,
     user_id: user.id,
@@ -184,7 +245,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   // 4. Copy itinerary days, activities, and related data
   if (itineraryDays && itineraryDays.length > 0) {
     for (const day of itineraryDays) {
-      const { id: dayId, trip_id, created_at, ...dayData } = day;
+      const { id: _dayId, trip_id: _tripId, created_at: _createdAt, ...dayData } = day as Omit<ItineraryDayWithActivities, 'id' | 'trip_id' | 'created_at'>;
       const newDayData = { ...dayData, trip_id: newTrip.id };
 
       const { data: newDay, error: dayInsertError } = await supabase
@@ -575,7 +636,7 @@ export async function savePlanToSupabase(
         timezone: plan.timezone,
       },
       weather: {
-        forecast: plan.itinerary.filter((d: any) => d.weather).map((d: any) => ({
+        forecast: (plan.itinerary as PlannerDay[]).filter((d) => d.weather).map((d) => ({
           day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
           date: d.date,
           high: d.weather?.high_c,
@@ -589,43 +650,43 @@ export async function savePlanToSupabase(
         } : undefined,
       },
       // Hotels from planner
-      hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+      hotels: ((plan.hotels ?? []) as PlannerHotel[]).slice(0, 5).map((h) => ({
         id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
         name: h.name, image: h.photo_url, rating: h.rating,
         price: h.price_per_night, stars: h.stars,
         amenities: h.amenities, address: h.address, link: h.link,
         lat: h.lat, lng: h.lng,
       })),
-      all_hotels: ((plan as any).data?.hotels ?? plan.hotels ?? []).slice(0, 10).map((h: any) => ({
+      all_hotels: (((plan as { data?: { hotels?: PlannerHotel[] } }).data?.hotels ?? (plan.hotels ?? []) as PlannerHotel[])).slice(0, 10).map((h) => ({
         id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
         name: h.name, image: h.photo_url, rating: h.rating,
         price: h.price_per_night, stars: h.stars,
         address: h.address, link: h.link,
       })),
       // Flights from planner
-      flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+      flights: ((plan.flights ?? []) as PlannerFlight[]).slice(0, 5).map((f) => ({
         airline: f.airline, price: f.price, departure_time: f.departure_time,
         arrival_time: f.arrival_time, stops: f.stops, duration: f.duration,
         origin: f.origin, destination: f.destination, dest_iata: f.dest_iata,
       })),
       // Itinerary for the itinerary tab
-      itinerary: plan.itinerary.map((day: any) => ({
+      itinerary: (plan.itinerary as PlannerDay[]).map((day) => ({
         day: day.day, date: day.date, weather: day.weather,
-        slots: (day.slots ?? []).map((slot: any) => ({
+        slots: (day.slots ?? []).map((slot) => ({
           poi: slot.poi,
           start_time: slot.start_time, end_time: slot.end_time,
           start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
         })),
       })),
       // Explore items from itinerary POIs
-      explore_items: plan.itinerary.flatMap((day: any) =>
-        (day.slots ?? []).map((slot: any) => ({
+      explore_items: (plan.itinerary as PlannerDay[]).flatMap((day) =>
+        (day.slots ?? []).map((slot) => ({
           id: slot.poi.id, title: slot.poi.name,
           description: slot.poi.description || slot.poi.category,
           category: slot.poi.category, image: slot.poi.photo_url,
           tags: slot.poi.tags,
         }))
-      ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
+      ).filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i),
       lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
     },
   }

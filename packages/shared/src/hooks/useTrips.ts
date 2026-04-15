@@ -3,11 +3,16 @@ import { fetchTrips } from '../services/api';
 import { supabase } from '../services/supabase';
 import type { Trip } from '../types';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// Global type with storage APIs for web/mobile compatibility
+type GlobalWithStorage = typeof globalThis & {
+  localStorage?: { getItem(key: string): string | null; setItem(key: string, value: string): void };
+  sessionStorage?: { getItem(key: string): string | null };
+  document?: unknown;
+};
 
 async function getAnonTripIds(): Promise<string[]> {
   try {
-    const g = globalThis as any;
+    const g = globalThis as GlobalWithStorage;
     // Web: localStorage/sessionStorage
     const stored = g.localStorage?.getItem('my-trip-ids')
       ?? g.sessionStorage?.getItem('my-trip-ids');
@@ -33,7 +38,7 @@ export async function saveAnonTripId(tripId: string): Promise<void> {
   const json = JSON.stringify(ids);
 
   try {
-    const g = globalThis as any;
+    const g = globalThis as GlobalWithStorage;
     g.localStorage?.setItem('my-trip-ids', json);
   } catch {}
 
@@ -48,7 +53,7 @@ async function fetchTripsWithAnonymous(): Promise<Trip[]> {
   const anonIds = await getAnonTripIds();
 
   // Web: use API route for anonymous trips
-  if (anonIds.length > 0 && typeof (globalThis as any).document !== 'undefined') {
+  if (anonIds.length > 0 && typeof (globalThis as GlobalWithStorage).document !== 'undefined') {
     try {
       const res = await fetch(`/api/trips?ids=${anonIds.join(',')}`);
       if (res.ok) return res.json() as Promise<Trip[]>;
