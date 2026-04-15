@@ -1,3 +1,12 @@
+/**
+ * @module useTripPlanner
+ * Handles the AI-powered trip planning flow — sends natural language input
+ * to the backend, receives a structured trip plan, and creates the trip in Supabase.
+ * Manages a multi-phase state machine: idle → extracting → clarifying (if needed) →
+ * planning → complete (or error at any step).
+ * Used by the web homepage search bar and the mobile CreateTripModal.
+ */
+
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
@@ -99,6 +108,10 @@ type PlannerState =
   | { phase: 'complete'; plan: PlanResponse }
   | { phase: 'error'; message: string };
 
+/**
+ * Lookup table of place names that are geographically ambiguous across
+ * countries or regions, used to trigger a clarification question before planning.
+ */
 // Known ambiguous place names — same name, very different locations
 const AMBIGUOUS_PLACES: Record<string, { question: string; options: string[] }> = {
   georgia: { question: 'Which Georgia do you mean?', options: ['Georgia, USA (state)', 'Georgia (country in the Caucasus)'] },
@@ -111,6 +124,14 @@ const AMBIGUOUS_PLACES: Record<string, { question: string; options: string[] }> 
   tripoli: { question: 'Which Tripoli?', options: ['Tripoli, Libya', 'Tripoli, Lebanon'] },
 };
 
+/**
+ * Checks whether the user's prompt contains a destination name that maps to
+ * multiple distinct real-world locations. Returns a clarification question
+ * with options when ambiguity is detected, or null when the destination is clear.
+ * @param prompt - The raw natural-language trip request from the user
+ * @param extracted - The extraction result from the backend (may already contain a resolved country)
+ * @returns A question/options pair to surface in the clarifying UI, or null if unambiguous
+ */
 function detectAmbiguousDestination(prompt: string, extracted: TripExtraction | null): { question: string; options: string[] } | null {
   // If the extraction already resolved to a specific country, no ambiguity
   if (extracted?.destination?.country) return null;
@@ -125,11 +146,49 @@ function detectAmbiguousDestination(prompt: string, extracted: TripExtraction | 
   return null;
 }
 
+/**
+ * Manages the full AI trip-planning conversation flow.
+ *
+ * Exposes a state machine (`state.phase`) so UIs can show the right step:
+ * - `'idle'` — awaiting input
+ * - `'extracting'` — parsing the prompt for destinations, dates, travelers
+ * - `'clarifying'` — backend needs more info; `state.questions` contains prompts
+ * - `'planning'` — generating the full itinerary
+ * - `'complete'` — `state.plan` contains the finished `PlanResponse`
+ * - `'error'` — `state.message` describes what went wrong
+ *
+ * @returns Object with:
+ *   - `state` — current phase and associated data
+ *   - `submitPrompt` — start planning from a natural-language string
+ *   - `submitAnswers` — continue after clarification questions are answered
+ *   - `reset` — clear all state back to idle
+ *
+ * @example
+ * ```tsx
+ * const { state, submitPrompt, submitAnswers, reset } = useTripPlanner();
+ *
+ * // Start planning
+ * await submitPrompt('3 days in Tokyo with a friend, love food and art');
+ *
+ * // If state.phase === 'clarifying':
+ * await submitAnswers({ [state.questions[0].id]: state.questions[0].options[0] });
+ *
+ * // When state.phase === 'complete':
+ * console.log(state.plan.itinerary);
+ * ```
+ */
 export function useTripPlanner() {
   const [state, setState] = useState<PlannerState>({ phase: 'idle' });
   const promptRef = useRef('');
   const contextRef = useRef<{ city?: string; country?: string }>({});
 
+  /**
+   * Sends the user's natural-language trip description to `/api/trips/extract`.
+   * Advances state to `'extracting'`, then either to `'clarifying'` (if the backend
+   * or the local ambiguity check needs more info) or straight to `'planning'`.
+   * @param prompt - Free-form description e.g. "5 days in Paris, love museums"
+   * @param context - Optional city/country override to help the extractor resolve ambiguity
+   */
   const submitPrompt = useCallback(async (prompt: string, context?: { city?: string; country?: string }) => {
     if (API_URL == null) {
       setState({ phase: 'error', message: 'API not configured' });
@@ -184,6 +243,12 @@ export function useTripPlanner() {
     }
   }, []);
 
+  /**
+   * Submits user responses to follow-up clarification questions, then calls
+   * `runPlan` to complete itinerary generation. Handles the special
+   * `disambiguate_destination` question by extracting city/country from the answer.
+   * @param answers - Map of question ID → selected answer string
+   */
   const submitAnswers = useCallback(async (answers: Record<string, string>) => {
     // Handle disambiguation answers — extract city/country from the selected option
     const disambigAnswer = answers['disambiguate_destination'];
@@ -194,6 +259,13 @@ export function useTripPlanner() {
     await runPlan(promptRef.current, answers);
   }, []);
 
+  /**
+   * Internal step that calls `/api/trips/plan` with the original prompt, resolved
+   * city/country context, and any clarification answers. Transitions state to
+   * `'planning'` and then to `'complete'` or another `'clarifying'` round.
+   * @param prompt - The original user prompt (preserved from `submitPrompt`)
+   * @param answers - Clarification answers collected so far
+   */
   const runPlan = async (prompt: string, answers: Record<string, string>) => {
     if (API_URL == null) return;
     setState({ phase: 'planning' });
@@ -227,6 +299,11 @@ export function useTripPlanner() {
     }
   };
 
+  /**
+   * Resets the planner back to the `'idle'` phase, clearing the stored prompt
+   * and any destination context. Call this after a trip is created or if the
+   * user cancels mid-flow.
+   */
   const reset = useCallback(() => {
     setState({ phase: 'idle' });
     promptRef.current = '';
