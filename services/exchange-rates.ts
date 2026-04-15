@@ -13,11 +13,26 @@ interface ExchangeRateResponse {
 // Falls back to Open Exchange Rates if API key is available
 const EXCHANGE_RATE_API_URL = 'https://api.exchangerate-api.com/v4/latest'
 
+// Timeout for external API calls (milliseconds)
+const API_TIMEOUT_MS = 5000
+
+// Default currency when none specified
+const DEFAULT_BASE_CURRENCY = 'USD'
+
+// Default amount for conversion when none specified
+const DEFAULT_AMOUNT = 1
+
+// Decimal precision for currency conversion (2 decimal places = cents)
+const CURRENCY_PRECISION = 100
+
+// Convert seconds to milliseconds multiplier
+const SECONDS_TO_MS = 1000
+
 async function fetchExchangeRates(base: string): Promise<ExchangeRateResponse | null> {
   try {
     // Try free API first (no API key needed)
     const res = await fetch(`${EXCHANGE_RATE_API_URL}/${base}`, {
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     })
 
     if (!res.ok) {
@@ -41,7 +56,7 @@ async function fetchExchangeRates(base: string): Promise<ExchangeRateResponse | 
 async function fetchWithOpenExchangeRates(appId: string, base: string): Promise<ExchangeRateResponse | null> {
   try {
     const url = `https://openexchangerates.org/api/latest.json?app_id=${appId}&base=${base}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+    const res = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) })
 
     if (!res.ok) {
       console.error('[exchange-rates] OpenExchangeRates failed:', res.status)
@@ -52,7 +67,7 @@ async function fetchWithOpenExchangeRates(appId: string, base: string): Promise<
     return {
       base: data.base,
       rates: data.rates,
-      timestamp: data.timestamp * 1000,
+      timestamp: data.timestamp * SECONDS_TO_MS,
       source: 'openexchangerates.org',
     }
   } catch (err) {
@@ -71,9 +86,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       // Allow anonymous access for currency conversion
     }
 
-    const base = (event.queryStringParameters?.base || 'USD').toUpperCase()
+    const base = (event.queryStringParameters?.base || DEFAULT_BASE_CURRENCY).toUpperCase()
     const target = event.queryStringParameters?.target?.toUpperCase()
-    const amount = parseFloat(event.queryStringParameters?.amount || '1')
+    const amount = parseFloat(event.queryStringParameters?.amount || String(DEFAULT_AMOUNT))
 
     // Validate base currency format (3-letter ISO code)
     if (!/^[A-Z]{3}$/.test(base)) {
@@ -118,6 +133,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       }
 
       const converted = amount * rate
+      const roundedConverted = Math.round(converted * CURRENCY_PRECISION) / CURRENCY_PRECISION
 
       return {
         statusCode: 200,
@@ -126,7 +142,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           target,
           rate,
           amount,
-          converted: Math.round(converted * 100) / 100,
+          converted: roundedConverted,
           timestamp: result.timestamp,
           source: result.source,
         }),
