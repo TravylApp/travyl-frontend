@@ -27,7 +27,7 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
     owner_display_name: row.owner?.display_name ?? null,
     user: undefined,
     owner: undefined,
-  }))
+  })) as unknown as DbPackingItem[]
 }
 
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
@@ -44,7 +44,7 @@ export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<
     target_display_name: row.target?.display_name ?? row.target?.email ?? null,
     user: undefined,
     target: undefined,
-  }))
+  })) as unknown as PackingAuditEntry[]
 }
 
 export async function insertPackingItem(

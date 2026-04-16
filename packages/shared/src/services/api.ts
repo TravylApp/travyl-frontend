@@ -83,7 +83,7 @@ export async function uploadAvatar(userId: string, base64Data: string): Promise<
     byteNumbers[i] = byteCharacters.charCodeAt(i);
   }
   const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: 'image/jpeg' });
+  const blob = (new Blob as any)([byteArray], { type: 'image/jpeg' });
 
   const fileName = `${userId}/${Date.now()}.jpg`;
 

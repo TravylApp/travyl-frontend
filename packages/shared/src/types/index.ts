@@ -1,5 +1,41 @@
 // Core entity types — mirrors the Supabase schema
 
+export interface ExploreItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  category: string;
+  description: string;
+  image?: string;
+  tags?: string[];
+  rating?: number;
+  reviewCount?: number;
+}
+
+export interface FoursquareVenue {
+  id: string;
+  title?: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  image?: string;
+  rating?: number;
+  tags?: string[];
+}
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  image?: string;
+  images?: string[];
+  rating?: number;
+  reviewCount?: number;
+  cuisines?: string[];
+  tip?: string;
+}
+
 export type Visibility = 'private' | 'link' | 'public'
 export type LinkPermission = 'viewer' | 'editor'
 export type CollaboratorRole = 'viewer' | 'editor'
@@ -207,6 +243,7 @@ export interface Activity {
   notes: string | null;
   source: 'agent' | 'user' | 'search';
   created_at: string;
+  image: string | null;
 }
 
 export interface FlightData {
