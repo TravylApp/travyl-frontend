@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { DiscoverItem, ExploreItem } from '../types';
+import type { DiscoverItem, ExploreItem, FoursquareVenue, Restaurant } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 
 // ─── Local Types ───────────────────────────────────────────────
 interface TripContext {
   explore_items?: ExploreItem[];
-  foursquare_venues?: unknown[];
-  restaurants?: unknown[];
+  foursquare_venues?: FoursquareVenue[];
+  restaurants?: Restaurant[];
 }
 
 // ─── Constants (shared between web + mobile) ──────────────────

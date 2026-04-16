@@ -36,15 +36,7 @@ export interface TripContextData {
     current?: { high: number; low: number; condition: string; temp?: number; feelslike?: number; conditions?: string };
     forecast?: { day: string; date?: string; high: number; low: number; icon: string; condition: string }[];
   };
-  explore_items?: {
-    id: string;
-    title: string;
-    subtitle?: string;
-    category: string;
-    description: string;
-    image?: string;
-    tags?: string[];
-  }[];
+  explore_items?: ExploreItem[];
   news?: {
     id: string;
     title: string;
@@ -57,7 +49,7 @@ export interface TripContextData {
   }[];
   // External API data — loosely structured (using unknown for safety)
   hotels?: unknown[];
-  foursquare_venues?: unknown[];
+  foursquare_venues?: FoursquareVenue[];
   events?: unknown[];
   cuisine?: unknown[];
   phrases?: unknown[];
@@ -66,11 +58,11 @@ export interface TripContextData {
   safety?: unknown;
   timezone_info?: unknown;
   sunrise?: unknown;
+  restaurants?: Restaurant[];
   aqi?: unknown;
   wiki?: string | { extract?: string };
   country?: unknown;
   holidays?: unknown[];
-  restaurants?: unknown[];
 }
 
 export interface Trip {
@@ -657,6 +649,61 @@ export interface FavoriteItem {
   board: string;
   image: string;
   date?: string;
+}
+
+// ─── Explore Item (standalone export for hooks) ─────────────
+
+export interface ExploreItem {
+  id: string;
+  title: string;
+  name?: string; // alias for title, used by some hooks
+  subtitle?: string;
+  category: string;
+  description: string;
+  image?: string;
+  tags?: string[];
+  rating?: number;
+  reviewCount?: number;
+}
+
+// ─── Foursquare Venue (from trip_context.foursquare_venues) ─
+
+export interface FoursquareVenue {
+  id: string;
+  name?: string;
+  title?: string;
+  category?: string;
+  description?: string;
+  image?: string;
+  rating?: number;
+}
+
+// ─── Restaurant (from trip_context.restaurants) ───────────────
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  category?: string;
+  tip?: string;
+  image?: string;
+  images?: string[];
+  rating?: number;
+  reviewCount?: number;
+  cuisines?: string[];
+}
+
+// ─── Itinerary Slot (from trip_context.itinerary) ────────────
+
+export interface ItinerarySlot {
+  start_time: string;
+  end_time: string;
+  poi?: {
+    id?: string;
+    name?: string;
+    category?: string;
+    description?: string;
+    photo_url?: string;
+  };
 }
 
 // ─── Postcard ───────────────────────────────────────────────
