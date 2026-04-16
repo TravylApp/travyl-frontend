@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key)
+function getServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!
+  )
 }
 
 const CITY_AIRPORTS: Record<string, string> = {
@@ -23,14 +25,28 @@ const CITY_AIRPORTS: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase()
+  // Verify user session - reject caller-supplied user_id for security
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() { return req.cookies.getAll() },
+        setAll() {},
+      },
+    }
+  )
+  const { data: { user } } = await authClient.auth.getUser()
+  const verifiedUserId = user?.id ?? null
+
   const body = await req.json()
-  const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+  const { title, destination, start_date, end_date, status, user_id: _ignored, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
 
   if (!destination) {
     return NextResponse.json({ error: 'Missing destination' }, { status: 400 })
   }
 
+  const supabase = getServiceSupabase()
   const { data, error } = await supabase
     .from('trips')
     .insert({
@@ -39,12 +55,12 @@ export async function POST(req: NextRequest) {
       start_date,
       end_date,
       status: status || 'planning',
-      user_id: user_id || null,
+      user_id: verifiedUserId,
       travelers: travelers || 1,
       budget: budget || null,
       currency: currency || 'USD',
       trip_context: trip_context || {},
-      visibility: user_id ? 'private' : 'public',
+      visibility: verifiedUserId ? 'private' : 'public',
       is_generated: true,
     })
     .select()
