@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { Settings, Camera, Pencil, Check, X, MapPin, User } from "lucide-react";
 import Link from "next/link";
-import { useAuthStore } from "@travyl/shared";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuthStore, useProfile, updateProfile, uploadAvatar } from "@travyl/shared";
 import type { Trip } from "@travyl/shared";
 
 interface ProfileHeaderProps {
@@ -9,7 +10,9 @@ interface ProfileHeaderProps {
 }
 
 export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const { data: profile, refetch: refetchProfile } = useProfile();
 
   // Calculate stats from actual trips data
   const tripsCount = trips.length;
@@ -91,7 +94,6 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
   };
 
   const travelDNA = extractTravelInterests();
-  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState(
     "Travel enthusiast exploring the world one destination at a time. Beach lover, mountain seeker, festival goer."
   );
@@ -99,17 +101,48 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
   const [draftBio, setDraftBio] = useState(bio);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setProfileImage(ev.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    // Convert to base64 and upload to storage
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const result = ev.target?.result as string;
+      if (result && user) {
+        try {
+          // Upload to storage first
+          const publicUrl = await uploadAvatar(user.id, result);
+          
+          // Save URL to database
+          await updateProfile(user.id, { avatar_url: publicUrl });
+          
+          // Invalidate profile query to update everywhere
+          await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+          
+          // Refetch locally
+          await refetchProfile();
+        } catch (error) {
+          console.error('Error saving profile picture:', error);
+          alert('Failed to save profile picture');
+        }
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const startEditingBio = () => {
@@ -161,9 +194,9 @@ export function ProfileHeader({ trips = [] }: ProfileHeaderProps) {
                 className="w-[100px] h-[100px] sm:w-[120px] sm:h-[120px] lg:w-[140px] lg:h-[140px] rounded-full border-4 border-white/20 overflow-hidden shadow-2xl transition-all hover:scale-105 duration-300 bg-white/10 flex items-center justify-center cursor-pointer group/avatar relative"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {profileImage || user?.user_metadata?.avatar_url ? (
+                {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
                   <img
-                    src={profileImage || user?.user_metadata?.avatar_url}
+                    src={profile?.avatar_url || user?.user_metadata?.avatar_url}
                     alt={user?.user_metadata?.display_name || user?.email || "Profile"}
                     className="w-full h-full object-cover"
                   />

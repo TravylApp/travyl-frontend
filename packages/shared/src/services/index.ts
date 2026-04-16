@@ -5,6 +5,7 @@ export {
   fetchSavedItems,
   fetchProfile,
   updateProfile,
+  uploadAvatar,
   updateUserMetadata,
   updateUserPassword,
   fetchMosaicTiles,

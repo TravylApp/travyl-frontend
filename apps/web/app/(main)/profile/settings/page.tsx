@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
 import { useAuthStore, supabase } from '@travyl/shared';
-import { fetchProfile, updateProfile, updateUserMetadata, updateUserPassword, fetchTrips } from '@travyl/shared';
+import { fetchProfile, updateProfile, uploadAvatar, updateUserMetadata, updateUserPassword, fetchTrips } from '@travyl/shared';
 import type { Profile, Trip } from '@travyl/shared';
 
 // ─── Types ─────────────────────────────────────────────
@@ -188,6 +189,7 @@ function CounterInline({ label, value, onChange, min = 0 }: { label: string; val
 
 // ─── Main Component ────────────────────────────────────
 export default function ProfileSettings() {
+  const queryClient = useQueryClient();
   // Auth state
   const { user, session, loading: authLoading } = useAuthStore();
   const router = useRouter();
@@ -305,7 +307,7 @@ export default function ProfileSettings() {
 
         // Check if user is authenticated
         if (!user || !session) {
-          setError('You must be signed in to view settings');
+          setError('Sign In to View');
           setIsLoading(false);
           return;
         }
@@ -402,11 +404,25 @@ export default function ProfileSettings() {
 
     setIsSaving(true);
     try {
+      let finalAvatarUrl = formData.profilePhoto;
+
+      // If the avatar is a base64 string (newly uploaded), upload it to storage
+      if (formData.profilePhoto && formData.profilePhoto.startsWith('data:image/')) {
+        try {
+          finalAvatarUrl = await uploadAvatar(user.id, formData.profilePhoto);
+        } catch (uploadErr) {
+          console.error('Error uploading avatar:', uploadErr);
+          toast.error('Failed to upload image. Please try again.');
+          setIsSaving(false);
+          return false;
+        }
+      }
+
       // Update profile fields in profiles table
-      if (formData.firstName || formData.city || formData.country || formData.profilePhoto) {
+      if (formData.firstName || formData.city || formData.country || formData.profilePhoto !== originalFormData.profilePhoto) {
         await updateProfile(user.id, {
           display_name: formData.firstName || null,
-          avatar_url: formData.profilePhoto || null,
+          avatar_url: finalAvatarUrl || null,
           city: formData.city || null,
           country: formData.country || null,
         });
@@ -414,6 +430,8 @@ export default function ProfileSettings() {
 
       // Update user metadata in auth
       const metadataUpdates: Record<string, unknown> = {
+        display_name: formData.firstName || null,
+        avatar_url: finalAvatarUrl || null,
         lastName: formData.lastName || null,
         phone: formData.phone || null,
         emergencyName: formData.emergencyName || null,
@@ -435,6 +453,9 @@ export default function ProfileSettings() {
       if (Object.keys(cleanMetadataUpdates).length > 0) {
         await updateUserMetadata(cleanMetadataUpdates);
       }
+
+      // Invalidate profile query to update navbar and other components
+      await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
 
       // Update password if provided
       if (formData.newPassword && formData.currentPassword) {
@@ -519,11 +540,28 @@ export default function ProfileSettings() {
   // ─── Render ───────────────────────────────────────────
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-6">
-        <div className="text-center">
-          <Loader2 size={48} className="text-primary animate-spin mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-foreground mb-2">Loading Settings</h2>
-          <p className="text-muted-foreground">Please wait while we load your profile...</p>
+      <div className="min-h-screen bg-[#f8fafc]">
+        <div className="flex items-center justify-center p-6 pt-24">
+          <div className="text-center">
+            {/* Travyl Logo */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <span className="text-3xl font-black text-[#1e3a5f] tracking-wider">TRAVYL</span>
+              <svg
+                viewBox="0 0 64 64"
+                className="w-10 h-10"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M60 10 L20 36 L6 34 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+                <path d="M48 48 L30 40 L26 38 L60 10 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+                <path d="M52 16 L26 38 L24 50 L20 36 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+              </svg>
+            </div>
+
+            <Loader2 size={48} className="text-[#1e3a5f] animate-spin mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-[#1e3a5f] mb-2">Loading Settings</h2>
+            <p className="text-gray-500">Please wait while we load your profile...</p>
+          </div>
         </div>
       </div>
     );
@@ -531,40 +569,61 @@ export default function ProfileSettings() {
 
   if (error && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center bg-card rounded-3xl shadow-2xl border border-border p-10">
-          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={40} className="text-red-500 dark:text-red-400" />
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe]">
+        <div className="flex items-center justify-center p-6 pt-24">
+          <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
+          {/* Travyl Logo */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <span className="text-3xl font-black text-[#1e3a5f] tracking-wider">TRAVYL</span>
+            <svg
+              viewBox="0 0 64 64"
+              className="w-10 h-10"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M60 10 L20 36 L6 34 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+              <path d="M48 48 L30 40 L26 38 L60 10 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+              <path d="M52 16 L26 38 L24 50 L20 36 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
+            </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-3">Authentication Required</h2>
-          <p className="text-muted-foreground mb-8">{error}</p>
+
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={40} className="text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Access Denied</h2>
+          <h3 className="text-2xl font-bold text-[#1e3a5f] mb-6">{error}</h3>
           <a
             href="/login"
-            className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all font-bold shadow-lg"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
           >
-            Sign In to Continue
+            Sign In
           </a>
         </div>
       </div>
+    </div>
     );
   }
 
   if (error && supabase) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center bg-card rounded-3xl shadow-2xl border border-border p-10">
-          <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={40} className="text-orange-500 dark:text-orange-400" />
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe]">
+        <div className="flex items-center justify-center p-6 pt-24">
+          <div className="max-w-md w-full text-center bg-white rounded-[32px] shadow-2xl p-10 border-2 border-dashed border-red-100">
+            <div className="w-28 h-28 bg-red-50 rounded-full flex items-center justify-center mb-10 relative shadow-inner mx-auto">
+              <X size={56} className="text-red-200" />
+            </div>
+            <h3 className="text-[#314158] text-3xl font-bold mb-4">Unable to Load Profile</h3>
+            <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
+            >
+              <Loader2 size={20} />
+              Try Again
+            </button>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-3">Unable to Load Profile</h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all font-bold shadow-lg"
-          >
-            <Loader2 size={18} className="animate-spin" />
-            Try Again
-          </button>
         </div>
       </div>
     );
