@@ -72,6 +72,39 @@ export async function updateProfile(userId: string, updates: Partial<Pick<Profil
   return data;
 }
 
+export async function uploadAvatar(userId: string, base64Data: string): Promise<string> {
+  // Convert base64 to Blob
+  const base64Content = base64Data.split(';base64,').pop();
+  if (!base64Content) throw new Error('Invalid base64 data');
+
+  const byteCharacters = atob(base64Content);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+  const fileName = `${userId}/${Date.now()}.jpg`;
+
+  // Upload to 'avatars' bucket
+  const { data, error } = await supabase.storage
+    .from('avatars')
+    .upload(fileName, blob, {
+      contentType: 'image/jpeg',
+      upsert: true
+    });
+
+  if (error) throw error;
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(data.path);
+
+  return publicUrl;
+}
+
 export async function updateUserMetadata(metadata: Record<string, unknown>): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');

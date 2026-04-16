@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Plus, Clock, MapPin, Sparkles, Compass, Star, Triangle } from "lucide-react";
 import { PaperPlane } from '@/components/ui';
 import { motion } from "motion/react";
@@ -89,6 +90,12 @@ function BoardCard({ board }: { board: TravelBoard }) {
 }
 
 export default function TravelBoards() {
+  const router = useRouter();
+
+  const handleCreateBoard = () => {
+    router.push('/');
+  };
+
   return (
     <div>
       {/* Boards Grid */}
@@ -100,7 +107,10 @@ export default function TravelBoards() {
 
       {/* Create Board Card */}
       <div className="mb-10">
-        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl h-[120px] flex flex-col items-center justify-center gap-2 hover:border-gray-300 hover:bg-gray-100/70 transition-colors cursor-pointer max-w-sm">
+        <div
+          onClick={handleCreateBoard}
+          className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl h-[120px] flex flex-col items-center justify-center gap-2 hover:border-gray-300 hover:bg-gray-100/70 transition-colors cursor-pointer max-w-sm"
+        >
           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
             <Plus size={16} className="text-gray-400" />
           </div>

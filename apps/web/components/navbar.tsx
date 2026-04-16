@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Compass, MapPin, Luggage, User, Settings, LogOut, Sun, Moon } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
-import { useAuthStore } from "@travyl/shared";
+import { useAuthStore, useProfile } from "@travyl/shared";
 
 const baseNavLinks = [
   { href: "/", label: "Discover", icon: Compass },
@@ -25,13 +25,15 @@ export default function Navbar() {
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
   const signOut = useAuthStore((s) => s.signOut);
+  const { data: profile } = useProfile(); // Fetch from profiles table
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [avatarError, setAvatarError] = useState(false);
-  const avatarUrl = user?.user_metadata?.avatar_url;
+  // Use profile avatar_url first, then fall back to auth metadata
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name;
   const email = user?.email;
   const initials = getInitials(displayName);

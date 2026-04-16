@@ -26,6 +26,8 @@
   --muted: #F3F4F6;
   --muted-foreground: #6B7280;
   --border: #E5E7EB;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
   --magazine-bg: #FAF8F5;
   --magazine-surface: #f5f1eb;
   --magazine-text: #4a4540;
@@ -67,6 +69,8 @@
   --muted: #1a2230;
   --muted-foreground: #9ca3af;
   --border: rgba(255, 255, 255, 0.08);
+  --card: #151d28;
+  --card-foreground: #e5e7eb;
   --magazine-bg: #0c1117;
   --magazine-surface: #151d28;
   --magazine-text: #e0d8cc;
@@ -112,10 +116,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
   --color-accent: var(--accent);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-magazine-bg: var(--magazine-bg);
   --color-magazine-surface: var(--magazine-surface);
   --color-magazine-text: var(--magazine-text);

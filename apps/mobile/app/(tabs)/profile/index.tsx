@@ -129,8 +129,16 @@ export default function ProfileScreen() {
 
         {/* Avatar */}
         <View style={{ position: 'relative', marginBottom: 10 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#2a4d78', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#2a4d78', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
+              <Image
+                source={{ uri: profile?.avatar_url || user?.user_metadata?.avatar_url }}
+                style={{ width: 80, height: 80 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+            )}
           </View>
           <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: '#3b82f6', borderWidth: 2, borderColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="camera" size={10} color="#fff" />
