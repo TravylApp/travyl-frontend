@@ -8,9 +8,10 @@ import type { MockFlightDetail } from '@travyl/shared';
 interface FlightSectionProps {
   flight: MockFlightDetail;
   collapsed?: boolean;
+  onBookFlight?: () => void;
 }
 
-export function FlightSection({ flight, collapsed }: FlightSectionProps) {
+export function FlightSection({ flight, collapsed, onBookFlight }: FlightSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const toggle = () => setExpanded((prev) => !prev);
 
@@ -173,6 +174,7 @@ export function FlightSection({ flight, collapsed }: FlightSectionProps) {
                     : 'text-white hover:bg-trip-base-light'
                 }`}
                 style={!flight.isBooked ? { backgroundColor: 'var(--trip-base)' } : undefined}
+                onClick={!flight.isBooked ? onBookFlight : undefined}
               >
                 {flight.isBooked ? (
                   <>

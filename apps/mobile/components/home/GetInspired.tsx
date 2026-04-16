@@ -5,7 +5,7 @@ import { Gray, type PlaceItem } from '@travyl/shared';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
 const CARD_W = SCREEN_WIDTH * 0.75;
 const CARD_H = CARD_W * 1.4;
 

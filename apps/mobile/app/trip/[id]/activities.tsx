@@ -11,6 +11,7 @@ import {
   ACTIVITY_CATEGORY_ICONS,
   ACTIVITY_SUBFILTERS,
   ACTIVITY_SORT_OPTIONS,
+  supabase,
 } from '@travyl/shared';
 import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import type { DiscoverItem, PlaceItem } from '@travyl/shared';
@@ -119,7 +120,7 @@ function ActivityCard({
         {/* Full-bleed image */}
         {hasImage ? (
           <Image
-            source={{ uri: item.images[0] }}
+            source={{ uri: item.images[0], headers: { Referer: '' } }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             resizeMode="cover"
             onError={() => setImgError(true)}
@@ -327,7 +328,7 @@ function ActivityDetailSheet({
                 {/* Image */}
                 {hasImage ? (
                   <Image
-                    source={{ uri: item.images[0] }}
+                    source={{ uri: item.images[0], headers: { Referer: '' } }}
                     style={{ width: '100%', height: 200 }}
                     resizeMode="cover"
                     onError={() => setImgError(true)}
@@ -524,7 +525,7 @@ function ActivityDetailSheet({
                           >
                             {sim.images.length > 0 ? (
                               <Image
-                                source={{ uri: sim.images[0] }}
+                                source={{ uri: sim.images[0], headers: { Referer: '' } }}
                                 style={{ width: 150, height: 90 }}
                                 resizeMode="cover"
                               />
@@ -686,9 +687,9 @@ function ActivityDetailFooter({
                 })}
               >
                 {sim.images?.length ? (
-                  <Image source={{ uri: sim.images[0] }} style={{ width: 150, height: 90 }} resizeMode="cover" />
+                  <Image source={{ uri: sim.images[0], headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
                 ) : sim.image ? (
-                  <Image source={{ uri: sim.image }} style={{ width: 150, height: 90 }} resizeMode="cover" />
+                  <Image source={{ uri: sim.image, headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
                 ) : (
                   <View style={{ width: 150, height: 90, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="image" size={20} color={colors.border} />
@@ -761,6 +762,32 @@ export default function ActivitiesScreen() {
 
   const colors = useThemeColors();
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // Add to trip — persist to Supabase activity table
+  const handleAddToTrip = useCallback((itemId: string) => {
+    const item = [...discoverItems, ...sourceItems].find(i => i.id === itemId);
+    if (!item) return;
+    const startDate = trip?.start_date || new Date().toISOString().split('T')[0];
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      supabase.from('activity').insert({
+        trip_id: id,
+        user_id: user?.id || null,
+        activity_name: item.name,
+        activity_type: 'other',
+        starting_date: startDate,
+        ending_date: startDate,
+        starting_time: '09:00',
+        ending_time: '11:00',
+        latitude: (item as any).latitude ?? (item as any).lat ?? 0,
+        longitude: (item as any).longitude ?? (item as any).lng ?? 0,
+        sort_order: 0,
+        notes: item.description || '',
+        activity_data: { image: item.images?.[0] || '', category: item.category },
+      }).then(({ error }) => {
+        if (error) console.error('[addToTrip] insert failed:', error.message);
+      });
+    });
+  }, [id, trip, discoverItems, sourceItems]);
   const [minRating, setMinRating] = useState<number | null>(null);
   const [selectedItem, setSelectedItem] = useState<DiscoverItem | null>(null);
 
@@ -1054,6 +1081,7 @@ export default function ActivitiesScreen() {
                     item={item}
                     isFavorited={favorites.includes(item.id)}
                     onFavorite={toggleFavorite}
+                    onAddToItinerary={handleAddToTrip}
                   />
                 </Pressable>
               ))}
@@ -1066,6 +1094,7 @@ export default function ActivitiesScreen() {
                     item={item}
                     isFavorited={favorites.includes(item.id)}
                     onFavorite={toggleFavorite}
+                    onAddToItinerary={handleAddToTrip}
                   />
                 </Pressable>
               ))}

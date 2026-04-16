@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type RefObject } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -242,56 +243,6 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
   );
 }
 
-// ─── Conversational follow-up questions ─────────────────────
-const TRIP_QUESTIONS = [
-  { key: 'destination', placeholder: 'Where do you want to go?' },
-  { key: 'duration', placeholder: 'How many days?' },
-  { key: 'companions', placeholder: "Who's coming along?" },
-  { key: 'vibe', placeholder: 'What\'s the vibe? (foodie, adventure, relaxing...)' },
-  { key: 'budget', placeholder: 'Any budget range? (budget, mid-range, luxury)' },
-] as const;
-
-type TripAnswers = Record<string, string>;
-
-function buildChainSentence(answers: TripAnswers): string {
-  const parts: string[] = [];
-  if (answers.duration) parts.push(answers.duration);
-  if (answers.destination) parts.push(`in ${answers.destination}`);
-  if (answers.companions) parts.push(`with ${answers.companions}`);
-  if (answers.vibe) parts.push(answers.vibe);
-  if (answers.budget) parts.push(answers.budget.toLowerCase().includes('budget') ? answers.budget : `${answers.budget} budget`);
-  return parts.join(' · ') || '';
-}
-
-function parseInitialInput(val: string): TripAnswers {
-  const parsed: TripAnswers = {};
-  const lower = val.toLowerCase();
-  const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]+)/i);
-  if (destMatch) {
-    parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
-  } else {
-    const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore)\s*/i, '').trim();
-    parsed.destination = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-  const durMatch = lower.match(/(\d+)\s*(?:day|night|week)s?/);
-  if (durMatch) {
-    const num = parseInt(durMatch[1]);
-    const unit = durMatch[0].match(/day|night|week/)![0];
-    parsed.duration = `${num} ${unit}${num !== 1 ? 's' : ''}`;
-  } else if (lower.includes('weekend')) parsed.duration = 'weekend';
-  if (lower.match(/family|kids|children/)) parsed.companions = 'family';
-  else if (lower.match(/partner|couple|wife|husband/)) parsed.companions = 'partner';
-  else if (lower.match(/friends|group|squad/)) parsed.companions = 'friends';
-  else if (lower.match(/solo|alone|myself/)) parsed.companions = 'solo';
-  if (lower.match(/food|foodie|culinary/)) parsed.vibe = 'foodie';
-  else if (lower.match(/adventure|hiking|trek/)) parsed.vibe = 'adventure';
-  else if (lower.match(/relax|chill|spa|beach/)) parsed.vibe = 'relaxing';
-  else if (lower.match(/culture|museum|art|history/)) parsed.vibe = 'culture';
-  if (lower.match(/budget|cheap|backpack/)) parsed.budget = 'budget';
-  else if (lower.match(/luxury|premium|high.end/)) parsed.budget = 'luxury';
-  return parsed;
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -337,10 +288,24 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [heroConfig?.subtitle]);
 
-  // Cycling suggestion pills
-  const allSuggestions = heroConfig?.suggestions?.length
-    ? heroConfig.suggestions
-    : ALL_SUGGESTIONS;
+  // Fetch trending destinations for suggestion pills
+  const { data: trendingDestinations } = useQuery({
+    queryKey: ['trending-destinations'],
+    queryFn: async () => {
+      const API = process.env.EXPO_PUBLIC_WEB_API_URL || '';
+      const res = await fetch(`${API}/api/trending-destinations`);
+      if (!res.ok) return [];
+      return res.json() as Promise<{ name: string; country: string }[]>;
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+
+  // Cycling suggestion pills — trending API first, then heroConfig, then static fallback
+  const allSuggestions = trendingDestinations?.length
+    ? trendingDestinations.map((d, i) => ({ id: `td-${i}`, label: d.name, short_label: null }))
+    : heroConfig?.suggestions?.length
+      ? heroConfig.suggestions
+      : ALL_SUGGESTIONS;
   const [pillGroup, setPillGroup] = useState(0);
   const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
   useEffect(() => {
@@ -373,7 +338,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
     const q = tripQuery.trim();
-    if (q.length < 2 || convStep >= 0) { setAutocompleteSuggestions([]); return; }
+    if (q.length < 2) { setAutocompleteSuggestions([]); return; }
     autocompleteTimer.current = setTimeout(async () => {
       try {
         const API = process.env.EXPO_PUBLIC_WEB_API_URL || '';
@@ -384,13 +349,9 @@ export default function HomeScreen() {
       } catch { setAutocompleteSuggestions([]); }
     }, 250);
     return () => { if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current); };
-  }, [tripQuery, convStep]);
+  }, [tripQuery]);
 
-  // Conversational flow state
-  const [convStep, setConvStep] = useState(-1);
-  const [answers, setAnswers] = useState<TripAnswers>({});
-  const isConversing = false; // Disabled — direct AI planner flow
-  const isComplete = false;
+  // Conversational flow removed — direct AI planner
   const inputRef = useRef<TextInput>(null);
 
   const sendButtonRef = useRef<View>(null);
@@ -434,8 +395,9 @@ export default function HomeScreen() {
           const tripId = await savePlanToSupabase(s.plan as any);
           await saveAnonTripId(tripId);
           planner.reset();
-          setShowTakeoff(false);
+          // Navigate first, THEN hide takeoff — prevents flash of home screen
           router.push(`/trip/${tripId}` as any);
+          setTimeout(() => setShowTakeoff(false), 500);
         } catch (err: any) {
           console.error('Failed to save trip:', err?.message || err);
           planner.reset();
@@ -473,21 +435,6 @@ export default function HomeScreen() {
     clarifyRetries.current = 0;
     planner.submitPrompt(query);
   }, [setTripQuery, planner]);
-
-  const handleConvReset = useCallback(() => {
-    setConvStep(-1);
-    setAnswers({});
-    setTripQuery('');
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }, [setTripQuery]);
-
-  const handleSkipToLaunch = useCallback(() => {
-    const fullQuery = buildChainSentence(answers);
-    if (!fullQuery.trim()) return;
-    setConvStep(TRIP_QUESTIONS.length);
-    setTripQuery(fullQuery);
-    setTimeout(() => launchTakeoff(fullQuery), 1500);
-  }, [answers, setTripQuery, launchTakeoff]);
 
   const onSearch = () => {
     const val = tripQuery.trim();
@@ -554,7 +501,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Cycling subtitle */}
-        <View style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', marginBottom: isConversing || isComplete ? 16 : 32, width: '100%' }}>
+        <View style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', marginBottom: 32, width: '100%' }}>
           <Animated.Text
             key={heroConfig?.subtitle ? 'static' : `sub-${subtitleIndex}`}
             entering={FadeIn.duration(500)}
@@ -609,21 +556,6 @@ export default function HomeScreen() {
             elevation: 8,
           }}
         >
-          {/* Question label when conversing */}
-          {isConversing && (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 0, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
-              <FontAwesome name="magic" size={10} color={colors.tint} />
-              <Text style={{ ...TextStyles.captionEm, color: colors.tint, flex: 1 }}>
-                {TRIP_QUESTIONS[convStep].placeholder}
-              </Text>
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
-                {convStep + 1}/{TRIP_QUESTIONS.length}
-              </Text>
-            </Animated.View>
-          )}
           <View
             style={{
               flexDirection: 'row',
@@ -697,7 +629,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Cycling Suggestion Pills — only before conversation */}
-        {!isComplete && (
+        {(
           <View style={{ height: 40, justifyContent: 'center', alignItems: 'center', marginTop: 16, width: '100%' }}>
             <Animated.View
               key={pillGroup}

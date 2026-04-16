@@ -14,6 +14,7 @@ import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
+import { TripHistoryToggle } from '@/components/trip/TripHistoryPanel';
 import {
   ChevronDown, X, Search, Compass, LayoutList, Map, Calendar, RefreshCw,
   Landmark, UtensilsCrossed, Footprints, TreePine, Theater, ShoppingBag,
@@ -78,12 +79,14 @@ function SkeletonItinerary() {
 
 // ─── Glance Search Input ────────────────────────────────────────
 
-function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: {
+function GlanceSearchInput({ query, onChange, onClose, onSelect, destination, lat, lng }: {
   query: string;
   onChange: (q: string) => void;
   onClose: () => void;
   onSelect: (place: import('@travyl/shared').PlaceItem) => void;
   destination?: string;
+  lat?: number;
+  lng?: number;
 }) {
   const [results, setResults] = useState<import('@travyl/shared').PlaceItem[]>([]);
   useEffect(() => {
@@ -91,12 +94,13 @@ function GlanceSearchInput({ query, onChange, onClose, onSelect, destination }: 
     const timeout = setTimeout(async () => {
       try {
         const q = destination ? `${query} ${destination}` : query;
-        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6`);
+        const coordParams = lat && lng ? `&lat=${lat}&lng=${lng}` : '';
+        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6${coordParams}`);
         if (res.ok) setResults(await res.json());
       } catch { /* ignore */ }
     }, 300); // debounce
     return () => clearTimeout(timeout);
-  }, [query, destination]);
+  }, [query, destination, lat, lng]);
   return (
     <div className="mt-1">
       <div className="relative">
@@ -170,6 +174,8 @@ function GlanceView({
   moveActivityBefore,
   destination,
   heroImages,
+  tripLat,
+  tripLng,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -184,6 +190,8 @@ function GlanceView({
   removeActivity?: (id: string) => void;
   updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
   moveActivityBefore?: (dragId: string, targetId: string) => void;
+  tripLat?: number;
+  tripLng?: number;
   destination?: string;
   heroImages?: string[];
 }) {
@@ -199,17 +207,23 @@ function GlanceView({
   // Fetch destination-specific images from Unsplash/Pexels
   const destImages = useDestinationImages(destination, Math.max(days.length, 3));
 
-  // Sync scroll position when selectedDayIndex changes from external source (day pills)
-  useEffect(() => {
-    scrollTo(selectedDayIndex);
-  }, [selectedDayIndex]);
+  // Prevent scroll→onSelectDay feedback loop when programmatically scrolling
+  const isScrollingRef = useRef(false);
 
-  const scrollTo = (idx: number) => {
+  const scrollTo = useCallback((idx: number) => {
     const el = scrollRef.current;
     if (!el) return;
     const card = el.children[idx] as HTMLElement;
-    if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-  };
+    if (!card) return;
+    isScrollingRef.current = true;
+    card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    setTimeout(() => { isScrollingRef.current = false; }, 400);
+  }, []);
+
+  // Sync scroll position when selectedDayIndex changes from external source (day pills)
+  useEffect(() => {
+    scrollTo(selectedDayIndex);
+  }, [selectedDayIndex, scrollTo]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     const el = scrollRef.current;
@@ -237,6 +251,7 @@ function GlanceView({
       <div ref={scrollRef}
         className="flex gap-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
         onScroll={(e) => {
+          if (isScrollingRef.current) return;
           const el = e.currentTarget;
           const idx = Math.round(el.scrollLeft / ((el.firstElementChild as HTMLElement)?.offsetWidth || 1));
           onSelectDay(Math.min(idx, days.length - 1));
@@ -263,7 +278,7 @@ function GlanceView({
                     {day.dateLabel}
                   </p>
                   <div className="flex items-end justify-between">
-                    <h3 className="text-base font-bold text-white">{day.dayLabel}</h3>
+                    <h3 className="text-base font-normal text-white font-serif tracking-wide">{day.dayLabel}</h3>
                     <span className="text-[9px] text-white/40">
                       {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
                     </span>
@@ -319,7 +334,7 @@ function GlanceView({
                               addActivity({
                                 id: `drop-${Date.now()}`,
                                 title: item.title || item.name,
-                                type: item.category || 'activity',
+                                type: item.category || '',
                                 day: i,
                                 startHour: TOD_START_HOURS[tod] || 9,
                                 duration: 2,
@@ -446,6 +461,8 @@ function GlanceView({
                             onChange={setSearchQuery}
                             onClose={() => { setSearchSlot(null); setSearchQuery(''); }}
                             destination={destination}
+                            lat={tripLat}
+                            lng={tripLng}
                             onSelect={(place) => {
                               addActivity?.({
                                 id: `search-${Date.now()}`,
@@ -477,7 +494,7 @@ function GlanceView({
                                       addActivity({
                                         id: `quick-${Date.now()}`,
                                         title: item.name,
-                                        type: item.category || 'activity',
+                                        type: item.category || '',
                                         day: i,
                                         startHour: TOD_START_HOURS[tod] || 9,
                                         duration: 2,
@@ -535,7 +552,7 @@ function GlanceView({
               {/* Right — destination image */}
               <div className="relative flex-1 min-w-0 hidden sm:block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImg} alt={day.dayLabel} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
+                <img src={heroImg} alt={day.dayLabel}  className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
                 {/* Soft left edge blend into dark background */}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f0f1e 0%, transparent 20%)' }} />
                 {/* Day label — bottom right */}
@@ -650,7 +667,15 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           }
         }
 
-        const { error: updateErr } = await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
+        // Append to user_history for the history panel
+        const userHistory = (tripData.trip_context.user_history ?? []) as any[];
+        const activityNames = newActivities.map(a => a.name);
+        const historyAction = replaceDayDate
+          ? `Regenerated day ${replaceDayDate} with ${activityNames.length} activities`
+          : `Added ${activityNames.map(n => `"${n}"`).join(', ')}`;
+        userHistory.push({ action: historyAction, timestamp: new Date().toISOString(), actor: 'You' });
+
+        const { error: updateErr } = await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary, user_history: userHistory } }).eq('id', id);
         if (updateErr) console.error('[persist] update failed:', updateErr.message);
         else console.log('[persist] trip_context updated successfully, days:', itinerary.map((d: any) => ({ day: d.day, slots: d.slots?.length })));
       }
@@ -658,10 +683,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       // 2. Activity table — best effort (may fail for anonymous users due to RLS)
       const rows = newActivities.map(a => ({
         trip_id: id, user_id: null,
-        activity_name: a.name, activity_type: a.category || 'sightseeing',
+        activity_name: a.name, activity_type: a.category || '',
         starting_date: a.dayDate, ending_date: a.dayDate,
         starting_time: a.startTime, ending_time: a.endTime,
-        latitude: a.lat || null, longitude: a.lng || null,
+        latitude: a.lat || 0, longitude: a.lng || 0,
         activity_data: { category: a.category, location_name: a.name, image_url: a.image || null },
       }));
       await supabase.from('activity').insert(rows).then(() => {}, () => {});
@@ -693,8 +718,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       const pick = fresh[Math.floor(Math.random() * Math.min(fresh.length, 5))];
 
       if (pick && addActivity) {
-        const TOD_HOURS: Record<string, number> = { morning: 9, afternoon: 13, evening: 18, latenight: 21 };
-        const hour = TOD_HOURS[tod] || 12;
+        const hour = TOD_START_HOURS[tod] || 12;
         addActivity({
           id: `suggest-${Date.now()}`,
           title: pick.name,
@@ -766,9 +790,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
 
       // Fill 4 time slots: morning, afternoon, evening, late night
       const slots = [
-        { tod: 'morning', hour: 9, type: 'sightseeing' },
+        { tod: 'morning', hour: 9, type: '' },
         { tod: 'afternoon', hour: 13, type: 'dining' },
-        { tod: 'afternoon', hour: 15, type: 'sightseeing' },
+        { tod: 'afternoon', hour: 15, type: '' },
         { tod: 'evening', hour: 19, type: 'dining' },
       ];
 
@@ -840,8 +864,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         afternoon: 'activities things to do',
         evening: 'restaurants dinner',
       };
-      const TOD_HOURS: Record<string, number> = { morning: 9, afternoon: 14, evening: 19 };
-
       const startDate = trip.start_date || new Date().toISOString().split('T')[0];
       const dayDate = new Date(startDate);
       dayDate.setDate(dayDate.getDate() + dayIdx);
@@ -855,11 +877,11 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         const places = await res.json();
         const pick = places[Math.floor(Math.random() * Math.min(places.length, 3))];
         if (pick && addActivity) {
-          const hour = TOD_HOURS[tod] || 12;
+          const hour = TOD_START_HOURS[tod] || 12;
           addActivity({
             id: `fill-${Date.now()}-${tod}`,
             title: pick.name,
-            type: pick.category || 'activity',
+            type: pick.category || '',
             day: dayIdx,
             startHour: hour,
             duration: 2,
@@ -869,7 +891,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             color: 'var(--trip-base)',
           });
           added.push({
-            name: pick.name, category: pick.category || 'activity',
+            name: pick.name, category: pick.category || '',
             dayDate: dayDateStr, startTime: `${hour}:00`, endTime: `${hour + 2}:00`,
             lat: pick.latitude, lng: pick.longitude, image: pick.images?.[0] || pick.image,
           });
@@ -893,9 +915,9 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       const categories = ['attractions', 'restaurants', 'things to do', 'nightlife'];
       const HOUR_END: Record<number, string> = { 9: '11:00', 13: '15:00', 15: '17:00', 19: '21:00' };
       const slots = [
-        { hour: 9, type: 'sightseeing' },
+        { hour: 9, type: '' },
         { hour: 13, type: 'dining' },
-        { hour: 15, type: 'sightseeing' },
+        { hour: 15, type: '' },
         { hour: 19, type: 'dining' },
       ];
 
@@ -954,17 +976,10 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const contextHotels = trip?.trip_context?.hotels ?? (trip?.trip_context as any)?.all_hotels ?? [];
   const firstHotel = contextHotels[0] as any | undefined;
 
-  // Build flight info — destination airport from city name
-  const CITY_AIRPORTS: Record<string, string> = {
-    'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-    'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-    'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-    'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
-    'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
-    'Vienna': 'VIE', 'Dublin': 'DUB', 'Cancun': 'CUN', 'Reykjavik': 'KEF',
-  };
+  // Build flight info from trip_context flights data (no hardcoded airport lookup)
+  const contextFlights = trip?.trip_context?.flights ?? [];
   const city = trip?.destination?.split(',')[0]?.trim() ?? '';
-  const destAirport = CITY_AIRPORTS[city] || '';
+  const destAirport = (contextFlights[0] as any)?.dest_iata || '';
   const tripFlight = destAirport ? { destAirport, city } : null;
 
   const arrivalFlight: MockFlightDetail | undefined = undefined;
@@ -1026,7 +1041,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     addActivity({
       id: `cal-itin-${Date.now()}`,
       title: item.name,
-      type: item.category ?? 'sightseeing',
+      type: item.category ?? '',
       day: selectedDayIndex,
       startHour,
       duration,
@@ -1074,6 +1089,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
             bookedDay: day.dayNumber,
             bookedTime: a.startTime || undefined,
             bookingUrl: a.bookingUrl || undefined,
+            lat: (a as any).lat ?? undefined,
+            lng: (a as any).lng ?? undefined,
           });
         }
       }
@@ -1154,14 +1171,14 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
     name: item.name,
     image: item.images?.[0] || '',
     images: item.images,
-    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
+    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : (item.category as PlaceItem['type']) || 'experience',
     rating: item.rating || 0,
     tagline: item.description || item.category || '',
     category: item.category || '',
     description: item.description,
     tags: item.tags,
-    latitude: trip?.trip_context?.lat,
-    longitude: trip?.trip_context?.lng,
+    latitude: (item as any).lat ?? trip?.trip_context?.lat,
+    longitude: (item as any).lng ?? trip?.trip_context?.lng,
     address: item.location,
     website: item.bookingUrl,
   }), [trip]);
@@ -1175,11 +1192,16 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       setSelectedPlace(place);
       // Don't open the trip map panel — PlaceDetailModal has its own map
 
-      // Enrich with real place data if we're missing image or details
-      if (!place.image && place.name) {
+      // Always enrich with real place data for images, description, coordinates
+      if (place.name) {
         try {
           const dest = trip?.destination?.split(',')[0]?.trim() || '';
-          const res = await fetch(`/api/places?q=${encodeURIComponent(`${place.name} ${dest}`)}&limit=1`);
+          const tripLat = trip?.trip_context?.lat;
+          const tripLng = trip?.trip_context?.lng;
+          // Use lat/lng with q= to anchor search to the right city
+          const params = new URLSearchParams({ q: `${place.name} ${dest}`, limit: '1' });
+          if (tripLat && tripLng) { params.set('lat', String(tripLat)); params.set('lng', String(tripLng)); }
+          const res = await fetch(`/api/places?${params}`);
           if (res.ok) {
             const [found] = await res.json();
             if (found) {
@@ -1236,14 +1258,14 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 dragOverIdx === i ? 'ring-2 ring-gray-400 dark:ring-white/40 scale-105' : ''
               } ${
                 i === selectedDayIndex
-                  ? 'bg-gray-100 dark:bg-white/[0.15] border-gray-300 dark:border-white/[0.25]'
+                  ? 'bg-gray-800 dark:bg-white/[0.15] border-gray-700 dark:border-white/[0.25] shadow-sm'
                   : dragOverIdx === i
-                    ? 'bg-gray-50 dark:bg-white/[0.08] border-transparent'
-                    : 'bg-transparent border-transparent'
+                    ? 'bg-gray-100 dark:bg-white/[0.08] border-transparent'
+                    : 'bg-white/60 dark:bg-transparent border-gray-200 dark:border-transparent hover:bg-white/80 dark:hover:bg-white/[0.06]'
               }`}
             >
-              <span className="block text-[10px] font-bold text-gray-500 dark:text-white/50">{d.dayLabel.replace('Day ', 'D')}</span>
-              <span className="block text-[11px] font-medium text-gray-800 dark:text-white/80">{d.dateLabel.replace(/,.*/, '')}</span>
+              <span className={`block text-[10px] font-bold ${i === selectedDayIndex ? 'text-gray-300 dark:text-white/50' : 'text-gray-500 dark:text-white/50'}`}>{d.dayLabel.replace('Day ', 'D')}</span>
+              <span className={`block text-[11px] font-medium ${i === selectedDayIndex ? 'text-white dark:text-white/80' : 'text-gray-700 dark:text-white/80'}`}>{d.dateLabel.replace(/,.*/, '')}</span>
             </button>
           ))}
         </div>
@@ -1253,10 +1275,11 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           <div className="mb-4 flex items-end justify-between">
             <div>
               <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white tracking-wide"
-                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
+              <h2 className="text-2xl sm:text-3xl font-normal text-gray-800 dark:text-white tracking-wide font-serif">At a Glance</h2>
             </div>
-            <div className="relative shrink-0 mr-2" ref={regenMenuRef}>
+            <div className="flex items-center gap-2 shrink-0">
+              <TripHistoryToggle tripId={id} variant="pill" />
+              <div className="relative shrink-0" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
@@ -1357,6 +1380,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 <Map size={13} />
               </button>
             </div>
+            </div>
           </div>
 
       {/* Glance View — always visible, swipe through days */}
@@ -1376,6 +1400,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           moveActivityBefore={moveActivityBefore}
           destination={trip?.destination?.split(',')[0]?.trim()}
           heroImages={trip?.trip_context?.hero_images}
+          tripLat={trip?.trip_context?.lat}
+          tripLng={trip?.trip_context?.lng}
         />
 
       </section>
@@ -1393,7 +1419,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
           </div>
         <div ref={contentRef}>
           {isFirstDay && arrivalFlight && (
-            <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} />
+            <FlightSection flight={arrivalFlight} collapsed={allCollapsedOverride ?? undefined} onBookFlight={() => { window.location.href = `/trip/${id}/flights` }} />
           )}
           {/* Flight placeholder on first day — links to Flights tab */}
           {isFirstDay && !arrivalFlight && tripFlight && (
@@ -1432,7 +1458,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                   </div>
                   {firstHotel.image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={firstHotel.image} alt={firstHotel.name} referrerPolicy="no-referrer" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                    <img src={firstHotel.image} alt={firstHotel.name}  className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   )}
                   <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 group-hover:text-amber-800 dark:group-hover:text-amber-300 shrink-0">Change →</span>
                 </div>
@@ -1557,7 +1583,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                   </div>
                 </section>
               )}
-              {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} />}
+              {returnFlight && <FlightSection flight={returnFlight} collapsed={allCollapsedOverride ?? undefined} onBookFlight={() => { window.location.href = `/trip/${id}/flights` }} />}
               {!returnFlight && tripFlight && (
                 <section className="mb-3.5">
                   <a href={`/trip/${id}/flights`} className="block rounded-xl p-3 shadow-sm border border-blue-200/60 dark:border-blue-500/20 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 hover:shadow-md transition-shadow group">
@@ -1600,6 +1626,27 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         )}
       </AnimatePresence>
       </div>{/* end z-10 */}
+
+      {/* ── Floating Add Activity Button ── */}
+      {selectedDay && !addingTo && !selectedPlace && (
+        <button
+          onClick={() => {
+            // Find the current time-of-day to pre-select the right section
+            const hour = new Date().getHours();
+            const tod = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 21 ? 'Evening' : 'Late Night';
+            setAddingTo(tod);
+            setAddCategory('All');
+          }}
+          className="fixed bottom-8 right-8 z-30 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-xl"
+          style={{
+            backgroundColor: 'var(--trip-base, #1e3a5f)',
+            color: '#fff',
+          }}
+        >
+          <span className="text-lg leading-none">+</span>
+          <span className="text-sm font-semibold">Add Activity</span>
+        </button>
+      )}
     </div>
   );
 }

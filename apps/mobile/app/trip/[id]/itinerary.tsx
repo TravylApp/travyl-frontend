@@ -23,6 +23,7 @@ import {
   TextStyles,
   FontSize,
   FontFamily,
+  supabase,
 } from '@travyl/shared';
 import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
 import MapView, { Marker } from 'react-native-maps';
@@ -85,28 +86,31 @@ function buildDiscoverItems(trip: any): any[] {
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
 
-// Generate mock coordinates spread around destination center for each activity
-function mockActivityCoords(index: number, total: number, centerLat: number, centerLng: number): { lat: number; lng: number } {
-  const spread = 0.018; // ~1.8km radius
-  const angle = (index / Math.max(total, 1)) * 2 * Math.PI;
-  const r = spread * (0.4 + (index % 3) * 0.3);
-  return {
-    lat: centerLat + r * Math.sin(angle),
-    lng: centerLng + r * Math.cos(angle),
-  };
+// Return real coordinates for an activity, or null if unavailable
+function realActivityCoords(activity: ActivityViewModel): { lat: number; lng: number } | null {
+  const lat = (activity as any).latitude ?? (activity as any).lat;
+  const lng = (activity as any).longitude ?? (activity as any).lng ?? (activity as any).lon;
+  if (typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0) {
+    return { lat, lng };
+  }
+  return null;
 }
 
-function buildMarkers(activities: ActivityViewModel[], accent: string, centerLat: number, centerLng: number): MapMarker[] {
-  return activities.map((a, i) => {
-    const coords = mockActivityCoords(i, activities.length, centerLat, centerLng);
-    return {
-      lat: coords.lat,
-      lng: coords.lng,
-      label: a.name,
-      color: accent,
-      number: i + 1,
-    };
+function buildMarkers(activities: ActivityViewModel[], accent: string, _centerLat: number, _centerLng: number): MapMarker[] {
+  const markers: MapMarker[] = [];
+  activities.forEach((a, i) => {
+    const coords = realActivityCoords(a);
+    if (coords) {
+      markers.push({
+        lat: coords.lat,
+        lng: coords.lng,
+        label: a.name,
+        color: accent,
+        number: i + 1,
+      });
+    }
   });
+  return markers;
 }
 
 function CollapsibleSection({ title, icon, accent, count, defaultOpen = false, children }: {
@@ -2084,6 +2088,8 @@ export default function ItineraryScreen() {
       name,
       image: '',
       category,
+      cost: null,
+      costCurrency: null,
       locationName: null,
       startTime: TOD_START_TIMES[timeOfDay] ?? '12:00 PM',
       endTime: formatHourToTime((TOD_START_HOURS[timeOfDay] ?? 12) + 1.5),
@@ -2106,6 +2112,39 @@ export default function ItineraryScreen() {
       };
     }));
   }, []);
+
+  // Persist reordered day to Supabase (fire-and-forget)
+  const persistReorderedDay = useCallback(async (dayIndex: number, activities: ActivityViewModel[]) => {
+    if (!trip || !id) return;
+    try {
+      const startDate = trip.start_date || new Date().toISOString().split('T')[0];
+      const dayDate = new Date(startDate);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      const dayDateStr = dayDate.toISOString().split('T')[0];
+
+      const { data: tripData } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      if (!tripData?.trip_context) return;
+
+      const itinerary = tripData.trip_context.itinerary || [];
+      const dayIdx = itinerary.findIndex((d: any) => d.date === dayDateStr);
+      if (dayIdx < 0) return;
+
+      // Preserve existing POI data (lat/lng/photo), just reorder slots
+      const existingPois = new Map<string, any>();
+      for (const slot of itinerary[dayIdx].slots || []) {
+        if (slot.poi?.name) existingPois.set(slot.poi.name, slot.poi);
+      }
+      itinerary[dayIdx].slots = activities.map((a) => ({
+        start_time: a.startTime?.replace(/\s?(AM|PM)/i, '') || '09:00',
+        end_time: a.endTime?.replace(/\s?(AM|PM)/i, '') || '10:00',
+        poi: existingPois.get(a.name) || { id: a.id, name: a.name, category: a.category },
+      }));
+
+      await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
+    } catch (e) {
+      console.error('[reorder] persist failed:', e);
+    }
+  }, [trip, id]);
 
   const reorderGlanceDay = useCallback((dayIndex: number, reorderedActivities: ActivityViewModel[]) => {
     setGlanceDays((prev) => {
@@ -2189,9 +2228,13 @@ export default function ItineraryScreen() {
             };
           }),
       };
+      // Persist reordered day async
+      const allActivities = next[dayIndex].timeGroups.flatMap(g => g.activities);
+      persistReorderedDay(dayIndex, allActivities);
+
       return next;
     });
-  }, []);
+  }, [persistReorderedDay]);
 
   const updateActivityTime = useCallback((dayIndex: number, activityId: string, newTime: string) => {
     setGlanceDays((prev) => {
@@ -2207,9 +2250,12 @@ export default function ItineraryScreen() {
           ),
         })),
       };
+      // Persist to Supabase — collect all activities from updated day
+      const allActivities = next[dayIndex].timeGroups.flatMap((g) => g.activities);
+      persistReorderedDay(dayIndex, allActivities);
       return next;
     });
-  }, []);
+  }, [persistReorderedDay]);
 
   // (Map is now a modal overlay — no need to collapse sections)
 
@@ -2365,19 +2411,18 @@ export default function ItineraryScreen() {
     const discoverMatch = discoverMatchMap.get(activity.id);
     if (discoverMatch) { setOpenPlace(discoverItemToPlaceItem(discoverMatch)); return; }
 
-    const idx = allActivities.indexOf(activity);
-    const coords = mockActivityCoords(idx, allActivities.length, centerLat, centerLng);
+    const coords = realActivityCoords(activity);
     setOpenPlace({
       id: activity.id,
       name: activity.name,
       image: '',
       type: 'attraction' as const,
-      rating: 4.5,
+      rating: 0,
       tagline: activity.locationName ?? '',
       category: activity.category ?? 'Activity',
       description: activity.notes ?? undefined,
-      latitude: coords.lat,
-      longitude: coords.lng,
+      latitude: coords?.lat,
+      longitude: coords?.lng,
       duration: activity.timeDisplay ?? undefined,
       admissionFee: activity.costDisplay ?? undefined,
       website: activity.bookingUrl ?? undefined,

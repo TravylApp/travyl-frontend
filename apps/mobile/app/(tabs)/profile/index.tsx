@@ -15,7 +15,7 @@ function BoardCard({ board }: { board: typeof TRAVEL_BOARDS[number] }) {
   return (
     <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border, marginBottom: 12 }}>
       {firstImage && (
-        <Image source={{ uri: firstImage }} style={{ width: '100%', height: 120 }} resizeMode="cover" />
+        <Image source={{ uri: firstImage, headers: { Referer: '' } }} style={{ width: '100%', height: 120 }} resizeMode="cover" />
       )}
       <View style={{ padding: 10, gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -37,7 +37,7 @@ function FavoriteCard({ fav }: { fav: typeof PROFILE_FAVORITES[number] }) {
   const colors = useThemeColors();
   return (
     <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border, marginBottom: 10 }}>
-      <Image source={{ uri: fav.image }} style={{ width: '100%', height: 110 }} resizeMode="cover" />
+      <Image source={{ uri: fav.image, headers: { Referer: '' } }} style={{ width: '100%', height: 110 }} resizeMode="cover" />
       <View style={{ padding: 8, gap: 2 }}>
         <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }} numberOfLines={1}>{fav.name}</Text>
         <Text style={{ fontSize: 10, color: colors.textSecondary }}>{fav.country}</Text>

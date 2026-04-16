@@ -139,6 +139,8 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
       image: upscaleGoogleImage(slot.poi?.photo_url) ?? null,
       source: undefined,
       timeOfDay: getToD(slot.start_time),
+      lat: slot.poi?.lat ?? null,
+      lng: slot.poi?.lng ?? null,
     }));
 
     const groupMap = new Map<TimeOfDay, typeof activityVMs>();

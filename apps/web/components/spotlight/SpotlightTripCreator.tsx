@@ -29,7 +29,16 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
 
   const phase = planner.state.phase
   const isClarifying = phase === 'clarifying'
-  const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : []
+  // Inject accommodation type question into the backend's question flow
+  const backendQuestions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : []
+  const accommodationQuestion: FollowUpQuestion = {
+    id: 'accommodation_type',
+    question: 'Where will you be staying?',
+    options: ['Hotel', 'Airbnb / Rental', 'Hostel', 'Staying with someone', 'Own place', 'Not sure yet'],
+  }
+  const questions = backendQuestions.length > 0
+    ? [...backendQuestions, accommodationQuestion]
+    : backendQuestions
   const currentQuestion = questions[currentQIdx] ?? null
 
   // Notify parent of phase changes
