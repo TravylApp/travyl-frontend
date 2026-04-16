@@ -1,18 +1,16 @@
+'use client';
+
 import { useQuery } from '@tanstack/react-query';
-import { fetchTrips } from '../services/api';
+import { fetchTrips, fetchCollaboratorTrips } from '../services/api';
 import { supabase } from '../services/supabase';
+import { useAuthStore } from '../stores/authStore';
 import type { Trip } from '../types';
 
-// Global type with storage APIs for web/mobile compatibility
-type GlobalWithStorage = typeof globalThis & {
-  localStorage?: { getItem(key: string): string | null; setItem(key: string, value: string): void };
-  sessionStorage?: { getItem(key: string): string | null };
-  document?: unknown;
-};
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 async function getAnonTripIds(): Promise<string[]> {
   try {
-    const g = globalThis as GlobalWithStorage;
+    const g = globalThis as any;
     // Web: localStorage/sessionStorage
     const stored = g.localStorage?.getItem('my-trip-ids')
       ?? g.sessionStorage?.getItem('my-trip-ids');
@@ -21,7 +19,6 @@ async function getAnonTripIds(): Promise<string[]> {
 
   // Mobile: AsyncStorage
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const AsyncStorage = require('@react-native-async-storage/async-storage')?.default;
     if (AsyncStorage) {
       const stored = await AsyncStorage.getItem('my-trip-ids');
@@ -38,48 +35,71 @@ export async function saveAnonTripId(tripId: string): Promise<void> {
   const json = JSON.stringify(ids);
 
   try {
-    const g = globalThis as GlobalWithStorage;
+    const g = globalThis as any;
     g.localStorage?.setItem('my-trip-ids', json);
   } catch {}
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const AsyncStorage = require('@react-native-async-storage/async-storage')?.default;
     if (AsyncStorage) await AsyncStorage.setItem('my-trip-ids', json);
   } catch {}
 }
 
-async function fetchTripsWithAnonymous(): Promise<Trip[]> {
-  const anonIds = await getAnonTripIds();
+async function fetchTripsForUser(userId: string): Promise<Trip[]> {
+  const [owned, collaborated] = await Promise.all([
+    fetchTrips(userId),
+    fetchCollaboratorTrips(userId),
+  ]);
 
-  // Web: use API route for anonymous trips
-  if (anonIds.length > 0 && typeof (globalThis as GlobalWithStorage).document !== 'undefined') {
-    try {
-      const res = await fetch(`/api/trips?ids=${anonIds.join(',')}`);
-      if (res.ok) return res.json() as Promise<Trip[]>;
-    } catch {}
+  // Merge and deduplicate by id
+  const seen = new Set<string>();
+  const merged: Trip[] = [];
+  for (const trip of [...owned, ...collaborated]) {
+    if (!seen.has(trip.id)) {
+      seen.add(trip.id);
+      merged.push(trip);
+    }
+  }
+  return merged;
+}
+
+async function fetchTripsWithAnonymous(userId: string | null): Promise<Trip[]> {
+  // Anonymous users: fetch by stored trip IDs via API route (service key)
+  if (!userId) {
+    const anonIds = await getAnonTripIds();
+
+    // Web: use API route for anonymous trips
+    if (anonIds.length > 0 && typeof (globalThis as any).document !== 'undefined') {
+      try {
+        const res = await fetch(`/api/trips?ids=${anonIds.join(',')}`);
+        if (res.ok) return res.json() as Promise<Trip[]>;
+      } catch {}
+    }
+
+    // Mobile/fallback: fetch specific trip IDs directly from Supabase
+    if (anonIds.length > 0) {
+      try {
+        const { data, error } = await supabase
+          .from('trips')
+          .select('*')
+          .in('id', anonIds)
+          .order('created_at', { ascending: false });
+        if (!error && data?.length) return data as Trip[];
+      } catch {}
+    }
+
+    return [];
   }
 
-  // Mobile/fallback: fetch specific trip IDs directly from Supabase
-  if (anonIds.length > 0) {
-    try {
-      const { data, error } = await supabase
-        .from('trips')
-        .select('*')
-        .in('id', anonIds)
-        .order('created_at', { ascending: false });
-      if (!error && data?.length) return data as Trip[];
-    } catch {}
-  }
-
-  // Default: use Supabase directly (RLS filters for logged-in users)
-  return fetchTrips();
+  // Logged-in users: fetch own + collaborated trips
+  return fetchTripsForUser(userId);
 }
 
 export function useTrips() {
+  const user = useAuthStore((s) => s.user);
   return useQuery({
-    queryKey: ['trips'],
-    queryFn: fetchTripsWithAnonymous,
+    queryKey: ['trips', user?.id ?? 'anon'],
+    queryFn: () => fetchTripsWithAnonymous(user?.id ?? null),
     enabled: true,
   });
 }

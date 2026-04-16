@@ -1,3 +1,5 @@
+'use client';
+
 export { useTrips, saveAnonTripId } from './useTrips';
 export { useHomeScreen } from './useHomeScreen';
 export { useExploreRows } from './useExploreRows';
@@ -24,5 +26,18 @@ export { useRestaurantFilters, RESTAURANT_CATEGORIES, CUISINE_SUBFILTERS, RESTAU
 export type { RestaurantCategory, RestaurantSortOption } from './useRestaurantFilters';
 export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_SORT_OPTIONS, ACTIVITY_CATEGORY_ICONS, mapActivityCategory } from './useActivityFilters';
 export type { ActivityFilterCategory, ActivitySortOption } from './useActivityFilters';
+export { useHomeCurrency } from './useHomeCurrency';
 export { useTripPlanner } from './useTripPlanner';
 export type { FollowUpQuestion, PlanResponse, DayPlan, DaySlot, TripExtraction } from './useTripPlanner';
+export { useWeather } from './useWeather';
+export { useEvents } from './useEvents';
+export { useDestinationImage } from './useDestinationImage';
+export { usePlaceSuggest } from './usePlaceSuggest';
+export { usePlaceDetail } from './usePlaceDetail';
+export { usePlaceEnrich } from './usePlaceEnrich';
+export { usePlaceMenu } from './usePlaceMenu';
+export { useServerFavorites } from './useServerFavorites';
+export { useHotelSearch } from './useHotelSearch';
+export type { HotelSearchParams } from './useHotelSearch';
+export { useFlightSearch } from './useFlightSearch';
+export type { FlightSearchParams } from './useFlightSearch';

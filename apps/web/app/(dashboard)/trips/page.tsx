@@ -14,7 +14,8 @@ import { useIndexTrip } from '@/hooks/useIndexTrip';
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fm=webp&q=75'
+// No fallback photo — trips without images show a gradient
+const FALLBACK_IMAGE = ''
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -76,7 +77,7 @@ function SkeletonCard() {
 export default function MyTripsPage() {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
         </div>
@@ -232,8 +233,8 @@ function TripsContent() {
 
   if (isLoading && !isError) {
     return (
-      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+      <div className="flex flex-col min-h-screen">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-gray-100 tracking-wide">My Trips</h1>
           </div>
@@ -250,8 +251,8 @@ function TripsContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex-1 w-full">
+    <div className="flex flex-col min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-gray-100 tracking-wide">My Trips</h1>

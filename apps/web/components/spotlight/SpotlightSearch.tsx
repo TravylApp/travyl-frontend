@@ -35,6 +35,8 @@ export function SpotlightSearch() {
     setQuery,
     results,
     isLoading,
+    quickLoading,
+    deepLoading,
     recentSearches,
     addRecentSearch,
     clearRecent,
@@ -364,17 +366,22 @@ export function SpotlightSearch() {
                             query={query}
                             itemRefs={itemRefs}
                             isPinned={isPinned}
+                            deepLoading={deepLoading}
                           />
-                        ) : query.length >= 1 && !isLoading ? (
+                        ) : query.length >= 1 && !isLoading && !quickLoading ? (
                           <div className="px-4 py-8 text-center">
-                            <p className="text-sm text-gray-400">No results found</p>
+                            <p className="text-sm text-gray-400">No results in your trips</p>
                             <p className="text-xs text-gray-400/70 mt-1">
-                              Try a different search term
+                              {deepLoading
+                                ? 'Still searching external sources...'
+                                : 'Try a different search term or check spelling'}
                             </p>
                           </div>
                         ) : query.length >= 1 && isLoading ? (
                           <div className="px-4 py-8 text-center">
-                            <p className="text-sm text-gray-400">Searching...</p>
+                            <p className="text-sm text-gray-400">
+                              {quickLoading ? 'Searching...' : 'Searching external places...'}
+                            </p>
                           </div>
                         ) : null}
                       </div>

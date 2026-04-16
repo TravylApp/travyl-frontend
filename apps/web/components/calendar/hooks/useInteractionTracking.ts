@@ -3,8 +3,6 @@
 import { useCallback, useRef } from 'react'
 import { supabase } from '@travyl/shared'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL ?? ''
-
 type InteractionAction = 'impression' | 'click' | 'drag' | 'dismiss'
 
 export function useInteractionTracking(tripId: string) {
@@ -24,7 +22,7 @@ export function useInteractionTracking(tripId: string) {
         const token = session?.access_token
         if (!token) return
 
-        fetch(`${API_URL}/interact`, {
+        fetch('/api/calendar/interact', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,

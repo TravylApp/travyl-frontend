@@ -86,8 +86,8 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="trip/[id]" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, freezeOnBlur: false }} />
+        <Stack.Screen name="trip/[id]" options={{ headerShown: false, gestureEnabled: true, animation: 'slide_from_right' }} />
         <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="login-callback" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ presentation: 'modal', headerShown: false }} />

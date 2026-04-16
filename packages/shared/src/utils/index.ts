@@ -13,18 +13,28 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   }).format(amount);
 }
 
-const DEFAULT_IMAGE_WIDTH = 600
-const DEFAULT_IMAGE_HEIGHT = 400
-
-/** Upscale Google Places proxy image URLs from tiny thumbnails to usable sizes */
-export function upscaleGoogleImage(url: string | null | undefined, width = DEFAULT_IMAGE_WIDTH, height = DEFAULT_IMAGE_HEIGHT): string | null {
-  if (!url) return null;
+/** Upscale image URLs from various sources to usable sizes */
+export function upscaleGoogleImage(url: string | null | undefined, width = 1200, height = 800): string | null {
+  if (!url || url.length < 10) return null;
+  // Google Places / googleusercontent thumbnails
   if (url.includes('googleusercontent.com')) {
     return url
       .replace(/=w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
       .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`);
   }
+  // Foursquare — replace size tokens with 'original' for full res
+  if (url.includes('4sqi.net') || url.includes('foursquare.com') || url.includes('fsq.com')) {
+    return url.replace(/\/(\d+x\d+|cap\d+|width\d+)\//, '/original/');
+  }
   return url;
+}
+
+/** Check if an image URL looks valid enough to render */
+export function isValidImageUrl(url: string | null | undefined): boolean {
+  if (!url || url.length < 10) return false;
+  // Must start with http
+  if (!url.startsWith('http')) return false;
+  return true;
 }
 
 /**
@@ -32,16 +42,10 @@ export function upscaleGoogleImage(url: string | null | undefined, width = DEFAU
  * Tries: hero_image_url → hero_images[0] → destination_photo_url.
  * Returns null if none found — caller should fetch dynamically.
  */
-interface TripHeroContext {
-  hero_image_url?: string;
-  hero_images?: string[];
-  destination_photo_url?: string;
-}
-
-export function getTripHeroImage(trip: { destination?: string | null; trip_context?: TripHeroContext } | null): string | null {
+export function getTripHeroImage(trip: { destination?: string | null; trip_context?: any } | null): string | null {
   const ctx = trip?.trip_context;
   if (ctx?.hero_image_url) {
-    const url = ctx.hero_image_url;
+    const url = ctx.hero_image_url as string;
     return url.includes('googleusercontent.com')
       ? url.replace(/=w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no').replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
       : url;
@@ -135,17 +139,26 @@ export type { RescoperOperation } from './rescoper'
 export { mergeSearchResults, deduplicateResults } from './entitySearch'
 export type { SpotlightResult } from './entitySearch'
 
-const EARTH_RADIUS_KM = 6371
-const DEGREES_PER_RADIAN = 180
-const HAVERSINE_FACTOR = 2
+// Gap computation (calendar time gaps)
+export { computeGaps as computeTimeGaps } from './gaps'
+export type { TimeGap } from './gaps'
 
 /** Returns distance in km between two lat/lng points (Haversine formula) */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const toRad = (d: number) => (d * Math.PI) / DEGREES_PER_RADIAN
+  const toRad = (d: number) => (d * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)
   const dLng = toRad(lng2 - lng1)
   const a =
-    Math.sin(dLat / HAVERSINE_FACTOR) ** HAVERSINE_FACTOR +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / HAVERSINE_FACTOR) ** HAVERSINE_FACTOR
-  return EARTH_RADIUS_KM * HAVERSINE_FACTOR * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
+
+// Booking matcher utilities
+export { routeProvider, nameSimScore, proximityScore, calculateConfidence } from './bookingMatcher'
+
+// Gap computation utility (day planner)
+export { computeGaps } from './gapCompute'
+export type { Gap } from './gapCompute'
+
+export * from './places'

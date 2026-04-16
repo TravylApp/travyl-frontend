@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
 import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
@@ -117,6 +117,43 @@ export default function PackingScreen() {
 
   const defaultList = buildPackingList(trip);
   const [packingList, setPackingList] = useState<PackingList>(defaultList);
+  const seeded = useRef(false);
+
+  // Load saved packing list from trip_context if available
+  useEffect(() => {
+    if (trip && !seeded.current) {
+      const saved = (trip.trip_context as any)?.packing_data;
+      if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
+        setPackingList(saved);
+      }
+      seeded.current = true;
+    }
+  }, [trip]);
+
+  // Debounce-save packing list to trip_context
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistPacking = useCallback((data: PackingList) => {
+    if (!seeded.current || !id) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      supabase.from('trips').select('trip_context').eq('id', id).single().then(({ data: row }) => {
+        if (row) {
+          const ctx = (row.trip_context || {}) as Record<string, unknown>;
+          ctx.packing_data = data;
+          supabase.from('trips').update({ trip_context: ctx }).eq('id', id).then(() => {});
+        }
+      });
+    }, 1500);
+  }, [id]);
+
+  const updatePacking = useCallback((updater: PackingList | ((prev: PackingList) => PackingList)) => {
+    setPackingList((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistPacking(next);
+      return next;
+    });
+  }, [persistPacking]);
+
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(Object.keys(defaultList)),
   );
@@ -145,7 +182,7 @@ export default function PackingScreen() {
   };
 
   const toggleItem = (category: string, index: number) => {
-    setPackingList((prev) => {
+    updatePacking((prev) => {
       const updated = { ...prev };
       updated[category] = [...updated[category]];
       updated[category][index] = {
@@ -157,7 +194,7 @@ export default function PackingScreen() {
   };
 
   const removeItem = (category: string, index: number) => {
-    setPackingList((prev) => {
+    updatePacking((prev) => {
       const updated = { ...prev };
       updated[category] = updated[category].filter((_, i) => i !== index);
       return updated;
@@ -167,7 +204,7 @@ export default function PackingScreen() {
   const addItem = (category: string) => {
     const text = newItemInputs[category]?.trim();
     if (text) {
-      setPackingList((prev) => ({
+      updatePacking((prev) => ({
         ...prev,
         [category]: [...prev[category], { item: text, packed: false }],
       }));
@@ -182,7 +219,7 @@ export default function PackingScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          setPackingList((prev) => {
+          updatePacking((prev) => {
             const updated = { ...prev };
             delete updated[category];
             return updated;
@@ -199,7 +236,7 @@ export default function PackingScreen() {
 
   const createList = () => {
     if (newListName.trim()) {
-      setPackingList((prev) => ({ ...prev, [newListName.trim()]: [] }));
+      updatePacking((prev) => ({ ...prev, [newListName.trim()]: [] }));
       setExpandedCategories((prev) => {
         const next = new Set(prev);
         next.add(newListName.trim());

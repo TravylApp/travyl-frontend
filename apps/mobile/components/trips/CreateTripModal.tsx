@@ -1,371 +1,314 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  useWindowDimensions,
+  View, Text, TextInput, Pressable, Modal, KeyboardAvoidingView,
+  Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutUp } from 'react-native-reanimated';
+import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { TextStyles, FontSize, FontFamily, Navy, useAuthStore, supabase } from '@travyl/shared';
+import {
+  TextStyles, FontSize, FontFamily, Navy,
+  useTripPlanner, savePlanToSupabase,
+} from '@travyl/shared';
 import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlane } from '@/components/icons/PaperPlane';
-import { WebView } from 'react-native-webview';
-
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-}
 
 interface CreateTripModalProps {
   visible: boolean;
   onClose: () => void;
+  prefillPrompt?: string;
 }
 
-function MiniMap({ lat, lon, name }: { lat: number; lon: number; name: string }) {
-  const html = `
-    <!DOCTYPE html><html><head>
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>body{margin:0}#map{width:100%;height:100%}</style>
-    </head><body><div id="map"></div><script>
-    var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([${lat},${lon}],12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
-    L.circleMarker([${lat},${lon}],{radius:8,fillColor:'#1e3a5f',fillOpacity:1,color:'#fff',weight:3}).addTo(map)
-     .bindPopup('${name.replace(/'/g, "\\'")}').openPopup();
-    </script></body></html>`;
-  return (
-    <WebView
-      source={{ html }}
-      style={{ flex: 1 }}
-      scrollEnabled={false}
-      javaScriptEnabled
-    />
-  );
-}
+const SUGGESTION_CHIPS = [
+  '7 days in Rome',
+  'Weekend in Bali',
+  'Tokyo with friends',
+  'Romantic Paris getaway',
+  'Budget trip to Thailand',
+  'Family vacation Orlando',
+];
 
-export function CreateTripModal({ visible, onClose }: CreateTripModalProps) {
+const PROGRESS_MESSAGES = [
+  'Understanding your trip...',
+  'Finding the best destinations...',
+  'Building your itinerary...',
+  'Searching for hotels & flights...',
+  'Curating local experiences...',
+  'Almost there...',
+];
+
+export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const planner = useTripPlanner();
 
-  const [title, setTitle] = useState('');
-  const [destination, setDestination] = useState('');
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [progressMsg, setProgressMsg] = useState(0);
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lon: number; name: string } | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // Reset on open
   useEffect(() => {
     if (visible) {
-      setTitle('');
-      setDestination('');
-      setStartDate(new Date());
-      setEndDate(new Date());
-      setShowStartPicker(false);
-      setShowEndPicker(false);
-      setError(null);
-      setSubmitting(false);
-      setSuggestions([]);
-      setSelectedCoords(null);
+      setPrompt(prefillPrompt || '');
+      setSaving(false);
+      setProgressMsg(0);
+      setCurrentQuestionIdx(0);
+      setAnswers({});
+      planner.reset();
     }
   }, [visible]);
 
-  // Debounced Nominatim fetch
+  // Cycle progress messages during planning
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    const q = destination.trim();
-    if (q.length < 2) { setSuggestions([]); return; }
-    debounceRef.current = setTimeout(async () => {
+    if (planner.state.phase !== 'planning' && planner.state.phase !== 'extracting') return;
+    const timer = setInterval(() => {
+      setProgressMsg((i) => (i + 1) % PROGRESS_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [planner.state.phase]);
+
+  // Auto-save when plan completes
+  useEffect(() => {
+    if (planner.state.phase !== 'complete' || saving) return;
+    const plan = planner.state.plan;
+    (async () => {
+      setSaving(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=4`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
-        const data: NominatimResult[] = await res.json();
-        setSuggestions(data);
-      } catch {
-        setSuggestions([]);
+        const tripId = await savePlanToSupabase(plan as any, () => {});
+        await saveAnonTripId(tripId);
+        await queryClient.invalidateQueries({ queryKey: ['trips'] });
+        onClose();
+        router.push(`/trip/${tripId}` as never);
+      } catch (err) {
+        console.error('Save failed:', err);
+        setSaving(false);
       }
-    }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [destination]);
+    })();
+  }, [planner.state.phase]);
 
-  const selectSuggestion = useCallback((s: NominatimResult) => {
-    setDestination(s.display_name);
-    setSelectedCoords({ lat: parseFloat(s.lat), lon: parseFloat(s.lon), name: s.display_name.split(',')[0] });
-    setSuggestions([]);
-  }, []);
+  const handleSubmit = useCallback(() => {
+    const text = prompt.trim();
+    if (!text) return;
+    planner.submitPrompt(text);
+  }, [prompt, planner]);
 
-  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const toISO = (d: Date) => d.toISOString().split('T')[0];
+  const handleSelectAnswer = useCallback((questionId: string, value: string) => {
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
 
-  async function handleSubmit() {
-    setError(null);
-    if (!title.trim()) { setError('Trip name is required'); return; }
-    if (!destination.trim()) { setError('Destination is required'); return; }
-
-    setSubmitting(true);
-    try {
-      const { data, error: insertError } = await supabase
-        .from('trips')
-        .insert({
-          title: title.trim(),
-          destination: destination.trim(),
-          start_date: toISO(startDate),
-          end_date: toISO(endDate),
-          status: 'planning',
-          user_id: user?.id ?? null,
-        })
-        .select()
-        .single();
-
-      if (insertError) { setError(insertError.message); return; }
-
-      await saveAnonTripId(data.id);
-      await queryClient.invalidateQueries({ queryKey: ['trips'] });
-      onClose();
-      router.push(`/trip/${data.id}` as never);
-    } finally {
-      setSubmitting(false);
+    // If more questions, advance
+    if (planner.state.phase === 'clarifying') {
+      const questions = planner.state.questions;
+      if (currentQuestionIdx < questions.length - 1) {
+        setTimeout(() => setCurrentQuestionIdx((i) => i + 1), 300);
+      } else {
+        // All answered — submit
+        setTimeout(() => planner.submitAnswers(newAnswers), 400);
+      }
     }
-  }
+  }, [answers, currentQuestionIdx, planner]);
 
-  const mapHeight = screenHeight * 0.3;
+  const handleRetry = useCallback(() => {
+    planner.reset();
+    setCurrentQuestionIdx(0);
+    setAnswers({});
+  }, [planner]);
+
+  const phase = planner.state.phase;
+  const isWorking = phase === 'extracting' || phase === 'planning' || saving;
+  const isIdle = phase === 'idle';
+  const isClarifying = phase === 'clarifying';
+  const isError = phase === 'error';
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
 
-          {/* Top — map appears only after selecting a destination */}
-          <View style={{ height: selectedCoords ? screenHeight * 0.35 : 0, overflow: 'hidden' }}>
-            {selectedCoords && (
-              <Animated.View
-                entering={SlideInUp.duration(400)}
-                exiting={SlideOutUp.duration(300)}
-                style={{ flex: 1, backgroundColor: '#e5e7eb' }}
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 12,
+            borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
+                <PaperPlane size={14} color="#fff" style={{ transform: [{ rotate: '-12deg' }] }} />
+              </View>
+              <Text style={{ ...TextStyles.subhead, fontFamily: FontFamily.sansBold, color: Navy.DEFAULT }}>Plan a Trip</Text>
+            </View>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <FontAwesome name="times" size={18} color="#9ca3af" />
+            </Pressable>
+          </View>
+
+          {/* ─── Idle: Prompt input ─── */}
+          {isIdle && (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+              <Text style={{ ...TextStyles.title, color: Navy.DEFAULT, marginBottom: 4 }}>Where do you want to go?</Text>
+              <Text style={{ ...TextStyles.body, color: '#6b7280', marginBottom: 20 }}>
+                Describe your dream trip — destination, dates, who's going, what you like.
+              </Text>
+
+              <TextInput
+                value={prompt}
+                onChangeText={setPrompt}
+                placeholder="7 days in Paris with my partner..."
+                placeholderTextColor="#9ca3af"
+                multiline
+                autoFocus
+                style={{
+                  minHeight: 80, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16,
+                  borderWidth: 1.5, borderColor: prompt.trim() ? Navy.DEFAULT : '#e5e7eb',
+                  fontSize: FontSize.bodyLg, color: '#111827', fontFamily: FontFamily.sans,
+                  textAlignVertical: 'top', backgroundColor: '#f9fafb',
+                }}
+                onSubmitEditing={handleSubmit}
+              />
+
+              {/* Suggestion chips */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+                {SUGGESTION_CHIPS.map((chip) => (
+                  <Pressable
+                    key={chip}
+                    onPress={() => { setPrompt(chip); }}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                      backgroundColor: pressed ? '#e0e7ff' : '#f3f4f6',
+                    })}
+                  >
+                    <Text style={{ ...TextStyles.caption, color: '#4b5563' }}>{chip}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Submit button */}
+              <Pressable
+                onPress={handleSubmit}
+                disabled={!prompt.trim()}
+                style={({ pressed }) => ({
+                  height: 48, borderRadius: 14, backgroundColor: Navy.DEFAULT,
+                  alignItems: 'center', justifyContent: 'center', marginTop: 24,
+                  opacity: !prompt.trim() ? 0.4 : pressed ? 0.85 : 1,
+                })}
               >
-                <MiniMap lat={selectedCoords.lat} lon={selectedCoords.lon} name={selectedCoords.name} />
-                {/* Destination label */}
+                <Text style={{ ...TextStyles.button, color: '#fff' }}>Plan My Trip</Text>
+              </Pressable>
+            </ScrollView>
+          )}
+
+          {/* ─── Working: Progress animation ─── */}
+          {isWorking && (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+              <Animated.View entering={FadeIn.duration(300)}>
                 <View style={{
-                  position: 'absolute', bottom: 12, left: 16, right: 16,
-                  backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 10,
-                  paddingHorizontal: 12, paddingVertical: 8,
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+                  width: 64, height: 64, borderRadius: 32,
+                  backgroundColor: `${Navy.DEFAULT}15`, alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 20,
                 }}>
-                  <FontAwesome name="map-marker" size={12} color={Navy.DEFAULT} />
-                  <Text style={{ ...TextStyles.bodyLgEm, color: Navy.DEFAULT, flex: 1 }} numberOfLines={1}>
-                    {selectedCoords.name}
-                  </Text>
+                  <PaperPlane size={28} color={Navy.DEFAULT} style={{ transform: [{ rotate: '-12deg' }] }} />
                 </View>
-                {/* Close button on map */}
+              </Animated.View>
+              <ActivityIndicator size="small" color={Navy.DEFAULT} style={{ marginBottom: 16 }} />
+              <Text style={{ ...TextStyles.bodyLgEm, color: Navy.DEFAULT, textAlign: 'center', marginBottom: 6 }}>
+                {saving ? 'Saving your trip...' : PROGRESS_MESSAGES[progressMsg]}
+              </Text>
+              <Text style={{ ...TextStyles.caption, color: '#9ca3af', textAlign: 'center' }}>
+                This usually takes 10–20 seconds
+              </Text>
+            </View>
+          )}
+
+          {/* ─── Clarifying questions ─── */}
+          {isClarifying && planner.state.phase === 'clarifying' && (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+              <Text style={{ ...TextStyles.captionEm, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                Question {currentQuestionIdx + 1} of {planner.state.questions.length}
+              </Text>
+
+              {(() => {
+                const q = planner.state.questions[currentQuestionIdx];
+                if (!q) return null;
+                return (
+                  <Animated.View key={q.id} entering={SlideInDown.duration(300)}>
+                    <Text style={{ ...TextStyles.subhead, color: Navy.DEFAULT, marginBottom: 16 }}>{q.question}</Text>
+                    <View style={{ gap: 10 }}>
+                      {q.options.map((opt) => {
+                        const selected = answers[q.id] === opt;
+                        return (
+                          <Pressable
+                            key={opt}
+                            onPress={() => handleSelectAnswer(q.id, opt)}
+                            style={({ pressed }) => ({
+                              paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14,
+                              borderWidth: 1.5,
+                              borderColor: selected ? Navy.DEFAULT : '#e5e7eb',
+                              backgroundColor: selected ? `${Navy.DEFAULT}10` : pressed ? '#f9fafb' : '#fff',
+                            })}
+                          >
+                            <Text style={{
+                              ...TextStyles.bodyLg,
+                              color: selected ? Navy.DEFAULT : '#374151',
+                              fontFamily: selected ? FontFamily.sansBold : FontFamily.sans,
+                            }}>
+                              {opt}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </Animated.View>
+                );
+              })()}
+            </ScrollView>
+          )}
+
+          {/* ─── Error ─── */}
+          {isError && planner.state.phase === 'error' && (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 16,
+              }}>
+                <FontAwesome name="exclamation-circle" size={24} color="#ef4444" />
+              </View>
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#111827', textAlign: 'center', marginBottom: 6 }}>
+                {planner.state.message.includes('400') ? "Couldn't find that destination" : 'Something went wrong'}
+              </Text>
+              <Text style={{ ...TextStyles.caption, color: '#6b7280', textAlign: 'center', marginBottom: 20, maxWidth: 280 }}>
+                {planner.state.message.includes('400')
+                  ? 'Try a more specific location — like "Rome, Italy" instead of just "Rome".'
+                  : planner.state.message}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Pressable
+                  onPress={handleRetry}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
+                    backgroundColor: Navy.DEFAULT, opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Text style={{ ...TextStyles.button, color: '#fff' }}>Try Again</Text>
+                </Pressable>
                 <Pressable
                   onPress={onClose}
-                  hitSlop={12}
-                  style={{
-                    position: 'absolute', top: insets.top + 8, right: 16,
-                    width: 32, height: 32, borderRadius: 16,
-                    backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
-                  }}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
+                    borderWidth: 1, borderColor: '#e5e7eb', opacity: pressed ? 0.85 : 1,
+                  })}
                 >
-                  <FontAwesome name="times" size={14} color="#6b7280" />
-                </Pressable>
-              </Animated.View>
-            )}
-          </View>
-
-          {/* Bottom card — form */}
-          <View style={{
-            flex: 1, backgroundColor: '#fff',
-            borderTopLeftRadius: selectedCoords ? 20 : 0,
-            borderTopRightRadius: selectedCoords ? 20 : 0,
-            marginTop: selectedCoords ? -16 : 0,
-            shadowColor: '#000', shadowOpacity: selectedCoords ? 0.08 : 0, shadowRadius: 12, shadowOffset: { width: 0, height: -4 },
-          }}>
-            {/* Header */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              paddingHorizontal: 20,
-              paddingTop: selectedCoords ? 16 : insets.top + 12,
-              paddingBottom: 10,
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
-                  <PaperPlane size={12} color="#fff" style={{ transform: [{ rotate: '-12deg' }] }} />
-                </View>
-                <Text style={{ ...TextStyles.subhead, fontFamily: FontFamily.sansBold, color: Navy.DEFAULT }}>Plan a Trip</Text>
-              </View>
-              {!selectedCoords && (
-                <Pressable onPress={onClose} hitSlop={12}>
-                  <FontAwesome name="times" size={18} color="#9ca3af" />
-                </Pressable>
-              )}
-            </View>
-
-            {/* Form */}
-            <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16, gap: 14 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {error && (
-              <View style={{ backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10, padding: 10 }}>
-                <Text style={{ ...TextStyles.caption, color: '#dc2626' }}>{error}</Text>
-              </View>
-            )}
-
-            {/* Trip name */}
-            <View>
-              <Text style={{ ...TextStyles.captionEm, color: '#6b7280', marginBottom: 4 }}>Trip name</Text>
-              <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder="e.g. Paris Adventure"
-                placeholderTextColor="#9ca3af"
-                style={{
-                  height: 42, paddingHorizontal: 12, borderRadius: 12,
-                  borderWidth: 1, borderColor: '#e5e7eb',
-                  fontSize: FontSize.bodyLg, color: '#111827', fontFamily: FontFamily.sans,
-                }}
-              />
-            </View>
-
-            {/* Destination */}
-            <View>
-              <Text style={{ ...TextStyles.captionEm, color: '#6b7280', marginBottom: 4 }}>Destination</Text>
-              <TextInput
-                value={destination}
-                onChangeText={(v) => { setDestination(v); setSelectedCoords(null); }}
-                placeholder="e.g. Paris, France"
-                placeholderTextColor="#9ca3af"
-                autoCorrect={false}
-                style={{
-                  height: 42, paddingHorizontal: 12, borderRadius: 12,
-                  borderWidth: 1, borderColor: '#e5e7eb',
-                  fontSize: FontSize.bodyLg, color: '#111827', fontFamily: FontFamily.sans,
-                }}
-              />
-              {suggestions.length > 0 && (
-                <View style={{
-                  marginTop: 4, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb',
-                  backgroundColor: '#fff', overflow: 'hidden',
-                }}>
-                  {suggestions.map((s) => (
-                    <Pressable
-                      key={s.place_id}
-                      onPress={() => selectSuggestion(s)}
-                      style={({ pressed }) => ({
-                        flexDirection: 'row', alignItems: 'center', gap: 8,
-                        paddingHorizontal: 12, paddingVertical: 10,
-                        backgroundColor: pressed ? '#f9fafb' : '#fff',
-                        borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
-                      })}
-                    >
-                      <FontAwesome name="map-marker" size={12} color="#9ca3af" />
-                      <Text style={{ ...TextStyles.body, color: '#374151', flex: 1 }} numberOfLines={1}>{s.display_name}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* Dates — side by side */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ ...TextStyles.captionEm, color: '#6b7280', marginBottom: 4 }}>Start date</Text>
-                <Pressable
-                  onPress={() => { setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
-                  style={{
-                    height: 42, paddingHorizontal: 12, borderRadius: 12,
-                    borderWidth: 1, borderColor: showStartPicker ? Navy.DEFAULT : '#e5e7eb',
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                >
-                  <Text style={{ ...TextStyles.bodyLg, color: '#111827' }}>{formatDate(startDate)}</Text>
-                  <FontAwesome name="calendar" size={12} color="#9ca3af" />
-                </Pressable>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ ...TextStyles.captionEm, color: '#6b7280', marginBottom: 4 }}>End date</Text>
-                <Pressable
-                  onPress={() => { setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
-                  style={{
-                    height: 42, paddingHorizontal: 12, borderRadius: 12,
-                    borderWidth: 1, borderColor: showEndPicker ? Navy.DEFAULT : '#e5e7eb',
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                >
-                  <Text style={{ ...TextStyles.bodyLg, color: '#111827' }}>{formatDate(endDate)}</Text>
-                  <FontAwesome name="calendar" size={12} color="#9ca3af" />
+                  <Text style={{ ...TextStyles.button, color: '#6b7280' }}>Cancel</Text>
                 </Pressable>
               </View>
             </View>
+          )}
 
-            {/* Date pickers — inline, toggleable */}
-            {showStartPicker && (
-              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-                <DateTimePicker
-                  value={startDate}
-                  mode="date"
-                  display="inline"
-                  onChange={(_, date) => { if (Platform.OS !== 'ios') setShowStartPicker(false); if (date) setStartDate(date); }}
-                />
-              </Animated.View>
-            )}
-            {showEndPicker && (
-              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-                <DateTimePicker
-                  value={endDate}
-                  mode="date"
-                  display="inline"
-                  minimumDate={startDate}
-                  onChange={(_, date) => { if (Platform.OS !== 'ios') setShowEndPicker(false); if (date) setEndDate(date); }}
-                />
-              </Animated.View>
-            )}
-
-            {/* Submit */}
-            <Pressable
-              onPress={handleSubmit}
-              disabled={submitting}
-              style={({ pressed }) => ({
-                height: 44, borderRadius: 12, backgroundColor: Navy.DEFAULT,
-                alignItems: 'center', justifyContent: 'center',
-                opacity: submitting ? 0.5 : pressed ? 0.85 : 1,
-              })}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ ...TextStyles.button, color: '#fff' }}>Create Trip</Text>
-              )}
-            </Pressable>
-          </ScrollView>
-          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

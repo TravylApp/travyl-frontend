@@ -14,15 +14,18 @@ const supabasePublishableKey =
 
 // Lazy-initialized default client. On web, configureSupabase() replaces this
 // before first use, avoiding a duplicate GoTrue instance.
+// persistSession OFF by default to prevent auth leaking across users on SSR.
+// Web overrides via configureSupabase() with a cookie-based browser client.
+// Mobile overrides via configureSupabase() with an AsyncStorage-based client.
 let _client: SupabaseClient | null = null;
 
 function getDefaultClient(): SupabaseClient {
   if (!_client) {
     _client = createClient(supabaseUrl, supabasePublishableKey, {
       auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
       },
     });
   }

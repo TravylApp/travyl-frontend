@@ -34,6 +34,7 @@ interface EventBlockProps {
   totalColumns?: number
   columnSpan?: number
   hiddenCount?: number
+  bookingStatus?: 'matched' | 'opened' | null
 }
 
 export function EventBlock({
@@ -54,6 +55,7 @@ export function EventBlock({
   totalColumns = 1,
   columnSpan = 1,
   hiddenCount = 0,
+  bookingStatus = null,
 }: EventBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
@@ -83,14 +85,12 @@ export function EventBlock({
     queryKey: ['activity-intelligence', activity.id],
   })
   const intel = cachedResults[0]?.[1] ?? null
-  const hasConflict = intel ? (intel.conflicts.hours || intel.conflicts.travelTime) : false
-  const conflictTooltip = intel?.conflicts.hours && intel?.conflicts.travelTime
-    ? 'Two scheduling issues'
-    : intel?.conflicts.hours
-    ? 'Opening hours conflict'
-    : intel?.conflicts.travelTime
-    ? 'Not enough travel time'
-    : null
+  const hasConflict = intel ? intel.conflicts.hours : false
+  const conflictTooltip = intel?.conflicts.hours ? 'Opening hours conflict' : null
+
+  // Opening hours pill — show the first entry's hours as a hint (e.g. "09:00–18:00")
+  const hoursEntry = intel?.place.openingHours?.[0]
+  const hoursLabel = hoursEntry ? `${hoursEntry.opens.slice(0, 5)}–${hoursEntry.closes.slice(0, 5)}` : null
 
   const color = getActivityColor(activity.type)
   const hasImage = !!(activity.image && activity.duration >= 1)
@@ -186,6 +186,20 @@ export function EventBlock({
 
       {/* Inner clip wrapper — provides overflow-hidden and rounded corners for card content */}
       <div className="absolute inset-0 rounded-md overflow-hidden">
+        {/* Opening hours pill — top-left, only for activities >= 30 min */}
+        {hoursLabel && activity.duration >= 0.5 && (
+          <div
+            title={`Open: ${hoursLabel}`}
+            className={[
+              'absolute top-0.5 left-0.5 z-10 px-1 py-0.5 rounded text-[9px] leading-none pointer-events-none',
+              intel?.conflicts.hours
+                ? 'bg-red-500/80 text-white'
+                : 'bg-green-500/80 text-white',
+            ].join(' ')}
+          >
+            {hoursLabel}
+          </div>
+        )}
         {hasImage ? (
           <>
             <div
@@ -282,6 +296,24 @@ export function EventBlock({
           compact={displayDuration < 0.67}
           isResolved={poll.status === 'resolved'}
         />
+      )}
+
+      {/* Booking status badge */}
+      {bookingStatus === 'matched' && (
+        <span
+          title="Bookable"
+          className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white dark:ring-[#0a1520]"
+        />
+      )}
+      {bookingStatus === 'opened' && (
+        <span
+          title="Booking opened"
+          className="absolute bottom-1 right-1 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-green-500 ring-1 ring-white dark:ring-[#0a1520]"
+        >
+          <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden>
+            <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
       )}
     </div>
   )

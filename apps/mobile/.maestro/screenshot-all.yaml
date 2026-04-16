@@ -1,0 +1,23 @@
+appId: com.ze-ee.mobile
+---
+- takeScreenshot: "01-places"
+
+- tapOn:
+    text: "Trips, tab, 3 of 4"
+- waitForAnimationToEnd
+- takeScreenshot: "02-trips"
+
+- tapOn:
+    text: "Profile, tab, 4 of 4"
+- waitForAnimationToEnd
+- takeScreenshot: "03-profile"
+
+- tapOn:
+    text: "Discover, tab, 1 of 4"
+- waitForAnimationToEnd
+- takeScreenshot: "04-discover"
+
+- tapOn:
+    text: "Places, tab, 2 of 4"
+- waitForAnimationToEnd
+- takeScreenshot: "05-places-back"

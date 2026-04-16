@@ -1,10 +1,5 @@
-import DashboardNavbar from '@/components/DashboardNavbar'
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <DashboardNavbar />
-      <main className="pt-14 bg-background text-foreground">{children}</main>
-    </>
-  )
+export default function DashboardRouteLayout({ children }: { children: React.ReactNode }) {
+  return <DashboardLayout>{children}</DashboardLayout>
 }

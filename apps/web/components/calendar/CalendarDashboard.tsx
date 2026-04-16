@@ -6,7 +6,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay, pointerWithin, closestCenter, type CollisionDetection } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
-import { fetchCollaborators } from '@travyl/shared'
+import { fetchCollaborators, computeGaps } from '@travyl/shared'
+import { useGapFiller } from './hooks/useGapFiller'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
 import { useTripActivities } from './hooks/useTripActivities'
@@ -15,7 +16,7 @@ import { useActivityMutations } from './hooks/useActivityMutations'
 import { useCollaboratorPresence } from './hooks/useCollaboratorPresence'
 import { useCalendarNavigation } from './hooks/useCalendarNavigation'
 import { useInteractionTracking } from './hooks/useInteractionTracking'
-import { TripNavbar } from './TripNavbar'
+import { CalendarToolbar } from './CalendarToolbar'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -27,6 +28,10 @@ import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
+import SidebarTabs from './SidebarTabs'
+import { EventsPanel } from './EventsPanel'
+import { useEvents } from './hooks/useEvents'
+import DayMap from './DayMap'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarError } from './CalendarError'
 import type { CalendarActivity } from './types'
@@ -35,6 +40,9 @@ import { CalendarThemeContext } from './CalendarThemeContext'
 import { TripPermissionProvider } from './providers/TripPermissionContext'
 import { ShareModal } from './sharing/ShareModal'
 import { HistoryDrawer } from './HistoryDrawer'
+import { useBookingMatches } from './hooks/useBookingMatches'
+import { BookingPanel, type BookingPanelMode } from './BookingPanel'
+import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import { ActivityContextMenu } from './ActivityContextMenu'
 import { ActivityEditModal } from './ActivityEditModal'
 import { useUndoRedo } from './hooks/useUndoRedo'
@@ -99,6 +107,14 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null)
   const [contextMenu, setContextMenu] = useState<{ activityId: string; x: number; y: number } | null>(null)
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
+  const [ghostActivities, setGhostActivities] = useState<CalendarActivity[]>([])
+  const [isBookingPanelOpen, setIsBookingPanelOpen] = useState(false)
+  const [bookingPanelMode, setBookingPanelMode] = useState<BookingPanelMode>('loading')
+  const [bookingTotal, setBookingTotal] = useState(0)
+  const [bookingReceived, setBookingReceived] = useState(0)
+  const [bookingInProgress, setBookingInProgress] = useState(false)
+  const [failedToOpenIds, setFailedToOpenIds] = useState<string[]>([])
+  const bookingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const router = useRouter()
 
   // Hooks
@@ -137,6 +153,20 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const { polls } = usePollObserver({ editorCount: editorIds.length, editorIds })
   usePollSync(tripId)
 
+  const { fill: fillGaps, isPending: isGapFilling } = useGapFiller({
+    tripId,
+    destination: trip?.destination ?? '',
+    onSuccess: (suggestions) => {
+      if (suggestions.length === 0) {
+        return
+      }
+      setGhostActivities(suggestions)
+    },
+    onError: () => {
+      console.error('[fill-gaps] Failed to fetch gap suggestions')
+    },
+  })
+
   const scheduledActivities = useMemo(
     () => activities.filter((a) => !a.unscheduled),
     [activities],
@@ -156,12 +186,69 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     goToDayView,
   } = useCalendarNavigation()
 
+  const currentDayMapActivities = useMemo(
+    () => scheduledActivities
+      .filter((a) => a.day === selectedDayIndex && a.latitude != null && a.longitude != null)
+      .sort((a, b) => a.startHour - b.startHour)
+      .map((a) => ({ id: a.id, title: a.title, latitude: a.latitude!, longitude: a.longitude!, startHour: a.startHour })),
+    [scheduledActivities, selectedDayIndex],
+  )
+
   const { trackEvent } = useInteractionTracking(tripId)
+
+  const { events, eventsByDate, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useEvents({
+    destination: trip?.destination ?? '',
+    startDate: trip?.start_date ?? '',
+    endDate: trip?.end_date ?? '',
+  })
+  const [showEvents, setShowEvents] = useState(true)
+
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => {
+      const { data } = await getSupabaseBrowser().auth.getSession()
+      return data.session
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { matches: bookingMatches, hasMatches: hasBookingMatches, startRealtimeAndMatch, markOpened } = useBookingMatches({
+    tripId,
+    authToken: session?.access_token ?? '',
+  })
 
   const weekGridRef = useRef<HTMLDivElement>(null)
 
   // Computed (moved up so useCalendarDnd can reference timeRange)
-  const timeRange = useMemo(() => computeTimeRange(activities), [activities])
+  const selectedDayGhosts = useMemo(
+    () => ghostActivities.filter((g) => g.day === selectedDayIndex),
+    [ghostActivities, selectedDayIndex],
+  )
+
+  const timeRange = useMemo(
+    () => computeTimeRange([...activities, ...selectedDayGhosts]),
+    [activities, selectedDayGhosts],
+  )
+
+  const hasGaps = useMemo(
+    () =>
+      computeGaps(
+        scheduledActivities
+          .filter((a) => a.day === selectedDayIndex)
+          .map((a) => ({ startHour: a.startHour, duration: a.duration })),
+      ).length > 0,
+    [scheduledActivities, selectedDayIndex],
+  )
+
+  const bookingStatuses = useMemo(() => {
+    const m = new Map<string, 'matched' | 'opened'>()
+    for (const [id, match] of bookingMatches) {
+      if (match.status === 'matched' || match.status === 'opened') {
+        m.set(id, match.status)
+      }
+    }
+    return m
+  }, [bookingMatches])
 
   const [droppedSuggestionIds, setDroppedSuggestionIds] = useState<string[]>([])
   const [activityToSuggestion, setActivityToSuggestion] = useState<Map<string, string>>(new Map())
@@ -226,6 +313,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     setSelectedDay(selectedDayIndex)
   }, [selectedDayIndex, setSelectedDay])
 
+  // Clear ghost suggestions when the user navigates to a different day
+  useEffect(() => {
+    setGhostActivities([])
+  }, [selectedDayIndex])
+
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
   const parsedEndDate = trip ? new Date(trip.end_date + 'T00:00:00Z') : new Date()
@@ -242,6 +334,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
         day: 'numeric',
         timeZone: 'UTC',
       }),
+      isoDate: date.toISOString().slice(0, 10),
     }
   }), [tripTotalDays, parsedStartMs])
 
@@ -340,6 +433,100 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     }
   }, [marqueeSelectedIds, clearMarqueeSelection, scheduledActivities, duplicateActivity])
 
+  const handleBookTrip = useCallback(async () => {
+    if (bookingInProgress) return
+    setBookingInProgress(true)
+    setBookingPanelMode('loading')
+    setIsBookingPanelOpen(true)
+    setBookingReceived(0)
+    setFailedToOpenIds([])
+
+    try {
+      const activitiesToMatch = scheduledActivities.map((a) => ({
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        latitude: a.latitude ?? null,
+        longitude: a.longitude ?? null,
+      }))
+      setBookingTotal(activitiesToMatch.length)
+
+      const result = await startRealtimeAndMatch(activitiesToMatch)
+      setBookingTotal(result.total)
+
+      if (bookingFallbackTimerRef.current) clearTimeout(bookingFallbackTimerRef.current)
+      bookingFallbackTimerRef.current = setTimeout(() => {
+        setBookingReceived(result.total)
+        setBookingPanelMode('summary')
+        setBookingInProgress(false)
+      }, 2000)
+    } catch {
+      setBookingPanelMode('summary')
+      setBookingInProgress(false)
+    }
+  }, [bookingInProgress, scheduledActivities, startRealtimeAndMatch])
+
+  useEffect(() => {
+    if (bookingPanelMode !== 'loading' || bookingTotal === 0) return
+    setBookingReceived(Math.min(bookingMatches.size, bookingTotal))
+  }, [bookingMatches.size, bookingTotal, bookingPanelMode])
+
+  const handleBookAll = useCallback(() => {
+    const toBook = scheduledActivities.filter((a) => bookingMatches.get(a.id)?.status === 'matched')
+    const failed: string[] = []
+
+    for (const a of toBook) {
+      const m = bookingMatches.get(a.id)
+      if (!m?.affiliateUrl) continue
+      const win = window.open(m.affiliateUrl, '_blank')
+      if (!win) failed.push(a.id)
+    }
+
+    setFailedToOpenIds(failed)
+    const successIds = toBook.map((a) => a.id).filter((id) => !failed.includes(id))
+    if (successIds.length > 0) markOpened(successIds)
+    setBookingPanelMode('done')
+  }, [scheduledActivities, bookingMatches, markOpened])
+
+  const handleBookOne = useCallback((activityId: string) => {
+    const m = bookingMatches.get(activityId)
+    if (!m?.affiliateUrl) return
+    const win = window.open(m.affiliateUrl, '_blank')
+    if (win) {
+      markOpened([activityId])
+    } else {
+      setFailedToOpenIds((prev) => [...prev, activityId])
+    }
+  }, [bookingMatches, markOpened])
+
+  useEffect(() => {
+    return () => {
+      if (bookingFallbackTimerRef.current) clearTimeout(bookingFallbackTimerRef.current)
+    }
+  }, [])
+
+  const handleConfirmGhost = useCallback((ghost: CalendarActivity) => {
+    addActivity({ ...ghost, id: crypto.randomUUID() })
+    setGhostActivities((prev) => prev.filter((g) => g.id !== ghost.id))
+  }, [addActivity])
+
+  const handleDismissGhost = useCallback((id: string) => {
+    setGhostActivities((prev) => prev.filter((g) => g.id !== id))
+  }, [])
+
+  const handleFillGaps = useCallback(() => {
+    if (ghostActivities.length > 0) {
+      setGhostActivities([])
+      return
+    }
+    if (!trip) return
+    const date = new Date(parsedStartMs + selectedDayIndex * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0]
+    const dayActivities = scheduledActivities.filter((a) => a.day === selectedDayIndex)
+    fillGaps({ date, dayIndex: selectedDayIndex, activities: dayActivities })
+  }, [ghostActivities, trip, parsedStartMs, selectedDayIndex, scheduledActivities, fillGaps])
+
   const commands = useCalendarCommands({
     selectedActivity,
     isPaletteOpen,
@@ -395,9 +582,9 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   }, [moveActivity, updateActivity, queryClient])
 
   // Early returns for loading / error states (must come after all hooks)
-  if (isLoading) return <CalendarSkeleton />
+  if (isLoading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}><CalendarSkeleton /></motion.div>
   if (error) return <CalendarError message={error} />
-  if (!trip) return <CalendarSkeleton />
+  if (!trip) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}><CalendarSkeleton /></motion.div>
 
   // Event handlers
   const handleSelectEvent = (id: string, anchorEl?: HTMLElement) => {
@@ -522,25 +709,26 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
     <TripPermissionProvider trip={trip!} collaborators={tripCollaborators} isSharedView={isSharedView}>
     <div className={theme === 'dark' ? 'dark' : ''}>
-    <div className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
-        <TripNavbar
+        <CalendarToolbar
           tripName={trip?.title ?? 'Loading...'}
           dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
           commands={commands}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
-          onBack={handleBack}
           connectionStatus={connectionStatus}
           collaborators={collaborators}
           onShare={() => setIsShareModalOpen(true)}
           selectedActivity={selectedActivity}
           onDeselect={() => selectEvent(null)}
-          theme={theme}
-          onToggleTheme={toggleTheme}
           tripDays={TRIP_DAYS}
           trip={trip ?? null}
           scheduledActivities={scheduledActivities}
@@ -552,6 +740,19 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
           onOpenHistory={() => setIsHistoryOpen(true)}
+          onBookTrip={isSharedView ? undefined : handleBookTrip}
+          hasBookingMatches={hasBookingMatches}
+          isBookingInProgress={bookingInProgress}
+          onViewBookings={() => {
+            setBookingPanelMode('summary')
+            setIsBookingPanelOpen(true)
+          }}
+          onFillGaps={handleFillGaps}
+          isGapFilling={isGapFilling}
+          hasGhosts={ghostActivities.length > 0}
+          hasGaps={hasGaps}
+          showEvents={showEvents}
+          onToggleEvents={() => setShowEvents(v => !v)}
         />
 
         {/* Grid area */}
@@ -569,6 +770,8 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
               {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
               <AllDayRow
                 days={visibleDays}
+                eventsByDate={eventsByDate}
+                showEvents={showEvents}
               />
               {/* Scrollable time grid */}
               <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
@@ -602,6 +805,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         polls={polls}
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        bookingStatuses={bookingStatuses}
+                        tripId={tripId}
+                        ghostActivities={ghostActivities}
+                        onConfirmGhost={handleConfirmGhost}
+                        onDismissGhost={handleDismissGhost}
                       />
                     </motion.div>
                   ) : (
@@ -629,6 +837,11 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         polls={polls}
                         pollUserId={userId}
                         onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                        bookingStatuses={bookingStatuses}
+                        tripId={tripId}
+                        ghostActivities={ghostActivities}
+                        onConfirmGhost={handleConfirmGhost}
+                        onDismissGhost={handleDismissGhost}
                       />
                     </motion.div>
                   )}
@@ -662,12 +875,35 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
                 </div>
 
-                {/* Right column: For You panel */}
-                <ForYouPanel
-                  destination={trip?.destination ?? ''}
-                  tripId={trip?.id ?? ''}
-                  scheduledActivityIds={droppedSuggestionIds}
+                {/* Right column: Sidebar with For You / Map tabs */}
+                <SidebarTabs
                   width={forYouWidth}
+                  forYouContent={
+                    <ForYouPanel
+                      destination={trip?.destination ?? ''}
+                      tripId={trip?.id ?? ''}
+                      scheduledActivityIds={droppedSuggestionIds}
+                      width={forYouWidth}
+                    />
+                  }
+                  eventsContent={
+                    <EventsPanel
+                      events={events}
+                      isLoading={eventsLoading}
+                      destination={trip?.destination ?? ''}
+                      startDate={trip?.start_date ?? ''}
+                      endDate={trip?.end_date ?? ''}
+                      onRetry={eventsError ? refetchEvents : undefined}
+                    />
+                  }
+                  mapContent={
+                    <DayMap
+                      activities={currentDayMapActivities}
+                      selectedActivityId={selectedEventId}
+                      onSelectActivity={(id) => handleSelectEvent(id)}
+                      className="h-full"
+                    />
+                  }
                 />
               </>
             )}
@@ -731,7 +967,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           )}
         </DndContext>
       </div>
-    </div>
+    </motion.div>
     </div>
     <CardPopover
       anchorEl={popoverAnchor}
@@ -778,6 +1014,18 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       onAdd={addActivity}
       tripStartDate={tripStartDate}
       userId={userId}
+    />
+    <BookingPanel
+      isOpen={isBookingPanelOpen}
+      onClose={() => setIsBookingPanelOpen(false)}
+      mode={bookingPanelMode}
+      activities={scheduledActivities.map((a) => ({ id: a.id, title: a.title }))}
+      matches={bookingMatches}
+      receivedCount={bookingReceived}
+      total={bookingTotal}
+      onBookAll={handleBookAll}
+      onBookOne={handleBookOne}
+      failedToOpenIds={failedToOpenIds}
     />
     {contextMenu && (() => {
       const poll = polls.get(contextMenu.activityId)

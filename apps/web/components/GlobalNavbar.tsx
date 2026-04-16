@@ -3,12 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
+import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
-import { useAuthStore } from "@travyl/shared";
+import { useAuthStore, useProfile } from "@travyl/shared";
 
 const baseNavLinks = [
-  { href: "/", label: "Discover", icon: Compass },
   { href: "/places", label: "Places", icon: MapPin },
   { href: "/trips", label: "Trips", icon: Luggage },
 ];
@@ -27,13 +26,15 @@ export default function GlobalNavbar() {
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
   const signOut = useAuthStore((s) => s.signOut);
+  const { data: profile } = useProfile(); // Fetch from profiles table
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const avatarUrl = user?.user_metadata?.avatar_url;
+  // Use profile avatar_url first, then fall back to auth metadata
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name;
   const email = user?.email;
   const initials = getInitials(displayName);
@@ -43,7 +44,7 @@ export default function GlobalNavbar() {
     : baseNavLinks;
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isCalendarTab = /\/trip\/[^/]+\/calendar$/.test(pathname);
+  const isDashboardRoute = false; // navbar always visible
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
@@ -99,68 +100,83 @@ export default function GlobalNavbar() {
     await signOut();
   }, [signOut]);
 
-  if (isAuthPage || isCalendarTab) return null;
+  if (isAuthPage || isDashboardRoute) return null;
 
   return (
     <>
-      {/* Inject keyframes + navbar transition styles */}
+      {/* Inject navbar transition styles — shell/bar split for GPU-friendly animation */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .gnav {
+        /* Shell: fixed overlay, handles vertical offset with transform (compositor-only) */
+        .gnav-shell {
           position: fixed;
           top: 0;
-          left: 50%;
-          transform: translateX(-50%);
+          left: 0;
+          right: 0;
           z-index: 50;
+          display: flex;
+          justify-content: center;
+          pointer-events: none;
+          transform: translateY(0);
+          will-change: transform;
+          transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .gnav-shell.scrolled {
+          transform: translateY(12px);
+        }
+
+        /* Bar: visual chrome — no height transition (avoids layout reflow) */
+        .gnav-bar {
           width: 100%;
-          height: 56px;
-          border-radius: 0px;
+          max-width: 100%;
+          height: 48px;
+          border-radius: 0;
+          pointer-events: auto;
+          contain: layout style;
           backdrop-filter: blur(20px) saturate(180%);
           -webkit-backdrop-filter: blur(20px) saturate(180%);
           border-bottom: 1px solid rgba(0,0,0,0.06);
           box-shadow: none;
-          will-change: width, height, border-radius, top, background, box-shadow;
+          will-change: max-width, border-radius;
           transition:
-            width 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-            height 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-            border-radius 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-            top 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-            background 0.4s ease,
-            box-shadow 0.4s ease,
-            border 0.4s ease;
+            max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+            border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+            background 0.3s ease,
+            box-shadow 0.3s ease,
+            border-color 0.3s ease;
         }
-        .gnav.scrolled {
-          top: 12px;
-          width: min(92%, 64rem);
-          height: 48px;
+        .gnav-shell.scrolled .gnav-bar {
+          max-width: min(92%, 64rem);
           border-radius: 9999px;
-          border-bottom: none;
+          border-bottom-color: transparent;
         }
+
         /* Light mode backgrounds */
-        .gnav.bg-clear { background: rgba(255,255,255,0.45); }
-        .gnav.bg-clear-hero { background: rgba(255,255,255,0.05); border-bottom-color: rgba(255,255,255,0.1); }
-        .gnav.scrolled.bg-clear {
-          background: rgba(255,255,255,0.65);
-          border: 1px solid rgba(0,0,0,0.06);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+        .gnav-bar.bg-clear { background: rgba(255,255,255,0.45); }
+        .gnav-bar.bg-clear-hero { background: rgba(255,255,255,0.05); border-bottom-color: rgba(255,255,255,0.1); }
+        .gnav-shell.scrolled .gnav-bar.bg-clear {
+          background: rgba(255,255,255,0.95);
+          border: 1px solid rgba(0,0,0,0.08);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.06);
         }
-        .gnav.scrolled.bg-clear-hero {
+        .gnav-shell.scrolled .gnav-bar.bg-clear-hero {
           background: rgba(0,0,0,0.25);
           border: 1px solid rgba(255,255,255,0.15);
           box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
         }
         /* Dark mode backgrounds */
-        :root.dark .gnav.bg-clear { background: rgba(10,21,32,0.5); border-bottom-color: rgba(30,58,95,0.2); }
-        :root.dark .gnav.scrolled.bg-clear {
-          background: rgba(10,21,32,0.7);
+        :root.dark .gnav-bar.bg-clear { background: rgba(10,21,32,0.5); border-bottom-color: rgba(30,58,95,0.2); }
+        :root.dark .gnav-shell.scrolled .gnav-bar.bg-clear {
+          background: rgba(10,21,32,0.85);
           border: 1px solid rgba(255,255,255,0.06);
           box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
         }
+
         /* Inner container */
         .gnav-inner {
           max-width: 80rem;
-          transition: max-width 0.55s cubic-bezier(0.22, 1, 0.36, 1), padding 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+          transition: max-width 0.3s ease-out;
         }
-        .gnav.scrolled .gnav-inner { max-width: 100%; }
+        .gnav-shell.scrolled .gnav-inner { max-width: 100%; }
 
         /* Mobile menu */
         .gnav-mobile-menu {
@@ -175,12 +191,14 @@ export default function GlobalNavbar() {
         }
 
         @media (max-width: 639px) {
-          .gnav { height: 48px; }
-          .gnav.scrolled { top: 8px; width: min(95%, 64rem); height: 44px; }
+          .gnav-bar { height: 48px; }
+          .gnav-shell.scrolled { transform: translateY(8px); }
+          .gnav-shell.scrolled .gnav-bar { max-width: min(95%, 64rem); height: 44px; }
         }
       ` }} />
 
-      <nav className={`gnav ${scrolled ? "scrolled" : ""} ${useLightNav ? "bg-clear-hero" : "bg-clear"}`}>
+      <div className={`gnav-shell ${scrolled ? "scrolled" : ""}`}>
+      <nav className={`gnav-bar ${useLightNav ? "bg-clear-hero" : "bg-clear"}`}>
         <div className="gnav-inner mx-auto flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link
@@ -337,16 +355,17 @@ export default function GlobalNavbar() {
           </div>
         </div>
       </nav>
+      </div>
 
-      {/* Mobile slide-down menu */}
+      {/* Mobile slide-down menu — outside shell so it doesn't inherit transform */}
       <div
         className={`gnav-mobile-menu fixed left-0 right-0 z-40 sm:hidden backdrop-blur-2xl ${mobileMenuOpen ? "open" : ""}`}
         style={{
-          top: scrolled ? 56 : 48,
+          top: scrolled ? 60 : 48,
           background: isDarkMode ? "rgba(10,21,32,0.92)" : "rgba(255,255,255,0.92)",
           borderBottom: `1px solid ${isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
           boxShadow: mobileMenuOpen ? "0 16px 48px rgba(0,0,0,0.1)" : "none",
-          transition: "max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, top 0.55s cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: "max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, top 0.35s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <div className="px-4 py-3 flex flex-col gap-1">

@@ -50,6 +50,8 @@ export * from './placeCollections';
 
 export * from './packingCatalog';
 
+export { CURRENCIES, type CurrencyInfo } from './currencies';
+
 export * from './typography';
 
 export { KNOWN_CITIES } from './knownCities';

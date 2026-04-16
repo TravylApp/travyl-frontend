@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useItineraryScreen } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -360,8 +361,22 @@ export default function FavoritesScreen() {
   const { trip, isLoading } = useItineraryScreen(id);
 
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
-  const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
-  const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>(INITIAL_RESTAURANT_FAVORITES);
+  const [activityFavorites, setActivityFavorites] = useState<string[]>([]);
+  const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>([]);
+
+  // Load favorites from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem('travyl-favorites').then((val) => {
+      if (val) {
+        try {
+          const all = JSON.parse(val) as string[];
+          // Split into activity vs restaurant based on what items we have
+          setActivityFavorites(all);
+          setRestaurantFavorites(all);
+        } catch {}
+      }
+    });
+  }, []);
   const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
   const colors = useThemeColors();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -381,12 +396,24 @@ export default function FavoritesScreen() {
 
   const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
 
+  const persistFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem('travyl-favorites', JSON.stringify(ids)).catch(() => {});
+  }, []);
+
   const removeActivityFavorite = (itemId: string) => {
-    setActivityFavorites((prev) => prev.filter((f) => f !== itemId));
+    setActivityFavorites((prev) => {
+      const next = prev.filter((f) => f !== itemId);
+      persistFavorites(next);
+      return next;
+    });
   };
 
   const removeRestaurantFavorite = (itemId: string) => {
-    setRestaurantFavorites((prev) => prev.filter((f) => f !== itemId));
+    setRestaurantFavorites((prev) => {
+      const next = prev.filter((f) => f !== itemId);
+      persistFavorites(next);
+      return next;
+    });
   };
 
   const removeDestinationFavorite = (itemId: string) => {

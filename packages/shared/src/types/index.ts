@@ -6,10 +6,13 @@ export type CollaboratorRole = 'viewer' | 'editor'
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  city: string | null;
+  country: string | null;
   onboarding_completed: boolean;
+  preferences: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -36,7 +39,15 @@ export interface TripContextData {
     current?: { high: number; low: number; condition: string; temp?: number; feelslike?: number; conditions?: string };
     forecast?: { day: string; date?: string; high: number; low: number; icon: string; condition: string }[];
   };
-  explore_items?: ExploreItem[];
+  explore_items?: {
+    id: string;
+    title: string;
+    subtitle?: string;
+    category: string;
+    description: string;
+    image?: string;
+    tags?: string[];
+  }[];
   news?: {
     id: string;
     title: string;
@@ -47,22 +58,24 @@ export interface TripContextData {
     url?: string;
     image?: string;
   }[];
-  // External API data — loosely structured (using unknown for safety)
-  hotels?: unknown[];
-  foursquare_venues?: FoursquareVenue[];
-  events?: unknown[];
-  cuisine?: unknown[];
-  phrases?: unknown[];
-  cost_of_living?: unknown;
-  nearby_cities?: unknown[];
-  safety?: unknown;
-  timezone_info?: unknown;
-  sunrise?: unknown;
-  restaurants?: Restaurant[];
-  aqi?: unknown;
+  hotels?: any[];
+  foursquare_venues?: any[];
+  events?: any[];
+  cuisine?: any[];
+  phrases?: any[];
+  cost_of_living?: any;
+  nearby_cities?: any[];
+  safety?: any;
+  timezone_info?: any;
+  sunrise?: any;
+  aqi?: any;
   wiki?: string | { extract?: string };
-  country?: unknown;
-  holidays?: unknown[];
+  country?: any;
+  holidays?: any[];
+  restaurants?: any[];
+  flights?: any[];
+  itinerary?: any[];
+  all_hotels?: any[];
 }
 
 export interface Trip {
@@ -88,8 +101,6 @@ export interface Trip {
   tab_color_overrides?: Record<string, string>;
   itinerary_color_overrides?: Record<string, string>;
   hidden_tabs?: Record<string, boolean>;
-  is_public?: boolean;
-  is_shared?: boolean;
   cover_image_url?: string | null;
   created_at: string;
   updated_at: string;
@@ -196,8 +207,6 @@ export interface Activity {
   notes: string | null;
   source: 'agent' | 'user' | 'search';
   created_at: string;
-  /** Image URL from activity_data JSONB */
-  image?: string | null;
 }
 
 export interface FlightData {
@@ -430,7 +439,6 @@ export interface PlaceItem {
   longitude?: number;
 
   // Rich detail fields
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Price level enum (1-4)
   priceLevel?: 1 | 2 | 3 | 4;
   hours?: string;
   phone?: string;
@@ -583,7 +591,6 @@ export interface DestinationDetail {
   currency: string
   timezone: string
   bestTimeToVisit: string
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- Budget level enum (1-4)
   budgetLevel: 1 | 2 | 3 | 4
   tags: string[]
   image: string
@@ -651,61 +658,6 @@ export interface FavoriteItem {
   date?: string;
 }
 
-// ─── Explore Item (standalone export for hooks) ─────────────
-
-export interface ExploreItem {
-  id: string;
-  title: string;
-  name?: string; // alias for title, used by some hooks
-  subtitle?: string;
-  category: string;
-  description: string;
-  image?: string;
-  tags?: string[];
-  rating?: number;
-  reviewCount?: number;
-}
-
-// ─── Foursquare Venue (from trip_context.foursquare_venues) ─
-
-export interface FoursquareVenue {
-  id: string;
-  name?: string;
-  title?: string;
-  category?: string;
-  description?: string;
-  image?: string;
-  rating?: number;
-}
-
-// ─── Restaurant (from trip_context.restaurants) ───────────────
-
-export interface Restaurant {
-  id: string;
-  name: string;
-  category?: string;
-  tip?: string;
-  image?: string;
-  images?: string[];
-  rating?: number;
-  reviewCount?: number;
-  cuisines?: string[];
-}
-
-// ─── Itinerary Slot (from trip_context.itinerary) ────────────
-
-export interface ItinerarySlot {
-  start_time: string;
-  end_time: string;
-  poi?: {
-    id?: string;
-    name?: string;
-    category?: string;
-    description?: string;
-    photo_url?: string;
-  };
-}
-
 // ─── Postcard ───────────────────────────────────────────────
 
 export interface PostcardData {
@@ -765,6 +717,105 @@ export interface FlightDetailsType {
   refundPolicy: string;
   checkInUrl: string;
   checkInOpens: string;
+}
+
+// ─── Weather ────────────────────────────────────────────────
+
+export interface WeatherCurrent {
+  temp: number;
+  feelslike: number;
+  conditions: string;
+  icon: string;
+  humidity: number;
+  windspeed: number;
+}
+
+export interface WeatherDay {
+  date: string;
+  high: number;
+  low: number;
+  conditions: string;
+  icon: string;
+  precipprob: number;
+  sunrise: string;
+  sunset: string;
+}
+
+export interface WeatherForecastResponse {
+  location: string;
+  timezone: string;
+  current: WeatherCurrent;
+  forecast: WeatherDay[];
+}
+
+// ─── Events ─────────────────────────────────────────────────
+
+export interface TravylEvent {
+  id: string;
+  name: string;
+  date: string;
+  time: string | null;
+  venue: string | null;
+  lat: number | null;
+  lng: number | null;
+  description: string | null;
+  price: string | null;
+  category: string | null;
+  photo_url: string | null;
+  link: string | null;
+}
+
+// ─── Place Detail (from /api/places/{id}) ───────────────────
+
+export interface PlaceDetailResponse {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  rating: number | null;
+  phone: string | null;
+  website: string | null;
+  description: string | null;
+  images: string[];
+  image_url: string | null;
+  categories: string[];
+  hours: string | null;
+  price: number | null;
+  reviewCount: number | null;
+}
+
+// ─── Menu ───────────────────────────────────────────────────
+
+export interface MenuItem {
+  name: string;
+  price: string | null;
+  description: string | null;
+}
+
+export interface MenuResponse {
+  restaurant_name: string;
+  menu_url: string | null;
+  items: MenuItem[];
+  source: string;
+}
+
+// ─── Suggest ────────────────────────────────────────────────
+
+export interface SuggestResponse {
+  suggestions: PlaceItem[];
+  hasMore: boolean;
+  nextPage: number | null;
+}
+
+// ─── Server Favorites ───────────────────────────────────────
+
+export interface ServerFavorite {
+  id: string;
+  place_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface PopularAirport {

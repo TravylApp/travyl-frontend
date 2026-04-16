@@ -1,8 +1,13 @@
 export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
+  fetchCollaboratorTrips,
   fetchSavedItems,
   fetchProfile,
+  updateProfile,
+  uploadAvatar,
+  updateUserMetadata,
+  updateUserPassword,
   fetchMosaicTiles,
   fetchInspirationCards,
   fetchExploreRows,
@@ -55,3 +60,7 @@ export {
   updateSuggestionStatus,
   dismissAllSuggestions,
 } from './packingService';
+
+export {
+  generatePackingSuggestions,
+} from './packingSuggestions';

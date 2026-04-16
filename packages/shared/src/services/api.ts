@@ -1,74 +1,26 @@
 import { supabase } from './supabase';
 import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
-// ─── Planner Types ──────────────────────────────────────────────
-interface PlannerWeather {
-  high_c?: number;
-  low_c?: number;
-  condition?: string;
-  icon?: string;
-}
-
-interface PlannerSlot {
-  poi: {
-    id: string;
-    name: string;
-    description?: string;
-    category: string;
-    photo_url?: string;
-    tags?: string[];
-  };
-  start_time: string;
-  end_time: string;
-  start_time_12h?: string;
-  end_time_12h?: string;
-}
-
-interface PlannerDay {
-  day: number;
-  date: string;
-  weather?: PlannerWeather;
-  slots?: PlannerSlot[];
-}
-
-interface PlannerHotel {
-  name?: string;
-  photo_url?: string;
-  rating?: number;
-  price_per_night?: number;
-  stars?: number;
-  amenities?: string[];
-  address?: string;
-  link?: string;
-  lat?: number;
-  lng?: number;
-}
-
-interface PlannerFlight {
-  airline?: string;
-  price?: number;
-  departure_time?: string;
-  arrival_time?: string;
-  stops?: number;
-  duration?: string;
-  origin?: string;
-  destination?: string;
-  dest_iata?: string;
-}
-
-interface ItineraryDayData {
-  day_number: number;
-  date: string;
-  activities?: Activity[];
-}
-
-export async function fetchTrips(): Promise<Trip[]> {
+export async function fetchTrips(userId: string): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
     .select('*')
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function fetchCollaboratorTrips(userId: string): Promise<Trip[]> {
+  const { data, error } = await supabase
+    .from('trips')
+    .select('*, trip_collaborators!inner(*)')
+    .eq('trip_collaborators.user_id', userId)
+    .eq('trip_collaborators.invite_status', 'accepted')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  // Strip the join column before returning
+  return (data ?? []).map(({ trip_collaborators: _tc, ...trip }) => trip as Trip);
 }
 
 export async function fetchSavedItems(): Promise<SavedItem[]> {
@@ -86,55 +38,99 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
-    if (error) return null;
+      .maybeSingle();
+
+    // If profile doesn't exist yet, create a default one
+    if (error || !data) {
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          display_name: null,
+          avatar_url: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) return null;
+      return newProfile;
+    }
+
     return data;
   } catch { return null; }
 }
 
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country'>>): Promise<Profile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function uploadAvatar(userId: string, base64Data: string): Promise<string> {
+  // Convert base64 to Blob
+  const base64Content = base64Data.split(';base64,').pop();
+  if (!base64Content) throw new Error('Invalid base64 data');
+
+  const byteCharacters = atob(base64Content);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+  const fileName = `${userId}/${Date.now()}.jpg`;
+
+  // Upload to 'avatars' bucket
+  const { data, error } = await supabase.storage
+    .from('avatars')
+    .upload(fileName, blob, {
+      contentType: 'image/jpeg',
+      upsert: true
+    });
+
+  if (error) throw error;
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(data.path);
+
+  return publicUrl;
+}
+
+export async function updateUserMetadata(metadata: Record<string, unknown>): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { error } = await supabase.auth.updateUser({
+    data: metadata,
+  });
+
+  if (error) throw error;
+}
+
+export async function updateUserPassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) throw error;
+}
+
 // ─── Home Page Data ──────────────────────────────────────────
 
-export async function fetchMosaicTiles(): Promise<MosaicTile[]> {
-  try {
-    const { data, error } = await supabase
-      .from('mosaic_tiles')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (error) return [];
-    return data ?? [];
-  } catch { return []; }
-}
-
-export async function fetchInspirationCards(): Promise<InspirationCard[]> {
-  try {
-    const { data, error } = await supabase
-      .from('inspiration_cards')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (error) return [];
-    return data ?? [];
-  } catch { return []; }
-}
-
-export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> {
-  try {
-    const { data, error } = await supabase
-      .from('explore_rows')
-      .select('*, items:explore_items(*)');
-    if (error) return [];
-    return data ?? [];
-  } catch { return []; }
-}
-
-export async function fetchHeroConfig(): Promise<HeroConfig | null> {
-  try {
-    const { data, error } = await supabase
-      .from('hero_config')
-      .select('*, suggestions:hero_suggestions(*)');
-    if (error) return null;
-    return data?.[0] ?? null;
-  } catch { return null; }
-}
+// These tables don't exist in the current schema — return empty to avoid 404s
+export async function fetchMosaicTiles(): Promise<MosaicTile[]> { return []; }
+export async function fetchInspirationCards(): Promise<InspirationCard[]> { return []; }
+export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> { return []; }
+export async function fetchHeroConfig(): Promise<HeroConfig | null> { return null; }
 
 // ─── Itinerary Data ─────────────────────────────────────────
 
@@ -144,26 +140,15 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   if (error) throw error;
   // If schema uses owner_id + JSONB data column, remap; otherwise return as-is
   if (data && 'owner_id' in data && !('user_id' in data)) {
-    const { data: tripData, owner_id, ...rest } = data as Record<string, unknown>;
+    const { data: tripData, owner_id, ...rest } = data as any;
     return { ...rest, ...(typeof tripData === 'object' ? tripData : {}), user_id: owner_id } as Trip;
   }
   return data as Trip;
 }
 
-// These tables don't exist yet — data lives in trip_context JSONB.
-// Pages already fall back to trip_context when these return empty.
-// TODO: Create these tables when we need per-item CRUD (booking, reordering).
-export async function fetchItineraryDays(tripId: string): Promise<ItineraryDayWithActivities[]> {
-  const { data, error } = await supabase
-    .from('itinerary_days').select('*, activities(*)')
-    .eq('trip_id', tripId).order('day_number', { ascending: true });
-  if (error) return []; // Table doesn't exist yet — fall back to trip_context
-  return (data ?? []).map((day: ItineraryDayData) => ({
-    ...day,
-    activities: (day.activities ?? []).sort(
-      (a: Activity, b: Activity) => (a.sort_order ?? 999) - (b.sort_order ?? 999)
-    ),
-  }));
+// itinerary_days table doesn't exist — itinerary lives in trip_context
+export async function fetchItineraryDays(_tripId: string): Promise<ItineraryDayWithActivities[]> {
+  return [];
 }
 
 export async function fetchFlights(tripId: string): Promise<Flight[]> {
@@ -214,15 +199,15 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   if (!user) throw new Error('User not authenticated');
 
   // 2. Create new trip with fork attribution
-  const { forked_from_trip_id, fork_count, is_public, created_at, updated_at, id, ...tripData } = originalTrip as Omit<Trip, 'forked_from_trip_id' | 'fork_count' | 'is_public' | 'created_at' | 'updated_at' | 'id'>;
+  const { forked_from_trip_id, fork_count, created_at, updated_at, id, ...tripData } = originalTrip;
   const newTripData = {
     ...tripData,
     user_id: user.id,
     forked_from_trip_id: tripId,
     title: `${originalTrip.title} (Fork)`,
     is_generated: false,
-    is_shared: false,
     share_link_token: null,
+    visibility: 'private' as const,
   };
 
   const { data: newTrip, error: createError } = await supabase
@@ -245,7 +230,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   // 4. Copy itinerary days, activities, and related data
   if (itineraryDays && itineraryDays.length > 0) {
     for (const day of itineraryDays) {
-      const { id: _dayId, trip_id: _tripId, created_at: _createdAt, ...dayData } = day as Omit<ItineraryDayWithActivities, 'id' | 'trip_id' | 'created_at'>;
+      const { id: dayId, trip_id, created_at, ...dayData } = day;
       const newDayData = { ...dayData, trip_id: newTrip.id };
 
       const { data: newDay, error: dayInsertError } = await supabase
@@ -327,14 +312,10 @@ export async function forkTrip(tripId: string): Promise<Trip> {
     if (hotelInsertError) throw hotelInsertError;
   }
 
-  // 7. Increment fork count on original trip
-  const { error: updateError } = await supabase
-    .from('trips')
-    .update({ fork_count: (originalTrip.fork_count || 0) + 1 })
-    .eq('id', tripId);
-
-  if (updateError) {
-    console.warn('Failed to increment fork count:', updateError);
+  // 7. Increment fork count on original trip via security-definer RPC (bypasses RLS)
+  const { error: rpcError } = await supabase.rpc('increment_fork_count', { trip_id: tripId });
+  if (rpcError) {
+    console.warn('Failed to increment fork count:', rpcError);
   }
 
   return newTrip;
@@ -347,7 +328,7 @@ export async function fetchPublicTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
     .select('*, profiles!trips_user_id_fkey(display_name, avatar_url)')
-    .or('is_public.eq.true,is_shared.eq.true')
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -361,7 +342,7 @@ export async function fetchUserPublicTrips(userId: string): Promise<Trip[]> {
     .from('trips')
     .select('*')
     .eq('user_id', userId)
-    .eq('is_public', true)
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -412,6 +393,42 @@ export async function updateTripDetails(
   tripId: string,
   updates: Partial<Pick<Trip, 'title' | 'destination' | 'start_date' | 'end_date' | 'budget' | 'currency' | 'travelers' | 'status'>>
 ): Promise<void> {
+  // If dates changed, also trim trip_context.itinerary to match new duration
+  if (updates.start_date && updates.end_date) {
+    const newDuration = Math.max(1, Math.ceil(
+      (new Date(updates.end_date).getTime() - new Date(updates.start_date).getTime()) / 86400000
+    ) + 1)
+
+    const { data: existing } = await supabase
+      .from('trips')
+      .select('trip_context')
+      .eq('id', tripId)
+      .single()
+
+    const itinerary = existing?.trip_context?.itinerary as unknown[] | undefined
+    if (itinerary && itinerary.length > newDuration) {
+      const trimmed = itinerary.slice(0, newDuration)
+      const ctx = { ...existing!.trip_context, itinerary: trimmed }
+      const { error } = await supabase.from('trips').update({ ...updates, trip_context: ctx }).eq('id', tripId)
+      if (error) throw error
+      return
+    }
+  }
+
+  // If destination changed, clear stale trip_context so re-enrichment repopulates
+  if (updates.destination) {
+    const { data: existing } = await supabase.from('trips').select('trip_context, destination').eq('id', tripId).single()
+    if (existing && updates.destination !== existing.destination) {
+      const ctx = { ...(existing.trip_context || {}) }
+      for (const key of ['wiki', 'country', 'cuisine', 'phrases', 'cost_of_living', 'safety', 'sunrise', 'aqi', 'timezone_info', 'holidays', 'nearby_cities', 'hero_image_url', 'hero_images', 'explore_items', 'foursquare_venues', 'events', 'news', 'restaurants', 'hotels', 'lat', 'lng', 'quick_facts']) {
+        delete ctx[key]
+      }
+      const { error } = await supabase.from('trips').update({ ...updates, trip_context: ctx }).eq('id', tripId)
+      if (error) throw error
+      return
+    }
+  }
+
   const { error } = await supabase.from('trips').update(updates).eq('id', tripId)
   if (error) throw error
 }
@@ -608,92 +625,81 @@ export async function savePlanToSupabase(
 
   const ext = plan.extracted
   const dest = ext.destination
+  const duration = ext.duration_days || 5
+
+  // Ensure we have concrete dates — default to tomorrow if API returned null
+  if (!ext.dates.start) {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    ext.dates.start = tomorrow.toISOString().split('T')[0]
+  }
+  if (!ext.dates.end) {
+    const end = new Date(ext.dates.start)
+    end.setDate(end.getDate() + duration - 1)
+    ext.dates.end = end.toISOString().split('T')[0]
+  }
+
+  // Cap itinerary to requested duration — API sometimes returns more days than asked
+  const cappedItinerary = plan.itinerary.slice(0, duration)
 
   onProgress?.('Creating trip...', 10)
 
-  // 1. Create trip
-  const tripInsert: Record<string, unknown> = {
-    user_id: user?.id || null,
-    visibility: user?.id ? 'private' : 'public',
-    title: `${dest.city}, ${dest.country}`,
-    destination: `${dest.city}, ${dest.country}`,
-    start_date: ext.dates.start,
-    end_date: ext.dates.end,
-    travelers: ext.travelers.count,
-    budget: ext.daily_estimate_usd * ext.duration_days,
-    currency: 'USD',
-    status: 'planning',
-    is_generated: true,
-    trip_context: {
-      lat: dest.lat,
-      lng: dest.lng,
-      hero_image_url: plan.destination_photo_url || null,
-      hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
-      quick_facts: {
-        budget_level: ext.budget_level,
-        daily_budget: ext.daily_estimate_usd,
-        interests: ext.interests,
-        timezone: plan.timezone,
-      },
-      weather: {
-        forecast: (plan.itinerary as PlannerDay[]).filter((d) => d.weather).map((d) => ({
-          day: new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
-          date: d.date,
-          high: d.weather?.high_c,
-          low: d.weather?.low_c,
-          condition: d.weather?.condition,
-          icon: d.weather?.icon || '☀️',
-        })),
-        current: plan.itinerary[0]?.weather ? {
-          temp: plan.itinerary[0].weather.high_c,
-          conditions: plan.itinerary[0].weather.condition,
-        } : undefined,
-      },
-      // Hotels from planner
-      hotels: ((plan.hotels ?? []) as PlannerHotel[]).slice(0, 5).map((h) => ({
-        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-        name: h.name, image: h.photo_url, rating: h.rating,
-        price: h.price_per_night, stars: h.stars,
-        amenities: h.amenities, address: h.address, link: h.link,
-        lat: h.lat, lng: h.lng,
-      })),
-      all_hotels: (((plan as { data?: { hotels?: PlannerHotel[] } }).data?.hotels ?? (plan.hotels ?? []) as PlannerHotel[])).slice(0, 10).map((h) => ({
-        id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-        name: h.name, image: h.photo_url, rating: h.rating,
-        price: h.price_per_night, stars: h.stars,
-        address: h.address, link: h.link,
-      })),
-      // Flights from planner
-      flights: ((plan.flights ?? []) as PlannerFlight[]).slice(0, 5).map((f) => ({
-        airline: f.airline, price: f.price, departure_time: f.departure_time,
-        arrival_time: f.arrival_time, stops: f.stops, duration: f.duration,
-        origin: f.origin, destination: f.destination, dest_iata: f.dest_iata,
-      })),
-      // Itinerary for the itinerary tab
-      itinerary: (plan.itinerary as PlannerDay[]).map((day) => ({
-        day: day.day, date: day.date, weather: day.weather,
-        slots: (day.slots ?? []).map((slot) => ({
-          poi: slot.poi,
-          start_time: slot.start_time, end_time: slot.end_time,
-          start_time_12h: slot.start_time_12h, end_time_12h: slot.end_time_12h,
-        })),
-      })),
-      // Explore items from itinerary POIs
-      explore_items: (plan.itinerary as PlannerDay[]).flatMap((day) =>
-        (day.slots ?? []).map((slot) => ({
-          id: slot.poi.id, title: slot.poi.name,
-          description: slot.poi.description || slot.poi.category,
-          category: slot.poi.category, image: slot.poi.photo_url,
-          tags: slot.poi.tags,
-        }))
-      ).filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i),
-      lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+  // Build trimmed trip_context — keep payloads small for CloudFront WAF (<8KB)
+  const tripContext: Record<string, unknown> = {
+    lat: dest.lat,
+    lng: dest.lng,
+    hero_image_url: plan.destination_photo_url || null,
+    hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
+    quick_facts: {
+      budget_level: ext.budget_level,
+      daily_budget: ext.daily_estimate_usd,
+      interests: ext.interests,
+      timezone: plan.timezone,
     },
+    lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
+    // Trimmed hotels — name/price/rating/stars only
+    hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
+      id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
+      name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
+    })),
+    // Trimmed flights — airline/price/times only
+    flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
+      airline: f.airline, price: f.price,
+      departure_time: f.departure_time, arrival_time: f.arrival_time,
+    })),
+    // Trimmed itinerary — POI id/name/category/lat/lng + times only (capped to duration)
+    itinerary: cappedItinerary.map((day: any) => ({
+      day: day.day, date: day.date,
+      weather: day.weather ? { high_c: day.weather.high_c, low_c: day.weather.low_c, condition: day.weather.condition } : undefined,
+      slots: (day.slots ?? []).map((slot: any) => ({
+        start_time: slot.start_time, end_time: slot.end_time,
+        poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
+      })),
+    })),
+    // Trimmed explore items — id/name/category only
+    explore_items: cappedItinerary.flatMap((day: any) =>
+      (day.slots ?? []).map((slot: any) => ({
+        id: slot.poi.id, title: slot.poi.name, category: slot.poi.category,
+      }))
+    ).filter((e: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === e.id) === i),
   }
 
   const { data: trip, error: tripErr } = await supabase
     .from('trips')
-    .insert(tripInsert)
+    .insert({
+      user_id: user?.id || null,
+      visibility: user?.id ? 'private' : 'public',
+      title: `${dest.city}, ${dest.country}`,
+      destination: `${dest.city}, ${dest.country}`,
+      start_date: ext.dates.start,
+      end_date: ext.dates.end,
+      travelers: ext.travelers.count,
+      budget: ext.daily_estimate_usd * ext.duration_days,
+      currency: 'USD',
+      status: 'planning',
+      is_generated: true,
+      trip_context: tripContext,
+    })
     .select('id')
     .single()
 
@@ -702,94 +708,18 @@ export async function savePlanToSupabase(
   }
   const tripId = trip.id
 
-  onProgress?.('Building itinerary...', 30)
+  onProgress?.('Saving hotels...', 60)
 
-  // 2. Create itinerary days + activities (skip if table doesn't exist)
-  let itineraryTableExists = true
-  for (let d = 0; d < plan.itinerary.length && itineraryTableExists; d++) {
-    const day = plan.itinerary[d]
-    const pct = 30 + Math.round((d / plan.itinerary.length) * 40)
-    onProgress?.(`Day ${day.day}...`, pct)
-
-    const { data: dayRow, error: dayErr } = await supabase
-      .from('itinerary_days')
-      .insert({ trip_id: tripId, day_number: day.day, date: day.date })
-      .select('id')
-      .single()
-
-    if (dayErr) {
-      // If table doesn't exist (PGRST205/404), stop trying
-      if (dayErr.code === 'PGRST205' || dayErr.code === '42P01' || dayErr.message?.includes('Could not find') || dayErr.message?.includes('does not exist')) {
-        itineraryTableExists = false
-        break
-      }
-      console.error('Failed to create itinerary day:', dayErr)
-      continue
-    }
-
-    if (day.slots.length > 0) {
-      const activities = day.slots.map((slot, i) => {
-        const poi = slot.poi
-        const catMap: Record<string, string> = {
-          restaurant: 'food', cafe: 'food', bar: 'food',
-          park: 'nature', beach: 'nature', garden: 'nature', hiking: 'nature',
-          hotel: 'hotel', hostel: 'hotel', airport: 'airport',
-        }
-        return {
-          trip_id: tripId,
-          itinerary_day_id: dayRow.id,
-          user_id: user?.id || null,
-          activity_name: poi.name,
-          activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
-          starting_date: day.date,
-          ending_date: day.date,
-          starting_time: slot.start_time,
-          ending_time: slot.end_time,
-          latitude: poi.lat,
-          longitude: poi.lng,
-          sort_order: i,
-          activity_data: {
-            category: poi.category,
-            subcategory: poi.subcategory,
-            location_name: poi.name,
-            image_url: poi.photo_url || null,
-            rating: poi.rating || null,
-            description: poi.description || null,
-            tags: poi.tags,
-            visit_duration_min: poi.visit_duration_min,
-          },
-        }
-      })
-
-      const { error: actErr } = await supabase.from('activities').insert(activities)
-      if (actErr) console.error('Failed to save activities for day', day.day, actErr)
-    }
-  }
-
-  onProgress?.('Saving hotels...', 75)
-
-  // 3. Save hotels (best effort)
+  // Save hotels to hotels table (best effort, non-blocking)
   if (plan.hotels.length > 0) {
-    const hotelRows = plan.hotels.map(h => {
-      // Backend may return extra fields beyond the TS interface (lat, lng, amenities, link, etc.)
+    const hotelRows = plan.hotels.slice(0, 5).map(h => {
       const extra = h as Record<string, unknown>
       return {
         trip_id: tripId,
         data: {
-          name: h.name,
-          address: (extra.address as string) || null,
-          latitude: (extra.lat as number) || null,
-          longitude: (extra.lng as number) || null,
-          price_per_night: h.price_per_night,
-          total_price: (extra.total_price as number) || (h.price_per_night ? h.price_per_night * ext.duration_days : null),
-          currency: h.currency,
-          rating: h.rating || null,
-          star_rating: h.stars || null,
-          image_url: h.photo_url || null,
-          check_in: ext.dates.start,
-          check_out: ext.dates.end,
-          booking_ref: null,
-          offer_id: null,
+          name: h.name, price_per_night: h.price_per_night, currency: h.currency,
+          rating: h.rating || null, star_rating: h.stars || null,
+          image_url: h.photo_url || null, check_in: ext.dates.start, check_out: ext.dates.end,
           amenities: (extra.amenities as string[]) || [],
           booking_url: h.booking_url || (extra.link as string) || null,
         },
@@ -799,53 +729,70 @@ export async function savePlanToSupabase(
     if (hotelErr) console.error('Failed to save hotels:', hotelErr)
   }
 
-  onProgress?.('Saving flights...', 85)
+  onProgress?.('Saving flights...', 80)
 
-  // 4. Save flights (best effort)
+  // Save flights to flights table (best effort, non-blocking)
   if (plan.flights.length > 0) {
-    // City-to-IATA lookup for destination airport
-    const CITY_AIRPORTS: Record<string, string> = {
-      'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-      'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-      'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-      'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
-      'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
-      'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
-      'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
-      'Milan': 'MXP', 'Vienna': 'VIE', 'Zurich': 'ZRH', 'Dublin': 'DUB',
-      'Edinburgh': 'EDI', 'Florence': 'FLR', 'Venice': 'VCE', 'Nice': 'NCE',
-      'Cancun': 'CUN', 'Havana': 'HAV', 'Lima': 'LIM', 'Bogota': 'BOG',
-      'Buenos Aires': 'EZE', 'Santiago': 'SCL', 'Reykjavik': 'KEF',
-      'Oslo': 'OSL', 'Stockholm': 'ARN', 'Copenhagen': 'CPH', 'Helsinki': 'HEL',
-      'Warsaw': 'WAW', 'Budapest': 'BUD', 'Bucharest': 'OTP',
-      'Kuala Lumpur': 'KUL', 'Jakarta': 'CGK', 'Manila': 'MNL',
-      'Taipei': 'TPE', 'Osaka': 'KIX', 'Beijing': 'PEK', 'Shanghai': 'PVG',
-      'Johannesburg': 'JNB', 'Casablanca': 'CMN', 'Doha': 'DOH',
-      'Abu Dhabi': 'AUH', 'Muscat': 'MCT', 'Riyadh': 'RUH',
-    }
-    const destCity = dest.city
-    const destIata = CITY_AIRPORTS[destCity] || ''
-
-    const flightRows = plan.flights.map((f) => ({
+    const flightRows = plan.flights.slice(0, 5).map((f) => ({
       trip_id: tripId,
       data: {
-        airline: f.airline,
-        flight_number: null,
-        origin_iata: '',
-        origin_name: null,
-        dest_iata: destIata,
-        dest_name: destCity,
-        departure_at: f.departure_time,
-        arrival_at: f.arrival_time,
-        price: f.price,
-        currency: f.currency,
-        cabin_class: null,
-        booking_ref: null,
-        offer_id: null,
+        airline: f.airline, departure_at: f.departure_time, arrival_at: f.arrival_time,
+        price: f.price, currency: f.currency,
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
     if (flightErr) console.error('Failed to save flights:', flightErr)
+  }
+
+  // Save itinerary activities to activity table (powers the calendar)
+  onProgress?.('Saving activities...', 90)
+  const activityRows: Record<string, unknown>[] = []
+  let sortOrder = 0
+  for (const day of cappedItinerary) {
+    const dayDate = day.date || ext.dates.start
+    for (const slot of day.slots ?? []) {
+      const poi = slot.poi ?? {}
+      activityRows.push({
+        trip_id: tripId,
+        user_id: user?.id || null,
+        activity_name: poi.name || 'Activity',
+        activity_type: poi.category || 'sightseeing',
+        starting_date: dayDate,
+        ending_date: dayDate,
+        starting_time: slot.start_time || '09:00',
+        ending_time: slot.end_time || '11:00',
+        latitude: poi.lat || null,
+        longitude: poi.lng || null,
+        notes: poi.description || null,
+        sort_order: sortOrder++,
+        activity_data: {
+          category: poi.category,
+          location_name: poi.name,
+          image_url: poi.photo_url || null,
+          rating: poi.rating || null,
+          tags: poi.tags || [],
+        },
+      })
+    }
+  }
+  if (activityRows.length > 0) {
+    const { error: actErr } = await supabase.from('activity').insert(activityRows)
+    if (actErr) console.error('Failed to save activities:', actErr)
+  }
+
+  // Fire enrichment in the background (fills wiki, news, phrases, cuisine, cost_of_living, etc.)
+  onProgress?.('Enriching trip details...', 95)
+  try {
+    const enrichBase = process.env.EXPO_PUBLIC_WEB_API_URL || ''
+    const enrichRes = await fetch(`${enrichBase}/api/trips/enrich`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId }),
+    })
+    if (!enrichRes.ok) console.error('Enrichment failed:', enrichRes.status)
+  } catch (e) {
+    // Non-blocking — overview page will auto-enrich on first visit as fallback
+    console.error('Enrichment error:', e)
   }
 
   onProgress?.('Done!', 100)
