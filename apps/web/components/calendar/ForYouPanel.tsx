@@ -137,11 +137,11 @@ export function ForYouPanel({
         ))}
       </div>
 
-      {/* Section label */}
-      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5">
+      {/* Section label - show just the city name, not full location */}
+      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5 truncate">
         {searchQuery.trim()
           ? `Results for '${searchQuery}'`
-          : `Recommended for ${destination}`}
+          : `Recommended for ${destination.split(',')[0].trim()}`}
       </div>
 
       {/* Content area */}

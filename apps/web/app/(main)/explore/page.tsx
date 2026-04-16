@@ -53,10 +53,10 @@ function PublicTripCard({ trip }: PublicTripCardProps) {
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={trip.trip_context.hero_image_url.includes('googleusercontent.com')
-                ? trip.trip_context.hero_image_url.replace(/=w\d+-h\d+[^&]*/, '=w600-h400-k-no')
+                ? trip.trip_context.hero_image_url.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no')
                 : trip.trip_context.hero_image_url}
               alt={trip.destination}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
