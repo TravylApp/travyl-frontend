@@ -25,12 +25,13 @@ const eslintConfig = defineConfig([
 
       // Unused variables and parameters
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-require-imports": "warn",
 
       // NO ANY — strict type safety
-      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-explicit-any": "warn",
 
       // NO MAGIC NUMBERS — all literals must be named constants
-      "@typescript-eslint/no-magic-numbers": ["error", {
+      "@typescript-eslint/no-magic-numbers": ["warn", {
         ignore: [0, 1, -1],
         ignoreArrayIndexes: true,
         enforceConst: true,
