@@ -209,7 +209,7 @@ export default function ProfilePage() {
     }
 
     loadTrips();
-  }, []);
+  }, [authLoading, user, session]);
 
   const toggleFavorite = (id: string) => {
     setFavoritedNames((prev) => {

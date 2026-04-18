@@ -19,7 +19,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     if (!trip) return { title: 'Trip' }
 
     const dest = trip.destination || 'Trip'
-    const title = trip.title || `Trip to ${dest}`
+    const rawTitle = trip.title || `Trip to ${dest}`
+    // Strip any existing "— Travyl" suffix to avoid double: "X — Travyl | Travyl"
+    const title = rawTitle.replace(/\s*[—–-]\s*Travyl$/i, '')
     const dates = trip.start_date && trip.end_date
       ? `${new Date(trip.start_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(trip.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
       : ''

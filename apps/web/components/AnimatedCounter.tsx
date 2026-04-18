@@ -9,8 +9,6 @@ export function AnimatedCounter({ value, suffix, decimals = 0 }: { value: number
 
   useEffect(() => {
     if (!ref.current || hasAnimated) return;
-    // Skip if value hasn't loaded yet (still 0)
-    if (value === 0) return;
 
     // Use IntersectionObserver to start animation when visible
     const el = ref.current;

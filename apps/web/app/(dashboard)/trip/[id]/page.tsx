@@ -1,6 +1,14 @@
 'use client';
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
+
+/** Safely format a date string — returns '' if invalid */
+function safeDate(d: string | null | undefined): string {
+  if (!d) return '';
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? d + 'T12:00:00' : d);
+  if (isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
 import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -270,7 +278,10 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
           setActiveIdx(Math.min(idx, events.length - 1));
         }}>
         {events.map((item, i) => {
-          const bgImage = item.image || (heroImages?.[i % (heroImages?.length || 1)]);
+          const rawImg = item.image || '';
+          // Skip low-res Google proxy thumbnails — use hero images as fallback instead
+          const isLowRes = rawImg.includes('encrypted-tbn') || rawImg.includes('news.google.com/api') || (rawImg.includes('googleusercontent') && rawImg.includes('s100'));
+          const bgImage = (rawImg && !isLowRes ? upscaleGoogleImage(rawImg) : null) || (heroImages?.[i % (heroImages?.length || 1)]);
           return (
             <div key={item.id}
               className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start"
@@ -634,7 +645,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       if (!Array.isArray(evts)) return [];
       return evts.map((e: any) => ({
         id: e.id, title: e.name || e.title,
-        description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+        description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
         category: e.category, image: e.photo_url || e.image || '',
       }));
     },
@@ -702,7 +713,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const exploreItems = (liveExploreItems?.length ? liveExploreItems : trip?.trip_context?.explore_items?.map((e: any) => ({ ...e, image: hiRes(e.image) }))) || [];
   const events = (liveEvents?.length ? liveEvents : trip?.trip_context?.events?.map((e: any) => ({
     id: e.id, title: e.title,
-    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category, image: hiRes(e.image),
   }))) || [];
 
@@ -734,7 +745,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const tier1EventsMapped = (tier1Events || []).map((e) => ({
     id: e.id,
     title: e.name,
-    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category || 'Event',
     image: e.photo_url || '',
   }));
