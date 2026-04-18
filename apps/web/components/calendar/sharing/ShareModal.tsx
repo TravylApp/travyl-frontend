@@ -10,8 +10,6 @@ import { CollaboratorList } from './CollaboratorList'
 import { LinkSharingSection } from './LinkSharingSection'
 import { PublicSharingSection } from './PublicSharingSection'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
-
 interface ShareModalProps {
   trip: Trip
   isOpen: boolean
@@ -49,12 +47,10 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
     setInviteError(null)
     setInviteLink(null)
     try {
-      if (!API_URL) throw new Error('Invite service not configured (missing NEXT_PUBLIC_RECOMMENDATION_API_URL)')
-
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      const res = await fetch(`${API_URL}/invite`, {
+      const res = await fetch('/api/calendar/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

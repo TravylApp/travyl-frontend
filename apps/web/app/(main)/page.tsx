@@ -303,7 +303,7 @@ export default function Home() {
         setShowQuestions(true);
       }
     }
-  }, [isClarifying, planner]);
+  }, [isClarifying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cycling placeholders live in isolated memo components above
   // to avoid re-rendering the entire page every ~25ms
@@ -492,7 +492,7 @@ export default function Home() {
 
   // Show takeoff when planning starts
   useEffect(() => {
-    if (planner.state.phase === 'planning' && !showTakeoff) {
+    if ((planner.state.phase === 'extracting' || planner.state.phase === 'planning') && !showTakeoff) {
       setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       setLoadingError(null);
