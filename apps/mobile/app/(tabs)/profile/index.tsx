@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, Image, TextInput, Dimensions } from 
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
-  useAuthStore, useProfile, Navy,
+  useAuthStore, useProfile, Navy, TextStyles,
   PROFILE_FAVORITES, TRAVEL_BOARDS, BOARD_FILTER_TAGS, CATEGORY_TAGS,
 } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -19,15 +19,15 @@ function BoardCard({ board }: { board: typeof TRAVEL_BOARDS[number] }) {
       )}
       <View style={{ padding: 10, gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{board.title}</Text>
+          <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>{board.title}</Text>
           {board.badge && (
             <View style={{ backgroundColor: board.badgeColor ?? '#f59e0b', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-              <Text style={{ fontSize: 9, fontWeight: '600', color: '#fff' }}>{board.badge}</Text>
+              <Text style={{ ...TextStyles.xs, color: '#fff' }}>{board.badge}</Text>
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={2}>{board.subtitle}</Text>
-        <Text style={{ fontSize: 10, color: colors.textTertiary }}>{board.saves} saves</Text>
+        <Text style={{ ...TextStyles.caption, color: colors.textSecondary }} numberOfLines={2}>{board.subtitle}</Text>
+        <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{board.saves} saves</Text>
       </View>
     </View>
   );
@@ -39,12 +39,12 @@ function FavoriteCard({ fav }: { fav: typeof PROFILE_FAVORITES[number] }) {
     <View style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border, marginBottom: 10 }}>
       <Image source={{ uri: fav.image, headers: { Referer: '' } }} style={{ width: '100%', height: 110 }} resizeMode="cover" />
       <View style={{ padding: 8, gap: 2 }}>
-        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }} numberOfLines={1}>{fav.name}</Text>
-        <Text style={{ fontSize: 10, color: colors.textSecondary }}>{fav.country}</Text>
+        <Text style={{ ...TextStyles.bodyEm, color: colors.text }} numberOfLines={1}>{fav.name}</Text>
+        <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{fav.country}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
           <FontAwesome name="star" size={9} color="#f59e0b" />
-          <Text style={{ fontSize: 10, fontWeight: '600', color: colors.text }}>{fav.rating}</Text>
-          <Text style={{ fontSize: 9, color: colors.textTertiary, marginLeft: 4 }}>{fav.category}</Text>
+          <Text style={{ ...TextStyles.smEm, color: colors.text }}>{fav.rating}</Text>
+          <Text style={{ ...TextStyles.xs, color: colors.textTertiary, marginLeft: 4 }}>{fav.category}</Text>
         </View>
       </View>
     </View>
@@ -89,7 +89,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <Text style={{ fontSize: 13, color: colors.textSecondary }}>Loading...</Text>
+        <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary }}>Loading...</Text>
       </View>
     );
   }
@@ -98,15 +98,15 @@ export default function ProfileScreen() {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, paddingHorizontal: 32 }}>
         <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.skeleton, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-          <Text style={{ fontSize: 28, color: colors.textTertiary }}>?</Text>
+          <Text style={{ ...TextStyles.headline, color: colors.textTertiary }}>?</Text>
         </View>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Sign in to view your profile</Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 24 }}>Create an account to save trips, track favorites, and sync across devices.</Text>
+        <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 6 }}>Sign in to view your profile</Text>
+        <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginBottom: 24 }}>Create an account to save trips, track favorites, and sync across devices.</Text>
         <Pressable
           onPress={() => router.push('/login')}
           style={{ height: 44, width: '100%', borderRadius: 12, backgroundColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Sign In</Text>
+          <Text style={{ ...TextStyles.button, color: '#fff' }}>Sign In</Text>
         </Pressable>
       </View>
     );
@@ -124,7 +124,7 @@ export default function ProfileScreen() {
           style={{ position: 'absolute', top: 48, right: 16, flexDirection: 'row', alignItems: 'center', gap: 4 }}
         >
           <FontAwesome name="cog" size={13} color="rgba(255,255,255,0.4)" />
-          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Settings</Text>
+          <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.4)' }}>Settings</Text>
         </Pressable>
 
         {/* Avatar */}
@@ -137,7 +137,7 @@ export default function ProfileScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+              <Text style={{ ...TextStyles.headline, color: '#fff' }}>{initials}</Text>
             )}
           </View>
           <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: '#3b82f6', borderWidth: 2, borderColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
@@ -145,8 +145,8 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <Text style={{ fontSize: 18, color: '#fff', fontWeight: '600' }}>{displayName}</Text>
-        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 3, textAlign: 'center', paddingHorizontal: 40 }}>
+        <Text style={{ ...TextStyles.title, color: '#fff' }}>{displayName}</Text>
+        <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.5)', marginTop: 3, textAlign: 'center', paddingHorizontal: 40 }}>
           Travel enthusiast exploring the world one destination at a time.
         </Text>
 
@@ -159,8 +159,8 @@ export default function ProfileScreen() {
             { value: String(TRAVEL_BOARDS.length), label: 'Boards' },
           ].map((stat) => (
             <View key={stat.label} style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 16, color: '#fff', fontWeight: '600' }}>{stat.value}</Text>
-              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: 1 }}>{stat.label}</Text>
+              <Text style={{ ...TextStyles.subhead, color: '#fff' }}>{stat.value}</Text>
+              <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.35)', letterSpacing: 1 }}>{stat.label}</Text>
             </View>
           ))}
         </View>
@@ -172,7 +172,7 @@ export default function ProfileScreen() {
           onPress={() => setProfileTab('boards')}
           style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: profileTab === 'boards' ? Navy.DEFAULT : 'transparent' }}
         >
-          <Text style={{ fontSize: 12, color: profileTab === 'boards' ? Navy.DEFAULT : colors.textTertiary, fontWeight: profileTab === 'boards' ? '600' : '400' }}>
+          <Text style={profileTab === 'boards' ? { ...TextStyles.bodyEm, color: Navy.DEFAULT } : { ...TextStyles.body, color: colors.textTertiary }}>
             Travel Boards ({TRAVEL_BOARDS.length})
           </Text>
         </Pressable>
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <FontAwesome name="heart" size={10} color={profileTab === 'favorites' ? Navy.DEFAULT : colors.textTertiary} />
-            <Text style={{ fontSize: 12, color: profileTab === 'favorites' ? Navy.DEFAULT : colors.textTertiary, fontWeight: profileTab === 'favorites' ? '600' : '400' }}>
+            <Text style={profileTab === 'favorites' ? { ...TextStyles.bodyEm, color: Navy.DEFAULT } : { ...TextStyles.body, color: colors.textTertiary }}>
               Favorites ({PROFILE_FAVORITES.length})
             </Text>
           </View>
@@ -214,7 +214,7 @@ export default function ProfileScreen() {
                     borderColor: favFilter === tag ? Navy.DEFAULT : colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 10, color: favFilter === tag ? '#fff' : colors.textSecondary }}>{tag}</Text>
+                  <Text style={{ ...TextStyles.sm, color: favFilter === tag ? '#fff' : colors.textSecondary }}>{tag}</Text>
                 </Pressable>
               ))}
               {CATEGORY_TAGS.map((tag) => (
@@ -228,7 +228,7 @@ export default function ProfileScreen() {
                     borderColor: favFilter === tag ? Navy.DEFAULT : colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 10, color: favFilter === tag ? '#fff' : colors.textSecondary }}>{tag}</Text>
+                  <Text style={{ ...TextStyles.sm, color: favFilter === tag ? '#fff' : colors.textSecondary }}>{tag}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -241,9 +241,9 @@ export default function ProfileScreen() {
                 placeholderTextColor={colors.textTertiary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 8, fontSize: 12, color: colors.text }}
+                style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 8, ...TextStyles.body, color: colors.text }}
               />
-              <Text style={{ fontSize: 10, color: colors.textTertiary }}>{filteredFavorites.length} results</Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{filteredFavorites.length} results</Text>
             </View>
 
             {/* Favorites grid */}
@@ -264,7 +264,7 @@ export default function ProfileScreen() {
           onPress={() => signOut()}
           style={{ height: 44, borderRadius: 12, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ fontSize: 14, fontWeight: '500', color: '#dc2626' }}>Sign Out</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: '#dc2626' }}>Sign Out</Text>
         </Pressable>
       </View>
     </ScrollView>

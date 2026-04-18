@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
-import { getSupabase } from '@/lib/api-utils'
+import { NextRequest, NextResponse } from 'next/server'
+import { getSupabase, rateLimit } from '@/lib/api-utils'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const blocked = rateLimit(req, 'stats', 30, 60_000)
+  if (blocked) return blocked
   try {
     const sb = getSupabase()
 

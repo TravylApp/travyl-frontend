@@ -1,32 +1,73 @@
+/**
+ * @module overlapLayout
+ * Calendar overlap layout algorithm for the day-column calendar view.
+ * When multiple activities overlap in time, this module assigns each a column
+ * index and computes how many columns each event can span — ensuring visually
+ * distinct, non-overlapping calendar blocks.
+ *
+ * Used by the web and mobile CalendarDay components to render concurrent events
+ * side-by-side. Events beyond MAX_VISIBLE_COLUMNS (3) are hidden (column = -1).
+ */
+
+/**
+ * Layout metadata assigned to each calendar activity by {@link computeOverlapLayout}.
+ */
 export interface OverlapLayoutItem {
-  column: number       // 0-based column index, or -1 (hidden when > MAX_VISIBLE_COLUMNS)
-  totalColumns: number // total columns in this overlap group
-  columnSpan: number   // how many columns this event spans (1 to totalColumns - column)
+  /** 0-based column index within the overlap group. -1 means the event is hidden (exceeds MAX_VISIBLE_COLUMNS). */
+  column: number
+  /** Total number of columns in this overlap group */
+  totalColumns: number
+  /** How many columns this event spans rightward (1 = no spanning, up to totalColumns − column) */
+  columnSpan: number
 }
 
+/** Maximum number of side-by-side columns rendered; events beyond this are hidden */
 const MAX_VISIBLE_COLUMNS = 3
 
+/**
+ * Minimal shape required by the layout algorithm — just the fields needed
+ * to detect overlaps and assign columns.
+ */
 interface LayoutInput {
+  /** Stable identifier (used as the Map key in the result) */
   id: string
+  /** Start time in fractional hours */
   startHour: number
+  /** Duration in fractional hours */
   duration: number
 }
 
+/**
+ * Returns true if two activities overlap in time (half-open intervals).
+ */
 function overlaps(a: LayoutInput, b: LayoutInput): boolean {
   return a.startHour < b.startHour + b.duration && b.startHour < a.startHour + a.duration
 }
 
 /**
- * Bin-packing overlap layout.
+ * Bin-packing overlap layout algorithm.
  *
- * 1. Sort by startHour, then by id for stability.
- * 2. First-fit bin-packing: each activity gets the first column whose last
- *    event has ended.
- * 3. Per-event totalCols: for each event, find the max column index among
- *    all directly overlapping events.
- * 4. Propagate totalCols across overlap pairs so transitively connected
- *    events share the same value.
- * 5. Column span: each event expands rightward into adjacent empty columns.
+ * Steps:
+ * 1. Sort activities by startHour (then duration desc for stability).
+ * 2. First-fit bin-packing: assign each activity to the first column whose
+ *    last event has ended.
+ * 3. Per-event totalCols: find the max column index among all directly
+ *    overlapping events (converted to a 1-based count).
+ * 4. Propagate totalCols across overlap pairs in two passes so transitively
+ *    connected events share the same value.
+ * 5. Compute column span: each event expands rightward into adjacent columns
+ *    that have no other overlapping event.
+ * 6. Events assigned to column ≥ MAX_VISIBLE_COLUMNS are marked hidden (column = -1).
+ *
+ * @param activities - Array of activities to lay out; must have id, startHour, duration
+ * @returns Map from activity id to its {@link OverlapLayoutItem} layout metadata
+ * @example
+ * const layout = computeOverlapLayout([
+ *   { id: 'a', startHour: 9, duration: 2 },
+ *   { id: 'b', startHour: 10, duration: 1 },
+ * ])
+ * layout.get('a') // → { column: 0, totalColumns: 2, columnSpan: 1 }
+ * layout.get('b') // → { column: 1, totalColumns: 2, columnSpan: 1 }
  */
 export function computeOverlapLayout(
   activities: LayoutInput[],

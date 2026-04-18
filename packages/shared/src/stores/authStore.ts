@@ -1,5 +1,23 @@
 'use client';
 
+/**
+ * @module authStore
+ * Zustand store managing Supabase authentication state across web and mobile.
+ * Wraps Supabase Auth — tracks the current user, session, and loading state.
+ *
+ * State shape:
+ * - `user`    — Supabase User object or null
+ * - `session` — Supabase Session object or null
+ * - `loading` — true while fetching the initial session
+ *
+ * Actions:
+ * - `initialize()` — subscribes to auth state changes; must be called once at app root
+ * - `signIn(email, password)` — email/password login
+ * - `signUp(email, password, name?)` — account creation with optional display name
+ * - `signInWithOAuth(provider, redirectTo?)` — OAuth login (Google, Apple, Facebook)
+ * - `signOut()` — signs out and clears state
+ */
+
 import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 import type { User, Session } from '@supabase/supabase-js';

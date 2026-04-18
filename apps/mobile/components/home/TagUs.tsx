@@ -1,7 +1,7 @@
 import { View, Text, Pressable, Linking } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { SOCIAL_HASHTAGS, SOCIAL_LINKS, CATEGORY_GRADIENT_CYCLE, useTagUsDestinations } from '@travyl/shared';
+import { SOCIAL_HASHTAGS, SOCIAL_LINKS, CATEGORY_GRADIENT_CYCLE, useTagUsDestinations, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
 const PLATFORM_ICONS: Record<string, keyof typeof FontAwesome.glyphMap> = {
@@ -17,8 +17,7 @@ export function TagUs() {
       <Animated.Text
         entering={FadeIn.duration(400)}
         style={{
-          fontSize: 20,
-          fontWeight: '700',
+          ...TextStyles.title,
           color: colors.text,
           textAlign: 'center',
           marginBottom: 24,
@@ -47,15 +46,14 @@ export function TagUs() {
             <Text
               style={{
                 color: '#fff',
-                fontWeight: '600',
-                fontSize: 10,
+                ...TextStyles.smEm,
                 marginTop: 6,
                 textAlign: 'center',
               }}
             >
               {destinations[i]}
             </Text>
-            <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+            <Text style={{ ...TextStyles.micro, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
               @travyl
             </Text>
           </Animated.View>

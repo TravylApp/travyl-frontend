@@ -12,16 +12,18 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, TextStyles, FontSize, upscaleGoogleImage, mapCategory, type PlaceItem } from '@travyl/shared';
+import { Navy, TextStyles, FontSize, upscaleGoogleImage, mapCategory, getWebApiBase, type PlaceItem } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Use web app as API proxy — it has all the API keys (Foursquare, etc.)
-const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.gotravyl.com';
+const WEB_API = getWebApiBase();
 
 
 // Map backend response to PlaceItem format
@@ -314,6 +316,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
 
 export default function FavoritesScreen() {
   const colors = useThemeColors();
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
@@ -746,7 +749,7 @@ export default function FavoritesScreen() {
                     borderTopWidth: 1, borderTopColor: colors.border,
                     paddingTop: 16, paddingBottom: 12, marginTop: 8,
                   }}>
-                    <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>
+                    <Text style={{ ...TextStyles.title, color: Navy.DEFAULT }}>
                       {collection.label}
                     </Text>
                     <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
@@ -789,6 +792,8 @@ export default function FavoritesScreen() {
                 places={filteredPlaces}
                 favorites={favorites}
                 onToggleFav={toggleFavorite}
+                onAddToTrip={addToTrip}
+                tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
                 cardWidth={STACK_CARD_W}
                 cardHeight={STACK_CARD_H}
               />
@@ -821,6 +826,8 @@ export default function FavoritesScreen() {
           initialIndex={showcaseIdx}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setShowcaseIdx(-1)}
         />
@@ -847,6 +854,7 @@ export default function FavoritesScreen() {
           )}
         />
       )}
+
     </View>
   );
 }

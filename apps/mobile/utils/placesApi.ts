@@ -1,8 +1,8 @@
-import { mapBackendToPlaceItem, type PlaceItem } from '@travyl/shared';
+import { mapBackendToPlaceItem, getWebApiBase, type PlaceItem } from '@travyl/shared';
 
 export { mapBackendToPlaceItem };
 
-const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+const WEB_API = getWebApiBase();
 
 /** Fetch places from the backend /api/places/nearby endpoint and return PlaceItems */
 export async function fetchPlacesNearby(

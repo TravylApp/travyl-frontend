@@ -1,3 +1,16 @@
+/**
+ * @module usePackingSuggestions
+ * Provides AI-generated packing suggestions for a trip. On first visit with an
+ * empty packing list, automatically tries to generate suggestions via the backend
+ * recommendation API (requires auth), falling back to local catalog-based suggestions
+ * when the user is unauthenticated or the API URL is not configured.
+ *
+ * Suggestions can be accepted (which calls `addItem`) or dismissed, both with
+ * optimistic UI updates. The `acceptAll` helper accepts the full pending list in sequence.
+ *
+ * Used by the web and mobile Packing screens to populate the suggestions carousel.
+ */
+
 'use client';
 
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
@@ -8,6 +21,13 @@ import { generatePackingSuggestions } from '../services/packingSuggestions'
 import { useTrip } from './useTrip'
 import type { PackingSuggestion, DbPackingItem } from '../types'
 
+/**
+ * Generates catalog-based packing suggestions locally without a network call.
+ * Used as a fallback when the user is unauthenticated or the recommendation
+ * API URL is not configured. Derives duration and weather context from the trip row.
+ * @param trip - The full trip row (used for destination, dates, and weather context)
+ * @returns Array of `PackingSuggestion` objects with synthetic local IDs (`local-N`)
+ */
 // Generate sensible default packing suggestions based on trip data
 // Uses the smart catalog-based generator from packingSuggestions.ts
 function generateLocalSuggestions(trip: any): PackingSuggestion[] {
@@ -38,6 +58,36 @@ function generateLocalSuggestions(trip: any): PackingSuggestion[] {
   }))
 }
 
+/**
+ * Manages the packing suggestions flow for a trip.
+ *
+ * On mount (when the packing list is empty), automatically attempts to generate
+ * suggestions. Authenticated users get backend AI suggestions; unauthenticated
+ * users get local catalog suggestions derived from trip data.
+ *
+ * DB suggestions (fetched via React Query) take priority over local suggestions.
+ * Both types support the same accept/dismiss/acceptAll interface.
+ *
+ * @param tripId - UUID of the trip, or undefined while loading
+ * @param items - Current packing list items (used to skip auto-generation when non-empty)
+ * @param addItem - Callback to add an item to the packing list (called on accept)
+ * @returns Object with:
+ *   - `suggestions` — combined suggestion list (DB or local)
+ *   - `suggestionsByCategory` — suggestions grouped by category string
+ *   - `isLoading` — true while the suggestions query is pending
+ *   - `isGenerating` — true while a backend generation request is in flight
+ *   - `hasGenerated` — whether generation has been attempted this session
+ *   - `generateSuggestions` — manually trigger a (re-)generation
+ *   - `acceptSuggestion(id)` — add the item to the packing list and remove the suggestion
+ *   - `dismissSuggestion(id)` — remove the suggestion without adding the item
+ *   - `acceptAll` — accept all pending suggestions in sequence
+ *
+ * @example
+ * ```tsx
+ * const { suggestions, acceptSuggestion, dismissSuggestion, acceptAll } =
+ *   usePackingSuggestions(tripId, items, addItem);
+ * ```
+ */
 export function usePackingSuggestions(
   tripId: string | undefined,
   items: DbPackingItem[],
@@ -67,6 +117,12 @@ export function usePackingSuggestions(
     return grouped
   }, [suggestions])
 
+  /**
+   * Calls the backend recommendation API to generate or refresh packing suggestions.
+   * Requires a valid Supabase auth token; silently returns if unauthenticated
+   * or if `NEXT_PUBLIC_RECOMMENDATION_API_URL` is not configured.
+   * @param refresh - When true, instructs the backend to discard cached suggestions and regenerate
+   */
   const generateSuggestions = useCallback(async (refresh = false) => {
     if (!tripId || isGenerating) return
     setIsGenerating(true)

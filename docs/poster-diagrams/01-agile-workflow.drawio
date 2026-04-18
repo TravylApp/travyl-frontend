@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-16" type="device">
+  <diagram name="Agile Workflow" id="agile">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Agile Development Process" style="text;html=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;fontColor=#003594;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="400" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Sprint Cycle - Central Circle -->
+        <mxCell id="sprintCircle" value="" style="fontFamily=Calibri;ellipse;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=3;opacity=90;" vertex="1" parent="1">
+          <mxGeometry x="430" y="120" width="240" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="sprintLabel" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;2-Week&lt;br&gt;Sprint Cycle&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="200" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Phase 1: Planning -->
+        <mxCell id="plan" value="&lt;b&gt;Plan&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Linear Issues&lt;br&gt;Sprint Backlog&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=30;" vertex="1" parent="1">
+          <mxGeometry x="495" y="55" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="planArrow" style="fontFamily=Calibri;edgeStyle=orthogonalEdgeStyle;curved=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="plan" target="develop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Phase 2: Develop -->
+        <mxCell id="develop" value="&lt;b&gt;Develop&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Feature Branches&lt;br&gt;AI Pair Programming&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=30;" vertex="1" parent="1">
+          <mxGeometry x="700" y="160" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="devArrow" style="fontFamily=Calibri;edgeStyle=orthogonalEdgeStyle;curved=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="develop" target="test">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Phase 3: Test -->
+        <mxCell id="test" value="&lt;b&gt;Test&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Playwright E2E&lt;br&gt;Maestro Mobile&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=30;" vertex="1" parent="1">
+          <mxGeometry x="495" y="370" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="testArrow" style="fontFamily=Calibri;edgeStyle=orthogonalEdgeStyle;curved=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="test" target="review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Phase 4: Review -->
+        <mxCell id="review" value="&lt;b&gt;Review&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Code Review&lt;br&gt;PR to develop&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=30;" vertex="1" parent="1">
+          <mxGeometry x="280" y="160" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="reviewArrow" style="fontFamily=Calibri;edgeStyle=orthogonalEdgeStyle;curved=1;strokeColor=#000000;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="review" target="plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Left side stats -->
+        <mxCell id="statsBox" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="20" y="70" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="statsTitle" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Project Metrics&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="78" width="160" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="stat1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;80+&lt;/b&gt; Linear issues tracked&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="35" y="110" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="stat2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;200+&lt;/b&gt; commits across team&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="35" y="135" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="stat3" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;3&lt;/b&gt; platforms (Web, iOS, Android)&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="35" y="160" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="stat4" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;1&lt;/b&gt; shared package (monorepo)&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="35" y="185" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="stat5" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;15+&lt;/b&gt; external API integrations&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="35" y="210" width="200" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- Right side - tools used -->
+        <mxCell id="toolsBox" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="860" y="70" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="toolsTitle" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Agile Tooling&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="890" y="78" width="160" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="tool1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Linear&lt;/b&gt; — Issue tracking&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="875" y="110" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tool2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;GitHub&lt;/b&gt; — Version control &amp; PRs&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="875" y="135" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tool3" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Playwright&lt;/b&gt; — E2E testing&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="875" y="160" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tool4" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Claude Code&lt;/b&gt; — AI pair programming&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="875" y="185" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tool5" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;AWS Amplify&lt;/b&gt; — CI/CD deploy&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="875" y="210" width="200" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- Bottom bar -->
+        <mxCell id="bottomNote" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Each sprint delivers working software: new features tested on web &amp; mobile, deployed to dev.gotravyl.com&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="460" width="700" height="25" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

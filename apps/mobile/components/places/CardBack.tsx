@@ -1,7 +1,7 @@
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, type PlaceItem } from '@travyl/shared';
+import { Navy, TextStyles, type PlaceItem } from '@travyl/shared';
 
 import QuickFacts from './QuickFacts';
 import GettingThere from './GettingThere';
@@ -53,8 +53,7 @@ export default function CardBack({
         {/* ── Header ────────────────────────────────────────────────── */}
         <Text
           style={{
-            fontSize: 18,
-            fontWeight: '800',
+            ...TextStyles.subhead,
             color: '#fff',
             marginBottom: 2,
           }}
@@ -64,7 +63,7 @@ export default function CardBack({
 
         <Text
           style={{
-            fontSize: 11,
+            ...TextStyles.caption,
             color: '#7dd3fc',
             textTransform: 'uppercase',
           }}
@@ -119,7 +118,7 @@ export default function CardBack({
             gap: 4,
           }}
         >
-          <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>
+          <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.35)' }}>
             Tap to flip
           </Text>
           <FontAwesome

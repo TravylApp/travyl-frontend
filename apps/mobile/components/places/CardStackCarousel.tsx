@@ -26,6 +26,7 @@ if (Platform.OS !== 'web') {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PlaceItem } from '@travyl/shared';
 import { MagazineCurtain } from './MagazineCurtain';
+import { AddToTripSheet } from '@/components/AddToTripSheet';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -45,6 +46,16 @@ export interface CardStackCarouselProps {
   initialIndex?: number;
   favorites: string[];
   onToggleFav: (id: string) => void;
+  onAddToTrip?: (place: PlaceItem) => void;
+  /** Pass the full sheet state + actions to render inside the modal */
+  tripSheet?: {
+    state: any;
+    selectTrip: (id: string) => void;
+    selectDay: (label: string, index: number) => void;
+    dismiss: () => void;
+    createTrip: () => void;
+  };
+  onIndexChange?: (index: number) => void;
   cardWidth?: number;
   cardHeight?: number;
   overlay?: boolean;
@@ -59,6 +70,9 @@ export function CardStackCarousel({
   initialIndex = 0,
   favorites,
   onToggleFav,
+  onAddToTrip,
+  tripSheet,
+  onIndexChange,
   cardWidth,
   cardHeight,
   overlay = false,
@@ -127,19 +141,20 @@ export function CardStackCarousel({
   // Center map on current place when card changes or map opens
   useEffect(() => {
     const p = places[currentIdx];
-    const shouldCenter = showMap
-      ? p?.latitude != null && p?.longitude != null
-      : showMapRef.current && p?.latitude != null && p?.longitude != null;
+    const hasCoords = p?.latitude != null && p?.longitude != null;
+    if (!hasCoords) return;
+    // In overlay mode, map is always visible; in inline mode, only when showMap is true
+    const shouldCenter = overlay || showMap || showMapRef.current;
     if (!shouldCenter) return;
     const delay = showMap ? 400 : 200;
     const id = setTimeout(() => {
       mapRef.current?.animateToRegion({
         latitude: p!.latitude!, longitude: p!.longitude!,
-        latitudeDelta: 0.02, longitudeDelta: 0.02,
+        latitudeDelta: 0.015, longitudeDelta: 0.015,
       }, 400);
     }, delay);
     return () => clearTimeout(id);
-  }, [currentIdx, showMap]);
+  }, [currentIdx, showMap, overlay]);
 
   // Prefetch images
   useEffect(() => {
@@ -191,17 +206,31 @@ export function CardStackCarousel({
   const isFav = place ? favorites.includes(place.id) : false;
 
   const goNext = useCallback(() => {
-    animateTransition(1, () => setCurrentIdx((i) => (i + 1) % places.length));
-  }, [places.length, animateTransition]);
+    animateTransition(1, () => {
+      setCurrentIdx((i) => {
+        const next = (i + 1) % places.length;
+        setTimeout(() => onIndexChange?.(next), 0);
+        return next;
+      });
+    });
+  }, [places.length, animateTransition, onIndexChange]);
 
   const goPrev = useCallback(() => {
-    animateTransition(-1, () => setCurrentIdx((i) => (i === 0 ? places.length - 1 : i - 1)));
-  }, [places.length, animateTransition]);
+    animateTransition(-1, () => {
+      setCurrentIdx((i) => {
+        const next = i === 0 ? places.length - 1 : i - 1;
+        setTimeout(() => onIndexChange?.(next), 0);
+        return next;
+      });
+    });
+  }, [places.length, animateTransition, onIndexChange]);
 
   const goNextRef = useRef(goNext);
   goNextRef.current = goNext;
   const goPrevRef = useRef(goPrev);
   goPrevRef.current = goPrev;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Combined pan: horizontal swipe (navigate) + vertical drag (resize map)
   const gestureDir = useRef<'h' | 'v' | null>(null);
@@ -326,6 +355,7 @@ export function CardStackCarousel({
         place={place}
         isFav={isFav}
         onToggleFav={() => onToggleFav(place.id)}
+        onAddToTrip={onAddToTrip}
         onMapPress={!showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
         width={magW}
         height={magH}
@@ -343,36 +373,41 @@ export function CardStackCarousel({
           {magazineCard}
           {navRow}
         </View>
-        {/* When map is requested from inline, open full-screen overlay */}
-        <Modal visible={selfOverlay} transparent animationType="fade" statusBarTranslucent>
+        {/* When map is requested from inline, open full-screen overlay.
+            No outer Modal needed — the overlay CardStackCarousel renders its own. */}
+        {selfOverlay && (
           <CardStackCarousel
             places={places}
             initialIndex={currentIdx}
             favorites={favorites}
             onToggleFav={onToggleFav}
+            onAddToTrip={onAddToTrip}
+            tripSheet={tripSheet}
+            onIndexChange={onIndexChange}
             overlay
             onClose={() => setSelfOverlay(false)}
           />
-        </Modal>
+        )}
       </>
     );
   }
 
   /* ── Overlay: Apple Maps-style — map behind, card as bottom sheet ── */
 
-  // Sheet position — 0 = card at bottom (max map), 1 = card covers screen (min map)
+  // Sheet position — lower Y = card shorter (more map), higher Y = card taller (more content)
   const SHEET_TOP = insets.top + 50;           // card almost full screen
-  const SHEET_MID = SCREEN_H * 0.38;         // default
-  const SHEET_BOTTOM = SCREEN_H * 0.65;      // card minimized — mostly map
-  const sheetY = useRef(new RNAnimated.Value(SHEET_MID)).current;
-  const sheetYRef = useRef(SHEET_MID);
+  const SHEET_MID = SCREEN_H * 0.25;         // mid — large card
+  const SHEET_BOTTOM = SCREEN_H * 0.40;      // default start — card fills bottom 60%
+  const sheetY = useRef(new RNAnimated.Value(SHEET_BOTTOM)).current;
+  const sheetYRef = useRef(SHEET_BOTTOM);
 
   // Combined gesture: vertical drags on the handle/header resize the sheet,
   // horizontal swipes on the card navigate between places
   const gestureDirRef = useRef<'v' | 'h' | null>(null);
   const combinedPan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) => {
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_, gs) => {
         if (Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.2) {
           gestureDirRef.current = 'v';
           return true;
@@ -385,13 +420,24 @@ export function CardStackCarousel({
       },
       onPanResponderMove: (_, gs) => {
         if (gestureDirRef.current === 'v') {
-          const newY = Math.max(SHEET_TOP, Math.min(SHEET_BOTTOM, sheetYRef.current + gs.dy));
+          // Allow dragging from SHEET_TOP all the way to off-screen (SCREEN_H)
+          const newY = Math.max(SHEET_TOP, sheetYRef.current + gs.dy);
           sheetY.setValue(newY);
         }
       },
       onPanResponderRelease: (_, gs) => {
         if (gestureDirRef.current === 'v') {
-          const newY = Math.max(SHEET_TOP, Math.min(SHEET_BOTTOM, sheetYRef.current + gs.dy));
+          const newY = Math.max(SHEET_TOP, sheetYRef.current + gs.dy);
+
+          // Dismiss: dragged past 75% of screen or fast flick down
+          if (newY > SCREEN_H * 0.75 || (gs.vy > 1.5 && newY > SHEET_BOTTOM)) {
+            RNAnimated.timing(sheetY, {
+              toValue: SCREEN_H, duration: 200, useNativeDriver: false,
+            }).start(() => onCloseRef.current?.());
+            return;
+          }
+
+          // Snap to nearest position
           let snapTo = SHEET_MID;
           if (gs.vy < -0.5 || newY < (SHEET_TOP + SHEET_MID) / 2) snapTo = SHEET_TOP;
           else if (gs.vy > 0.5 || newY > (SHEET_MID + SHEET_BOTTOM) / 2) snapTo = SHEET_BOTTOM;
@@ -440,73 +486,49 @@ export function CardStackCarousel({
             top: sheetY,
             left: 0,
             right: 0,
-            bottom: insets.bottom + 8,
+            bottom: 0,
             backgroundColor: 'transparent',
           }}
         >
           {/* Drag handle */}
           <View style={{
-            alignItems: 'center', paddingTop: 8, paddingBottom: 4,
+            alignItems: 'center', paddingTop: 10, paddingBottom: 6,
           }}>
-            <View style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+            <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.6)' }} />
           </View>
 
-          {/* Card + nav arrows as one unit — no white space */}
+          {/* Card fills remaining space below handle */}
           <View style={{ flex: 1, alignItems: 'center', paddingTop: 2 }}>
             <Animated.View style={[
               { width: SCREEN_WIDTH - 8, flex: 1 },
               animatedCardStyle,
             ]}>
-              {/* Magazine card fills the space */}
-              <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+              <View style={{ flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' }}>
                 <MagazineCurtain
                   place={place}
                   isFav={isFav}
                   onToggleFav={() => onToggleFav(place.id)}
+                  onAddToTrip={onAddToTrip}
                   onClose={onClose}
                   onMapPress={hasCoords ? toggleMap : undefined}
                   width={SCREEN_WIDTH - 8}
-                  height={SCREEN_H * 0.48}
+                  height={SCREEN_H - sheetYRef.current - insets.bottom - 20}
                 />
-
-                {/* Nav arrows — overlaid at bottom, fade out when sheet is pulled down */}
-                <RNAnimated.View pointerEvents="box-none" style={{
-                  position: 'absolute', bottom: 12, left: 0, right: 0,
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                  gap: 14,
-                  opacity: sheetY.interpolate({
-                    inputRange: [SHEET_TOP, SHEET_MID, SHEET_BOTTOM],
-                    outputRange: [1, 1, 0],
-                    extrapolate: 'clamp',
-                  }),
-                }}>
-                  <Pressable onPress={goPrev} style={{
-                    width: 38, height: 38, borderRadius: 19,
-                    backgroundColor: 'rgba(255,255,255,0.9)',
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
-                  }}>
-                    <FontAwesome name="chevron-left" size={14} color="#333" />
-                  </Pressable>
-                  <Text style={{ fontSize: 13, color: '#fff', fontVariant: ['tabular-nums'],
-                    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
-                  }}>
-                    {currentIdx + 1} / {places.length}
-                  </Text>
-                  <Pressable onPress={goNext} style={{
-                    width: 38, height: 38, borderRadius: 19,
-                    backgroundColor: 'rgba(255,255,255,0.9)',
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3,
-                  }}>
-                    <FontAwesome name="chevron-right" size={14} color="#333" />
-                  </Pressable>
-                </RNAnimated.View>
               </View>
             </Animated.View>
           </View>
         </RNAnimated.View>
 
+        {/* AddToTrip sheet — rendered inside modal so it appears on top */}
+        {tripSheet && (
+          <AddToTripSheet
+            state={tripSheet.state}
+            onSelectTrip={tripSheet.selectTrip}
+            onSelectDay={tripSheet.selectDay}
+            onDismiss={tripSheet.dismiss}
+            onCreateTrip={tripSheet.createTrip}
+          />
+        )}
       </View>
     </Modal>
   );

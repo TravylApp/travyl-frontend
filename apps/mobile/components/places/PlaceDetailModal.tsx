@@ -24,7 +24,7 @@ if (Platform.OS !== 'web') {
     Marker = maps.Marker;
   } catch {}
 }
-import { Navy, type PlaceItem, useSimilarPlaces } from '@travyl/shared';
+import { Navy, TextStyles, type PlaceItem, useSimilarPlaces } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import FlipCard from './FlipCard';
@@ -267,8 +267,8 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
               paddingHorizontal: 16, paddingVertical: 12,
               shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
             }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#333' }}>{currentPlace.name}</Text>
-              {currentPlace.tagline ? <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{currentPlace.tagline}</Text> : null}
+              <Text style={{ ...TextStyles.bodyXlEm, color: '#333' }}>{currentPlace.name}</Text>
+              {currentPlace.tagline ? <Text style={{ ...TextStyles.body, color: '#666', marginTop: 2 }}>{currentPlace.tagline}</Text> : null}
             </View>
           </Animated.View>
         )}

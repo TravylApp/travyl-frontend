@@ -1,3 +1,16 @@
+/**
+ * @module useItineraryScreen
+ * Orchestrates all data needed to render the Itinerary tab on both web and mobile.
+ * Fetches the trip, itinerary days, flights, and hotels; transforms raw DB rows
+ * into view-model objects; computes a budget summary; and exposes day-selection state.
+ *
+ * Falls back to trip_context.itinerary when no DB itinerary rows exist (e.g. for
+ * newly-created trips that haven't been enriched yet), and further falls back to
+ * distributing explore_items across days if there is no itinerary at all.
+ *
+ * Used by the web ItineraryTab and the mobile ItineraryScreen.
+ */
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -16,6 +29,15 @@ import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
 import { useSettingsStore } from '../stores/settingsStore';
 
+/**
+ * Synthesizes a basic day-by-day itinerary from `trip_context.explore_items`
+ * for trips that have no stored itinerary in the database.
+ * Interleaves restaurants (evening) and attractions (morning/afternoon) across
+ * the number of days derived from the trip's start/end dates.
+ * @param tripContext - The raw `trip_context` JSON blob from the trip row
+ * @param trip - The parent trip row (used to compute dates and number of days)
+ * @returns Array of `ItineraryDayViewModel` objects ready for rendering
+ */
 /** Build basic itinerary days from explore_items for trips that have no stored itinerary */
 function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayViewModel[] {
   const explore = tripContext?.explore_items ?? [];
@@ -96,6 +118,14 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
   return days;
 }
 
+/**
+ * Converts `trip_context.itinerary` (the AI-generated slot array) into
+ * `ItineraryDayViewModel[]` when no enriched DB itinerary rows are present.
+ * Falls back to `buildDaysFromExploreItems` if the context itinerary is also empty.
+ * @param tripContext - The raw `trip_context` JSON blob from the trip row
+ * @param trip - The parent trip row (used for date labels in the explore fallback)
+ * @returns Array of `ItineraryDayViewModel` objects ready for rendering
+ */
 /** Build ItineraryDayViewModels from trip_context.itinerary when DB tables don't exist.
  *  Falls back to distributing explore_items across days if no itinerary exists. */
 function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewModel[] {
@@ -169,6 +199,32 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
   });
 }
 
+/**
+ * Provides all data and state needed by the itinerary screen.
+ *
+ * Resolves days from DB rows first, falls back to `trip_context.itinerary`,
+ * and finally synthesizes days from `explore_items` for very early trips.
+ * Budget is also computed with a context fallback when no DB cost data exists.
+ *
+ * @param tripId - UUID of the trip, or undefined while routing/loading
+ * @returns Object with:
+ *   - `trip` — full trip record
+ *   - `days` — resolved `ItineraryDayViewModel[]`
+ *   - `selectedDayIndex` / `setSelectedDayIndex` — active day tab state
+ *   - `selectedDay` — the currently selected day view model
+ *   - `flights` / `hotels` — flight/hotel view models
+ *   - `budget` — computed budget summary
+ *   - `isLoading` — true while trip or itinerary data is pending
+ *   - `refetch` — force refresh all queries
+ *   - `error` — first encountered error
+ *   - `isEmpty` — true when there is genuinely nothing to show
+ *
+ * @example
+ * ```tsx
+ * const { days, selectedDayIndex, setSelectedDayIndex, budget, isLoading } =
+ *   useItineraryScreen(tripId);
+ * ```
+ */
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const tripQuery = useTrip(tripId);

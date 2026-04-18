@@ -19,9 +19,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const supabase = getSupabase()
   const { tripId } = await req.json()
   if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
+
+  // Use caller's auth token when available so RLS allows reading private trips (mobile sends Bearer token)
+  const authHeader = req.headers.get('authorization')
+  const supabase = authHeader
+    ? createClient(supabaseUrl, supabaseKey, { global: { headers: { Authorization: authHeader } } })
+    : getSupabase()
 
   // Fetch the trip
   const { data: trip, error: fetchErr } = await supabase
@@ -31,15 +36,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
   }
 
-  // Ownership check: logged-in must own, anonymous can only enrich public unowned trips
-  const authHeader = req.headers.get('authorization')
-  if (authHeader) {
-    const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
-      { global: { headers: { Authorization: authHeader } } }).auth.getUser()
-    if (!user || (trip.user_id && trip.user_id !== user.id)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
-  } else if (trip.user_id || trip.visibility !== 'public') {
+  // Ownership check: anonymous can only enrich public unowned trips
+  if (!authHeader && (trip.user_id || trip.visibility !== 'public')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 

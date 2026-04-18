@@ -3,10 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
-import type { MockFlightDetail } from '@travyl/shared';
+import type { FlightDetail } from '@travyl/shared';
 
 interface FlightSectionProps {
-  flight: MockFlightDetail;
+  flight: FlightDetail;
   collapsed?: boolean;
   onBookFlight?: () => void;
 }

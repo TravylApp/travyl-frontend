@@ -5,9 +5,10 @@ import { useRef, useEffect, useState } from "react";
 export function AnimatedCounter({ value, suffix, decimals = 0 }: { value: number; suffix: string; decimals?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [hasAnimated, setHasAnimated] = useState(false);
+  const prevValueRef = useRef(0);
 
   useEffect(() => {
-    if (!ref.current || value === 0 || hasAnimated) return;
+    if (!ref.current || hasAnimated) return;
 
     // Use IntersectionObserver to start animation when visible
     const el = ref.current;
@@ -16,10 +17,10 @@ export function AnimatedCounter({ value, suffix, decimals = 0 }: { value: number
         if (!entry.isIntersecting) return;
         observer.disconnect();
         setHasAnimated(true);
+        prevValueRef.current = value;
 
         const duration = 2000;
         const start = performance.now();
-        let raf: number;
 
         const tick = (now: number) => {
           const elapsed = now - start;
@@ -34,11 +35,11 @@ export function AnimatedCounter({ value, suffix, decimals = 0 }: { value: number
           }
 
           if (progress < 1) {
-            raf = requestAnimationFrame(tick);
+            requestAnimationFrame(tick);
           }
         };
 
-        raf = requestAnimationFrame(tick);
+        requestAnimationFrame(tick);
       },
       { threshold: 0.1 }
     );
@@ -46,6 +47,16 @@ export function AnimatedCounter({ value, suffix, decimals = 0 }: { value: number
     observer.observe(el);
     return () => { observer.disconnect(); };
   }, [value, suffix, decimals, hasAnimated]);
+
+  // If value changes after animation already ran, update immediately
+  useEffect(() => {
+    if (hasAnimated && value !== prevValueRef.current && ref.current) {
+      prevValueRef.current = value;
+      ref.current.textContent = decimals > 0
+        ? value.toFixed(decimals) + suffix
+        : Math.round(value).toLocaleString() + suffix;
+    }
+  }, [value, hasAnimated, suffix, decimals]);
 
   return <span ref={ref}>0{suffix}</span>;
 }

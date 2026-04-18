@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { TRIP_THEMES, THEME_ORDER } from '@travyl/shared';
+import { TRIP_THEMES, THEME_ORDER, Navy } from '@travyl/shared';
 import type { TripTheme } from '@travyl/shared';
 
 interface ThemePickerProps {
@@ -29,7 +29,7 @@ const CUSTOM_SWATCHES = [
 ];
 
 const COLOR_SWATCHES = [
-  '#1e3a5f', '#2d4a6f', '#3b82f6', '#2563eb',
+  Navy.DEFAULT, '#2d4a6f', '#3b82f6', '#2563eb',
   '#0e7490', '#0891b2', '#06b6d4', '#0ea5e9',
   '#10b981', '#059669', '#16a34a', '#15803d',
   '#f59e0b', '#d97706', '#f97316', '#ea580c',
@@ -194,7 +194,7 @@ export function ThemePicker({
               placeholder="#3498db" placeholderTextColor="#9ca3af" autoCapitalize="none" maxLength={7}
               style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, color: '#374151', fontFamily: 'monospace' }}
             />
-            <Pressable onPress={handleHexSubmit} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#1e3a5f' }}>
+            <Pressable onPress={handleHexSubmit} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: Navy.DEFAULT }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>Apply</Text>
             </Pressable>
           </View>

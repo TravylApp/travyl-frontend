@@ -10,4 +10,5 @@ export { TileFadeIn } from './TileFadeIn';
 export { MosaicTile } from './MosaicTile';
 export { OceanWave } from './OceanWave';
 export { Footer } from './Footer';
+export { SectionHeader } from './SectionHeader';
 export { TakeoffTransition } from './TakeoffTransition';

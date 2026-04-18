@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 // Airport cache — populated dynamically from API search results
 const airportCache: { code: string; name: string; city: string }[] = [];
@@ -101,7 +101,7 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
       return;
     }
     setAirportLoading(true);
-    const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || '';
+    const WEB_API = getWebApiBase();
     const timer = setTimeout(() => {
       fetch(`${WEB_API}/api/airports?q=${encodeURIComponent(airportQuery)}`)
         .then(r => r.ok ? r.json() : [])
