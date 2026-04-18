@@ -195,15 +195,23 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
         <div className="divide-y divide-gray-200 dark:divide-white/[0.08]">
           {newsItems.map((item) => (
             <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
-              className="block py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
-                {item.source && (
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
-                )}
+              className="flex gap-3 py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
+              {(item as any).image && (
+                <div className="flex-shrink-0 w-[72px] h-[54px] rounded-lg overflow-hidden bg-gray-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={(item as any).image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
+                  {item.source && (
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
+                  )}
+                </div>
+                <h3 className="text-[14px] font-normal leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white font-serif">{item.title}</h3>
+                <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
               </div>
-              <h3 className="text-[14px] font-normal leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white font-serif">{item.title}</h3>
-              <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
             </a>
           ))}
         </div>

@@ -181,7 +181,7 @@ async function fetchExplorePage(
               tagline: v.address || v.category || 'Restaurant',
               category: v.category || 'Restaurant', description: v.tip || '',
               latitude: v.lat, longitude: v.lng, address: v.address,
-              reviewCount: v.ratingCount, tags: [v.category || 'Restaurant'],
+              reviewCount: v.ratingCount, tags: v.category && v.category.toLowerCase() !== 'restaurant' ? [v.category] : ['Food', 'Local Cuisine'],
             })));
         }
       }

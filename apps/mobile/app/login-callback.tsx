@@ -23,19 +23,17 @@ export default function LoginCallback() {
       if (processedRef.current) return;
       processedRef.current = true;
 
-      console.log('OAuth callback URL:', url);
+      if (__DEV__) console.log('OAuth callback received');
       const code = parseCodeFromUrl(url);
 
       if (code) {
-        console.log('Exchanging code for session...');
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          console.error('Exchange code error:', error.message);
+          if (__DEV__) console.error('Exchange code error:', error.message);
           router.replace('/login');
           return;
         }
         if (data.session) {
-          console.log('OAuth login success:', data.user?.email);
           router.replace('/');
           return;
         }

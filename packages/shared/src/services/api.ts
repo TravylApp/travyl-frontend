@@ -1,6 +1,21 @@
+/**
+ * @module api
+ * Supabase data-fetching and mutation functions used throughout the app.
+ * Queries the `trips`, `profiles`, `activities`, `flights`, `hotels`,
+ * `trip_collaborators`, and related Supabase tables.
+ * Consumed by React Query hooks in `packages/shared/src/hooks/`.
+ */
+
 import { supabase } from './supabase';
+import { mapToDbType, getWebApiBase } from '../utils';
 import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
 
+/**
+ * Fetches all trips owned by a user, sorted by creation date (newest first).
+ * @param userId - Supabase auth user UUID
+ * @returns Array of Trip objects
+ * @throws PostgrestError if the query fails
+ */
 export async function fetchTrips(userId: string): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
@@ -11,6 +26,13 @@ export async function fetchTrips(userId: string): Promise<Trip[]> {
   return data ?? [];
 }
 
+/**
+ * Fetches trips where the user is an accepted collaborator (not the owner).
+ * Strips the join column `trip_collaborators` before returning.
+ * @param userId - Supabase auth user UUID
+ * @returns Array of Trip objects the user collaborates on
+ * @throws PostgrestError if the query fails
+ */
 export async function fetchCollaboratorTrips(userId: string): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
@@ -23,6 +45,11 @@ export async function fetchCollaboratorTrips(userId: string): Promise<Trip[]> {
   return (data ?? []).map(({ trip_collaborators: _tc, ...trip }) => trip as Trip);
 }
 
+/**
+ * Fetches all saved items for the currently authenticated user, sorted newest first.
+ * @returns Array of SavedItem objects
+ * @throws PostgrestError if the query fails
+ */
 export async function fetchSavedItems(): Promise<SavedItem[]> {
   const { data, error } = await supabase
     .from('saved_items')
@@ -32,6 +59,12 @@ export async function fetchSavedItems(): Promise<SavedItem[]> {
   return data ?? [];
 }
 
+/**
+ * Fetches a user profile by ID.
+ * If the profile row does not exist yet, creates a default one with null name/avatar.
+ * @param userId - Supabase auth user UUID
+ * @returns Profile object, or null if creation also failed
+ */
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   try {
     const { data, error } = await supabase
@@ -60,6 +93,13 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   } catch { return null; }
 }
 
+/**
+ * Updates a user's profile fields (display name, avatar, location).
+ * @param userId - Supabase auth user UUID
+ * @param updates - Partial profile fields to update
+ * @returns The updated Profile object
+ * @throws PostgrestError if the update fails
+ */
 export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country'>>): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
@@ -105,6 +145,12 @@ export async function uploadAvatar(userId: string, base64Data: string): Promise<
   return publicUrl;
 }
 
+/**
+ * Updates the Supabase Auth `user_metadata` for the currently authenticated user.
+ * @param metadata - Key-value pairs to merge into user metadata
+ * @throws Error if no user is authenticated
+ * @throws AuthError if the update fails
+ */
 export async function updateUserMetadata(metadata: Record<string, unknown>): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
@@ -116,6 +162,11 @@ export async function updateUserMetadata(metadata: Record<string, unknown>): Pro
   if (error) throw error;
 }
 
+/**
+ * Updates the password for the currently authenticated user.
+ * @param newPassword - The new plaintext password
+ * @throws AuthError if the update fails
+ */
 export async function updateUserPassword(newPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({
     password: newPassword,
@@ -127,13 +178,24 @@ export async function updateUserPassword(newPassword: string): Promise<void> {
 // ─── Home Page Data ──────────────────────────────────────────
 
 // These tables don't exist in the current schema — return empty to avoid 404s
+/** Returns an empty array — mosaic_tiles table is not yet in the schema. */
 export async function fetchMosaicTiles(): Promise<MosaicTile[]> { return []; }
+/** Returns an empty array — inspiration_cards table is not yet in the schema. */
 export async function fetchInspirationCards(): Promise<InspirationCard[]> { return []; }
+/** Returns an empty array — explore_place_rows table is not yet in the schema. */
 export async function fetchExploreRows(): Promise<ExplorePlaceRow[]> { return []; }
+/** Returns null — hero_config table is not yet in the schema. */
 export async function fetchHeroConfig(): Promise<HeroConfig | null> { return null; }
 
 // ─── Itinerary Data ─────────────────────────────────────────
 
+/**
+ * Fetches a single trip by its primary key.
+ * Remaps `owner_id` → `user_id` for legacy schema compatibility.
+ * @param tripId - UUID of the trip
+ * @returns The matching Trip object
+ * @throws PostgrestError if the trip is not found or query fails
+ */
 export async function fetchTripById(tripId: string): Promise<Trip> {
   const { data, error } = await supabase
     .from('trips').select('*').eq('id', tripId).single();
@@ -146,11 +208,21 @@ export async function fetchTripById(tripId: string): Promise<Trip> {
   return data as Trip;
 }
 
-// itinerary_days table doesn't exist — itinerary lives in trip_context
+/**
+ * Returns an empty array — itinerary_days table is not used.
+ * Day-by-day data lives in `trip_context.itinerary` on the trips row.
+ * @param _tripId - Unused trip ID
+ */
 export async function fetchItineraryDays(_tripId: string): Promise<ItineraryDayWithActivities[]> {
   return [];
 }
 
+/**
+ * Fetches all flights associated with a trip, sorted by creation date.
+ * Falls back to an empty array if the `flights` table does not exist yet.
+ * @param tripId - UUID of the trip
+ * @returns Array of Flight objects, or empty array on table-missing error
+ */
 export async function fetchFlights(tripId: string): Promise<Flight[]> {
   const { data, error } = await supabase
     .from('flights').select('*').eq('trip_id', tripId)
@@ -159,6 +231,12 @@ export async function fetchFlights(tripId: string): Promise<Flight[]> {
   return data ?? [];
 }
 
+/**
+ * Fetches all hotels associated with a trip, sorted by creation date.
+ * Falls back to an empty array if the `hotels` table does not exist yet.
+ * @param tripId - UUID of the trip
+ * @returns Array of Hotel objects, or empty array on table-missing error
+ */
 export async function fetchHotels(tripId: string): Promise<Hotel[]> {
   const { data, error } = await supabase
     .from('hotels').select('*').eq('trip_id', tripId)
@@ -167,6 +245,12 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
   return data ?? [];
 }
 
+/**
+ * Fetches all activities for a trip, ordered by `sort_order` ascending.
+ * @param tripId - UUID of the trip
+ * @returns Array of Activity objects
+ * @throws PostgrestError if the query fails
+ */
 export async function fetchActivities(tripId: string): Promise<Activity[]> {
   const { data, error } = await supabase
     .from('activities')
@@ -180,8 +264,13 @@ export async function fetchActivities(tripId: string): Promise<Activity[]> {
 // ─── Fork Trip Functions ───────────────────────────────────────
 
 /**
- * Fork a trip, copying all related data (itinerary days, activities, flights, hotels)
- * with attribution to the original trip.
+ * Forks a trip by deep-copying all related data (itinerary days, activities, flights, hotels)
+ * into a new private trip attributed to the current user.
+ * Increments the fork count on the original via `increment_fork_count` RPC.
+ * @param tripId - UUID of the trip to fork
+ * @returns The newly created Trip object
+ * @throws Error if user is not authenticated or original trip is not found
+ * @throws PostgrestError on any database write failure
  */
 export async function forkTrip(tripId: string): Promise<Trip> {
   // 1. Fetch the original trip
@@ -335,7 +424,10 @@ export async function fetchPublicTrips(): Promise<Trip[]> {
 }
 
 /**
- * Fetch a user's public trips (for public profile page)
+ * Fetches a specific user's public trips (for their public profile page).
+ * @param userId - Supabase auth user UUID
+ * @returns Array of Trip objects with visibility === 'public'
+ * @throws PostgrestError if the query fails
  */
 export async function fetchUserPublicTrips(userId: string): Promise<Trip[]> {
   const { data, error } = await supabase
@@ -349,7 +441,10 @@ export async function fetchUserPublicTrips(userId: string): Promise<Trip[]> {
 }
 
 /**
- * Fetch a trip by share token (for shared trip access)
+ * Fetches a trip by its share link token.
+ * Returns null if the token is invalid or the trip is private.
+ * @param token - UUID share link token from the trip's `share_link_token` column
+ * @returns Matching Trip object, or null if not found / not accessible
  */
 export async function fetchTripByShareToken(token: string): Promise<Trip | null> {
   const { data, error } = await supabase
@@ -362,6 +457,13 @@ export async function fetchTripByShareToken(token: string): Promise<Trip | null>
   return data;
 }
 
+/**
+ * Updates the visibility and optional link permission for a trip.
+ * @param tripId - UUID of the trip
+ * @param visibility - New visibility level ('private' | 'link' | 'public')
+ * @param linkPermission - Optional permission for link-based access ('viewer' | 'editor')
+ * @throws PostgrestError if the update fails
+ */
 export async function updateTripVisibility(tripId: string, visibility: Visibility, linkPermission?: LinkPermission): Promise<void> {
   const updates: Record<string, unknown> = { visibility }
   if (linkPermission !== undefined) { updates.link_permission = linkPermission }
@@ -369,6 +471,12 @@ export async function updateTripVisibility(tripId: string, visibility: Visibilit
   if (error) throw error
 }
 
+/**
+ * Returns the existing share link token for a trip, or creates one if missing.
+ * @param tripId - UUID of the trip
+ * @returns The share link token UUID string
+ * @throws PostgrestError if the fetch or update fails
+ */
 export async function ensureShareLinkToken(tripId: string): Promise<string> {
   const { data: trip, error: fetchError } = await supabase.from('trips').select('share_link_token').eq('id', tripId).single()
   if (fetchError) throw fetchError
@@ -379,6 +487,12 @@ export async function ensureShareLinkToken(tripId: string): Promise<string> {
   return token
 }
 
+/**
+ * Generates a new UUID share link token for a trip, invalidating the old one.
+ * @param tripId - UUID of the trip
+ * @returns The new share link token UUID string
+ * @throws PostgrestError if the update fails
+ */
 export async function rotateShareLinkToken(tripId: string): Promise<string> {
   const newToken = crypto.randomUUID()
   const { error } = await supabase
@@ -389,6 +503,15 @@ export async function rotateShareLinkToken(tripId: string): Promise<string> {
   return newToken
 }
 
+/**
+ * Updates core trip metadata fields.
+ * If dates changed, trims `trip_context.itinerary` to the new duration.
+ * If destination changed, clears stale `trip_context` enrichment keys so
+ * the overview re-enriches on next visit.
+ * @param tripId - UUID of the trip
+ * @param updates - Fields to update (title, destination, dates, budget, currency, travelers, status)
+ * @throws PostgrestError if the update fails
+ */
 export async function updateTripDetails(
   tripId: string,
   updates: Partial<Pick<Trip, 'title' | 'destination' | 'start_date' | 'end_date' | 'budget' | 'currency' | 'travelers' | 'status'>>
@@ -433,11 +556,22 @@ export async function updateTripDetails(
   if (error) throw error
 }
 
+/**
+ * Permanently deletes a trip and all its related rows (cascaded by the DB).
+ * @param tripId - UUID of the trip to delete
+ * @throws PostgrestError if the delete fails
+ */
 export async function deleteTrip(tripId: string): Promise<void> {
   const { error } = await supabase.from('trips').delete().eq('id', tripId)
   if (error) throw error
 }
 
+/**
+ * Removes a collaborator's membership from a trip (used by the collaborator themselves).
+ * @param tripId - UUID of the trip to leave
+ * @param userId - Supabase auth UUID of the collaborator leaving
+ * @throws PostgrestError if the delete fails
+ */
 export async function leaveTrip(tripId: string, userId: string): Promise<void> {
   const { error } = await supabase
     .from('trip_collaborators')
@@ -449,6 +583,14 @@ export async function leaveTrip(tripId: string, userId: string): Promise<void> {
 
 // ─── Mutations ─────────────────────────────────────────────
 
+/**
+ * Adds an item to the trip itinerary at a specific day and optional time slot.
+ * @param tripId - UUID of the trip
+ * @param itemId - UUID of the item to add
+ * @param dayNumber - 1-based day index in the itinerary
+ * @param timeSlot - Optional time slot string (e.g. '09:00')
+ * @throws PostgrestError if the insert fails
+ */
 export async function addToItinerary(tripId: string, itemId: string, dayNumber: number, timeSlot?: string) {
   const { error } = await supabase.from('itinerary_items').insert({
     trip_id: tripId,
@@ -459,6 +601,12 @@ export async function addToItinerary(tripId: string, itemId: string, dayNumber: 
   if (error) throw error;
 }
 
+/**
+ * Removes an item from the trip itinerary.
+ * @param tripId - UUID of the trip
+ * @param itemId - UUID of the item to remove
+ * @throws PostgrestError if the delete fails
+ */
 export async function removeFromItinerary(tripId: string, itemId: string) {
   const { error } = await supabase
     .from('itinerary_items')
@@ -468,6 +616,14 @@ export async function removeFromItinerary(tripId: string, itemId: string) {
   if (error) throw error;
 }
 
+/**
+ * Toggles a favorite on or off for a trip item.
+ * Deletes the row if currently favorited; inserts a new row if not.
+ * @param tripId - UUID of the trip
+ * @param itemId - UUID of the item to toggle
+ * @param isFavorited - Current state; pass true to unfavorite, false to favorite
+ * @throws PostgrestError if the insert or delete fails
+ */
 export async function toggleFavorite(tripId: string, itemId: string, isFavorited: boolean) {
   if (isFavorited) {
     const { error } = await supabase
@@ -484,6 +640,12 @@ export async function toggleFavorite(tripId: string, itemId: string, isFavorited
   }
 }
 
+/**
+ * Updates an existing budget expense row.
+ * @param expenseId - UUID of the budget_expenses row
+ * @param updates - Fields to patch (amount and/or note)
+ * @throws PostgrestError if the update fails
+ */
 export async function updateBudgetExpense(expenseId: string, updates: { amount?: number; note?: string }) {
   const { error } = await supabase
     .from('budget_expenses')
@@ -492,6 +654,14 @@ export async function updateBudgetExpense(expenseId: string, updates: { amount?:
   if (error) throw error;
 }
 
+/**
+ * Inserts a new budget expense for a trip.
+ * @param tripId - UUID of the trip
+ * @param category - Budget category label (e.g. 'accommodation', 'food')
+ * @param amount - Expense amount in the trip's currency
+ * @param note - Free-text description of the expense
+ * @throws PostgrestError if the insert fails
+ */
 export async function addBudgetExpense(tripId: string, category: string, amount: number, note: string) {
   const { error } = await supabase
     .from('budget_expenses')
@@ -499,6 +669,12 @@ export async function addBudgetExpense(tripId: string, category: string, amount:
   if (error) throw error;
 }
 
+/**
+ * Updates visual theme settings for a trip (theme preset, custom color, tab overrides).
+ * @param tripId - UUID of the trip
+ * @param updates - Partial theme settings to persist
+ * @throws PostgrestError if the update fails
+ */
 export async function updateTripThemeSettings(
   tripId: string,
   updates: {
@@ -515,39 +691,90 @@ export async function updateTripThemeSettings(
 
 // ── Collaborators ──────────────────────────────────────
 
+/**
+ * Fetches all collaborators for a trip, sorted by join date ascending.
+ * @param tripId - UUID of the trip
+ * @returns Array of TripCollaborator objects (includes pending invites)
+ * @throws PostgrestError if the query fails
+ */
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
   const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
   if (error) throw error
   return data ?? []
 }
 
+/**
+ * Updates the role of an existing collaborator.
+ * @param collaboratorId - UUID of the trip_collaborators row
+ * @param role - New role ('viewer' | 'editor' | 'admin')
+ * @throws PostgrestError if the update fails
+ */
 export async function updateCollaboratorRole(collaboratorId: string, role: CollaboratorRole): Promise<void> {
   const { error } = await supabase.from('trip_collaborators').update({ role_type: role }).eq('id', collaboratorId)
   if (error) throw error
 }
 
+/**
+ * Removes a collaborator from a trip (used by the trip owner).
+ * @param collaboratorId - UUID of the trip_collaborators row to delete
+ * @throws PostgrestError if the delete fails
+ */
 export async function removeCollaborator(collaboratorId: string): Promise<void> {
   const { error } = await supabase.from('trip_collaborators').delete().eq('id', collaboratorId)
   if (error) throw error
 }
 
+/**
+ * Accepts a pending collaborator invite via its invite token.
+ * Calls the `accept_invite_by_token` Supabase RPC.
+ * @param inviteToken - UUID invite token from the email link
+ * @returns Object containing the `tripId` of the accepted trip
+ * @throws PostgrestError if the RPC fails or token is invalid
+ */
 export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId: string }> {
   const { data, error } = await supabase.rpc('accept_invite_by_token', { p_token: inviteToken })
   if (error) throw error
   return { tripId: (data as { trip_id: string }).trip_id }
 }
 
+/**
+ * Joins a trip via a share link, inserting an accepted collaborator row.
+ * Used when a user follows a link-permission trip URL while authenticated.
+ * @param tripId - UUID of the trip to join
+ * @param userId - Supabase auth UUID of the user joining
+ * @param role - Role granted to the user ('viewer' | 'editor')
+ * @throws PostgrestError if the insert fails
+ */
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
   const { error } = await supabase.from('trip_collaborators').insert({ trip_id: tripId, user_id: userId, role_type: role, invite_status: 'accepted', invited_by: userId, accepted_at: new Date().toISOString() })
   if (error) throw error
 }
 
+/**
+ * Checks whether a pending invite already exists for a given email on a trip.
+ * Used to avoid sending duplicate invites.
+ * @param tripId - UUID of the trip
+ * @param email - Email address to check (compared case-insensitively)
+ * @returns Existing TripCollaborator row, or null if none found
+ * @throws PostgrestError if the query fails
+ */
 export async function findPendingInviteByEmail(tripId: string, email: string): Promise<TripCollaborator | null> {
   const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('invited_email', email.toLowerCase()).eq('invite_status', 'pending').maybeSingle()
   if (error) throw error
   return data
 }
 
+/**
+ * Sends a collaborator invite for a trip to the given email address.
+ * Returns the existing pending invite if one already exists for that email.
+ * Generates a UUID `invite_token` that is included in the email link.
+ * @param tripId - UUID of the trip
+ * @param email - Email address of the invitee
+ * @param role - Role to grant upon acceptance ('viewer' | 'editor')
+ * @returns The TripCollaborator row (new or existing)
+ * @throws Error if user is not authenticated
+ * @throws PostgrestError if the insert fails
+ */
 export async function inviteCollaborator(tripId: string, email: string, role: CollaboratorRole): Promise<TripCollaborator> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not authenticated')
@@ -576,6 +803,10 @@ export async function inviteCollaborator(tripId: string, email: string, role: Co
 
 // ─── Save AI Plan to Supabase ─────────────────────────────
 
+/**
+ * Structured AI planner response ready to be persisted to Supabase.
+ * Produced by the mobile AI planner and passed directly to `savePlanToSupabase`.
+ */
 interface PlanToSave {
   extracted: {
     destination: { city: string; country: string; lat: number; lng: number };
@@ -617,6 +848,15 @@ interface PlanToSave {
   timezone: string | null;
 }
 
+/**
+ * Persists an AI-generated plan to Supabase, including the trip row, hotels, flights,
+ * activities, and triggers background enrichment (wiki, cuisine, cost_of_living, etc.).
+ * Trims the itinerary to `plan.extracted.duration_days` to avoid oversized WAF payloads.
+ * @param plan - Structured AI plan object containing destination, itinerary, hotels, flights
+ * @param onProgress - Optional callback called with a stage label and 0-100 percentage
+ * @returns The UUID of the newly created trip
+ * @throws Error if trip creation fails
+ */
 export async function savePlanToSupabase(
   plan: PlanToSave,
   onProgress?: (stage: string, pct: number) => void
@@ -625,15 +865,19 @@ export async function savePlanToSupabase(
 
   const ext = plan.extracted
   const dest = ext.destination
-  const duration = ext.duration_days || 5
+  // Cap duration to a reasonable max — prevent 30+ day trips from vague prompts
+  const rawDuration = ext.duration_days || 5
+  const duration = Math.min(rawDuration, 14)
 
-  // Ensure we have concrete dates — default to tomorrow if API returned null
-  if (!ext.dates.start) {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    ext.dates.start = tomorrow.toISOString().split('T')[0]
+  // Ensure dates are concrete and never in the past
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+
+  if (!ext.dates.start || ext.dates.start < tomorrowStr) {
+    ext.dates.start = tomorrowStr
   }
-  if (!ext.dates.end) {
+  if (!ext.dates.end || ext.dates.end <= ext.dates.start) {
     const end = new Date(ext.dates.start)
     end.setDate(end.getDate() + duration - 1)
     ext.dates.end = end.toISOString().split('T')[0]
@@ -756,7 +1000,7 @@ export async function savePlanToSupabase(
         trip_id: tripId,
         user_id: user?.id || null,
         activity_name: poi.name || 'Activity',
-        activity_type: poi.category || 'sightseeing',
+        activity_type: mapToDbType(poi.category || 'sightseeing'),
         starting_date: dayDate,
         ending_date: dayDate,
         starting_time: slot.start_time || '09:00',
@@ -783,10 +1027,15 @@ export async function savePlanToSupabase(
   // Fire enrichment in the background (fills wiki, news, phrases, cuisine, cost_of_living, etc.)
   onProgress?.('Enriching trip details...', 95)
   try {
-    const enrichBase = process.env.EXPO_PUBLIC_WEB_API_URL || ''
+    const enrichBase = getWebApiBase()
+    const { data: { session } } = await supabase.auth.getSession()
     const enrichRes = await fetch(`${enrichBase}/api/trips/enrich`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        ...(enrichBase ? { 'Origin': enrichBase } : {}),
+      },
       body: JSON.stringify({ tripId }),
     })
     if (!enrichRes.ok) console.error('Enrichment failed:', enrichRes.status)

@@ -618,7 +618,13 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const { trip, isLoading: tripLoading, refetch } = useItineraryScreen(id);
   const user = useAuthStore((s) => s.user);
-  const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
+  // Trip owner = authenticated user match OR anonymous user who created the trip
+  const isOwner = trip ? (
+    isTripOwner(trip, user?.id ?? null) ||
+    (!user && typeof window !== 'undefined' && (() => {
+      try { const ids = JSON.parse(localStorage.getItem('my-trip-ids') || '[]'); return ids.includes(id); } catch { return false; }
+    })())
+  ) : false;
 
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);

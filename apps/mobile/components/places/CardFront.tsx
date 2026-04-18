@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, type PlaceItem } from '@travyl/shared';
+import { Navy, TextStyles, type PlaceItem } from '@travyl/shared';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -156,8 +156,7 @@ export default function CardFront({
       >
         <Text
           style={{
-            fontSize: 10,
-            fontWeight: '700',
+            ...TextStyles.smEm,
             color: Navy.DEFAULT,
             textTransform: 'uppercase',
             letterSpacing: 0.5,
@@ -225,8 +224,7 @@ export default function CardFront({
         {/* Type label */}
         <Text
           style={{
-            fontSize: 10,
-            fontWeight: '700',
+            ...TextStyles.smEm,
             color: '#7dd3fc',
             textTransform: 'uppercase',
             letterSpacing: 1,
@@ -250,8 +248,7 @@ export default function CardFront({
           <Text
             numberOfLines={1}
             style={{
-              fontSize: 20,
-              fontWeight: '800',
+              ...TextStyles.title,
               color: '#fff',
               flexShrink: 1,
               marginRight: 10,
@@ -282,8 +279,7 @@ export default function CardFront({
               />
               <Text
                 style={{
-                  fontSize: 11,
-                  fontWeight: '700',
+                  ...TextStyles.captionEm,
                   color: '#fff',
                   textShadowColor: 'rgba(0,0,0,0.75)',
                   textShadowOffset: { width: 0, height: 1 },
@@ -314,7 +310,7 @@ export default function CardFront({
             <Text
               numberOfLines={1}
               style={{
-                fontSize: 12,
+                ...TextStyles.body,
                 color: 'rgba(255,255,255,0.65)',
                 textShadowColor: 'rgba(0,0,0,0.75)',
                 textShadowOffset: { width: 0, height: 1 },
@@ -331,9 +327,8 @@ export default function CardFront({
           <Text
             numberOfLines={2}
             style={{
-              fontSize: 13,
+              ...TextStyles.bodyLg,
               color: 'rgba(255,255,255,0.7)',
-              lineHeight: 19,
               textShadowColor: 'rgba(0,0,0,0.75)',
               textShadowOffset: { width: 0, height: 1 },
               textShadowRadius: 3,

@@ -29,5 +29,6 @@ export function useItineraryDays(tripId: string | undefined) {
     queryKey: ['itinerary-days', tripId],
     queryFn: () => fetchItineraryDays(tripId!),
     enabled: !!tripId,
+    staleTime: 5 * 60 * 1000,
   });
 }

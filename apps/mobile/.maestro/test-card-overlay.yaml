@@ -1,0 +1,21 @@
+appId: com.ze-ee.mobile
+---
+# Navigate to Home/Discover tab
+- tapOn:
+    text: "Discover, tab, 1 of 4"
+- waitForAnimationToEnd
+- takeScreenshot: "card-test-01-home"
+
+# Scroll down to find cards
+- swipe:
+    direction: UP
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "card-test-02-scrolled"
+
+# Scroll a bit more
+- swipe:
+    direction: UP
+    duration: 1000
+- waitForAnimationToEnd
+- takeScreenshot: "card-test-03-more-scroll"

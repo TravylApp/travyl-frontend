@@ -26,5 +26,6 @@ export function useFlights(tripId: string | undefined) {
     queryKey: ['flights', tripId],
     queryFn: () => fetchFlights(tripId!),
     enabled: !!tripId,
+    staleTime: 5 * 60 * 1000,
   });
 }

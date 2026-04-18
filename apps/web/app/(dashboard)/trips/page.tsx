@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard } from '@travyl/shared';
 import { Plus } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { Footer, OceanWave } from '@/components/home';
@@ -24,7 +24,7 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'past', label: 'Past' },
 ];
 
-function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past' {
+function getTripStatusFilter(trip: TripCard): 'active' | 'upcoming' | 'past' {
   const now = new Date();
   const startDate = new Date(trip.start_date + 'T00:00:00');
   const endDate = new Date(trip.end_date + 'T00:00:00');
@@ -46,12 +46,12 @@ function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past'
   return 'upcoming';
 }
 
-function filterTripsByStatus(trips: MockTripCard[], status: StatusFilter): MockTripCard[] {
+function filterTripsByStatus(trips: TripCard[], status: StatusFilter): TripCard[] {
   if (status === 'all') return trips;
   return trips.filter((trip) => getTripStatusFilter(trip) === status);
 }
 
-function filterTripsBySearch(trips: MockTripCard[], search: string): MockTripCard[] {
+function filterTripsBySearch(trips: TripCard[], search: string): TripCard[] {
   if (!search.trim()) return trips;
   const query = search.toLowerCase().trim();
   return trips.filter(
@@ -118,7 +118,7 @@ function getRowHeight(maxDays: number): number {
 }
 
 // Pack trips into rows: always 2–3 cards per row, never 1
-function buildRows(trips: { trip: MockTripCard; duration: number; weight: number }[]) {
+function buildRows(trips: { trip: TripCard; duration: number; weight: number }[]) {
   const rows: typeof trips[] = [];
   let i = 0;
 
@@ -146,7 +146,7 @@ function buildRows(trips: { trip: MockTripCard; duration: number; weight: number
   return rows;
 }
 
-function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
+function TripMasonryGrid({ trips }: { trips: TripCard[] }) {
   const items = trips.map((trip) => {
     const duration = getTripDuration(trip.start_date, trip.end_date);
     return { trip, duration, weight: getTripWeight(duration) };
@@ -218,7 +218,7 @@ function TripsContent() {
     if (trips?.length) fetchMissingImages(trips);
   }, [trips]);
 
-  const allTrips: MockTripCard[] = (trips ?? []).map((t: any) => ({
+  const allTrips: TripCard[] = (trips ?? []).map((t: any) => ({
     ...t,
     image: t.cover_image_url
       ?? t.trip_context?.hero_image_url

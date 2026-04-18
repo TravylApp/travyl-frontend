@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       .eq('id', id)
       .single()
 
-    if (!trip) return { title: 'Trip — Travyl' }
+    if (!trip) return { title: 'Trip' }
 
     const dest = trip.destination || 'Trip'
     const title = trip.title || `Trip to ${dest}`
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const heroImage = trip.trip_context?.hero_image_url || null
 
     return {
-      title: `${title} — Travyl`,
+      title,
       description,
       openGraph: {
         title,
@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       },
     }
   } catch {
-    return { title: 'Trip — Travyl' }
+    return { title: 'Trip' }
   }
 }
 

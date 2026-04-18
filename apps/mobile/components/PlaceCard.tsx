@@ -119,7 +119,7 @@ function CardFrontInternal({
       ) : (
         /* Placeholder gradient when no image is available */
         <LinearGradient
-          colors={['#1e3a5f', '#2d5a8e', '#1e3a5f']}
+          colors={[Navy.DEFAULT, '#2d5a8e', Navy.DEFAULT]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ position: 'absolute', width, height, alignItems: 'center', justifyContent: 'center' }}

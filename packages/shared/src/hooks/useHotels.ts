@@ -26,5 +26,6 @@ export function useHotels(tripId: string | undefined) {
     queryKey: ['hotels', tripId],
     queryFn: () => fetchHotels(tripId!),
     enabled: !!tripId,
+    staleTime: 5 * 60 * 1000,
   });
 }

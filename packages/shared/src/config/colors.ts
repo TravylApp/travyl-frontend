@@ -100,7 +100,10 @@ export const Navy = {
 
 export const Brand = {
   primary: Blue[600],    // #003594
-  accent: '#FFC72C',      // Gold
+  accent: '#FFC72C',      // Gold (bright)
+  gold: '#d4b57a',        // Warm gold — card accents, section labels
+  goldDark: '#c8a96a',    // Darker gold variant
+  goldMuted: '#6b5a3e',   // Muted gold — eyebrow text
   background: '#FFFFFF',
   foreground: Gray[900], // #111827
   muted: Gray[100],      // #F3F4F6

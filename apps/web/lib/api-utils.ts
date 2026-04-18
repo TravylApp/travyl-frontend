@@ -211,6 +211,10 @@ export function checkOrigin(req: NextRequest): NextResponse | null {
   }
 
   const source = origin || referer
+
+  // Allow localhost (Expo dev, mobile simulators)
+  if (source.includes('localhost') || source.includes('127.0.0.1')) return null
+
   if (host && source.includes(host)) return null
 
   // Allow known domains

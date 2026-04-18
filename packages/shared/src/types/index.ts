@@ -429,7 +429,7 @@ export interface PlaceItem {
   name: string;
   image: string;
   images?: string[];
-  type: 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event';
+  type: 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' | 'hotel';
   rating: number;
   tagline: string;
   category: string;
@@ -941,7 +941,7 @@ export interface TripMember {
   role: 'owner' | 'editor' | 'viewer';
 }
 
-export interface MockTripCard extends Trip {
+export interface TripCard extends Trip {
   image: string;
   images?: string[];
   route?: TripRoute;
@@ -950,7 +950,7 @@ export interface MockTripCard extends Trip {
 
 // ─── Flight / Hotel Detail Types ────────────────────────────
 
-export interface MockFlightDetail {
+export interface FlightDetail {
   id: string;
   type: 'arrival' | 'return';
   airline: string;
@@ -980,7 +980,7 @@ export interface MockFlightDetail {
   isBooked: boolean;
 }
 
-export interface MockHotelRoom {
+export interface HotelRoom {
   id: string;
   name: string;
   image: string;
@@ -993,7 +993,7 @@ export interface MockHotelRoom {
   isSelected: boolean;
 }
 
-export interface MockHotelGuestRatings {
+export interface HotelGuestRatings {
   overall: number;
   label: string;
   cleanliness: number;
@@ -1004,7 +1004,7 @@ export interface MockHotelGuestRatings {
   totalRatings: number;
 }
 
-export interface MockHotelDetail {
+export interface HotelDetail {
   id: string;
   name: string;
   address: string;
@@ -1018,11 +1018,11 @@ export interface MockHotelDetail {
   checkOutDate: string;
   amenities: string[];
   images: string[];
-  rooms: MockHotelRoom[];
+  rooms: HotelRoom[];
   isBooked: boolean;
   totalPrice: number;
   currency: string;
-  guestRatings: MockHotelGuestRatings;
+  guestRatings: HotelGuestRatings;
   taxesAndFees: { cityTax: number; serviceFee: number; vat: number };
   phone: string;
   email: string;

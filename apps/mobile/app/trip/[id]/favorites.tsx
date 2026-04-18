@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, TextStyles } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PageTransition, useTabAccent } from './_layout';
@@ -70,8 +70,8 @@ function SectionHeader({
         <FontAwesome name={icon as any} size={20} color="#fff" />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{title}</Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary }}>{count} saved</Text>
+        <Text style={{ ...TextStyles.subhead, color: colors.text }}>{title}</Text>
+        <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary }}>{count} saved</Text>
       </View>
       <FontAwesome
         name={collapsed ? 'chevron-right' : 'chevron-down'}
@@ -183,7 +183,7 @@ function FavoriteCard({
             }}
           >
             <FontAwesome name="star" size={10} color="#fbbf24" />
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>
               {item.rating.toFixed(1)}
             </Text>
           </View>
@@ -202,7 +202,7 @@ function FavoriteCard({
               borderRadius: 8,
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: '500', color: '#fff' }}>{item.price}</Text>
+            <Text style={{ ...TextStyles.sm, color: '#fff' }}>{item.price}</Text>
           </View>
         )}
 
@@ -218,7 +218,7 @@ function FavoriteCard({
             borderRadius: 6,
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: '600', color: accentColor }}>{categoryLabel}</Text>
+          <Text style={{ ...TextStyles.smEm, color: accentColor }}>{categoryLabel}</Text>
         </View>
       </View>
 
@@ -227,18 +227,18 @@ function FavoriteCard({
         {/* Location */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
           <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
-          <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+          <Text style={{ ...TextStyles.caption, color: colors.textSecondary }} numberOfLines={1}>
             {item.location}
           </Text>
         </View>
 
         {/* Name */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 }} numberOfLines={1}>
+        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }} numberOfLines={1}>
           {item.name}
         </Text>
 
         {/* Description */}
-        <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 10 }} numberOfLines={2}>
+        <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 10 }} numberOfLines={2}>
           {item.description}
         </Text>
 
@@ -256,7 +256,7 @@ function FavoriteCard({
                 borderColor: accentColor + '20',
               }}
             >
-              <Text style={{ fontSize: 10, color: accentColor }}>{tag}</Text>
+              <Text style={{ ...TextStyles.sm, color: accentColor }}>{tag}</Text>
             </View>
           ))}
         </View>
@@ -285,24 +285,24 @@ function EmptyState() {
       >
         <FontAwesome name="heart" size={24} color="#ef4444" />
       </View>
-      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
+      <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 6 }}>
         No favorites yet
       </Text>
-      <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+      <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
         Save your favorite activities, restaurants, and places to quickly find them later.
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name="camera" size={16} color={ACCENT} />
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Activities</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>Activities</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name="cutlery" size={16} color={ACCENT} />
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Restaurants</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>Restaurants</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name="building" size={16} color={ACCENT} />
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Hotels</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>Hotels</Text>
         </View>
       </View>
     </View>
@@ -473,10 +473,10 @@ export default function FavoritesScreen() {
         >
           <FontAwesome name="heart" size={24} color="#fff" />
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+        <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 4 }}>
           Your Favorites
         </Text>
-        <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+        <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>
           {totalFavorites} saved items across all categories
         </Text>
       </View>
@@ -513,11 +513,7 @@ export default function FavoritesScreen() {
                 color={isActive ? '#fff' : colors.textSecondary}
               />
               <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: isActive ? '600' : '400',
-                  color: isActive ? '#fff' : colors.textSecondary,
-                }}
+                style={isActive ? { ...TextStyles.bodyEm, color: '#fff' } : { ...TextStyles.body, color: colors.textSecondary }}
               >
                 {cat.key}
               </Text>
@@ -530,11 +526,7 @@ export default function FavoritesScreen() {
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: '600',
-                    color: isActive ? '#fff' : colors.textTertiary,
-                  }}
+                  style={{ ...TextStyles.smEm, color: isActive ? '#fff' : colors.textTertiary }}
                 >
                   {count}
                 </Text>
@@ -560,10 +552,10 @@ export default function FavoritesScreen() {
           >
             <FontAwesome name="heart-o" size={20} color={colors.textTertiary} />
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
+          <Text style={{ ...TextStyles.bodyXlEm, color: colors.text, marginBottom: 4 }}>
             No {activeFilter.toLowerCase()} favorited
           </Text>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center' }}>
             Browse the {activeFilter} tab to discover and save items.
           </Text>
         </View>
@@ -720,7 +712,7 @@ export default function FavoritesScreen() {
           {!collapsedSections['hotels'] && (
             <View style={{ gap: 10, marginTop: 8 }}>
               <View style={{ alignItems: 'center', paddingVertical: 28 }}>
-                <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
+                <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary, textAlign: 'center' }}>
                   Hotel favorites will appear here when you heart items in the Hotels tab
                 </Text>
               </View>

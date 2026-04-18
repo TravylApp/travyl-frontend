@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Pressable, useWindowDimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { HOW_IT_WORKS_STEPS, Blue } from '@travyl/shared';
+import { HOW_IT_WORKS_STEPS, Blue, Navy, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { SectionHeader } from './SectionHeader';
 
 const AUTO_ADVANCE_MS = 5000;
 const GAP = 8;
@@ -53,7 +54,7 @@ function StepCard({
           padding: 12,
           overflow: 'hidden',
           backgroundColor: isActive
-            ? '#1e3a5f'
+            ? Navy.DEFAULT
             : isCompleted
               ? 'rgba(30,58,95,0.05)'
               : '#f3f4f6',
@@ -101,7 +102,7 @@ function StepCard({
             backgroundColor: isActive
               ? 'rgba(255,255,255,0.2)'
               : isCompleted
-                ? '#1e3a5f'
+                ? Navy.DEFAULT
                 : '#e5e7eb',
           }}
         >
@@ -110,8 +111,7 @@ function StepCard({
           ) : (
             <Text
               style={{
-                fontSize: 10,
-                fontWeight: '700',
+                ...TextStyles.smEm,
                 color: isActive ? '#fff' : '#6b7280',
               }}
             >
@@ -123,7 +123,7 @@ function StepCard({
         {/* Title */}
         <Text
           style={{
-            fontSize: 11,
+            ...TextStyles.caption,
             fontWeight: '700',
             color: isActive ? '#fff' : colors.text,
             lineHeight: 15,
@@ -159,28 +159,9 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
 
   return (
     <View style={{ paddingVertical: 40, paddingHorizontal: PADDING }}>
-      {/* Header */}
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: '700',
-          color: colors.text,
-          textAlign: 'center',
-          marginBottom: 8,
-        }}
-      >
-        How It Works
-      </Text>
-      <Text
-        style={{
-          fontSize: 14,
-          color: colors.textSecondary,
-          textAlign: 'center',
-          marginBottom: 24,
-        }}
-      >
-        From destination to departure — your perfect trip in 3 simple steps.
-      </Text>
+      <View style={{ marginBottom: 24 }}>
+        <SectionHeader eyebrow="Getting Started" title="How It Works" />
+      </View>
 
       {/* Step cards — 3-column row like web */}
       <View style={{ flexDirection: 'row', gap: GAP, marginBottom: 24, alignItems: 'flex-start' }}>
@@ -212,7 +193,7 @@ export function HowItWorks({ onCtaPress }: HowItWorksProps) {
           gap: 8,
         }}
       >
-        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+        <Text style={{ ...TextStyles.button, color: '#fff' }}>
           Plan Your Trip
         </Text>
         <FontAwesome name="arrow-right" size={14} color="#fff" />

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard } from '@travyl/shared';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -18,7 +18,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripListItemProps {
-  trip: MockTripCard;
+  trip: TripCard;
 }
 
 export function TripListItem({ trip }: TripListItemProps) {

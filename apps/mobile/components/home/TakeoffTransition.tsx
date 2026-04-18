@@ -12,7 +12,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
-import { Blue, TAKEOFF_LOADING_MESSAGES } from '@travyl/shared';
+import { Blue, TAKEOFF_LOADING_MESSAGES, TextStyles } from '@travyl/shared';
 import { PaperPlane } from './PaperPlane';
 
 // ─── Timing ────────────────────────────────────────────────────
@@ -413,8 +413,7 @@ const styles = StyleSheet.create({
   },
   loadingMessage: {
     color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+    ...TextStyles.subhead,
     textAlign: 'center',
     marginBottom: 20,
   },

@@ -320,7 +320,7 @@ export default function PackingScreen() {
               <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: 4 }}>
                 Weather
               </Text>
-              <Text style={{ ...TextStyles.headline, fontSize: 22, color: colors.text, marginBottom: 2 }}>
+              <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 2 }}>
                 {currentWeather.high}°
               </Text>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
@@ -394,7 +394,7 @@ export default function PackingScreen() {
                   onPress={() => toggleCategory(category)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
                 >
-                  <Text style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT }}>
+                  <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>
                     {category}
                   </Text>
                   <FontAwesome
@@ -542,7 +542,7 @@ export default function PackingScreen() {
             }}
           >
             <Text
-              style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT, marginBottom: 12 }}
+              style={{ ...TextStyles.bodyXlEm, color: ACCENT, marginBottom: 12 }}
             >
               Create New List
             </Text>

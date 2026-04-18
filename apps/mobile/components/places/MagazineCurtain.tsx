@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, Pressable, TouchableWithoutFeedback, ActivityIndicator, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   FadeIn,
@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { usePlaceDetail, usePlaceEnrich, usePlaceMenu } from '@travyl/shared';
+import { usePlaceDetail, usePlaceEnrich, usePlaceMenu, Navy, TextStyles } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
 const FLIP_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
@@ -23,6 +23,7 @@ interface MagazineCurtainProps {
   onToggleFav: () => void;
   onMapPress?: () => void;
   onClose?: () => void;
+  onAddToTrip?: (place: PlaceItem) => void;
   width: number;
   height: number;
 }
@@ -33,6 +34,7 @@ export function MagazineCurtain({
   onToggleFav,
   onMapPress,
   onClose,
+  onAddToTrip,
   width,
   height,
 }: MagazineCurtainProps) {
@@ -100,7 +102,8 @@ export function MagazineCurtain({
     >
       {/* ── Front — magazine editorial ── */}
       <Animated.View style={[{ position: 'absolute', width, height }, frontStyle]}>
-        <Pressable onPress={toggleFlip} style={{ flex: 1 }}>
+        <TouchableWithoutFeedback onPress={toggleFlip}>
+        <View style={{ flex: 1 }}>
           {/* Background image */}
           <Image
             source={images[imgIdx]}
@@ -146,12 +149,12 @@ export function MagazineCurtain({
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome name="repeat" size={10} color="rgba(255,255,255,0.4)" />
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Tap to flip</Text>
+                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.4)' }}>Tap to flip</Text>
               </View>
             )}
           </View>
 
-          {/* Top-right buttons: map then heart */}
+          {/* Top-right buttons: map, add to trip, heart */}
           <View style={{ position: 'absolute', top: 14, right: 14, zIndex: 20, flexDirection: 'row', gap: 8 }}>
             {onMapPress && (
               <Pressable
@@ -163,6 +166,18 @@ export function MagazineCurtain({
                 }}
               >
                 <FontAwesome name="map" size={14} color="#1e3a5f" />
+              </Pressable>
+            )}
+            {onAddToTrip && (
+              <Pressable
+                onPress={(e) => { e.stopPropagation?.(); onAddToTrip(place); }}
+                style={{
+                  width: 34, height: 34, borderRadius: 17,
+                  backgroundColor: 'rgba(255,255,255,0.9)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <FontAwesome name="plus" size={14} color="#1e3a5f" />
               </Pressable>
             )}
             <Pressable
@@ -182,7 +197,7 @@ export function MagazineCurtain({
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }} pointerEvents="box-none">
             {/* Type */}
             <Text style={{
-              fontSize: 9, fontWeight: '700', color: '#7dd3fc',
+              ...TextStyles.xs, color: '#7dd3fc',
               textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6,
             }}>
               {place.type}
@@ -191,7 +206,7 @@ export function MagazineCurtain({
             {/* Name + rating inline */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Text style={{
-                fontSize: 30, fontWeight: '800', color: '#fff',
+                ...TextStyles.display, color: '#fff',
                 lineHeight: 32, letterSpacing: -1.5, flex: 1,
               }} numberOfLines={2}>
                 {place.name}
@@ -199,7 +214,7 @@ export function MagazineCurtain({
               {place.rating != null && place.rating > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
                   <FontAwesome name="star" size={12} color="#facc15" />
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{place.rating.toFixed(1)}</Text>
+                  <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{place.rating.toFixed(1)}</Text>
                 </View>
               )}
             </View>
@@ -207,7 +222,7 @@ export function MagazineCurtain({
             {/* Tagline */}
             {place.tagline && (
               <Text style={{
-                fontSize: 11, color: 'rgba(255,255,255,0.6)',
+                ...TextStyles.caption, color: 'rgba(255,255,255,0.6)',
                 textTransform: 'uppercase', letterSpacing: 3, marginBottom: 8,
               }} numberOfLines={1}>
                 {place.tagline}
@@ -217,8 +232,8 @@ export function MagazineCurtain({
             {/* Description — italic editorial */}
             {place.description && (
               <Text style={{
-                fontSize: 14, color: 'rgba(255,255,255,0.8)',
-                fontStyle: 'italic', lineHeight: 20, marginBottom: 12,
+                ...TextStyles.bodyXl, color: 'rgba(255,255,255,0.8)',
+                fontStyle: 'italic', marginBottom: 12,
               }} numberOfLines={2}>
                 {place.description}
               </Text>
@@ -229,10 +244,10 @@ export function MagazineCurtain({
               <View style={{ flexDirection: 'row', gap: 20, marginBottom: 12 }}>
                 {place.tags.slice(0, 3).map((tag, i) => (
                   <View key={tag}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#d4af37', marginBottom: 2 }}>
+                    <Text style={{ ...TextStyles.smEm, color: '#d4af37', marginBottom: 2 }}>
                       0{i + 1}
                     </Text>
-                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 16 }}>
+                    <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.8)' }}>
                       {tag}
                     </Text>
                   </View>
@@ -244,15 +259,15 @@ export function MagazineCurtain({
             <View style={{ flexDirection: 'row', gap: 24 }}>
               {place.bestTimeToVisit && (
                 <View>
-                  <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>Best Time</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>{place.bestTimeToVisit}</Text>
+                  <Text style={{ ...TextStyles.micro, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>Best Time</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>{place.bestTimeToVisit}</Text>
                 </View>
               )}
               {/* Rating moved to inline with name */}
               {place.priceLevel && (
                 <View>
-                  <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>Price</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>
+                  <Text style={{ ...TextStyles.micro, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>Price</Text>
+                  <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>
                     {'$'.repeat(place.priceLevel)}
                     <Text style={{ color: 'rgba(255,255,255,0.3)' }}>{'$'.repeat(4 - place.priceLevel)}</Text>
                   </Text>
@@ -276,29 +291,31 @@ export function MagazineCurtain({
               </View>
             )}
           </View>
-        </Pressable>
+        </View>
+        </TouchableWithoutFeedback>
       </Animated.View>
 
       {/* ── Back — enriched detail view ── */}
-      <Animated.View style={[{ position: 'absolute', width, height, backgroundColor: '#1e3a5f', borderRadius: 20 }, backStyle]}>
-        <Pressable onPress={toggleFlip} style={{ flex: 1, padding: 20 }}>
+      <Animated.View style={[{ position: 'absolute', width, height, backgroundColor: Navy.DEFAULT, borderRadius: 20 }, backStyle]}>
+        <TouchableWithoutFeedback onPress={toggleFlip}>
+        <View style={{ flex: 1, padding: 20 }}>
           {/* Header */}
-          <Text style={{ fontSize: 9, fontWeight: '700', color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6 }}>
+          <Text style={{ ...TextStyles.xs, color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6 }}>
             {p.type}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', flex: 1 }} numberOfLines={2}>
+            <Text style={{ ...TextStyles.title, color: '#fff', flex: 1 }} numberOfLines={2}>
               {p.name}
             </Text>
             {(p.rating ?? 0) > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                 <FontAwesome name="star" size={12} color="#facc15" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{(p.rating ?? 0).toFixed(1)}</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{(p.rating ?? 0).toFixed(1)}</Text>
               </View>
             )}
           </View>
           {p.reviewCount != null && p.reviewCount > 0 && (
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{p.reviewCount.toLocaleString()} reviews</Text>
+            <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{p.reviewCount.toLocaleString()} reviews</Text>
           )}
 
           <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 10 }} />
@@ -307,7 +324,7 @@ export function MagazineCurtain({
           {enriching && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <ActivityIndicator size="small" color="#7dd3fc" />
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Loading details...</Text>
+              <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.5)' }}>Loading details...</Text>
             </View>
           )}
 
@@ -315,31 +332,31 @@ export function MagazineCurtain({
           {p.hours && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <FontAwesome name="clock-o" size={13} color="rgba(255,255,255,0.5)" />
-              <Text style={{ fontSize: 13, color: '#fff', fontWeight: '500' }}>{p.hours}</Text>
+              <Text style={{ ...TextStyles.bodyLg, color: '#fff' }}>{p.hours}</Text>
             </View>
           )}
           {p.address && (
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
               <FontAwesome name="map-marker" size={13} color="rgba(255,255,255,0.5)" style={{ marginTop: 2 }} />
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18, flex: 1 }} numberOfLines={2}>{p.address}</Text>
+              <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)', flex: 1 }} numberOfLines={2}>{p.address}</Text>
             </View>
           )}
           {p.website && (
             <Pressable onPress={() => Linking.openURL(p.website!).catch(() => {})} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <FontAwesome name="globe" size={13} color="#7dd3fc" />
-              <Text style={{ fontSize: 13, color: '#7dd3fc' }} numberOfLines={1}>Visit website</Text>
+              <Text style={{ ...TextStyles.bodyLg, color: '#7dd3fc' }} numberOfLines={1}>Visit website</Text>
             </Pressable>
           )}
           {p.phone && (
             <Pressable onPress={() => Linking.openURL(`tel:${p.phone}`).catch(() => {})} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <FontAwesome name="phone" size={13} color="#7dd3fc" />
-              <Text style={{ fontSize: 13, color: '#7dd3fc' }}>{p.phone}</Text>
+              <Text style={{ ...TextStyles.bodyLg, color: '#7dd3fc' }}>{p.phone}</Text>
             </Pressable>
           )}
 
           {/* Description */}
           {p.description && (
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 21, marginBottom: 10 }} numberOfLines={5}>
+            <Text style={{ ...TextStyles.bodyXl, color: 'rgba(255,255,255,0.75)', marginBottom: 10 }} numberOfLines={5}>
               {p.description}
             </Text>
           )}
@@ -349,7 +366,7 @@ export function MagazineCurtain({
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {p.tags.slice(0, 5).map((tag: string) => (
                 <View key={tag} style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.6)' }}>{tag}</Text>
+                  <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.6)' }}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -360,16 +377,16 @@ export function MagazineCurtain({
             <View style={{ flexDirection: 'row', gap: 16, marginBottom: 10 }}>
               {p.priceLevel && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Price</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.4)' }}>Price</Text>
+                  <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
                     {'$'.repeat(p.priceLevel)}<Text style={{ color: 'rgba(255,255,255,0.2)' }}>{'$'.repeat(4 - p.priceLevel)}</Text>
                   </Text>
                 </View>
               )}
               {p.duration && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Duration</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{p.duration}</Text>
+                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.4)' }}>Duration</Text>
+                  <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{p.duration}</Text>
                 </View>
               )}
             </View>
@@ -387,7 +404,7 @@ export function MagazineCurtain({
               }}
             >
               <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={13} color={isFav ? '#ef4444' : '#7dd3fc'} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: isFav ? '#ef4444' : '#7dd3fc' }}>
+              <Text style={{ ...TextStyles.bodyLgEm, color: isFav ? '#ef4444' : '#7dd3fc' }}>
                 {isFav ? 'Saved' : 'Save to Favorites'}
               </Text>
             </Pressable>
@@ -395,11 +412,12 @@ export function MagazineCurtain({
             <View style={{ alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome name="repeat" size={10} color="rgba(255,255,255,0.3)" />
-                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>Tap to flip back</Text>
+                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.3)' }}>Tap to flip back</Text>
               </View>
             </View>
           </View>
-        </Pressable>
+        </View>
+        </TouchableWithoutFeedback>
       </Animated.View>
     </Animated.View>
   );

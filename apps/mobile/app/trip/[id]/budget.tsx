@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, supabase, Navy } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -15,7 +15,7 @@ import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 const CATEGORY_CONFIG: Record<string, { icon: string; bg: string; color: string; bar: string }> = {
   'Flights':            { icon: 'plane',        bg: '#dbeafe', color: '#2563eb', bar: '#3b82f6' },
   'Hotels':             { icon: 'building',     bg: '#ffedd5', color: '#ea580c', bar: '#f97316' },
-  'Food & Dining':      { icon: 'cutlery',      bg: '#e0f2fe', color: '#1e3a5f', bar: '#1e3a5f' },
+  'Food & Dining':      { icon: 'cutlery',      bg: '#e0f2fe', color: Navy.DEFAULT, bar: Navy.DEFAULT },
   'Activities & Tours': { icon: 'camera',        bg: '#ccfbf1', color: '#0d9488', bar: '#14b8a6' },
   'Transportation':     { icon: 'bus',           bg: '#ede9fe', color: '#7c3aed', bar: '#8b5cf6' },
   'Shopping':           { icon: 'shopping-bag',  bg: '#dcfce7', color: '#16a34a', bar: '#22c55e' },
@@ -387,7 +387,7 @@ export default function BudgetScreen() {
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
           <FontAwesome name="pie-chart" size={24} color={ACCENT} />
         </View>
-        <Text style={{ ...TextStyles.title, fontSize: 17, color: colors.text, marginBottom: 6 }}>No expenses yet</Text>
+        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 6 }}>No expenses yet</Text>
         <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
           Your budget breakdown will appear as you add flights, hotels, and activities to your trip.
         </Text>
@@ -464,7 +464,7 @@ export default function BudgetScreen() {
             )}
           </View>
           {!isEditingTotal ? (
-            <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text, marginTop: 2 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
               ${totalBudgeted.toLocaleString()}
             </Text>
           ) : (
@@ -485,7 +485,7 @@ export default function BudgetScreen() {
         {/* Total Spent */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Total Spent</Text>
-          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text, marginTop: 2 }}>
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
             ${totalActual.toLocaleString()}
           </Text>
         </View>
@@ -493,7 +493,7 @@ export default function BudgetScreen() {
         {/* Remaining */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? '#10b98130' : '#ef444430' }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
-          <Text style={{ ...TextStyles.title, fontSize: 18, color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
+          <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
             ${Math.abs(remaining).toLocaleString()}
           </Text>
         </View>
@@ -655,7 +655,7 @@ export default function BudgetScreen() {
                       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
                         <View style={{ flex: 1 }}>
                           <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 4 }}>Budgeted</Text>
-                          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text }}>
+                          <Text style={{ ...TextStyles.subhead, color: colors.text }}>
                             ${item.budgeted.toLocaleString()}
                           </Text>
                         </View>
@@ -673,7 +673,7 @@ export default function BudgetScreen() {
                               )}
                             </View>
                           </View>
-                          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text }}>
+                          <Text style={{ ...TextStyles.subhead, color: colors.text }}>
                             ${item.actual.toLocaleString()}
                           </Text>
                         </View>

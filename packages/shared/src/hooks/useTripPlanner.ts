@@ -202,7 +202,10 @@ export function useTripPlanner() {
     try {
       const res = await fetch(`${API_URL}/api/trips/extract`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_URL ? { 'Origin': API_URL } : {}),
+        },
         body: JSON.stringify({
           prompt,
           city: context?.city ?? contextRef.current.city,
@@ -273,7 +276,10 @@ export function useTripPlanner() {
     try {
       const res = await fetch(`${API_URL}/api/trips/plan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_URL ? { 'Origin': API_URL } : {}),
+        },
         body: JSON.stringify({
           prompt,
           city: contextRef.current.city,

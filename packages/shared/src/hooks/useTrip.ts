@@ -49,5 +49,8 @@ export function useTrip(tripId: string | undefined) {
     queryKey: ['trip', tripId],
     queryFn: () => fetchTripWithFallback(tripId!),
     enabled: !!tripId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: (prev) => prev, // keep previous data visible during refetch
   });
 }

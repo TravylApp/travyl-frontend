@@ -9,7 +9,22 @@
  * all the individual helpers below.
  */
 
-import { upscaleGoogleImage, isValidImageUrl } from './index';
+// Inline image helpers to avoid require cycle (index.ts re-exports places.ts)
+function upscaleImage(url: string | null | undefined, width = 1200, height = 800): string | null {
+  if (!url || url.length < 10) return null;
+  if (url.includes('googleusercontent.com')) {
+    return url
+      .replace(/=w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
+      .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`);
+  }
+  if (url.includes('4sqi.net') || url.includes('foursquare.com') || url.includes('fsq.com')) {
+    return url.replace(/\/(\d+x\d+|cap\d+|width\d+)\//, '/original/');
+  }
+  return url;
+}
+function isValidImage(url: string | null | undefined): boolean {
+  return !!url && url.length >= 10 && url.startsWith('http');
+}
 import type { PlaceItem } from '../types';
 
 // ─── Backend response shape ─────────────────────────────────
@@ -235,11 +250,11 @@ export function getFallbackImage(_name: string, _idx: number): string {
  * @returns Normalized `PlaceItem` for the UI
  */
 export function mapBackendToPlaceItem(p: BackendPlace, _idx = 0, requestedCategory?: string): PlaceItem {
-  const img = upscaleGoogleImage(p.photo_url);
+  const img = upscaleImage(p.photo_url);
   return {
     id: p.id,
     name: p.name,
-    image: isValidImageUrl(img) ? img! : '',
+    image: isValidImage(img) ? img! : '',
     type: mapType(p.category, requestedCategory),
     rating: p.rating ?? 0,
     tagline: p.description?.split('.')[0] ?? p.category,
