@@ -19,7 +19,7 @@ export function AnimatedCounter({ value, suffix, decimals = 0 }: { value: number
         setHasAnimated(true);
         prevValueRef.current = value;
 
-        const duration = 2000;
+        const duration = 1200;
         const start = performance.now();
 
         const tick = (now: number) => {
