@@ -105,7 +105,7 @@ function SidebarTripCard({
       style={{
         borderColor: isActive ? accentColor : "rgba(0,0,0,0.06)",
         border: isActive ? `2px solid ${accentColor}` : "1px solid rgba(0,0,0,0.06)",
-        background: "white",
+        background: "var(--card)",
       }}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
@@ -115,7 +115,7 @@ function SidebarTripCard({
         {/* Image */}
         <div className="relative w-full h-28 rounded-lg overflow-hidden">
           {!imgLoaded && (
-            <div className="absolute inset-0 bg-gray-100 animate-pulse" />
+            <div className="absolute inset-0 bg-muted animate-pulse" />
           )}
           <img
             src={dest.images[0]}
@@ -162,22 +162,22 @@ function SidebarTripCard({
         {/* Text content */}
         <div className="px-2 py-2">
           <h4
-            className="text-[#314158] truncate"
+            className="text-card-foreground truncate"
             style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "-0.3px" }}
           >
             {dest.name}
           </h4>
 
           <div className="flex items-center gap-1 mt-0.5">
-            <MapPin size={9} className="text-[#b0b8c1] shrink-0" />
-            <span className="text-[#9ca3af] truncate" style={{ fontSize: "10px" }}>
+            <MapPin size={9} className="text-muted-foreground shrink-0" />
+            <span className="text-muted-foreground truncate" style={{ fontSize: "10px" }}>
               {dest.places.slice(0, 2).join(" · ")}
             </span>
           </div>
 
           {description && (
             <p
-              className="text-[#9ca3af] line-clamp-2 mt-1.5"
+              className="text-muted-foreground line-clamp-2 mt-1.5"
               style={{
                 fontSize: "10px",
                 lineHeight: "1.4",
@@ -300,9 +300,9 @@ function PostcardPopup({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute -top-3 -right-3 z-50 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
+          className="absolute -top-3 -right-3 z-50 w-8 h-8 bg-card rounded-full shadow-lg flex items-center justify-center hover:bg-muted transition-colors"
         >
-          <X size={14} className="text-[#314158]" />
+          <X size={14} className="text-card-foreground" />
         </button>
 
         {/* Flip container — portrait on mobile, landscape on desktop */}
@@ -325,7 +325,7 @@ function PostcardPopup({
               pointerEvents: isFlipped ? "none" : "auto",
             }}
           >
-            <div className="relative w-full h-full bg-white rounded-lg overflow-hidden shadow-[0_25px_60px_-12px_rgba(0,0,0,0.4)]">
+            <div className="relative w-full h-full bg-card rounded-lg overflow-hidden shadow-[0_25px_60px_-12px_rgba(0,0,0,0.4)]">
               <AirmailBorder />
               <div
                 className="absolute z-[1] rounded overflow-hidden"

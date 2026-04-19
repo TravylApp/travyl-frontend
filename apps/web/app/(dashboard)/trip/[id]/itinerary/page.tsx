@@ -3,7 +3,7 @@
 import { use, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useItineraryScreen, GLANCE_HERO_IMAGES, TOD_START_HOURS, QUICK_FILL_CATEGORIES, pickRandomActivity } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
-import type { MockFlightDetail, PlaceItem } from '@travyl/shared';
+import type { FlightDetail, PlaceItem } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {
@@ -180,8 +180,8 @@ function GlanceView({
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
   onSelectDay: (i: number) => void;
-  arrivalFlight?: MockFlightDetail;
-  returnFlight?: MockFlightDetail;
+  arrivalFlight?: FlightDetail;
+  returnFlight?: FlightDetail;
   hotel?: { name: string; image?: string; price?: number; price_per_night?: number; stars?: number };
   tripFlight?: { destAirport: string; city: string } | null;
   tripId?: string;
@@ -207,17 +207,23 @@ function GlanceView({
   // Fetch destination-specific images from Unsplash/Pexels
   const destImages = useDestinationImages(destination, Math.max(days.length, 3));
 
-  // Sync scroll position when selectedDayIndex changes from external source (day pills)
-  useEffect(() => {
-    scrollTo(selectedDayIndex);
-  }, [selectedDayIndex]);
+  // Prevent scroll→onSelectDay feedback loop when programmatically scrolling
+  const isScrollingRef = useRef(false);
 
-  const scrollTo = (idx: number) => {
+  const scrollTo = useCallback((idx: number) => {
     const el = scrollRef.current;
     if (!el) return;
     const card = el.children[idx] as HTMLElement;
-    if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-  };
+    if (!card) return;
+    isScrollingRef.current = true;
+    card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    setTimeout(() => { isScrollingRef.current = false; }, 400);
+  }, []);
+
+  // Sync scroll position when selectedDayIndex changes from external source (day pills)
+  useEffect(() => {
+    scrollTo(selectedDayIndex);
+  }, [selectedDayIndex, scrollTo]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     const el = scrollRef.current;
@@ -245,6 +251,7 @@ function GlanceView({
       <div ref={scrollRef}
         className="flex gap-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab select-none"
         onScroll={(e) => {
+          if (isScrollingRef.current) return;
           const el = e.currentTarget;
           const idx = Math.round(el.scrollLeft / ((el.firstElementChild as HTMLElement)?.offsetWidth || 1));
           onSelectDay(Math.min(idx, days.length - 1));
@@ -271,7 +278,7 @@ function GlanceView({
                     {day.dateLabel}
                   </p>
                   <div className="flex items-end justify-between">
-                    <h3 className="text-base font-bold text-white">{day.dayLabel}</h3>
+                    <h3 className="text-base font-normal text-white font-serif tracking-wide">{day.dayLabel}</h3>
                     <span className="text-[9px] text-white/40">
                       {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
                     </span>
@@ -975,8 +982,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const destAirport = (contextFlights[0] as any)?.dest_iata || '';
   const tripFlight = destAirport ? { destAirport, city } : null;
 
-  const arrivalFlight: MockFlightDetail | undefined = undefined;
-  const returnFlight: MockFlightDetail | undefined = undefined;
+  const arrivalFlight: FlightDetail | undefined = undefined;
+  const returnFlight: FlightDetail | undefined = undefined;
 
   // Build discover items from trip context (explore_items + foursquare_venues)
   const discoverItems: DiscoverItem[] = useMemo(() => {
@@ -1251,14 +1258,14 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                 dragOverIdx === i ? 'ring-2 ring-gray-400 dark:ring-white/40 scale-105' : ''
               } ${
                 i === selectedDayIndex
-                  ? 'bg-gray-100 dark:bg-white/[0.15] border-gray-300 dark:border-white/[0.25]'
+                  ? 'bg-gray-800 dark:bg-white/[0.15] border-gray-700 dark:border-white/[0.25] shadow-sm'
                   : dragOverIdx === i
-                    ? 'bg-gray-50 dark:bg-white/[0.08] border-transparent'
-                    : 'bg-transparent border-transparent'
+                    ? 'bg-gray-100 dark:bg-white/[0.08] border-transparent'
+                    : 'bg-white/60 dark:bg-transparent border-gray-200 dark:border-transparent hover:bg-white/80 dark:hover:bg-white/[0.06]'
               }`}
             >
-              <span className="block text-[10px] font-bold text-gray-500 dark:text-white/50">{d.dayLabel.replace('Day ', 'D')}</span>
-              <span className="block text-[11px] font-medium text-gray-800 dark:text-white/80">{d.dateLabel.replace(/,.*/, '')}</span>
+              <span className={`block text-[10px] font-bold ${i === selectedDayIndex ? 'text-gray-300 dark:text-white/50' : 'text-gray-500 dark:text-white/50'}`}>{d.dayLabel.replace('Day ', 'D')}</span>
+              <span className={`block text-[11px] font-medium ${i === selectedDayIndex ? 'text-white dark:text-white/80' : 'text-gray-700 dark:text-white/80'}`}>{d.dateLabel.replace(/,.*/, '')}</span>
             </button>
           ))}
         </div>
@@ -1266,15 +1273,13 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         {/* ── AT A GLANCE section ── */}
         <section>
           <div className="mb-4 flex items-end justify-between">
-            <div className="flex items-center gap-3">
-              <div>
-                <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white tracking-wide"
-                  style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>At a Glance</h2>
-              </div>
-              <TripHistoryToggle tripId={id} variant="pill" dark />
+            <div>
+              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
+              <h2 className="text-2xl sm:text-3xl font-normal text-gray-800 dark:text-white tracking-wide font-serif">At a Glance</h2>
             </div>
-            <div className="relative shrink-0 mr-2" ref={regenMenuRef}>
+            <div className="flex items-center gap-2 shrink-0">
+              <TripHistoryToggle tripId={id} variant="pill" />
+              <div className="relative shrink-0" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
@@ -1374,6 +1379,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
               >
                 <Map size={13} />
               </button>
+            </div>
             </div>
           </div>
 

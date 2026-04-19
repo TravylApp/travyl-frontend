@@ -25,11 +25,13 @@ import {
   FontFamily,
   supabase,
 } from '@travyl/shared';
-import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
+import type { FlightDetail, HotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
 import MapView, { Marker } from 'react-native-maps';
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
 import { PageTransition, TabCtx, useTabAccent } from './_layout';
@@ -797,7 +799,7 @@ function ItinerarySkeleton() {
 
 // ─── FlightSection (inline) ─────────────────────────────────
 
-function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collapsed?: boolean }) {
+function FlightSection({ flight, collapsed }: { flight: FlightDetail; collapsed?: boolean }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const [expanded, setExpanded] = useState(false);
@@ -996,7 +998,7 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
 
 // ─── HotelSection (inline) ──────────────────────────────────
 
-function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; label: string; collapsed?: boolean }) {
+function HotelSection({ hotel, label, collapsed }: { hotel: HotelDetail; label: string; collapsed?: boolean }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const [expanded, setExpanded] = useState(false);
@@ -2008,6 +2010,7 @@ export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const { tripId: id } = useContext(TabCtx);
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
   const { trip, days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
   const centerLat = trip?.trip_context?.lat ?? 0;
@@ -2660,6 +2663,8 @@ export default function ItineraryScreen() {
           initialIndex={Math.max(0, allPlacesFromDiscover.findIndex((p) => p.id === openPlace.id))}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setSelectedActivityId(null)}
         />

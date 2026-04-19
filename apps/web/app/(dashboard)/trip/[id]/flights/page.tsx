@@ -122,6 +122,10 @@ interface FlightSearchParams {
   date: string;
   passengers: number;
   cabinClass: string;
+  originCity?: string;
+  originCountry?: string;
+  destCity?: string;
+  destCountry?: string;
 }
 
 function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
@@ -140,13 +144,19 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
     queryKey: ['flights-search', originAirport, destAirport, departDate, passengers, cabinClass],
     queryFn: async (): Promise<ComparisonFlight[]> => {
       if (!originAirport || (!destAirport && !destination)) return [];
+      // Backend resolves airports from city names, not IATA codes
+      const originCity = searchParams?.originCity || originAirport;
+      const destCity = searchParams?.destCity || destAirport || destination || '';
+      const originCtry = searchParams?.originCountry || 'US';
+      const destCtry = searchParams?.destCountry || destCountry || '';
       const params = new URLSearchParams({
-        origin: originAirport,
-        destination: destAirport || destination || '',
+        origin: originCity,
+        destination: destCity,
         date: departDate,
         passengers: String(passengers),
       });
-      if (destCountry) params.set('destination_country', destCountry);
+      if (originCtry) params.set('origin_country', originCtry);
+      if (destCtry) params.set('destination_country', destCtry);
       if (cabinClass) params.set('cabin', cabinClass);
 
       const res = await fetch(`/api/flights/search?${params}`);
@@ -205,7 +215,9 @@ const collapseVariants = {
    AIRPORT AUTOCOMPLETE INPUT
    ================================================================ */
 
-function AirportInput({ label, value, onChange }: { label: string; value: string; onChange: (code: string) => void }) {
+interface AirportInfo { iata: string; city: string; country: string }
+
+function AirportInput({ label, value, onChange, onSelect }: { label: string; value: string; onChange: (code: string) => void; onSelect?: (info: AirportInfo) => void }) {
   const [query, setQuery] = useState(value || '');
   const [editing, setEditing] = useState(false);
   const [results, setResults] = useState<{ iata: string; name: string; city: string; country: string }[]>([]);
@@ -237,10 +249,64 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
     }, 250);
   }, [query, editing]);
 
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Reset highlight when results change
+  useEffect(() => { setHighlightIdx(results.length > 0 ? 0 : -1); }, [results]);
+
+  // Position dropdown relative to viewport (escapes overflow:hidden parents)
+  useEffect(() => {
+    if (open && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 300) });
+    }
+  }, [open]);
+
+  const selectResult = (r: { iata: string; city?: string; country?: string }) => {
+    onChange(r.iata);
+    setQuery(r.iata);
+    setOpen(false);
+    setEditing(false);
+    selectingRef.current = false;
+    prevValueRef.current = r.iata;
+    if (onSelect && r.city) onSelect({ iata: r.iata, city: r.city, country: r.country || '' });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || results.length === 0) {
+      // Enter with no dropdown → treat typed text as IATA code directly
+      if (e.key === 'Enter' && query.trim()) {
+        onChange(query.trim().toUpperCase());
+        setEditing(false);
+        setOpen(false);
+        (e.target as HTMLInputElement).blur();
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx(i => Math.min(i + 1, results.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = highlightIdx >= 0 ? highlightIdx : 0;
+      selectResult(results[idx]);
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setEditing(false);
+    }
+  };
+
   return (
     <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors relative">
       <p className="text-[9px] uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={(e) => { setQuery(e.target.value); setEditing(true); }}
@@ -249,27 +315,21 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
           if (selectingRef.current) return;
           setOpen(false);
           setEditing(false);
-          // Restore to last selected value if user cleared without picking
           if (!query.trim()) setQuery(value || '');
         }}
+        onKeyDown={handleKeyDown}
         placeholder="Search airport..."
         className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 w-full focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
       />
-      {open && results.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
+      {open && results.length > 0 && dropdownPos && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg shadow-xl max-h-48 overflow-auto"
+          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}>
           {results.map((r, i) => (
             <button
               key={`${r.iata}-${i}`}
               onMouseDown={(e) => { e.preventDefault(); selectingRef.current = true; }}
-              onClick={() => {
-                onChange(r.iata);
-                setQuery(r.iata);
-                setOpen(false);
-                setEditing(false);
-                selectingRef.current = false;
-                prevValueRef.current = r.iata;
-              }}
-              className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+              onClick={() => selectResult(r)}
+              className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2 ${i === highlightIdx ? 'bg-blue-50 dark:bg-white/[0.08]' : 'hover:bg-blue-50 dark:hover:bg-white/[0.06]'}`}
             >
               <span className="text-xs font-bold text-[#2563eb] w-8">{r.iata}</span>
               <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{r.name}</span>
@@ -289,13 +349,15 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
 
 function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearch, defaultOpen }: {
   defaultFrom?: string; defaultTo?: string; defaultTravelers?: number;
-  onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => void;
+  onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string; originCity?: string; originCountry?: string; destCity?: string; destCountry?: string }) => void;
   defaultOpen?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(!defaultOpen);
   const [showFilters, setShowFilters] = useState(false);
   const [from, setFrom] = useState(defaultFrom || '');
   const [to, setTo] = useState(defaultTo || '');
+  const [fromInfo, setFromInfo] = useState<AirportInfo | null>(null);
+  const [toInfo, setToInfo] = useState<AirportInfo | null>(null);
   const [travelers, setTravelers] = useState(defaultTravelers || 2);
   const [cabinClass, setCabinClass] = useState('economy');
 
@@ -357,7 +419,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
               {/* Search strip */}
               <div className="flex flex-col sm:flex-row items-stretch border border-gray-200 dark:border-white/[0.08] rounded-xl overflow-visible bg-white dark:bg-white/[0.03] divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-white/[0.08]">
                 {/* From */}
-                <AirportInput label="From" value={from} onChange={setFrom} />
+                <AirportInput label="From" value={from} onChange={setFrom} onSelect={setFromInfo} />
 
                 {/* Swap */}
                 <div className="hidden sm:flex items-center -mx-3 z-10">
@@ -367,7 +429,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
                 </div>
 
                 {/* To */}
-                <AirportInput label="To" value={to} onChange={setTo} />
+                <AirportInput label="To" value={to} onChange={setTo} onSelect={setToInfo} />
 
                 {/* Travelers */}
                 <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors">
@@ -394,7 +456,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
 
                 {/* Search button */}
                 <button
-                  onClick={(e) => { e.stopPropagation(); onSearch?.({ origin: from, destination: to, passengers: travelers, cabinClass }); }}
+                  onClick={(e) => { e.stopPropagation(); onSearch?.({ origin: from, destination: to, passengers: travelers, cabinClass, originCity: fromInfo?.city, originCountry: fromInfo?.country, destCity: toInfo?.city, destCountry: toInfo?.country }); }}
                   className="px-5 py-2.5 text-xs text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors shrink-0 flex items-center gap-1.5 justify-center sm:rounded-r-xl font-medium"
                 >
                   <Search size={13} />
@@ -794,7 +856,9 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   const [searchParams, setSearchParams] = useState<FlightSearchParams | undefined>(undefined);
   const { flights: searchedFlights, isLoading: searchingFlights } = useFlightSearch(id, searchParams);
 
-  const destination = trip?.destination?.split(',')[0]?.trim();
+  const destParts = (trip?.destination || '').split(',');
+  const destination = destParts[0]?.trim();
+  const tripDestCountry = destParts.slice(1).join(',').trim() || '';
   const [defaultTo, setDefaultTo] = useState<string | undefined>(undefined);
   const [defaultFrom, setDefaultFrom] = useState<string>('');
   const defaultTravelers = trip?.travelers || 1;
@@ -836,13 +900,17 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     return () => { cancelled = true; };
   }, []);
 
-  const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => {
+  const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string; originCity?: string; originCountry?: string; destCity?: string; destCountry?: string }) => {
     setSearchParams({
       origin: params.origin,
       destination: params.destination,
       date: trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
       passengers: params.passengers,
       cabinClass: params.cabinClass,
+      originCity: params.originCity,
+      originCountry: params.originCountry,
+      destCity: params.destCity || destination,
+      destCountry: params.destCountry || tripDestCountry,
     });
   };
 

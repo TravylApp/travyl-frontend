@@ -1,6 +1,14 @@
 'use client';
 
 import { use, useState, useEffect, useRef, useCallback } from 'react';
+
+/** Safely format a date string — returns '' if invalid */
+function safeDate(d: string | null | undefined): string {
+  if (!d) return '';
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? d + 'T12:00:00' : d);
+  if (isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
 import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -8,7 +16,6 @@ import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
-import { PlaceDetailModal } from '@/components/trip/PlaceDetailModal';
 
 // Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -93,7 +100,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
     <section>
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Things to Do</h2>
+          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Things to Do</h2>
         </div>
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
           {!gridView && (
@@ -111,18 +118,6 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
               </button>
             </>
           )}
-          {gridView && (
-            <button onClick={() => setFlush(f => !f)} title="Flush grid"
-              className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.12]"
-              style={{ backgroundColor: flush ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
-              <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />
-            </button>
-          )}
-          <button onClick={() => setGridView(v => !v)} title={gridView ? 'Carousel view' : 'Grid view'}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.12]"
-            style={{ backgroundColor: gridView ? 'rgba(0,0,0,0.06)' : 'transparent' }}>
-            {gridView ? <LayoutList size={12} className="text-gray-500 dark:text-white/70" /> : <LayoutGrid size={12} className="text-gray-500 dark:text-white/70" />}
-          </button>
         </div>
       </div>
 
@@ -139,7 +134,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
             {items.map((item) => (
               <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} />
+                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} referrerPolicy="no-referrer" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute top-3 left-3">
                   <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
@@ -147,7 +142,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                   </span>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="text-lg font-bold text-white leading-tight mb-1">{item.title}</h3>
+                  <h3 className="text-lg font-normal text-white leading-tight mb-1 font-serif">{item.title}</h3>
                   <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
                   <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
                 </div>
@@ -185,7 +180,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 </span>
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-3">
-                <h3 className="text-sm font-bold text-white leading-tight">{item.title}</h3>
+                <h3 className="text-sm font-normal text-white leading-tight font-serif">{item.title}</h3>
               </div>
             </div>
           ))}
@@ -201,22 +196,30 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
 
   return (
     <section>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">News</h2>
+      <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">News</h2>
 
       {/* Scrollable news list capped to match What's Going On card height */}
       <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1">
         <div className="divide-y divide-gray-200 dark:divide-white/[0.08]">
           {newsItems.map((item) => (
             <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
-              className="block py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
-                {item.source && (
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
-                )}
+              className="flex gap-3 py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
+              {(item as any).image && (
+                <div className="flex-shrink-0 w-[72px] h-[54px] rounded-lg overflow-hidden bg-gray-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={(item as any).image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
+                  {item.source && (
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
+                  )}
+                </div>
+                <h3 className="text-[14px] font-normal leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white font-serif">{item.title}</h3>
+                <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
               </div>
-              <h3 className="text-[14px] font-bold leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white">{item.title}</h3>
-              <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
             </a>
           ))}
         </div>
@@ -249,7 +252,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
     <section>
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">What&apos;s Going On</h2>
+          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">What&apos;s Going On</h2>
         </div>
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
           <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
@@ -275,7 +278,10 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
           setActiveIdx(Math.min(idx, events.length - 1));
         }}>
         {events.map((item, i) => {
-          const bgImage = item.image || (heroImages?.[i % (heroImages?.length || 1)]);
+          const rawImg = item.image || '';
+          // Skip low-res Google proxy thumbnails — use hero images as fallback instead
+          const isLowRes = rawImg.includes('encrypted-tbn') || rawImg.includes('news.google.com/api') || (rawImg.includes('googleusercontent') && rawImg.includes('s100'));
+          const bgImage = (rawImg && !isLowRes ? upscaleGoogleImage(rawImg) : null) || (heroImages?.[i % (heroImages?.length || 1)]);
           return (
             <div key={item.id}
               className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start"
@@ -283,7 +289,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               {bgImage ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} />
+                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} referrerPolicy="no-referrer" />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                 </>
               ) : (
@@ -297,7 +303,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               </div>
               {/* Content overlay on image */}
               <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h3 className="text-[15px] font-bold text-white leading-tight mb-0.5 line-clamp-2">
+                <h3 className="text-[15px] font-normal text-white leading-tight mb-0.5 line-clamp-2 font-serif">
                   {item.title}
                 </h3>
                 <p className="text-[11px] text-white/60 leading-snug line-clamp-1 mb-2">{item.description}</p>
@@ -328,13 +334,13 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
   if (!cities.length) return null;
   return (
     <section>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Also Consider Visiting</h3>
+      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Also Consider Visiting</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cities.map((city) => (
           <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02]">
             <div className="flex items-center gap-2 mb-1">
               <MapPin size={12} className="text-[color:var(--trip-base)]" />
-              <span className="text-[14px] font-bold text-gray-900 dark:text-white">{city.name}</span>
+              <span className="text-[14px] font-normal text-gray-900 dark:text-white font-serif">{city.name}</span>
             </div>
             <p className="text-[11px] text-gray-600 dark:text-gray-400 opacity-60">{city.country}</p>
             <p className="text-[11px] font-semibold mt-1 text-[color:var(--trip-base)]">{Math.round(city.distance)} km away</p>
@@ -363,7 +369,7 @@ function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContext
   ];
   return (
     <section>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Cost of Living</h3>
+      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost of Living</h3>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {items.map(({ icon: Icon, label, value }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
@@ -408,36 +414,37 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   const langCode = language ? langMap[language.toLowerCase()] || language.slice(0, 2).toLowerCase() : '';
 
   const speak = (text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
     setSpeaking(text);
-    // Use Google Translate TTS for natural-sounding pronunciation
-    const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${langCode || 'ja'}&q=${encodeURIComponent(text)}`);
-    audio.onended = () => setSpeaking(null);
-    audio.onerror = () => {
-      // Fallback to browser TTS
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode));
-        if (match) utterance.voice = match;
-        utterance.rate = 0.85;
-        utterance.onend = () => setSpeaking(null);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setSpeaking(null);
-      }
+    window.speechSynthesis.cancel();
+
+    const doSpeak = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode))
+        || voices.find(v => v.lang.toLowerCase().includes(langCode));
+      if (match) utterance.voice = match;
+      utterance.rate = 0.85;
+      utterance.onend = () => setSpeaking(null);
+      utterance.onerror = () => setSpeaking(null);
+      window.speechSynthesis.speak(utterance);
     };
-    audio.play().catch(() => {
-      // If autoplay blocked, fall back to browser TTS
-      audio.onerror?.(new Event('error'));
-    });
+
+    // Voices load async — wait for them if needed
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => { doSpeak(); window.speechSynthesis.onvoiceschanged = null; };
+      // Fallback if event never fires
+      setTimeout(doSpeak, 200);
+    }
   };
 
   return (
     <section>
       <div className="flex items-center gap-2 mb-4">
         <Languages size={14} className="text-[color:var(--trip-base)]" />
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Essential Phrases</h3>
+        <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Essential Phrases</h3>
         {language && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">({language})</span>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -480,8 +487,18 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [isMagazine, setIsMagazine] = useState(false);
   const enrichAttempted = useRef(false);
   const revealRef = useRevealOnScroll(!!trip);
+
+  // Detect magazine layout for per-section glass card styling
+  useEffect(() => {
+    const check = () => setIsMagazine(localStorage.getItem('travyl-layout-mode') === 'magazine');
+    check();
+    window.addEventListener('layout-mode-change', check);
+    window.addEventListener('storage', check);
+    return () => { window.removeEventListener('layout-mode-change', check); window.removeEventListener('storage', check); };
+  }, []);
 
   // Auto-enrich: if trip exists but trip_context is incomplete, trigger enrichment and poll
   const autoEnrich = useCallback(async () => {
@@ -628,7 +645,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       if (!Array.isArray(evts)) return [];
       return evts.map((e: any) => ({
         id: e.id, title: e.name || e.title,
-        description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+        description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
         category: e.category, image: e.photo_url || e.image || '',
       }));
     },
@@ -696,7 +713,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const exploreItems = (liveExploreItems?.length ? liveExploreItems : trip?.trip_context?.explore_items?.map((e: any) => ({ ...e, image: hiRes(e.image) }))) || [];
   const events = (liveEvents?.length ? liveEvents : trip?.trip_context?.events?.map((e: any) => ({
     id: e.id, title: e.title,
-    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category, image: hiRes(e.image),
   }))) || [];
 
@@ -724,20 +741,31 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
-  // Merge tier1Events into events display if available
+  // Merge tier1Events (from useEvents hook → TRA-436 aggregated API) into display
   const tier1EventsMapped = (tier1Events || []).map((e) => ({
     id: e.id,
     title: e.name,
-    description: `${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
+    description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category || 'Event',
     image: e.photo_url || '',
   }));
-  // Use: live events → tier1 events → trip_context.foursquare_venues (best photos) → trip_context events
-  const contextVenues = (trip?.trip_context?.foursquare_venues || []) as any[];
+  // Fallback: use explore_items that AREN'T already in "Things to Do" (which shows the first items)
+  // Take from the back half of the list to avoid duplicates
+  const exploreFallback = exploreItems.length > 2
+    ? exploreItems.slice(-Math.min(6, exploreItems.length)).map((e: any) => ({
+        id: e.id || e.name,
+        title: e.title || e.name,
+        description: e.description || e.category || '',
+        category: e.category || 'Attraction',
+        image: hiRes(e.image),
+      }))
+    : [];
+  // Priority: live events → tier1 events → trip_context events → explore_items fallback
   const allEvents = events.length > 0 ? events
     : tier1EventsMapped.length > 0 ? tier1EventsMapped
-    : contextVenues.length > 0 ? contextVenues
-    : [];
+    : exploreFallback;
+
+  const sectionCard = isMagazine ? 'bg-white/85 backdrop-blur-xl rounded-2xl p-5' : '';
 
   return (
     <div className="relative overflow-hidden">
@@ -745,41 +773,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       <div className="relative z-10">
         <div ref={revealRef}>
 
-          {/* ── Weather Widget — only show if hero doesn't already have weather from trip_context ── */}
-          {weatherData?.current && !trip?.trip_context?.weather?.current && (
-            <div className="px-0 mt-4 mb-2">
-              <div className="inline-flex items-center gap-4 px-5 py-3 rounded-2xl backdrop-blur-md bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08]">
-                <div>
-                  <span className="text-3xl font-bold text-gray-900 dark:text-white">{Math.round(weatherData.current.temp)}°</span>
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-gray-900 dark:text-white">{weatherData.current.conditions}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Feels like {Math.round(weatherData.current.feelslike)}° · {weatherData.current.humidity}% humidity
-                  </p>
-                </div>
-                {/* Mini forecast — next 3 days */}
-                {weatherData.forecast && weatherData.forecast.length > 0 && (
-                  <div className="flex gap-3 ml-2 pl-4 border-l border-gray-200 dark:border-white/[0.08]">
-                    {weatherData.forecast.slice(0, 3).map((day) => (
-                      <div key={day.date} className="text-center">
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                          {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
-                        </p>
-                        <p className="text-[12px] font-bold text-gray-900 dark:text-white">
-                          {Math.round(day.high)}°<span className="opacity-40">/{Math.round(day.low)}°</span>
-                        </p>
-                        <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[60px]">{day.conditions}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Weather is now shown in the compact header toggle — removed duplicate widget */}
 
           {/* ── Row 1: Things to Do (left) + Restaurants (right) ── */}
-          <div className="px-0 mt-6">
+          <div className={`mt-6 ${sectionCard}`}>
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Things to Do — fills left column */}
               <div className="flex-1 min-w-0">
@@ -798,7 +795,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               {hasRestaurants && (
                 <div className="shrink-0 w-full lg:w-[380px]">
                   <div className="mb-4">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Must-Try Restaurants</h3>
+                    <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Must-Try Restaurants</h3>
                   </div>
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     {restaurantData.slice(0, 6).map((r: any) => (
@@ -813,7 +810,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                           phone: r.phone, hours: r.hours, priceLevel: r.priceLevel,
                         })}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} />
+                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} referrerPolicy="no-referrer" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                         {/* Add to trip button */}
                         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -827,7 +824,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                               {r.reviewCount && <span className="text-[10px] text-white/40">({r.reviewCount.toLocaleString()})</span>}
                             </div>
                           )}
-                          <h3 className="text-lg font-bold text-white leading-tight">{r.name}</h3>
+                          <h3 className="text-lg font-normal text-white leading-tight font-serif">{r.name}</h3>
                           {(r.tagline || r.address) && (
                             <p className="text-[11px] text-white/50 mt-1 line-clamp-1">{r.tagline || r.address}</p>
                           )}
@@ -842,7 +839,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 2: News (left) + What's Going On (right) ── */}
           {(hasNewsArticles || allEvents.length > 0) && (
-            <div className="relative z-10 px-0 mt-8">
+            <div className={`relative z-10 mt-8 ${sectionCard}`}>
               <div className="flex flex-col lg:flex-row gap-6">
                 {hasNewsArticles && (
                   <div className="flex-1 min-w-0">
@@ -860,7 +857,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(phrasesData || costData) && (
-            <div className="relative z-10 px-0 mt-8">
+            <div className={`relative z-10 mt-8 ${sectionCard}`}>
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {phrasesData && Object.keys(phrasesData).length > 0 && (
                   <div className="flex-1 min-w-0">
@@ -878,7 +875,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (
-            <div className="px-0 mt-8">
+            <div className={`mt-8 ${sectionCard}`}>
               <NearbyCitiesSection cities={trip.trip_context.nearby_cities} />
             </div>
           )}

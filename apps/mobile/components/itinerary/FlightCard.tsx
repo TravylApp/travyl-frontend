@@ -3,17 +3,17 @@ import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Navy, ITINERARY_COLORS, TextStyles, FontFamily, formatCurrency } from '@travyl/shared';
 import type { FlightViewModel } from '@travyl/shared';
-import type { MockFlightDetail } from '@travyl/shared';
+import type { FlightDetail } from '@travyl/shared';
 
 interface FlightCardProps {
   flight: FlightViewModel;
-  detail?: MockFlightDetail;
+  detail?: FlightDetail;
   variant?: 'outbound' | 'return';
 }
 
 /* ── helpers ─────────────────────────────────────────────── */
 
-function statusColor(status: MockFlightDetail['status']) {
+function statusColor(status: FlightDetail['status']) {
   switch (status) {
     case 'On Time':
       return { bg: ITINERARY_COLORS.primary + '15', text: ITINERARY_COLORS.primary };

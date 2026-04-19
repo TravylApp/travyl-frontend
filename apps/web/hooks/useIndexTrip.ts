@@ -4,8 +4,6 @@
 import { useCallback, useRef } from 'react'
 import { supabase } from '@travyl/shared'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
-
 export function useIndexTrip() {
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
@@ -24,7 +22,7 @@ export function useIndexTrip() {
           const token = session?.access_token
           if (!token) return
 
-          fetch(`${API_URL}/index`, {
+          fetch('/api/trips/index', {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,

@@ -1,3 +1,10 @@
+/**
+ * @module services
+ * Barrel export for all shared service modules.
+ * Re-exports the Supabase client, all data-fetching functions, budget CRUD,
+ * packing CRUD, and the packing suggestion generator.
+ */
+
 export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
@@ -5,6 +12,7 @@ export {
   fetchSavedItems,
   fetchProfile,
   updateProfile,
+  uploadAvatar,
   updateUserMetadata,
   updateUserPassword,
   fetchMosaicTiles,

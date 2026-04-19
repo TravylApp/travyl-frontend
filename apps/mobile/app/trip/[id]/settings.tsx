@@ -1,8 +1,9 @@
 import { useState, useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, getWebApiBase, TextStyles, FontSize } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -173,6 +174,7 @@ function SettingsInput({
 export default function SettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { trip, isLoading } = useItineraryScreen(id);
   const { theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors } = useContext(TabCtx);
   const colors = useThemeColors();
@@ -221,9 +223,27 @@ export default function SettingsScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Wire to API
-            router.back();
+          onPress: async () => {
+            try {
+              const base = getWebApiBase();
+              const res = await fetch(`${base}/api/trips/delete`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(base ? { 'Origin': base } : {}),
+                },
+                body: JSON.stringify({ tripId: id }),
+              });
+              if (res.ok) {
+                queryClient.invalidateQueries({ queryKey: ['trips'] });
+                router.back();
+              } else {
+                const data = await res.json().catch(() => ({}));
+                Alert.alert('Error', data.error || 'Failed to delete trip');
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to delete trip');
+            }
           },
         },
       ]

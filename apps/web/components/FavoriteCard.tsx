@@ -189,7 +189,7 @@ export function FavoriteCard({
     return (
       <>
         <div
-          className="relative bg-white cursor-pointer rounded-xl overflow-hidden transition-all duration-300 flex group"
+          className="relative bg-card cursor-pointer rounded-xl overflow-hidden transition-all duration-300 flex group"
           style={{
             boxShadow: isHovered
               ? `0 4px 20px -4px ${accentColor}30, 0 2px 8px rgba(0,0,0,0.06)`
@@ -197,8 +197,8 @@ export function FavoriteCard({
             transform: isHovered ? "translateY(-1px)" : "translateY(0)",
             borderLeft: `3px solid ${accentColor}`,
             background: isHovered
-              ? `linear-gradient(135deg, ${accentColor}06 0%, white 50%)`
-              : "white",
+              ? `linear-gradient(135deg, ${accentColor}06 0%, var(--card) 50%)`
+              : "var(--card)",
           }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
@@ -211,7 +211,7 @@ export function FavoriteCard({
           <div className="relative shrink-0 p-1.5">
             <div className="relative overflow-hidden w-[68px] h-[68px] rounded-lg sm:w-[76px] sm:h-[76px]">
               {!firstLoaded && (
-                <div className="absolute inset-0 bg-gray-200 overflow-hidden rounded-lg">
+                <div className="absolute inset-0 bg-muted overflow-hidden rounded-lg">
                   <div
                     className="absolute inset-0"
                     style={{
@@ -297,7 +297,7 @@ export function FavoriteCard({
             {/* Top row: name + heart */}
             <div className="flex items-center gap-1.5 min-w-0">
               <p
-                className="text-[#314158] truncate flex-1 min-w-0"
+                className="text-card-foreground truncate flex-1 min-w-0"
                 style={{ fontSize: "13.5px", fontWeight: 600, letterSpacing: "-0.2px" }}
               >
                 {name}
@@ -327,7 +327,7 @@ export function FavoriteCard({
                   className={`transition-all duration-300 ${
                     isFavorited
                       ? "text-red-500 fill-red-500"
-                      : "text-[#c4c9d0] group-hover:text-[#9ca3af]"
+                      : "text-muted-foreground group-hover:text-foreground"
                   }`}
                   style={{
                     filter: isFavorited ? "drop-shadow(0 0 3px rgba(239,68,68,0.4))" : "none",
@@ -351,16 +351,16 @@ export function FavoriteCard({
               </span>
               {firstPlace && (
                 <>
-                  <span className="text-[#c4c9d0] mx-1.5" style={{ fontSize: "12px" }}>·</span>
-                  <span className="text-[#9ca3af] truncate" style={{ fontSize: "12px" }}>
+                  <span className="text-muted-foreground mx-1.5" style={{ fontSize: "12px" }}>·</span>
+                  <span className="text-muted-foreground truncate" style={{ fontSize: "12px" }}>
                     {firstPlace}
                   </span>
                 </>
               )}
               {duration && (
                 <>
-                  <span className="text-[#c4c9d0] mx-1.5" style={{ fontSize: "12px" }}>·</span>
-                  <span className="text-[#9ca3af] shrink-0" style={{ fontSize: "12px" }}>
+                  <span className="text-muted-foreground mx-1.5" style={{ fontSize: "12px" }}>·</span>
+                  <span className="text-muted-foreground shrink-0" style={{ fontSize: "12px" }}>
                     {duration}
                   </span>
                 </>
@@ -382,10 +382,10 @@ export function FavoriteCard({
                     {highlights.slice(0, 3).map((h) => (
                       <span
                         key={h}
-                        className="shrink-0 px-1.5 py-px rounded text-[#6b7280]"
+                        className="shrink-0 px-1.5 py-px rounded text-muted-foreground"
                         style={{
                           fontSize: "9px",
-                          backgroundColor: "#f3f4f6",
+                          backgroundColor: "var(--muted)",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -395,7 +395,7 @@ export function FavoriteCard({
                   </div>
                 ) : description ? (
                   <p
-                    className="text-[#9ca3af] truncate"
+                    className="text-muted-foreground truncate"
                     style={{ fontSize: "10.5px", lineHeight: 1.4 }}
                   >
                     {description}
@@ -434,7 +434,7 @@ export function FavoriteCard({
     return (
       <>
         <div
-          className="bg-white cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 flex group"
+          className="bg-card cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 flex group"
           style={{
             boxShadow: isHovered
               ? `0 8px 25px -5px ${accentColor}20, 0 4px 12px rgba(0,0,0,0.08)`
@@ -457,7 +457,7 @@ export function FavoriteCard({
               }`}
             >
               {!firstLoaded && (
-                <div className={`absolute inset-0 bg-gray-200 overflow-hidden ${isCompact ? "rounded-lg" : "rounded-xl"}`}>
+                <div className={`absolute inset-0 bg-muted overflow-hidden ${isCompact ? "rounded-lg" : "rounded-xl"}`}>
                   <div
                     className="absolute inset-0"
                     style={{
@@ -495,7 +495,7 @@ export function FavoriteCard({
               {/* Category badge - only in comfortable */}
               {!isCompact && (
                 <span
-                  className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[#314158]"
+                  className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-card/90 backdrop-blur-sm text-card-foreground"
                   style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.3px" }}
                 >
                   {category}
@@ -597,7 +597,7 @@ export function FavoriteCard({
                     }}
                     className={`relative rounded-lg overflow-hidden shrink-0 transition-all duration-200 ${
                       i === currentSlide
-                        ? "ring-2 ring-[#1e3a5f] ring-offset-1"
+                        ? "ring-2 ring-primary ring-offset-1"
                         : "opacity-60 hover:opacity-100"
                     }`}
                     style={{ width: 48, height: 34 }}
@@ -622,7 +622,7 @@ export function FavoriteCard({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <p
-                      className="text-[#314158] truncate"
+                      className="text-card-foreground truncate"
                       style={{ fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px" }}
                     >
                       {name}
@@ -630,23 +630,23 @@ export function FavoriteCard({
                   </div>
                   <div className="flex items-center gap-0 mt-1 min-w-0">
                     <span
-                      className="text-[#1e3a5f] shrink-0"
+                      className="text-primary shrink-0"
                       style={{ fontSize: "12px", fontWeight: 600, opacity: 0.6 }}
                     >
                       {category}
                     </span>
                     {firstPlace && (
                       <>
-                        <span className="text-[#c4c9d0] mx-1.5" style={{ fontSize: "12px" }}>·</span>
-                        <span className="text-[#9ca3af] truncate" style={{ fontSize: "12px" }}>
+                        <span className="text-muted-foreground mx-1.5" style={{ fontSize: "12px" }}>·</span>
+                        <span className="text-muted-foreground truncate" style={{ fontSize: "12px" }}>
                           {firstPlace}
                         </span>
                       </>
                     )}
                     {duration && (
                       <>
-                        <span className="text-[#c4c9d0] mx-1.5" style={{ fontSize: "12px" }}>·</span>
-                        <span className="text-[#9ca3af] shrink-0" style={{ fontSize: "12px" }}>
+                        <span className="text-muted-foreground mx-1.5" style={{ fontSize: "12px" }}>·</span>
+                        <span className="text-muted-foreground shrink-0" style={{ fontSize: "12px" }}>
                           {duration}
                         </span>
                       </>
@@ -670,7 +670,7 @@ export function FavoriteCard({
                   className={`shrink-0 w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all duration-200 ${
                     isFavorited
                       ? "text-red-500"
-                      : "text-[#c4c9d0] hover:text-[#9ca3af]"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Heart
@@ -685,7 +685,7 @@ export function FavoriteCard({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p
-                      className="text-[#314158] truncate"
+                      className="text-card-foreground truncate"
                       style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.3px" }}
                     >
                       {name}
@@ -693,8 +693,8 @@ export function FavoriteCard({
                     <div className="flex items-center gap-3 mt-0.5">
                       {firstPlace && (
                         <div className="flex items-center gap-1">
-                          <MapPin size={11} className="text-[#9ca3af] shrink-0" />
-                          <span className="text-[#9ca3af] truncate" style={{ fontSize: "11px" }}>
+                          <MapPin size={11} className="text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground truncate" style={{ fontSize: "11px" }}>
                             {firstPlace + (places && places.length > 1 ? ` + ${places.length - 1} more` : "")}
                           </span>
                         </div>
@@ -718,7 +718,7 @@ export function FavoriteCard({
                     className={`shrink-0 rounded-full flex items-center justify-center transition-all duration-200 border w-[32px] h-[32px] ${
                       isFavorited
                         ? "border-red-100 bg-red-50"
-                        : "border-gray-200 bg-white hover:bg-gray-50"
+                        : "border-border bg-card hover:bg-muted"
                     }`}
                   >
                     <Heart
@@ -726,7 +726,7 @@ export function FavoriteCard({
                       className={
                         isFavorited
                           ? "text-red-500 fill-red-500"
-                          : "text-[#9ca3af]"
+                          : "text-muted-foreground"
                       }
                     />
                   </button>
@@ -737,7 +737,7 @@ export function FavoriteCard({
                     {places.slice(0, 3).map((p) => (
                       <span
                         key={p}
-                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#f0f4f8] text-[#4a6382]"
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-muted text-card-foreground"
                         style={{ fontSize: "10px", fontWeight: 500 }}
                       >
                         <MapPin size={8} className="shrink-0" />
@@ -745,7 +745,7 @@ export function FavoriteCard({
                       </span>
                     ))}
                     {places.length > 3 && (
-                      <span className="text-[#9ca3af]" style={{ fontSize: "10px" }}>
+                      <span className="text-muted-foreground" style={{ fontSize: "10px" }}>
                         +{places.length - 3}
                       </span>
                     )}
@@ -753,7 +753,7 @@ export function FavoriteCard({
                 )}
                 {description && (
                   <p
-                    className="text-[#6b7280] mt-1.5 line-clamp-2"
+                    className="text-muted-foreground mt-1.5 line-clamp-2"
                     style={{ fontSize: "11.5px", lineHeight: "1.5" }}
                   >
                     {description}
@@ -764,7 +764,7 @@ export function FavoriteCard({
                     {highlights.slice(0, 4).map((h) => (
                       <span
                         key={h}
-                        className="px-1.5 py-0.5 rounded bg-[#f3f4f6] text-[#6b7280]"
+                        className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
                         style={{ fontSize: "10px" }}
                       >
                         {h}
@@ -804,7 +804,7 @@ export function FavoriteCard({
   return (
     <>
       <div
-        className="bg-white rounded-xl overflow-hidden cursor-pointer transition-all duration-300 group"
+        className="bg-card rounded-xl overflow-hidden cursor-pointer transition-all duration-300 group"
         style={{
           boxShadow: isHovered
             ? `0 12px 28px -6px ${accentColor}25, 0 4px 12px rgba(0,0,0,0.08)`
@@ -822,7 +822,7 @@ export function FavoriteCard({
         <div className={`relative ${imgHeight} overflow-hidden`}>
           {/* Shimmer skeleton */}
           {!firstLoaded && (
-            <div className="absolute inset-0 bg-gray-200 overflow-hidden">
+            <div className="absolute inset-0 bg-muted overflow-hidden">
               <div
                 className="absolute inset-0"
                 style={{
@@ -875,7 +875,7 @@ export function FavoriteCard({
                 singleTapTimerRef.current = null;
               }
             }}
-            className="absolute top-2.5 right-2.5 z-10 w-[30px] h-[30px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0px_2px_6px_0px_rgba(0,0,0,0.15)] bg-white/95 hover:bg-white"
+            className="absolute top-2.5 right-2.5 z-10 w-[30px] h-[30px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0px_2px_6px_0px_rgba(0,0,0,0.15)] bg-card/95 hover:bg-card"
             style={{
               transform: isFavorited ? "scale(1)" : isHovered ? "scale(1.05)" : "scale(0.95)",
             }}
@@ -885,7 +885,7 @@ export function FavoriteCard({
               className={`transition-all duration-300 ${
                 isFavorited
                   ? "text-red-500 fill-red-500"
-                  : "text-[#9ca3af]"
+                  : "text-muted-foreground"
               }`}
               style={{
                 filter: isFavorited ? "drop-shadow(0 0 4px rgba(239,68,68,0.4))" : "none",
@@ -923,22 +923,22 @@ export function FavoriteCard({
         {/* Text content section */}
         <div className="px-3.5 py-3">
           <p
-            className="text-[#314158] truncate"
+            className="text-card-foreground truncate"
             style={{ fontSize: "14px", fontWeight: 700, letterSpacing: "-0.3px" }}
           >
             {name}
           </p>
           {firstPlace && (
             <div className="flex items-center gap-1 mt-1">
-              <MapPin size={11} className="text-[#9ca3af] shrink-0" />
-              <span className="text-[#9ca3af] truncate" style={{ fontSize: "11px" }}>
+              <MapPin size={11} className="text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground truncate" style={{ fontSize: "11px" }}>
                 {firstPlace}{places && places.length > 1 ? ` + ${places.length - 1} more` : ""}
               </span>
             </div>
           )}
           {description && (
             <p
-              className="text-[#6b7280] mt-1.5 line-clamp-2"
+              className="text-muted-foreground mt-1.5 line-clamp-2"
               style={{ fontSize: "11.5px", lineHeight: "1.5" }}
             >
               {description}

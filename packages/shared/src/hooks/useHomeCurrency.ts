@@ -1,3 +1,11 @@
+/**
+ * @module useHomeCurrency
+ * Provides the user's home currency along with conversion and formatting utilities.
+ * Reads the preferred currency from `settingsStore` and fetches rates via `useExchangeRates`.
+ * Used by the budget tab and anywhere prices from external APIs need to be shown
+ * in the user's local currency.
+ */
+
 'use client';
 
 import { useCallback } from 'react'
@@ -5,6 +13,9 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { useExchangeRates } from './useExchangeRates'
 import { convertToTripCurrency } from '../utils/currency'
 
+/**
+ * Return shape of `useHomeCurrency`.
+ */
 interface UseHomeCurrencyResult {
   /** User's home currency code (e.g. 'USD') */
   currency: string
@@ -24,6 +35,18 @@ interface UseHomeCurrencyResult {
   format: (amount: number, sourceCurrency?: string) => string
 }
 
+/**
+ * Returns the user's home currency and helpers to convert and format foreign amounts.
+ * Pulls the preferred currency from `settingsStore` and live rates from `useExchangeRates`.
+ * `convert` and `format` are memoized and update only when currency or rates change.
+ * @returns Object with `currency`, `rates`, `isLoading`, `convert`, and `format`
+ * @example
+ * ```tsx
+ * const { format } = useHomeCurrency();
+ * // Formats $1500 USD into the user's home currency
+ * const label = format(1500, 'USD'); // e.g. "€1,380"
+ * ```
+ */
 export function useHomeCurrency(): UseHomeCurrencyResult {
   const currency = useSettingsStore((s) => s.currency)
   const { rates, isLoading } = useExchangeRates(currency)

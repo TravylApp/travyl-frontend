@@ -1,3 +1,13 @@
+/**
+ * @module useTripBudget
+ * Aggregates all cost data for a trip into per-category budget summaries.
+ * Pulls itinerary activity costs, flight prices, hotel prices, and user-added
+ * manual expenses, converts everything to the trip's currency using live
+ * exchange rates, and computes totals, actuals, and per-category overage.
+ * Also provides mutations to create/update/delete budget categories and manual expenses.
+ * Used by the web and mobile Budget tab on the trip detail page.
+ */
+
 'use client';
 
 import { useMemo } from 'react'
@@ -19,6 +29,31 @@ import { convertToTripCurrency } from '../utils/currency'
 import { useAuthStore } from '../stores/authStore'
 import type { TripBudgetCategory, TripManualExpense, BudgetCategoryData } from '../types'
 
+/**
+ * Loads and computes budget data for a given trip, broken down by category.
+ *
+ * Combines data from four sources — itinerary activities, flights, hotels,
+ * and manual expenses — converting each amount to `tripCurrency` using live
+ * exchange rates. Returns per-category summaries plus overall totals and
+ * CRUD mutations for budget categories and manual expenses.
+ *
+ * @param tripId - UUID of the trip, or undefined while the trip is loading
+ * @param tripCurrency - ISO 4217 currency code the budget is displayed in (default `'USD'`)
+ * @returns Object with:
+ *   - `categories` — array of `BudgetCategoryData` with budgeted/actual/percent used
+ *   - `totalBudgeted` / `totalSpent` / `remaining` — aggregate totals
+ *   - `isLoading` — true while any sub-query is pending
+ *   - `error` — first error from categories or expenses query, if any
+ *   - `rates` / `ratesLoading` / `refetchRates` — exchange rate state
+ *   - `upsertCategory` / `deleteCategory` — manage budget categories
+ *   - `addExpense` / `deleteExpense` — manage manual expense line items
+ *
+ * @example
+ * ```tsx
+ * const { categories, totalBudgeted, totalSpent, remaining, isLoading } =
+ *   useTripBudget(tripId, trip.currency);
+ * ```
+ */
 export function useTripBudget(tripId: string | undefined, tripCurrency = 'USD') {
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)

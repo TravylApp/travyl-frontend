@@ -327,7 +327,7 @@ function hotelToPlaceItem(h: HotelData, currencySymbol = '$'): PlaceItem {
     name: h.name,
     image: h.images[0] || '',
     images: h.images,
-    type: 'destination',
+    type: 'hotel',
     rating: h.rating > 5 ? h.rating / 2 : h.rating,
     tagline: [priceTag, h.neighborhood].filter(Boolean).join(' · '),
     category: starTag ? `${starTag} Hotel` : 'Hotel',
@@ -339,8 +339,6 @@ function hotelToPlaceItem(h: HotelData, currencySymbol = '$'): PlaceItem {
     reviewCount: h.reviews,
   };
 }
-
-const MOCK_HOTELS: HotelData[] = [];
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,
@@ -980,7 +978,7 @@ function BrowsingHotelGridCard({
       <div className="p-3.5 flex flex-col flex-1 bg-white dark:bg-white/[0.03]">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">{hotel.name}</h4>
+            <h4 className="text-sm font-normal text-gray-900 dark:text-white truncate font-serif">{hotel.name}</h4>
             <StarRating count={hotel.stars} />
           </div>
           <div className="text-right shrink-0">
@@ -1038,7 +1036,7 @@ function BrowsingHotelListCard({
         <div>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white">{hotel.name}</h4>
+              <h4 className="text-sm font-normal text-gray-900 dark:text-white font-serif">{hotel.name}</h4>
               <StarRating count={hotel.stars} />
             </div>
             <div className="text-right shrink-0">
@@ -1141,7 +1139,7 @@ function BrowsingHotelBookView({
                       {hotel.rating}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{hotel.name}</h3>
+                  <h3 className="text-xl font-normal text-gray-900 dark:text-white font-serif tracking-wide">{hotel.name}</h3>
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
                     <MapPin size={12} />
                     <span>{hotel.neighborhood} &middot; {hotel.address}</span>
@@ -1489,7 +1487,7 @@ function BookedHotelCard({
               </span>
             </div>
 
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{hotel.name}</h3>
+            <h3 className="text-lg font-normal text-gray-900 dark:text-white font-serif tracking-wide">{hotel.name}</h3>
 
             {/* Check-in / check-out */}
             {(hotel.checkIn || hotel.checkOut) && (
@@ -1527,7 +1525,7 @@ function BookedHotelCard({
                       <div className="flex items-end justify-between">
                         <div>
                           <span className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white">Your Room</span>
-                          <h4 className="text-sm font-bold text-white mt-1">{room.type}</h4>
+                          <h4 className="text-sm font-normal text-white mt-1 font-serif">{room.type}</h4>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-white">{cs}{room.price}<span className="text-[10px] font-normal opacity-70">/night</span></p>

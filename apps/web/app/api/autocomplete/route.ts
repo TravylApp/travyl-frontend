@@ -91,11 +91,18 @@ export async function GET(req: NextRequest) {
   if (!q || q.length < 2) return jsonResponse([])
 
   try {
-    if (mode === 'destination') return jsonResponse(await searchCities(q, limit))
+    if (mode === 'destination') {
+      try {
+        return jsonResponse(await searchCities(q, limit))
+      } catch {
+        // Geonames rate-limited or down — return empty instead of 500
+        return jsonResponse([])
+      }
+    }
     if (mode === 'activity') return jsonResponse(await searchActivities(q, limit))
     return jsonResponse([])
   } catch (err) {
     if (err instanceof MissingParamError) return errorResponse(err.message, 400)
-    return errorResponse('Autocomplete service unavailable', 500)
+    return jsonResponse([])
   }
 }

@@ -16,6 +16,8 @@ import {
 import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import type { DiscoverItem, PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import { PageTransition, useTabAccent } from './_layout';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { RatingStars } from '@/components/ui/RatingStars';
@@ -120,7 +122,7 @@ function ActivityCard({
         {/* Full-bleed image */}
         {hasImage ? (
           <Image
-            source={{ uri: item.images[0] }}
+            source={{ uri: item.images[0], headers: { Referer: '' } }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             resizeMode="cover"
             onError={() => setImgError(true)}
@@ -154,7 +156,7 @@ function ActivityCard({
           backgroundColor: 'rgba(0,0,0,0.6)',
           paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
         }}>
-          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <Text style={{ ...TextStyles.xs, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             {categoryLabel}
           </Text>
         </View>
@@ -185,9 +187,9 @@ function ActivityCard({
           {item.rating > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
               <FontAwesome name="star" size={11} color="#fbbf24" />
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{item.rating.toFixed(1)}</Text>
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{item.rating.toFixed(1)}</Text>
               {item.reviewCount != null && item.reviewCount > 0 && (
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>
+                <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.6)' }}>
                   ({item.reviewCount >= 1000 ? `${(item.reviewCount / 1000).toFixed(1)}k` : item.reviewCount})
                 </Text>
               )}
@@ -195,13 +197,13 @@ function ActivityCard({
           )}
 
           {/* Name */}
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 2 }} numberOfLines={2}>
+          <Text style={{ ...TextStyles.bodyXlEm, color: '#fff', marginBottom: 2 }} numberOfLines={2}>
             {item.name}
           </Text>
 
           {/* Description / tagline */}
           {item.description ? (
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginBottom: 6 }} numberOfLines={1}>
+            <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }} numberOfLines={1}>
               {item.description}
             </Text>
           ) : null}
@@ -214,7 +216,7 @@ function ActivityCard({
                   backgroundColor: 'rgba(255,255,255,0.2)',
                   paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6,
                 }}>
-                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '600' }}>{tag}</Text>
+                  <Text style={{ ...TextStyles.xs, color: '#fff' }}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -230,7 +232,7 @@ function ActivityCard({
             marginTop: 26,
           }}>
             <FontAwesome name="calendar-check-o" size={9} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Day {item.bookedDay}</Text>
+            <Text style={{ ...TextStyles.xs, color: '#fff' }}>Day {item.bookedDay}</Text>
           </View>
         )}
       </View>
@@ -328,7 +330,7 @@ function ActivityDetailSheet({
                 {/* Image */}
                 {hasImage ? (
                   <Image
-                    source={{ uri: item.images[0] }}
+                    source={{ uri: item.images[0], headers: { Referer: '' } }}
                     style={{ width: '100%', height: 200 }}
                     resizeMode="cover"
                     onError={() => setImgError(true)}
@@ -525,7 +527,7 @@ function ActivityDetailSheet({
                           >
                             {sim.images.length > 0 ? (
                               <Image
-                                source={{ uri: sim.images[0] }}
+                                source={{ uri: sim.images[0], headers: { Referer: '' } }}
                                 style={{ width: 150, height: 90 }}
                                 resizeMode="cover"
                               />
@@ -687,9 +689,9 @@ function ActivityDetailFooter({
                 })}
               >
                 {sim.images?.length ? (
-                  <Image source={{ uri: sim.images[0] }} style={{ width: 150, height: 90 }} resizeMode="cover" />
+                  <Image source={{ uri: sim.images[0], headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
                 ) : sim.image ? (
-                  <Image source={{ uri: sim.image }} style={{ width: 150, height: 90 }} resizeMode="cover" />
+                  <Image source={{ uri: sim.image, headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
                 ) : (
                   <View style={{ width: 150, height: 90, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="image" size={20} color={colors.border} />
@@ -744,6 +746,7 @@ function SkeletonCard() {
 export default function ActivitiesScreen() {
   const ACCENT = useTabAccent('activities');
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
   const { trip, days, isLoading } = useItineraryScreen(id);
 
   const {
@@ -1148,6 +1151,8 @@ export default function ActivitiesScreen() {
           initialIndex={Math.max(0, sourceItems.findIndex((i) => i.id === selectedItem.id))}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setSelectedItem(null)}
         />

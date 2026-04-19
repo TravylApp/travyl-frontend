@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Gray, getCyclicGradient } from '@travyl/shared';
+import { useExploreRows, Gray, getCyclicGradient, TextStyles } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { ExploreRow } from './ExploreRow';
+import { SectionHeader } from './SectionHeader';
 
 /** Double-chevron icon to match web's ChevronsUpDown / ChevronsDownUp */
 function DoubleChevron({ collapsed, size = 10, color = Gray[500] }: { collapsed: boolean; size?: number; color?: string }) {
@@ -73,29 +74,12 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
     <View style={{ paddingVertical: 40 }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 24, marginBottom: 8 }}>
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: '700',
-            color: Gray[900],
-            textAlign: 'left',
-            marginBottom: 8,
-          }}
-        >
-          {contextPlace ? 'More to Explore' : 'Explore'}
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: Gray[500],
-            textAlign: 'left',
-            marginBottom: 16,
-          }}
-        >
-          {contextPlace
-            ? `Nearby and similar to ${contextPlace.name}`
-            : 'Discover destinations, attractions, restaurants, and experiences'}
-        </Text>
+        <View style={{ marginBottom: 16 }}>
+          <SectionHeader
+            eyebrow={contextPlace ? 'Nearby' : 'Browse'}
+            title={contextPlace ? 'More to Explore' : 'Explore'}
+          />
+        </View>
 
         {/* Expand/Collapse All pill */}
         <Pressable
@@ -113,7 +97,7 @@ export function ExplorePreview({ contextPlace }: { contextPlace?: PlaceItem } = 
             backgroundColor: '#fff',
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: '600', color: Gray[800] }}>
+          <Text style={{ ...TextStyles.bodyEm, color: Gray[800] }}>
             {allExpanded ? 'Collapse All' : 'Expand All'}
           </Text>
           <DoubleChevron collapsed={allExpanded} size={12} color={Gray[500]} />

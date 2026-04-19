@@ -64,7 +64,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
   const markersJs = markers?.length
     ? `window._markers=[];` + markers.map((m, i) => {
         const num = m.number ?? i + 1;
-        const escapedLabel = m.label.replace(/'/g, "\\'");
+        const escapedLabel = JSON.stringify(m.label);
         if (m.muted) {
           return `
     (function() {
@@ -74,7 +74,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
         iconSize: [18, 18],
         iconAnchor: [9, 9],
       });
-      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup('${escapedLabel}');
+      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup(${escapedLabel});
       window._markers.push(mk);
     })();`;
         }
@@ -86,7 +86,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       });
-      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup('${escapedLabel}');
+      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup(${escapedLabel});
       window._markers.push(mk);
     })();`;
       }).join('\n')

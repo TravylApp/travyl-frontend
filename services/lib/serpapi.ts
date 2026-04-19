@@ -98,6 +98,7 @@ export async function searchPlaces(
   try {
     const res = await fetch(url.toString(), {
       headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
     })
 
     if (!res.ok) {
@@ -111,7 +112,11 @@ export async function searchPlaces(
     console.log('[serpapi] got', results.length, 'results')
     return results.map((place, i) => toSuggestionCard(place, category, i))
   } catch (err) {
-    console.error('[serpapi] search error:', err)
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error('[serpapi] search timeout')
+    } else {
+      console.error('[serpapi] search error:', err)
+    }
     return []
   }
 }
@@ -157,7 +162,10 @@ export async function getPlaceDetails(
   url.searchParams.set('api_key', getApiKey())
 
   try {
-    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+    const res = await fetch(url.toString(), {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    })
     if (!res.ok) return null
     const data = (await res.json()) as SerpMapsResponse
     const place = data.place_results
@@ -176,7 +184,12 @@ export async function getPlaceDetails(
       photos,
       openingHours: place.hours?.schedule ?? null,
     }
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error('[serpapi] place details timeout')
+    } else {
+      console.error('[serpapi] place details error:', err)
+    }
     return null
   }
 }

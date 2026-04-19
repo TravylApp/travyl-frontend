@@ -32,7 +32,6 @@ export async function searchOpenTable(
       signal: controller.signal,
       headers: { 'Authorization': `Bearer ${apiKey}` },
     })
-    clearTimeout(timeout)
 
     if (!res.ok) return null
     const data = await res.json()
@@ -50,8 +49,10 @@ export async function searchOpenTable(
       lat: restaurant.latitude,
       lng: restaurant.longitude,
     }
-  } catch {
-    clearTimeout(timeout)
+  } catch (err) {
+    console.error(`[opentable] search failed for ${activity.title}:`, err)
     return null
+  } finally {
+    clearTimeout(timeout)
   }
 }

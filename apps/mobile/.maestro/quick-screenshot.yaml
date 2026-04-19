@@ -1,0 +1,3 @@
+appId: com.ze-ee.mobile
+---
+- takeScreenshot: "current-state"

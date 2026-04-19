@@ -3,6 +3,7 @@ import type { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import { createClient } from '@supabase/supabase-js'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { validateAuth } from './lib/auth'
+import { safeParseBody } from './lib/validation'
 
 const ses = new SESv2Client({})
 const SENDER = 'noreply@gotravyl.com'
@@ -22,13 +23,26 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     const userId = await validateAuth(event.headers.authorization)
 
-    if (!event.body) {
-      return respond(400, { error: 'body required' })
+    const parsed = safeParseBody<{ tripId?: string; email?: string; role?: string }>(event)
+    if (!parsed.success) {
+      return respond(parsed.error.statusCode, JSON.parse(parsed.error.body))
     }
 
-    const { tripId, email, role } = JSON.parse(event.body)
+    const { tripId, email, role } = parsed.data
     if (!tripId || !email || !role) {
       return respond(400, { error: 'tripId, email, role required' })
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return respond(400, { error: 'Invalid email format' })
+    }
+
+    // Validate role
+    const validRoles = ['viewer', 'editor']
+    if (!validRoles.includes(role)) {
+      return respond(400, { error: 'role must be viewer or editor' })
     }
 
     const supabase = createClient(Resource.SupabaseUrl.value, Resource.SupabaseSecretKey.value)

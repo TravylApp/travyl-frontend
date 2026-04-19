@@ -8,10 +8,10 @@ import {
   Dumbbell, UtensilsCrossed, Car, Waves, Phone, Mail,
   Users, Maximize2, DoorOpen, DoorClosed, Camera, X,
 } from 'lucide-react';
-import type { MockHotelDetail, MockHotelRoom } from '@travyl/shared';
+import type { HotelDetail, HotelRoom } from '@travyl/shared';
 
 interface HotelSectionProps {
-  hotel: MockHotelDetail;
+  hotel: HotelDetail;
   label: string;
   isCheckIn?: boolean;
   isCheckOut?: boolean;
