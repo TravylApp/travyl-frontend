@@ -111,10 +111,6 @@ function formatDuration(iso: string): string {
   return `${h}h ${m}m`;
 }
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-}
 
 interface FlightSearchParams {
   origin: string;
@@ -163,32 +159,50 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
       if (!res.ok) return [];
       const json = await res.json();
 
-      // Backend returns a flat array of flights from SerpAPI
+      // API returns { flights: [...], priceInsights, total }
       const flights = Array.isArray(json) ? json : (json.flights ?? json.results ?? []);
       return flights.map((f: any, i: number): ComparisonFlight => {
-        const depTime = f.departure_time ? formatTime(f.departure_time) : '?';
-        const arrTime = f.arrival_time ? formatTime(f.arrival_time) : '?';
-        const depDate = f.departure_time ? new Date(f.departure_time).getDate() : 0;
-        const arrDate = f.arrival_time ? new Date(f.arrival_time).getDate() : 0;
-        const durationH = Math.floor((f.duration_min || 0) / 60);
-        const durationM = (f.duration_min || 0) % 60;
-        const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
+        const legs = f.legs ?? [];
+        const firstLeg = legs[0] ?? {};
+        const lastLeg = legs[legs.length - 1] ?? {};
+        // SerpAPI time format: "2026-05-01 10:28" — extract HH:MM
+        const extractTime = (t: string) => { const m = t?.match(/(\d{1,2}:\d{2})/); return m ? m[1] : '?'; };
+        const depTime = extractTime(firstLeg.departure?.time ?? '');
+        const arrTime = extractTime(lastLeg.arrival?.time ?? '');
+        const depDay = firstLeg.departure?.time ? new Date(firstLeg.departure.time.replace(' ', 'T')).getDate() : 0;
+        const arrDay = lastLeg.arrival?.time ? new Date(lastLeg.arrival.time.replace(' ', 'T')).getDate() : 0;
+        const totalMin = f.totalDuration ?? 0;
+        const durationH = Math.floor(totalMin / 60);
+        const durationM = totalMin % 60;
+        const airline = firstLeg.airline ?? f.airline ?? 'Unknown';
+        const extensions = legs.flatMap((l: any) => l.extensions ?? []);
+        const hasWifi = extensions.some((e: string) => /wi-?fi/i.test(e));
+        const hasPower = extensions.some((e: string) => /power|usb|outlet/i.test(e));
+        const hasMeals = extensions.some((e: string) => /meal|food|dining/i.test(e));
+        const hasEntertainment = extensions.some((e: string) => /stream|video|entertainment/i.test(e));
+        const co2kg = f.carbonEmissions?.this_flight ? Math.round(f.carbonEmissions.this_flight / 1000) : 0;
+        const layoverStr = (f.layovers ?? []).map((l: any) => {
+          const h = Math.floor(l.duration / 60);
+          const m = l.duration % 60;
+          return `${h}h${m > 0 ? ` ${m}m` : ''} ${l.id}`;
+        }).join(', ');
+
         return {
-          id: f.flight_number || `flight-${i}`,
-          airline: f.airline ?? 'Unknown',
-          airlineLogo: airlineCode,
-          flightNumber: f.flight_number ?? '',
-          departure: { time: depTime, airport: f.departure_airport ?? originAirport },
-          arrival: { time: arrTime, airport: f.arrival_airport ?? destAirport ?? '', nextDay: arrDate !== depDate },
+          id: f.id ?? firstLeg.flightNumber ?? `flight-${i}`,
+          airline,
+          airlineLogo: f.airlineLogo ?? firstLeg.airlineLogo ?? '',
+          flightNumber: firstLeg.flightNumber ?? '',
+          departure: { time: depTime, airport: firstLeg.departure?.id ?? originAirport },
+          arrival: { time: arrTime, airport: lastLeg.arrival?.id ?? destAirport ?? '', nextDay: arrDay !== depDay },
           duration: `${durationH}h ${durationM}m`,
           stops: f.stops ?? 0,
-          layover: f.stops > 0 && f.layovers?.length ? `${f.layovers[0]} layover` : null,
+          layover: layoverStr || null,
           price: Math.round(f.price ?? 0),
-          fareClass: cabinClass || 'Economy',
-          amenities: { wifi: false, power: false, meals: false, entertainment: false },
+          fareClass: firstLeg.travelClass ?? (cabinClass || 'Economy'),
+          amenities: { wifi: hasWifi, power: hasPower, meals: hasMeals, entertainment: hasEntertainment },
           onTime: 0,
-          co2: 0,
-          badge: i === 0 ? 'Lowest Price' : f.stops === 0 && i < 3 ? 'Direct' : null,
+          co2: co2kg,
+          badge: f.tier === 'best' && i === 0 ? 'Best' : f.stops === 0 ? 'Direct' : null,
         };
       });
     },

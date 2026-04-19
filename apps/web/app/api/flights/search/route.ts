@@ -1,32 +1,116 @@
-import { NextRequest } from 'next/server'
-import { getRequiredParams, getOptionalParam, proxyToBackend } from '@/lib/api-utils'
+import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin, rateLimit, CACHE_1H } from '@/lib/api-utils'
+
+const SERPAPI_KEY = process.env.SERPAPI_KEY
+
+const CABIN_MAP: Record<string, number> = {
+  economy: 1,
+  premium_economy: 2,
+  business: 3,
+  first: 4,
+}
 
 export async function GET(req: NextRequest) {
-  const params = getRequiredParams(req, 'origin', 'destination', 'date')
-  if (params instanceof Response) return params
+  const blocked = checkOrigin(req) || rateLimit(req, 'flights-search', 10, 60_000)
+  if (blocked) return blocked
 
-  const extra: Record<string, string> = {
-    origin: params.origin,
-    destination: params.destination,
-    departure_date: params.date,
+  if (!SERPAPI_KEY) {
+    return NextResponse.json({ error: 'Flight search not configured' }, { status: 503 })
   }
 
-  // Backend requires country params — pass through or default
-  const originCountry = getOptionalParam(req, 'origin_country', 'US')
-  const destCountry = getOptionalParam(req, 'destination_country', '')
-  extra.origin_country = originCountry
-  // destination_country is required by backend; use provided value, fall back to empty
-  // (backend resolves IATA codes directly when destination is a 3-letter code)
-  extra.destination_country = destCountry
+  const p = req.nextUrl.searchParams
+  const origin = p.get('origin')
+  const destination = p.get('destination')
+  const date = p.get('date')
 
-  const returnDate = getOptionalParam(req, 'return', '')
-  if (returnDate) extra.return_date = returnDate
+  if (!origin || !destination || !date) {
+    return NextResponse.json({ error: 'Missing origin, destination, or date' }, { status: 400 })
+  }
 
-  const passengers = getOptionalParam(req, 'passengers', '1')
-  extra.passengers = passengers
+  const returnDate = p.get('return') || ''
+  const passengers = p.get('passengers') || '1'
+  const cabin = p.get('class') || p.get('cabin') || 'economy'
 
-  const cabin = getOptionalParam(req, 'cabin', '')
-  if (cabin) extra.travel_class = cabin
+  // Build SerpAPI Google Flights URL
+  const url = new URL('https://serpapi.com/search.json')
+  url.searchParams.set('engine', 'google_flights')
+  url.searchParams.set('departure_id', origin)
+  url.searchParams.set('arrival_id', destination)
+  url.searchParams.set('outbound_date', date)
+  if (returnDate) url.searchParams.set('return_date', returnDate)
+  url.searchParams.set('adults', passengers)
+  url.searchParams.set('travel_class', String(CABIN_MAP[cabin] || 1))
+  url.searchParams.set('currency', 'USD')
+  url.searchParams.set('hl', 'en')
+  url.searchParams.set('api_key', SERPAPI_KEY)
 
-  return proxyToBackend('/api/flights/search', req, { params: extra })
+  try {
+    const res = await fetch(url.toString(), CACHE_1H)
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Flight search failed' }, { status: res.status })
+    }
+
+    const data = await res.json()
+    const bestFlights = data.best_flights ?? []
+    const otherFlights = data.other_flights ?? []
+    const priceInsights = data.price_insights ?? {}
+
+    // Normalize flights into a consistent shape
+    const normalize = (flights: any[], tier: string) =>
+      flights.map((f: any, i: number) => {
+        const legs = f.flights ?? []
+        const firstLeg = legs[0] ?? {}
+
+        return {
+          id: `${tier}-${i}`,
+          tier,
+          price: f.price ?? null,
+          type: f.type ?? 'Round trip',
+          totalDuration: f.total_duration ?? 0,
+          stops: Math.max(0, legs.length - 1),
+          airlineLogo: f.airline_logo ?? firstLeg.airline_logo ?? '',
+          carbonEmissions: f.carbon_emissions ?? null,
+          legs: legs.map((leg: any) => ({
+            flightNumber: leg.flight_number ?? '',
+            airline: leg.airline ?? '',
+            airlineLogo: leg.airline_logo ?? '',
+            airplane: leg.airplane ?? '',
+            travelClass: leg.travel_class ?? 'Economy',
+            legroom: leg.legroom ?? '',
+            duration: leg.duration ?? 0,
+            overnight: leg.overnight ?? false,
+            departure: {
+              airport: leg.departure_airport?.name ?? '',
+              id: leg.departure_airport?.id ?? '',
+              time: leg.departure_airport?.time ?? '',
+            },
+            arrival: {
+              airport: leg.arrival_airport?.name ?? '',
+              id: leg.arrival_airport?.id ?? '',
+              time: leg.arrival_airport?.time ?? '',
+            },
+            extensions: leg.extensions ?? [],
+          })),
+          layovers: (f.layovers ?? []).map((l: any) => ({
+            duration: l.duration ?? 0,
+            airport: l.name ?? '',
+            id: l.id ?? '',
+          })),
+        }
+      })
+
+    const results = [
+      ...normalize(bestFlights, 'best'),
+      ...normalize(otherFlights, 'other'),
+    ]
+
+    return NextResponse.json({
+      flights: results,
+      priceInsights,
+      total: results.length,
+    })
+  } catch (err) {
+    console.error('[flights/search] error:', err)
+    return NextResponse.json({ error: 'Flight search failed' }, { status: 500 })
+  }
 }

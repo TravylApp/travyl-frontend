@@ -63,9 +63,9 @@ export function useFlightSearch(params: FlightSearchParams) {
       const qs = new URLSearchParams({
         origin: origin!,
         destination: destination!,
-        depart_date: departDate!,
+        date: departDate!,
       });
-      if (returnDate) qs.set('return_date', returnDate);
+      if (returnDate) qs.set('return', returnDate);
       if (passengers) qs.set('passengers', String(passengers));
       const res = await fetch(`${base}/api/flights/search?${qs}`);
       if (!res.ok) throw new Error('Flight search failed');
