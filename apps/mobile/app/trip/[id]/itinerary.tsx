@@ -654,7 +654,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
 
 // ─── MobileCalendarView ─────────────────────────────────────
 
-const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 12 AM to 11 PM (full 24h)
 const HOUR_HEIGHT = 64;
 
 /** Parse duration between two time strings in hours */
@@ -681,7 +681,7 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
 
   // Scroll to 8 AM on mount
   useEffect(() => {
-    setTimeout(() => scrollRef.current?.scrollTo({ y: (8 - 6) * HOUR_HEIGHT, animated: false }), 100);
+    setTimeout(() => scrollRef.current?.scrollTo({ y: 8 * HOUR_HEIGHT, animated: false }), 100);
   }, [selectedDayIndex]);
 
   // Current hour indicator
@@ -716,7 +716,7 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
               key={hour}
               style={{
                 position: 'absolute',
-                top: (hour - 6) * HOUR_HEIGHT,
+                top: hour * HOUR_HEIGHT,
                 left: 0,
                 right: 0,
                 height: 1,
@@ -726,11 +726,11 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
           ))}
 
           {/* Current time indicator */}
-          {currentHour >= 6 && currentHour <= 22 && (
+          {currentHour >= 0 && currentHour <= 24 && (
             <View
               style={{
                 position: 'absolute',
-                top: (currentHour - 6) * HOUR_HEIGHT,
+                top: currentHour * HOUR_HEIGHT,
                 left: 0,
                 right: 0,
                 height: 2,
@@ -746,9 +746,9 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
           {allActivities.map((activity: any) => {
             const startH = parseHour(activity.startTime) ?? 0;
             const duration = parseDuration(activity.startTime, activity.endTime);
-            if (startH < 6 || startH > 22) return null;
+            if (startH < 0 || startH > 23) return null;
 
-            const top = (startH - 6) * HOUR_HEIGHT + 2;
+            const top = startH * HOUR_HEIGHT + 2;
             const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.7);
             const typeColor = getActivityTypeColor(activity.category);
             const bgColor = typeColor.primary;
