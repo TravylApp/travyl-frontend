@@ -666,13 +666,17 @@ function parseDuration(start: string, end?: string): number {
   return diff > 0 ? Math.min(diff, 4) : 1;
 }
 
-function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
+function MobileCalendarView({ days, selectedDayIndex, onSelectActivity, onMoveActivity }: {
   days: any[];
   selectedDayIndex: number;
   onSelectActivity?: (activity: any) => void;
+  onMoveActivity?: (activityId: string, newHour: number) => void;
 }) {
   const colors = useThemeColors();
   const scrollRef = useRef<ScrollView>(null);
+  const [dragging, setDragging] = useState<{ id: string; startY: number; origHour: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [editActivity, setEditActivity] = useState<any | null>(null);
   const selectedDay = days[selectedDayIndex];
   if (!selectedDay) return null;
 
@@ -689,6 +693,7 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
   const currentHour = now.getHours() + now.getMinutes() / 60;
 
   return (
+    <>
     <ScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
@@ -748,7 +753,8 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
             const duration = parseDuration(activity.startTime, activity.endTime);
             if (startH < 0 || startH > 23) return null;
 
-            const top = startH * HOUR_HEIGHT + 2;
+            const isDragging = dragging != null && dragging.id === activity.id;
+            const top = isDragging ? (dragging!.origHour * HOUR_HEIGHT + dragOffset + 2) : (startH * HOUR_HEIGHT + 2);
             const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.7);
             const typeColor = getActivityTypeColor(activity.category);
             const bgColor = typeColor.primary;
@@ -757,6 +763,11 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
               <Pressable
                 key={activity.id}
                 onPress={() => onSelectActivity?.(activity)}
+                onLongPress={() => {
+                  setDragging({ id: activity.id, startY: 0, origHour: startH });
+                  setDragOffset(0);
+                }}
+                delayLongPress={300}
                 style={{
                   position: 'absolute',
                   top,
@@ -770,14 +781,30 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
                   paddingHorizontal: 10,
                   paddingVertical: 6,
                   overflow: 'hidden',
+                  opacity: isDragging ? 0.85 : 1,
                   shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 3,
-                  elevation: 3,
+                  shadowOffset: { width: 0, height: isDragging ? 4 : 1 },
+                  shadowOpacity: isDragging ? 0.3 : 0.15,
+                  shadowRadius: isDragging ? 8 : 3,
+                  elevation: isDragging ? 8 : 3,
+                  zIndex: isDragging ? 100 : 1,
+                  transform: isDragging ? [{ scale: 1.03 }] : [],
                 }}
               >
-                <Text style={{ ...TextStyles.captionEm, color: '#fff' }} numberOfLines={1}>
+                {/* Edit button — top right */}
+                <Pressable
+                  onPress={(e) => { e.stopPropagation?.(); setEditActivity(activity); }}
+                  style={{
+                    position: 'absolute', top: 4, right: 4, zIndex: 10,
+                    width: 24, height: 24, borderRadius: 12,
+                    backgroundColor: 'rgba(0,0,0,0.25)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <FontAwesome name="pencil" size={10} color="#fff" />
+                </Pressable>
+
+                <Text style={{ ...TextStyles.captionEm, color: '#fff', paddingRight: 28 }} numberOfLines={1}>
                   {activity.name}
                 </Text>
                 <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.75)' }} numberOfLines={1}>
@@ -797,15 +824,95 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
                     <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>{activity.category}</Text>
                   </View>
                 )}
+
+                {/* Drag indicator when long-pressed */}
+                {isDragging && (
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 8, borderStyle: 'dashed' }} />
+                )}
               </Pressable>
             );
           })}
+
+          {/* Drop zone indicator when dragging */}
+          {dragging && (
+            <View style={{
+              position: 'absolute',
+              top: Math.max(0, Math.round((dragging.origHour * HOUR_HEIGHT + dragOffset) / HOUR_HEIGHT) * HOUR_HEIGHT),
+              left: 4, right: 8, height: 2,
+              backgroundColor: '#3b82f6', zIndex: 50,
+            }} />
+          )}
 
           {/* Spacer for total height */}
           <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
         </View>
       </View>
     </ScrollView>
+
+    {/* ── Edit Activity Sheet ── */}
+    {editActivity && (
+      <Modal visible transparent animationType="slide" onRequestClose={() => setEditActivity(null)}>
+        <Pressable onPress={() => setEditActivity(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} />
+        <View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          backgroundColor: colors.cardBackground,
+          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          paddingBottom: 40, paddingHorizontal: 20, paddingTop: 16,
+          shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.2, shadowRadius: 12,
+        }}>
+          {/* Handle */}
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+
+          {/* Activity info */}
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }}>{editActivity.name}</Text>
+          <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 12 }}>
+            {editActivity.timeDisplay || editActivity.startTime} · {editActivity.category}
+          </Text>
+
+          {editActivity.locationName && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{editActivity.locationName}</Text>
+            </View>
+          )}
+
+          {editActivity.notes && (
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 12 }}>{editActivity.notes}</Text>
+          )}
+
+          {/* Action buttons */}
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+            <Pressable
+              onPress={() => { onSelectActivity?.(editActivity); setEditActivity(null); }}
+              style={{
+                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                gap: 6, paddingVertical: 12, borderRadius: 12,
+                backgroundColor: getActivityTypeColor(editActivity.category).primary,
+              }}
+            >
+              <FontAwesome name="info-circle" size={14} color="#fff" />
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>View Details</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setEditActivity(null)}
+              style={{
+                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                gap: 6, paddingVertical: 12, borderRadius: 12,
+                borderWidth: 1, borderColor: colors.border,
+              }}
+            >
+              <FontAwesome name="times" size={14} color={colors.textSecondary} />
+              <Text style={{ ...TextStyles.bodyLgEm, color: colors.textSecondary }}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -2639,7 +2746,11 @@ export default function ItineraryScreen() {
       </View>
 
       {calendarOpen ? (
-        <MobileCalendarView days={days} selectedDayIndex={selectedDayIndex} />
+        <MobileCalendarView
+          days={days}
+          selectedDayIndex={selectedDayIndex}
+          onSelectActivity={(a) => setSelectedActivityId(a.id)}
+        />
       ) : viewMode === 'glance' ? (
         <GlancePager
           days={effectiveDays}
