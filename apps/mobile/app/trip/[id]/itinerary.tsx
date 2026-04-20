@@ -654,63 +654,157 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
 
 // ─── MobileCalendarView ─────────────────────────────────────
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
+const HOUR_HEIGHT = 64;
 
-function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedDayIndex: number }) {
+/** Parse duration between two time strings in hours */
+function parseDuration(start: string, end?: string): number {
+  if (!end) return 1;
+  const s = parseHour(start) ?? 0;
+  const e = parseHour(end) ?? 0;
+  const diff = e - s;
+  return diff > 0 ? Math.min(diff, 4) : 1;
+}
+
+function MobileCalendarView({ days, selectedDayIndex, onSelectActivity }: {
+  days: any[];
+  selectedDayIndex: number;
+  onSelectActivity?: (activity: any) => void;
+}) {
   const colors = useThemeColors();
+  const scrollRef = useRef<ScrollView>(null);
   const selectedDay = days[selectedDayIndex];
   if (!selectedDay) return null;
 
-  // Collect all activities from all time groups
+  // Collect all activities
   const allActivities = selectedDay.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
 
-  return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
-      {HOURS.map((hour) => {
-        const timeLabel = hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
-        const activities = allActivities.filter((a: any) => {
-          if (!a.startTime) return false;
-          const actHour = parseHour(a.startTime);
-          return actHour === hour;
-        });
+  // Scroll to 8 AM on mount
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollTo({ y: (8 - 6) * HOUR_HEIGHT, animated: false }), 100);
+  }, [selectedDayIndex]);
 
-        return (
-          <View key={hour} style={{ flexDirection: 'row', minHeight: 52, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
-            {/* Hour label */}
-            <View style={{ width: 48, paddingRight: 8, paddingTop: 4, alignItems: 'flex-end' }}>
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{timeLabel}</Text>
+  // Current hour indicator
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ flexDirection: 'row', position: 'relative' }}>
+        {/* ── Hour labels (left gutter) ── */}
+        <View style={{ width: 52 }}>
+          {HOURS.map((hour) => {
+            const label = hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+            return (
+              <View key={hour} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 8, paddingTop: 0 }}>
+                <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── Time grid + activities ── */}
+        <View style={{ flex: 1, position: 'relative' }}>
+          {/* Grid lines */}
+          {HOURS.map((hour) => (
+            <View
+              key={hour}
+              style={{
+                position: 'absolute',
+                top: (hour - 6) * HOUR_HEIGHT,
+                left: 0,
+                right: 0,
+                height: 1,
+                backgroundColor: colors.borderLight,
+              }}
+            />
+          ))}
+
+          {/* Current time indicator */}
+          {currentHour >= 6 && currentHour <= 22 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: (currentHour - 6) * HOUR_HEIGHT,
+                left: 0,
+                right: 0,
+                height: 2,
+                backgroundColor: '#ef4444',
+                zIndex: 10,
+              }}
+            >
+              <View style={{ position: 'absolute', left: -4, top: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }} />
             </View>
-            {/* Activities in this hour */}
-            <View style={{ flex: 1, paddingVertical: 2, paddingHorizontal: 4, gap: 2 }}>
-              {activities.map((activity: any) => {
-                const bgColor = getActivityTypeColor(activity.category).primary;
-                return (
-                  <View
-                    key={activity.id}
-                    style={{
-                      backgroundColor: bgColor,
-                      paddingHorizontal: 8,
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      borderLeftWidth: 3,
-                      borderLeftColor: adjustBrightness(bgColor, -30),
-                    }}
-                  >
-                    <Text style={{ ...TextStyles.captionEm, color: '#fff' }} numberOfLines={1}>
-                      {activity.name}
-                    </Text>
-                    {activity.startTime && (
-                      <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>
-                        {activity.startTime}{activity.endTime ? ` - ${activity.endTime}` : ''}
-                      </Text>
-                    )}
+          )}
+
+          {/* Activity blocks */}
+          {allActivities.map((activity: any) => {
+            const startH = parseHour(activity.startTime) ?? 0;
+            const duration = parseDuration(activity.startTime, activity.endTime);
+            if (startH < 6 || startH > 22) return null;
+
+            const top = (startH - 6) * HOUR_HEIGHT + 2;
+            const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.7);
+            const typeColor = getActivityTypeColor(activity.category);
+            const bgColor = typeColor.primary;
+
+            return (
+              <Pressable
+                key={activity.id}
+                onPress={() => onSelectActivity?.(activity)}
+                style={{
+                  position: 'absolute',
+                  top,
+                  left: 4,
+                  right: 8,
+                  height,
+                  backgroundColor: bgColor,
+                  borderRadius: 8,
+                  borderLeftWidth: 4,
+                  borderLeftColor: adjustBrightness(bgColor, -40),
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  overflow: 'hidden',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 3,
+                  elevation: 3,
+                }}
+              >
+                <Text style={{ ...TextStyles.captionEm, color: '#fff' }} numberOfLines={1}>
+                  {activity.name}
+                </Text>
+                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.75)' }} numberOfLines={1}>
+                  {activity.timeDisplay || (activity.startTime + (activity.endTime ? ` – ${activity.endTime}` : ''))}
+                </Text>
+                {height > 50 && activity.locationName && (
+                  <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)', marginTop: 2 }} numberOfLines={1}>
+                    {activity.locationName}
+                  </Text>
+                )}
+                {height > 70 && activity.category && (
+                  <View style={{
+                    position: 'absolute', bottom: 4, right: 6,
+                    backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 4,
+                    paddingHorizontal: 5, paddingVertical: 1,
+                  }}>
+                    <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>{activity.category}</Text>
                   </View>
-                );
-              })}
-            </View>
-          </View>
-        );
-      })}
+                )}
+              </Pressable>
+            );
+          })}
+
+          {/* Spacer for total height */}
+          <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -2032,7 +2126,7 @@ export default function ItineraryScreen() {
     if (!h) return { name: 'Hotel', address: '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: '', stars: 3, rating: 0 };
     return { name: h.name, address: h.address || '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: h.image || h.photo_url || '', stars: h.stars || 3, rating: h.rating || 0 };
   }, [trip]);
-  const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
+  const { calendarOpen, setCalendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
   const isFocused = useIsFocused();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
@@ -2525,10 +2619,23 @@ export default function ItineraryScreen() {
             />
           </Pressable>
         )}
-        {/* View Toggle — inline next to collapse button */}
-        {!calendarOpen && (
-          <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
-        )}
+        {/* View Toggle + Calendar button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {!calendarOpen && (
+            <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
+          )}
+          <Pressable
+            onPress={() => setCalendarOpen(!calendarOpen)}
+            style={{
+              width: 32, height: 32, borderRadius: 8,
+              backgroundColor: calendarOpen ? ACCENT : colors.cardBackground,
+              borderWidth: 1, borderColor: calendarOpen ? ACCENT : colors.border,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <FontAwesome name="calendar" size={14} color={calendarOpen ? '#fff' : colors.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       {calendarOpen ? (
