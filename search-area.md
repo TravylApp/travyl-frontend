@@ -1,0 +1,111 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "TRAVYL" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]: TRAVYL
+        - img [ref=e6]
+      - generic [ref=e11]:
+        - link "Places" [ref=e12] [cursor=pointer]:
+          - /url: /places
+          - img [ref=e13]
+          - generic [ref=e16]: Places
+        - link "Trips" [ref=e17] [cursor=pointer]:
+          - /url: /trips
+          - img [ref=e18]
+          - generic [ref=e23]: Trips
+      - link "Log In" [ref=e25] [cursor=pointer]:
+        - /url: /login
+  - main [ref=e26]:
+    - generic [ref=e27]:
+      - generic [ref=e31]:
+        - heading "Explore the world from one place." [level=1] [ref=e32]
+        - paragraph [ref=e33]: Your next adventure starts wi|
+        - generic [ref=e34]:
+          - generic [ref=e36]:
+            - generic [ref=e37]
+            - button "Refine" [disabled]
+            - button [ref=e42]
+          - generic [ref=e273]:
+            - button "San Diego" [ref=e274]
+            - button "Boston" [ref=e275]
+            - button "Chicago" [ref=e276]
+            - button "New Orleans" [ref=e277]
+      - generic [ref=e49]:
+        - generic [ref=e70]:
+          - paragraph [ref=e71]:
+            - generic [ref=e72]: 0+
+          - paragraph [ref=e73]: Destinations
+          - paragraph [ref=e74]: Real places our community has explored.
+        - generic [ref=e75]:
+          - paragraph [ref=e76]: "0"
+          - paragraph [ref=e77]: Travelers
+          - paragraph [ref=e78]: People planning their next adventure.
+        - generic [ref=e79]:
+          - paragraph [ref=e80]:
+            - generic [ref=e81]: 0+
+          - paragraph [ref=e82]: Trips Planned
+          - paragraph [ref=e83]: AI-powered itineraries created and counting.
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - heading "How It Works" [level=2] [ref=e86]
+          - paragraph [ref=e87]: From destination to departure — your perfect trip in 3 simple steps.
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e95]: "1"
+            - generic [ref=e98]: "2"
+            - generic [ref=e101]: "3"
+          - generic [ref=e102]:
+            - generic [ref=e103]
+            - generic
+            - generic
+          - button "Plan Your Trip" [ref=e124]:
+            - text: Plan Your Trip
+            - img [ref=e125]
+          - generic [ref=e131]: Scroll to explore
+      - paragraph [ref=e270]:
+        - text: “Jobs fill your pocket, but adventures fill your soul.”
+        - generic [ref=e271]: — Jaime Lyn Beatty
+      - generic [ref=e140]:
+        - heading "Tag us on your Next Trip" [level=2] [ref=e141]
+        - generic [ref=e142]:
+          - generic [ref=e143] [cursor=pointer]:
+            - img "Bali" [ref=e144]
+            - generic [ref=e146]
+            - img [ref=e154]
+          - generic [ref=e157] [cursor=pointer]:
+            - img "Barcelona" [ref=e158]
+            - generic [ref=e160]
+            - img [ref=e168]
+          - generic [ref=e171] [cursor=pointer]:
+            - img "Tokyo" [ref=e172]
+            - generic [ref=e174]
+            - img [ref=e182]
+          - generic [ref=e185] [cursor=pointer]:
+            - img "Santorini" [ref=e186]
+            - generic [ref=e188]
+            - img [ref=e196]
+        - link "instagram" [ref=e200] [cursor=pointer]:
+          - /url: https://instagram.com/travyl
+          - img [ref=e201]
+        - paragraph [ref=e205]: "#Travyl #TravylAI #Travyling #Travyler #Travyltogether #TravylMoments #Travylourway"
+      - img [ref=e207]
+      - generic [ref=e212]:
+        - generic [ref=e213]:
+          - generic [ref=e214]:
+            - generic [ref=e215]
+            - paragraph [ref=e222]: Discover and plan your perfect trip from one place. Explore destinations, find the best hotels and flights, and create unforgettable itineraries.
+          - generic [ref=e223]:
+            - heading "Company" [level=4] [ref=e224]
+            - list [ref=e225]
+          - generic [ref=e232]:
+            - heading "Follow Us" [level=4] [ref=e233]
+            - generic [ref=e234]
+        - generic [ref=e242]:
+          - paragraph [ref=e243]: © 2026 Travyl. All rights reserved.
+          - button "Light" [ref=e244]:
+            - img [ref=e245]
+            - generic [ref=e251]: Light
+  - region "Notifications alt+T"
+  - alert [ref=e62]
+  - img [ref=e254]

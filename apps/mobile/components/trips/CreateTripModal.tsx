@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, Modal, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator,
+  Platform, ScrollView, ActivityIndicator, Keyboard,
 } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -94,6 +94,7 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const handleSubmit = useCallback(() => {
     const text = prompt.trim();
     if (!text) return;
+    Keyboard.dismiss();
     planner.submitPrompt(text);
   }, [prompt, planner]);
 
@@ -120,7 +121,7 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   }, [planner]);
 
   const phase = planner.state.phase;
-  const isWorking = phase === 'extracting' || phase === 'planning' || saving;
+  const isWorking = phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
   const isIdle = phase === 'idle';
   const isClarifying = phase === 'clarifying';
   const isError = phase === 'error';

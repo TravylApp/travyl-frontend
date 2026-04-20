@@ -7,20 +7,9 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Shape of the enrichment payload returned by /api/places/enrich.
@@ -40,7 +29,7 @@ interface EnrichResponse {
  * @returns Enrichment payload with photos array and optional contact fields
  */
 async function fetchPlaceEnrich(placeId: string, name: string): Promise<EnrichResponse> {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const params = new URLSearchParams({ placeId });
   if (name) params.set('name', name);
   const res = await fetch(`${base}/api/places/enrich?${params}`);

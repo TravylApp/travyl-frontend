@@ -47,6 +47,12 @@
         "projectId": "108df6bb-8e38-4f20-bb4b-4b0bd5282899"
       }
     },
-    "owner": "travyl"
+    "owner": "travyl",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/108df6bb-8e38-4f20-bb4b-4b0bd5282899"
+    }
   }
 }

@@ -7,22 +7,10 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { WeatherForecastResponse } from '../types';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  // Web: relative path; Mobile: env var
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Calls the /api/weather/forecast endpoint for a location, always requesting 7 days.
@@ -31,7 +19,7 @@ function getApiBase(): string {
  * @throws Error if the network response is not OK
  */
 async function fetchWeatherForecast(location: string): Promise<WeatherForecastResponse> {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const res = await fetch(
     `${base}/api/weather/forecast?location=${encodeURIComponent(location)}&days=7`
   );

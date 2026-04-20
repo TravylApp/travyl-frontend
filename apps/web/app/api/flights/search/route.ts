@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { checkOrigin, rateLimit, CACHE_1H } from '@/lib/api-utils'
+import { checkOrigin, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
 
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   url.searchParams.set('api_key', SERPAPI_KEY)
 
   try {
-    const res = await fetch(url.toString(), CACHE_1H)
+    const res = await fetch(url.toString())
     if (!res.ok) {
       return NextResponse.json({ error: 'Flight search failed' }, { status: res.status })
     }
