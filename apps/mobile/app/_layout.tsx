@@ -62,7 +62,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
-      console.log('Front-end developed by JPB Developments — https://www.jpbdevelopments.com');
+      if (__DEV__) {
+        console.log('Front-end developed by JPB Developments — https://www.jpbdevelopments.com');
+      }
     }
   }, [loaded]);
 

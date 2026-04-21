@@ -367,20 +367,26 @@ export default function HomeScreen() {
 
   // When planner completes, save trip and navigate
   useEffect(() => {
-    console.log('[HOME] planner phase:', planner.state.phase, 'showTakeoff:', showTakeoff);
+    if (__DEV__) {
+      console.log('[HOME] planner phase:', planner.state.phase, 'showTakeoff:', showTakeoff);
+    }
     if (!showTakeoff) return;
     const s = planner.state;
     // Auto-answer clarifying questions during takeoff — pick first option for each (max 1 retry)
     if (s.phase === 'clarifying' && s.questions?.length) {
       if (clarifyRetries.current >= 2) {
-        console.log('[HOME] Max clarify retries — showing error');
+        if (__DEV__) {
+          console.log('[HOME] Max clarify retries — showing error');
+        }
         planner.reset();
         setShowTakeoff(false);
         setPlannerError('Trip needs more details. Try the "Plan a Trip" button for guided planning.');
         return;
       }
       clarifyRetries.current += 1;
-      console.log('[HOME] Auto-answering clarifying questions (attempt', clarifyRetries.current, ')');
+      if (__DEV__) {
+        console.log('[HOME] Auto-answering clarifying questions (attempt', clarifyRetries.current, ')');
+      }
       const autoAnswers: Record<string, string> = {};
       for (const q of s.questions) {
         autoAnswers[q.id] = q.options?.[0] ?? '';
@@ -389,7 +395,9 @@ export default function HomeScreen() {
       return;
     }
     if (s.phase === 'complete' && s.plan) {
-      console.log('[HOME] Plan complete, saving...');
+      if (__DEV__) {
+        console.log('[HOME] Plan complete, saving...');
+      }
       (async () => {
         try {
           const tripId = await savePlanToSupabase(s.plan as any);
