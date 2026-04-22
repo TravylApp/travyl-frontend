@@ -21,7 +21,8 @@ const { Navigator } = createMaterialTopTabNavigator();
 const TopTabs = withLayoutContext(Navigator);
 
 // ─── Config (matches web trip-tabs.tsx) ──────────────────
-const SIDEBAR_W = 52;
+export const SIDEBAR_W = 52;
+export const SIDE_TAB_W = 30;
 const DRAG_THRESHOLD = 10;
 const BOTTOM_BAR_OFFSET = 34; // lift above iOS home indicator
 
@@ -681,7 +682,7 @@ function useTabScrub(
 
 // ─── Book-style Tab Sidebar (left / right) ───────────────
 const TAB_NOTCH_W = 38;
-const SIDE_TAB_W = 30;
+
 
 
 function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {

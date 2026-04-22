@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
-import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions } from 'react-native';
+import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,7 +26,16 @@ import {
   supabase,
 } from '@travyl/shared';
 import type { FlightDetail, HotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
-import MapView, { Marker } from 'react-native-maps';
+// Conditionally import react-native-maps (crashes on web)
+let MapView: any = View;
+let Marker: any = View;
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch {}
+}
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -645,64 +654,265 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
 
 // ─── MobileCalendarView ─────────────────────────────────────
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 12 AM to 11 PM (full 24h)
+const HOUR_HEIGHT = 64;
 
-function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedDayIndex: number }) {
+/** Parse duration between two time strings in hours */
+function parseDuration(start: string, end?: string): number {
+  if (!end) return 1;
+  const s = parseHour(start) ?? 0;
+  const e = parseHour(end) ?? 0;
+  const diff = e - s;
+  return diff > 0 ? Math.min(diff, 4) : 1;
+}
+
+function MobileCalendarView({ days, selectedDayIndex, onSelectActivity, onMoveActivity }: {
+  days: any[];
+  selectedDayIndex: number;
+  onSelectActivity?: (activity: any) => void;
+  onMoveActivity?: (activityId: string, newHour: number) => void;
+}) {
   const colors = useThemeColors();
+  const scrollRef = useRef<ScrollView>(null);
+  const [dragging, setDragging] = useState<{ id: string; startY: number; origHour: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [editActivity, setEditActivity] = useState<any | null>(null);
   const selectedDay = days[selectedDayIndex];
   if (!selectedDay) return null;
 
-  // Collect all activities from all time groups
+  // Collect all activities
   const allActivities = selectedDay.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
 
-  return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
-      {HOURS.map((hour) => {
-        const timeLabel = hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
-        const activities = allActivities.filter((a: any) => {
-          if (!a.startTime) return false;
-          const actHour = parseHour(a.startTime);
-          return actHour === hour;
-        });
+  // Scroll to 8 AM on mount
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollTo({ y: 8 * HOUR_HEIGHT, animated: false }), 100);
+  }, [selectedDayIndex]);
 
-        return (
-          <View key={hour} style={{ flexDirection: 'row', minHeight: 52, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
-            {/* Hour label */}
-            <View style={{ width: 48, paddingRight: 8, paddingTop: 4, alignItems: 'flex-end' }}>
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{timeLabel}</Text>
+  // Current hour indicator
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+
+  return (
+    <>
+    <ScrollView
+      ref={scrollRef}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ flexDirection: 'row', position: 'relative' }}>
+        {/* ── Hour labels (left gutter) ── */}
+        <View style={{ width: 52 }}>
+          {HOURS.map((hour) => {
+            const label = hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+            return (
+              <View key={hour} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 8, paddingTop: 0 }}>
+                <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── Time grid + activities ── */}
+        <View style={{ flex: 1, position: 'relative' }}>
+          {/* Grid lines */}
+          {HOURS.map((hour) => (
+            <View
+              key={hour}
+              style={{
+                position: 'absolute',
+                top: hour * HOUR_HEIGHT,
+                left: 0,
+                right: 0,
+                height: 1,
+                backgroundColor: colors.borderLight,
+              }}
+            />
+          ))}
+
+          {/* Current time indicator */}
+          {currentHour >= 0 && currentHour <= 24 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: currentHour * HOUR_HEIGHT,
+                left: 0,
+                right: 0,
+                height: 2,
+                backgroundColor: '#ef4444',
+                zIndex: 10,
+              }}
+            >
+              <View style={{ position: 'absolute', left: -4, top: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }} />
             </View>
-            {/* Activities in this hour */}
-            <View style={{ flex: 1, paddingVertical: 2, paddingHorizontal: 4, gap: 2 }}>
-              {activities.map((activity: any) => {
-                const bgColor = getActivityTypeColor(activity.category).primary;
-                return (
-                  <View
-                    key={activity.id}
-                    style={{
-                      backgroundColor: bgColor,
-                      paddingHorizontal: 8,
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      borderLeftWidth: 3,
-                      borderLeftColor: adjustBrightness(bgColor, -30),
-                    }}
-                  >
-                    <Text style={{ ...TextStyles.captionEm, color: '#fff' }} numberOfLines={1}>
-                      {activity.name}
-                    </Text>
-                    {activity.startTime && (
-                      <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>
-                        {activity.startTime}{activity.endTime ? ` - ${activity.endTime}` : ''}
-                      </Text>
-                    )}
+          )}
+
+          {/* Activity blocks */}
+          {allActivities.map((activity: any) => {
+            const startH = parseHour(activity.startTime) ?? 0;
+            const duration = parseDuration(activity.startTime, activity.endTime);
+            if (startH < 0 || startH > 23) return null;
+
+            const isDragging = dragging != null && dragging.id === activity.id;
+            const top = isDragging ? (dragging!.origHour * HOUR_HEIGHT + dragOffset + 2) : (startH * HOUR_HEIGHT + 2);
+            const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.7);
+            const typeColor = getActivityTypeColor(activity.category);
+            const bgColor = typeColor.primary;
+
+            return (
+              <Pressable
+                key={activity.id}
+                onPress={() => onSelectActivity?.(activity)}
+                onLongPress={() => {
+                  setDragging({ id: activity.id, startY: 0, origHour: startH });
+                  setDragOffset(0);
+                }}
+                delayLongPress={300}
+                style={{
+                  position: 'absolute',
+                  top,
+                  left: 4,
+                  right: 8,
+                  height,
+                  backgroundColor: bgColor,
+                  borderRadius: 8,
+                  borderLeftWidth: 4,
+                  borderLeftColor: adjustBrightness(bgColor, -40),
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  overflow: 'hidden',
+                  opacity: isDragging ? 0.85 : 1,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: isDragging ? 4 : 1 },
+                  shadowOpacity: isDragging ? 0.3 : 0.15,
+                  shadowRadius: isDragging ? 8 : 3,
+                  elevation: isDragging ? 8 : 3,
+                  zIndex: isDragging ? 100 : 1,
+                  transform: isDragging ? [{ scale: 1.03 }] : [],
+                }}
+              >
+                {/* Edit button — top right */}
+                <Pressable
+                  onPress={(e) => { e.stopPropagation?.(); setEditActivity(activity); }}
+                  style={{
+                    position: 'absolute', top: 4, right: 4, zIndex: 10,
+                    width: 24, height: 24, borderRadius: 12,
+                    backgroundColor: 'rgba(0,0,0,0.25)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <FontAwesome name="pencil" size={10} color="#fff" />
+                </Pressable>
+
+                <Text style={{ ...TextStyles.captionEm, color: '#fff', paddingRight: 28 }} numberOfLines={1}>
+                  {activity.name}
+                </Text>
+                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.75)' }} numberOfLines={1}>
+                  {activity.timeDisplay || (activity.startTime + (activity.endTime ? ` – ${activity.endTime}` : ''))}
+                </Text>
+                {height > 50 && activity.locationName && (
+                  <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)', marginTop: 2 }} numberOfLines={1}>
+                    {activity.locationName}
+                  </Text>
+                )}
+                {height > 70 && activity.category && (
+                  <View style={{
+                    position: 'absolute', bottom: 4, right: 6,
+                    backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 4,
+                    paddingHorizontal: 5, paddingVertical: 1,
+                  }}>
+                    <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>{activity.category}</Text>
                   </View>
-                );
-              })}
-            </View>
-          </View>
-        );
-      })}
+                )}
+
+                {/* Drag indicator when long-pressed */}
+                {isDragging && (
+                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 8, borderStyle: 'dashed' }} />
+                )}
+              </Pressable>
+            );
+          })}
+
+          {/* Drop zone indicator when dragging */}
+          {dragging && (
+            <View style={{
+              position: 'absolute',
+              top: Math.max(0, Math.round((dragging.origHour * HOUR_HEIGHT + dragOffset) / HOUR_HEIGHT) * HOUR_HEIGHT),
+              left: 4, right: 8, height: 2,
+              backgroundColor: '#3b82f6', zIndex: 50,
+            }} />
+          )}
+
+          {/* Spacer for total height */}
+          <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
+        </View>
+      </View>
     </ScrollView>
+
+    {/* ── Edit Activity Sheet ── */}
+    {editActivity && (
+      <Modal visible transparent animationType="slide" onRequestClose={() => setEditActivity(null)}>
+        <Pressable onPress={() => setEditActivity(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} />
+        <View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          backgroundColor: colors.cardBackground,
+          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          paddingBottom: 40, paddingHorizontal: 20, paddingTop: 16,
+          shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.2, shadowRadius: 12,
+        }}>
+          {/* Handle */}
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+
+          {/* Activity info */}
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }}>{editActivity.name}</Text>
+          <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 12 }}>
+            {editActivity.timeDisplay || editActivity.startTime} · {editActivity.category}
+          </Text>
+
+          {editActivity.locationName && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{editActivity.locationName}</Text>
+            </View>
+          )}
+
+          {editActivity.notes && (
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 12 }}>{editActivity.notes}</Text>
+          )}
+
+          {/* Action buttons */}
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+            <Pressable
+              onPress={() => { onSelectActivity?.(editActivity); setEditActivity(null); }}
+              style={{
+                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                gap: 6, paddingVertical: 12, borderRadius: 12,
+                backgroundColor: getActivityTypeColor(editActivity.category).primary,
+              }}
+            >
+              <FontAwesome name="info-circle" size={14} color="#fff" />
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>View Details</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setEditActivity(null)}
+              style={{
+                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                gap: 6, paddingVertical: 12, borderRadius: 12,
+                borderWidth: 1, borderColor: colors.border,
+              }}
+            >
+              <FontAwesome name="times" size={14} color={colors.textSecondary} />
+              <Text style={{ ...TextStyles.bodyLgEm, color: colors.textSecondary }}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -1609,13 +1819,13 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity, discoverPo
 
   const handleQuickFill = useCallback((filter: string | null) => {
     const allIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
-    const item = pickRandomActivity(filter, allIds);
+    const item = pickRandomActivity(filter, allIds, discoverPool);
     if (item) {
       onAddActivity(dayIndex, timeOfDay, item.name, item.category || 'activity');
     }
     setOpen(false);
     setQuery('');
-  }, [days, dayIndex, timeOfDay, onAddActivity]);
+  }, [days, dayIndex, timeOfDay, onAddActivity, discoverPool]);
 
   if (!open) {
     return (
@@ -2023,7 +2233,7 @@ export default function ItineraryScreen() {
     if (!h) return { name: 'Hotel', address: '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: '', stars: 3, rating: 0 };
     return { name: h.name, address: h.address || '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: h.image || h.photo_url || '', stars: h.stars || 3, rating: h.rating || 0 };
   }, [trip]);
-  const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
+  const { calendarOpen, setCalendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
   const isFocused = useIsFocused();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
@@ -2067,7 +2277,7 @@ export default function ItineraryScreen() {
       const allIds = prev.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
       const current = prev[dayIndex]?.timeGroups.flatMap((g) => g.activities).find((a) => a.id === activityId);
       if (!current) return prev;
-      const replacement = pickRandomActivity(current.category, allIds);
+      const replacement = pickRandomActivity(current.category, allIds, discoverPool);
       if (!replacement) return prev;
       return prev.map((day, di) => {
         if (di !== dayIndex) return day;
@@ -2083,7 +2293,7 @@ export default function ItineraryScreen() {
         };
       });
     });
-  }, []);
+  }, [discoverPool]);
 
   const addGlanceActivity = useCallback((dayIndex: number, timeOfDay: string, name: string, category: string) => {
     const newAct: ActivityViewModel = {
@@ -2516,14 +2726,31 @@ export default function ItineraryScreen() {
             />
           </Pressable>
         )}
-        {/* View Toggle — inline next to collapse button */}
-        {!calendarOpen && (
-          <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
-        )}
+        {/* View Toggle + Calendar button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {!calendarOpen && (
+            <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
+          )}
+          <Pressable
+            onPress={() => setCalendarOpen(!calendarOpen)}
+            style={{
+              width: 32, height: 32, borderRadius: 8,
+              backgroundColor: calendarOpen ? ACCENT : colors.cardBackground,
+              borderWidth: 1, borderColor: calendarOpen ? ACCENT : colors.border,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <FontAwesome name="calendar" size={14} color={calendarOpen ? '#fff' : colors.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       {calendarOpen ? (
-        <MobileCalendarView days={days} selectedDayIndex={selectedDayIndex} />
+        <MobileCalendarView
+          days={days}
+          selectedDayIndex={selectedDayIndex}
+          onSelectActivity={(a) => setSelectedActivityId(a.id)}
+        />
       ) : viewMode === 'glance' ? (
         <GlancePager
           days={effectiveDays}

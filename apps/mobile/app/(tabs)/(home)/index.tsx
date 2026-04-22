@@ -172,7 +172,8 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
 
   // Fetch real stats from API
   useEffect(() => {
-    const API = getWebApiBase();
+    const API = getWebApiBase() || 'https://dev.gotravyl.com';
+    try { new URL(`${API}/api/stats`); } catch { return; }
     fetch(`${API}/api/stats`).then(r => r.ok ? r.json() : null).then(data => {
       if (data) {
         setLiveStats([

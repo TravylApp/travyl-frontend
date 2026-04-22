@@ -181,8 +181,14 @@ export function shuffle<T>(items: T[]): T[] {
  * @returns Base URL string (e.g. "https://www.travyl.com" on mobile, "" on web)
  */
 export function getWebApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
+  // Expo's Babel plugin only inlines direct `process.env.EXPO_PUBLIC_X` references.
+  // Optional chaining (`process.env?.`) breaks the transform in Hermes/EAS builds.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const url = process.env.EXPO_PUBLIC_WEB_API_URL;
+    if (url) return url;
+  } catch {
+    // process.env may not exist in some runtimes
   }
   return '';
 }

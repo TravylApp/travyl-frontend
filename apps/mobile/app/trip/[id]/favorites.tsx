@@ -15,6 +15,11 @@ const INITIAL_ACTIVITY_FAVORITES: string[] = [];
 const INITIAL_RESTAURANT_FAVORITES: string[] = [];
 const INITIAL_DESTINATION_FAVORITES: string[] = [];
 
+// Separate storage keys to prevent cross-contamination (issue #650 item 9)
+const ACTIVITY_FAVORITES_KEY = 'travyl-activity-favorites';
+const RESTAURANT_FAVORITES_KEY = 'travyl-restaurant-favorites';
+const DESTINATION_FAVORITES_KEY = 'travyl-destination-favorites';
+
 // Category config with icons
 const CATEGORIES = [
   { key: 'All', icon: 'th-large' },
@@ -365,16 +370,18 @@ export default function FavoritesScreen() {
   const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>([]);
 
   // Load favorites from AsyncStorage on mount
+  // Using separate keys to prevent cross-contamination (issue #650 item 9)
   useEffect(() => {
-    AsyncStorage.getItem('travyl-favorites').then((val) => {
-      if (val) {
-        try {
-          const all = JSON.parse(val) as string[];
-          // Split into activity vs restaurant based on what items we have
-          setActivityFavorites(all);
-          setRestaurantFavorites(all);
-        } catch {}
-      }
+    Promise.all([
+      AsyncStorage.getItem(ACTIVITY_FAVORITES_KEY),
+      AsyncStorage.getItem(RESTAURANT_FAVORITES_KEY),
+      AsyncStorage.getItem(DESTINATION_FAVORITES_KEY),
+    ]).then(([activityVal, restaurantVal, destinationVal]) => {
+      try {
+        if (activityVal) setActivityFavorites(JSON.parse(activityVal));
+        if (restaurantVal) setRestaurantFavorites(JSON.parse(restaurantVal));
+        if (destinationVal) setDestinationFavorites(JSON.parse(destinationVal));
+      } catch {}
     });
   }, []);
   const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
@@ -396,14 +403,23 @@ export default function FavoritesScreen() {
 
   const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
 
-  const persistFavorites = useCallback((ids: string[]) => {
-    AsyncStorage.setItem('travyl-favorites', JSON.stringify(ids)).catch(() => {});
+  // Persist to separate keys based on type (issue #650 item 9)
+  const persistActivityFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem(ACTIVITY_FAVORITES_KEY, JSON.stringify(ids)).catch(() => {});
+  }, []);
+
+  const persistRestaurantFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem(RESTAURANT_FAVORITES_KEY, JSON.stringify(ids)).catch(() => {});
+  }, []);
+
+  const persistDestinationFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem(DESTINATION_FAVORITES_KEY, JSON.stringify(ids)).catch(() => {});
   }, []);
 
   const removeActivityFavorite = (itemId: string) => {
     setActivityFavorites((prev) => {
       const next = prev.filter((f) => f !== itemId);
-      persistFavorites(next);
+      persistActivityFavorites(next);
       return next;
     });
   };
@@ -411,13 +427,17 @@ export default function FavoritesScreen() {
   const removeRestaurantFavorite = (itemId: string) => {
     setRestaurantFavorites((prev) => {
       const next = prev.filter((f) => f !== itemId);
-      persistFavorites(next);
+      persistRestaurantFavorites(next);
       return next;
     });
   };
 
   const removeDestinationFavorite = (itemId: string) => {
-    setDestinationFavorites((prev) => prev.filter((f) => f !== itemId));
+    setDestinationFavorites((prev) => {
+      const next = prev.filter((f) => f !== itemId);
+      persistDestinationFavorites(next);
+      return next;
+    });
   };
 
   // Counts per category for filter chips

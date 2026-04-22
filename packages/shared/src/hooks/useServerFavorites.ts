@@ -8,21 +8,10 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ServerFavorite } from '../types';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Fetches, adds, and removes server-persisted favorites for an authenticated user.
@@ -40,7 +29,7 @@ function getApiBase(): string {
  * ```
  */
 export function useServerFavorites(authToken: string | null) {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const queryClient = useQueryClient();
 
   const query = useQuery<ServerFavorite[]>({

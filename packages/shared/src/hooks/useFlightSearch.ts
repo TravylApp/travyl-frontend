@@ -8,20 +8,9 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Parameters for a flight availability search.
@@ -53,7 +42,7 @@ export interface FlightSearchParams {
  * ```
  */
 export function useFlightSearch(params: FlightSearchParams) {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const { origin, destination, departDate, returnDate, passengers } = params;
   const enabled = !!origin && !!destination && !!departDate;
 

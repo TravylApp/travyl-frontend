@@ -7,21 +7,14 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 
 /**
  * Returns the base URL for API requests.
  * On web the path is relative (`''`); on Expo it is read from
  * `EXPO_PUBLIC_WEB_API_URL` so the mobile app can reach the Next.js backend.
- * @returns Base URL string (may be empty for web relative paths)
  */
-function getApiBase(): string {
-  // Web: relative path; Mobile: env var
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Shape of the data returned by `useDestinationImage`.
@@ -41,7 +34,7 @@ interface DestinationImageResult {
  * @returns Normalised image result with a primary `url` and full `images` array
  */
 async function fetchDestinationImage(destination: string): Promise<DestinationImageResult> {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const res = await fetch(
     `${base}/api/images/destination?destination=${encodeURIComponent(destination)}`
   );

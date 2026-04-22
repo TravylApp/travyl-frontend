@@ -7,21 +7,10 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { PlaceDetailResponse } from '../types';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Fetches full place details from the /api/places/[id] endpoint.
@@ -30,7 +19,7 @@ function getApiBase(): string {
  * @throws Error if the network response is not OK
  */
 async function fetchPlaceDetail(placeId: string): Promise<PlaceDetailResponse> {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const res = await fetch(
     `${base}/api/places/${encodeURIComponent(placeId)}`
   );

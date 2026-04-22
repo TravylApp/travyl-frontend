@@ -8,20 +8,9 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Parameters for a hotel availability search.
@@ -51,7 +40,7 @@ export interface HotelSearchParams {
  * ```
  */
 export function useHotelSearch(params: HotelSearchParams) {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const { destination, checkIn, checkOut, guests } = params;
   const enabled = !!destination && !!checkIn && !!checkOut;
 

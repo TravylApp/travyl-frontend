@@ -37,3 +37,29 @@ export interface LocalEvent {
 export interface EventsResponse {
   events: LocalEvent[]
 }
+
+export interface Restaurant {
+  id: string
+  name: string
+  cuisine?: string
+  priceLevel?: 1 | 2 | 3 | 4  // $ to $$$$
+  rating?: number              // 0-5 scale
+  reviewCount?: number
+  address: string
+  phone?: string
+  website?: string
+  reserveUrl?: string          // OpenTable booking link
+  imageUrl?: string
+  coordinates?: {
+    lat: number
+    lng: number
+  }
+  hours?: string               // Today's hours
+  tags?: string[]              // Features: outdoor seating, wifi, etc.
+}
+
+export interface RestaurantsResponse {
+  restaurants: Restaurant[]
+  total: number
+  source: string
+}

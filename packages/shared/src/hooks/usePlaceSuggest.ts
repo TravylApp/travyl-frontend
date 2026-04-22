@@ -7,22 +7,10 @@
 
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { SuggestResponse } from '../types';
 
-/**
- * Resolves the API base URL for the current runtime environment.
- * Returns EXPO_PUBLIC_WEB_API_URL when running in Expo (mobile),
- * or an empty string for relative paths on the web.
- * @returns The API base URL string (may be empty)
- */
-function getApiBase(): string {
-  // Web: relative path; Mobile: env var
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
 /**
  * Parameters accepted by the place-suggest query.
@@ -43,7 +31,7 @@ interface UsePlaceSuggestParams {
  * @throws Error if the network response is not OK
  */
 async function fetchPlaceSuggest(params: UsePlaceSuggestParams): Promise<SuggestResponse> {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const searchParams = new URLSearchParams({
     destination: params.destination,
     category: params.category ?? 'all',
