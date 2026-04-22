@@ -120,19 +120,6 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // Fallback 2: OpenTripMap (free, no key, Wikipedia-enriched descriptions)
-    if (exploreItems.length === 0) {
-      try {
-        const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&limit=40`)
-        if (r.ok) {
-          const items = await r.json()
-          const seen = new Set<string>()
-          exploreItems = (Array.isArray(items) ? items : []).filter((p: any) => {
-            if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
-          }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: upscaleGoogleImage(p.image) ?? p.image }))
-        }
-      } catch {}
-    }
   }
 
   // Filter explore items by geographic radius to prevent wrong-city results

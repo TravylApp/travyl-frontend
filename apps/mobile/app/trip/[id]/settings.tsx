@@ -3,7 +3,7 @@ import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'rea
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, getWebApiBase, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, deleteTrip } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -225,24 +225,11 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const base = getWebApiBase();
-              const res = await fetch(`${base}/api/trips/delete`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(base ? { 'Origin': base } : {}),
-                },
-                body: JSON.stringify({ tripId: id }),
-              });
-              if (res.ok) {
-                queryClient.invalidateQueries({ queryKey: ['trips'] });
-                router.back();
-              } else {
-                const data = await res.json().catch(() => ({}));
-                Alert.alert('Error', data.error || 'Failed to delete trip');
-              }
-            } catch {
-              Alert.alert('Error', 'Failed to delete trip');
+              await deleteTrip(id);
+              queryClient.invalidateQueries({ queryKey: ['trips'] });
+              router.replace('/(tabs)/trips');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to delete trip. Please try again.');
             }
           },
         },

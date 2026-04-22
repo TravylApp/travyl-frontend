@@ -11,7 +11,6 @@ export const foursquareClientSecret = new sst.Secret('FoursquareClientSecret')
 export const foursquareApiKey = new sst.Secret('FoursquareApiKey')
 export const tripadvisorApiKey = new sst.Secret('TripadvisorApiKey')
 export const geonamesUsername = new sst.Secret('GeonamesUsername')
-export const opentripmapApiKey = new sst.Secret('OpentripmapApiKey')
 
 // ─── Images ─────────────────────────────────────────────────
 export const pexels = new sst.Secret('Pexels')
