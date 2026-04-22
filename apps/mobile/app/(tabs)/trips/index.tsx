@@ -15,6 +15,7 @@ import {
   Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useQueryClient } from '@tanstack/react-query';
@@ -146,6 +147,48 @@ function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; heigh
   const members = trip.members ?? [];
   const visibleMembers = members.slice(0, 3);
   const extraCount = members.length - 3;
+
+  // Skeleton mode
+  if (!trip.id || trip.id.startsWith('skeleton-')) {
+    return (
+      <View style={{ width }}>
+        <View style={{ height, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.skeleton }}>
+          <SkeletonBlock width="100%" height={height} />
+          <View pointerEvents="none" style={{
+            position: 'absolute', top: 10, left: 12, right: 48,
+            flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <SkeletonBlock width={60} height={24} radius={12} />
+              <View style={{ flexDirection: 'row' }}>
+                {Array(3).fill(0).map((_, i) => (
+                  <SkeletonBlock key={i} width={24} height={24} radius={12} style={{ marginLeft: i > 0 ? -8 : 0 }} />
+                ))}
+              </View>
+            </View>
+          </View>
+          <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 }}>
+            <SkeletonBlock width={80} height={20} radius={10} style={{ alignSelf: 'flex-start', marginBottom: 6 }} />
+            <SkeletonBlock width="80%" height={24} radius={6} style={{ marginBottom: 6 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, marginBottom: 6 }}>
+              <SkeletonBlock width={120} height={16} radius={4} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', overflow: 'hidden', maxHeight: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <SkeletonBlock width={80} height={14} radius={4} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <SkeletonBlock width={40} height={14} radius={4} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <SkeletonBlock width={60} height={14} radius={4} />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const handleMenu = useCallback(() => {
     Alert.alert(trip.title || 'Trip', undefined, [
@@ -646,13 +689,36 @@ export default function TripsScreen() {
           {statusTabs}
           {searchBar}
 
+          {/* Loading skeleton */}
+          {isLoading && (
+            <TripMasonryGrid 
+              trips={Array(6).fill(null).map((_, i) => ({ 
+                id: `skeleton-${i}`, 
+                title: '', 
+                destination: '', 
+                start_date: '', 
+                end_date: '', 
+                travelers: 0, 
+                budget: null, 
+                currency: 'USD', 
+                status: 'planning', 
+                image: '', 
+                cover_image_url: '', 
+                trip_context: null, 
+                members: [] 
+              } as unknown as TripCard))} 
+              screenWidth={screenWidth} 
+              onDelete={undefined} 
+            />
+          )}
+
           {/* Current / Active / Upcoming */}
-          {currentTrips.length > 0 && (
+          {!isLoading && currentTrips.length > 0 && (
             <TripMasonryGrid trips={currentTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} />
           )}
 
           {/* Past trips section */}
-          {pastTrips.length > 0 && (
+          {!isLoading && pastTrips.length > 0 && (
             <View style={{ marginTop: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <Text style={{ ...TextStyles.subhead, color: colors.textTertiary }}>Past Trips</Text>
@@ -665,7 +731,7 @@ export default function TripsScreen() {
           )}
 
           {/* No results */}
-          {filteredTrips.length === 0 && (
+          {!isLoading && filteredTrips.length === 0 && (
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
               <FontAwesome name="search" size={36} color={colors.textTertiary} />
               <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>No trips match your search</Text>
