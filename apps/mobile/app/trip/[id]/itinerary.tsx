@@ -1819,13 +1819,13 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity, discoverPo
 
   const handleQuickFill = useCallback((filter: string | null) => {
     const allIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
-    const item = pickRandomActivity(filter, allIds);
+    const item = pickRandomActivity(filter, allIds, discoverPool);
     if (item) {
       onAddActivity(dayIndex, timeOfDay, item.name, item.category || 'activity');
     }
     setOpen(false);
     setQuery('');
-  }, [days, dayIndex, timeOfDay, onAddActivity]);
+  }, [days, dayIndex, timeOfDay, onAddActivity, discoverPool]);
 
   if (!open) {
     return (
@@ -2277,7 +2277,7 @@ export default function ItineraryScreen() {
       const allIds = prev.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
       const current = prev[dayIndex]?.timeGroups.flatMap((g) => g.activities).find((a) => a.id === activityId);
       if (!current) return prev;
-      const replacement = pickRandomActivity(current.category, allIds);
+      const replacement = pickRandomActivity(current.category, allIds, discoverPool);
       if (!replacement) return prev;
       return prev.map((day, di) => {
         if (di !== dayIndex) return day;
@@ -2293,7 +2293,7 @@ export default function ItineraryScreen() {
         };
       });
     });
-  }, []);
+  }, [discoverPool]);
 
   const addGlanceActivity = useCallback((dayIndex: number, timeOfDay: string, name: string, category: string) => {
     const newAct: ActivityViewModel = {
