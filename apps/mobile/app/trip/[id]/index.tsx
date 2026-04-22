@@ -21,7 +21,7 @@ import { useAddToTrip } from '@/hooks/useAddToTrip';
 import { PageTransition } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDEBAR_W = 30; // matches SIDE_TAB_W in _layout
+const SIDEBAR_W = 52; // matches SIDEBAR_W in _layout
 const CONTENT_WIDTH = SCREEN_WIDTH - SIDEBAR_W;
 const ACCENT_COLOR = Brand.gold;
 const WEB_API = getWebApiBase();
