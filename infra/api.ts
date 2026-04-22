@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId, predicthqApiKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -191,6 +191,16 @@ api.route('GET /api/images/destination', {
   link: [pexels],
 })
 
+api.route('GET /api/exchange-rates', {
+  handler: 'services/exchange-rates.handler',
+  link: [openExchangeRatesAppId],
+})
+
+api.route('GET /api/events/search', {
+  handler: 'services/events-search.handler',
+  link: [predicthqApiKey, cacheTable],
+})
+
 api.route('GET /events', {
   handler: 'services/events.handler',
   link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
@@ -237,6 +247,12 @@ api.route('POST /trips/{id}/duplicate', {
   timeout: '15 seconds',
 })
 
+// Deprecated: use /restaurants/search instead
+api.route('GET /restaurants/search/serp', {
+  handler: 'services/restaurant-search.handler',
+  link: [cacheTable, serpApiKey, openTableAffiliateKey],
+  timeout: '10 seconds',
+})
 api.route('POST /book/match', {
   handler: 'services/book.handler',
   link: [supabaseSecretKey, supabaseUrl, openTableAffiliateKey, ticketmasterApiKey],

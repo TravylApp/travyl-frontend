@@ -18,11 +18,10 @@ import {
 import { CardStackCarousel } from '../../../components/places/CardStackCarousel';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
 
-import { PageTransition } from './_layout';
+import { PageTransition, SIDE_TAB_W } from './_layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDEBAR_W = 52; // matches SIDEBAR_W in _layout
-const CONTENT_WIDTH = SCREEN_WIDTH - SIDEBAR_W;
+const CONTENT_WIDTH = SCREEN_WIDTH - SIDE_TAB_W;
 const ACCENT_COLOR = Brand.gold;
 const WEB_API = getWebApiBase();
 
