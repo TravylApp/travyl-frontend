@@ -287,6 +287,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
               <input id="trip-destination" type="text" value={destination}
                 onChange={(e) => { setDestination(e.target.value); setSelectedCoords(null); setFieldErrors((prev) => ({ ...prev, destination: undefined })) }}
                 onFocus={() => { if (suggestions.length > 0) setSuggestionsOpen(true) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && suggestionsOpen && suggestions.length > 0) { e.preventDefault(); selectSuggestion(suggestions[0]) } }}
                 placeholder="e.g. Paris, France" disabled={submitting} autoComplete="off"
                 className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-50 transition-all"
               />
