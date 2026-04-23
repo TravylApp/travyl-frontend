@@ -200,6 +200,18 @@ body::-webkit-scrollbar {
   50% { opacity: 0; }
 }
 
+/* Masonry layout for For You panel suggestions */
+.masonry-grid {
+  column-count: 2;
+  column-gap: 0.5rem;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+
 /* Reveal animations for overview page */
 .reveal-on-scroll {
   opacity: 0;
