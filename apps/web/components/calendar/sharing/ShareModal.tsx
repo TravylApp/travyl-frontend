@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Trip, CollaboratorRole, LinkPermission } from '@travyl/shared'
-import { useCollaborators, useAuthStore, updateTripVisibility, ensureShareLinkToken, rotateShareLinkToken, supabase } from '@travyl/shared'
+import { useCollaborators, useAuthStore, useProfile, updateTripVisibility, ensureShareLinkToken, rotateShareLinkToken, supabase } from '@travyl/shared'
 import { InviteBar } from './InviteBar'
 import { CollaboratorList } from './CollaboratorList'
 import { LinkSharingSection } from './LinkSharingSection'
@@ -19,6 +19,7 @@ interface ShareModalProps {
 
 export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareModalProps) {
   const user = useAuthStore((s) => s.user)
+  const { data: profile } = useProfile()
   const { collaborators, updateRole, removeCollaborator } = useCollaborators(isOpen ? trip.id : undefined)
   const queryClient = useQueryClient()
   const [isInviting, setIsInviting] = useState(false)
@@ -147,8 +148,12 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
             )}
             <div className="mb-5">
               <CollaboratorList
+                tripId={trip.id}
+                currentUserId={user?.id ?? null}
+                ownerUserId={trip.user_id ?? null}
                 ownerName={user?.user_metadata?.display_name ?? user?.email ?? 'You'}
                 ownerEmail={user?.email ?? ''}
+                ownerAvatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || null}
                 collaborators={collaborators}
                 onChangeRole={(id, role) => updateRole({ collaboratorId: id, role })}
                 onRemove={removeCollaborator}

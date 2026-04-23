@@ -113,36 +113,25 @@ export async function updateProfile(userId: string, updates: Partial<Pick<Profil
 }
 
 export async function uploadAvatar(userId: string, base64Data: string): Promise<string> {
-  // Convert base64 to Blob
-  const base64Content = base64Data.split(';base64,').pop();
-  if (!base64Content) throw new Error('Invalid base64 data');
-
-  const byteCharacters = atob(base64Content);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  // Validate the data URL format
+  if (!base64Data.startsWith('data:image/')) {
+    throw new Error('Invalid image data - must be a data URL');
   }
-  const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: 'image/jpeg' });
 
-  const fileName = `${userId}/${Date.now()}.jpg`;
+  // Check file size (limit to 100KB for database storage)
+  const base64Content = base64Data.split(';base64,').pop();
+  if (!base64Content) {
+    throw new Error('Invalid base64 data');
+  }
 
-  // Upload to 'avatars' bucket
-  const { data, error } = await supabase.storage
-    .from('avatars')
-    .upload(fileName, blob, {
-      contentType: 'image/jpeg',
-      upsert: true
-    });
+  const sizeInKB = ((base64Content.length * 3) / 4) / 1024;
 
-  if (error) throw error;
+  if (sizeInKB > 100) {
+    throw new Error('Image must be smaller than 100KB for database storage. Please use a smaller image or compress it first.');
+  }
 
-  // Get public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(data.path);
-
-  return publicUrl;
+  // Return the data URL directly - it will be stored in the database
+  return base64Data;
 }
 
 /**
@@ -481,7 +470,7 @@ export async function ensureShareLinkToken(tripId: string): Promise<string> {
   const { data: trip, error: fetchError } = await supabase.from('trips').select('share_link_token').eq('id', tripId).single()
   if (fetchError) throw fetchError
   if (trip.share_link_token) return trip.share_link_token
-  const token = crypto.randomUUID()
+  const token = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 6)}`
   const { error: updateError } = await supabase.from('trips').update({ share_link_token: token }).eq('id', tripId)
   if (updateError) throw updateError
   return token
@@ -494,7 +483,7 @@ export async function ensureShareLinkToken(tripId: string): Promise<string> {
  * @throws PostgrestError if the update fails
  */
 export async function rotateShareLinkToken(tripId: string): Promise<string> {
-  const newToken = crypto.randomUUID()
+  const newToken = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 6)}`
   const { error } = await supabase
     .from('trips')
     .update({ share_link_token: newToken })
@@ -698,9 +687,17 @@ export async function updateTripThemeSettings(
  * @throws PostgrestError if the query fails
  */
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
-  const { data, error } = await supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).order('created_at', { ascending: true })
+  const { data, error } = await supabase
+    .from('trip_collaborators')
+    .select('*, profile:profiles!trip_collaborators_user_id_fkey(display_name, avatar_url)')
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: true })
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map(({ profile, ...collaborator }) => ({
+    ...collaborator,
+    display_name: profile?.display_name ?? null,
+    avatar_url: profile?.avatar_url ?? null,
+  })) as TripCollaborator[]
 }
 
 /**
@@ -783,7 +780,7 @@ export async function inviteCollaborator(tripId: string, email: string, role: Co
   const existing = await findPendingInviteByEmail(tripId, email)
   if (existing) return existing
 
-  const inviteToken = crypto.randomUUID()
+  const inviteToken = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 6)}`
   const { data, error } = await supabase
     .from('trip_collaborators')
     .insert({
