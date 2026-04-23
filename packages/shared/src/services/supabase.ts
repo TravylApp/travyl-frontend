@@ -27,16 +27,18 @@ const supabasePublishableKey =
 // persistSession OFF by default to prevent auth leaking across users on SSR.
 // Web overrides via configureSupabase() with a cookie-based browser client.
 // Mobile overrides via configureSupabase() with an AsyncStorage-based client.
-let _client: SupabaseClient | null = null;
+let _configuredClient: SupabaseClient | null = null;
+let _fallbackClient: SupabaseClient | null = null;
 
 /**
- * Returns (and lazily creates) the default Supabase client.
- * `persistSession` is disabled to prevent auth leaking across users on SSR.
- * Platform-specific overrides are applied via `configureSupabase()`.
+ * Returns the configured client if available, otherwise a fallback.
+ * The fallback is session-less (for SSR safety).
+ * Once configureSupabase() is called, all future calls return the configured client.
  */
 function getDefaultClient(): SupabaseClient {
-  if (!_client) {
-    _client = createClient(supabaseUrl, supabasePublishableKey, {
+  if (_configuredClient) return _configuredClient;
+  if (!_fallbackClient) {
+    _fallbackClient = createClient(supabaseUrl, supabasePublishableKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -44,7 +46,7 @@ function getDefaultClient(): SupabaseClient {
       },
     });
   }
-  return _client;
+  return _fallbackClient;
 }
 
 /**
@@ -65,5 +67,5 @@ export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
  * @param client - Fully configured SupabaseClient instance
  */
 export function configureSupabase(client: SupabaseClient) {
-  _client = client;
+  _configuredClient = client;
 }
