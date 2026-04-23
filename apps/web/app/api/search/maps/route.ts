@@ -24,13 +24,37 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     const results: any[] = []
 
-    // Single place result (exact match — e.g. "Yum Yum Donuts Porterville")
+    // Single place result (exact match)
     if (data.place_results) {
       const p = data.place_results
-      results.push(mapPlace(p, 0))
+      const mapped = mapPlace(p, 0)
+
+      // Fetch hi-res image via Google Images if thumbnail is low quality
+      if (!mapped.image || mapped.image.includes('gps-cs-s')) {
+        try {
+          const imgUrl = new URL('https://serpapi.com/search.json')
+          imgUrl.searchParams.set('engine', 'google_images')
+          imgUrl.searchParams.set('q', mapped.name)
+          imgUrl.searchParams.set('num', '3')
+          imgUrl.searchParams.set('api_key', SERPAPI_KEY)
+          const imgRes = await fetch(imgUrl.toString(), CACHE_1H)
+          if (imgRes.ok) {
+            const imgData = await imgRes.json()
+            const imgs = (imgData.images_results ?? [])
+              .filter((r: any) => r.original && !r.original.includes('encrypted-tbn'))
+              .slice(0, 5)
+            if (imgs.length > 0) {
+              mapped.image = imgs[0].original
+              mapped.images = imgs.map((r: any) => r.original)
+            }
+          }
+        } catch {}
+      }
+
+      results.push(mapped)
     }
 
-    // Multiple local results (e.g. "donuts near porterville")
+    // Multiple local results
     if (data.local_results) {
       for (const [i, p] of data.local_results.entries()) {
         results.push(mapPlace(p, i + 1))
