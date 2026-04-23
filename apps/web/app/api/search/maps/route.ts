@@ -110,6 +110,6 @@ function mapPlace(p: any, idx: number) {
     phone: p.phone || '',
     website: p.website || '',
     hours: hoursStr,
-    priceLevel: p.price ? p.price.length : null, // "$" = 1, "$$" = 2, etc.
+    priceLevel: p.price ? Math.min(p.price.replace(/[^$]/g, '').length || 1, 4) : null,
   }
 }
