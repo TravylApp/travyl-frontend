@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, TextStyles, FontSize, supabase, Navy } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, TabCtx, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
@@ -90,7 +90,9 @@ function BudgetSkeleton() {
 export default function BudgetScreen() {
   const ACCENT = useTabAccent('budget');
   const colors = useThemeColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip, isLoading } = useItineraryScreen(id);
 
   // Build budget items from trip_context (cost_of_living + hotels + trip.budget)

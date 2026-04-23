@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, Modal, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, Keyboard,
@@ -46,6 +46,7 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const planner = useTripPlanner();
 
   const [prompt, setPrompt] = useState('');
+  const inputRef = useRef<TextInput>(null);
   const [saving, setSaving] = useState(false);
   const [progressMsg, setProgressMsg] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -62,6 +63,14 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
       planner.reset();
     }
   }, [visible]);
+
+  // Dismiss keyboard whenever we leave idle phase
+  useEffect(() => {
+    if (planner.state.phase !== 'idle') {
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+    }
+  }, [planner.state.phase]);
 
   // Cycle progress messages during planning
   useEffect(() => {
@@ -82,8 +91,17 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
         const tripId = await savePlanToSupabase(plan as any, () => {});
         await saveAnonTripId(tripId);
         await queryClient.invalidateQueries({ queryKey: ['trips'] });
-        onClose();
+        // Pre-fetch the trip data so it's cached before we navigate
+        await queryClient.prefetchQuery({
+          queryKey: ['trip', tripId],
+          queryFn: async () => {
+            const { data } = await (await import('@travyl/shared')).supabase
+              .from('trips').select('*').eq('id', tripId).single();
+            return data;
+          },
+        });
         router.push(`/trip/${tripId}` as never);
+        onClose();
       } catch (err) {
         console.error('Save failed:', err);
         setSaving(false);
@@ -95,7 +113,9 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     const text = prompt.trim();
     if (!text) return;
     Keyboard.dismiss();
-    planner.submitPrompt(text);
+    inputRef.current?.blur();
+    // Small delay so keyboard animates out before phase changes
+    setTimeout(() => planner.submitPrompt(text), 150);
   }, [prompt, planner]);
 
   const handleSelectAnswer = useCallback((questionId: string, value: string) => {
@@ -121,10 +141,11 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   }, [planner]);
 
   const phase = planner.state.phase;
+  // Keep animation visible through the entire flow until navigation completes
   const isWorking = phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
-  const isIdle = phase === 'idle';
-  const isClarifying = phase === 'clarifying';
-  const isError = phase === 'error';
+  const isIdle = phase === 'idle' && !saving;
+  const isClarifying = phase === 'clarifying' && !saving;
+  const isError = phase === 'error' && !saving;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -157,6 +178,7 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
               </Text>
 
               <TextInput
+                ref={inputRef}
                 value={prompt}
                 onChangeText={setPrompt}
                 placeholder="7 days in Paris with my partner..."

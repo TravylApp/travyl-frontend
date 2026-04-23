@@ -1,7 +1,8 @@
 import '../global.css';
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -83,8 +84,9 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const scheme = useColorScheme();
   return (
-    <ThemeProvider value={DefaultTheme}>
+    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, freezeOnBlur: false }} />
         <Stack.Screen name="trip/[id]" options={{ headerShown: false, gestureEnabled: true, animation: 'slide_from_right' }} />

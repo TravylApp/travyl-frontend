@@ -129,7 +129,7 @@ async function fetchTripsWithAnonymous(userId: string | null): Promise<Trip[]> {
     return [];
   }
 
-  // Logged-in users: fetch own + collaborated trips
+  // Logged-in users: only show their own + collaborated trips
   return fetchTripsForUser(userId);
 }
 

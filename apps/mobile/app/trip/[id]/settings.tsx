@@ -172,7 +172,9 @@ function SettingsInput({
 // ─── Main screen ──────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const router = useRouter();
   const queryClient = useQueryClient();
   const { trip, isLoading } = useItineraryScreen(id);

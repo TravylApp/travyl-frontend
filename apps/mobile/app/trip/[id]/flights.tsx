@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Linking, Modal, TextInput, FlatList } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, useTabAccent, TabCtx } from './_layout';
 import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 // Airport cache — populated dynamically from API search results
@@ -572,24 +572,39 @@ function BookedFlightCard({ flight }: { flight: any }) {
           </View>
         </View>
 
-        {/* Airline + price bar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <LinearGradient
-            colors={[ACCENT, adjustBrightness(ACCENT, -30)]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ ...TextStyles.xs, color: '#fff' }}>{flight.airlineLogo}</Text>
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={{ ...TextStyles.body, color: colors.text }}>{flight.airline}</Text>
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.cabinClass}</Text>
+        {/* Airline + status bar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <LinearGradient
+              colors={[ACCENT, adjustBrightness(ACCENT, -30)]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>{flight.airlineLogo}</Text>
+            </LinearGradient>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>{flight.airline}</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>${flight.price.total}</Text>
-            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per person</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{flight.cabinClass}</Text>
+            <View style={{ backgroundColor: '#1e3a5f15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: '#1e3a5f' }}>On Time</Text>
+            </View>
           </View>
+        </View>
+
+        {/* Price + Book */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+          <View>
+            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>Per traveler</Text>
+            <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>${flight.price.total}</Text>
+          </View>
+          <Pressable style={({ pressed }) => ({
+            backgroundColor: '#1e3a5f', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
+            flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.85 : 1,
+          })}>
+            <FontAwesome name="plane" size={12} color="#fff" />
+            <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>Book Flight</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -1095,7 +1110,9 @@ export default function FlightsScreen() {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
-  const { trip, isLoading: tripLoading } = useItineraryScreen(_id);
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
+  const { trip, isLoading: tripLoading } = useItineraryScreen(id);
 
   const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {

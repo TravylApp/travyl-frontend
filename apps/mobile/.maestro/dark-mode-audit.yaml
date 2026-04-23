@@ -1,0 +1,31 @@
+appId: com.travyl.mobile
+---
+# Dark mode audit — screenshots all main pages
+# Run: maestro test apps/mobile/.maestro/dark-mode-audit.yaml
+
+# Home page
+- tapOn:
+    point: "15%,96%"
+- waitForAnimationToEnd
+- swipe:
+    direction: UP
+    duration: 1000
+- takeScreenshot: dark-home-scrolled
+
+# Places page
+- tapOn:
+    point: "30%,96%"
+- waitForAnimationToEnd
+- takeScreenshot: dark-places
+
+# Trips page
+- tapOn:
+    point: "50%,96%"
+- waitForAnimationToEnd
+- takeScreenshot: dark-trips
+
+# Profile page
+- tapOn:
+    point: "85%,96%"
+- waitForAnimationToEnd
+- takeScreenshot: dark-profile

@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
-import { Brand, Navy, TextStyles } from '@travyl/shared';
+import { Brand, TextStyles } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface SectionHeaderProps {
   eyebrow: string;
@@ -7,6 +8,7 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ eyebrow, title }: SectionHeaderProps) {
+  const colors = useThemeColors();
   return (
     <View style={{ alignItems: 'center' }}>
       <Text style={{
@@ -16,7 +18,7 @@ export function SectionHeader({ eyebrow, title }: SectionHeaderProps) {
       }}>{eyebrow}</Text>
       <Text style={{
         ...TextStyles.headline,
-        fontFamily: 'Satoshi-Light', color: Navy.DEFAULT,
+        fontFamily: 'Satoshi-Light', color: colors.text,
       }}>{title}</Text>
     </View>
   );

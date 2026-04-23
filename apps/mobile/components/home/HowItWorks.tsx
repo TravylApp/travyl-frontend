@@ -56,8 +56,8 @@ function StepCard({
           backgroundColor: isActive
             ? Navy.DEFAULT
             : isCompleted
-              ? 'rgba(30,58,95,0.05)'
-              : '#f3f4f6',
+              ? 'rgba(30,58,95,0.15)'
+              : colors.surface,
           minHeight: isActive ? undefined : undefined,
         }}
       >
@@ -103,7 +103,7 @@ function StepCard({
               ? 'rgba(255,255,255,0.2)'
               : isCompleted
                 ? Navy.DEFAULT
-                : '#e5e7eb',
+                : colors.border,
           }}
         >
           {isCompleted ? (
@@ -112,7 +112,7 @@ function StepCard({
             <Text
               style={{
                 ...TextStyles.smEm,
-                color: isActive ? '#fff' : '#6b7280',
+                color: isActive ? '#fff' : colors.textTertiary,
               }}
             >
               {index + 1}

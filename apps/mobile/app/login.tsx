@@ -31,11 +31,11 @@ function SocialButton({ label, iconName, iconColor, loading, onPress }: {
       }}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={Navy.DEFAULT} />
+        <ActivityIndicator size="small" color={colors.tint} />
       ) : (
-        <FontAwesome name={iconName as any} size={16} color={iconColor ?? Navy.DEFAULT} />
+        <FontAwesome name={iconName as any} size={16} color={iconColor ?? colors.text} />
       )}
-      <Text style={{ ...TextStyles.bodyLg, color: Navy.DEFAULT }}>{label}</Text>
+      <Text style={{ ...TextStyles.bodyLg, color: colors.text }}>{label}</Text>
     </Pressable>
   );
 }
@@ -117,16 +117,16 @@ export default function LoginScreen() {
           {/* Branding */}
           <View style={{ alignItems: 'center', marginBottom: 28 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Text style={{ fontSize: 28, fontWeight: '900', color: Navy.DEFAULT, letterSpacing: 3 }}>TRAVYL</Text>
-              <FontAwesome name="send" size={20} color={Navy.DEFAULT} />
+              <Text style={{ fontSize: 28, fontWeight: '900', color: colors.text, letterSpacing: 3 }}>TRAVYL</Text>
+              <FontAwesome name="send" size={20} color={colors.tint} />
             </View>
           </View>
 
           {/* Heading */}
-          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.sansBlack, fontWeight: '900', color: Navy.DEFAULT, marginBottom: 4 }}>
+          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.sansBlack, fontWeight: '900', color: colors.text, marginBottom: 4 }}>
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </Text>
-          <Text style={{ ...TextStyles.bodyLg, color: 'rgba(30,58,95,0.65)', marginBottom: 20 }}>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, marginBottom: 20 }}>
             {isSignUp ? 'Start planning your dream trips today.' : 'Sign in to continue your journey.'}
           </Text>
 
@@ -162,7 +162,7 @@ export default function LoginScreen() {
           {/* Divider */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.borderLight }} />
-            <Text style={{ ...TextStyles.sm, color: 'rgba(30,58,95,0.45)', letterSpacing: 1 }}>OR</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, letterSpacing: 1 }}>OR</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.borderLight }} />
           </View>
 
@@ -170,14 +170,14 @@ export default function LoginScreen() {
           {isSignUp && (
             <View style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 12 }}>
-                <FontAwesome name="user" size={14} color="rgba(30,58,95,0.45)" />
+                <FontAwesome name="user" size={14} color={colors.textTertiary} />
                 <TextInput
                   placeholder="Full name"
-                  placeholderTextColor="rgba(30,58,95,0.45)"
+                  placeholderTextColor={colors.textTertiary}
                   value={name}
                   onChangeText={setName}
                   autoCapitalize="words"
-                  style={{ flex: 1, height: 48, paddingHorizontal: 10, ...TextStyles.bodyLg, color: Navy.DEFAULT }}
+                  style={{ flex: 1, height: 48, paddingHorizontal: 10, ...TextStyles.bodyLg, color: colors.text }}
                 />
               </View>
             </View>
@@ -186,16 +186,16 @@ export default function LoginScreen() {
           {/* Email */}
           <View style={{ marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 12 }}>
-              <FontAwesome name="envelope" size={14} color="rgba(30,58,95,0.45)" />
+              <FontAwesome name="envelope" size={14} color={colors.textTertiary} />
               <TextInput
                 placeholder="Email address"
-                placeholderTextColor="rgba(30,58,95,0.45)"
+                placeholderTextColor={colors.textTertiary}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
-                style={{ flex: 1, height: 48, paddingHorizontal: 10, ...TextStyles.bodyLg, color: Navy.DEFAULT }}
+                style={{ flex: 1, height: 48, paddingHorizontal: 10, ...TextStyles.bodyLg, color: colors.text }}
               />
             </View>
           </View>
@@ -203,17 +203,17 @@ export default function LoginScreen() {
           {/* Password */}
           <View style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 12 }}>
-              <FontAwesome name="lock" size={14} color="rgba(30,58,95,0.45)" />
+              <FontAwesome name="lock" size={14} color={colors.textTertiary} />
               <TextInput
                 placeholder="Password"
-                placeholderTextColor="rgba(30,58,95,0.45)"
+                placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                style={{ flex: 1, height: 48, paddingHorizontal: 10, ...TextStyles.bodyLg, color: Navy.DEFAULT }}
+                style={{ flex: 1, height: 48, paddingHorizontal: 10, ...TextStyles.bodyLg, color: colors.text }}
               />
               <Pressable onPress={() => setShowPassword(!showPassword)}>
-                <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} size={14} color="rgba(30,58,95,0.45)" />
+                <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} size={14} color={colors.textTertiary} />
               </Pressable>
             </View>
           </View>
@@ -224,7 +224,7 @@ export default function LoginScreen() {
               disabled={submitting}
               style={{ alignSelf: 'flex-end', marginBottom: 16 }}
             >
-              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? '#16a34a' : 'rgba(30,58,95,0.6)' }}>
+              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? '#16a34a' : colors.textSecondary }}>
                 {resetEmailSent ? 'Check your email for a reset link.' : 'Forgot password?'}
               </Text>
             </Pressable>
@@ -250,9 +250,9 @@ export default function LoginScreen() {
 
           {/* Toggle */}
           <View style={{ alignItems: 'center', marginTop: 20 }}>
-            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(30,58,95,0.6)' }}>
+            <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary }}>
               {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-              <Text onPress={() => setIsSignUp(!isSignUp)} style={{ color: Navy.DEFAULT, fontWeight: '600' }}>
+              <Text onPress={() => setIsSignUp(!isSignUp)} style={{ color: colors.tint, fontWeight: '600' }}>
                 {isSignUp ? 'Sign in' : 'Sign up'}
               </Text>
             </Text>
@@ -260,11 +260,11 @@ export default function LoginScreen() {
 
           {/* Continue as Guest */}
           <Pressable onPress={() => router.replace('/')} style={{ alignItems: 'center', marginTop: 12 }}>
-            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(30,58,95,0.5)', textDecorationLine: 'underline' }}>Continue as Guest</Text>
+            <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary, textDecorationLine: 'underline' }}>Continue as Guest</Text>
           </Pressable>
 
           {/* Terms */}
-          <Text style={{ ...TextStyles.caption, textAlign: 'center', marginTop: 16, color: 'rgba(30,58,95,0.4)' }}>
+          <Text style={{ ...TextStyles.caption, textAlign: 'center', marginTop: 16, color: colors.textTertiary }}>
             By continuing, you agree to Travyl's Terms of Service and Privacy Policy.
           </Text>
         </ScrollView>

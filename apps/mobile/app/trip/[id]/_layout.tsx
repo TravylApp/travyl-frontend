@@ -558,27 +558,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               );
             })()}
 
-            {/* Safety badge + Wiki excerpt */}
-            {(() => {
-              const safety = trip?.trip_context?.safety as { score: number; message: string; level?: string } | undefined;
-              return (safety && safety.score > 0) ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                  <View style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 4,
-                    backgroundColor: safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)',
-                    borderWidth: 1,
-                    borderColor: safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)',
-                    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3,
-                  }}>
-                    <FontAwesome name="shield" size={10} color={safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171'} />
-                    <Text style={{ ...TextStyles.smEm, color: safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171' }}>
-                      {safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger'} ({safety.score})
-                    </Text>
-                  </View>
-                </View>
-              ) : null;
-            })()}
-
+            {/* Wiki excerpt */}
             {wikiText ? (
               <View style={{
                 marginTop: 8, borderRadius: 10,

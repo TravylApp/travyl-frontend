@@ -445,11 +445,12 @@ function EmptyState({ onPlan }: { onPlan: () => void }) {
         Start planning your next adventure!
       </Text>
       <Pressable onPress={onPlan} style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', backgroundColor: Navy.DEFAULT,
-        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? 0.85 : 1,
       })}>
-        <FontAwesome name="plus" size={14} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Plan a Trip</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Navy.DEFAULT, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, gap: 8 }}>
+          <FontAwesome name="plus" size={14} color="#fff" />
+          <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Plan a Trip</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -586,11 +587,11 @@ export default function TripsScreen() {
         )}
       </View>
       <Pressable onPress={handlePlan} style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', backgroundColor: Navy.DEFAULT,
-        paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, opacity: pressed ? 0.85 : 1,
+        alignItems: 'center',
+        opacity: pressed ? 0.6 : 1,
       })}>
-        <FontAwesome name="plus" size={13} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Plan a Trip</Text>
+        <FontAwesome name="plus" size={18} color={colors.text} />
+        <Text style={{ ...TextStyles.xs, color: colors.textSecondary, marginTop: 2 }}>Plan a Trip</Text>
       </Pressable>
     </View>
   );

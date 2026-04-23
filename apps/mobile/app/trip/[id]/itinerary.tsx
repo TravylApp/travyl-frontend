@@ -49,13 +49,19 @@ import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 function parseHour(timeStr: string | null): number | null {
   if (!timeStr) return null;
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return null;
-  let hour = parseInt(match[1], 10);
-  const period = match[3].toUpperCase();
-  if (period === 'PM' && hour !== 12) hour += 12;
-  if (period === 'AM' && hour === 12) hour = 0;
-  return hour;
+  // Try "9:00 AM" / "9:00 PM" format
+  const ampm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (ampm) {
+    let hour = parseInt(ampm[1], 10);
+    const period = ampm[3].toUpperCase();
+    if (period === 'PM' && hour !== 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return hour;
+  }
+  // Try "09:00" / "14:30" (24h format)
+  const h24 = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (h24) return parseInt(h24[1], 10);
+  return null;
 }
 
 // ─── Match itinerary activity → DiscoverItem by keyword overlap ──────
@@ -666,186 +672,213 @@ function parseDuration(start: string, end?: string): number {
   return diff > 0 ? Math.min(diff, 4) : 1;
 }
 
-function MobileCalendarView({ days, selectedDayIndex, onSelectActivity, onMoveActivity }: {
+/** Activity block for the calendar grid — tap to view, long-press to select for moving */
+function CalendarBlock({ activity, startH, duration, bgColor, isSelected, onTap, onLongPress }: {
+  activity: any; startH: number; duration: number; bgColor: string;
+  isSelected: boolean;
+  onTap: () => void;
+  onLongPress: () => void;
+}) {
+  const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.6);
+
+  return (
+    <Pressable
+      onPress={onTap}
+      onLongPress={onLongPress}
+      delayLongPress={250}
+      style={({ pressed }) => ({
+        position: 'absolute',
+        top: startH * HOUR_HEIGHT + 2,
+        left: 2, right: 2, height,
+        backgroundColor: bgColor,
+        borderRadius: 6,
+        borderLeftWidth: 3,
+        borderLeftColor: adjustBrightness(bgColor, -40),
+        paddingHorizontal: 4, paddingVertical: 3,
+        overflow: 'hidden',
+        opacity: pressed ? 0.8 : 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: isSelected ? 4 : 1 },
+        shadowOpacity: isSelected ? 0.3 : 0.1,
+        shadowRadius: isSelected ? 6 : 2,
+        elevation: isSelected ? 8 : 2,
+        borderWidth: isSelected ? 2 : 0,
+        borderColor: '#fff',
+        transform: [{ scale: isSelected ? 1.03 : 1 }],
+        zIndex: isSelected ? 100 : 1,
+      })}
+    >
+      <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }} numberOfLines={1}>{activity.name}</Text>
+      {height > 35 && (
+        <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)' }} numberOfLines={1}>
+          {activity.startTime}
+        </Text>
+      )}
+      {height > 55 && activity.locationName && (
+        <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)' }} numberOfLines={1}>
+          {activity.locationName}
+        </Text>
+      )}
+      {isSelected && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 6, borderStyle: 'dashed' }} />
+      )}
+    </Pressable>
+  );
+}
+
+function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSelectActivity, onMoveActivity, onSelectDay }: {
   days: any[];
   selectedDayIndex: number;
+  visibleDayCount?: 1 | 3 | 7;
   onSelectActivity?: (activity: any) => void;
-  onMoveActivity?: (activityId: string, newHour: number) => void;
+  onMoveActivity?: (activityId: string, newHour: number, newDayIndex: number) => void;
+  onSelectDay?: (index: number) => void;
 }) {
   const colors = useThemeColors();
+  const { width: SCREEN_W } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
-  const [dragging, setDragging] = useState<{ id: string; startY: number; origHour: number } | null>(null);
-  const [dragOffset, setDragOffset] = useState(0);
   const [editActivity, setEditActivity] = useState<any | null>(null);
-  const selectedDay = days[selectedDayIndex];
-  if (!selectedDay) return null;
 
-  // Collect all activities
-  const allActivities = selectedDay.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
+  const VISIBLE_DAYS = Math.min(visibleDayCount, days.length);
+  const GUTTER_W = 44;
+  const DAY_COL_W = (SCREEN_W - GUTTER_W - 8) / VISIBLE_DAYS;
+
+  // Day range start — syncs with parent selectedDayIndex
+  const [rangeStart, setRangeStart] = useState(Math.max(0, selectedDayIndex - Math.floor(VISIBLE_DAYS / 2)));
+
+  // Sync when parent day selector changes
+  useEffect(() => {
+    const newStart = visibleDayCount === 1 ? selectedDayIndex : Math.max(0, Math.min(days.length - VISIBLE_DAYS, selectedDayIndex - Math.floor(VISIBLE_DAYS / 2)));
+    setRangeStart(newStart);
+  }, [selectedDayIndex, visibleDayCount]);
+  const visibleDays = days.slice(rangeStart, rangeStart + VISIBLE_DAYS);
+
+  // Tap-to-move: long-press selects an activity, then tap an empty time slot to move it
+  const [movingActivityId, setMovingActivityId] = useState<string | null>(null);
 
   // Scroll to 8 AM on mount
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollTo({ y: 8 * HOUR_HEIGHT, animated: false }), 100);
-  }, [selectedDayIndex]);
+  }, [rangeStart]);
 
-  // Current hour indicator
   const now = new Date();
   const currentHour = now.getHours() + now.getMinutes() / 60;
 
+  // Navigate day range
+  const canGoLeft = rangeStart > 0;
+  const canGoRight = rangeStart + VISIBLE_DAYS < days.length;
+
   return (
     <>
+    {/* ── Day column headers ── */}
+    <View style={{ flexDirection: 'row', paddingLeft: GUTTER_W, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+      {visibleDays.map((day, i) => (
+        <View key={day.id} style={{ width: DAY_COL_W, paddingVertical: 6, alignItems: 'center', borderLeftWidth: i > 0 ? 1 : 0, borderLeftColor: colors.borderLight }}>
+          <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{day.dateLabel || day.dayLabel}</Text>
+          <Text style={{ ...TextStyles.captionEm, color: colors.text }}>Day {day.dayNumber}</Text>
+        </View>
+      ))}
+    </View>
+
+    {/* ── Time grid with multi-day columns ── */}
     <ScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ flexDirection: 'row', position: 'relative' }}>
-        {/* ── Hour labels (left gutter) ── */}
-        <View style={{ width: 52 }}>
+      <View style={{ flexDirection: 'row' }}>
+        {/* ── Hour gutter ── */}
+        <View style={{ width: GUTTER_W }}>
           {HOURS.map((hour) => {
-            const label = hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+            const label = hour === 0 ? '12a' : hour === 12 ? '12p' : hour < 12 ? `${hour}a` : `${hour - 12}p`;
             return (
-              <View key={hour} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 8, paddingTop: 0 }}>
+              <View key={hour} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 4 }}>
                 <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{label}</Text>
               </View>
             );
           })}
         </View>
 
-        {/* ── Time grid + activities ── */}
-        <View style={{ flex: 1, position: 'relative' }}>
-          {/* Grid lines */}
-          {HOURS.map((hour) => (
-            <View
-              key={hour}
-              style={{
-                position: 'absolute',
-                top: hour * HOUR_HEIGHT,
-                left: 0,
-                right: 0,
-                height: 1,
-                backgroundColor: colors.borderLight,
-              }}
-            />
-          ))}
+        {/* ── Day columns ── */}
+        {visibleDays.map((day, colIdx) => {
+          const dayIdx = rangeStart + colIdx;
+          const activities = day.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
 
-          {/* Current time indicator */}
-          {currentHour >= 0 && currentHour <= 24 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: currentHour * HOUR_HEIGHT,
-                left: 0,
-                right: 0,
-                height: 2,
-                backgroundColor: '#ef4444',
-                zIndex: 10,
-              }}
-            >
-              <View style={{ position: 'absolute', left: -4, top: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }} />
-            </View>
-          )}
+          return (
+            <View key={day.id} style={{ width: DAY_COL_W, position: 'relative', borderLeftWidth: 1, borderLeftColor: colors.borderLight }}>
+              {/* Grid lines */}
+              {HOURS.map((hour) => (
+                <View key={hour} style={{ position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: 1, backgroundColor: colors.borderLight }} />
+              ))}
 
-          {/* Activity blocks */}
-          {allActivities.map((activity: any) => {
-            const startH = parseHour(activity.startTime) ?? 0;
-            const duration = parseDuration(activity.startTime, activity.endTime);
-            if (startH < 0 || startH > 23) return null;
+              {/* Current time line */}
+              {currentHour >= 0 && currentHour <= 24 && (
+                <View style={{ position: 'absolute', top: currentHour * HOUR_HEIGHT, left: 0, right: 0, height: 2, backgroundColor: '#ef4444', zIndex: 10 }}>
+                  {colIdx === 0 && <View style={{ position: 'absolute', left: -3, top: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' }} />}
+                </View>
+              )}
 
-            const isDragging = dragging != null && dragging.id === activity.id;
-            const top = isDragging ? (dragging!.origHour * HOUR_HEIGHT + dragOffset + 2) : (startH * HOUR_HEIGHT + 2);
-            const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.7);
-            const typeColor = getActivityTypeColor(activity.category);
-            const bgColor = typeColor.primary;
-
-            return (
-              <Pressable
-                key={activity.id}
-                onPress={() => onSelectActivity?.(activity)}
-                onLongPress={() => {
-                  setDragging({ id: activity.id, startY: 0, origHour: startH });
-                  setDragOffset(0);
-                }}
-                delayLongPress={300}
-                style={{
-                  position: 'absolute',
-                  top,
-                  left: 4,
-                  right: 8,
-                  height,
-                  backgroundColor: bgColor,
-                  borderRadius: 8,
-                  borderLeftWidth: 4,
-                  borderLeftColor: adjustBrightness(bgColor, -40),
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  overflow: 'hidden',
-                  opacity: isDragging ? 0.85 : 1,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: isDragging ? 4 : 1 },
-                  shadowOpacity: isDragging ? 0.3 : 0.15,
-                  shadowRadius: isDragging ? 8 : 3,
-                  elevation: isDragging ? 8 : 3,
-                  zIndex: isDragging ? 100 : 1,
-                  transform: isDragging ? [{ scale: 1.03 }] : [],
-                }}
-              >
-                {/* Edit button — top right */}
+              {/* Tap empty slot to place moving activity */}
+              {movingActivityId && HOURS.map((hour) => (
                 <Pressable
-                  onPress={(e) => { e.stopPropagation?.(); setEditActivity(activity); }}
-                  style={{
-                    position: 'absolute', top: 4, right: 4, zIndex: 10,
-                    width: 24, height: 24, borderRadius: 12,
-                    backgroundColor: 'rgba(0,0,0,0.25)',
-                    alignItems: 'center', justifyContent: 'center',
+                  key={`slot-${hour}`}
+                  onPress={() => {
+                    onMoveActivity?.(movingActivityId, hour, dayIdx);
+                    setMovingActivityId(null);
                   }}
-                >
-                  <FontAwesome name="pencil" size={10} color="#fff" />
-                </Pressable>
+                  style={{
+                    position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: HOUR_HEIGHT,
+                    backgroundColor: 'transparent', zIndex: 0,
+                  }}
+                />
+              ))}
 
-                <Text style={{ ...TextStyles.captionEm, color: '#fff', paddingRight: 28 }} numberOfLines={1}>
-                  {activity.name}
-                </Text>
-                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.75)' }} numberOfLines={1}>
-                  {activity.timeDisplay || (activity.startTime + (activity.endTime ? ` – ${activity.endTime}` : ''))}
-                </Text>
-                {height > 50 && activity.locationName && (
-                  <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.5)', marginTop: 2 }} numberOfLines={1}>
-                    {activity.locationName}
-                  </Text>
-                )}
-                {height > 70 && activity.category && (
-                  <View style={{
-                    position: 'absolute', bottom: 4, right: 6,
-                    backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 4,
-                    paddingHorizontal: 5, paddingVertical: 1,
-                  }}>
-                    <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>{activity.category}</Text>
-                  </View>
-                )}
+              {/* Activity blocks */}
+              {activities.map((activity: any) => {
+                const startH = parseHour(activity.startTime) ?? 0;
+                const duration = parseDuration(activity.startTime, activity.endTime);
+                if (startH < 0 || startH > 23) return null;
+                const bgColor = getActivityTypeColor(activity.category).primary;
 
-                {/* Drag indicator when long-pressed */}
-                {isDragging && (
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 8, borderStyle: 'dashed' }} />
-                )}
-              </Pressable>
-            );
-          })}
+                return (
+                  <CalendarBlock
+                    key={activity.id}
+                    activity={activity}
+                    startH={startH}
+                    duration={duration}
+                    bgColor={bgColor}
+                    isSelected={movingActivityId === activity.id}
+                    onTap={() => {
+                      if (movingActivityId === activity.id) {
+                        setMovingActivityId(null); // deselect
+                      } else if (movingActivityId) {
+                        setMovingActivityId(null); // cancel move, select new
+                      } else {
+                        onSelectActivity?.(activity); // view details
+                      }
+                    }}
+                    onLongPress={() => setMovingActivityId(activity.id)}
+                  />
+                );
+              })}
 
-          {/* Drop zone indicator when dragging */}
-          {dragging && (
-            <View style={{
-              position: 'absolute',
-              top: Math.max(0, Math.round((dragging.origHour * HOUR_HEIGHT + dragOffset) / HOUR_HEIGHT) * HOUR_HEIGHT),
-              left: 4, right: 8, height: 2,
-              backgroundColor: '#3b82f6', zIndex: 50,
-            }} />
-          )}
+              {/* Moving indicator banner */}
+              {movingActivityId && (
+                <View style={{
+                  position: 'absolute', top: 0, left: 0, right: 0,
+                  backgroundColor: '#3b82f6', paddingVertical: 3,
+                  alignItems: 'center', zIndex: 200,
+                }}>
+                  <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }}>Tap a time slot to move</Text>
+                </View>
+              )}
 
-          {/* Spacer for total height */}
-          <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
-        </View>
+              {/* Spacer */}
+              <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
+            </View>
+          );
+        })}
       </View>
     </ScrollView>
 
@@ -858,53 +891,28 @@ function MobileCalendarView({ days, selectedDayIndex, onSelectActivity, onMoveAc
           backgroundColor: colors.cardBackground,
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
           paddingBottom: 40, paddingHorizontal: 20, paddingTop: 16,
-          shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.2, shadowRadius: 12,
         }}>
-          {/* Handle */}
           <View style={{ alignItems: 'center', marginBottom: 16 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
           </View>
-
-          {/* Activity info */}
           <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }}>{editActivity.name}</Text>
           <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 12 }}>
             {editActivity.timeDisplay || editActivity.startTime} · {editActivity.category}
           </Text>
-
           {editActivity.locationName && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
               <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
               <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{editActivity.locationName}</Text>
             </View>
           )}
-
-          {editActivity.notes && (
-            <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 12 }}>{editActivity.notes}</Text>
-          )}
-
-          {/* Action buttons */}
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-            <Pressable
-              onPress={() => { onSelectActivity?.(editActivity); setEditActivity(null); }}
-              style={{
-                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                gap: 6, paddingVertical: 12, borderRadius: 12,
-                backgroundColor: getActivityTypeColor(editActivity.category).primary,
-              }}
-            >
+            <Pressable onPress={() => { onSelectActivity?.(editActivity); setEditActivity(null); }}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: getActivityTypeColor(editActivity.category).primary }}>
               <FontAwesome name="info-circle" size={14} color="#fff" />
               <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>View Details</Text>
             </Pressable>
-
-            <Pressable
-              onPress={() => setEditActivity(null)}
-              style={{
-                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                gap: 6, paddingVertical: 12, borderRadius: 12,
-                borderWidth: 1, borderColor: colors.border,
-              }}
-            >
+            <Pressable onPress={() => setEditActivity(null)}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
               <FontAwesome name="times" size={14} color={colors.textSecondary} />
               <Text style={{ ...TextStyles.bodyLgEm, color: colors.textSecondary }}>Close</Text>
             </Pressable>
@@ -2244,6 +2252,7 @@ export default function ItineraryScreen() {
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [openPlace, setOpenPlace] = useState<import('@travyl/shared').PlaceItem | null>(null);
   const [viewMode, setViewMode] = useState<'glance' | 'detailed'>('glance');
+  const [calDayCount, setCalDayCount] = useState<1 | 3 | 7>(3);
 
   // ─── Local mutable copy of days for glance add/remove/regenerate ───
   const [glanceDays, setGlanceDays] = useState<ItineraryDayViewModel[]>([]);
@@ -2742,14 +2751,35 @@ export default function ItineraryScreen() {
           >
             <FontAwesome name="calendar" size={14} color={calendarOpen ? '#fff' : colors.textSecondary} />
           </Pressable>
+          {calendarOpen && (
+            <Pressable
+              onPress={() => setCalDayCount(calDayCount === 1 ? 3 : calDayCount === 3 ? 7 : 1)}
+              style={{
+                height: 32, paddingHorizontal: 10, borderRadius: 8,
+                backgroundColor: colors.cardBackground,
+                borderWidth: 1, borderColor: colors.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Text style={{ ...TextStyles.xs, color: colors.text, fontWeight: '700' }}>
+                {calDayCount === 1 ? '1D' : calDayCount === 3 ? '3D' : '7D'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
       {calendarOpen ? (
         <MobileCalendarView
-          days={days}
+          days={effectiveDays}
           selectedDayIndex={selectedDayIndex}
+          visibleDayCount={calDayCount}
           onSelectActivity={(a) => setSelectedActivityId(a.id)}
+          onSelectDay={setSelectedDayIndex}
+          onMoveActivity={(activityId, newHour, newDayIdx) => {
+            // TODO: persist move to Supabase — update activity starting_time and starting_date
+            console.log(`Move ${activityId} to hour ${newHour} on day ${newDayIdx}`);
+          }}
         />
       ) : viewMode === 'glance' ? (
         <GlancePager
