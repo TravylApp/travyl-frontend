@@ -9,13 +9,7 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_WEB_API_URL": "https://dev.gotravyl.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://mfhcdxnzzxuyfkcptoyh.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1maGNkeG56enh1eWZrY3B0b3loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjQ4MjAsImV4cCI6MjA3ODIwMDgyMH0._26IPP6URACDJ89M2k1sHGoVfcOaO4rbEeuC7xFLhVg",
-        "EXPO_PUBLIC_RECOMMENDATION_API_URL": "https://api.dev.gotravyl.com"
-      }
+      "distribution": "internal"
     },
     "production": {
       "autoIncrement": true

@@ -168,9 +168,8 @@ export async function POST(req: NextRequest) {
     // Travel safety advisory
     countryCode ? fetch(`${baseUrl}/api/safety?country=${encodeURIComponent(countryCode)}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
-    // Nearby cities (Geonames) — "Also consider visiting..."
-    lat ? fetch(`${baseUrl}/api/geonames?lat=${lat}&lng=${lng}&mode=cities&radius=100&limit=5`)
-      .then(r => r.ok ? r.json() : []).catch(() => []) : Promise.resolve([]),
+    // Nearby cities — placeholder (geonames route not yet implemented)
+    Promise.resolve([]),
     // Timezone data
     lat ? fetch(`${baseUrl}/api/timezone?lat=${lat}&lng=${lng}`)
       .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
