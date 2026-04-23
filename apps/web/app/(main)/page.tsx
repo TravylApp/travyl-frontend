@@ -6,7 +6,7 @@ import { motion, useScroll, useTransform } from "motion/react";
 import { Search, Sparkles, MapPin } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
 import type { FollowUpQuestion } from "@travyl/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -258,6 +258,7 @@ function OptionCard({ label, index, selected, onSelect }: {
 
 export default function Home() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const {
     tripQuery,
     setTripQuery,
@@ -535,6 +536,7 @@ export default function Home() {
         // Logged in — save to Supabase via shared helper, then redirect
         try {
           const tripId = await savePlanToSupabase(plan as any);
+          queryClient.invalidateQueries({ queryKey: ['trips'] });
           setTakeoffCompleted(true);
           await new Promise((r) => setTimeout(r, 800));
           setShowTakeoff(false);
