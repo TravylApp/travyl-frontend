@@ -100,7 +100,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
  * @returns The updated Profile object
  * @throws PostgrestError if the update fails
  */
-export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country'>>): Promise<Profile> {
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'preferences'>>): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -110,6 +110,24 @@ export async function updateProfile(userId: string, updates: Partial<Pick<Profil
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Updates the phone number for the currently authenticated user.
+ * Stores phone in user metadata to avoid SMS verification requirements.
+ * @param phone - The new phone number
+ * @throws Error if no user is authenticated
+ * @throws AuthError if the update fails
+ */
+export async function updateUserPhone(phone: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { error } = await supabase.auth.updateUser({
+    data: { phone },
+  });
+
+  if (error) throw error;
 }
 
 export async function uploadAvatar(userId: string, base64Data: string): Promise<string> {
