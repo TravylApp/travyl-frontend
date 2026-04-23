@@ -615,7 +615,7 @@ export default function FavoritesScreen() {
           description: e.description || '',
           tags: ['Event', e.venue].filter(Boolean),
           address: e.address || e.venue || '',
-          website: e.ticket_links?.[0]?.url || e.link || '',
+          website: e.link || '',
         })))
         .catch(() => [] as PlaceItem[]);
 
