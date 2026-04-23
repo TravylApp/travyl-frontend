@@ -79,10 +79,8 @@ function mapPlace(p: any, idx: number) {
     hoursStr = p.hours
   }
 
-  // Best image
-  const image = p.thumbnail
-    || (p.images?.[0]?.image)
-    || ''
+  // Use SerpAPI-hosted thumbnail (Google Maps gps-cs-s URLs are CORS-blocked)
+  const image = p.serpapi_thumbnail || p.thumbnail || (p.images?.[0]?.image) || ''
 
   // Type → PlaceItem type mapping (handles both string and array formats)
   const types = Array.isArray(p.types) ? p.types : Array.isArray(p.type) ? p.type : typeof p.type === 'string' ? [p.type] : []
