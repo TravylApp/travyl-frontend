@@ -84,13 +84,13 @@ function mapPlace(p: any, idx: number) {
     || (p.images?.[0]?.image)
     || ''
 
-  // Type → PlaceItem type mapping
-  const types = (p.type || []) as string[]
+  // Type → PlaceItem type mapping (handles both string and array formats)
+  const types = Array.isArray(p.types) ? p.types : Array.isArray(p.type) ? p.type : typeof p.type === 'string' ? [p.type] : []
   const typeLower = types.join(' ').toLowerCase()
   let placeType = 'attraction'
-  if (/restaurant|food|dining|cafe|coffee|donut|bakery|pizza|sushi|taco|burger/i.test(typeLower)) placeType = 'restaurant'
-  else if (/bar|pub|nightlife|club|lounge|brewery/i.test(typeLower)) placeType = 'experience'
-  else if (/hotel|hostel|resort|motel|inn/i.test(typeLower)) placeType = 'hotel'
+  if (/restaurant|food|dining|cafe|coffee|donut|bakery|pizza|sushi|taco|burger|japanese|italian|mexican|chinese|thai|indian|french|korean|vietnamese|mediterranean|seafood|steak|bbq|ramen|deli/i.test(typeLower)) placeType = 'restaurant'
+  else if (/bar|pub|nightlife|club|lounge|brewery|cocktail|wine/i.test(typeLower)) placeType = 'experience'
+  else if (/hotel|hostel|resort|motel|inn|lodge/i.test(typeLower)) placeType = 'hotel'
 
   return {
     id: `gmap_${idx}_${(p.place_id || '').slice(0, 12)}`,
