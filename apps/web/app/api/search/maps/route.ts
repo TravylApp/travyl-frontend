@@ -3,11 +3,7 @@ import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
-/**
- * Google Maps local search via SerpAPI — finds any business, landmark, or place by name.
- * Returns rich data: rating, reviews, photos, hours, address, phone, website, type.
- * Usage: /api/search/maps?q=yum+yum+donuts+porterville
- */
+/** Google Maps local search via SerpAPI. */
 export async function GET(req: NextRequest) {
   const query = getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
