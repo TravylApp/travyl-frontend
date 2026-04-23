@@ -11,7 +11,6 @@ import {
   TextStyles, FontSize, FontFamily, Navy,
   useTripPlanner, savePlanToSupabase,
 } from '@travyl/shared';
-import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlane } from '@/components/icons/PaperPlane';
 
@@ -92,7 +91,6 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
       setSaving(true);
       try {
         const tripId = await savePlanToSupabase(plan as any, () => {});
-        await saveAnonTripId(tripId);
         await queryClient.invalidateQueries({ queryKey: ['trips'] });
         // Pre-fetch the trip data so it's cached before we navigate
         await queryClient.prefetchQuery({
