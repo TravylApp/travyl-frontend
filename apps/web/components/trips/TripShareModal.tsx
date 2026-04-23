@@ -3,10 +3,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Copy, X, Users2, Link as LinkIcon, Check, MapPin } from 'lucide-react';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard } from '@travyl/shared';
 
 interface TripShareModalProps {
-  trip: MockTripCard;
+  trip: TripCard;
   isOpen: boolean;
   onClose: () => void;
 }

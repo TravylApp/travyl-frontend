@@ -10,7 +10,10 @@ interface SerpEvent {
   link?: string
   description?: string
   thumbnail?: string
+  image?: string
   venue?: { name?: string; rating?: number; reviews?: number; link?: string }
+  ticket_info?: { source: string; link: string; link_type: string }[]
+  event_location_map?: { image?: string; link?: string }
 }
 
 export async function GET(req: NextRequest) {
@@ -33,20 +36,33 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     const events: SerpEvent[] = data.events_results ?? []
 
-    const mapped = events.map((e, i) => ({
-      id: `event_${i}_${Math.random().toString(36).slice(2, 6)}`,
-      name: e.title,
-      date: e.date?.when || e.date?.start_date || '',
-      time: e.date?.when || null,
-      venue: e.venue?.name || (e.address?.[0]) || '',
-      lat: null,
-      lng: null,
-      description: e.description || '',
-      price: null,
-      category: null,
-      photo_url: e.thumbnail || '',
-      link: e.link || '',
-    }))
+    const mapped = events.map((e, i) => {
+      const photo = e.image || e.thumbnail || ''
+
+      const tickets = (e.ticket_info ?? []).filter(t => t.link_type === 'tickets')
+      const moreInfo = (e.ticket_info ?? []).filter(t => t.link_type === 'more info')
+
+      return {
+        id: `event_${i}_${Math.random().toString(36).slice(2, 6)}`,
+        name: e.title,
+        date: e.date?.when || e.date?.start_date || '',
+        time: e.date?.when || null,
+        venue: e.venue?.name || (e.address?.[0]) || '',
+        venue_rating: e.venue?.rating || null,
+        venue_reviews: e.venue?.reviews || null,
+        address: e.address?.join(', ') || '',
+        lat: null,
+        lng: null,
+        description: e.description || '',
+        price: null,
+        category: null,
+        photo_url: photo,
+        link: e.link || '',
+        ticket_links: tickets.map(t => ({ source: t.source, url: t.link })),
+        info_links: moreInfo.map(t => ({ source: t.source, url: t.link })),
+        map_url: e.event_location_map?.link || null,
+      }
+    })
 
     return NextResponse.json(mapped)
   } catch (err) {

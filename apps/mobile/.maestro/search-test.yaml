@@ -1,0 +1,56 @@
+appId: com.ze-ee.mobile
+---
+# Test: Places page search for events
+- launchApp
+- waitForAnimationToEnd
+
+# Navigate to Places tab
+- tapOn:
+    point: "25%,97%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/search-01-places-page
+
+# Tap the search input
+- tapOn: "Search a city or destination..."
+- waitForAnimationToEnd
+
+# Type "EDC Las Vegas"
+- inputText: "EDC Las Vegas"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "EDC"
+    timeout: 15000
+- takeScreenshot: screenshots/search-02-edc-results
+
+# Clear and try "Tokyo"
+- tapOn:
+    id: "times-circle"
+- inputText: "Tokyo"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Tokyo"
+    timeout: 15000
+- takeScreenshot: screenshots/search-03-tokyo-results
+
+# Clear and try "best tacos"
+- tapOn:
+    id: "times-circle"
+- inputText: "best tacos"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "."
+    timeout: 15000
+- takeScreenshot: screenshots/search-04-tacos-results
+
+# Test filter tabs
+- scrollUntilVisible:
+    element: "Restaurants"
+    direction: RIGHT
+- tapOn: "Restaurants"
+- takeScreenshot: screenshots/search-05-restaurants-tab
+
+- tapOn: "Events"
+- takeScreenshot: screenshots/search-06-events-tab
+
+- tapOn: "All"
+- takeScreenshot: screenshots/search-07-all-tab

@@ -74,17 +74,35 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   const lat = probeData[0]?.latitude
   const lng = probeData[0]?.longitude
   if (lat == null || lng == null) {
-    // Fallback: use q param for all
+    // Fallback: use q param for places + events search in parallel
     const categories = BROWSE_CATEGORIES
-    const results = await Promise.all(
-      categories.map(async (cat) => {
-        const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
-        if (!res.ok) return []
-        return res.json() as Promise<PlaceItemType[]>
+    const placesFetches = categories.map(async (cat) => {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
+      if (!res.ok) return []
+      return res.json() as Promise<PlaceItemType[]>
+    })
+    const eventsFetch = fetch(`/api/events/search?city=${encodeURIComponent(query)}`)
+      .then(async r => {
+        if (!r.ok) return []
+        const events = await r.json()
+        if (!Array.isArray(events)) return []
+        return events.slice(0, 10).map((e: any, i: number) => ({
+          id: `ev_${i}_${(e.name || '').slice(0, 8).replace(/\s/g, '')}`,
+          name: e.name || e.title,
+          image: e.photo_url || e.image || '',
+          type: 'event' as const,
+          rating: 0,
+          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
+          category: 'Event',
+          description: e.description || '',
+          tags: ['Event'],
+          website: e.link,
+        })) as PlaceItemType[]
       })
-    )
+      .catch(() => [] as PlaceItemType[])
+    const [placesResults, events] = await Promise.all([Promise.all(placesFetches), eventsFetch])
     const seen = new Set<string>()
-    return results.flat().filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+    return [...placesResults.flat(), ...events].filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
   }
 
   // Step 2: fetch key categories from center + one offset neighborhood
@@ -151,26 +169,26 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
     )
   }
 
-  // Events — single call (was 5 OpenTripMap + 1 events = 6 slow calls)
+  // Events — SerpAPI Google Events (free-text search, finds festivals/concerts)
   fetches.push(
-    fetch(`/api/events?lat=${lat}&lng=${lng}&limit=8`)
+    fetch(`/api/events/search?city=${encodeURIComponent(query)}`)
       .then(async r => {
         if (!r.ok) return []
         const events = await r.json()
-        if (events.error || !Array.isArray(events)) return []
-        return events.filter((e: any) => e.title).map((e: any) => ({
-          id: `ev_${e.id}`,
-          name: e.title,
-          image: e.image || '',
+        if (!Array.isArray(events)) return []
+        return events.slice(0, 10).map((e: any, i: number) => ({
+          id: `ev_${i}_${(e.name || '').slice(0, 8).replace(/\s/g, '')}`,
+          name: e.name || e.title,
+          image: e.photo_url || e.image || '',
           type: 'event' as const,
           rating: 0,
-          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || e.category || 'Event',
-          category: e.category || 'Event',
+          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
+          category: 'Event',
           description: e.description || '',
           latitude: parseFloat(lat as any),
           longitude: parseFloat(lng as any),
-          tags: ['Event', e.category].filter(Boolean),
-          website: e.url,
+          tags: ['Event'],
+          website: e.link,
         })) as PlaceItemType[]
       })
       .catch(() => [])

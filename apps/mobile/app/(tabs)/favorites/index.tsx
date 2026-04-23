@@ -9,6 +9,7 @@ import {
   Dimensions,
   StatusBar,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -233,11 +234,12 @@ async function fetchSuggestPage(page: number): Promise<{ items: PlaceItem[]; has
 
     return {
       items,
-      hasMore: page < trending.length - 1,
+      // Always allow more — cycles back through destinations with different results
+      hasMore: true,
       nextPage: page + 1,
     };
   } catch {
-    return { items: [], hasMore: false, nextPage: null };
+    return { items: [], hasMore: true, nextPage: null };
   }
 }
 
@@ -245,7 +247,7 @@ function dedup(places: PlaceItem[]): PlaceItem[] {
   const seen = new Set<string>();
   const seenNames = new Set<string>();
   return places.filter((p) => {
-    if (!p.name || !p.image || seen.has(p.id)) return false;
+    if (!p.name || seen.has(p.id)) return false;
     const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (seenNames.has(norm)) return false;
     seen.add(p.id);
@@ -304,6 +306,15 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 /* ═══════════════ Grid Place Card ═══════════════ */
 
+const TYPE_ICON: Record<string, string> = {
+  event: 'calendar', restaurant: 'cutlery', experience: 'compass',
+  destination: 'map-marker', attraction: 'university', hotel: 'bed',
+};
+const TYPE_COLOR: Record<string, string> = {
+  event: '#8b5cf6', restaurant: '#ef4444', experience: '#f59e0b',
+  destination: '#3b82f6', attraction: '#10b981', hotel: '#6366f1',
+};
+
 const GridPlaceCard = memo(function GridPlaceCard({
   place, isFav, onPress, onToggleFav, colors, flush,
 }: {
@@ -315,9 +326,15 @@ const GridPlaceCard = memo(function GridPlaceCard({
   colors: ReturnType<typeof useThemeColors>;
 }) {
   const imgH = getImageHeight(place.id);
-  const imgs = place.images && place.images.length > 1 ? place.images : [place.image];
+  const imgs = place.images && place.images.length > 1 ? place.images : place.image ? [place.image] : [];
   const [imgIdx, setImgIdx] = useState(0);
   const hasMultiple = imgs.length > 1;
+  const hasImage = imgs.length > 0 && !!imgs[0];
+  const typeColor = TYPE_COLOR[place.type] || '#6b7280';
+  const typeIcon = TYPE_ICON[place.type] || 'globe';
+  const isEvent = place.type === 'event';
+  const isRestaurant = place.type === 'restaurant';
+  const priceStr = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
 
   return (
     <Pressable onPress={onPress} style={{ marginBottom: flush ? 1 : GAP }}>
@@ -327,7 +344,13 @@ const GridPlaceCard = memo(function GridPlaceCard({
         borderWidth: flush ? 0 : 1, borderColor: colors.border,
       }}>
         <View style={{ height: imgH, position: 'relative' }}>
-          <Image source={{ uri: imgs[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+          {hasImage ? (
+            <Image source={{ uri: imgs[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+          ) : (
+            <View style={{ width: '100%', height: imgH, backgroundColor: typeColor + '18', alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome name={typeIcon as any} size={32} color={typeColor + '40'} />
+            </View>
+          )}
 
           {hasMultiple && (
             <Pressable
@@ -335,6 +358,16 @@ const GridPlaceCard = memo(function GridPlaceCard({
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             />
           )}
+
+          {/* Type badge — top-left */}
+          <View style={{
+            position: 'absolute', top: 8, left: 8,
+            flexDirection: 'row', alignItems: 'center', gap: 4,
+            backgroundColor: typeColor, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8,
+          }}>
+            <FontAwesome name={typeIcon as any} size={8} color="#fff" />
+            <Text style={{ ...TextStyles.micro, color: '#fff', textTransform: 'capitalize' }}>{place.type}</Text>
+          </View>
 
           {/* Heart button — top-right */}
           <Pressable
@@ -351,17 +384,10 @@ const GridPlaceCard = memo(function GridPlaceCard({
             <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={12} color={isFav ? '#ef4444' : '#9ca3af'} />
           </Pressable>
 
-          {/* Gradient overlay */}
-          <View pointerEvents="none" style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: imgH * 0.4,
-            backgroundColor: 'transparent',
-          }} />
-
-          {/* Centered dot indicators */}
+          {/* Dot indicators */}
           {hasMultiple && (
             <View pointerEvents="none" style={{
-              position: 'absolute', bottom: 8,
-              left: 0, right: 0,
+              position: 'absolute', bottom: 8, left: 0, right: 0,
               flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4,
             }}>
               {imgs.map((_, i) => (
@@ -374,24 +400,95 @@ const GridPlaceCard = memo(function GridPlaceCard({
           )}
         </View>
 
-        {/* Content below image — hidden in flush mode */}
+        {/* Content below image */}
         {!flush && <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+          {/* Location */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
             <FontAwesome name="map-marker" size={9} color={colors.textTertiary} style={{ marginRight: 4 }} />
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>
+              {place.address || place.tagline}
+            </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>{place.name}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}>
-              <FontAwesome name="star" size={10} color="#fbbf24" style={{ marginRight: 2 }} />
-              <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{place.rating}</Text>
+
+          {/* Name */}
+          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 2 }} numberOfLines={2}>{place.name}</Text>
+
+          {/* Rating + reviews + price row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+            {place.rating > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <FontAwesome name="star" size={10} color="#fbbf24" />
+                <Text style={{ ...TextStyles.smEm, color: colors.text }}>{place.rating}</Text>
+              </View>
+            )}
+            {(place.reviewCount ?? 0) > 0 && (
+              <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>
+                ({(place.reviewCount ?? 0).toLocaleString()})
+              </Text>
+            )}
+            {priceStr ? (
+              <Text style={{ ...TextStyles.smEm, color: '#10b981' }}>{priceStr}</Text>
+            ) : null}
+          </View>
+
+          {/* Description */}
+          {place.description ? (
+            <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginBottom: 4 }} numberOfLines={2}>{place.description}</Text>
+          ) : null}
+
+          {/* Hours + Duration row */}
+          {(place.hours || place.duration) && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+              {place.hours && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <FontAwesome name="clock-o" size={9} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.xs, color: colors.textSecondary }} numberOfLines={1}>{place.hours}</Text>
+                </View>
+              )}
+              {place.duration && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <FontAwesome name="hourglass-half" size={8} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>{place.duration}</Text>
+                </View>
+              )}
             </View>
-          </View>
-          {place.description && (
-            <Text style={{ ...TextStyles.sm, color: colors.textSecondary }} numberOfLines={2}>{place.description}</Text>
           )}
+
+          {/* Event: date/time + ticket link */}
+          {isEvent && place.tagline && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <FontAwesome name="calendar" size={9} color={typeColor} />
+              <Text style={{ ...TextStyles.sm, color: typeColor, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
+            </View>
+          )}
+          {isEvent && place.website && (
+            <Pressable
+              onPress={() => Linking.openURL(place.website!).catch(() => {})}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                backgroundColor: typeColor + '15', borderRadius: 8,
+                paddingVertical: 6, marginBottom: 4,
+              }}
+            >
+              <FontAwesome name="ticket" size={10} color={typeColor} />
+              <Text style={{ ...TextStyles.smEm, color: typeColor }}>Get Tickets</Text>
+            </Pressable>
+          )}
+
+          {/* Website link for non-events */}
+          {!isEvent && place.website && (
+            <Pressable
+              onPress={() => Linking.openURL(place.website!).catch(() => {})}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}
+            >
+              <FontAwesome name="external-link" size={9} color={colors.tint} />
+              <Text style={{ ...TextStyles.xs, color: colors.tint }} numberOfLines={1}>Visit website</Text>
+            </Pressable>
+          )}
+
+          {/* Tags */}
           {place.tags && place.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
               {place.tags.slice(0, 3).map((tag) => (
                 <View key={tag} style={{
                   paddingHorizontal: 6, paddingVertical: 2,
@@ -485,14 +582,14 @@ export default function FavoritesScreen() {
       const query = searchCity;
       const allPlaces: PlaceItem[] = [];
 
-      // 1) Try geocoding — if it's a city name, fetch places by category
-      const coords = await resolveCoords(query);
-
-      // 2) Fetch places via ?q= (works for both place names and cities)
-      const placeFetch = fetch(`${WEB_API}/api/places?q=${encodeURIComponent(query)}&limit=15`)
+      // 1) Google Maps search — finds any business, landmark, or place by name
+      const mapsFetch = fetch(`${WEB_API}/api/search/maps?q=${encodeURIComponent(query)}`)
         .then(r => r.ok ? r.json() : [])
         .then((data: any[]) => (Array.isArray(data) ? data : []).map((p: any) => mapToPlaceItem(p)))
         .catch(() => [] as PlaceItem[]);
+
+      // 2) Try geocoding — if it's a city name, fetch places by category
+      const coords = await resolveCoords(query);
 
       // 3) If we got coords, also fetch by categories for that location
       const catFetches = coords
@@ -504,22 +601,22 @@ export default function FavoritesScreen() {
           )
         : [];
 
-      // 4) Search events — use query as event search term
-      const today = new Date().toISOString().split('T')[0];
-      const nextMonth = new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0];
-      const eventFetch = fetch(`${WEB_API}/api/events/search?city=${encodeURIComponent(query)}&start=${today}&end=${nextMonth}`)
+      // 4) Search events — SerpAPI Google Events (rich data: tickets, venue, address)
+      const eventFetch = fetch(`${WEB_API}/api/events/search?city=${encodeURIComponent(query)}`)
         .then(r => r.ok ? r.json() : [])
-        .then((events: any[]) => (Array.isArray(events) ? events.slice(0, 8) : []).map((e: any, i: number): PlaceItem => ({
+        .then((events: any[]) => (Array.isArray(events) ? events.slice(0, 10) : []).map((e: any, i: number): PlaceItem => ({
           id: `search-ev-${i}`,
           name: e.name || e.title,
           image: e.photo_url || e.image || '',
           type: 'event',
-          rating: 0,
+          rating: e.venue_rating || 0,
+          reviewCount: e.venue_reviews || undefined,
           tagline: [e.venue, e.date].filter(Boolean).join(' · '),
           category: 'Event',
           description: e.description || '',
-          tags: ['Event', e.category].filter(Boolean),
-          address: e.venue || '',
+          tags: ['Event', e.venue].filter(Boolean),
+          address: e.address || e.venue || '',
+          website: e.link || '',
         })))
         .catch(() => [] as PlaceItem[]);
 
@@ -540,34 +637,35 @@ export default function FavoritesScreen() {
         })))
         .catch(() => [] as PlaceItem[]);
 
-      const [places, ...catResults] = await Promise.all([placeFetch, ...catFetches]);
+      const [mapsResults, ...catResults] = await Promise.all([mapsFetch, ...catFetches]);
       const [events, suggested] = await Promise.all([eventFetch, suggestFetch]);
 
-      allPlaces.push(...places, ...catResults.flat(), ...events, ...suggested);
+      // Maps results first (most relevant), then events, then category results
+      allPlaces.push(...mapsResults, ...events, ...catResults.flat(), ...suggested);
       return dedup(allPlaces);
     },
     staleTime: 5 * 60 * 1000,
     enabled: !!searchCity,
   });
 
-  // Search results take priority, otherwise use infinite discover feed
+  // Search results take priority — don't fall back to discover feed while searching
   const PLACES = useMemo(() => {
-    if (searchCity && searchPlaces.length > 0) return searchPlaces;
+    if (searchCity) return searchPlaces;
     return discoveredPlaces;
   }, [discoveredPlaces, searchCity, searchPlaces]);
 
-  // Auto-load first 3 pages for rich initial content
+  // Auto-load first few pages for rich initial content
   useEffect(() => {
-    if (discoveredPlaces.length > 0 && discoveredPlaces.length < 60 && hasNextPage && !isFetchingNextPage && !searchCity) {
+    if (discoveredPlaces.length > 0 && discoveredPlaces.length < 80 && hasNextPage && !isFetchingNextPage && !searchCity) {
       fetchNextPage();
     }
-  }, [discoveredPlaces.length]);
+  }, [discoveredPlaces.length, hasNextPage, isFetchingNextPage, searchCity]);
 
-  // Load more on scroll
+  // Load more on scroll — trigger well before bottom
   const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
-    if (distanceFromBottom < 2000 && hasNextPage && !isFetchingNextPage && !searchCity) {
+    if (distanceFromBottom < 3000 && hasNextPage && !isFetchingNextPage && !searchCity) {
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchCity]);
@@ -909,19 +1007,31 @@ export default function FavoritesScreen() {
           </View>
         )}
 
-        {/* Load more button + indicator */}
-        {isFetchingNextPage && (
+        {/* Loading / Load more */}
+        {!searchCity && (
           <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.tint} />
-            <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 8 }}>
-              Discovering more places...
-            </Text>
-          </View>
-        )}
-        {/* Loading indicator for infinite scroll */}
-        {isFetchingNextPage && (
-          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.tint} />
+            {isFetchingNextPage ? (
+              <>
+                <ActivityIndicator size="small" color={colors.tint} />
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 8 }}>
+                  Discovering more places...
+                </Text>
+              </>
+            ) : hasNextPage ? (
+              <Pressable
+                onPress={() => fetchNextPage()}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12,
+                  backgroundColor: colors.tint, opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Discover More</Text>
+              </Pressable>
+            ) : discoveredPlaces.length > 0 ? (
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+                You've explored all trending destinations
+              </Text>
+            ) : null}
           </View>
         )}
       </ScrollView>

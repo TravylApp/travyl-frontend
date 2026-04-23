@@ -20,7 +20,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripListItemProps {
-  trip: TripCard | MockTripCard;
+  trip: TripCard;
 }
 
 export function TripListItem({ trip }: TripListItemProps) {
