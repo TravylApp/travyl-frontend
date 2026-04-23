@@ -48,6 +48,7 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const [prompt, setPrompt] = useState('');
   const inputRef = useRef<TextInput>(null);
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [progressMsg, setProgressMsg] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -57,6 +58,7 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     if (visible) {
       setPrompt(prefillPrompt || '');
       setSaving(false);
+      setSubmitted(false);
       setProgressMsg(0);
       setCurrentQuestionIdx(0);
       setAnswers({});
@@ -64,9 +66,10 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     }
   }, [visible]);
 
-  // Dismiss keyboard whenever we leave idle phase
+  // Dismiss keyboard and clear submitted flag when phase changes
   useEffect(() => {
     if (planner.state.phase !== 'idle') {
+      setSubmitted(false);
       inputRef.current?.blur();
       Keyboard.dismiss();
     }
@@ -112,10 +115,11 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const handleSubmit = useCallback(() => {
     const text = prompt.trim();
     if (!text) return;
-    Keyboard.dismiss();
     inputRef.current?.blur();
-    // Small delay so keyboard animates out before phase changes
-    setTimeout(() => planner.submitPrompt(text), 150);
+    Keyboard.dismiss();
+    setSubmitted(true);
+    // Short delay so keyboard fully dismisses before phase transition
+    setTimeout(() => planner.submitPrompt(text), 250);
   }, [prompt, planner]);
 
   const handleSelectAnswer = useCallback((questionId: string, value: string) => {
@@ -141,9 +145,9 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   }, [planner]);
 
   const phase = planner.state.phase;
-  // Keep animation visible through the entire flow until navigation completes
-  const isWorking = phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
-  const isIdle = phase === 'idle' && !saving;
+  // Keep animation visible from the moment they tap submit until navigation completes
+  const isWorking = submitted || phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
+  const isIdle = phase === 'idle' && !submitted && !saving;
   const isClarifying = phase === 'clarifying' && !saving;
   const isError = phase === 'error' && !saving;
 
