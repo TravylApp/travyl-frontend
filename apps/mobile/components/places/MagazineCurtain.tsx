@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, TouchableWithoutFeedback, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, Pressable, TouchableWithoutFeedback, ActivityIndicator, Linking, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   FadeIn,
@@ -40,11 +40,13 @@ export function MagazineCurtain({
 }: MagazineCurtainProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const images = place.images?.length ? place.images : [place.image];
 
   useEffect(() => {
     setImgIdx((prev) => prev === 0 ? prev : 0);
     setIsFlipped((prev) => prev === false ? prev : false);
+    setImgError(false);
   }, [place.id]);
 
   // Auto-cycle images every 4s when not flipped
@@ -105,12 +107,19 @@ export function MagazineCurtain({
         <TouchableWithoutFeedback onPress={toggleFlip}>
         <View style={{ flex: 1 }}>
           {/* Background image */}
-          <Image
-            source={images[imgIdx]}
-            style={{ position: 'absolute', width, height }}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-          />
+          {imgError ? (
+            <View style={{ position: 'absolute', width, height, backgroundColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome name="image" size={48} color="rgba(255,255,255,0.15)" />
+            </View>
+          ) : (
+            <Image
+              source={images[imgIdx]}
+              style={{ position: 'absolute', width, height }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              onError={() => setImgError(true)}
+            />
+          )}
 
           {/* Gradient overlays */}
           <LinearGradient
@@ -134,9 +143,10 @@ export function MagazineCurtain({
           )}
 
           {/* Top left — close button or flip hint */}
-          <View style={{ position: 'absolute', top: 14, left: 14, zIndex: 10 }}>
+          <View style={{ position: 'absolute', top: 14, left: 14, zIndex: 50 }}>
             {onClose ? (
               <Pressable
+                hitSlop={16}
                 onPress={(e) => { e.stopPropagation?.(); onClose(); }}
                 style={{
                   width: 34, height: 34, borderRadius: 17,
@@ -298,7 +308,7 @@ export function MagazineCurtain({
       {/* ── Back — enriched detail view ── */}
       <Animated.View style={[{ position: 'absolute', width, height, backgroundColor: Navy.DEFAULT, borderRadius: 20 }, backStyle]}>
         <TouchableWithoutFeedback onPress={toggleFlip}>
-        <View style={{ flex: 1, padding: 20 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, flexGrow: 1 }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
           {/* Header */}
           <Text style={{ ...TextStyles.xs, color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6 }}>
             {p.type}
@@ -392,6 +402,21 @@ export function MagazineCurtain({
             </View>
           )}
 
+          {/* Menu highlights (restaurants only) */}
+          {menuData?.items && menuData.items.length > 0 && (
+            <View style={{ marginBottom: 10 }}>
+              <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>
+                Popular dishes
+              </Text>
+              {menuData.items.slice(0, 4).map((item: any, i: number) => (
+                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.8)', flex: 1 }} numberOfLines={1}>{item.name}</Text>
+                  {item.price && <Text style={{ ...TextStyles.bodyEm, color: '#d4af37', marginLeft: 8 }}>{item.price}</Text>}
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Bottom — Save + flip hint */}
           <View style={{ marginTop: 'auto', gap: 10 }}>
             <Pressable
@@ -416,7 +441,7 @@ export function MagazineCurtain({
               </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
         </TouchableWithoutFeedback>
       </Animated.View>
     </Animated.View>

@@ -1,0 +1,31 @@
+appId: com.travyl.mobile
+---
+# Trip hotel tab test — navigates to a trip and checks hotel tab
+# Run: maestro test apps/mobile/.maestro/trip-hotel-test.yaml
+
+# Go to Trips
+- tapOn:
+    point: "50%,96%"
+- waitForAnimationToEnd
+
+# Tap first trip card
+- tapOn:
+    point: "50%,30%"
+- waitForAnimationToEnd
+- takeScreenshot: trip-overview
+
+# Swipe to Hotels tab
+- swipe:
+    direction: LEFT
+    duration: 300
+- swipe:
+    direction: LEFT
+    duration: 300
+- waitForAnimationToEnd
+- takeScreenshot: trip-hotels
+
+# Scroll down to see hotel cards
+- swipe:
+    direction: UP
+    duration: 1500
+- takeScreenshot: trip-hotels-scrolled

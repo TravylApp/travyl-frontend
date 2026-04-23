@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,7 +6,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
 import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, TabCtx, useTabAccent } from './_layout';
 
 /* ------------------------------------------------------------------ */
 /*  Animated Progress Bar                                              */
@@ -112,7 +112,9 @@ function buildPackingList(trip: any): PackingList {
 }
 
 export default function PackingScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
 
   const defaultList = buildPackingList(trip);

@@ -85,11 +85,13 @@ function AnimatedCounter({
   suffix,
   decimals = 0,
   trigger,
+  textColor,
 }: {
   value: number;
   suffix: string;
   decimals?: number;
   trigger: boolean;
+  textColor?: string;
 }) {
   const [display, setDisplay] = useState(`0${suffix}`);
 
@@ -122,7 +124,7 @@ function AnimatedCounter({
   }, [trigger, value, suffix, decimals]);
 
   return (
-    <Text style={{ ...TextStyles.display, color: '#2a1f17', marginBottom: 2 }}>
+    <Text style={{ ...TextStyles.display, color: textColor || '#2a1f17', marginBottom: 2 }}>
       {display}
     </Text>
   );
@@ -161,6 +163,7 @@ function HeroSlideImage({ uri, isActive }: { uri: string; isActive: boolean }) {
 }
 
 function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; screenHeight: number }) {
+  const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const sectionY = useSharedValue(0);
   const triggered = useSharedValue(false);
@@ -198,12 +201,12 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
   return (
     <View
       style={{
-        backgroundColor: '#e8d5c0',
+        backgroundColor: colors.sandBackground,
         paddingVertical: 40,
         paddingHorizontal: 16,
         borderTopWidth: 1,
         borderBottomWidth: 1,
-        borderColor: '#5c4a3a',
+        borderColor: colors.sandBorder,
       }}
       onLayout={(e) => {
         sectionY.value = e.nativeEvent.layout.y;
@@ -221,18 +224,19 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
               suffix={item.suffix}
               decimals={item.decimals}
               trigger={visible}
+              textColor={colors.sandText}
             />
             <Text
               style={{
                 ...TextStyles.micro,
-                color: '#5c4a3a',
+                color: colors.sandTextSecondary,
                 letterSpacing: 1.5,
                 marginBottom: 6,
               }}
             >
               {item.label}
             </Text>
-            <Text style={{ ...TextStyles.caption, color: '#3d2f23', textAlign: 'center' }}>
+            <Text style={{ ...TextStyles.caption, color: colors.sandText, textAlign: 'center' }}>
               {item.desc}
             </Text>
           </Animated.View>
@@ -460,7 +464,7 @@ export default function HomeScreen() {
       {/* ─── Hero Section ──────────────────────────────────────── */}
       <View
         style={{
-          backgroundColor: '#e8d5c0',
+          backgroundColor: colors.sandBackground,
           minHeight: screenHeight,
           paddingHorizontal: 24,
           paddingTop: 64,
@@ -599,8 +603,8 @@ export default function HomeScreen() {
           {autocompleteSuggestions.length > 0 && (
             <View style={{
               marginHorizontal: 4, marginTop: -4,
-              backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12,
-              overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+              backgroundColor: colors.cardBackground, borderRadius: 12,
+              overflow: 'hidden', borderWidth: 1, borderColor: colors.border,
             }}>
               {autocompleteSuggestions.map((s, i) => (
                 <Pressable
@@ -612,15 +616,15 @@ export default function HomeScreen() {
                   style={({ pressed }) => ({
                     flexDirection: 'row', alignItems: 'center', gap: 10,
                     paddingHorizontal: 14, paddingVertical: 11,
-                    backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                    backgroundColor: pressed ? colors.surface : 'transparent',
                     borderBottomWidth: i < autocompleteSuggestions.length - 1 ? 1 : 0,
-                    borderBottomColor: 'rgba(0,0,0,0.04)',
+                    borderBottomColor: colors.borderLight,
                   })}
                 >
-                  <FontAwesome name="map-marker" size={12} color="#9ca3af" />
+                  <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ ...TextStyles.bodyLg, color: '#111827' }}>{s.name}</Text>
-                    <Text style={{ ...TextStyles.caption, color: '#9ca3af' }}>{s.country}</Text>
+                    <Text style={{ ...TextStyles.bodyLg, color: colors.text }}>{s.name}</Text>
+                    <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{s.country}</Text>
                   </View>
                 </Pressable>
               ))}

@@ -61,6 +61,8 @@ export interface CardStackCarouselProps {
   overlay?: boolean;
   onClose?: () => void;
   navColor?: string;
+  hideArrows?: boolean;
+  showMapBg?: boolean;
 }
 
 /* ═══════════════ Component ═══════════════ */
@@ -78,13 +80,15 @@ export function CardStackCarousel({
   overlay = false,
   onClose,
   navColor,
+  hideArrows = false,
+  showMapBg = false,
 }: CardStackCarouselProps) {
   const insets = useSafeAreaInsets();
   const CARD_W = cardWidth ?? SCREEN_WIDTH - 24;
   const CARD_H = cardHeight ?? CARD_W * 1.25;
 
   const [currentIdx, setCurrentIdx] = useState(initialIndex);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(showMapBg);
   const [selfOverlay, setSelfOverlay] = useState(false); // promote to overlay for map
   const mapRef = useRef<any>(null);
   const isAnimating = useRef(false);
@@ -148,9 +152,11 @@ export function CardStackCarousel({
     if (!shouldCenter) return;
     const delay = showMap ? 400 : 200;
     const id = setTimeout(() => {
+      // Offset center south so pin appears in top 25% (above the card)
+      const latDelta = 0.025;
       mapRef.current?.animateToRegion({
-        latitude: p!.latitude!, longitude: p!.longitude!,
-        latitudeDelta: 0.015, longitudeDelta: 0.015,
+        latitude: p!.latitude! - latDelta * 0.35, longitude: p!.longitude!,
+        latitudeDelta: latDelta, longitudeDelta: latDelta,
       }, 400);
     }, delay);
     return () => clearTimeout(id);
@@ -310,32 +316,36 @@ export function CardStackCarousel({
         </Pressable>
       )}
 
-      <Pressable onPress={goPrev} style={{
-        width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
-        borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
-      }}>
-        <FontAwesome name="chevron-left" size={14} color={navIconColor} />
-      </Pressable>
+      {!hideArrows && (
+        <Pressable onPress={goPrev} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
+          borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+        }}>
+          <FontAwesome name="chevron-left" size={14} color={navIconColor} />
+        </Pressable>
+      )}
       <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
         {currentIdx + 1} / {places.length}
       </Text>
-      <Pressable onPress={goNext} style={{
-        width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
-        borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
-      }}>
-        <FontAwesome name="chevron-right" size={14} color={navIconColor} />
-      </Pressable>
-
-      {/* Close */}
-      {overlay && (
-        <Pressable onPress={onClose} style={{
-          width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)',
+      {!hideArrows && (
+        <Pressable onPress={goNext} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
+          borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
           alignItems: 'center', justifyContent: 'center',
           shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+        }}>
+          <FontAwesome name="chevron-right" size={14} color={navIconColor} />
+        </Pressable>
+      )}
+
+      {/* Close */}
+      {overlay && onClose && (
+        <Pressable onPress={onClose} hitSlop={12} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)',
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 4,
         }}>
           <FontAwesome name="times" size={16} color="#fff" />
         </Pressable>
@@ -465,8 +475,8 @@ export function CardStackCarousel({
             ref={mapRef}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             initialRegion={{
-              latitude: place.latitude!, longitude: place.longitude!,
-              latitudeDelta: 0.015, longitudeDelta: 0.015,
+              latitude: place.latitude! - 0.018, longitude: place.longitude!,
+              latitudeDelta: 0.03, longitudeDelta: 0.03,
             }}
             scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
           >
@@ -476,7 +486,22 @@ export function CardStackCarousel({
           <View style={{ flex: 1, backgroundColor: '#1a1a2e' }} />
         )}
 
-        {/* No buttons on map — clean map view */}
+        {/* Close button floating on map */}
+        {onClose && (
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={{
+              position: 'absolute', top: insets.top + 10, left: 16, zIndex: 20,
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4,
+            }}
+          >
+            <FontAwesome name="arrow-left" size={16} color="#fff" />
+          </Pressable>
+        )}
 
         {/* ── Bottom sheet — drags up/down to show/hide map ── */}
         <RNAnimated.View

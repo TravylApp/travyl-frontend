@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -89,6 +90,7 @@ function getCurrencySymbol(ctx: any): string {
 // ─── Main Screen ─────────────────────────────────────────
 export default function OverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const { trip, refetch } = useItineraryScreen(id);
   const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
   const isDark = useColorScheme() === 'dark';
@@ -163,7 +165,7 @@ export default function OverviewScreen() {
       if (r.ok) {
         setTimeout(() => refetch(), 2000);
         setTimeout(() => refetch(), 6000);
-        setTimeout(() => refetch(), 12000);
+        setTimeout(() => { refetch(); queryClient.invalidateQueries({ queryKey: ['trips'] }); }, 12000);
       }
     }).catch(() => {});
   }, [trip?.id, ctx?.events, ctx?.cuisine, ctx?.news]);
@@ -480,11 +482,11 @@ export default function OverviewScreen() {
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
           <SectionHeader dark={isDark} accent={ctx?.country?.language || 'Local Language'} title="Essential Phrases" />
           <View style={{
-            height: 52 * 2 + 8, // 2 visible rows + gap
+            height: 56 * 2 + 16, // Show 4 phrases (2 rows), scroll for more
             borderRadius: 12, overflow: 'hidden',
           }}>
             <ScrollView
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
               nestedScrollEnabled
               contentContainerStyle={{ gap: 8 }}
             >
