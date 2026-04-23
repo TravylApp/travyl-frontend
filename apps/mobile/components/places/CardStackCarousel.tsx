@@ -418,11 +418,12 @@ export function CardStackCarousel({
     PanResponder.create({
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: (_, gs) => {
-        if (Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.2) {
+        // Lower threshold for easier vertical dragging
+        if (Math.abs(gs.dy) > 6 && Math.abs(gs.dy) > Math.abs(gs.dx)) {
           gestureDirRef.current = 'v';
           return true;
         }
-        if (Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2) {
+        if (Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy)) {
           gestureDirRef.current = 'h';
           return true;
         }
@@ -439,8 +440,8 @@ export function CardStackCarousel({
         if (gestureDirRef.current === 'v') {
           const newY = Math.max(SHEET_TOP, sheetYRef.current + gs.dy);
 
-          // Dismiss: dragged past 75% of screen or fast flick down
-          if (newY > SCREEN_H * 0.75 || (gs.vy > 1.5 && newY > SHEET_BOTTOM)) {
+          // Dismiss: dragged past 60% of screen or moderate flick down
+          if (newY > SCREEN_H * 0.6 || (gs.vy > 0.8 && newY > SHEET_BOTTOM)) {
             RNAnimated.timing(sheetY, {
               toValue: SCREEN_H, duration: 200, useNativeDriver: false,
             }).start(() => onCloseRef.current?.());
@@ -515,11 +516,11 @@ export function CardStackCarousel({
             backgroundColor: 'transparent',
           }}
         >
-          {/* Drag handle */}
+          {/* Drag handle — large touch area for easy grabbing */}
           <View style={{
-            alignItems: 'center', paddingTop: 10, paddingBottom: 6,
+            alignItems: 'center', paddingTop: 12, paddingBottom: 10,
           }}>
-            <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+            <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.7)' }} />
           </View>
 
           {/* Card fills remaining space below handle */}

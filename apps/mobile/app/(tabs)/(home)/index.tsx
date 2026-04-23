@@ -36,7 +36,7 @@ import {
   FontSize,
   FontFamily,
 } from '@travyl/shared';
-import { savePlanToSupabase, saveAnonTripId } from '@travyl/shared';
+import { savePlanToSupabase } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
@@ -376,7 +376,6 @@ export default function HomeScreen() {
       (async () => {
         try {
           const tripId = await savePlanToSupabase(s.plan as any);
-          await saveAnonTripId(tripId);
           // Navigate FIRST while takeoff animation is still covering the screen
           router.push(`/trip/${tripId}` as any);
           // Then clean up after navigation transition starts

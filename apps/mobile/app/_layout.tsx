@@ -11,7 +11,9 @@ import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { Text, TextInput } from 'react-native';
-import { useAuthStore } from '@travyl/shared';
+import { useAuthStore, configureSupabase } from '@travyl/shared';
+import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Set Satoshi as the default font for all Text and TextInput components
 const originalTextRender = (Text as any).render;
@@ -38,6 +40,21 @@ export {
 export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
+
+// Configure Supabase with AsyncStorage for session persistence on mobile
+const mobileSupabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+  {
+    auth: {
+      storage: AsyncStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+    },
+  }
+);
+configureSupabase(mobileSupabase);
 
 SplashScreen.preventAutoHideAsync();
 
