@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Copy, X, Users2, Link as LinkIcon, Check, MapPin } from 'lucide-react';
+import { Copy, X, Users2, Link as LinkIcon, Check, MapPin, Loader2 } from 'lucide-react';
 import type { TripCard } from '@travyl/shared';
+import { ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 
 interface TripShareModalProps {
   trip: TripCard;
@@ -15,17 +16,34 @@ export function TripShareModal({ trip, isOpen, onClose }: TripShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [loading, setLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const shareUrl = `${window.location.origin}/trip/${trip.id}`;
+  // Generate share link when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const token = await ensureShareLinkToken(trip.id);
+        await updateTripVisibility(trip.id, 'link');
+        setShareUrl(`${window.location.origin}/trip/${trip.id}/share/${token}`);
+      } catch (err) {
+        // Fallback to direct URL
+        setShareUrl(`${window.location.origin}/trip/${trip.id}`);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isOpen, trip.id]);
 
   const handleCopy = useCallback(async () => {
+    if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setIsAnimating(true);
-
-      // Reset after 2 seconds
       setTimeout(() => {
         setCopied(false);
         setIsAnimating(false);
@@ -41,31 +59,19 @@ export function TripShareModal({ trip, isOpen, onClose }: TripShareModalProps) {
     }
   }, [onClose]);
 
-  // Handle escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-
     if (isOpen) {
       document.addEventListener('keydown', handler);
     }
-
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  const heroImage = (trip as any).trip_context?.hero_image_url
+    || (trip as any).trip_context?.hero_images?.[0]
+    || null;
 
   return (
     <AnimatePresence>
@@ -75,7 +81,7 @@ export function TripShareModal({ trip, isOpen, onClose }: TripShareModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={handleBackdropClick}
         >
           <motion.div
@@ -83,127 +89,65 @@ export function TripShareModal({ trip, isOpen, onClose }: TripShareModalProps) {
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-            className="w-full max-w-md rounded-3xl shadow-2xl overflow-hidden bg-white dark:bg-gray-900"
-            onClick={(e) => e.stopPropagation()}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-md mx-4 bg-white dark:bg-[#1a2535] rounded-2xl shadow-2xl overflow-hidden"
           >
-            {/* Header with destination image */}
-            <div className="relative h-40 overflow-hidden">
-              {/* Destination image or fallback gradient */}
-              {trip.image && !imageError ? (
+            {/* Hero image */}
+            {heroImage && !imageError && (
+              <div className="relative h-40 overflow-hidden">
                 <img
-                  src={trip.image}
+                  src={heroImage}
                   alt={trip.destination}
                   className="w-full h-full object-cover"
                   onError={() => setImageError(true)}
                 />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-[#1e3a5f] via-[#2d4a6f] to-[#1e3a5f]" />
-              )}
-
-              {/* Dark overlay for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-
-              {/* Close button */}
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors"
-              >
-                <X size={18} className="text-white" />
-              </button>
-
-              {/* Trip destination overlay */}
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <MapPin size={16} className="text-white/90" />
-                  <p className="text-sm text-white/90 font-medium">{trip.destination}</p>
-                </div>
-                <h2 className="text-xl font-bold text-white leading-tight">
-                  {trip.title}
-                </h2>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-6">
-              {/* Description */}
-              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                Anyone with the link can view this trip
-              </p>
-
-              {/* Share link section */}
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Share Link
-                </label>
-
-                {/* Link input with copy button */}
-                <div className="relative group">
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 group-hover:border-gray-300 dark:group-hover:border-gray-600 transition-colors">
-                    <LinkIcon size={18} className="text-gray-400 dark:text-gray-500 shrink-0" />
-
-                    <input
-                      type="text"
-                      value={shareUrl}
-                      readOnly
-                      className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 outline-none truncate"
-                      onClick={(e) => (e.target as HTMLInputElement).select()}
-                    />
-
-                    <motion.button
-                      onClick={handleCopy}
-                      className={`
-                        shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
-                        ${copied
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-[#1e3a5f] text-white hover:bg-[#2d4a6f] hover:shadow-lg dark:bg-blue-600 dark:hover:bg-blue-700'
-                        }
-                      `}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {copied ? (
-                        <span className="flex items-center gap-1.5">
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: 'spring', stiffness: 200, damping: 10 }}
-                          >
-                            <Check size={14} />
-                          </motion.div>
-                          Copied!
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5">
-                          <Copy size={14} />
-                          Copy
-                        </span>
-                      )}
-                    </motion.button>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-3 left-4 right-4">
+                  <div className="flex items-center gap-1.5 text-white/80 text-xs mb-1">
+                    <MapPin size={12} />
+                    <span>{trip.destination}</span>
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Success message */}
-                <AnimatePresence>
-                  {copied && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm"
-                    >
-                      <Check size={16} />
-                      <span>Link copied to clipboard</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            {/* Content */}
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Users2 size={18} className="text-[#1e3a5f] dark:text-[#60a5fa]" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Share Trip</h3>
+                </div>
+                <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                  <X size={18} className="text-gray-400" />
+                </button>
               </div>
 
-              {/* Footer hint */}
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                  Share this link with friends and family to let them view your trip
-                </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Anyone with this link who is signed in can view your trip to {trip.destination}.
+              </p>
+
+              {/* Share URL */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                  <LinkIcon size={14} className="text-gray-400 shrink-0" />
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-gray-400" />
+                      <span className="text-sm text-gray-400">Generating link...</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-600 dark:text-gray-300 truncate">{shareUrl}</span>
+                  )}
+                </div>
+                <button
+                  onClick={handleCopy}
+                  disabled={loading || !shareUrl}
+                  className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1e3a5f] text-white text-sm font-medium hover:bg-[#2a4d78] transition-colors disabled:opacity-50"
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
               </div>
             </div>
           </motion.div>
