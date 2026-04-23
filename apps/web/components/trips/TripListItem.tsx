@@ -5,8 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
 import type { MockTripCard } from '@travyl/shared';
+import { TripShareModal } from './TripShareModal';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -25,6 +27,7 @@ export function TripListItem({ trip }: TripListItemProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -118,10 +121,7 @@ export function TripListItem({ trip }: TripListItemProps) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            const url = `${window.location.origin}/trip/${trip.id}`;
-            navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            setShareModalOpen(true);
           }}
           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
           title="Share trip"
@@ -137,6 +137,13 @@ export function TripListItem({ trip }: TripListItemProps) {
         </button>
         <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
       </div>
+
+      {/* Share Modal */}
+      <TripShareModal
+        trip={trip}
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+      />
     </Link>
   );
 }
