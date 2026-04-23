@@ -74,13 +74,10 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
   const lat = probeData[0]?.latitude
   const lng = probeData[0]?.longitude
   if (lat == null || lng == null) {
-    // Fallback: use q param for places + events search in parallel
-    const categories = BROWSE_CATEGORIES
-    const placesFetches = categories.map(async (cat) => {
-      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
-      if (!res.ok) return []
-      return res.json() as Promise<PlaceItemType[]>
-    })
+    // Fallback: Google Maps search + events in parallel
+    const mapsFetch = fetch(`/api/search/maps?q=${encodeURIComponent(query)}`)
+      .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+      .catch(() => [] as PlaceItemType[])
     const eventsFetch = fetch(`/api/events/search?city=${encodeURIComponent(query)}`)
       .then(async r => {
         if (!r.ok) return []
@@ -100,15 +97,22 @@ async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
         })) as PlaceItemType[]
       })
       .catch(() => [] as PlaceItemType[])
-    const [placesResults, events] = await Promise.all([Promise.all(placesFetches), eventsFetch])
+    const [mapsResults, events] = await Promise.all([mapsFetch, eventsFetch])
     const seen = new Set<string>()
-    return [...placesResults.flat(), ...events].filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+    return [...mapsResults, ...events].filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
   }
 
-  // Step 2: fetch key categories from center + one offset neighborhood
+  // Step 2: Google Maps search + categories from center + offset neighborhood
   const categories = BROWSE_CATEGORIES
 
   const fetches: Promise<PlaceItemType[]>[] = []
+
+  // Google Maps search — finds the exact place/business by name
+  fetches.push(
+    fetch(`/api/search/maps?q=${encodeURIComponent(query)}`)
+      .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
+      .catch(() => [])
+  )
 
   // Center: key categories, limit 15
   for (const cat of categories) {
