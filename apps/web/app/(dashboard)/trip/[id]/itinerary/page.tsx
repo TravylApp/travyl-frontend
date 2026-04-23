@@ -3,7 +3,7 @@
 import { use, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useItineraryScreen, GLANCE_HERO_IMAGES, TOD_START_HOURS, QUICK_FILL_CATEGORIES, pickRandomActivity } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
-import type { MockFlightDetail, PlaceItem } from '@travyl/shared';
+import type { FlightDetail, PlaceItem } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import {
@@ -180,8 +180,8 @@ function GlanceView({
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
   onSelectDay: (i: number) => void;
-  arrivalFlight?: MockFlightDetail;
-  returnFlight?: MockFlightDetail;
+  arrivalFlight?: FlightDetail;
+  returnFlight?: FlightDetail;
   hotel?: { name: string; image?: string; price?: number; price_per_night?: number; stars?: number };
   tripFlight?: { destAirport: string; city: string } | null;
   tripId?: string;
@@ -982,8 +982,8 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
   const destAirport = (contextFlights[0] as any)?.dest_iata || '';
   const tripFlight = destAirport ? { destAirport, city } : null;
 
-  const arrivalFlight: MockFlightDetail | undefined = undefined;
-  const returnFlight: MockFlightDetail | undefined = undefined;
+  const arrivalFlight: FlightDetail | undefined = undefined;
+  const returnFlight: FlightDetail | undefined = undefined;
 
   // Build discover items from trip context (explore_items + foursquare_venues)
   const discoverItems: DiscoverItem[] = useMemo(() => {

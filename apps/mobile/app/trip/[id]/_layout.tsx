@@ -11,7 +11,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, TextStyles, FontFamily } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, resolveTheme, getWebApiBase, TextStyles, FontFamily } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -21,7 +21,8 @@ const { Navigator } = createMaterialTopTabNavigator();
 const TopTabs = withLayoutContext(Navigator);
 
 // ─── Config (matches web trip-tabs.tsx) ──────────────────
-const SIDEBAR_W = 52;
+export const SIDEBAR_W = 52;
+export const SIDE_TAB_W = 30;
 const DRAG_THRESHOLD = 10;
 const BOTTOM_BAR_OFFSET = 34; // lift above iOS home indicator
 
@@ -30,6 +31,7 @@ const ALL_TABS = [
   { name: 'itinerary',   title: 'Itinerary',   icon: 'calendar'    },
   { name: 'hotels',      title: 'Hotels',      icon: 'building-o'  },
   { name: 'flights',     title: 'Flights',     icon: 'plane'       },
+  { name: 'restaurants', title: 'Restaurants', icon: 'cutlery'     },
   { name: 'activities',  title: 'Explore',     icon: 'compass'     },
   { name: 'packing',     title: 'Packing',     icon: 'suitcase'    },
   { name: 'budget',      title: 'Budget',      icon: 'pie-chart'   },
@@ -39,7 +41,7 @@ const ALL_TABS = [
 
 const PERMANENT_TAB_NAMES = new Set(['index', 'itinerary']);
 const ADDABLE_TABS = ALL_TABS.filter(t => !PERMANENT_TAB_NAMES.has(t.name));
-const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'activities', 'packing', 'budget', 'favorites', 'settings'];
+const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'favorites', 'settings'];
 
 // ─── Types ──────────────────────────────────────────────
 type SpinePosition = 'top' | 'bottom' | 'left' | 'right';
@@ -321,7 +323,7 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: s
     .filter(({ route }) => enabledTabs.includes(route.name));
 }
 
-const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+const WEB_API = getWebApiBase();
 
 // ─── Trip Hero ───────────────────────────────────────────
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
@@ -557,7 +559,6 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
             })()}
 
             {/* Wiki excerpt */}
-
             {wikiText ? (
               <View style={{
                 marginTop: 8, borderRadius: 10,
@@ -571,7 +572,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
                 >
                   <Text style={{
                     ...TextStyles.body, fontFamily: FontFamily.serif,
-                    color: '#fff', lineHeight: 19, fontSize: 13,
+                    ...TextStyles.bodyLg, color: '#fff',
                   }}>
                     {wikiText}
                   </Text>
@@ -637,8 +638,9 @@ function useTabScrub(
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(axis === 'x' ? dx : dy) > 2,
+      // Don't capture on tap — let Pressable.onPress handle single taps
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(axis === 'x' ? dx : dy) > 8,
       onPanResponderGrant: (e) => {
         if (scrubTimer.current) clearTimeout(scrubTimer.current);
         lastScrubIdx.current = -1;
@@ -660,7 +662,7 @@ function useTabScrub(
 
 // ─── Book-style Tab Sidebar (left / right) ───────────────
 const TAB_NOTCH_W = 38;
-const SIDE_TAB_W = 30;
+
 
 
 function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
@@ -818,8 +820,7 @@ function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
               />
               {isFocused && (
                 <Text style={{
-                  fontSize: 12,
-                  fontFamily: FontFamily.sansBold,
+                  ...TextStyles.bodyEm,
                   color: '#fff',
                 }}>
                   {tab?.title ?? route.name}
@@ -981,11 +982,13 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
             pagerStyle={{ backgroundColor: 'transparent' }}
             screenOptions={{
               lazy: true,
+              lazyPreloadDistance: 1,
               lazyPlaceholder: () => (
                 <View style={{ flex: 1, backgroundColor: 'transparent' }} />
               ),
               swipeEnabled: true,
               animationEnabled: true,
+              detachInactiveScreens: false,
               sceneStyle: {
                 paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
                 paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,

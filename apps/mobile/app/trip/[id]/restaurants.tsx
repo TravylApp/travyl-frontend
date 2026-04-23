@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -10,13 +10,18 @@ import {
   CUISINE_SUBFILTERS,
   RESTAURANT_SORT_OPTIONS,
   hexToRgba,
+  getWebApiBase,
+  upscaleGoogleImage,
 } from '@travyl/shared';
 import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, useTabAccent, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { RatingStars } from '@/components/ui/RatingStars';
+import { CardStackCarousel } from '@/components/places/CardStackCarousel';
+import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
 
 
 const MENU_HIGHLIGHTS: Record<string, string[]> = {};
@@ -802,8 +807,93 @@ function EmptyFilterState({ onClear }: { onClear: () => void }) {
 export default function RestaurantsScreen() {
   const ACCENT = useTabAccent('restaurants');
   const colors = useThemeColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { isLoading } = useItineraryScreen(id);
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
+  const { trip, days, isLoading } = useItineraryScreen(id);
+
+  // Build restaurant DiscoverItems from trip_context
+  const restaurantItems = useMemo<DiscoverItem[]>(() => {
+    const ctx = trip?.trip_context as any;
+    if (!ctx) return [];
+    const items: DiscoverItem[] = [];
+    const seen = new Set<string>();
+    // Restaurants from enrichment
+    for (const r of ctx.restaurants ?? []) {
+      if (r.name && !seen.has(r.name)) {
+        seen.add(r.name);
+        items.push({
+          id: r.id || `rest-${items.length}`,
+          name: r.name,
+          location: r.address || '',
+          description: r.tip || r.category || '',
+          category: r.cuisine || r.category || 'Restaurant',
+          images: r.image ? [r.image] : r.images || [],
+          rating: r.rating || 0,
+          reviewCount: r.reviewCount || r.review_count || 0,
+          price: r.price || '',
+          tags: r.cuisines || [r.category || 'Restaurant'],
+        });
+      }
+    }
+    // Also extract dining activities from itinerary days
+    for (const day of days) {
+      for (const tg of day.timeGroups) {
+        for (const act of tg.activities) {
+          const cat = (act.category || '').toLowerCase();
+          if ((cat.includes('dining') || cat.includes('food') || cat.includes('restaurant')) && !seen.has(act.name)) {
+            seen.add(act.name);
+            items.push({
+              id: act.id || `day-rest-${items.length}`,
+              name: act.name,
+              location: act.locationName || '',
+              description: act.notes || '',
+              category: 'Restaurant',
+              images: act.image ? [act.image] : [],
+              rating: 0,
+              tags: ['Dining'],
+              isBooked: true,
+            });
+          }
+        }
+      }
+    }
+    return items;
+  }, [trip, days]);
+
+  // Fetch live restaurants when trip_context has none
+  const [liveRestaurants, setLiveRestaurants] = useState<DiscoverItem[]>([]);
+  useEffect(() => {
+    if (restaurantItems.length > 0 || !trip?.destination) return;
+    const city = trip.destination.split(',')[0].trim();
+    if (!city) return;
+    const base = getWebApiBase();
+    const ctx = trip.trip_context as any;
+    const lat = ctx?.lat;
+    const lng = ctx?.lng;
+    const query = lat && lng
+      ? `${base}/api/places?q=${encodeURIComponent(city + ' restaurants')}&lat=${lat}&lng=${lng}&limit=15`
+      : `${base}/api/places?q=${encodeURIComponent(city + ' restaurants')}&limit=15`;
+    fetch(query)
+      .then(r => r.ok ? r.json() : [])
+      .then((items: any[]) => {
+        if (!Array.isArray(items) || items.length === 0) return;
+        setLiveRestaurants(items.map((p: any, i: number) => ({
+          id: p.id || `live-rest-${i}`,
+          name: p.name,
+          location: p.address || '',
+          description: p.description || p.category || '',
+          category: p.category || 'Restaurant',
+          images: p.image ? [upscaleGoogleImage(p.image) || p.image] : [],
+          rating: p.rating || 0,
+          tags: [p.category || 'Restaurant'],
+        })));
+      })
+      .catch(() => {});
+  }, [trip?.destination, restaurantItems.length]);
+
+  const allRestaurantItems = restaurantItems.length > 0 ? restaurantItems : liveRestaurants;
 
   const {
     viewMode, setViewMode,
@@ -817,10 +907,15 @@ export default function RestaurantsScreen() {
     bookedCount,
     discoverCount,
     clearFilters,
-  } = useRestaurantFilters();
+  } = useRestaurantFilters(allRestaurantItems);
 
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+
+  const allPlaces = useMemo(
+    () => sourceItems.map(discoverItemToPlaceItem),
+    [sourceItems],
+  );
 
   // -- Loading skeleton --
   if (isLoading) {
@@ -1066,26 +1161,55 @@ export default function RestaurantsScreen() {
         </Text>
       </View>
 
-      {/* -- Card list -- */}
+      {/* -- Card grid (2-column masonry) -- */}
       <View style={{ paddingHorizontal: 16 }}>
         {filteredItems.length > 0 ? (
-          <View style={{ gap: 14 }}>
-            {filteredItems.map((item) => (
-              <RestaurantCard
-                key={item.id}
-                item={item}
-                isFavorited={favorites.includes(item.id)}
-                onFavorite={toggleFavorite}
-                onViewDetails={setSelectedItem}
-              />
-            ))}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {/* Left column */}
+            <View style={{ flex: 1, gap: 10 }}>
+              {filteredItems.filter((_, i) => i % 2 === 0).map((item) => (
+                <Pressable key={item.id} onPress={() => setSelectedItem(item)}>
+                  <RestaurantCard
+                    item={item}
+                    isFavorited={favorites.includes(item.id)}
+                    onFavorite={toggleFavorite}
+                    onViewDetails={setSelectedItem}
+                  />
+                </Pressable>
+              ))}
+            </View>
+            {/* Right column */}
+            <View style={{ flex: 1, gap: 10 }}>
+              {filteredItems.filter((_, i) => i % 2 === 1).map((item) => (
+                <Pressable key={item.id} onPress={() => setSelectedItem(item)}>
+                  <RestaurantCard
+                    item={item}
+                    isFavorited={favorites.includes(item.id)}
+                    onFavorite={toggleFavorite}
+                    onViewDetails={setSelectedItem}
+                  />
+                </Pressable>
+              ))}
+            </View>
           </View>
         ) : (
           <EmptyFilterState onClear={clearFilters} />
         )}
       </View>
 
-      {selectedItem && <RestaurantDetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {/* -- Restaurant Detail — magazine card overlay -- */}
+      {selectedItem && (
+        <CardStackCarousel
+          places={allPlaces}
+          initialIndex={Math.max(0, sourceItems.findIndex((i) => i.id === selectedItem.id))}
+          favorites={favorites}
+          onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
+          overlay
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </ScrollView>
     </PageTransition>
   );

@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-16" type="device">
+  <diagram name="AI Development" id="ai">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="AI-Assisted Development Pipeline" style="text;html=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;fontColor=#003594;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="500" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1: Developer Intent -->
+        <mxCell id="s1box" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="30" y="70" width="180" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="s1num" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;1&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;ellipse;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="105" y="56" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s1title" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Developer Intent&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="160" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s1d1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Describe feature in&lt;br&gt;natural language&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="115" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s1d2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;&lt;i&gt;&quot;Add budget tracking to&lt;br&gt;the mobile trip page&quot;&lt;/i&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="148" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow 1->2 -->
+        <mxCell id="a12" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=3;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="215" y="135" as="sourcePoint" />
+            <mxPoint x="255" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 2: AI Analysis -->
+        <mxCell id="s2box" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="260" y="70" width="180" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="s2num" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;2&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;ellipse;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="335" y="56" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s2title" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;AI Explores Code&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="270" y="90" width="160" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s2d1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Claude reads existing&lt;br&gt;files, types, patterns&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="270" y="115" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s2d2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Searches codebase&lt;br&gt;Understands architecture&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="270" y="148" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow 2->3 -->
+        <mxCell id="a23" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=3;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="445" y="135" as="sourcePoint" />
+            <mxPoint x="485" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 3: AI Generates -->
+        <mxCell id="s3box" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="490" y="70" width="180" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="s3num" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;3&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;ellipse;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="565" y="56" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s3title" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;AI Writes Code&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="90" width="160" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s3d1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Generates components,&lt;br&gt;hooks, API routes&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="115" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s3d2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Follows existing patterns&lt;br&gt;Uses shared types&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="148" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow 3->4 -->
+        <mxCell id="a34" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=3;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="675" y="135" as="sourcePoint" />
+            <mxPoint x="715" y="135" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 4: Human Reviews -->
+        <mxCell id="s4box" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="720" y="70" width="180" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="s4num" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;4&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;ellipse;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="795" y="56" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s4title" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;Human Reviews&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="730" y="90" width="160" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="s4d1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Developer tests locally,&lt;br&gt;iterates with AI&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="730" y="115" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="s4d2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Approves changes&lt;br&gt;Commits to branch&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="730" y="148" width="160" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Feedback loop arrow -->
+        <mxCell id="feedbackArrow" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;curved=1;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="s4box" target="s2box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="810" y="230" />
+              <mxPoint x="550" y="250" />
+              <mxPoint x="350" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="feedbackLabel" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;i&gt;Iterate until correct&lt;/i&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="490" y="248" width="130" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Bottom: What AI handles vs what humans handle -->
+        <mxCell id="aiBox" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;arcSize=10;opacity=90;" vertex="1" parent="1">
+          <mxGeometry x="30" y="300" width="510" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="aiTitle" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;What AI Handles&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="307" width="170" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ai1" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Codebase exploration &amp; pattern matching&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="338" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai2" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Component scaffolding &amp; boilerplate&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="360" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai3" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Bug detection &amp; fix suggestions&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="382" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai4" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;API integration &amp; data wiring&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="404" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai5" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Cross-file refactoring at scale&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="50" y="426" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai6" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Automated E2E testing (Playwright)&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="300" y="338" width="230" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai7" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Type-safe shared package maintenance&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="300" y="360" width="230" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai8" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Linear issue creation &amp; tracking&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="300" y="382" width="230" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai9" value="&lt;font color=&quot;#003594&quot; style=&quot;font-size:12px;&quot;&gt;Multi-platform consistency (web + mobile)&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="300" y="404" width="240" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Human box -->
+        <mxCell id="humanBox" value="" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="570" y="300" width="340" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="humanTitle" value="&lt;font color=&quot;#FFC72C&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;What Humans Own&lt;/b&gt;&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="650" y="307" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="h1" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Architecture decisions&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="590" y="338" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="h2" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Product vision &amp; UX design&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="590" y="360" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Quality approval &amp; testing&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="590" y="382" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="h4" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Security &amp; deployment&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="590" y="404" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="h5" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;User feedback &amp; prioritization&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="590" y="426" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="h6" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size:12px;&quot;&gt;Final commit &amp; merge approval&lt;/font&gt;" style="fontFamily=Calibri;text;html=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="590" y="448" width="200" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

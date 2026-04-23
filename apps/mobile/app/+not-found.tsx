@@ -1,5 +1,6 @@
 import { Link, Stack } from 'expo-router';
 import { StyleSheet } from 'react-native';
+import { TextStyles } from '@travyl/shared';
 
 import { Text, View } from '@/components/Themed';
 
@@ -26,15 +27,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...TextStyles.title,
   },
   link: {
     marginTop: 15,
     paddingVertical: 15,
   },
   linkText: {
-    fontSize: 14,
+    ...TextStyles.bodyXl,
     color: '#2e78b7',
   },
 });

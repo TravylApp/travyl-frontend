@@ -1,15 +1,16 @@
 /**
- * Generates packing suggestions based on trip context.
- *
+ * @module packingSuggestions
+ * Pure logic for generating AI-style packing suggestions from trip context.
  * Uses the PACKING_CATALOG as the source of truth and selects items
- * based on weather, duration, destination, and trip metadata.
- *
- * Returns items with a `reason` explaining why they're suggested.
+ * based on weather conditions, trip duration, destination type, and traveler metadata.
+ * All functions are pure (no Supabase calls) — suggestions are saved via `packingService.ts`.
+ * Consumed by the packing tab's suggestion engine and `usePackingSuggestions` hook.
  */
 
 import type { CatalogItem, PackingSuggestion } from '../types'
 import { PACKING_CATALOG } from '../config/packingCatalog'
 
+/** Trip metadata used to compute packing suggestions. */
 interface TripContext {
   destination: string
   country?: string
@@ -26,8 +27,15 @@ interface TripContext {
   hotels?: Array<{ name?: string; stars?: number }>
 }
 
+/** Weather classification tags derived from forecast data. */
 type WeatherTag = 'hot' | 'cold' | 'mild' | 'rainy' | 'snowy' | 'beach' | 'winter' | 'summer'
 
+/**
+ * Infers a set of weather tags from trip context (forecast or current conditions).
+ * Falls back to 70°F average when no weather data is available.
+ * @param ctx - Trip context with optional weather data
+ * @returns Set of applicable weather tags
+ */
 function inferWeatherTags(ctx: TripContext): Set<WeatherTag> {
   const tags = new Set<WeatherTag>()
   const forecast = ctx.weather?.forecast
@@ -72,6 +80,12 @@ function inferWeatherTags(ctx: TripContext): Set<WeatherTag> {
   return tags
 }
 
+/**
+ * Infers trip type categories from destination name, theme, and hotel star rating.
+ * Possible types: 'beach', 'outdoor', 'business', 'city'.
+ * @param ctx - Trip context
+ * @returns Set of applicable trip type strings
+ */
 function inferTripType(ctx: TripContext): Set<string> {
   const types = new Set<string>()
   const dest = ctx.destination.toLowerCase()

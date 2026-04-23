@@ -7,7 +7,7 @@ import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard as TripCardData } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
 import { ForkCountBadge } from '../trip/ForkAttribution';
 import { TripShareModal } from './TripShareModal';
@@ -22,7 +22,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripCardProps {
-  trip: MockTripCard;
+  trip: TripCardData;
   className?: string;
   style?: React.CSSProperties;
 }

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-16" type="device">
+  <diagram name="System Flows 4-6" id="flows-bottom">
+    <mxGraphModel dx="1400" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- FLOW 4: Activity Drag & Drop            -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="f4title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;4. Activity Drag &amp;amp; Drop Flow&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="350" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f4a" value="&lt;b&gt;User grabs activity&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; PointerSensor activates&lt;br&gt;   (5px movement threshold)&lt;br&gt;&amp;rarr; Track cursor position&lt;br&gt;   continuously&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="45" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="f4ar1" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f4a" target="f4b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f4b" value="&lt;b&gt;While dragging:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Query day column&lt;br&gt;   under cursor&lt;br&gt;&amp;rarr; Convert cursor Y to&lt;br&gt;   hour (cursorToHour)&lt;br&gt;&amp;rarr; Snap to 15-min increments&lt;br&gt;&amp;rarr; Ghost preview follows cursor&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="195" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="f4ar2" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f4b" target="f4c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f4c" value="&lt;b&gt;Drop released:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Calculate day delta&lt;br&gt;&amp;rarr; Shift endDay by same&lt;br&gt;   delta (constraint check)&lt;br&gt;&amp;rarr; Update Y.Map&lt;br&gt;&amp;rarr; Mark dirty&lt;br&gt;&amp;rarr; 1s debounce flush&lt;br&gt;   to Supabase&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="485" y="35" width="175" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="f4ar3" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f4c" target="f4d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f4d" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Audit logged:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; itinerary_edits row&lt;br&gt;&amp;rarr; edit_type: &quot;move&quot;&lt;br&gt;&amp;rarr; original_data: {old day,&lt;br&gt;   old endDay, old hour}&lt;br&gt;&amp;rarr; new_data: {new day,&lt;br&gt;   new endDay, new hour}&lt;br&gt;&amp;rarr; user_id: current user&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="710" y="30" width="185" height="125" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- FLOW 5: Suggestion Drop Flow            -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="f5title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;5. Suggestion Drop Flow&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="185" width="300" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f5a" value="&lt;b&gt;User drags suggestion&lt;br&gt;from ForYouPanel&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Ghost card shows&lt;br&gt;   preview at cursor&lt;br&gt;&amp;rarr; cursorToHour() for&lt;br&gt;   drop time&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="220" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="f5ar1" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f5a" target="f5b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f5b" value="&lt;b&gt;Drop on calendar:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; suggestionToCalendar&lt;br&gt;   Activity() converts&lt;br&gt;&amp;rarr; Generate UUID&lt;br&gt;&amp;rarr; Map fields: name&amp;rarr;title,&lt;br&gt;   category&amp;rarr;type, duration,&lt;br&gt;   drop day/hour&amp;rarr;position&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="240" y="215" width="195" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="f5ar2" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f5b" target="f5c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f5c" value="&lt;b&gt;addActivity() fires:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; IMMEDIATE Supabase&lt;br&gt;   INSERT to activity&lt;br&gt;&amp;rarr; Y.Map.set() to sync&lt;br&gt;   to other users&lt;br&gt;&amp;rarr; insertAuditRow()&lt;br&gt;   &quot;create&quot; type&lt;br&gt;&amp;rarr; indexTrip() 5s debounce&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="485" y="215" width="185" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- Track interaction -->
+        <mxCell id="f5ar3" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.3;" edge="1" parent="1" source="f5c" target="f5d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f5d" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Track interaction:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; suggestionId logged&lt;br&gt;&amp;rarr; &quot;drag&quot; action type&lt;br&gt;&amp;rarr; Sent to EventBridge&lt;br&gt;   via /interact API&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="720" y="215" width="170" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- UI updates -->
+        <mxCell id="f5ar4" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.8;" edge="1" parent="1" source="f5c" target="f5e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f5e" value="&lt;font color=&quot;#FFC72C&quot;&gt;&lt;b&gt;UI updates:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; selectEvent(activity.id)&lt;br&gt;&amp;rarr; Card pops open&lt;br&gt;   (popover)&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="720" y="320" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- FLOW 6: Live Collaboration Flow         -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="f6title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;6. Live Collaboration Flow&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="420" width="300" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f6a" value="&lt;b&gt;User opens trip:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Subscribe to&lt;br&gt;   presence:trip:{id}&lt;br&gt;   channel&lt;br&gt;&amp;rarr; track() sends:&lt;br&gt;   userId, name, color,&lt;br&gt;   selectedEvent, view, day&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#003594;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="455" width="170" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="f6ar1" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f6a" target="f6b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f6b" value="&lt;b&gt;Presence sync:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; presence.sync event&lt;br&gt;   fires on any change&lt;br&gt;&amp;rarr; Build collaboratorsList&lt;br&gt;   from all states&lt;br&gt;&amp;rarr; Filter out self by&lt;br&gt;   unique tabId&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="240" y="455" width="180" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="f6ar2" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f6b" target="f6c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f6c" value="&lt;b&gt;UI renders presence:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Avatar stack in navbar&lt;br&gt;   (color + initial)&lt;br&gt;&amp;rarr; Cursor indicators on&lt;br&gt;   selected events&lt;br&gt;&amp;rarr; View mode badges&lt;br&gt;   (week/day)&lt;br&gt;&amp;rarr; &quot;User is viewing&quot;&lt;br&gt;   indicators&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="475" y="445" width="180" height="125" as="geometry" />
+        </mxCell>
+
+        <!-- Activity changes via CRDT -->
+        <mxCell id="f6ar3" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.3;" edge="1" parent="1" source="f6c" target="f6d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f6d" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Activity changes:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Yjs CRDT sync&lt;br&gt;   (separate from&lt;br&gt;   presence system)&lt;br&gt;&amp;rarr; Updates propagate via&lt;br&gt;   SupabaseProvider&lt;br&gt;&amp;rarr; All clients see&lt;br&gt;   live updates&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="710" y="440" width="180" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- User changes selection -->
+        <mxCell id="f6ar4" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=0.5;exitY=1;" edge="1" parent="1" source="f6c" target="f6e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f6e" value="&lt;b&gt;User changes selection:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; setSelectedEvent(id)&lt;br&gt;&amp;rarr; channel.track()&lt;br&gt;   broadcasts update&lt;br&gt;&amp;rarr; Other clients receive&lt;br&gt;&amp;rarr; UI updates collaborator&lt;br&gt;   cursor position&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="475" y="600" width="185" height="110" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

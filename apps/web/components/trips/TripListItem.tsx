@@ -7,7 +7,7 @@ import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard } from '@travyl/shared';
 import { TripShareModal } from './TripShareModal';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
@@ -20,7 +20,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripListItemProps {
-  trip: MockTripCard;
+  trip: TripCard | MockTripCard;
 }
 
 export function TripListItem({ trip }: TripListItemProps) {

@@ -1,3 +1,11 @@
+/**
+ * @module useTrips
+ * Fetches all trips accessible to the current user from Supabase.
+ * Handles both authenticated users (owned trips + collaborated trips) and
+ * anonymous users (trips stored by ID in localStorage/AsyncStorage).
+ * Used by the web TripsPage and mobile TripsTab.
+ */
+
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +16,11 @@ import type { Trip } from '../types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+/**
+ * Retrieves stored anonymous trip IDs from localStorage (web) or AsyncStorage (mobile).
+ * Tries localStorage/sessionStorage first, then falls back to React Native AsyncStorage.
+ * @returns Array of trip UUID strings saved locally for anonymous users
+ */
 async function getAnonTripIds(): Promise<string[]> {
   try {
     const g = globalThis as any;
@@ -29,6 +42,17 @@ async function getAnonTripIds(): Promise<string[]> {
   return [];
 }
 
+/**
+ * Persists a trip ID for an anonymous (unauthenticated) user so it can be
+ * retrieved across page refreshes. Writes to localStorage on web and to
+ * AsyncStorage on React Native. Deduplicates before saving.
+ * @param tripId - UUID of the trip to save locally
+ * @returns Promise that resolves once the ID has been written to all available stores
+ * @example
+ * ```ts
+ * await saveAnonTripId(newTrip.id);
+ * ```
+ */
 export async function saveAnonTripId(tripId: string): Promise<void> {
   const ids = await getAnonTripIds();
   if (!ids.includes(tripId)) ids.push(tripId);
@@ -45,6 +69,12 @@ export async function saveAnonTripId(tripId: string): Promise<void> {
   } catch {}
 }
 
+/**
+ * Fetches all trips for a given authenticated user by combining owned trips
+ * and collaborated trips, deduplicating by trip ID.
+ * @param userId - Supabase auth UUID of the logged-in user
+ * @returns Merged, deduplicated array of Trip objects
+ */
 async function fetchTripsForUser(userId: string): Promise<Trip[]> {
   const [owned, collaborated] = await Promise.all([
     fetchTrips(userId),
@@ -63,6 +93,14 @@ async function fetchTripsForUser(userId: string): Promise<Trip[]> {
   return merged;
 }
 
+/**
+ * Resolves the correct trip list depending on whether the user is authenticated.
+ * - Anonymous: reads stored trip IDs and fetches via `/api/trips` (web) or
+ *   directly from Supabase (mobile/fallback).
+ * - Authenticated: delegates to {@link fetchTripsForUser} for owned + collaborated trips.
+ * @param userId - Supabase auth UUID, or `null` for anonymous users
+ * @returns Array of Trip objects the current session can access
+ */
 async function fetchTripsWithAnonymous(userId: string | null): Promise<Trip[]> {
   // Anonymous users: fetch by stored trip IDs via API route (service key)
   if (!userId) {
@@ -91,10 +129,22 @@ async function fetchTripsWithAnonymous(userId: string | null): Promise<Trip[]> {
     return [];
   }
 
-  // Logged-in users: fetch own + collaborated trips
+  // Logged-in users: only show their own + collaborated trips
   return fetchTripsForUser(userId);
 }
 
+/**
+ * Fetches all trips the current user can access (owned, collaborated, or anonymous).
+ * The query key is scoped to the user ID (or `'anon'`) so it refetches automatically
+ * when the auth state changes.
+ * @returns React Query result with `data: Trip[]`, `isLoading`, and `error`
+ * @example
+ * ```tsx
+ * const { data: trips, isLoading } = useTrips();
+ * if (isLoading) return <Spinner />;
+ * return trips?.map(t => <TripCard key={t.id} trip={t} />);
+ * ```
+ */
 export function useTrips() {
   const user = useAuthStore((s) => s.user);
   return useQuery({

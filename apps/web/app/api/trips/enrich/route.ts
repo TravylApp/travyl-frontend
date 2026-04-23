@@ -19,9 +19,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const supabase = getSupabase()
   const { tripId } = await req.json()
   if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
+
+  // Use caller's auth token when available so RLS allows reading private trips (mobile sends Bearer token)
+  const authHeader = req.headers.get('authorization')
+  const supabase = authHeader
+    ? createClient(supabaseUrl, supabaseKey, { global: { headers: { Authorization: authHeader } } })
+    : getSupabase()
 
   // Fetch the trip
   const { data: trip, error: fetchErr } = await supabase
@@ -31,15 +36,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
   }
 
-  // Ownership check: logged-in must own, anonymous can only enrich public unowned trips
-  const authHeader = req.headers.get('authorization')
-  if (authHeader) {
-    const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
-      { global: { headers: { Authorization: authHeader } } }).auth.getUser()
-    if (!user || (trip.user_id && trip.user_id !== user.id)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
-  } else if (trip.user_id || trip.visibility !== 'public') {
+  // Ownership check: anonymous can only enrich public unowned trips
+  if (!authHeader && (trip.user_id || trip.visibility !== 'public')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
@@ -122,19 +120,6 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // Fallback 2: OpenTripMap (free, no key, Wikipedia-enriched descriptions)
-    if (exploreItems.length === 0) {
-      try {
-        const r = await fetch(`${baseUrl}/api/opentripmap?lat=${lat}&lng=${lng}&limit=40`)
-        if (r.ok) {
-          const items = await r.json()
-          const seen = new Set<string>()
-          exploreItems = (Array.isArray(items) ? items : []).filter((p: any) => {
-            if (!p?.id || !p?.name || seen.has(p.id)) return false; seen.add(p.id); return true
-          }).map((p: any) => ({ id: p.id, title: p.name, description: p.description || p.category || 'Attraction', category: p.category || 'attraction', image: upscaleGoogleImage(p.image) ?? p.image }))
-        }
-      } catch {}
-    }
   }
 
   // Filter explore items by geographic radius to prevent wrong-city results

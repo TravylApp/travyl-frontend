@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, Dimensions, Animated, Linking, Share } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -12,11 +12,14 @@ import {
   ACTIVITY_SUBFILTERS,
   ACTIVITY_SORT_OPTIONS,
   supabase,
+  getWebApiBase,
 } from '@travyl/shared';
 import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
 import type { DiscoverItem, PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, useTabAccent } from './_layout';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
+import { PageTransition, useTabAccent, TabCtx } from './_layout';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { RatingStars } from '@/components/ui/RatingStars';
 import { MapPreview } from '@/components/itinerary/MapPreview';
@@ -154,7 +157,7 @@ function ActivityCard({
           backgroundColor: 'rgba(0,0,0,0.6)',
           paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
         }}>
-          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <Text style={{ ...TextStyles.xs, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             {categoryLabel}
           </Text>
         </View>
@@ -185,9 +188,9 @@ function ActivityCard({
           {item.rating > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
               <FontAwesome name="star" size={11} color="#fbbf24" />
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{item.rating.toFixed(1)}</Text>
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{item.rating.toFixed(1)}</Text>
               {item.reviewCount != null && item.reviewCount > 0 && (
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }}>
+                <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.6)' }}>
                   ({item.reviewCount >= 1000 ? `${(item.reviewCount / 1000).toFixed(1)}k` : item.reviewCount})
                 </Text>
               )}
@@ -195,13 +198,13 @@ function ActivityCard({
           )}
 
           {/* Name */}
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 2 }} numberOfLines={2}>
+          <Text style={{ ...TextStyles.bodyXlEm, color: '#fff', marginBottom: 2 }} numberOfLines={2}>
             {item.name}
           </Text>
 
           {/* Description / tagline */}
           {item.description ? (
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginBottom: 6 }} numberOfLines={1}>
+            <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }} numberOfLines={1}>
               {item.description}
             </Text>
           ) : null}
@@ -214,7 +217,7 @@ function ActivityCard({
                   backgroundColor: 'rgba(255,255,255,0.2)',
                   paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6,
                 }}>
-                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: '600' }}>{tag}</Text>
+                  <Text style={{ ...TextStyles.xs, color: '#fff' }}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -230,7 +233,7 @@ function ActivityCard({
             marginTop: 26,
           }}>
             <FontAwesome name="calendar-check-o" size={9} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Day {item.bookedDay}</Text>
+            <Text style={{ ...TextStyles.xs, color: '#fff' }}>Day {item.bookedDay}</Text>
           </View>
         )}
       </View>
@@ -743,8 +746,44 @@ function SkeletonCard() {
 // ---- Main Screen ----
 export default function ActivitiesScreen() {
   const ACCENT = useTabAccent('activities');
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
   const { trip, days, isLoading } = useItineraryScreen(id);
+
+  // Fetch live places when trip_context has no explore items
+  const ctx = trip?.trip_context as any;
+  const [livePlaces, setLivePlaces] = useState<any[]>([]);
+  useEffect(() => {
+    const hasContextItems = (ctx?.explore_items?.length || 0) + (ctx?.foursquare_venues?.length || 0) > 0;
+    if (hasContextItems || !trip?.destination) return;
+    const city = trip.destination.split(',')[0].trim();
+    if (!city) return;
+    const base = getWebApiBase();
+    const lat = ctx?.lat;
+    const lng = ctx?.lng;
+    const query = lat && lng
+      ? `${base}/api/places?q=${encodeURIComponent(city + ' things to do')}&lat=${lat}&lng=${lng}&limit=20`
+      : `${base}/api/places?q=${encodeURIComponent(city + ' things to do')}&limit=20`;
+    fetch(query)
+      .then(r => r.ok ? r.json() : [])
+      .then((items: any[]) => {
+        if (Array.isArray(items) && items.length > 0) setLivePlaces(items);
+      })
+      .catch(() => {});
+  }, [trip?.destination, ctx?.explore_items, ctx?.foursquare_venues]);
+
+  // Merge live places into trip_context for the filter hook
+  const enrichedContext = useMemo(() => {
+    if (livePlaces.length === 0) return ctx;
+    const liveExploreItems = livePlaces.map((p: any) => ({
+      id: p.id, title: p.name, description: p.description || p.category,
+      category: p.category, image: p.image, rating: p.rating,
+      tags: p.tags ?? [p.category].filter(Boolean),
+    }));
+    return { ...ctx, explore_items: [...(ctx?.explore_items ?? []), ...liveExploreItems] };
+  }, [ctx, livePlaces]);
 
   const {
     viewMode, setViewMode,
@@ -758,7 +797,7 @@ export default function ActivitiesScreen() {
     bookedItems,
     discoverItems,
     clearFilters,
-  } = useActivityFilters(days, trip?.trip_context);
+  } = useActivityFilters(days, enrichedContext);
 
   const colors = useThemeColors();
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -1148,6 +1187,8 @@ export default function ActivitiesScreen() {
           initialIndex={Math.max(0, sourceItems.findIndex((i) => i.id === selectedItem.id))}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setSelectedItem(null)}
         />

@@ -327,7 +327,7 @@ function hotelToPlaceItem(h: HotelData, currencySymbol = '$'): PlaceItem {
     name: h.name,
     image: h.images[0] || '',
     images: h.images,
-    type: 'destination',
+    type: 'hotel',
     rating: h.rating > 5 ? h.rating / 2 : h.rating,
     tagline: [priceTag, h.neighborhood].filter(Boolean).join(' · '),
     category: starTag ? `${starTag} Hotel` : 'Hotel',
@@ -339,8 +339,6 @@ function hotelToPlaceItem(h: HotelData, currencySymbol = '$'): PlaceItem {
     reviewCount: h.reviews,
   };
 }
-
-const MOCK_HOTELS: HotelData[] = [];
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi size={12} />,

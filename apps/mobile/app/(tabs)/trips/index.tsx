@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,20 +11,26 @@ import {
   UIManager,
   Platform,
   useWindowDimensions,
+  Alert,
+  Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useTrips,
   Navy,
   formatDateRange,
   upscaleGoogleImage,
+  getWebApiBase,
+  supabase,
   TextStyles,
   FontSize,
   FontFamily,
 } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreateTripModal } from '@/components/trips/CreateTripModal';
@@ -47,7 +53,7 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'past', label: 'Past' },
 ];
 
-function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past' {
+function getTripStatusFilter(trip: TripCard): 'active' | 'upcoming' | 'past' {
   const now = new Date();
   const endDate = new Date(trip.end_date + 'T00:00:00');
   const startDate = new Date(trip.start_date + 'T00:00:00');
@@ -81,7 +87,7 @@ function fmtBudget(b: number | null, c: string) {
 
 // ─── Status badge (matches web: countdown + active) ───────────
 
-function getStatusBadge(trip: MockTripCard): { label: string; bg: string } | null {
+function getStatusBadge(trip: TripCard): { label: string; bg: string } | null {
   if (trip.status === 'active') return { label: 'In progress', bg: 'rgba(16,185,129,0.85)' };
   if (trip.status === 'completed') return null;
   const daysUntil = getDaysUntilTrip(trip.start_date);
@@ -109,7 +115,7 @@ function getRowHeight(maxDays: number): number {
   return 280;
 }
 
-type TripItem = { trip: MockTripCard; duration: number; weight: number };
+type TripItem = { trip: TripCard; duration: number; weight: number };
 
 function buildRows(items: TripItem[]): TripItem[][] {
   const rows: TripItem[][] = [];
@@ -133,7 +139,7 @@ function buildRows(items: TripItem[]): TripItem[][] {
 
 // ─── Trip Card ────────────────────────────────────────────────
 
-function TripCard({ trip, height, width }: { trip: MockTripCard; height: number; width: number }) {
+function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; height: number; width: number; onDelete?: (id: string) => void }) {
   const router = useRouter();
   const colors = useThemeColors();
   const duration = getTripDuration(trip.start_date, trip.end_date);
@@ -141,6 +147,71 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
   const members = trip.members ?? [];
   const visibleMembers = members.slice(0, 3);
   const extraCount = members.length - 3;
+
+  // Skeleton mode
+  if (!trip.id || trip.id.startsWith('skeleton-')) {
+    return (
+      <View style={{ width }}>
+        <View style={{ height, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.skeleton }}>
+          <SkeletonBlock width="100%" height={height} />
+          <View pointerEvents="none" style={{
+            position: 'absolute', top: 10, left: 12, right: 48,
+            flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <SkeletonBlock width={60} height={24} radius={12} />
+              <View style={{ flexDirection: 'row' }}>
+                {Array(3).fill(0).map((_, i) => (
+                  <SkeletonBlock key={i} width={24} height={24} radius={12} style={{ marginLeft: i > 0 ? -8 : 0 }} />
+                ))}
+              </View>
+            </View>
+          </View>
+          <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 }}>
+            <SkeletonBlock width={80} height={20} radius={10} style={{ alignSelf: 'flex-start', marginBottom: 6 }} />
+            <SkeletonBlock width="80%" height={24} radius={6} style={{ marginBottom: 6 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, marginBottom: 6 }}>
+              <SkeletonBlock width={120} height={16} radius={4} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', overflow: 'hidden', maxHeight: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <SkeletonBlock width={80} height={14} radius={4} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <SkeletonBlock width={40} height={14} radius={4} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <SkeletonBlock width={60} height={14} radius={4} />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const handleMenu = useCallback(() => {
+    Alert.alert(trip.title || 'Trip', undefined, [
+      {
+        text: 'Share',
+        onPress: () => Share.share({
+          message: `Check out my trip to ${trip.destination}!`,
+          url: `https://gotravyl.com/trip/${trip.id}`,
+        }),
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Delete Trip', `Are you sure you want to delete "${trip.title}"?`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(trip.id) },
+          ]);
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [trip, onDelete]);
 
   return (
     <View style={{ width }}>
@@ -157,9 +228,23 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
         />
 
+        {/* 3-dot menu */}
+        <Pressable
+          onPress={handleMenu}
+          hitSlop={12}
+          style={{
+            position: 'absolute', top: 10, right: 10, zIndex: 10,
+            width: 30, height: 30, borderRadius: 15,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <FontAwesome name="ellipsis-v" size={14} color="#fff" />
+        </Pressable>
+
         {/* Top: duration pill + member avatars */}
         <View pointerEvents="none" style={{
-          position: 'absolute', top: 10, left: 12, right: 12,
+          position: 'absolute', top: 10, left: 12, right: 48,
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -173,7 +258,7 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
                 {visibleMembers.map((m, mi) => (
                   <View key={m.id} style={{
                     width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
-                    backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center',
                     marginLeft: mi > 0 ? -8 : 0,
                   }}>
                     {m.avatar ? (
@@ -249,11 +334,34 @@ function TripCard({ trip, height, width }: { trip: MockTripCard; height: number;
 
 // ─── Feed Card ────────────────────────────────────────────────
 
-function FeedCard({ item, onPress }: { item: MockTripCard; onPress: () => void }) {
+function FeedCard({ item, onPress, onDelete }: { item: TripCard; onPress: () => void; onDelete?: (id: string) => void }) {
   const colors = useThemeColors();
   const duration = getTripDuration(item.start_date, item.end_date);
   const badge = getStatusBadge(item);
   const budget = fmtBudget(item.budget, item.currency);
+
+  const handleMenu = useCallback(() => {
+    Alert.alert(item.title || 'Trip', undefined, [
+      {
+        text: 'Share',
+        onPress: () => Share.share({
+          message: `Check out my trip to ${item.destination}!`,
+          url: `https://gotravyl.com/trip/${item.id}`,
+        }),
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Delete Trip', `Are you sure you want to delete "${item.title}"?`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(item.id) },
+          ]);
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [item, onDelete]);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.95 : 1 })}>
@@ -266,11 +374,22 @@ function FeedCard({ item, onPress }: { item: MockTripCard; onPress: () => void }
             pointerEvents="none"
             style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
           />
-          {/* Top: duration pill */}
+          {/* Top: duration pill + 3-dot menu */}
           <View style={{ position: 'absolute', top: 12, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
               <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{duration} days</Text>
             </View>
+            <Pressable
+              onPress={handleMenu}
+              hitSlop={12}
+              style={{
+                width: 30, height: 30, borderRadius: 15,
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <FontAwesome name="ellipsis-v" size={14} color="#fff" />
+            </Pressable>
           </View>
           {/* Bottom content */}
           <View style={{ position: 'absolute', bottom: 14, left: 14, right: 14 }}>
@@ -326,11 +445,12 @@ function EmptyState({ onPlan }: { onPlan: () => void }) {
         Start planning your next adventure!
       </Text>
       <Pressable onPress={onPlan} style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', backgroundColor: Navy.DEFAULT,
-        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? 0.85 : 1,
       })}>
-        <FontAwesome name="plus" size={14} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Plan a Trip</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Navy.DEFAULT, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, gap: 8 }}>
+          <FontAwesome name="plus" size={14} color="#fff" />
+          <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Plan a Trip</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -338,7 +458,7 @@ function EmptyState({ onPlan }: { onPlan: () => void }) {
 
 // ─── Masonry Grid ─────────────────────────────────────────────
 
-function TripMasonryGrid({ trips, screenWidth }: { trips: MockTripCard[]; screenWidth: number }) {
+function TripMasonryGrid({ trips, screenWidth, onDelete }: { trips: TripCard[]; screenWidth: number; onDelete?: (id: string) => void }) {
   const contentWidth = screenWidth - PAD * 2;
   const halfWidth = (contentWidth - GAP) / 2;
   const items = trips.map((trip) => {
@@ -356,11 +476,12 @@ function TripMasonryGrid({ trips, screenWidth }: { trips: MockTripCard[]; screen
         return (
           <View key={ri} style={{ flexDirection: 'row', gap: GAP }}>
             {row.map((item) => (
-              <TripCard
+              <TripCardView
                 key={item.trip.id}
                 trip={item.trip}
                 height={height}
                 width={isFeatureRow ? contentWidth : halfWidth}
+                onDelete={onDelete}
               />
             ))}
             {row.length === 1 ? null : row.length < 2 ? <View style={{ width: halfWidth }} /> : null}
@@ -379,11 +500,26 @@ export default function TripsScreen() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { data: trips, isLoading } = useTrips();
+  const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const displayTrips: MockTripCard[] =
+  const handleDeleteTrip = useCallback(async (tripId: string) => {
+    try {
+      // Delete directly via Supabase (RLS handles ownership)
+      const { error } = await supabase.from('trips').delete().eq('id', tripId);
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['trips'] });
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to delete trip');
+    }
+  }, [queryClient]);
+
+  const displayTrips: TripCard[] =
     trips && trips.length > 0
       ? trips.map((t) => ({
           ...t,
@@ -451,11 +587,11 @@ export default function TripsScreen() {
         )}
       </View>
       <Pressable onPress={handlePlan} style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', backgroundColor: Navy.DEFAULT,
-        paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, opacity: pressed ? 0.85 : 1,
+        alignItems: 'center',
+        opacity: pressed ? 0.6 : 1,
       })}>
-        <FontAwesome name="plus" size={13} color="#fff" style={{ marginRight: 6 }} />
-        <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Plan a Trip</Text>
+        <FontAwesome name="plus" size={18} color={colors.text} />
+        <Text style={{ ...TextStyles.xs, color: colors.textSecondary, marginTop: 2 }}>Plan a Trip</Text>
       </Pressable>
     </View>
   );
@@ -554,26 +690,49 @@ export default function TripsScreen() {
           {statusTabs}
           {searchBar}
 
+          {/* Loading skeleton */}
+          {isLoading && (
+            <TripMasonryGrid 
+              trips={Array(6).fill(null).map((_, i) => ({ 
+                id: `skeleton-${i}`, 
+                title: '', 
+                destination: '', 
+                start_date: '', 
+                end_date: '', 
+                travelers: 0, 
+                budget: null, 
+                currency: 'USD', 
+                status: 'planning', 
+                image: '', 
+                cover_image_url: '', 
+                trip_context: null, 
+                members: [] 
+              } as unknown as TripCard))} 
+              screenWidth={screenWidth} 
+              onDelete={undefined} 
+            />
+          )}
+
           {/* Current / Active / Upcoming */}
-          {currentTrips.length > 0 && (
-            <TripMasonryGrid trips={currentTrips} screenWidth={screenWidth} />
+          {!isLoading && currentTrips.length > 0 && (
+            <TripMasonryGrid trips={currentTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} />
           )}
 
           {/* Past trips section */}
-          {pastTrips.length > 0 && (
+          {!isLoading && pastTrips.length > 0 && (
             <View style={{ marginTop: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <Text style={{ ...TextStyles.subhead, color: colors.textTertiary }}>Past Trips</Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
               </View>
               <View style={{ opacity: 0.7 }}>
-                <TripMasonryGrid trips={pastTrips} screenWidth={screenWidth} />
+                <TripMasonryGrid trips={pastTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} />
               </View>
             </View>
           )}
 
           {/* No results */}
-          {filteredTrips.length === 0 && (
+          {!isLoading && filteredTrips.length === 0 && (
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
               <FontAwesome name="search" size={36} color={colors.textTertiary} />
               <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>No trips match your search</Text>
@@ -595,7 +754,7 @@ export default function TripsScreen() {
         contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 32 }}
         ListHeaderComponent={<>{titleRow}{statusTabs}{searchBar}</>}
         renderItem={({ item }) => (
-          <FeedCard item={item} onPress={() => router.push(`/trip/${item.id}`)} />
+          <FeedCard item={item} onPress={() => router.push(`/trip/${item.id}`)} onDelete={handleDeleteTrip} />
         )}
         ItemSeparatorComponent={() => <View style={{ height: GAP + 2 }} />}
         ListEmptyComponent={

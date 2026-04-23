@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,7 +6,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
 import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, TabCtx, useTabAccent } from './_layout';
 
 /* ------------------------------------------------------------------ */
 /*  Animated Progress Bar                                              */
@@ -112,7 +112,9 @@ function buildPackingList(trip: any): PackingList {
 }
 
 export default function PackingScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
 
   const defaultList = buildPackingList(trip);
@@ -320,7 +322,7 @@ export default function PackingScreen() {
               <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: 4 }}>
                 Weather
               </Text>
-              <Text style={{ ...TextStyles.headline, fontSize: 22, color: colors.text, marginBottom: 2 }}>
+              <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 2 }}>
                 {currentWeather.high}°
               </Text>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
@@ -394,7 +396,7 @@ export default function PackingScreen() {
                   onPress={() => toggleCategory(category)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
                 >
-                  <Text style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT }}>
+                  <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>
                     {category}
                   </Text>
                   <FontAwesome
@@ -542,7 +544,7 @@ export default function PackingScreen() {
             }}
           >
             <Text
-              style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT, marginBottom: 12 }}
+              style={{ ...TextStyles.bodyXlEm, color: ACCENT, marginBottom: 12 }}
             >
               Create New List
             </Text>

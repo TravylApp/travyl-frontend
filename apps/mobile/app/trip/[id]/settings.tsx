@@ -1,8 +1,9 @@
 import { useState, useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, deleteTrip } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -171,8 +172,11 @@ function SettingsInput({
 // ─── Main screen ──────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { trip, isLoading } = useItineraryScreen(id);
   const { theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors } = useContext(TabCtx);
   const colors = useThemeColors();
@@ -221,9 +225,14 @@ export default function SettingsScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Wire to API
-            router.back();
+          onPress: async () => {
+            try {
+              await deleteTrip(id);
+              queryClient.invalidateQueries({ queryKey: ['trips'] });
+              router.replace('/(tabs)/trips');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to delete trip. Please try again.');
+            }
           },
         },
       ]

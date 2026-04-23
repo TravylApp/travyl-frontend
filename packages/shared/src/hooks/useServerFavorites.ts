@@ -1,17 +1,35 @@
+/**
+ * @module useServerFavorites
+ * Manages the authenticated user's server-persisted place favorites.
+ * Provides a query for listing favorites plus mutations for adding and removing them.
+ * Calls /api/favorites (GET/POST/DELETE) with a Bearer token header.
+ * Used by place cards and the favorites page on both web and mobile.
+ */
+
 'use client';
 
+import { getWebApiBase } from '../utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ServerFavorite } from '../types';
 
-function getApiBase(): string {
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
 
+/**
+ * Fetches, adds, and removes server-persisted favorites for an authenticated user.
+ * The query is skipped when `authToken` is null. Both mutations invalidate the
+ * `server-favorites` query on success so the list stays in sync automatically.
+ * @param authToken - Supabase JWT Bearer token for the current user; null disables the query
+ * @returns React Query result spread plus `addFavorite`, `removeFavorite`, `isAdding`, `isRemoving`
+ * @example
+ * ```tsx
+ * const { data: favs, addFavorite, removeFavorite } = useServerFavorites(token);
+ * const isFaved = favs?.some(f => f.place_id === placeId);
+ * <button onClick={() => isFaved ? removeFavorite(fav.id) : addFavorite(placeId)}>
+ *   {isFaved ? 'Unfavorite' : 'Favorite'}
+ * </button>
+ * ```
+ */
 export function useServerFavorites(authToken: string | null) {
-  const base = getApiBase();
+  const base = getWebApiBase();
   const queryClient = useQueryClient();
 
   const query = useQuery<ServerFavorite[]>({

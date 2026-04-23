@@ -1,3 +1,19 @@
+/**
+ * @module utils
+ * Barrel export for all shared utility functions.
+ * Aggregates helpers from the individual util modules and exposes a small set
+ * of top-level utilities (date formatting, image handling, trip hero image,
+ * Fisher-Yates shuffle, fresh-pick, and the web API base URL).
+ *
+ * Import from `@travyl/shared` rather than referencing sub-modules directly.
+ */
+
+/**
+ * Formats a date range as a short human-readable string.
+ * @param start - ISO date string for the range start (e.g. "2024-06-01")
+ * @param end - ISO date string for the range end (e.g. "2024-06-05")
+ * @returns Formatted string like "Jun 1 – Jun 5, 2024"
+ */
 export function formatDateRange(start: string, end: string): string {
   const s = new Date(start + 'T00:00:00');
   const e = new Date(end + 'T00:00:00');
@@ -5,6 +21,15 @@ export function formatDateRange(start: string, end: string): string {
   return `${fmt(s)} – ${fmt(e)}, ${s.getFullYear()}`;
 }
 
+/**
+ * Formats a numeric amount as a whole-number currency string (no decimals).
+ * Uses the `en-US` locale with `Intl.NumberFormat`.
+ *
+ * @param amount - Numeric amount to format
+ * @param currency - ISO 4217 currency code (default: "USD")
+ * @returns Formatted string (e.g. "$1,234")
+ * @example formatCurrency(1234.5, "USD") // → "$1,235"
+ */
 export function formatCurrency(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -13,7 +38,19 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   }).format(amount);
 }
 
-/** Upscale image URLs from various sources to usable sizes */
+/**
+ * Upscales image URLs from Google Places / googleusercontent and Foursquare
+ * to a larger resolution suitable for full-screen display.
+ *
+ * - Google: rewrites `=wNNN-hNNN` size tokens to the target dimensions.
+ * - Foursquare: replaces size path segments with `"original"` for full resolution.
+ * - Other URLs are returned unchanged.
+ *
+ * @param url - Image URL to upscale, or null/undefined
+ * @param width - Target width in pixels (default: 1200)
+ * @param height - Target height in pixels (default: 800)
+ * @returns Upscaled URL, or null if the input is null/undefined/empty
+ */
 export function upscaleGoogleImage(url: string | null | undefined, width = 1200, height = 800): string | null {
   if (!url || url.length < 10) return null;
   // Google Places / googleusercontent thumbnails
@@ -29,7 +66,13 @@ export function upscaleGoogleImage(url: string | null | undefined, width = 1200,
   return url;
 }
 
-/** Check if an image URL looks valid enough to render */
+/**
+ * Returns true if a URL looks like a valid, renderable image link.
+ * Checks that the URL is non-empty and starts with "http".
+ *
+ * @param url - URL to validate
+ * @returns `true` if the URL appears valid
+ */
 export function isValidImageUrl(url: string | null | undefined): boolean {
   if (!url || url.length < 10) return false;
   // Must start with http
@@ -38,9 +81,13 @@ export function isValidImageUrl(url: string | null | undefined): boolean {
 }
 
 /**
- * Get the best available hero image for a trip.
- * Tries: hero_image_url → hero_images[0] → destination_photo_url.
- * Returns null if none found — caller should fetch dynamically.
+ * Gets the best available hero image URL for a trip.
+ * Resolution order: `hero_image_url` → `hero_images[0]` → `destination_photo_url`.
+ * Google-proxied URLs are automatically upscaled.
+ * Returns null if no image is found — callers should fetch dynamically.
+ *
+ * @param trip - Trip object with optional `trip_context` JSON blob
+ * @returns Hero image URL string, or null if none is available
  */
 export function getTripHeroImage(trip: { destination?: string | null; trip_context?: any } | null): string | null {
   const ctx = trip?.trip_context;
@@ -69,8 +116,16 @@ export {
 
 /**
  * Picks `count` random items from `pool`, excluding IDs already in `shownIds`.
- * When the available pool is exhausted, resets and starts fresh.
- * Does NOT mutate the input array.
+ * When the available pool is exhausted, resets `shownIds` and uses the full pool.
+ * Does NOT mutate the input array. Updates `shownIds` with newly picked IDs.
+ *
+ * @param pool - Array of items to pick from; each item must have an `id` field
+ * @param count - Number of items to pick
+ * @param shownIds - Mutable set of already-shown IDs (updated in place)
+ * @returns Array of `count` freshly picked items (Fisher-Yates shuffled)
+ * @example
+ * const shown = new Set<string>()
+ * const picks = pickFresh(allPlaces, 4, shown)
  */
 export function pickFresh<T extends { id: string }>(
   pool: T[],
@@ -98,7 +153,12 @@ export function pickFresh<T extends { id: string }>(
 }
 
 /**
- * Shuffles an array in place using Fisher-Yates. Returns a new array.
+ * Returns a new array that is a Fisher-Yates shuffled copy of the input.
+ * The original array is not mutated.
+ *
+ * @param items - Array to shuffle
+ * @returns New shuffled array of the same type
+ * @example shuffle([1, 2, 3, 4]) // → e.g. [3, 1, 4, 2]
  */
 export function shuffle<T>(items: T[]): T[] {
   const result = [...items];
@@ -107,6 +167,30 @@ export function shuffle<T>(items: T[]): T[] {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+/**
+ * Returns the base URL for web API requests, selecting the correct origin
+ * for the current runtime environment.
+ *
+ * - On web (Next.js): returns `""` (empty string) so requests use relative paths.
+ * - On mobile (Expo): reads `EXPO_PUBLIC_WEB_API_URL` from the environment.
+ *
+ * All components should call this instead of defining their own WEB_API constants.
+ *
+ * @returns Base URL string (e.g. "https://www.travyl.com" on mobile, "" on web)
+ */
+export function getWebApiBase(): string {
+  // Expo's Babel plugin only inlines direct `process.env.EXPO_PUBLIC_X` references.
+  // Optional chaining (`process.env?.`) breaks the transform in Hermes/EAS builds.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const url = process.env.EXPO_PUBLIC_WEB_API_URL;
+    if (url) return url;
+  } catch {
+    // process.env may not exist in some runtimes
+  }
+  return '';
 }
 
 // Session tracker — re-export for public barrel
@@ -143,7 +227,17 @@ export type { SpotlightResult } from './entitySearch'
 export { computeGaps as computeTimeGaps } from './gaps'
 export type { TimeGap } from './gaps'
 
-/** Returns distance in km between two lat/lng points (Haversine formula) */
+/**
+ * Returns the straight-line distance in kilometres between two lat/lng points
+ * using the Haversine formula. Assumes a spherical Earth (radius 6371 km).
+ *
+ * @param lat1 - Latitude of point 1 in decimal degrees
+ * @param lng1 - Longitude of point 1 in decimal degrees
+ * @param lat2 - Latitude of point 2 in decimal degrees
+ * @param lng2 - Longitude of point 2 in decimal degrees
+ * @returns Distance in kilometres
+ * @example haversineKm(48.8566, 2.3522, 51.5074, -0.1278) // → ~341 km (Paris → London)
+ */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)

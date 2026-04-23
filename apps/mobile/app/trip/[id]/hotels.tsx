@@ -1,11 +1,25 @@
-import { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking } from 'react-native';
+import { useState, useMemo, useEffect, useContext, useRef } from 'react';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PageTransition, useTabAccent } from './_layout';
+import * as WebBrowser from 'expo-web-browser';
+import { ActivityIndicator } from 'react-native';
+import { PageTransition, useTabAccent, TabCtx } from './_layout';
+// Conditionally import react-native-maps (crashes on web)
+let MapView: any = View;
+let Marker: any = View;
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch {}
+}
+import { CardStackCarousel } from '@/components/places/CardStackCarousel';
+import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage } from '@travyl/shared';
+import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -271,7 +285,7 @@ function RoomSelection({
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ ...TextStyles.bodyXlEm, color: isSelected ? ACCENT : colors.text }}>
-                        {'\u20ac'}{room.price}
+                        ${room.price}
                       </Text>
                       <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
                     </View>
@@ -298,11 +312,9 @@ function RoomSelection({
 /*  Price Breakdown Section                                            */
 /* ------------------------------------------------------------------ */
 
-function PriceBreakdown({ room, pricePerNight }: { room: RoomType; pricePerNight: number }) {
-  const ACCENT = useTabAccent('hotels');
+function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; pricePerNight: number; nights: number }) {
   const colors = useThemeColors();
-  const [isOpen, setIsOpen] = useState(false);
-  const nights = 5;
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const subtotal = pricePerNight * nights;
   const cityTax = 3.5 * 2 * nights;
   const serviceFee = 12;
@@ -311,55 +323,56 @@ function PriceBreakdown({ room, pricePerNight }: { room: RoomType; pricePerNight
 
   return (
     <View style={{ marginTop: 14 }}>
-      <SectionToggle
-        title="Price Breakdown"
-        icon="calculator"
-        isOpen={isOpen}
-        onToggle={() => setIsOpen(!isOpen)}
-        badge={`\u20ac${total.toFixed(0)} total`}
-      />
-      {isOpen && (
-        <View style={{ backgroundColor: ACCENT + '08', borderRadius: 10, padding: 14 }}>
-          <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Room</Text>
-              <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{room.type}</Text>
-            </View>
+      <Pressable
+        onPress={() => setBreakdownOpen(!breakdownOpen)}
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 10,
+          padding: 14,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <FontAwesome name="calculator" size={14} color={colors.tint} />
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
+              Total Cost ({nights} night{nights !== 1 ? 's' : ''})
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.tint }}>${total.toFixed(0)}</Text>
+            <FontAwesome name={breakdownOpen ? 'chevron-up' : 'chevron-down'} size={10} color="#94a3b8" />
+          </View>
+        </View>
+
+        {breakdownOpen && (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            <View style={{ height: 1, backgroundColor: 'colors.borderLight' }} />
+
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Nightly Rate</Text>
-              <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{'\u20ac'}{pricePerNight}</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>${pricePerNight}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{nights} nights subtotal</Text>
-              <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>{'\u20ac'}{subtotal.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Subtotal ({nights} nights)</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>${subtotal.toFixed(2)}</Text>
             </View>
-
-            <View style={{ height: 1, backgroundColor: ACCENT + '15', marginVertical: 4 }} />
-            <Text style={{ ...TextStyles.smEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Taxes & Fees
-            </Text>
-
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>City Tax</Text>
-              <Text style={{ ...TextStyles.body, color: colors.text }}>{'\u20ac'}{cityTax.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Taxes</Text>
+              <Text style={{ ...TextStyles.body, color: colors.text }}>${(cityTax + vat).toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Service Fee</Text>
-              <Text style={{ ...TextStyles.body, color: colors.text }}>{'\u20ac'}{serviceFee.toFixed(2)}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>VAT (10%)</Text>
-              <Text style={{ ...TextStyles.body, color: colors.text }}>{'\u20ac'}{vat.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.body, color: colors.text }}>${serviceFee.toFixed(2)}</Text>
             </View>
 
-            <View style={{ height: 1, backgroundColor: ACCENT + '25', marginVertical: 4 }} />
+            <View style={{ height: 1, backgroundColor: 'colors.border', marginTop: 4 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Total</Text>
-              <Text style={{ ...TextStyles.subhead, color: ACCENT }}>{'\u20ac'}{total.toFixed(2)}</Text>
+              <Text style={{ ...TextStyles.subhead, color: colors.tint }}>${total.toFixed(2)}</Text>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </Pressable>
     </View>
   );
 }
@@ -543,39 +556,43 @@ function AmenitiesSection({ categories }: { categories: HotelData['amenityCatego
 /*  Other Hotel Compact Card                                           */
 /* ------------------------------------------------------------------ */
 
-function OtherHotelCard({ hotel }: { hotel: { id: string; name: string; stars: number; rating: number; label?: string; reviews: number; price: number; neighborhood: string; image: string } }) {
+function OtherHotelCard({ hotel, onPress }: { hotel: { id: string; name: string; stars: number; rating: number; label?: string; reviews: number; price: number; neighborhood: string; image: string }; onPress?: () => void }) {
   const ACCENT = useTabAccent('hotels');
   const colors = useThemeColors();
   return (
-    <View
-      style={{
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
         flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
         borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
-      }}
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
-      <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" />
-      <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>
-              {hotel.name}
-            </Text>
-            <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT, marginLeft: 8 }}>
-              {'\u20ac'}{hotel.price}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-            <StarRow count={hotel.stars} />
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
-          </View>
+      {hotel.image ? (
+        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" />
+      ) : (
+        <View style={{ width: 90, height: 100, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+          <FontAwesome name="building" size={24} color="rgba(255,255,255,0.3)" />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-          <RatingBadge rating={hotel.rating} />
-          <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{hotel.label}</Text>
-          <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
+      )}
+      <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }} numberOfLines={1}>{hotel.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              {hotel.stars > 0 && <StarRow count={hotel.stars} />}
+              {hotel.rating > 0 && <RatingBadge rating={hotel.rating} />}
+            </View>
+          </View>
+          {hotel.price > 0 && (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>${hotel.price}</Text>
+              <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
+            </View>
+          )}
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -744,46 +761,84 @@ function HotelFilterBar({
 /*  Browse Hotel Card                                                  */
 /* ------------------------------------------------------------------ */
 
-function BrowseHotelCard({ hotel }: { hotel: { id: string; name: string; stars: number; rating: number; reviews: number; price: number; neighborhood: string; image: string; amenities?: string[]; brand?: string; label?: string } }) {
-  const ACCENT = useTabAccent('hotels');
+function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id: string; name: string; stars: number; rating: number; reviews: number; price: number; neighborhood: string; image: string; amenities?: string[]; brand?: string; label?: string }; onPress?: () => void; isSelected?: boolean; isBooked?: boolean }) {
   const colors = useThemeColors();
+  const AMENITY_MAP: Record<string, string> = { 'Free WiFi': 'wifi', WiFi: 'wifi', Pool: 'tint', 'Swimming Pool': 'tint', Gym: 'heartbeat', Spa: 'diamond', Breakfast: 'coffee', Parking: 'car', Restaurant: 'cutlery', 'Air Conditioning': 'snowflake-o', 'Room Service': 'building' };
   return (
-    <View
-      style={{
-        flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
-        borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginBottom: 10,
-      }}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        backgroundColor: colors.cardBackground, borderRadius: 14, overflow: 'hidden', marginBottom: 14,
+        borderWidth: isSelected ? 2 : 1,
+        borderColor: isSelected ? '#60a5fa' : isBooked ? 'rgba(30,58,95,0.3)' : colors.border,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+        opacity: pressed ? 0.92 : 1,
+      })}
     >
-      <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 110, height: 120 }} resizeMode="cover" />
-      <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>
-              {hotel.name}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-            <StarRow count={hotel.stars} />
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, marginLeft: 4 }}>{hotel.neighborhood}</Text>
-          </View>
+      {/* Selected/Booked indicator */}
+      {(isSelected || isBooked) && (
+        <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, backgroundColor: isBooked ? '#1e3a5f' : '#60a5fa', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+          <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>{isBooked ? 'Booked' : 'Viewing'}</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-          <RatingBadge rating={hotel.rating} />
-          <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{hotel.reviews.toLocaleString()} reviews</Text>
+      )}
+
+      {/* Image */}
+      {hotel.image ? (
+        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: '100%', height: 170 }} resizeMode="cover" />
+      ) : (
+        <View style={{ width: '100%', height: 110, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+          <FontAwesome name="building" size={28} color="rgba(255,255,255,0.3)" />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-          {hotel.label ? (
-            <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-              <Text style={{ ...TextStyles.xs, color: ACCENT }}>{hotel.label}</Text>
+      )}
+
+      {/* Info */}
+      <View style={{ padding: 14 }}>
+        {/* Name */}
+        <Text style={{ ...TextStyles.bodyLgEm, fontFamily: FontFamily.serif, color: colors.text }} numberOfLines={1}>{hotel.name}</Text>
+
+        {/* Badges row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+          {hotel.rating > 0 && (
+            <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="star" size={9} color="#2563eb" />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: '#1e40af' }}>{hotel.rating}/5{hotel.reviews > 0 ? ` (${hotel.reviews})` : ''}</Text>
             </View>
-          ) : <View />}
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ ...TextStyles.subhead, color: ACCENT }}>{'\u20ac'}{hotel.price}</Text>
-            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
+          )}
+          {hotel.stars > 0 && <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.stars}-Star</Text>}
+          <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: '#059669' }}>Free Cancel</Text>
           </View>
         </View>
+
+        {/* Address */}
+        {!!hotel.neighborhood && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+            <FontAwesome name="map-marker" size={10} color="#9ca3af" />
+            <Text style={{ fontSize: 11, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{hotel.neighborhood}</Text>
+          </View>
+        )}
+
+        {/* Amenities with icons */}
+        {hotel.amenities && hotel.amenities.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+            {hotel.amenities.slice(0, 5).map((a) => (
+              <View key={a} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name={(AMENITY_MAP[a] || 'check') as any} size={10} color={colors.tint} />
+                <Text style={{ fontSize: 10, color: colors.textSecondary }}>{a}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Price row */}
+        {hotel.price > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+            <Text style={{ ...TextStyles.title, color: colors.text }}>${hotel.price}</Text>
+            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 6 }}>/night</Text>
+          </View>
+        )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -839,6 +894,183 @@ function HotelPoliciesSection() {
 /*  Loading Skeleton                                                   */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Hotel List Card — matches Figma "Other Hotels" card exactly        */
+/* ------------------------------------------------------------------ */
+
+function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number; onPress: () => void }) {
+  const colors = useThemeColors();
+  const [imgIdx, setImgIdx] = useState(0);
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const images: string[] = [];
+  if (hotel.images) images.push(...hotel.images);
+  if (hotel.image && !images.includes(hotel.image)) images.push(hotel.image);
+  const hasMultiple = images.length > 1;
+  const total = hotel.price * nights;
+  const AMENITY_MAP: Record<string, string> = { 'Free WiFi': 'wifi', WiFi: 'wifi', Pool: 'tint', Gym: 'heartbeat', Spa: 'diamond', Breakfast: 'coffee', Parking: 'car', Restaurant: 'cutlery', 'Air Conditioning': 'snowflake-o', AC: 'snowflake-o', '24/7 Desk': 'clock-o', 'Room Service': 'building', 'Swimming Pool': 'tint', Sauna: 'fire', 'Pet-friendly': 'paw', 'Public bath': 'bath', Bar: 'glass', 'Kid-friendly': 'child', Kitchen: 'cutlery', Accessible: 'wheelchair' };
+  const address = hotel.address || hotel.neighborhood || '';
+
+  return (
+    <View style={{
+      marginBottom: 28, marginHorizontal: 6, borderRadius: 18,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 8,
+      backgroundColor: '#fff',
+    }}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          borderRadius: 18, overflow: 'hidden',
+          borderWidth: 1, borderColor: '#e5e7eb',
+          opacity: pressed ? 0.95 : 1,
+        })}
+      >
+        {/* ── Image ── */}
+        <View style={{ height: 200, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' }}>
+          {images.length > 0 ? (
+            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome name="building" size={36} color="rgba(255,255,255,0.25)" />
+            </View>
+          )}
+          {/* Counter — bottom left */}
+          {images.length > 0 && (
+            <View style={{ position: 'absolute', bottom: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>{imgIdx + 1}/{images.length}</Text>
+            </View>
+          )}
+          {/* Arrows — only when multiple images */}
+          {hasMultiple && (
+            <>
+              <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === 0 ? images.length - 1 : i - 1)} style={{ position: 'absolute', left: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome name="chevron-left" size={10} color="#374151" />
+              </Pressable>
+              <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === images.length - 1 ? 0 : i + 1)} style={{ position: 'absolute', right: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome name="chevron-right" size={10} color="#374151" />
+              </Pressable>
+            </>
+          )}
+        </View>
+
+        {/* ── Content ── */}
+        <View style={{ padding: 20, paddingTop: 16 }}>
+          {/* Name */}
+          <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: '#111827', lineHeight: 24 }} numberOfLines={2}>{hotel.name}</Text>
+
+          {/* Rating row — tappable to toggle reviews */}
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (!hotel.reviews) return;
+              if (showReviews) { setShowReviews(false); return; }
+              setShowReviews(true);
+              if (reviews.length > 0) return;
+              setLoadingReviews(true);
+              const base = getWebApiBase();
+              fetch(`${base}/api/hotels/reviews?name=${encodeURIComponent(hotel.name)}&location=${encodeURIComponent(address)}`)
+                .then(r => r.ok ? r.json() : { reviews: [] })
+                .then(d => { setReviews(d.reviews ?? []); setLoadingReviews(false); })
+                .catch(() => setLoadingReviews(false));
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 10 }}
+          >
+            {hotel.rating > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="star" size={12} color="#f59e0b" />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e40af' }}>{hotel.rating}/5</Text>
+                {hotel.reviews > 0 && <Text style={{ fontSize: 12, color: '#6b7280' }}>({hotel.reviews})</Text>}
+              </View>
+            )}
+            {hotel.stars > 0 && <Text style={{ fontSize: 12, color: '#6b7280' }}>{hotel.stars}-Star</Text>}
+            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: '#6ee7b7' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#059669' }}>Free Cancel</Text>
+            </View>
+          </Pressable>
+
+          {/* Address */}
+          {!!address && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+              <FontAwesome name="map-marker" size={12} color="#9ca3af" />
+              <Text style={{ fontSize: 13, color: '#6b7280', flex: 1 }} numberOfLines={1}>{address}</Text>
+            </View>
+          )}
+
+          {/* Amenities */}
+          {hotel.amenities && hotel.amenities.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 }}>
+              {hotel.amenities.slice(0, 5).map((a: string) => (
+                <View key={a} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <FontAwesome name={(AMENITY_MAP[a] || 'check') as any} size={12} color={colors.tint} />
+                  <Text style={{ fontSize: 12, color: '#4b5563' }}>{a}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Check-in/out */}
+          {(!!hotel.checkIn || !!hotel.checkOut) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
+              <FontAwesome name="clock-o" size={11} color="#9ca3af" />
+              <Text style={{ fontSize: 12, color: '#6b7280' }}>
+                Check-in: {hotel.checkIn || '3:00 PM'} {'\u00B7'} Check-out: {hotel.checkOut || '11:00 AM'}
+              </Text>
+            </View>
+          )}
+
+          {/* Price */}
+          {hotel.price > 0 && (
+            <View style={{ marginTop: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                <Text style={{ fontSize: 28, fontFamily: FontFamily.sansBold, color: '#111827' }}>${total > 0 ? total.toFixed(0) : hotel.price}</Text>
+                <Text style={{ fontSize: 13, color: '#9ca3af', marginLeft: 8 }}>
+                  (${hotel.price}/nt {'\u00B7'} {nights} night{nights !== 1 ? 's' : ''})
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Inline reviews — shown when stars are tapped */}
+          {showReviews && (
+            <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 10 }}>
+              {loadingReviews ? (
+                <ActivityIndicator size="small" color={colors.tint} style={{ paddingVertical: 12 }} />
+              ) : reviews.length === 0 ? (
+                <Text style={{ fontSize: 13, color: '#9ca3af', paddingVertical: 8 }}>No reviews loaded yet</Text>
+              ) : (
+                reviews.map((r: any, i: number) => (
+                  <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f3f4f6' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {r.avatar ? (
+                        <Image source={{ uri: r.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+                      ) : (
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' }}>
+                          <FontAwesome name="user" size={12} color="#9ca3af" />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{r.author}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          {Array.from({ length: 5 }).map((_, si) => (
+                            <FontAwesome key={si} name="star" size={9} color={si < r.rating ? '#f59e0b' : '#e5e7eb'} />
+                          ))}
+                          {!!r.date && <Text style={{ fontSize: 10, color: '#9ca3af', marginLeft: 4 }}>{r.date}</Text>}
+                        </View>
+                      </View>
+                    </View>
+                    {!!r.text && <Text style={{ fontSize: 13, color: '#4b5563', lineHeight: 19, marginTop: 6 }} numberOfLines={3}>{r.text}</Text>}
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
 function HotelSkeleton() {
   const colors = useThemeColors();
   return (
@@ -880,8 +1112,14 @@ export default function HotelsScreen() {
   const ACCENT = useTabAccent('hotels');
   const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
-  const { trip } = useItineraryScreen(_id);
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
+  const { trip } = useItineraryScreen(id);
   const [selectedRoom, setSelectedRoom] = useState(0);
+  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('cards');
+  const [cardIdx, setCardIdx] = useState(-1); // -1 = hidden
+  const [selectedHotelIdx, setSelectedHotelIdx] = useState(0);
+  const [detailExpanded, setDetailExpanded] = useState(true);
   const [booked, setBooked] = useState(false);
   const [confirmationNumber, setConfirmationNumber] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -926,27 +1164,66 @@ export default function HotelsScreen() {
   });
   const searchHotels = useMemo(() => {
     const hotels = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? [];
-    return hotels.map((h: any, i: number) => ({
-      id: h.id || `search-${i}`,
-      name: h.name,
-      stars: h.stars ?? 0,
-      rating: h.rating ?? 0,
-      reviews: h.reviews ?? 0,
-      price: h.price ?? 0,
-      neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
-      image: h.images?.[0] ?? h.image ?? '',
-      amenities: h.amenities ?? [],
-      brand: '',
-      label: '',
-    }));
+    return hotels.map((h: any, i: number) => {
+      // Parse stars — can be number or string like "1-star hotel"
+      const rawStars = h.stars;
+      const parsedStars = typeof rawStars === 'number' ? rawStars : typeof rawStars === 'string' ? parseInt(rawStars) || 0 : 0;
+      return {
+        id: h.id || `search-${i}`,
+        name: h.name,
+        stars: parsedStars,
+        rating: h.rating ?? 0,
+        reviews: h.reviews ?? 0,
+        price: h.price ?? 0,
+        neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
+        image: h.images?.[0] ?? h.image ?? '',
+        images: h.images ?? [],
+        amenities: h.amenities ?? [],
+        checkIn: h.checkIn ?? '',
+        checkOut: h.checkOut ?? '',
+        link: h.link ?? '',
+        description: h.description ?? '',
+        address: h.address ?? '',
+        lat: h.lat ?? 0,
+        lng: h.lng ?? 0,
+        brand: '',
+        label: '',
+      };
+    });
   }, [searchResults]);
 
-  // Merge: context first, then search results (deduped by name)
+  // Merge: search results (have images) first, then context hotels without dupes
   const realHotels = useMemo(() => {
-    const seen = new Set(contextHotels.map((h: any) => h.name.toLowerCase()));
-    const extra = searchHotels.filter((h: any) => !seen.has(h.name.toLowerCase()));
-    return [...contextHotels, ...extra];
+    const seen = new Set(searchHotels.map((h: any) => h.name.toLowerCase()));
+    const extra = contextHotels.filter((h: any) => !seen.has(h.name.toLowerCase()));
+    return [...searchHotels, ...extra];
   }, [contextHotels, searchHotels]);
+
+  // Convert hotels to PlaceItem[] for CardStackCarousel
+  const hotelPlaces = useMemo<PlaceItem[]>(() =>
+    realHotels.map((h: any) => ({
+      id: h.id,
+      name: h.name,
+      image: h.image || '',
+      images: h.images ?? (h.image ? [h.image] : []),
+      type: 'hotel' as const,
+      rating: h.rating ?? 0,
+      tagline: [h.stars > 0 ? `${h.stars}-Star` : '', h.neighborhood].filter(Boolean).join(' · '),
+      category: 'Hotel',
+      description: [
+        h.amenities?.join(' · '),
+        h.checkIn ? `Check-in: ${h.checkIn}` : '',
+        h.checkOut ? `Check-out: ${h.checkOut}` : '',
+      ].filter(Boolean).join('\n'),
+      tags: h.amenities?.slice(0, 4) ?? [],
+      price: h.price > 0 ? `$${h.price}/night` : undefined,
+      website: h.link || undefined,
+      address: h.address || h.neighborhood || '',
+      latitude: h.lat || undefined,
+      longitude: h.lng || undefined,
+    })),
+    [realHotels],
+  );
 
   const filteredHotels = useMemo(() => {
     let result = [...realHotels];
@@ -967,18 +1244,19 @@ export default function HotelsScreen() {
       default: break;
     }
     return result;
-  }, [starFilter, amenityFilter, brandFilter, sortBy]);
+  }, [realHotels, starFilter, amenityFilter, brandFilter, sortBy]);
 
-  // Use first real hotel from trip_context — no fabricated defaults
+  // Build detail from the selected hotel in the browse list
   const hotel = useMemo<HotelData | null>(() => {
-    const source = ctx?.all_hotels ?? ctx?.hotels ?? [];
-    const h = source[0];
+    const contextSource = ctx?.all_hotels ?? ctx?.hotels ?? [];
+    const searchSource = searchResults ? (Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? []) : [];
+    const allSources = [...contextSource, ...searchSource];
+    const h = realHotels[selectedHotelIdx] ?? allSources[0] ?? realHotels[0];
     if (!h) return null;
     const price = h.price ?? h.price_per_night ?? 0;
     const stars = h.stars ?? 0;
     const rating = h.rating ?? 0;
     const ratingLabel = rating >= 4.5 ? 'Superb' : rating >= 4 ? 'Excellent' : rating > 0 ? 'Very Good' : '';
-    // Only include room types if we have real room data from the API
     const roomTypes: RoomType[] = Array.isArray(h.room_types) && h.room_types.length > 0
       ? h.room_types.map((r: any) => ({
           type: r.type || 'Room',
@@ -992,20 +1270,28 @@ export default function HotelsScreen() {
       : price > 0
         ? [{ type: 'Standard Room', beds: '', guests: 2, size: '', price, image: '', amenities: [] }]
         : [];
+    // Collect all available images
+    const images = [
+      ...(Array.isArray(h.images) ? h.images : []),
+      upscaleGoogleImage(h.image ?? h.photo_url) || h.image || h.photo_url,
+    ].filter(Boolean) as string[];
+    // Dedupe
+    const uniqueImages = [...new Set(images)];
+    const amenities = (h.amenities ?? []).slice(0, 8);
     return {
       id: h.id || 'h1',
       name: h.name,
       stars,
       rating,
-      reviews: h.ratingCount ?? h.review_count ?? 0,
+      reviews: h.ratingCount ?? h.review_count ?? h.reviews ?? 0,
       price,
       address: h.address || '',
-      neighborhood: h.address?.split(',')[0] || '',
-      images: [h.image ?? h.photo_url].filter(Boolean) as string[],
-      amenities: (h.amenities ?? []).slice(0, 8),
+      neighborhood: h.neighborhood ?? (h.address?.split(',')[0] || ''),
+      images: uniqueImages,
+      amenities,
       amenityCategories: [
-        { category: 'Room', items: (h.amenities ?? []).filter((a: string) => /wifi|tv|ac|air|heat|iron|kitchen/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
-        { category: 'Services', items: (h.amenities ?? []).filter((a: string) => /park|shuttle|elevator|pet|smoke|wheel/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
+        { category: 'Room', items: amenities.filter((a: string) => /wifi|tv|ac|air|heat|iron|kitchen/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
+        { category: 'Services', items: amenities.filter((a: string) => /park|shuttle|elevator|pet|smoke|wheel/i.test(a)).map((a: string) => ({ name: a, icon: 'check' })) },
       ].filter(c => c.items.length > 0),
       roomTypes,
       checkIn: trip?.start_date ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
@@ -1023,19 +1309,19 @@ export default function HotelsScreen() {
         value: 0,
       },
     };
-  }, [ctx, trip]);
-  if (!hotel) {
+  }, [ctx, trip, searchResults, realHotels, selectedHotelIdx]);
+  if (!hotel && realHotels.length === 0) {
     return (
       <PageTransition>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 32 }}>
           <FontAwesome name="building-o" size={28} color={colors.textTertiary} />
-          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 12 }}>No Hotels Yet</Text>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>Hotel recommendations will appear once the trip is enriched.</Text>
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 12 }}>No Hotels Yet</Text>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>Hotel recommendations will appear once the trip is enriched.</Text>
         </View>
       </PageTransition>
     );
   }
-  const currentRoom = hotel.roomTypes.length > 0 ? hotel.roomTypes[selectedRoom] : null;
+  const currentRoom = hotel && hotel.roomTypes.length > 0 ? hotel.roomTypes[selectedRoom] : null;
 
   const handleBook = () => {
     const conf = generateConfirmation();
@@ -1043,205 +1329,229 @@ export default function HotelsScreen() {
     setBooked(true);
   };
 
+  const scrollRef = useRef<ScrollView>(null);
+  const detailRef = useRef<View>(null);
+  const detailYRef = useRef(0);
+
   return (
     <PageTransition>
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
+      ref={scrollRef}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Browse Hotels ── */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-        <SectionToggle
-          title="Browse Hotels"
-          icon="search"
-          isOpen={showBrowse}
-          onToggle={() => setShowBrowse(!showBrowse)}
-          badge={`${filteredHotels.length} hotels`}
-        />
-        {showBrowse && (
-          <View style={{ marginTop: 10 }}>
-            <HotelFilterBar
-              showFilters={showFilters}
-              setShowFilters={setShowFilters}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              starFilter={starFilter}
-              setStarFilter={setStarFilter}
-              amenityFilter={amenityFilter}
-              setAmenityFilter={setAmenityFilter}
-              brandFilter={brandFilter}
-              setBrandFilter={setBrandFilter}
-            />
-            {isLoading ? (
-              <HotelSkeleton />
-            ) : filteredHotels.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                <FontAwesome name="search" size={24} color="#d1d5db" />
-                <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary, marginTop: 8 }}>No hotels match your filters</Text>
-              </View>
-            ) : (
-              filteredHotels.map((h) => <BrowseHotelCard key={h.id} hotel={h} />)
-            )}
+      {/* ── Selected Hotel Detail (top, like Figma) ── */}
+      {hotel && (() => {
+        const nights = (trip?.start_date && trip?.end_date)
+          ? Math.max(1, Math.round((new Date(trip.end_date + 'T00:00:00').getTime() - new Date(trip.start_date + 'T00:00:00').getTime()) / 86400000))
+          : 1;
+        const pricePerNight = currentRoom?.price ?? hotel.price;
+        const subtotal = pricePerNight * nights;
+        const cityTax = 3.5 * 2 * nights;
+        const serviceFee = 12;
+        const vat = subtotal * 0.1;
+        const totalCost = subtotal + cityTax + serviceFee + vat;
+        return (
+      <View onLayout={(e) => { detailYRef.current = e.nativeEvent.layout.y; }} style={{ paddingHorizontal: 16, marginTop: 16 }}>
+
+        {/* ── Banner ── */}
+        <LinearGradient
+          colors={booked ? ['#1e3a5f', '#2c4f7f'] : ['#60a5fa', '#60a5fa']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <FontAwesome name="building" size={14} color="#fff" />
+            <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{booked ? 'Your Hotel' : 'Selected Hotel'}</Text>
           </View>
-        )}
-      </View>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
+            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{selectedHotelIdx + 1}/{realHotels.length}</Text>
+          </View>
+        </LinearGradient>
 
-      {/* ── Selected Hotel Detail ── */}
-      <View style={{ backgroundColor: colors.background, borderRadius: 0, overflow: 'hidden' }}>
+        {/* ── Card Body ── */}
+        <View style={{ backgroundColor: colors.cardBackground, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, borderWidth: 1, borderTopWidth: 0, borderColor: colors.border, overflow: 'hidden' }}>
 
-        {/* Image Carousel — only show if we have real images */}
-        {hotel.images.length > 0 && <ImageCarousel images={hotel.images} height={240} />}
-
-        {/* Hotel Info Header */}
-        <View style={{ padding: 16 }}>
-
-          {/* Name & Stars Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ ...TextStyles.title, color: colors.text }}>{hotel.name}</Text>
-              {hotel.stars > 0 && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <StarRow count={hotel.stars} />
-                  <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{hotel.stars}-star hotel</Text>
-                </View>
-              )}
+          {/* Badges Row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingTop: 14 }}>
+            <View style={{ backgroundColor: booked ? '#1e3a5f' : '#60a5fa', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 }}>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{booked ? 'Confirmed' : 'Selected'}</Text>
             </View>
             {hotel.rating > 0 && (
-              <View style={{ alignItems: 'flex-end' }}>
-                <RatingBadge rating={hotel.rating} />
-                {!!hotel.guestRatings.label && (
-                  <Text style={{ ...TextStyles.smEm, color: ratingColor(hotel.rating, ACCENT), marginTop: 3 }}>
-                    {hotel.guestRatings.label}
-                  </Text>
-                )}
+              <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="star" size={10} color="#2563eb" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1e40af' }}>{hotel.rating}/5</Text>
+                {hotel.reviews > 0 && <Text style={{ fontSize: 11, color: '#3b82f6' }}>({hotel.reviews.toLocaleString()})</Text>}
               </View>
             )}
           </View>
 
-          {/* Address */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
-            <FontAwesome name="map-marker" size={13} color="#9ca3af" />
-            <Text style={{ ...TextStyles.body, color: colors.textSecondary, flex: 1 }}>{hotel.address}</Text>
-          </View>
+          {/* Hotel Name */}
+          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.serif, color: colors.text, paddingHorizontal: 14, marginTop: 8 }} numberOfLines={2}>{hotel.name}</Text>
 
-          {/* Reviews count — only show if we have real review data */}
-          {hotel.reviews > 0 && (
-            <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 4 }}>
-              {hotel.reviews.toLocaleString()} verified reviews
-            </Text>
+          {/* Stars row */}
+          {hotel.stars > 0 && (
+            <View style={{ paddingHorizontal: 14, marginTop: 4 }}>
+              <StarRow count={hotel.stars} />
+            </View>
           )}
 
-          {/* Check-in / Check-out Badges — only show if dates available */}
+          {/* Check-in/out + cancellation inline */}
           {(!!hotel.checkIn || !!hotel.checkOut) && (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              {!!hotel.checkIn && (
-                <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
-                  <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-in</Text>
-                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{hotel.checkIn}</Text>
-                </View>
-              )}
-              {!!hotel.checkOut && (
-                <View style={{ flex: 1, backgroundColor: ACCENT + '08', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: ACCENT + '15' }}>
-                  <Text style={{ ...TextStyles.smEm, color: ACCENT, marginBottom: 2 }}>Check-out</Text>
-                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{hotel.checkOut}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Cancellation — only show if policy text exists */}
-          {!!hotel.cancellation && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: '#f0fdf4', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#bbf7d0' }}>
-              <FontAwesome name="shield" size={11} color="#16a34a" />
-              <Text style={{ ...TextStyles.captionEm, color: '#16a34a' }}>{hotel.cancellation}</Text>
-            </View>
-          )}
-
-          {/* ── Collapsible Sections ── */}
-
-          {/* Room Selection — only show if real room data exists */}
-          {hotel.roomTypes.length > 0 && currentRoom && (
-            <RoomSelection rooms={hotel.roomTypes} selectedRoom={selectedRoom} onSelect={setSelectedRoom} />
-          )}
-
-          {/* Price Breakdown — only show if real room data exists */}
-          {currentRoom && currentRoom.price > 0 && (
-            <PriceBreakdown room={currentRoom} pricePerNight={currentRoom.price} />
-          )}
-
-          {/* Contact & Location — only shown when at least one field is populated */}
-          {(!!hotel.phone || !!hotel.email || !!hotel.address) && (
-            <ContactActions phone={hotel.phone} email={hotel.email} address={hotel.address} />
-          )}
-
-          {/* Guest Ratings — only show if we have a real overall rating */}
-          {hotel.guestRatings.overall > 0 && (
-            <GuestRatingsSection ratings={hotel.guestRatings} reviews={hotel.reviews} />
-          )}
-
-          {/* Amenities */}
-          <AmenitiesSection categories={hotel.amenityCategories} />
-
-          {/* Hotel Policies */}
-          <HotelPoliciesSection />
-
-          {/* Book Hotel Button — only show if rooms are available */}
-          {currentRoom && (
-          <View style={{ marginTop: 20 }}>
-            {booked ? (
-              <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center' }}>
-                <FontAwesome name="check-circle" size={28} color="#16a34a" />
-                <Text style={{ ...TextStyles.subhead, color: '#16a34a', marginTop: 8 }}>Hotel Booked!</Text>
-                <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 4 }}>Confirmation: {confirmationNumber}</Text>
-                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
-                  {currentRoom.type} {'\u00b7'} {'\u20ac'}{currentRoom.price}/night
-                </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingHorizontal: 14, marginTop: 8 }}>
+              <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>
+                {hotel.checkIn ? `Check-in: 3pm` : ''}{hotel.checkIn && hotel.checkOut ? ' \u00B7 ' : ''}{hotel.checkOut ? `Check-out: 11am` : ''}
+              </Text>
+              <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0' }}>
+                <Text style={{ ...TextStyles.xs, color: '#16a34a', fontWeight: '600' }}>Free Cancellation</Text>
               </View>
-            ) : (
-              <Pressable onPress={handleBook}>
-                <LinearGradient
-                  colors={[ACCENT, ACCENT]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{
-                    borderRadius: 12, paddingVertical: 15,
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  }}
-                >
-                  <FontAwesome name="calendar-check-o" size={16} color="#fff" />
-                  <Text style={{ ...TextStyles.subhead, color: '#fff' }}>Book Hotel</Text>
-                </LinearGradient>
+            </View>
+          )}
+
+          {/* Image Carousel */}
+          {hotel.images.length > 0 && (
+            <View style={{ marginTop: 12, marginHorizontal: 14, borderRadius: 10, overflow: 'hidden' }}>
+              <ImageCarousel images={hotel.images} height={208} />
+            </View>
+          )}
+
+          <View style={{ padding: 14, gap: 0 }}>
+
+            {/* ── Total Cost (collapsible) ── */}
+            {hotel.price > 0 && (
+              <PricingSummary room={currentRoom ?? { type: 'Standard', beds: '', guests: 2, size: '', price: hotel.price, image: '', amenities: [] }} pricePerNight={pricePerNight} nights={nights} />
+            )}
+
+            {/* ── Room Options (collapsible) ── */}
+            {hotel.roomTypes.length > 0 && currentRoom && (
+              <RoomSelection rooms={hotel.roomTypes} selectedRoom={selectedRoom} onSelect={setSelectedRoom} />
+            )}
+
+            {/* ── Contact & Location ── */}
+            {!!hotel.address && (
+              <View style={{ marginTop: 14 }}>
+                <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 10 }}>Contact & Location</Text>
+
+                {/* 3-column grid: Call / Email (or Website) / Map */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {!!hotel.phone && (
+                    <Pressable onPress={() => Linking.openURL(`tel:${hotel.phone}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                      <FontAwesome name="phone" size={16} color={colors.tint} />
+                      <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Call</Text>
+                    </Pressable>
+                  )}
+                  {!!hotel.email && (
+                    <Pressable onPress={() => Linking.openURL(hotel.email.startsWith('http') ? hotel.email : `mailto:${hotel.email}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                      <FontAwesome name={hotel.email.startsWith('http') ? 'external-link' : 'envelope'} size={15} color={colors.tint} />
+                      <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>{hotel.email.startsWith('http') ? 'Website' : 'Email'}</Text>
+                    </Pressable>
+                  )}
+                  <Pressable onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(hotel.address)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                    <FontAwesome name="map-pin" size={16} color="#8b6f47" />
+                    <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Map</Text>
+                  </Pressable>
+                </View>
+
+                {/* Address card */}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 10, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                  <FontAwesome name="map-marker" size={14} color="#9ca3af" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ ...TextStyles.body, color: colors.text }}>{hotel.address}</Text>
+                    {!!hotel.neighborhood && (
+                      <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>{hotel.neighborhood}</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* ── Book Now — opens hotel site in-app ── */}
+            {!!hotel.email && (
+              <Pressable
+                onPress={() => WebBrowser.openBrowserAsync(hotel.email.startsWith('http') ? hotel.email : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                style={({ pressed }) => ({
+                  marginTop: 16, backgroundColor: pressed ? '#2d4a6f' : '#1e3a5f', borderRadius: 12, paddingVertical: 15,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                })}
+              >
+                <FontAwesome name="building" size={14} color="#fff" />
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Book Now</Text>
               </Pressable>
             )}
           </View>
+        </View>
+      </View>
+        );
+      })()}
+
+      {/* ── Browse Hotels — toggle + list/card views ── */}
+      {realHotels.length > 1 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+          {/* Header with toggle */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Browse Hotels</Text>
+            <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 8, padding: 2 }}>
+              <Pressable
+                onPress={() => setBrowseMode('list')}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'list' ? '#fff' : 'transparent',
+                  ...(browseMode === 'list' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                }}
+              >
+                <FontAwesome name="list" size={13} color={browseMode === 'list' ? colors.tint : colors.textTertiary} />
+              </Pressable>
+              <Pressable
+                onPress={() => setBrowseMode('cards')}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'cards' ? '#fff' : 'transparent',
+                  ...(browseMode === 'cards' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                }}
+              >
+                <FontAwesome name="th-large" size={13} color={browseMode === 'cards' ? colors.tint : colors.textTertiary} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* List View */}
+          {browseMode === 'list' && realHotels.filter((_: any, i: number) => i !== selectedHotelIdx).map((h: any) => (
+            <HotelListCard
+              key={h.id}
+              hotel={h}
+              nights={(trip?.start_date && trip?.end_date)
+                ? Math.max(1, Math.round((new Date(trip.end_date + 'T00:00:00').getTime() - new Date(trip.start_date + 'T00:00:00').getTime()) / 86400000))
+                : 1}
+              onPress={() => {
+                setSelectedHotelIdx(Math.max(0, realHotels.findIndex((rh: any) => rh.id === h.id)));
+                setSelectedRoom(0);
+                setBooked(false);
+                setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+              }}
+            />
+          ))}
+
+          {/* Card View — swipeable CardStackCarousel */}
+          {browseMode === 'cards' && hotelPlaces.length > 0 && (
+            <CardStackCarousel
+              places={hotelPlaces}
+              initialIndex={0}
+              favorites={[]}
+              onToggleFav={() => {}}
+              onAddToTrip={(place) => {
+                const idx = realHotels.findIndex((rh: any) => rh.id === place.id);
+                if (idx >= 0) {
+                  setSelectedHotelIdx(idx);
+                  setSelectedRoom(0);
+                  setBrowseMode('list');
+                  setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+                }
+              }}
+              onClose={() => setBrowseMode('list')}
+              hideArrows
+              showMapBg
+              overlay
+            />
           )}
         </View>
-      </View>
-
-      {/* ── Other Hotels ── */}
-      {realHotels.length > 1 && (
-        <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 12 }}>Other Hotels</Text>
-          {realHotels.slice(1).map((h: any) => (
-            <OtherHotelCard key={h.id} hotel={h} />
-          ))}
-        </View>
       )}
-
-      {/* ── Add Hotel Button (dashed border) ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 6 }}>
-        <Pressable
-          style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-            paddingVertical: 14, borderRadius: 12,
-            borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
-          }}
-        >
-          <FontAwesome name="plus-circle" size={16} color="#9ca3af" />
-          <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary }}>Add Hotel</Text>
-        </Pressable>
-      </View>
     </ScrollView>
     </PageTransition>
   );

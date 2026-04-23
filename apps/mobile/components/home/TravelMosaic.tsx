@@ -8,12 +8,18 @@ import { useQuery } from '@tanstack/react-query';
 import {
   TILE_CATEGORY_GRADIENTS,
   TILE_CATEGORY_COLORS,
+  getWebApiBase,
+  useTrendingDestinations,
 } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import type { MosaicTile, TileCategory } from '@travyl/shared';
 import { TileFadeIn } from './TileFadeIn';
+import { filterAndUpscalePlaces } from './globalDedup';
 import { MosaicTile as Tile } from './MosaicTile';
+import { SectionHeader } from './SectionHeader';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
 const GAP = 10;
@@ -42,31 +48,51 @@ interface MosaicProps {
 
 export function TravelMosaic({ scrollY }: MosaicProps) {
   const colors = useThemeColors();
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const { width, height: screenH } = useWindowDimensions();
   const contentWidth = width - PADDING * 2;
   const containerY = useSharedValue(99999);
-  const WEB_API = process.env.EXPO_PUBLIC_WEB_API_URL || 'https://www.deeviaje.com';
+  const WEB_API = getWebApiBase();
+  const { data: trending } = useTrendingDestinations();
+  const trendingNames = trending?.map(d => d.name) ?? [];
   const { data: fetchedData } = useQuery({
-    queryKey: ['mobile-mosaic'],
+    queryKey: ['mobile-mosaic', trendingNames.join(',')],
+    enabled: trending !== undefined, // wait for trending to load
+    staleTime: 10 * 60 * 1000,
     queryFn: async (): Promise<{ tiles: MosaicTile[]; places: PlaceItem[] }> => {
-      const cities = [
-        { lat: '48.8566', lng: '2.3522' },
-        { lat: '41.9028', lng: '12.4964' },
-        { lat: '35.6762', lng: '139.6503' },
-        { lat: '40.7128', lng: '-74.0060' },
-      ];
-      const shuffled = [...cities].sort(() => Math.random() - 0.5).slice(0, 3);
+      // Pick 3 random trending cities (offset 10 to avoid overlap with other sections)
+      const searchTerms = trendingNames.length > 0
+        ? [...trendingNames].sort(() => Math.random() - 0.5).slice(0, 3)
+        : ['things to do'];
+
       const results = await Promise.all(
-        shuffled.map(async (c) => {
+        searchTerms.map(async (city) => {
+          // Try ?q= first, fall back to geocode + lat/lng
           try {
-            const res = await fetch(`${WEB_API}/api/places?lat=${c.lat}&lng=${c.lng}&category=sightseeing&limit=3`);
-            if (!res.ok) return [];
-            return res.json() as Promise<PlaceItem[]>;
-          } catch { return []; }
+            const qRes = await fetch(`${WEB_API}/api/places?q=${encodeURIComponent(city)}&limit=3`);
+            if (qRes.ok) {
+              const data = await qRes.json();
+              if (Array.isArray(data) && data.length > 0) return data as PlaceItem[];
+            }
+          } catch {}
+          // Geocode fallback
+          try {
+            const geoRes = await fetch(
+              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`,
+              { headers: { 'User-Agent': 'TravylApp/1.0' } }
+            );
+            if (geoRes.ok) {
+              const geo = await geoRes.json();
+              if (geo.length > 0) {
+                const res = await fetch(`${WEB_API}/api/places?lat=${geo[0].lat}&lng=${geo[0].lon}&category=sightseeing&limit=3`);
+                if (res.ok) return (await res.json()) as PlaceItem[];
+              }
+            }
+          } catch {}
+          return [] as PlaceItem[];
         })
       );
-      const seen = new Set<string>();
-      const places = results.flat().filter((p) => p.name && p.image && !seen.has(p.id) && (seen.add(p.id), true));
+      const places = filterAndUpscalePlaces(results.flat());
       const tiles = places.map((p) => ({
         id: p.id, name: p.name, category: 'destination' as const,
         tagline: p.tagline || '', image_url: p.image, gridSpan: [2, 1] as [number, number],
@@ -114,18 +140,9 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
       style={{ paddingVertical: 40, paddingHorizontal: PADDING }}
       onLayout={onContainerLayout}
     >
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: '700',
-          color: colors.text,
-          textAlign: 'center',
-          marginBottom: 24,
-        }}
-      >
-        Moments That{' '}
-        <Text style={{ fontStyle: 'italic' }}>Move You</Text>
-      </Text>
+      <View style={{ marginBottom: 24 }}>
+        <SectionHeader eyebrow="Highlights" title="Moments That Move You" />
+      </View>
 
       <TileFadeIn scrollY={scrollY} containerY={containerY} screenH={screenH} index={0}>
         <Tile
@@ -192,6 +209,8 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
           initialIndex={Math.min(selectedIdx, tilePlaces.length - 1)}
           favorites={[]}
           onToggleFav={() => {}}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setSelectedIdx(-1)}
         />

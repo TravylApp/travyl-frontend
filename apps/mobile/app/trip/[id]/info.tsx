@@ -1,9 +1,10 @@
+import { useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Linking, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { useTabAccent } from './_layout';
+import { TabCtx, useTabAccent } from './_layout';
 
 const INFO_COLOR = '#0ea5e9';
 
@@ -166,7 +167,9 @@ function QuickLinksCard({ city = 'Destination', country = '' }: { city?: string;
 }
 
 export default function InfoScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip, isLoading } = useItineraryScreen(id);
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');

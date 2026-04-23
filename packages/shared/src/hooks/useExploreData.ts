@@ -1,8 +1,17 @@
+/**
+ * @module useExploreData
+ * Fetches place rows for the Explore section by sampling a random selection of
+ * curated cities and categories from the `/api/places` endpoint.
+ * Items within each row are shuffled once per mount and the result is cached for
+ * 10 minutes to avoid redundant requests.
+ * Used by `useExploreRows` and ultimately by the web ExplorePage and mobile ExploreTab.
+ */
+
 'use client';
 
 import { useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { shuffle } from '../utils';
+import { shuffle, getWebApiBase } from '../utils';
 import type { ExplorePlaceRow, PlaceItem } from '../types';
 
 const EXPLORE_CITIES = [
@@ -20,14 +29,14 @@ const CATEGORIES = [
   { key: 'nightlife', label: 'Nightlife' },
 ];
 
-function getApiBase(): string {
-  // Web: relative path; Mobile: env var
-  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WEB_API_URL) {
-    return process.env.EXPO_PUBLIC_WEB_API_URL;
-  }
-  return '';
-}
+const getApiBase = getWebApiBase;
 
+/**
+ * Samples 3 random cities from `EXPLORE_CITIES`, then fetches up to 6 places
+ * per city using a rotating category (sightseeing → restaurants → nightlife).
+ * Failed or empty fetches are silently skipped so partial results are still returned.
+ * @returns Array of `ExplorePlaceRow` objects (city + category label paired with place items)
+ */
 async function fetchExploreFromApi(): Promise<ExplorePlaceRow[]> {
   const base = getApiBase();
   // Pick 3 random cities each session for variety
@@ -55,6 +64,20 @@ async function fetchExploreFromApi(): Promise<ExplorePlaceRow[]> {
   return rows;
 }
 
+/**
+ * Fetches and returns place rows for the Explore section.
+ * Items within each row are shuffled once per component mount using a ref-stable
+ * cache so that row order stays consistent across re-renders while the underlying
+ * query data is valid.
+ * Data is considered fresh for 10 minutes (`staleTime`).
+ * @returns React Query result with `data: ExplorePlaceRow[]`, `isLoading`, and `error`.
+ *   Each `ExplorePlaceRow` has a `title` string and an `items` array of `PlaceItem`.
+ * @example
+ * ```tsx
+ * const { data: rows, isLoading } = useExploreData();
+ * rows?.forEach(row => console.log(row.title, row.items.length));
+ * ```
+ */
 export function useExploreData() {
   const shuffledRef = useRef<ExplorePlaceRow[] | null>(null);
 
