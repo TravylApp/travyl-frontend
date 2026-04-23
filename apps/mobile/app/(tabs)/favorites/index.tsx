@@ -581,14 +581,14 @@ export default function FavoritesScreen() {
       const query = searchCity;
       const allPlaces: PlaceItem[] = [];
 
-      // 1) Try geocoding — if it's a city name, fetch places by category
-      const coords = await resolveCoords(query);
-
-      // 2) Fetch places via ?q= (works for both place names and cities)
-      const placeFetch = fetch(`${WEB_API}/api/places?q=${encodeURIComponent(query)}&limit=15`)
+      // 1) Google Maps search — finds any business, landmark, or place by name
+      const mapsFetch = fetch(`${WEB_API}/api/search/maps?q=${encodeURIComponent(query)}`)
         .then(r => r.ok ? r.json() : [])
         .then((data: any[]) => (Array.isArray(data) ? data : []).map((p: any) => mapToPlaceItem(p)))
         .catch(() => [] as PlaceItem[]);
+
+      // 2) Try geocoding — if it's a city name, fetch places by category
+      const coords = await resolveCoords(query);
 
       // 3) If we got coords, also fetch by categories for that location
       const catFetches = coords
@@ -636,11 +636,11 @@ export default function FavoritesScreen() {
         })))
         .catch(() => [] as PlaceItem[]);
 
-      const [places, ...catResults] = await Promise.all([placeFetch, ...catFetches]);
+      const [mapsResults, ...catResults] = await Promise.all([mapsFetch, ...catFetches]);
       const [events, suggested] = await Promise.all([eventFetch, suggestFetch]);
 
-      // Events first so they're prominent, then suggested, then geocoded places
-      allPlaces.push(...events, ...suggested, ...places, ...catResults.flat());
+      // Maps results first (most relevant), then events, then category results
+      allPlaces.push(...mapsResults, ...events, ...catResults.flat(), ...suggested);
       return dedup(allPlaces);
     },
     staleTime: 5 * 60 * 1000,
