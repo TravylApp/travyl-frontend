@@ -16,10 +16,16 @@ import type { Trip } from '../types';
  * and collaborated trips, deduplicating by trip ID.
  */
 async function fetchTripsForUser(userId: string): Promise<Trip[]> {
-  const [owned, collaborated] = await Promise.all([
-    fetchTrips(userId),
-    fetchCollaboratorTrips(userId),
-  ]);
+  // Fetch owned trips — this must succeed
+  const owned = await fetchTrips(userId);
+
+  // Collaborator trips — best effort, don't block owned trips if this fails
+  let collaborated: Trip[] = [];
+  try {
+    collaborated = await fetchCollaboratorTrips(userId);
+  } catch {
+    // RLS or join error on trip_collaborators — non-fatal
+  }
 
   const seen = new Set<string>();
   const merged: Trip[] = [];
