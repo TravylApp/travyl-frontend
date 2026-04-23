@@ -431,7 +431,7 @@ export default function ProfileSettings() {
       // Update user metadata in auth
       const metadataUpdates: Record<string, unknown> = {
         display_name: formData.firstName || null,
-        avatar_url: finalAvatarUrl || null,
+        avatar_url: finalAvatarUrl && !finalAvatarUrl.startsWith('data:') ? finalAvatarUrl : null, // Only store URLs, not base64 data
         lastName: formData.lastName || null,
         phone: formData.phone || null,
         emergencyName: formData.emergencyName || null,

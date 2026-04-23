@@ -922,6 +922,8 @@ export interface TripCollaborator {
   invited_by: string
   accepted_at: string | null
   created_at: string
+  display_name?: string | null
+  avatar_url?: string | null
 }
 
 export interface EffectivePermission {
