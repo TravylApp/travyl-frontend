@@ -147,11 +147,11 @@ export function ForYouPanel({
       {/* Content area */}
       <div className="h-0 grow overflow-y-auto px-2 pb-3 scrollbar-thin">
         {isLoading ? (
-          <div className="columns-2 gap-2">
+          <div className="masonry-grid">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="break-inside-avoid mb-2 rounded-[10px] bg-[var(--cal-border)] animate-pulse"
+                className="masonry-item mb-2 rounded-[10px] bg-[var(--cal-border)] animate-pulse"
                 style={{ height: 120 + i * 20 }}
               />
             ))}
@@ -180,7 +180,7 @@ export function ForYouPanel({
           </div>
         ) : (
           <>
-            <div className="columns-2 gap-2">
+            <div className="masonry-grid">
               {enrichedSuggestions.map((suggestion) => (
                 <SuggestionCard
                   key={suggestion.id}
