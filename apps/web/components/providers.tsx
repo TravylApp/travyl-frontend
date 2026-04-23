@@ -53,7 +53,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClientRef.current}>
       <GlobalNavbar />
       {children}
       <SpotlightSearch />

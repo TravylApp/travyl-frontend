@@ -234,11 +234,12 @@ async function fetchSuggestPage(page: number): Promise<{ items: PlaceItem[]; has
 
     return {
       items,
-      hasMore: page < trending.length - 1,
+      // Always allow more — cycles back through destinations with different results
+      hasMore: true,
       nextPage: page + 1,
     };
   } catch {
-    return { items: [], hasMore: false, nextPage: null };
+    return { items: [], hasMore: true, nextPage: null };
   }
 }
 
@@ -647,24 +648,24 @@ export default function FavoritesScreen() {
     enabled: !!searchCity,
   });
 
-  // Search results take priority, otherwise use infinite discover feed
+  // Search results take priority — don't fall back to discover feed while searching
   const PLACES = useMemo(() => {
-    if (searchCity && searchPlaces.length > 0) return searchPlaces;
+    if (searchCity) return searchPlaces;
     return discoveredPlaces;
   }, [discoveredPlaces, searchCity, searchPlaces]);
 
-  // Auto-load first 3 pages for rich initial content
+  // Auto-load first few pages for rich initial content
   useEffect(() => {
-    if (discoveredPlaces.length > 0 && discoveredPlaces.length < 60 && hasNextPage && !isFetchingNextPage && !searchCity) {
+    if (discoveredPlaces.length > 0 && discoveredPlaces.length < 80 && hasNextPage && !isFetchingNextPage && !searchCity) {
       fetchNextPage();
     }
-  }, [discoveredPlaces.length]);
+  }, [discoveredPlaces.length, hasNextPage, isFetchingNextPage, searchCity]);
 
-  // Load more on scroll
+  // Load more on scroll — trigger well before bottom
   const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
-    if (distanceFromBottom < 2000 && hasNextPage && !isFetchingNextPage && !searchCity) {
+    if (distanceFromBottom < 3000 && hasNextPage && !isFetchingNextPage && !searchCity) {
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchCity]);
@@ -1006,19 +1007,31 @@ export default function FavoritesScreen() {
           </View>
         )}
 
-        {/* Load more button + indicator */}
-        {isFetchingNextPage && (
+        {/* Loading / Load more */}
+        {!searchCity && (
           <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.tint} />
-            <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 8 }}>
-              Discovering more places...
-            </Text>
-          </View>
-        )}
-        {/* Loading indicator for infinite scroll */}
-        {isFetchingNextPage && (
-          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.tint} />
+            {isFetchingNextPage ? (
+              <>
+                <ActivityIndicator size="small" color={colors.tint} />
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 8 }}>
+                  Discovering more places...
+                </Text>
+              </>
+            ) : hasNextPage ? (
+              <Pressable
+                onPress={() => fetchNextPage()}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12,
+                  backgroundColor: colors.tint, opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Discover More</Text>
+              </Pressable>
+            ) : discoveredPlaces.length > 0 ? (
+              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+                You've explored all trending destinations
+              </Text>
+            ) : null}
           </View>
         )}
       </ScrollView>

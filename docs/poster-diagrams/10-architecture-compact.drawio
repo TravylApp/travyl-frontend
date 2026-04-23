@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-20" type="device">
+  <diagram name="Architecture Compact" id="arch-compact">
+    <mxGraphModel dx="400" dy="420" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="400" pageHeight="420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;Travyl Architecture&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="80" y="5" width="240" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ Top: Client Layer ═══ -->
+        <mxCell id="client" value="&lt;b&gt;Client&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Next.js 16 (Web)&lt;br&gt;Expo 54 (iOS / Android)&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="32" width="360" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow down -->
+        <mxCell id="a1" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;endSize=6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="90" as="sourcePoint" />
+            <mxPoint x="200" y="105" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══ Shared Package ═══ -->
+        <mxCell id="shared" value="&lt;b&gt;@travyl/shared&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;38 hooks · types · services · utils&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="108" width="360" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow down -->
+        <mxCell id="a2" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;endSize=6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="156" as="sourcePoint" />
+            <mxPoint x="200" y="171" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══ API Layer ═══ -->
+        <mxCell id="api" value="&lt;b&gt;69 API Routes&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Next.js serverless · 18 external APIs&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="174" width="360" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow down -->
+        <mxCell id="a3" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;endSize=6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="222" as="sourcePoint" />
+            <mxPoint x="200" y="237" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══ Data Layer — side by side ═══ -->
+        <mxCell id="supabase" value="&lt;b&gt;Supabase&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;PostgreSQL · Auth&lt;br&gt;RLS · Realtime&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="240" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="yjs" value="&lt;b&gt;Yjs CRDT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Real-time calendar&lt;br&gt;Collaborative sync&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#FFC72C;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="210" y="240" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow down -->
+        <mxCell id="a4" value="" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;endSize=6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="303" as="sourcePoint" />
+            <mxPoint x="200" y="318" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══ Deploy Layer ═══ -->
+        <mxCell id="deploy" value="&lt;b&gt;AWS Amplify&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;CI/CD · CDN · SSL · Auto-deploy from develop&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="321" width="360" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Stats at bottom -->
+        <mxCell id="stats" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;102K&lt;/b&gt; lines · &lt;b&gt;1,468&lt;/b&gt; commits · &lt;b&gt;250+&lt;/b&gt; issues · &lt;b&gt;10&lt;/b&gt; contributors&lt;/font&gt;" style="text;html=1;align=center;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="380" width="360" height="22" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

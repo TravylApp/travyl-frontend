@@ -16,40 +16,6 @@ interface SerpEvent {
   event_location_map?: { image?: string; link?: string }
 }
 
-/**
- * Fetch the official poster/artwork for an event via Google Images.
- * Returns the best image URL or null if nothing usable is found.
- */
-async function fetchOfficialImage(eventTitle: string): Promise<string | null> {
-  try {
-    const url = new URL('https://serpapi.com/search.json')
-    url.searchParams.set('engine', 'google_images')
-    url.searchParams.set('q', `${eventTitle} official event poster`)
-    url.searchParams.set('num', '3')
-    url.searchParams.set('api_key', SERPAPI_KEY)
-
-    const res = await fetch(url.toString(), CACHE_1H)
-    if (!res.ok) return null
-
-    const data = await res.json()
-    const results = data.images_results ?? []
-
-    // Pick the best image — prefer large originals, skip tiny thumbnails and icons
-    for (const r of results) {
-      const img = r.original || r.thumbnail
-      if (!img) continue
-      // Skip tiny Google-cached thumbnails
-      if (img.includes('encrypted-tbn') && img.includes('&s=10')) continue
-      // Skip generic stock/icon images
-      if (img.includes('placeholder') || img.includes('default_')) continue
-      return img
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
 export async function GET(req: NextRequest) {
   const query = getOptionalParam(req, 'city', '') || getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
@@ -70,14 +36,8 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     const events: SerpEvent[] = data.events_results ?? []
 
-    // Fetch official images for ALL events in parallel
-    const imageFetches = events.map(e => fetchOfficialImage(e.title))
-    const officialImages = await Promise.allSettled(imageFetches)
-
     const mapped = events.map((e, i) => {
-      // Use official poster first, fall back to SerpAPI event image/thumbnail
-      const officialImg = officialImages[i].status === 'fulfilled' ? officialImages[i].value : null
-      const photo = officialImg || e.image || e.thumbnail || ''
+      const photo = e.image || e.thumbnail || ''
 
       const tickets = (e.ticket_info ?? []).filter(t => t.link_type === 'tickets')
       const moreInfo = (e.ticket_info ?? []).filter(t => t.link_type === 'more info')
