@@ -7,6 +7,7 @@ import { Sparkles, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useTripPlanner, useAuthStore } from '@travyl/shared'
 import type { FollowUpQuestion, PlanResponse } from '@travyl/shared'
 import { savePlanToSupabase } from '@travyl/shared/src/services/api'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface Props {
   prefillDestination: string
@@ -20,6 +21,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 export function SpotlightTripCreator({ prefillDestination, query, onClose, onBack, onPhaseChange }: Props) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const planner = useTripPlanner()
   const [currentQIdx, setCurrentQIdx] = useState(0)
@@ -107,6 +109,7 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
 
       try {
         const tripId = await savePlanToSupabase(plan as any)
+        queryClient.invalidateQueries({ queryKey: ['trips'] })
         onClose()
         router.push(`/trip/${tripId}`)
       } catch {
