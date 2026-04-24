@@ -102,7 +102,8 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
           },
         });
         router.push(`/trip/${tripId}` as never);
-        onClose();
+        // Delay close so animation stays visible during navigation transition
+        setTimeout(() => onClose(), 1500);
       } catch (err) {
         console.error('Save failed:', err);
         setSaving(false);

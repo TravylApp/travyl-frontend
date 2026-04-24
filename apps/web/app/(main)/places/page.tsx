@@ -1058,26 +1058,12 @@ export default function PlacesPage() {
                   {!searchLoading && (
                     <div
                       style={{
-                        columnCount,
+                        columnCount: Math.min(columnCount, filtered.length),
                         columnGap: '0.75rem',
                       }}
                     >
-                      {/* Render all items in a single column flow with inline category headers */}
-                      {(() => {
-                        let currentCat = '';
-                        return filtered.map((item, i) => {
-                          const showHeader = item.category !== currentCat;
-                          if (showHeader) currentCat = item.category;
-                          return (
+                      {filtered.map((item, i) => (
                             <div key={item.id}>
-                              {showHeader && (
-                                <div className="mb-2 mt-4 first:mt-0" style={{ breakInside: 'avoid' }}>
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1e3a5f]/50 dark:text-white/40">{item.category}</h3>
-                                    <div className="flex-1 h-px bg-gray-100 dark:bg-white/10" />
-                                  </div>
-                                </div>
-                              )}
                               <div
                                 className="mb-3"
                                 style={{ breakInside: 'avoid' }}
@@ -1098,9 +1084,8 @@ export default function PlacesPage() {
                                 />
                               </div>
                             </div>
-                          );
-                        });
-                      })()}
+                          ))}
+
                     </div>
                   )}
                 </>
