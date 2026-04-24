@@ -10,6 +10,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Linking,
+  Keyboard,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -894,10 +895,12 @@ export default function FavoritesScreen() {
                   }
                 }}
                 onSubmitEditing={() => {
+                  Keyboard.dismiss();
                   if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
                   if (searchQuery.trim()) setSearchCity(searchQuery.trim());
                 }}
                 returnKeyType="search"
+                blurOnSubmit={true}
                 placeholder="Search a city or destination..."
                 placeholderTextColor={colors.textTertiary}
                 style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
