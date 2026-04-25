@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   TextStyles, FontSize, FontFamily, Navy,
   useTripPlanner, savePlanToSupabase,
+  useAuthStore,
 } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlane } from '@/components/icons/PaperPlane';
@@ -83,29 +84,43 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     return () => clearInterval(timer);
   }, [planner.state.phase]);
 
+  const user = useAuthStore((s) => s.user);
+
   // Auto-save when plan completes
   useEffect(() => {
     if (planner.state.phase !== 'complete' || saving) return;
     const plan = planner.state.plan;
     (async () => {
+      // Check if user is logged in before saving
+      if (!user) {
+        planner.reset();
+        setSaving(false);
+        setSubmitted(false);
+        onClose();
+        router.push('/login' as never);
+        return;
+      }
+
       setSaving(true);
       try {
         const tripId = await savePlanToSupabase(plan as any, () => {});
         await queryClient.invalidateQueries({ queryKey: ['trips'] });
-        // Pre-fetch the trip data so it's cached before we navigate
-        await queryClient.prefetchQuery({
-          queryKey: ['trip', tripId],
-          queryFn: async () => {
-            const { data } = await (await import('@travyl/shared')).supabase
-              .from('trips').select('*').eq('id', tripId).single();
-            return data;
-          },
-        });
         router.push(`/trip/${tripId}` as never);
-        onClose();
-      } catch (err) {
-        console.error('Save failed:', err);
-        setSaving(false);
+        setTimeout(() => onClose(), 1500);
+      } catch (err: any) {
+        const msg = err?.message || '';
+        if (msg.includes('row-level security') || msg.includes('Unauthorized') || msg.includes('user_id')) {
+          // RLS error = not logged in
+          planner.reset();
+          setSaving(false);
+          setSubmitted(false);
+          onClose();
+          router.push('/login' as never);
+        } else {
+          // Real error — show it
+          console.error('Save failed:', msg);
+          setSaving(false);
+        }
       }
     })();
   }, [planner.state.phase]);
@@ -187,13 +202,14 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
                 placeholderTextColor="#9ca3af"
                 multiline
                 autoFocus
+                blurOnSubmit={true}
+                onSubmitEditing={handleSubmit}
                 style={{
                   minHeight: 80, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16,
                   borderWidth: 1.5, borderColor: prompt.trim() ? Navy.DEFAULT : '#e5e7eb',
                   fontSize: FontSize.bodyLg, color: '#111827', fontFamily: FontFamily.sans,
                   textAlignVertical: 'top', backgroundColor: '#f9fafb',
                 }}
-                onSubmitEditing={handleSubmit}
               />
 
               {/* Suggestion chips */}

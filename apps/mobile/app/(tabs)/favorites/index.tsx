@@ -10,10 +10,15 @@ import {
   StatusBar,
   ActivityIndicator,
   Linking,
+  Keyboard,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, TextStyles, FontSize, FontFamily, upscaleGoogleImage, mapCategory, getWebApiBase, type PlaceItem } from '@travyl/shared';
+import {
+  Navy, TextStyles, FontSize, FontFamily,
+  haversineKm as distanceKm, fetchDiscoverPage, fetchNearbyPlaces, searchPlaces, dedupPlaces, distanceLabel,
+  type PlaceItem, type DiscoverPageResult,
+} from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
@@ -23,241 +28,13 @@ import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-// Use web app as API proxy — it has all the API keys (Foursquare, etc.)
-const WEB_API = getWebApiBase();
-
-
-// Map backend response to PlaceItem format
-// Web proxy /api/places returns PlaceItem-shaped objects directly.
-// Just ensure image is upscaled and fields are present.
-// Map the fetch category we requested to the PlaceItem type for tab filtering
-const FETCH_CAT_TO_TYPE: Record<string, PlaceItem['type']> = {
-  restaurant: 'restaurant',
-  cafe: 'restaurant',
-  nightlife: 'experience',
-  sightseeing: 'attraction',
-  museum: 'attraction',
-  park: 'attraction',
-};
-
-function inferType(fetchCategory: string | undefined, apiCategory: string | undefined): PlaceItem['type'] {
-  // Trust the fetch category first — we know what we asked for
-  if (fetchCategory && FETCH_CAT_TO_TYPE[fetchCategory]) return FETCH_CAT_TO_TYPE[fetchCategory];
-  // Fallback: use whatever the API returned
-  return (apiCategory as PlaceItem['type']) || 'attraction';
-}
-
-function mapToPlaceItem(p: any, fetchCategory?: string): PlaceItem {
-  return {
-    id: p.id,
-    name: p.name,
-    image: upscaleGoogleImage(p.image || p.photo_url) ?? '',
-    images: p.images?.map((img: string) => upscaleGoogleImage(img) ?? img),
-    type: fetchCategory ? inferType(fetchCategory, p.category) : (p.type || inferType(undefined, p.category)),
-    rating: p.rating || 0,
-    tagline: p.tagline || p.description?.split('.')[0] || p.category || '',
-    category: mapCategory(p.category || ''),
-    description: p.description || '',
-    tags: p.tags || [p.category].filter(Boolean),
-    latitude: p.latitude ?? p.lat,
-    longitude: p.longitude ?? p.lng,
-    address: p.address,
-    reviewCount: p.reviewCount ?? p.review_count,
-    website: p.website,
-    priceLevel: p.priceLevel,
-    hours: p.hours,
-    duration: p.duration,
-    phone: p.phone,
-    bestTimeToVisit: p.bestTimeToVisit,
-  };
-}
-
-async function resolveCoords(query: string): Promise<{ lat: string; lng: string } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'Travyl/1.0' } }
-    );
-    const data = await res.json();
-    if (data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
-  } catch {}
-  return null;
-}
-
-const NEARBY_RADIUS_KM = 15;
-function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItem[]> {
-  const categories = ['sightseeing', 'restaurant', 'cafe', 'nightlife', 'park'];
-  const results = await Promise.all(
-    categories.map(cat =>
-      fetch(`${WEB_API}/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => Array.isArray(data) ? data.map((p: any) => mapToPlaceItem(p, cat)) : [])
-        .catch(() => [])
-    )
-  );
-  return dedup(results.flat()).filter(p =>
-    p.latitude != null && p.longitude != null &&
-    distanceKm(lat, lng, p.latitude!, p.longitude!) <= NEARBY_RADIUS_KM
-  );
-}
-
-// Fetch trending destinations from API, shuffle for variety, cache per session
-let _trendingCache: string[] | null = null;
-let _trendingFetchPromise: Promise<string[]> | null = null;
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-async function getTrendingDestinations(): Promise<string[]> {
-  if (_trendingCache) return _trendingCache;
-  if (_trendingFetchPromise) return _trendingFetchPromise;
-  _trendingFetchPromise = fetch(`${WEB_API}/api/trending-destinations`)
-    .then(r => r.ok ? r.json() : [])
-    .then((data: any[]) => {
-      const names = Array.isArray(data) ? data.map((d: any) => d.name).filter(Boolean) : [];
-      // Shuffle so each app launch shows a different order
-      _trendingCache = names.length > 0 ? shuffle(names) : null;
-      _trendingFetchPromise = null;
-      return _trendingCache ?? [];
-    })
-    .catch(() => { _trendingFetchPromise = null; return []; });
-  return _trendingFetchPromise;
-}
-
-// Place categories to fetch per destination
-const PLACE_CATEGORIES = ['sightseeing', 'restaurant', 'nightlife', 'museum', 'park', 'cafe'];
-
-async function fetchSuggestPage(page: number): Promise<{ items: PlaceItem[]; hasMore: boolean; nextPage: number | null }> {
-  try {
-    const trending = await getTrendingDestinations();
-    if (trending.length === 0) return { items: [], hasMore: false, nextPage: null };
-    const destination = trending[page % trending.length];
-    const slug = destination.toLowerCase().replace(/\s/g, '-');
-
-    // Geocode for lat/lng
-    const coords = await resolveCoords(destination);
-
-    // Fetch places across categories + events — all in parallel
-    const placeFetches = PLACE_CATEGORIES.map(cat => {
-      const url = coords
-        ? `${WEB_API}/api/places?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=4`
-        : `${WEB_API}/api/places?q=${encodeURIComponent(destination)}&category=${cat}&limit=4`;
-      return fetch(url)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => (Array.isArray(data) ? data : []).map((p: any, i: number) =>
-          mapToPlaceItem({
-            ...p,
-            id: `${slug}-${cat}-${page}-${i}`,
-            address: p.address || p.location || destination,
-          }, cat)
-        ))
-        .catch(() => [] as PlaceItem[]);
-    });
-
-    // Also fetch events for this destination
-    const today = new Date().toISOString().split('T')[0];
-    const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-    const eventFetch = fetch(`${WEB_API}/api/events/search?city=${encodeURIComponent(destination)}&start=${today}&end=${nextMonth}`)
-      .then(r => r.ok ? r.json() : [])
-      .then((events: any[]) => (Array.isArray(events) ? events.slice(0, 5) : []).map((e: any, i: number): PlaceItem => ({
-        id: `${slug}-event-${page}-${i}`,
-        name: e.name || e.title,
-        image: e.photo_url || e.image || '',
-        type: 'event',
-        rating: 0,
-        tagline: [e.venue, e.date].filter(Boolean).join(' · '),
-        category: 'Event',
-        description: e.description || '',
-        tags: ['Event', e.category].filter(Boolean),
-        latitude: e.lat,
-        longitude: e.lng,
-        address: e.venue || destination,
-      })))
-      .catch(() => [] as PlaceItem[]);
-
-    // On first page, add ALL trending destinations as destination cards
-    // On subsequent pages, just add the current destination
-    let destCards: PlaceItem[] = [];
-    try {
-      const trendingData = await fetch(`${WEB_API}/api/trending-destinations`).then(r => r.ok ? r.json() : []) as any[];
-      if (page === 0) {
-        destCards = trendingData.map((d: any, i: number) => ({
-          id: `dest-trending-${i}`,
-          name: d.name,
-          image: d.thumbnail || '',
-          type: 'destination' as const,
-          rating: 0,
-          tagline: d.country ? `${d.country}` : `Explore ${d.name}`,
-          category: 'Destination',
-          description: `Discover things to do in ${d.name}`,
-          tags: ['Destination', d.country].filter(Boolean),
-          address: d.country ? `${d.name}, ${d.country}` : d.name,
-        }));
-      } else {
-        const match = trendingData.find((d: any) => d.name === destination);
-        destCards = [{
-          id: `${slug}-dest-${page}`,
-          name: destination,
-          image: match?.thumbnail || '',
-          type: 'destination' as const,
-          rating: 0,
-          tagline: match?.country || `Explore ${destination}`,
-          category: 'Destination',
-          description: `Discover things to do in ${destination}`,
-          tags: ['Destination'],
-          address: destination,
-        }];
-      }
-    } catch {}
-
-    const [placeResults, events] = await Promise.all([
-      Promise.all(placeFetches),
-      eventFetch,
-    ]);
-
-    const items = shuffle([...destCards, ...placeResults.flat(), ...events]);
-
-    return {
-      items,
-      // Always allow more — cycles back through destinations with different results
-      hasMore: true,
-      nextPage: page + 1,
-    };
-  } catch {
-    return { items: [], hasMore: true, nextPage: null };
-  }
-}
-
-function dedup(places: PlaceItem[]): PlaceItem[] {
-  const seen = new Set<string>();
-  const seenNames = new Set<string>();
-  return places.filter((p) => {
-    if (!p.name || seen.has(p.id)) return false;
-    const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (seenNames.has(norm)) return false;
-    seen.add(p.id);
-    seenNames.add(norm);
-    return true;
-  });
-}
 
 const PAD = 16;
 const GAP = 4;
+const AUTO_LOAD_THRESHOLD = 100;
+const SCROLL_LOAD_DISTANCE = 1200;
+const NO_COORDS_DISTANCE = 99999;
+const NEARBY_MERGE_RADIUS_KM = 16;
 
 function hashCode(str: string): number {
   let hash = 0;
@@ -285,7 +62,7 @@ function balanceColumns(places: PlaceItem[]): [PlaceItem[], PlaceItem[]] {
 }
 
 type TabKey = 'all' | 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' | 'favorites';
-type SortKey = 'default' | 'top_rated' | 'az';
+type SortKey = 'default' | 'top_rated' | 'nearest' | 'az';
 type ViewMode = 'grid' | 'stack' | 'flush';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
@@ -300,6 +77,7 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'default', label: 'Default' },
+  { key: 'nearest', label: 'Nearest' },
   { key: 'top_rated', label: 'Top Rated' },
   { key: 'az', label: 'A-Z' },
 ];
@@ -316,7 +94,7 @@ const TYPE_COLOR: Record<string, string> = {
 };
 
 const GridPlaceCard = memo(function GridPlaceCard({
-  place, isFav, onPress, onToggleFav, colors, flush,
+  place, isFav, onPress, onToggleFav, colors, flush, userLoc,
 }: {
   place: PlaceItem;
   flush?: boolean;
@@ -324,6 +102,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
   onPress: () => void;
   onToggleFav: () => void;
   colors: ReturnType<typeof useThemeColors>;
+  userLoc?: { lat: number; lng: number } | null;
 }) {
   const imgH = getImageHeight(place.id);
   const imgs = place.images && place.images.length > 1 ? place.images : place.image ? [place.image] : [];
@@ -333,8 +112,15 @@ const GridPlaceCard = memo(function GridPlaceCard({
   const typeColor = TYPE_COLOR[place.type] || '#6b7280';
   const typeIcon = TYPE_ICON[place.type] || 'globe';
   const isEvent = place.type === 'event';
-  const isRestaurant = place.type === 'restaurant';
   const priceStr = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
+
+  // Calculate distance from user
+  let distLabel = '';
+  if (userLoc && place.latitude != null && place.longitude != null) {
+    const dist = distanceKm(userLoc.lat, userLoc.lng, place.latitude, place.longitude);
+    const mi = dist * 0.621371;
+    distLabel = mi < 0.3 ? `${Math.round(mi * 5280)} ft` : mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
+  }
 
   return (
     <Pressable onPress={onPress} style={{ marginBottom: flush ? 1 : GAP }}>
@@ -402,11 +188,11 @@ const GridPlaceCard = memo(function GridPlaceCard({
 
         {/* Content below image */}
         {!flush && <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 }}>
-          {/* Location */}
+          {/* Location + distance */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
             <FontAwesome name="map-marker" size={9} color={colors.textTertiary} style={{ marginRight: 4 }} />
             <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>
-              {place.address || place.tagline}
+              {distLabel ? `${distLabel} · ` : ''}{place.address || place.tagline}
             </Text>
           </View>
 
@@ -530,11 +316,11 @@ export default function FavoritesScreen() {
     }).catch(() => {});
   }, []);
 
-  // Near You places
+  // Near You — separate query, strict radius, sorted by closest
   const { data: nearbyPlaces = [], isLoading: nearbyLoading } = useQuery({
     queryKey: ['mobile-places-nearby', userLocation?.lat, userLocation?.lng],
     queryFn: () => fetchNearbyPlaces(userLocation!.lat, userLocation!.lng),
-    staleTime: 15 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
     enabled: !!userLocation,
   });
   const [searchCity, setSearchCity] = useState('');
@@ -552,17 +338,17 @@ export default function FavoritesScreen() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
-  // Infinite discovery feed — pages through /api/places/suggest
+  // Infinite discovery feed — shared with web
   const {
     data: suggestData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['mobile-places-discover'],
-    queryFn: ({ pageParam }) => fetchSuggestPage(pageParam),
+    queryKey: ['mobile-places-discover', userLocation?.lat],
+    queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
-    getNextPageParam: (lastPage) =>
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
       lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
     staleTime: 5 * 60 * 1000,
   });
@@ -571,104 +357,61 @@ export default function FavoritesScreen() {
   const discoveredPlaces = useMemo(() => {
     if (!suggestData?.pages) return [];
     const all = suggestData.pages.flatMap((p) => p.items);
-    return dedup(all);
+    return dedupPlaces(all);
   }, [suggestData]);
 
-  // API search — free-text: searches places, events, and Google Maps in parallel
-  const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
+  // API search — infinite scroll, same as discover feed
+  const {
+    data: searchData,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
+    isLoading: searchLoading,
+  } = useInfiniteQuery({
     queryKey: ['mobile-places-search', searchCity],
-    queryFn: async () => {
-      if (!searchCity) return [];
-      const query = searchCity;
-      const allPlaces: PlaceItem[] = [];
-
-      // 1) Google Maps search — finds any business, landmark, or place by name
-      const mapsFetch = fetch(`${WEB_API}/api/search/maps?q=${encodeURIComponent(query)}`)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => (Array.isArray(data) ? data : []).map((p: any) => mapToPlaceItem(p)))
-        .catch(() => [] as PlaceItem[]);
-
-      // 2) Try geocoding — if it's a city name, fetch places by category
-      const coords = await resolveCoords(query);
-
-      // 3) If we got coords, also fetch by categories for that location
-      const catFetches = coords
-        ? ['sightseeing', 'restaurant', 'nightlife'].map(cat =>
-            fetch(`${WEB_API}/api/places?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=6`)
-              .then(r => r.ok ? r.json() : [])
-              .then((data: any[]) => (Array.isArray(data) ? data : []).map((p: any) => mapToPlaceItem(p, cat)))
-              .catch(() => [] as PlaceItem[])
-          )
-        : [];
-
-      // 4) Search events — SerpAPI Google Events (rich data: tickets, venue, address)
-      const eventFetch = fetch(`${WEB_API}/api/events/search?city=${encodeURIComponent(query)}`)
-        .then(r => r.ok ? r.json() : [])
-        .then((events: any[]) => (Array.isArray(events) ? events.slice(0, 10) : []).map((e: any, i: number): PlaceItem => ({
-          id: `search-ev-${i}`,
-          name: e.name || e.title,
-          image: e.photo_url || e.image || '',
-          type: 'event',
-          rating: e.venue_rating || 0,
-          reviewCount: e.venue_reviews || undefined,
-          tagline: [e.venue, e.date].filter(Boolean).join(' · '),
-          category: 'Event',
-          description: e.description || '',
-          tags: ['Event', e.venue].filter(Boolean),
-          address: e.address || e.venue || '',
-          website: e.link || '',
-        })))
-        .catch(() => [] as PlaceItem[]);
-
-      // 5) Also try the suggest endpoint with query as destination
-      const suggestFetch = fetch(`${WEB_API}/api/places/suggest?destination=${encodeURIComponent(query)}&limit=10`)
-        .then(r => r.ok ? r.json() : { suggestions: [] })
-        .then((data: any) => (data.suggestions ?? []).map((s: any, i: number) => mapToPlaceItem({
-          id: `search-suggest-${i}`,
-          name: s.name,
-          category: s.category,
-          image: s.imageUrl || s.image,
-          images: s.imageUrls,
-          rating: s.rating,
-          description: s.description,
-          address: s.location,
-          latitude: s.latitude,
-          longitude: s.longitude,
-        })))
-        .catch(() => [] as PlaceItem[]);
-
-      const [mapsResults, ...catResults] = await Promise.all([mapsFetch, ...catFetches]);
-      const [events, suggested] = await Promise.all([eventFetch, suggestFetch]);
-
-      // Maps results first (most relevant), then events, then category results
-      allPlaces.push(...mapsResults, ...events, ...catResults.flat(), ...suggested);
-      return dedup(allPlaces);
-    },
+    queryFn: ({ pageParam }) => searchPlaces(searchCity, pageParam, userLocation),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
     staleTime: 5 * 60 * 1000,
     enabled: !!searchCity,
   });
 
-  // Search results take priority — don't fall back to discover feed while searching
+  const searchResults = useMemo(() => {
+    if (!searchData?.pages) return [];
+    return dedupPlaces(searchData.pages.flatMap(p => p.items));
+  }, [searchData]);
+
+  // Merge: search results when searching, discover feed otherwise
   const PLACES = useMemo(() => {
-    if (searchCity) return searchPlaces;
+    if (searchCity) return searchResults;
     return discoveredPlaces;
-  }, [discoveredPlaces, searchCity, searchPlaces]);
+  }, [discoveredPlaces, searchCity, searchResults]);
 
-  // Auto-load first few pages for rich initial content
+  // Active pagination state — depends on whether searching or browsing
+  const activeHasNext = searchCity ? hasNextSearchPage : hasNextPage;
+  const activeIsFetching = searchCity ? isFetchingNextSearchPage : isFetchingNextPage;
+  const activeLoadMore = searchCity ? fetchNextSearchPage : fetchNextPage;
+
+  // Keep loading pages automatically
   useEffect(() => {
-    if (discoveredPlaces.length > 0 && discoveredPlaces.length < 80 && hasNextPage && !isFetchingNextPage && !searchCity) {
-      fetchNextPage();
+    if (activeHasNext && !activeIsFetching) {
+      const count = searchCity ? searchResults.length : discoveredPlaces.length;
+      if (count < AUTO_LOAD_THRESHOLD) {
+        const timer = setTimeout(() => activeLoadMore(), 500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [discoveredPlaces.length, hasNextPage, isFetchingNextPage, searchCity]);
+  }, [searchResults.length, discoveredPlaces.length, activeHasNext, activeIsFetching, searchCity]);
 
-  // Load more on scroll — trigger well before bottom
+  // Infinite scroll — load more when user scrolls near bottom
   const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
-    if (distanceFromBottom < 3000 && hasNextPage && !isFetchingNextPage && !searchCity) {
-      fetchNextPage();
+    if (distanceFromBottom < SCROLL_LOAD_DISTANCE && activeHasNext && !activeIsFetching) {
+      activeLoadMore();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchCity]);
+  }, [activeHasNext, activeIsFetching, activeLoadMore]);
 
 
   const toggleFavorite = useCallback((id: string) => {
@@ -712,9 +455,17 @@ export default function FavoritesScreen() {
       );
     }
     if (sortBy === 'top_rated') result.sort((a, b) => b.rating - a.rating);
+    else if ((sortBy === 'nearest' || sortBy === 'default') && userLocation) {
+      // Default and Nearest both sort by distance when location is available
+      result.sort((a, b) => {
+        const dA = a.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, a.latitude, a.longitude!) : NO_COORDS_DISTANCE;
+        const dB = b.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, b.latitude, b.longitude!) : NO_COORDS_DISTANCE;
+        return dA - dB;
+      });
+    }
     else if (sortBy === 'az') result.sort((a, b) => a.name.localeCompare(b.name));
     return result;
-  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
+  }, [tabFiltered, activeSubcategory, searchQuery, searchCity, sortBy, userLocation]);
 
   const baseSections = useMemo(() => {
     // Group by API category first (Landmark, Culinary, Museum, etc.) — always works
@@ -741,15 +492,41 @@ export default function FavoritesScreen() {
     return { sections, remaining: [] as typeof filteredPlaces };
   }, [filteredPlaces]);
 
-  // Prepend "Near You" as the first section when available
+  // Combine nearby query + nearby discover feed places into one "Near You" section
   const themedSections = useMemo(() => {
-    if (!nearbyPlaces.length || searchCity || activeTab !== 'all') return baseSections;
+    if (searchCity || activeTab !== 'all') return baseSections;
+    if (!userLocation) return baseSections;
+
+    // Merge nearby query + any discover feed places within 10 miles
+    const nearIds = new Set(nearbyPlaces.map(p => p.id));
+    const discoverNearby = discoveredPlaces.filter(p =>
+      !nearIds.has(p.id) &&
+      p.latitude != null && p.longitude != null &&
+      distanceKm(userLocation.lat, userLocation.lng, p.latitude!, p.longitude!) <= NEARBY_MERGE_RADIUS_KM
+    );
+
+    const allNearby = dedupPlaces([...nearbyPlaces, ...discoverNearby])
+      .sort((a, b) => {
+        const dA = a.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) : NO_COORDS_DISTANCE;
+        const dB = b.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!) : NO_COORDS_DISTANCE;
+        return dA - dB;
+      });
+
+    if (!allNearby.length) return baseSections;
+
     const nearYouSection = {
       collection: { key: 'near-you', label: 'Near You', icon: 'map-marker' },
-      places: nearbyPlaces.slice(0, 10),
+      places: allNearby,
     };
-    return { ...baseSections, sections: [nearYouSection, ...baseSections.sections] };
-  }, [baseSections, nearbyPlaces, searchCity, activeTab]);
+
+    // Other sections: only places NOT in the nearby section
+    const nearSet = new Set(allNearby.map(p => p.id));
+    const otherSections = baseSections.sections
+      .map(s => ({ ...s, places: s.places.filter(p => !nearSet.has(p.id)) }))
+      .filter(s => s.places.length > 0);
+
+    return { ...baseSections, sections: [nearYouSection, ...otherSections] };
+  }, [baseSections, nearbyPlaces, discoveredPlaces, searchCity, activeTab, userLocation]);
 
   // All places for the showcase — nearby + filtered combined
   const allShowcasePlaces = useMemo(() => {
@@ -769,7 +546,7 @@ export default function FavoritesScreen() {
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} onScroll={handleScroll} scrollEventThrottle={100}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* Header */}
         <View style={{ paddingHorizontal: PAD, paddingTop: insets.top + 8, paddingBottom: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -860,7 +637,7 @@ export default function FavoritesScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <Pressable
               onPress={() => {
-                const keys: SortKey[] = ['default', 'top_rated', 'az'];
+                const keys: SortKey[] = ['default', 'nearest', 'top_rated', 'az'];
                 const idx = keys.indexOf(sortBy);
                 setSortBy(keys[(idx + 1) % keys.length]);
               }}
@@ -887,18 +664,20 @@ export default function FavoritesScreen() {
                 onChangeText={(val) => {
                   setSearchQuery(val);
                   if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-                  if (val.trim().length >= 2) {
+                  if (val.trim()) {
                     searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400) as unknown as NodeJS.Timeout;
-                  } else if (!val.trim()) {
+                  } else {
                     setSearchCity('');
                   }
                 }}
                 onSubmitEditing={() => {
+                  Keyboard.dismiss();
                   if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
                   if (searchQuery.trim()) setSearchCity(searchQuery.trim());
                 }}
                 returnKeyType="search"
-                placeholder="Search a city or destination..."
+                blurOnSubmit={true}
+                placeholder="Search anything — Nobu, rooftop bars, big library..."
                 placeholderTextColor={colors.textTertiary}
                 style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
               />
@@ -951,16 +730,18 @@ export default function FavoritesScreen() {
               if (section.places.length === 0) return null;
               const [left, right] = balanceColumns(section.places);
               return (
-                <View key={section.collection.key} style={{ marginBottom: 24 }}>
-                  {/* Section header — editorial style */}
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: viewMode === 'flush' ? PAD : 0, marginBottom: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                      <Text style={{ fontFamily: FontFamily.serif, fontSize: 20, color: colors.text, letterSpacing: -0.5 }}>{section.collection.label}</Text>
-                      <View style={{ backgroundColor: colors.tint + '18', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-                        <Text style={{ ...TextStyles.xs, color: colors.tint, fontFamily: FontFamily.sansBold }}>{section.places.length}</Text>
+                <View key={section.collection.key} style={{ marginBottom: viewMode === 'flush' ? 0 : 24 }}>
+                  {/* Section header — hidden in flush mode */}
+                  {viewMode !== 'flush' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                        <Text style={{ fontFamily: FontFamily.serif, fontSize: 20, color: colors.text, letterSpacing: -0.5 }}>{section.collection.label}</Text>
+                        <View style={{ backgroundColor: colors.tint + '18', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                          <Text style={{ ...TextStyles.xs, color: colors.tint, fontFamily: FontFamily.sansBold }}>{section.places.length}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
+                  )}
                   <View style={{ flexDirection: 'row', gap: viewMode === 'flush' ? 1 : GAP, alignItems: 'flex-start' }}>
                     {[left, right].map((col, colIdx) => (
                       <View key={colIdx} style={{ flex: 1 }}>
@@ -973,6 +754,7 @@ export default function FavoritesScreen() {
                             onToggleFav={() => toggleFavorite(place.id)}
                             colors={colors}
                             flush={viewMode === 'flush'}
+                            userLoc={userLocation}
                           />
                         ))}
                       </View>
@@ -1007,31 +789,10 @@ export default function FavoritesScreen() {
           </View>
         )}
 
-        {/* Loading / Load more */}
-        {!searchCity && (
+        {/* Loading indicator */}
+        {activeIsFetching && (
           <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-            {isFetchingNextPage ? (
-              <>
-                <ActivityIndicator size="small" color={colors.tint} />
-                <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 8 }}>
-                  Discovering more places...
-                </Text>
-              </>
-            ) : hasNextPage ? (
-              <Pressable
-                onPress={() => fetchNextPage()}
-                style={({ pressed }) => ({
-                  paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12,
-                  backgroundColor: colors.tint, opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Discover More</Text>
-              </Pressable>
-            ) : discoveredPlaces.length > 0 ? (
-              <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
-                You've explored all trending destinations
-              </Text>
-            ) : null}
+            <ActivityIndicator size="small" color={colors.tint} />
           </View>
         )}
       </ScrollView>
