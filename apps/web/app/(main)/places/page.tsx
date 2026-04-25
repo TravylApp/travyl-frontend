@@ -10,222 +10,18 @@ import {
   LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2, AlignJustify, Navigation,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { useSimilarPlaces, useWeather, useDestinationImage, useServerFavorites, useAuthStore } from '@travyl/shared';
-import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
+import {
+  useSimilarPlaces, useWeather, useDestinationImage, useServerFavorites, useAuthStore,
+  fetchDiscoverPage, fetchNearbyPlaces, fetchNearbyPage, searchPlaces as searchPlacesFn,
+  dedupPlaces, distanceLabel,
+  haversineKm as distanceKm,
+} from '@travyl/shared';
+import type { PlaceItem as PlaceItemType, PlaceItem, DiscoverPageResult } from '@travyl/shared';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
-const BROWSE_CATEGORIES = [
-  'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
-  'shopping', 'nightlife', 'beach', 'landmark', 'garden', 'market',
-]
+// Data fetching (discover, nearby, search) uses shared functions from @travyl/shared
 
-const CAT_OFFSET = Math.floor(Math.random() * BROWSE_CATEGORIES.length)
-
-// Fetch nearby places using geolocation coords
-async function fetchNearbyPage(lat: number, lng: number, pageParam: number): Promise<PlaceItemType[]> {
-  const catsPerPage = 3
-  const startCat = (CAT_OFFSET + pageParam * catsPerPage) % BROWSE_CATEGORIES.length
-  const cats: string[] = []
-  for (let i = 0; i < catsPerPage; i++) {
-    cats.push(BROWSE_CATEGORIES[(startCat + i) % BROWSE_CATEGORIES.length])
-  }
-
-  // Slight coord offset per page for variety
-  const offsetLat = lat + (pageParam % 3) * 0.015
-  const offsetLng = lng + (pageParam % 2) * 0.012
-
-  const results = await Promise.all(
-    cats.map(async (cat) => {
-      const res = await fetch(`/api/places?lat=${offsetLat}&lng=${offsetLng}&category=${cat}&limit=12`)
-      if (!res.ok) return []
-      return res.json() as Promise<PlaceItemType[]>
-    })
-  )
-  return results.flat()
-}
-
-// Fetch suggested places for discovery (no geolocation)
-async function fetchSuggestPage(pageParam: number): Promise<PlaceItemType[]> {
-  const res = await fetch(`/api/places/suggest?destination=popular&category=all&page=${pageParam}`)
-  if (!res.ok) return []
-  const data = await res.json()
-  const suggestions = data?.suggestions ?? []
-  return suggestions.map((s: any): PlaceItemType => ({
-    id: s.id,
-    name: s.name,
-    image: s.imageUrl ?? s.imageUrls?.[0] ?? '',
-    type: 'destination',
-    rating: s.rating ?? 0,
-    tagline: s.description?.split('.')[0] ?? s.location ?? '',
-    category: s.category ?? '',
-    description: s.description ?? '',
-    tags: s.category ? [s.category] : [],
-    latitude: s.latitude,
-    longitude: s.longitude,
-    address: s.location,
-  }))
-}
-
-async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
-  // Step 1: geocode ONCE via a single API call (the route handles geocoding)
-  const geoProbe = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=sightseeing&limit=1`)
-  if (!geoProbe.ok) return []
-  const probeData = await geoProbe.json() as PlaceItemType[]
-  const lat = probeData[0]?.latitude
-  const lng = probeData[0]?.longitude
-  if (lat == null || lng == null) {
-    // Fallback: Google Maps search + events in parallel
-    const mapsFetch = fetch(`/api/search/maps?q=${encodeURIComponent(query)}`)
-      .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-      .catch(() => [] as PlaceItemType[])
-    const eventsFetch = fetch(`/api/events/search?city=${encodeURIComponent(query)}`)
-      .then(async r => {
-        if (!r.ok) return []
-        const events = await r.json()
-        if (!Array.isArray(events)) return []
-        return events.slice(0, 10).map((e: any, i: number) => ({
-          id: `ev_${i}_${(e.name || '').slice(0, 8).replace(/\s/g, '')}`,
-          name: e.name || e.title,
-          image: e.photo_url || e.image || '',
-          type: 'event' as const,
-          rating: 0,
-          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
-          category: 'Event',
-          description: e.description || '',
-          tags: ['Event'],
-          website: e.link,
-        })) as PlaceItemType[]
-      })
-      .catch(() => [] as PlaceItemType[])
-    const [mapsResults, events] = await Promise.all([mapsFetch, eventsFetch])
-    const seen = new Set<string>()
-    return [...mapsResults, ...events].filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
-  }
-
-  // Step 2: Google Maps search + categories from center + offset neighborhood
-  const categories = BROWSE_CATEGORIES
-
-  const fetches: Promise<PlaceItemType[]>[] = []
-
-  // Google Maps search — finds the exact place/business by name
-  fetches.push(
-    fetch(`/api/search/maps?q=${encodeURIComponent(query)}`)
-      .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-      .catch(() => [])
-  )
-
-  // Center: key categories, limit 15
-  for (const cat of categories) {
-    fetches.push(
-      fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=15`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-        .catch(() => [])
-    )
-  }
-  // One offset neighborhood for variety (northeast, +2km)
-  const offsetCats = ['sightseeing', 'restaurant', 'park']
-  for (const cat of offsetCats) {
-    fetches.push(
-      fetch(`/api/places?lat=${lat + 0.02}&lng=${lng + 0.015}&category=${cat}&limit=10`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-        .catch(() => [])
-    )
-  }
-
-  // Foursquare: only restaurants and attractions (best photo quality)
-  const fsCats = ['restaurant', 'attraction']
-  for (const cat of fsCats) {
-    fetches.push(
-      fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
-        .then(async r => {
-          if (!r.ok) return []
-          const venues = await r.json()
-          if (venues.error) return []
-          // Map Foursquare venues to PlaceItem shape
-          return (venues as any[])
-            // Filter out venues that only have generic category icons (not real photos)
-            .filter((v: any) => v.image && !v.image.includes('categories_v2') && !v.image.includes('_bg_'))
-            .map((v: any) => {
-              // Filter out icon URLs from images array too
-              const realImages = (v.images || []).filter((img: string) => !img.includes('categories_v2') && !img.includes('_bg_'))
-              return {
-                id: `fs_${v.id}`,
-                name: v.name,
-                image: realImages[0] || v.image,
-                images: realImages.length > 1 ? realImages : undefined,
-                type: mapFoursquareType(cat),
-                rating: v.rating ? v.rating / 2 : 0,
-                tagline: v.address || v.category || cat,
-                category: v.category || toTitleCase(cat),
-                description: v.tip || '',
-                latitude: v.lat,
-                longitude: v.lng,
-                address: v.address,
-                website: v.url,
-                priceLevel: v.price && v.price >= 1 && v.price <= 4 ? v.price : undefined,
-                hours: v.hours,
-                reviewCount: v.ratingCount,
-                tags: [toTitleCase(cat)],
-              }
-            }) as PlaceItemType[]
-        })
-        .catch(() => [])
-    )
-  }
-
-  // Events — SerpAPI Google Events (free-text search, finds festivals/concerts)
-  fetches.push(
-    fetch(`/api/events/search?city=${encodeURIComponent(query)}`)
-      .then(async r => {
-        if (!r.ok) return []
-        const events = await r.json()
-        if (!Array.isArray(events)) return []
-        return events.slice(0, 10).map((e: any, i: number) => ({
-          id: `ev_${i}_${(e.name || '').slice(0, 8).replace(/\s/g, '')}`,
-          name: e.name || e.title,
-          image: e.photo_url || e.image || '',
-          type: 'event' as const,
-          rating: 0,
-          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
-          category: 'Event',
-          description: e.description || '',
-          latitude: parseFloat(lat as any),
-          longitude: parseFloat(lng as any),
-          tags: ['Event'],
-          website: e.link,
-        })) as PlaceItemType[]
-      })
-      .catch(() => [])
-  )
-
-  const results = await Promise.all(fetches)
-
-  // Deduplicate by id, then by name (cross-source dedup)
-  // Filter out places with no image — no fallbacks
-  const seen = new Set<string>()
-  const seenNames = new Set<string>()
-  return results.flat().filter((p) => {
-    if (!p.name) return false
-    if (!p.image || p.image === '') return false
-    if (seen.has(p.id)) return false
-    const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
-    if (seenNames.has(normName)) return false
-    seen.add(p.id)
-    seenNames.add(normName)
-    return true
-  })
-}
-
-function mapFoursquareType(cat: string): 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' {
-  if (['restaurant', 'cafe', 'nightlife'].includes(cat)) return 'restaurant'
-  if (['museum', 'attraction'].includes(cat)) return 'attraction'
-  if (['park'].includes(cat)) return 'experience'
-  return 'destination'
-}
-
-function toTitleCase(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
-}
+// fetchSearchPlaces, mapFoursquareType, toTitleCase — replaced by shared searchPlaces
 
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
@@ -254,39 +50,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
-// Haversine distance in km between two coordinates
-function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-const NEARBY_RADIUS_KM = 25 // Only show places within 25km
-
-async function fetchNearbyPlaces(lat: number, lng: number): Promise<PlaceItemType[]> {
-  const categories = ['sightseeing', 'restaurant', 'cafe', 'attraction', 'park']
-  const results = await Promise.all(
-    categories.map(async (cat) => {
-      const res = await fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
-      if (!res.ok) return []
-      return res.json() as Promise<PlaceItemType[]>
-    })
-  )
-  const seen = new Set<string>()
-  return results.flat().filter((p) => {
-    if (!p.name || !p.image) return false
-    if (seen.has(p.id)) return false
-    // Filter out places too far from user's actual location
-    if (p.latitude != null && p.longitude != null) {
-      if (distanceKm(lat, lng, p.latitude, p.longitude) > NEARBY_RADIUS_KM) return false
-    }
-    seen.add(p.id)
-    return true
-  })
-}
+// distanceKm, fetchNearbyPlaces — now imported from @travyl/shared
 
 export default function PlacesPage() {
   const [searchCity, setSearchCity] = useState('');
@@ -313,7 +77,7 @@ export default function PlacesPage() {
     enabled: !!userLocation,
   });
 
-  // Browse mode: geolocation nearby + suggest-based discovery for infinite scroll
+  // Browse mode: shared discover feed (same logic as mobile)
   const {
     data: browseData,
     fetchNextPage,
@@ -322,44 +86,46 @@ export default function PlacesPage() {
     isLoading: browseLoading,
   } = useInfiniteQuery({
     queryKey: ['places-browse', userLocation?.lat, userLocation?.lng],
-    queryFn: ({ pageParam }) => {
-      // Page 0 with geolocation: fetch nearby places across categories
-      if (userLocation && pageParam === 0) {
-        return fetchNearbyPage(userLocation.lat, userLocation.lng, 0);
-      }
-      // Subsequent pages (or no geo): use suggest endpoint for diverse discovery
-      return fetchSuggestPage(pageParam);
-    },
+    queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
-      lastPage.length > 0 ? lastPageParam + 1 : undefined,
-    staleTime: 30 * 60 * 1000,
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
+    staleTime: 5 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     enabled: !searchCity,
   });
 
-  // Search mode: single query across categories
-  const { data: searchData = [], isLoading: searchLoading } = useQuery({
+  // Search mode: infinite scroll, same as discover feed
+  const {
+    data: searchData,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
+    isLoading: searchLoading,
+  } = useInfiniteQuery({
     queryKey: ['places-search', searchCity],
-    queryFn: () => fetchSearchPlaces(searchCity),
-    staleTime: 15 * 60 * 1000,
+    queryFn: ({ pageParam }) => searchPlacesFn(searchCity, pageParam, userLocation),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     enabled: !!searchCity,
   });
 
-  // Merge browse pages, deduplicate
+  // Merge pages, deduplicate
   const places = useMemo(() => {
-    if (searchCity) return searchData;
-    if (!browseData?.pages) return [];
-    const seen = new Set<string>();
-    return browseData.pages.flat().filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
+    const data = searchCity ? searchData : browseData;
+    if (!data?.pages) return [];
+    return dedupPlaces(data.pages.flatMap((p) => p.items));
   }, [searchCity, searchData, browseData]);
 
   const placesLoading = searchCity ? searchLoading : browseLoading;
+
+  // Active pagination — works for both search and browse
+  const activeHasNext = searchCity ? hasNextSearchPage : hasNextPage;
+  const activeIsFetching = searchCity ? isFetchingNextSearchPage : isFetchingNextPage;
+  const activeLoadMore = searchCity ? fetchNextSearchPage : fetchNextPage;
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -397,22 +163,22 @@ export default function PlacesPage() {
   // TODO: useEvents needs country which the places page doesn't have.
   // Once we add geocoding or city→country lookup, wire useEvents here.
 
-  // Intersection observer for infinite scroll — paused while showcase is open
+  // Intersection observer for infinite scroll — works for both browse and search
   useEffect(() => {
-    if (searchCity || !hasNextPage || gridShowcase) return;
+    if (!activeHasNext || gridShowcase) return;
     const el = loadMoreRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) {
-          fetchNextPage();
+        if (entries[0].isIntersecting && !activeIsFetching) {
+          activeLoadMore();
         }
       },
       { rootMargin: '800px' }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [searchCity, hasNextPage, isFetchingNextPage, fetchNextPage, gridShowcase]);
+  }, [activeHasNext, activeIsFetching, activeLoadMore, gridShowcase]);
 
   const toggleFavorite = (itemId: string) => {
     if (authToken) {
@@ -589,7 +355,7 @@ export default function PlacesPage() {
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search a city..."
+                placeholder="Search anything — Nobu, rooftop bars, big library..."
                 value={searchInput}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1114,9 +880,9 @@ export default function PlacesPage() {
         />
       )}
       {/* Infinite scroll sentinel */}
-      {!searchCity && hasNextPage && (
+      {activeHasNext && (
         <div ref={loadMoreRef} className="flex justify-center py-10">
-          {isFetchingNextPage && (
+          {activeIsFetching && (
             <div className="flex flex-col items-center gap-3">
               <div className="flex gap-1.5">
                 <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

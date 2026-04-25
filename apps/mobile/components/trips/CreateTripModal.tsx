@@ -210,7 +210,6 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
                   fontSize: FontSize.bodyLg, color: '#111827', fontFamily: FontFamily.sans,
                   textAlignVertical: 'top', backgroundColor: '#f9fafb',
                 }}
-                onSubmitEditing={handleSubmit}
               />
 
               {/* Suggestion chips */}
