@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supabase.rpc('delete_trip_cascade', { p_trip_id: tripId })
     if (error) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+      return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
     }
 
     return NextResponse.json({ status: 'deleted' })
