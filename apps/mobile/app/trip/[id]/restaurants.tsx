@@ -766,15 +766,15 @@ export default function RestaurantsScreen() {
 
   // Merge: search results first (better images), then context + explore without dupes
   const realRestaurants = useMemo(() => {
-    const seen = new Set(searchRestaurants.map((r: any) => r.name.toLowerCase()));
+    const seen = new Set(searchRestaurants.filter((r: any) => r.name).map((r: any) => ((r.name || '') as string).toLowerCase()));
     const contextExtra = contextRestaurants.filter((r: any) => {
-      if (seen.has(r.name.toLowerCase())) return false;
-      seen.add(r.name.toLowerCase());
+      if (seen.has(((r.name || '') as string).toLowerCase())) return false;
+      seen.add(((r.name || '') as string).toLowerCase());
       return true;
     });
     const exploreExtra = exploreRestaurants.filter((r: any) => {
-      if (seen.has(r.name.toLowerCase())) return false;
-      seen.add(r.name.toLowerCase());
+      if (seen.has(((r.name || '') as string).toLowerCase())) return false;
+      seen.add(((r.name || '') as string).toLowerCase());
       return true;
     });
     return [...searchRestaurants, ...contextExtra, ...exploreExtra];
@@ -813,7 +813,7 @@ export default function RestaurantsScreen() {
     let result = [...realRestaurants];
     if (cuisineFilter.length > 0) {
       result = result.filter((r) => {
-        const rCuisine = (r.cuisine || '').toLowerCase();
+        const rCuisine = (r?.cuisine || '').toLowerCase();
         const rTags = (r.tags || []).map((t: string) => t.toLowerCase());
         return cuisineFilter.some((c) => rCuisine.includes(c.toLowerCase()) || rTags.some((t: string) => t.includes(c.toLowerCase())));
       });
@@ -838,7 +838,7 @@ export default function RestaurantsScreen() {
       rating: r.rating ?? 0,
       reviews: r.reviews ?? 0,
       priceLevel: r.priceLevel ?? 0,
-      cuisine: r.cuisine || '',
+      cuisine: r?.cuisine || '',
       address: r.address || '',
       neighborhood: r.neighborhood || '',
       images: [...new Set([...(r.images || []), r.image].filter(Boolean))],

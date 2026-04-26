@@ -65,7 +65,7 @@ function ratingColor(r: number, accent = '#8b5cf6'): string {
 }
 
 function guessActivityType(item: any): string {
-  const text = [item.type, item.category, item.name, ...(item.tags || [])].join(' ').toLowerCase();
+  const text = [item?.type, item?.category, item?.name, ...(item.tags || [])].join(' ').toLowerCase();
   if (/hike|trek|kayak|surf|climb|dive|snorkel|zip/i.test(text)) return 'Adventure';
   if (/museum|gallery|temple|church|monument|heritage|historic/i.test(text)) return 'Cultural';
   if (/park|garden|beach|lake|mountain|nature|trail|outdoor/i.test(text)) return 'Outdoors';
@@ -778,20 +778,20 @@ export default function ActivitiesScreen() {
 
   // Merge: search results first (better images), then TA, then context + explore without dupes
   const realActivities = useMemo(() => {
-    const seen = new Set(searchActivities.map((a: any) => a.name.toLowerCase()));
+    const seen = new Set(searchActivities.filter((a: any) => a.name).map((a: any) => ((a.name || '') as string).toLowerCase()));
     const taExtra = taActivities.filter((a: any) => {
-      if (seen.has(a.name.toLowerCase())) return false;
-      seen.add(a.name.toLowerCase());
+      if (seen.has(((a.name || '') as string).toLowerCase())) return false;
+      seen.add(((a.name || '') as string).toLowerCase());
       return true;
     });
     const contextExtra = contextActivities.filter((a: any) => {
-      if (seen.has(a.name.toLowerCase())) return false;
-      seen.add(a.name.toLowerCase());
+      if (seen.has(((a.name || '') as string).toLowerCase())) return false;
+      seen.add(((a.name || '') as string).toLowerCase());
       return true;
     });
     const exploreExtra = exploreActivities.filter((a: any) => {
-      if (seen.has(a.name.toLowerCase())) return false;
-      seen.add(a.name.toLowerCase());
+      if (seen.has(((a.name || '') as string).toLowerCase())) return false;
+      seen.add(((a.name || '') as string).toLowerCase());
       return true;
     });
     return [...searchActivities, ...taExtra, ...contextExtra, ...exploreExtra];
@@ -830,7 +830,7 @@ export default function ActivitiesScreen() {
     let result = [...realActivities];
     if (typeFilter.length > 0) {
       result = result.filter((a) => {
-        const aType = (a.activityType || '').toLowerCase();
+        const aType = (a?.activityType || '').toLowerCase();
         const aTags = (a.tags || []).map((t: string) => t.toLowerCase());
         return typeFilter.some((t) => aType.includes(t.toLowerCase()) || aTags.some((tag: string) => tag.includes(t.toLowerCase())));
       });
@@ -853,7 +853,7 @@ export default function ActivitiesScreen() {
       name: a.name,
       rating: a.rating ?? 0,
       reviews: a.reviews ?? 0,
-      activityType: a.activityType || '',
+      activityType: a?.activityType || '',
       address: a.address || '',
       neighborhood: a.neighborhood || '',
       images: [...new Set([...(a.images || []), a.image].filter(Boolean))],
