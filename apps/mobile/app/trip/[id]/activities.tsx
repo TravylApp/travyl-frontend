@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useContext, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, ActivityIndicator } from 'react-native';
+import { useState, useMemo, useEffect, useContext, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, Image, Linking, ActivityIndicator, TextInput, Keyboard } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -703,43 +703,59 @@ export default function ActivitiesScreen() {
       }));
   }, [ctx]);
 
-  // Live search via /api/search/maps
+  // Live search + user search
   const destination = trip?.destination?.split(',')[0]?.trim();
   const [searchActivities, setSearchActivities] = useState<any[]>([]);
-  useEffect(() => {
-    if (!destination) return;
+  const [userSearch, setUserSearch] = useState('');
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const mapActivityResult = useCallback((p: any, i: number) => ({
+    id: p.id || `search-act-${i}`,
+    name: p.name,
+    rating: p.rating ?? 0,
+    reviews: p.reviewCount ?? p.reviews ?? 0,
+    activityType: p.activityType || p.type || p.category || guessActivityType(p),
+    address: p.address || '',
+    neighborhood: p.address?.split(',')[0] || '',
+    image: upscaleGoogleImage(p.images?.[0] ?? p.image) || p.images?.[0] || p.image || '',
+    images: (p.images ?? (p.image ? [p.image] : [])).map((img: string) => upscaleGoogleImage(img) || img),
+    hours: p.hours || '',
+    duration: p.duration || '',
+    phone: p.phone || '',
+    website: p.website || '',
+    bookingLink: p.bookingLink || p.website || '',
+    description: p.description || p.tagline || '',
+    tags: p.tags ?? [p.category || p.type].filter(Boolean),
+    latitude: (p.latitude && p.latitude !== 0) ? p.latitude : null,
+    longitude: (p.longitude && p.longitude !== 0) ? p.longitude : null,
+    label: '',
+  }), []);
+
+  const runSearch = useCallback((query: string) => {
+    if (!query) return;
     const base = getWebApiBase();
-    const query = `things to do in ${destination}`;
-    fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
-      .then(r => r.ok ? r.json() : [])
-      .then((data: any[]) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setSearchActivities(data
-          .filter((p: any) => !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''))
-          .map((p: any, i: number) => ({
-            id: p.id || `search-act-${i}`,
-            name: p.name,
-            rating: p.rating ?? 0,
-            reviews: p.reviewCount ?? p.reviews ?? 0,
-            activityType: p.activityType || p.type || p.category || guessActivityType(p),
-            address: p.address || '',
-            neighborhood: p.address?.split(',')[0] || '',
-            image: p.images?.[0] ?? p.image ?? '',
-            images: p.images ?? (p.image ? [p.image] : []),
-            hours: p.hours || '',
-            duration: p.duration || '',
-            phone: p.phone || '',
-            website: p.website || '',
-            bookingLink: p.bookingLink || p.website || '',
-            description: p.description || p.tagline || '',
-            tags: p.tags ?? [p.category || p.type].filter(Boolean),
-            latitude: p.latitude ?? 0,
-            longitude: p.longitude ?? 0,
-            label: '',
-          })));
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A`).then(r => r.ok ? r.json() : []).catch(() => []),
+    ]).then(([mapsData, taData]) => {
+      const all = [...(Array.isArray(mapsData) ? mapsData : []), ...(Array.isArray(taData) ? taData : [])]
+        .filter((p: any) => p.name && !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''));
+      setSearchActivities(all.map(mapActivityResult));
+    });
+  }, [mapActivityResult]);
+
+  // Auto-search on mount
+  useEffect(() => {
+    if (destination) runSearch(`things to do in ${destination}`);
   }, [destination]);
+
+  // User search with debounce
+  useEffect(() => {
+    if (!userSearch.trim()) return;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => runSearch(userSearch), 400) as unknown as NodeJS.Timeout;
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [userSearch]);
 
   // Also try TripAdvisor for activities
   const [taActivities, setTaActivities] = useState<any[]>([]);
@@ -1009,9 +1025,30 @@ export default function ActivitiesScreen() {
         );
       })()}
 
+      {/* ── Search bar ── */}
+      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) runSearch(userSearch.trim()); }}
+            returnKeyType="search"
+            placeholder="Search activities — hiking, museums, tours..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) runSearch(`things to do in ${destination}`); }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Browse Activities — toggle + list/card views ── */}
-      {realActivities.length > 1 && (
-        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+      {realActivities.length > 0 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
           {/* Header with toggle */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ ...TextStyles.subhead, color: colors.text }}>Browse Activities</Text>
