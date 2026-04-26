@@ -4,7 +4,6 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import { ActivityIndicator } from 'react-native';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
 // Conditionally import react-native-maps (crashes on web)
 let MapView: any = View;
