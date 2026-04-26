@@ -738,18 +738,29 @@ export default function ActivitiesScreen() {
   const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
     setIsLoadingMore(true);
     const base = getWebApiBase();
-    const queries = [query, `best ${query}`, `popular ${query}`, `top ${query}`, `unique ${query}`];
-    const q = queries[page % queries.length];
     try {
-      const [mapsData, taData] = await Promise.all([
-        fetch(`${base}/api/search/maps?q=${encodeURIComponent(q)}`).then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(q)}&ssrc=A&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
-      ]);
-      const all = [...(Array.isArray(mapsData) ? mapsData : []), ...(Array.isArray(taData) ? taData : [])]
+      // Page 0: Maps + TripAdvisor. Pages 1+: TripAdvisor pagination only
+      const fetches: Promise<any[]>[] = [
+        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A&offset=${page * 30}`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+      ];
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+      const results = await Promise.all(fetches);
+      const all = results.flat()
         .filter((p: any) => p.name && !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''))
         .map((p: any, i: number) => mapActivityResult(p, i + page * 100, `sa-p${page}`));
-      if (all.length === 0) setHasMore(false);
-      setSearchActivities(prev => append ? [...prev, ...all] : all);
+      if (all.length === 0 && page > 0) { setHasMore(false); setIsLoadingMore(false); return; }
+      setSearchActivities(prev => {
+        if (!append) return all;
+        const existingNames = new Set(prev.map((a: any) => ((a.name || '') as string).toLowerCase()));
+        const newItems = all.filter((a: any) => !existingNames.has(((a.name || '') as string).toLowerCase()));
+        return [...prev, ...newItems];
+      });
     } catch {}
     setIsLoadingMore(false);
   }, [mapActivityResult]);

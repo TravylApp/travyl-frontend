@@ -762,25 +762,31 @@ export default function RestaurantsScreen() {
   const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
     setIsLoadingMore(true);
     const base = getWebApiBase();
-    // Vary query per page for fresh results
-    const queries = [
-      query,
-      `best ${query}`,
-      `popular ${query}`,
-      `top rated ${query}`,
-      `new ${query}`,
-    ];
-    const q = queries[page % queries.length];
     try {
-      const [mapsData, taData] = await Promise.all([
-        fetch(`${base}/api/search/maps?q=${encodeURIComponent(q)}`).then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(q)}&ssrc=r&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
-      ]);
-      const all = [...(Array.isArray(mapsData) ? mapsData : []), ...(Array.isArray(taData) ? taData : [])]
+      // Page 0: Google Maps + TripAdvisor for initial diverse results
+      // Pages 1+: TripAdvisor pagination only (Google Maps returns same results for varied queries)
+      const fetches: Promise<any[]>[] = [
+        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=r&offset=${page * 30}`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+      ];
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+      const results = await Promise.all(fetches);
+      const all = results.flat()
         .filter((p: any) => p.name)
         .map((p: any, i: number) => mapResult(p, i + page * 100, `sr-p${page}`));
-      if (all.length === 0) setHasMore(false);
-      setSearchRestaurants(prev => append ? [...prev, ...all] : all);
+      if (all.length === 0 && page > 0) { setHasMore(false); setIsLoadingMore(false); return; }
+      setSearchRestaurants(prev => {
+        if (!append) return all;
+        // Dedup against existing results
+        const existingNames = new Set(prev.map((r: any) => ((r.name || '') as string).toLowerCase()));
+        const newItems = all.filter((r: any) => !existingNames.has(((r.name || '') as string).toLowerCase()));
+        return [...prev, ...newItems];
+      });
     } catch {}
     setIsLoadingMore(false);
   }, [mapResult]);
