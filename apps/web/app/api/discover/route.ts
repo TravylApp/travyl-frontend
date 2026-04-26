@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
   })
 
   if (!res.ok) {
-    console.error('[discover proxy] Lambda error:', res.status, await res.text().catch(() => ''))
     return NextResponse.json({ destination: null, places: [] }, { status: res.status })
   }
 

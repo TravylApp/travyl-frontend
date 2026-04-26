@@ -104,7 +104,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(mapped)
   } catch (err) {
-    console.error('[/api/events/search] SerpAPI error:', err)
     return NextResponse.json([])
   }
 }

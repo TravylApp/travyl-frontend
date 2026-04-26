@@ -178,7 +178,7 @@ function ActivityCard({
           <FontAwesome
             name={isFavorited ? 'heart' : 'heart-o'}
             size={14}
-            color={isFavorited ? '#ef4444' : '#fff'}
+            color={isFavorited ? colors.error : '#fff'}
           />
         </Pressable>
 
@@ -229,7 +229,7 @@ function ActivityCard({
           <View style={{
             position: 'absolute', top: 10, left: 10,
             flexDirection: 'row', alignItems: 'center', gap: 4,
-            backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+            backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
             marginTop: 26,
           }}>
             <FontAwesome name="calendar-check-o" size={9} color="#fff" />
@@ -387,7 +387,7 @@ function ActivityDetailSheet({
                     {item.dealPrice && item.originalPrice && (
                       <>
                         <Text style={{ ...TextStyles.body, color: colors.textTertiary, textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
-                        <Text style={{ ...TextStyles.bodyXlEm, color: '#ef4444' }}>{item.dealPrice}</Text>
+                        <Text style={{ ...TextStyles.bodyXlEm, color: colors.error }}>{item.dealPrice}</Text>
                       </>
                     )}
                   </View>
@@ -423,20 +423,20 @@ function ActivityDetailSheet({
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: 8,
-                        backgroundColor: item.isOpen ? '#f0fdf4' : '#fef2f2',
+                        backgroundColor: item.isOpen ? colors.successBg : colors.errorBg,
                         borderRadius: 10,
                         padding: 12,
                         borderWidth: 1,
-                        borderColor: item.isOpen ? '#bbf7d0' : '#fecaca',
+                        borderColor: item.isOpen ? colors.success : colors.error,
                         marginBottom: 12,
                       }}
                     >
                       <FontAwesome
                         name={item.isOpen ? 'check-circle' : 'times-circle'}
                         size={13}
-                        color={item.isOpen ? '#16a34a' : '#ef4444'}
+                        color={item.isOpen ? colors.success : colors.error}
                       />
-                      <Text style={{ ...TextStyles.bodyLgEm, color: item.isOpen ? '#16a34a' : '#ef4444' }}>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: item.isOpen ? colors.success : colors.error }}>
                         {item.isOpen ? 'Open Now' : 'Currently Closed'}
                       </Text>
                     </View>
@@ -451,8 +451,8 @@ function ActivityDetailSheet({
                         height: 44,
                         borderRadius: 10,
                         borderWidth: 1.5,
-                        borderColor: isFavorited ? '#ef4444' : colors.border,
-                        backgroundColor: isFavorited ? '#fef2f2' : colors.cardBackground,
+                        borderColor: isFavorited ? colors.error : colors.border,
+                        backgroundColor: isFavorited ? colors.errorBg : colors.cardBackground,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
@@ -460,7 +460,7 @@ function ActivityDetailSheet({
                       <FontAwesome
                         name={isFavorited ? 'heart' : 'heart-o'}
                         size={16}
-                        color={isFavorited ? '#ef4444' : colors.border}
+                        color={isFavorited ? colors.error : colors.border}
                       />
                     </Pressable>
 
@@ -490,12 +490,12 @@ function ActivityDetailSheet({
                         paddingVertical: 12,
                         borderRadius: 10,
                         borderWidth: 1.5,
-                        borderColor: '#10b981',
+                        borderColor: colors.success,
                         backgroundColor: colors.cardBackground,
                       }}
                     >
                       <FontAwesome name="external-link" size={12} color="#10b981" />
-                      <Text style={{ ...TextStyles.bodyLgEm, color: '#10b981' }}>Book Now</Text>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.success }}>Book Now</Text>
                     </Pressable>
                   </View>
 
@@ -615,12 +615,12 @@ function ActivityDetailFooter({
           onPress={() => onToggleFav(place.id)}
           style={{
             width: 44, height: 44, borderRadius: 12,
-            borderWidth: 1.5, borderColor: isFav ? '#ef4444' : colors.border,
-            backgroundColor: isFav ? '#fef2f2' : colors.cardBackground,
+            borderWidth: 1.5, borderColor: isFav ? colors.error : colors.border,
+            backgroundColor: isFav ? colors.errorBg : colors.cardBackground,
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={16} color={isFav ? '#ef4444' : colors.textTertiary} />
+          <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={16} color={isFav ? colors.error : colors.textTertiary} />
         </Pressable>
 
         {directionsUrl && (

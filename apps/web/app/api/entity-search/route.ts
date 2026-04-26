@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
   })
 
   if (!res.ok) {
-    console.error('[entity-search proxy] Lambda error:', res.status, await res.text().catch(() => ''))
     return NextResponse.json({ results: {} }, { status: res.status })
   }
 

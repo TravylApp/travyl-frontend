@@ -58,7 +58,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(results.slice(0, 20))
   } catch (err) {
-    console.error('[/api/search/maps] SerpAPI error:', err)
     return NextResponse.json([])
   }
 }

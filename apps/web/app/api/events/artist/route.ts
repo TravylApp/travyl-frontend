@@ -96,7 +96,6 @@ export async function GET(req: NextRequest) {
       tourLinks,
     })
   } catch (err) {
-    console.error('[/api/events/artist] error:', err)
     return NextResponse.json({ artist: query, events: [], tourLinks: [] })
   }
 }

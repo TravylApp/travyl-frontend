@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
   })
 
   if (!res.ok) {
-    console.error('[search/quick proxy] Lambda error:', res.status, await res.text().catch(() => ''))
     return NextResponse.json({ intent: { intent: 'unknown', rawQuery: q }, results: {} })
   }
 

@@ -103,7 +103,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (err) {
-    console.error('[/api/search/place-detail] error:', err)
     return NextResponse.json({})
   }
 }

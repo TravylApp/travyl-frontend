@@ -39,7 +39,6 @@ export async function GET(
     out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
     return out
   } catch (err) {
-    console.error('[places/id] Route error:', err)
     return NextResponse.json({ error: 'Failed to fetch place' }, { status: 500 })
   }
 }

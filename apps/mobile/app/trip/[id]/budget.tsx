@@ -18,10 +18,10 @@ const CATEGORY_CONFIG: Record<string, { icon: string; bg: string; color: string;
   'Food & Dining':      { icon: 'cutlery',      bg: '#e0f2fe', color: Navy.DEFAULT, bar: Navy.DEFAULT },
   'Activities & Tours': { icon: 'camera',        bg: '#ccfbf1', color: '#0d9488', bar: '#14b8a6' },
   'Transportation':     { icon: 'bus',           bg: '#ede9fe', color: '#7c3aed', bar: '#8b5cf6' },
-  'Shopping':           { icon: 'shopping-bag',  bg: '#dcfce7', color: '#16a34a', bar: '#22c55e' },
+  'Shopping':           { icon: 'shopping-bag',  bg: '#dcfce7', color: colors.success, bar: '#22c55e' },
 };
 
-const defaultCfg = { icon: 'money', bg: '#f3f4f6', color: '#6b7280', bar: '#9ca3af' };
+const defaultCfg = { icon: 'money', bg: '#f3f4f6', color: colors.textSecondary, bar: '#9ca3af' };
 
 const DAY_ABBREVS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -29,18 +29,18 @@ const DAY_ABBREVS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
    Helpers — health-based backgrounds (matches web healthBg / categoryHealthBg)
    ================================================================ */
 
-function healthColors(pct: number): { bg: string; border: string } {
-  if (pct >= 100) return { bg: '#fef2f2', border: '#fecaca' };
-  if (pct >= 90)  return { bg: '#fffbeb', border: '#fde68a' };
-  if (pct >= 75)  return { bg: '#eff6ff', border: '#bfdbfe' };
-  return { bg: '#ffffff', border: '#e5e7eb' };
+function healthColors(pct: number, c: any): { bg: string; border: string } {
+  if (pct >= 100) return { bg: c.errorBg, border: c.error };
+  if (pct >= 90)  return { bg: c.warningBg, border: c.warning };
+  if (pct >= 75)  return { bg: c.infoBg, border: c.info };
+  return { bg: c.cardBackground, border: c.border };
 }
 
-function categoryHealthColors(pct: number): { bg: string; border: string } {
-  if (pct >= 100) return { bg: '#fef2f2', border: '#fecaca' };
-  if (pct >= 90)  return { bg: '#fffbeb', border: '#fde68a' };
-  if (pct >= 75)  return { bg: '#eff6ff', border: '#bfdbfe' };
-  return { bg: '#ecfdf5', border: '#a7f3d0' };
+function categoryHealthColors(pct: number, c: any): { bg: string; border: string } {
+  if (pct >= 100) return { bg: c.errorBg, border: c.error };
+  if (pct >= 90)  return { bg: c.warningBg, border: c.warning };
+  if (pct >= 75)  return { bg: c.infoBg, border: c.info };
+  return { bg: c.successBg, border: c.success };
 }
 
 /* ================================================================
@@ -60,7 +60,7 @@ function BudgetSkeleton() {
         ))}
       </View>
       <View style={{ backgroundColor: colors.borderLight, borderRadius: 6, height: 10, marginBottom: 20, overflow: 'hidden' }}>
-        <View style={{ width: '65%', height: '100%', backgroundColor: '#10b981', borderRadius: 6 }} />
+        <View style={{ width: '65%', height: '100%', backgroundColor: colors.success, borderRadius: 6 }} />
       </View>
       <View style={{ gap: 10 }}>
         {[1, 2, 3, 4].map((i) => (
@@ -209,7 +209,7 @@ export default function BudgetScreen() {
   const progressColor =
     pctUsed >= 100 ? '#ef4444' : pctUsed >= 80 ? '#f59e0b' : '#10b981';
 
-  const overallHealth = healthColors(pctUsed);
+  const overallHealth = healthColors(pctUsed, colors);
 
   /* Daily budget chart — derived from real trip dates and total budget */
   const tripDays = trip?.start_date && trip?.end_date
@@ -452,7 +452,7 @@ export default function BudgetScreen() {
                 onPress={() => { setIsEditingTotal(true); setTempTotal(totalBudgeted.toString()); }}
                 hitSlop={8}
               >
-                <FontAwesome name="pencil" size={10} color="#9ca3af" />
+                <FontAwesome name="pencil" size={10} color={colors.textTertiary} />
               </Pressable>
             ) : (
               <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -460,7 +460,7 @@ export default function BudgetScreen() {
                   <FontAwesome name="check" size={10} color="#10b981" />
                 </Pressable>
                 <Pressable onPress={() => setIsEditingTotal(false)} hitSlop={8}>
-                  <FontAwesome name="times" size={10} color="#9ca3af" />
+                  <FontAwesome name="times" size={10} color={colors.textTertiary} />
                 </Pressable>
               </View>
             )}
@@ -493,7 +493,7 @@ export default function BudgetScreen() {
         </View>
 
         {/* Remaining */}
-        <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? '#10b98130' : '#ef444430' }}>
+        <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? colors.success + '30' : colors.error + '30' }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
           <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
             ${Math.abs(remaining).toLocaleString()}
@@ -635,14 +635,14 @@ export default function BudgetScreen() {
                       hitSlop={8}
                       style={{ padding: 4 }}
                     >
-                      <FontAwesome name="pencil" size={12} color="#9ca3af" />
+                      <FontAwesome name="pencil" size={12} color={colors.textTertiary} />
                     </Pressable>
                   )}
                   {!isEditing && (
                     <FontAwesome
                       name={isExpanded ? 'chevron-up' : 'chevron-down'}
                       size={12}
-                      color="#9ca3af"
+                      color={colors.textTertiary}
                     />
                   )}
                 </View>
@@ -666,11 +666,11 @@ export default function BudgetScreen() {
                             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Actual</Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
                               <Pressable onPress={() => handleStartEdit(item)} hitSlop={8}>
-                                <FontAwesome name="pencil" size={12} color="#9ca3af" />
+                                <FontAwesome name="pencil" size={12} color={colors.textTertiary} />
                               </Pressable>
                               {!item.fixed && (
                                 <Pressable onPress={() => handleDeleteCategory(item.id)} hitSlop={8}>
-                                  <FontAwesome name="trash" size={12} color="#9ca3af" />
+                                  <FontAwesome name="trash" size={12} color={colors.textTertiary} />
                                 </Pressable>
                               )}
                             </View>
@@ -697,11 +697,11 @@ export default function BudgetScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                         <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{itemPct.toFixed(0)}% used</Text>
                         {itemDiff > 0 ? (
-                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: '#10b981' }}>
+                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.success }}>
                             ${itemDiff.toLocaleString()} under
                           </Text>
                         ) : itemDiff < 0 ? (
-                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: '#ef4444' }}>
+                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.error }}>
                             ${Math.abs(itemDiff).toLocaleString()} over
                           </Text>
                         ) : (
@@ -731,7 +731,7 @@ export default function BudgetScreen() {
                               <FontAwesome
                                 name={expandedExpenses.has(item.id) ? 'chevron-up' : 'chevron-down'}
                                 size={10}
-                                color="#6b7280"
+                                color={colors.textSecondary}
                               />
                             </Pressable>
 
@@ -764,7 +764,7 @@ export default function BudgetScreen() {
                                         hitSlop={8}
                                         style={{ padding: 4 }}
                                       >
-                                        <FontAwesome name="trash" size={11} color="#9ca3af" />
+                                        <FontAwesome name="trash" size={11} color={colors.textTertiary} />
                                       </Pressable>
                                     </View>
                                   </View>
@@ -782,7 +782,7 @@ export default function BudgetScreen() {
                               value={newExpenseDesc}
                               onChangeText={setNewExpenseDesc}
                               placeholder="e.g., Round trip tickets"
-                              placeholderTextColor="#9ca3af"
+                              placeholderTextColor={colors.textTertiary}
                               autoFocus
                               style={{
                                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -796,7 +796,7 @@ export default function BudgetScreen() {
                               value={newExpenseAmount}
                               onChangeText={setNewExpenseAmount}
                               placeholder="0.00"
-                              placeholderTextColor="#9ca3af"
+                              placeholderTextColor={colors.textTertiary}
                               keyboardType="numeric"
                               style={{
                                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -809,7 +809,7 @@ export default function BudgetScreen() {
                               <Pressable
                                 onPress={() => handleAddExpense(item.id)}
                                 style={{
-                                  flex: 1, backgroundColor: '#10b981', borderRadius: 8,
+                                  flex: 1, backgroundColor: colors.success, borderRadius: 8,
                                   paddingVertical: 10, alignItems: 'center',
                                 }}
                               >
@@ -841,7 +841,7 @@ export default function BudgetScreen() {
                               backgroundColor: colors.cardBackground,
                             }}
                           >
-                            <FontAwesome name="plus" size={12} color="#374151" />
+                            <FontAwesome name="plus" size={12} color={colors.text} />
                             <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Add Expense</Text>
                           </Pressable>
                         )}
@@ -856,7 +856,7 @@ export default function BudgetScreen() {
                         onChangeText={setTempBudgeted}
                         keyboardType="numeric"
                         placeholder="0.00"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.textTertiary}
                         autoFocus
                         style={{
                           borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -869,7 +869,7 @@ export default function BudgetScreen() {
                         <Pressable
                           onPress={handleSaveEdit}
                           style={{
-                            flex: 1, backgroundColor: '#10b981', borderRadius: 8,
+                            flex: 1, backgroundColor: colors.success, borderRadius: 8,
                             paddingVertical: 10, alignItems: 'center',
                           }}
                         >
@@ -908,17 +908,17 @@ export default function BudgetScreen() {
               gap: 8,
             }}
           >
-            <FontAwesome name="plus" size={22} color="#9ca3af" />
+            <FontAwesome name="plus" size={22} color={colors.textTertiary} />
             <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.textSecondary }}>Add Category</Text>
           </Pressable>
         ) : (
-          <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, borderWidth: 2, borderColor: '#6ee7b7', padding: 16 }}>
+          <View style={{ backgroundColor: colors.successBg, borderRadius: 10, borderWidth: 2, borderColor: '#6ee7b7', padding: 16 }}>
             <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Category Name</Text>
             <TextInput
               value={newCategory}
               onChangeText={setNewCategory}
               placeholder="e.g., Insurance"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               autoFocus
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -932,7 +932,7 @@ export default function BudgetScreen() {
               value={newBudgeted}
               onChangeText={setNewBudgeted}
               placeholder="0.00"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               keyboardType="numeric"
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -946,7 +946,7 @@ export default function BudgetScreen() {
               value={newActual}
               onChangeText={setNewActual}
               placeholder="0.00"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               keyboardType="numeric"
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -959,7 +959,7 @@ export default function BudgetScreen() {
               <Pressable
                 onPress={handleAddCategory}
                 style={{
-                  flex: 1, backgroundColor: '#10b981', borderRadius: 8,
+                  flex: 1, backgroundColor: colors.success, borderRadius: 8,
                   paddingVertical: 10, alignItems: 'center',
                 }}
               >

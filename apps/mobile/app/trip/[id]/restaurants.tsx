@@ -163,7 +163,7 @@ function RestaurantCard({
             <FontAwesome
               name={isFavorited ? 'heart' : 'heart-o'}
               size={14}
-              color={isFavorited ? '#ef4444' : colors.border}
+              color={isFavorited ? colors.error : colors.border}
             />
           </Pressable>
 
@@ -196,7 +196,7 @@ function RestaurantCard({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
-                backgroundColor: '#10b981',
+                backgroundColor: colors.success,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 8,
@@ -245,7 +245,7 @@ function RestaurantCard({
           {/* Location + distance */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
-              <FontAwesome name="map-marker" size={11} color="#9ca3af" />
+              <FontAwesome name="map-marker" size={11} color={colors.textTertiary} />
               <Text style={{ ...TextStyles.body, color: colors.textSecondary }} numberOfLines={1}>{item.location}</Text>
             </View>
             {item.distance && (
@@ -289,7 +289,7 @@ function RestaurantCard({
               <>
                 <Text style={{ ...TextStyles.body, color: colors.border }}>{'\u00b7'}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <FontAwesome name="clock-o" size={10} color="#9ca3af" />
+                  <FontAwesome name="clock-o" size={10} color={colors.textTertiary} />
                   <Text style={{ ...TextStyles.body, color: colors.textTertiary }}>{item.bookedTime}</Text>
                 </View>
               </>
@@ -300,7 +300,7 @@ function RestaurantCard({
                 <Text
                   style={{
                     ...TextStyles.caption,
-                    color: item.isOpen ? '#059669' : '#ef4444',
+                    color: item.isOpen ? colors.success : colors.error,
                   }}
                 >
                   {item.isOpen ? 'Open Now' : 'Closed'}
@@ -365,16 +365,16 @@ function RestaurantCard({
                           flexDirection: 'row',
                           alignItems: 'center',
                           gap: 4,
-                          backgroundColor: '#fef3c7',
+                          backgroundColor: colors.warningBg,
                           paddingHorizontal: 10,
                           paddingVertical: 5,
                           borderRadius: 8,
                           borderWidth: 1,
-                          borderColor: '#fde68a',
+                          borderColor: colors.warning,
                         }}
                       >
                         <FontAwesome name="star-o" size={9} color="#d97706" />
-                        <Text style={{ ...TextStyles.caption, color: '#92400e' }}>{dish}</Text>
+                        <Text style={{ ...TextStyles.caption, color: colors.warning }}>{dish}</Text>
                       </View>
                     ))}
                   </View>
@@ -411,21 +411,21 @@ function RestaurantCard({
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 8,
-                    backgroundColor: item.isBooked ? '#f0fdf4' : '#eff6ff',
+                    backgroundColor: item.isBooked ? colors.successBg : colors.infoBg,
                     borderRadius: 10,
                     padding: 12,
                     borderWidth: 1,
-                    borderColor: item.isBooked ? '#bbf7d0' : '#bfdbfe',
+                    borderColor: item.isBooked ? colors.success : colors.info,
                     marginBottom: 10,
                   }}
                 >
                   <FontAwesome
                     name={item.isBooked ? 'check-circle' : 'info-circle'}
                     size={13}
-                    color={item.isBooked ? '#16a34a' : ACCENT}
+                    color={item.isBooked ? colors.success : ACCENT}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ ...TextStyles.captionEm, color: item.isBooked ? '#16a34a' : ACCENT, marginBottom: 2 }}>
+                    <Text style={{ ...TextStyles.captionEm, color: item.isBooked ? colors.success : ACCENT, marginBottom: 2 }}>
                       Reservations
                     </Text>
                     <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{reservation}</Text>
@@ -440,19 +440,19 @@ function RestaurantCard({
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 8,
-                    backgroundColor: '#fef2f2',
+                    backgroundColor: colors.errorBg,
                     borderRadius: 10,
                     padding: 12,
                     borderWidth: 1,
-                    borderColor: '#fecaca',
+                    borderColor: colors.error,
                     marginBottom: 10,
                   }}
                 >
                   <FontAwesome name="tag" size={13} color="#dc2626" />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ ...TextStyles.captionEm, color: '#dc2626', marginBottom: 2 }}>Special Deal</Text>
+                    <Text style={{ ...TextStyles.captionEm, color: colors.error, marginBottom: 2 }}>Special Deal</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ ...TextStyles.bodyXlEm, color: '#dc2626' }}>{item.dealPrice}</Text>
+                      <Text style={{ ...TextStyles.bodyXlEm, color: colors.error }}>{item.dealPrice}</Text>
                       <Text style={{ ...TextStyles.body, color: colors.textTertiary, textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
                     </View>
                   </View>
@@ -467,7 +467,7 @@ function RestaurantCard({
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 2, marginBottom: 6 }}
           >
             <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{expanded ? 'Show less' : 'Show details'}</Text>
-            <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={9} color="#9ca3af" />
+            <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={9} color={colors.textTertiary} />
           </Pressable>
 
           {/* View Details button */}
@@ -515,7 +515,7 @@ function RestaurantCard({
                   borderColor: colors.border,
                 }}
               >
-                <FontAwesome name="times" size={10} color="#9ca3af" />
+                <FontAwesome name="times" size={10} color={colors.textTertiary} />
                 <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>Remove</Text>
               </Pressable>
             ) : (
@@ -547,7 +547,7 @@ function RestaurantCard({
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: 8,
-                  backgroundColor: '#10b981',
+                  backgroundColor: colors.success,
                 }}
               >
                 <FontAwesome name="external-link" size={10} color="#fff" />
@@ -647,16 +647,16 @@ function RestaurantDetailSheet({ item, onClose }: { item: DiscoverItem; onClose:
                           flexDirection: 'row',
                           alignItems: 'center',
                           gap: 4,
-                          backgroundColor: '#fef3c7',
+                          backgroundColor: colors.warningBg,
                           paddingHorizontal: 10,
                           paddingVertical: 5,
                           borderRadius: 8,
                           borderWidth: 1,
-                          borderColor: '#fde68a',
+                          borderColor: colors.warning,
                         }}
                       >
                         <FontAwesome name="star-o" size={9} color="#d97706" />
-                        <Text style={{ ...TextStyles.caption, color: '#92400e' }}>{dish}</Text>
+                        <Text style={{ ...TextStyles.caption, color: colors.warning }}>{dish}</Text>
                       </View>
                     ))}
                   </View>
@@ -693,21 +693,21 @@ function RestaurantDetailSheet({ item, onClose }: { item: DiscoverItem; onClose:
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 8,
-                    backgroundColor: item.isBooked ? '#f0fdf4' : '#eff6ff',
+                    backgroundColor: item.isBooked ? colors.successBg : colors.infoBg,
                     borderRadius: 10,
                     padding: 12,
                     borderWidth: 1,
-                    borderColor: item.isBooked ? '#bbf7d0' : '#bfdbfe',
+                    borderColor: item.isBooked ? colors.success : colors.info,
                     marginBottom: 12,
                   }}
                 >
                   <FontAwesome
                     name={item.isBooked ? 'check-circle' : 'info-circle'}
                     size={13}
-                    color={item.isBooked ? '#16a34a' : ACCENT}
+                    color={item.isBooked ? colors.success : ACCENT}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ ...TextStyles.captionEm, color: item.isBooked ? '#16a34a' : ACCENT, marginBottom: 2 }}>
+                    <Text style={{ ...TextStyles.captionEm, color: item.isBooked ? colors.success : ACCENT, marginBottom: 2 }}>
                       Reservations
                     </Text>
                     <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{reservation}</Text>
@@ -742,12 +742,12 @@ function RestaurantDetailSheet({ item, onClose }: { item: DiscoverItem; onClose:
                     paddingVertical: 12,
                     borderRadius: 10,
                     borderWidth: 1.5,
-                    borderColor: '#10b981',
+                    borderColor: colors.success,
                     backgroundColor: colors.cardBackground,
                   }}
                 >
                   <FontAwesome name="external-link" size={12} color="#10b981" />
-                  <Text style={{ ...TextStyles.bodyLgEm, color: '#10b981' }}>Book Now</Text>
+                  <Text style={{ ...TextStyles.bodyLgEm, color: colors.success }}>Book Now</Text>
                 </Pressable>
               </View>
 
@@ -996,7 +996,7 @@ export default function RestaurantsScreen() {
               height: 38,
             }}
           >
-            <FontAwesome name="search" size={12} color="#9ca3af" style={{ marginRight: 8 }} />
+            <FontAwesome name="search" size={12} color={colors.textTertiary} style={{ marginRight: 8 }} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -1006,7 +1006,7 @@ export default function RestaurantsScreen() {
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
-                <FontAwesome name="times-circle" size={14} color="#9ca3af" />
+                <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
               </Pressable>
             )}
             <View style={{ width: 1, height: 18, backgroundColor: colors.border, marginHorizontal: 8 }} />
@@ -1018,7 +1018,7 @@ export default function RestaurantsScreen() {
               <Text style={{ ...TextStyles.caption, color: ACCENT }}>
                 {RESTAURANT_SORT_OPTIONS.find((s) => s.key === sortBy)?.label}
               </Text>
-              <FontAwesome name={showSortDropdown ? 'chevron-up' : 'chevron-down'} size={8} color="#9ca3af" />
+              <FontAwesome name={showSortDropdown ? 'chevron-up' : 'chevron-down'} size={8} color={colors.textTertiary} />
             </Pressable>
           </View>
 

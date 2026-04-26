@@ -39,7 +39,6 @@ export async function GET(req: NextRequest) {
     })
 
     if (!res.ok) {
-      console.error('Pexels API error:', res.status, await res.text())
       return NextResponse.json({ error: 'Pexels API error' }, { status: 502 })
     }
 
@@ -74,7 +73,6 @@ export async function GET(req: NextRequest) {
       images,                // all images for mosaic / carousel
     })
   } catch (err) {
-    console.error('Pexels fetch error:', err)
     return NextResponse.json({ error: 'Failed to fetch images' }, { status: 500 })
   }
 }

@@ -57,7 +57,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(results.slice(0, 30))
   } catch (err) {
-    console.error('[/api/search/tripadvisor] error:', err)
     return NextResponse.json([])
   }
 }

@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
   })
 
   if (!res.ok) {
-    console.error('[parse-intent proxy] Lambda error:', res.status, await res.text().catch(() => ''))
     return fallback(q)
   }
 

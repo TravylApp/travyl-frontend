@@ -366,7 +366,7 @@ export async function POST(req: NextRequest) {
       if (authHeader) headers['Authorization'] = authHeader
 
       fetch(`${BACKEND_URL}/packing-suggest`, { method: 'POST', headers, body })
-        .catch((err) => console.error('[enrich] packing-suggest failed:', err))
+        .catch(() => {})
     }
   }
 

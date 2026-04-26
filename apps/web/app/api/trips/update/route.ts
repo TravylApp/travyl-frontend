@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
       .eq('id', tripId)
 
     if (updateErr) {
-      console.error('[Trip Update] trip_context update failed:', updateErr)
     }
   }
 
@@ -99,7 +98,6 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-    if (hotelErr) console.error('[Trip Update] Failed to save hotels:', hotelErr.message)
   }
 
   // Save flights to flights table
@@ -124,7 +122,6 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-    if (flightErr) console.error('[Trip Update] Failed to save flights:', flightErr)
   }
 
   // Itinerary is stored in trip_context — no separate tables needed

@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ status: 'deleted' })
   } catch (e) {
-    console.error('[Trip Delete] Error:', e)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

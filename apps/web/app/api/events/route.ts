@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(url.toString(), { headers })
     if (!res.ok) {
-      console.error('[/api/events] Backend error:', res.status)
       return NextResponse.json([])
     }
 
@@ -48,7 +47,6 @@ export async function GET(req: NextRequest) {
     }))
     return NextResponse.json(mapped)
   } catch (err) {
-    console.error('[/api/events] error:', err)
     return NextResponse.json([])
   }
 }

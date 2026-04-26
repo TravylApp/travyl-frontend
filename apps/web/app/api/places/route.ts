@@ -109,7 +109,6 @@ export async function GET(req: NextRequest) {
     res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
     return res_out
   } catch (err) {
-    console.error('[places] Route error:', err)
     return NextResponse.json([])
   }
 }

@@ -52,7 +52,6 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Trip Create] Supabase error:', error.message, error.code)
       return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
     }
 
@@ -82,7 +81,6 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       // Non-blocking — trip still works without hero image
-      console.error('Failed to fetch hero image:', e)
     }
   }
 
@@ -110,7 +108,6 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-    if (hotelErr) console.error('Failed to save hotels:', hotelErr.message, hotelErr.code, hotelErr.details)
   }
 
   // Save flights to flights table (best effort)
@@ -134,14 +131,12 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-    if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 
   // Itinerary is stored in trip_context — no separate tables needed
 
   return NextResponse.json(data)
   } catch (e) {
-    console.error('[Trip Create] Unhandled error:', e)
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500 })
   }
 }

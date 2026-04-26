@@ -52,7 +52,6 @@ export async function GET(req: NextRequest) {
     })
 
     if (!res.ok) {
-      console.error('[fsq-search] Foursquare error:', res.status)
       return NextResponse.json({ results: [] })
     }
 
@@ -88,7 +87,6 @@ export async function GET(req: NextRequest) {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' },
     })
   } catch (err) {
-    console.error('[fsq-search] error:', err)
     return NextResponse.json({ results: [] })
   }
 }
