@@ -4,12 +4,12 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 // Airport cache — populated dynamically from API search results
 const airportCache: { code: string; name: string; city: string }[] = [];
 
-// Empty stubs — comparison and booking details are not wired to real data yet
+// Stubs — flight comparison and booking details not wired to live data yet
 const COMPARISON_FLIGHTS: any[] = [];
 const BOOKING_DETAILS = {
   confirmationNumber: '', pnr: '', ticketNumbers: [] as string[],

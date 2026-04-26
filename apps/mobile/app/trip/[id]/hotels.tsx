@@ -18,7 +18,7 @@ if (Platform.OS !== 'web') {
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
+import { TextStyles, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
