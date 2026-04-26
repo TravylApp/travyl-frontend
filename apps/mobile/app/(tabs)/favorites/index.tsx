@@ -167,7 +167,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={12} color={isFav ? '#ef4444' : '#9ca3af'} />
+            <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={12} color={isFav ? colors.error : colors.textTertiary} />
           </Pressable>
 
           {/* Dot indicators */}
@@ -213,7 +213,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
               </Text>
             )}
             {priceStr ? (
-              <Text style={{ ...TextStyles.smEm, color: '#10b981' }}>{priceStr}</Text>
+              <Text style={{ ...TextStyles.smEm, color: colors.success }}>{priceStr}</Text>
             ) : null}
           </View>
 

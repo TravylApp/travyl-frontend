@@ -576,7 +576,7 @@ function OtherHotelCard({ hotel, onPress }: { hotel: { id: string; name: string;
       {hotel.image ? (
         <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" />
       ) : (
-        <View style={{ width: 90, height: 100, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 90, height: 100, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
           <FontAwesome name="building" size={24} color="rgba(255,255,255,0.3)" />
         </View>
       )}
@@ -753,7 +753,7 @@ function HotelFilterBar({
           {/* Reset */}
           {activeCount > 0 && (
             <Pressable onPress={resetAll} style={{ alignSelf: 'flex-start' }}>
-              <Text style={{ ...TextStyles.bodyEm, color: '#ef4444' }}>Reset Filters</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.error }}>Reset Filters</Text>
             </Pressable>
           )}
         </View>
@@ -775,14 +775,14 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
       style={({ pressed }) => ({
         backgroundColor: colors.cardBackground, borderRadius: 14, overflow: 'hidden', marginBottom: 14,
         borderWidth: isSelected ? 2 : 1,
-        borderColor: isSelected ? '#60a5fa' : isBooked ? 'rgba(30,58,95,0.3)' : colors.border,
+        borderColor: isSelected ? colors.info : isBooked ? 'rgba(30,58,95,0.3)' : colors.border,
         shadowColor: colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
         opacity: pressed ? 0.92 : 1,
       })}
     >
       {/* Selected/Booked indicator */}
       {(isSelected || isBooked) && (
-        <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, backgroundColor: isBooked ? '#1e3a5f' : '#60a5fa', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+        <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, backgroundColor: isBooked ? colors.tint : colors.info, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
           <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>{isBooked ? 'Booked' : 'Viewing'}</Text>
         </View>
       )}
@@ -791,7 +791,7 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
       {hotel.image ? (
         <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: '100%', height: 170 }} resizeMode="cover" />
       ) : (
-        <View style={{ width: '100%', height: 110, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: '100%', height: 110, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
           <FontAwesome name="building" size={28} color="rgba(255,255,255,0.3)" />
         </View>
       )}
@@ -893,7 +893,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {images.length > 0 ? (
             <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
-            <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ flex: 1, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesome name="building" size={36} color="rgba(255,255,255,0.25)" />
             </View>
           )}
@@ -1432,7 +1432,7 @@ export default function HotelsScreen() {
               <Pressable
                 onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
                 style={({ pressed }) => ({
-                  marginTop: 16, backgroundColor: pressed ? '#2d4a6f' : '#1e3a5f', borderRadius: 12, paddingVertical: 15,
+                  marginTop: 16, backgroundColor: pressed ? colors.tint : colors.tint, borderRadius: 12, paddingVertical: 15,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
                 })}
               >

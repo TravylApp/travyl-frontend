@@ -231,7 +231,7 @@ export default function LoginScreen() {
               disabled={submitting}
               style={{ alignSelf: 'flex-end', marginBottom: 16 }}
             >
-              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? '#16a34a' : colors.textSecondary }}>
+              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? colors.success : colors.textSecondary }}>
                 {resetEmailSent ? 'Check your email for a reset link.' : 'Forgot password?'}
               </Text>
             </Pressable>

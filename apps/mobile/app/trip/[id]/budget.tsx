@@ -18,10 +18,10 @@ const CATEGORY_CONFIG: Record<string, { icon: string; bg: string; color: string;
   'Food & Dining':      { icon: 'cutlery',      bg: '#e0f2fe', color: Navy.DEFAULT, bar: Navy.DEFAULT },
   'Activities & Tours': { icon: 'camera',        bg: '#ccfbf1', color: '#0d9488', bar: '#14b8a6' },
   'Transportation':     { icon: 'bus',           bg: '#ede9fe', color: '#7c3aed', bar: '#8b5cf6' },
-  'Shopping':           { icon: 'shopping-bag',  bg: '#dcfce7', color: colors.success, bar: '#22c55e' },
+  'Shopping':           { icon: 'shopping-bag',  bg: '#dcfce7', color: '#16a34a', bar: '#22c55e' },
 };
 
-const defaultCfg = { icon: 'money', bg: '#f3f4f6', color: colors.textSecondary, bar: '#9ca3af' };
+const defaultCfg = { icon: 'money', bg: '#f3f4f6', color: '#6b7280', bar: '#9ca3af' };
 
 const DAY_ABBREVS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -207,7 +207,7 @@ export default function BudgetScreen() {
   const pctUsed       = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
 
   const progressColor =
-    pctUsed >= 100 ? '#ef4444' : pctUsed >= 80 ? '#f59e0b' : '#10b981';
+    pctUsed >= 100 ? colors.error : pctUsed >= 80 ? colors.warning : colors.success;
 
   const overallHealth = healthColors(pctUsed, colors);
 
@@ -262,9 +262,9 @@ export default function BudgetScreen() {
   }
 
   const alertStyles = {
-    danger:  { bg: '#fef2f2', border: '#fecaca', icon: '#dc2626', text: '#991b1b' },
-    warning: { bg: '#fffbeb', border: '#fde68a', icon: '#d97706', text: '#92400e' },
-    info:    { bg: '#eff6ff', border: '#bfdbfe', icon: '#2563eb', text: '#1e40af' },
+    danger:  { bg: colors.errorBg, border: colors.error, icon: colors.error, text: colors.error },
+    warning: { bg: colors.warningBg, border: colors.warning, icon: colors.warning, text: colors.warning },
+    info:    { bg: colors.infoBg, border: colors.info, icon: colors.info, text: colors.info },
   };
 
   /* ── Handlers (mirror web logic) ── */
@@ -495,7 +495,7 @@ export default function BudgetScreen() {
         {/* Remaining */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? colors.success + '30' : colors.error + '30' }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
-          <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
+          <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? colors.success : colors.error, marginTop: 2 }}>
             ${Math.abs(remaining).toLocaleString()}
           </Text>
         </View>
@@ -537,7 +537,7 @@ export default function BudgetScreen() {
             return (
               <View key={idx} style={{ alignItems: 'center', flex: 1, gap: 4 }}>
                 {/* Amount label */}
-                <Text style={{ ...TextStyles.xs, fontWeight: '500', color: isHighest ? '#ef4444' : colors.textSecondary }}>
+                <Text style={{ ...TextStyles.xs, fontWeight: '500', color: isHighest ? colors.error : colors.textSecondary }}>
                   ${d.amount}
                 </Text>
                 {/* Bar */}
@@ -545,7 +545,7 @@ export default function BudgetScreen() {
                   style={{
                     width: 20,
                     height: Math.max(barHeight, 4),
-                    backgroundColor: isHighest ? '#ef4444' : ACCENT,
+                    backgroundColor: isHighest ? colors.error : ACCENT,
                     borderRadius: 4,
                     opacity: isHighest ? 1 : 0.7,
                   }}
@@ -561,7 +561,7 @@ export default function BudgetScreen() {
 
         {/* Average line indicator */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-          <View style={{ width: 12, height: 2, backgroundColor: '#f59e0b', borderRadius: 1, marginRight: 6 }} />
+          <View style={{ width: 12, height: 2, backgroundColor: colors.warning, borderRadius: 1, marginRight: 6 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
             Daily budget: ${avgDailySpend}/day
           </Text>
@@ -586,8 +586,8 @@ export default function BudgetScreen() {
           const itemPct = item.budgeted > 0 ? (item.actual / item.budgeted) * 100 : 0;
           const itemDiff = item.budgeted - item.actual;
           const itemBarColor =
-            itemPct > 100 ? '#ef4444' : itemPct > 80 ? '#f59e0b' : cfg.bar;
-          const catHealth = categoryHealthColors(itemPct);
+            itemPct > 100 ? colors.error : itemPct > 80 ? colors.warning : cfg.bar;
+          const catHealth = categoryHealthColors(itemPct, colors);
 
           return (
             <View
@@ -623,8 +623,8 @@ export default function BudgetScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   {!isExpanded && (
-                    <View style={{ backgroundColor: itemPct >= 100 ? '#fef2f2' : itemPct >= 80 ? '#fffbeb' : '#f0fdf4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ ...TextStyles.smEm, color: itemPct >= 100 ? '#dc2626' : itemPct >= 80 ? '#d97706' : '#16a34a' }}>
+                    <View style={{ backgroundColor: itemPct >= 100 ? colors.errorBg : itemPct >= 80 ? colors.warningBg : colors.successBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ ...TextStyles.smEm, color: itemPct >= 100 ? colors.error : itemPct >= 80 ? colors.warning : colors.success }}>
                         {itemPct.toFixed(0)}%
                       </Text>
                     </View>
@@ -912,7 +912,7 @@ export default function BudgetScreen() {
             <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.textSecondary }}>Add Category</Text>
           </Pressable>
         ) : (
-          <View style={{ backgroundColor: colors.successBg, borderRadius: 10, borderWidth: 2, borderColor: '#6ee7b7', padding: 16 }}>
+          <View style={{ backgroundColor: colors.successBg, borderRadius: 10, borderWidth: 2, borderColor: colors.success, padding: 16 }}>
             <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Category Name</Text>
             <TextInput
               value={newCategory}

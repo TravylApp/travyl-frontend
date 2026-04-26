@@ -528,7 +528,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
             <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }}>{flight.date}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+            <View style={{ backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
               <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{flight.status}</Text>
             </View>
             <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={11} color="#fff" />
@@ -564,7 +564,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               <Text style={{ ...TextStyles.title, color: colors.text }}>{flight.arrival.time}</Text>
               {flight.arrival.nextDay && (
-                <Text style={{ ...TextStyles.xs, color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
+                <Text style={{ ...TextStyles.xs, color: colors.warning, marginLeft: 2, marginTop: -2 }}>+1</Text>
               )}
             </View>
             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{flight.arrival.code}</Text>
@@ -848,7 +848,7 @@ function ComparisonAlternatives() {
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                           <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{flight.arrival.time}</Text>
                           {flight.arrival.nextDay && (
-                            <Text style={{ ...TextStyles.micro, color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
+                            <Text style={{ ...TextStyles.micro, color: colors.warning, marginLeft: 2, marginTop: -2 }}>+1</Text>
                           )}
                         </View>
                         <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.arrival.airport}</Text>
@@ -863,7 +863,7 @@ function ComparisonAlternatives() {
                       {flight.stops === 0 ? (
                         <Text style={{ ...TextStyles.smEm, color: colors.success }}>Direct</Text>
                       ) : (
-                        <Text style={{ ...TextStyles.smEm, color: '#d97706' }}>{flight.stops} stop</Text>
+                        <Text style={{ ...TextStyles.smEm, color: colors.warning }}>{flight.stops} stop</Text>
                       )}
                     </View>
 
@@ -888,7 +888,7 @@ function ComparisonAlternatives() {
                     <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.airline}</Text>
                     {flight.businessAvailable && (
                       <View style={{ backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
-                        <Text style={{ ...TextStyles.xs, color: '#b45309' }}>Business avail.</Text>
+                        <Text style={{ ...TextStyles.xs, color: colors.warning }}>Business avail.</Text>
                       </View>
                     )}
                   </View>
@@ -905,7 +905,7 @@ function ComparisonAlternatives() {
                       {flight.layover && (
                         <>
                           <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>·</Text>
-                          <Text style={{ ...TextStyles.sm, color: '#d97706' }}>Stop: {flight.layover}</Text>
+                          <Text style={{ ...TextStyles.sm, color: colors.warning }}>Stop: {flight.layover}</Text>
                         </>
                       )}
                     </View>
@@ -918,7 +918,7 @@ function ComparisonAlternatives() {
                             width: 6,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: flight.onTime >= 85 ? '#22c55e' : flight.onTime >= 78 ? '#fbbf24' : '#f87171',
+                            backgroundColor: flight.onTime >= 85 ? colors.success : flight.onTime >= 78 ? colors.warning : colors.error,
                           }}
                         />
                         <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{flight.onTime}% on-time</Text>
