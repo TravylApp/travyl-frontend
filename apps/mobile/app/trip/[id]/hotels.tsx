@@ -1155,20 +1155,51 @@ export default function HotelsScreen() {
     };
   }, []);
 
+  // Get destination coordinates for Foursquare
+  const destLat = ctx?.destination_lat ?? ctx?.latitude ?? null;
+  const destLng = ctx?.destination_lng ?? ctx?.longitude ?? null;
+
   const fetchHotelPage = useCallback(async (query: string, page: number, append: boolean) => {
     setIsLoadingMore(true);
     const base = getWebApiBase();
     try {
-      const fetches: Promise<any[]>[] = [
-        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=h&offset=${page * 30}`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-      ];
-      if (page === 0) {
+      const fetches: Promise<any[]>[] = [];
+
+      // Foursquare — reliable pagination via coord offsets
+      if (destLat && destLng) {
+        const offsetLat = destLat + (page % 3) * 0.015;
+        const offsetLng = destLng + (page % 2) * 0.012;
         fetches.push(
-          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
+          fetch(`${base}/api/places?lat=${offsetLat}&lng=${offsetLng}&category=hotel&limit=20`)
             .then(r => r.ok ? r.json() : []).catch(() => []),
         );
+      } else if (destination) {
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destination)}&format=json&limit=1`, { headers: { 'User-Agent': 'Travyl/1.0' } });
+          const geoData = await geoRes.json() as any[];
+          if (geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat) + (page % 3) * 0.015;
+            const lng = parseFloat(geoData[0].lon) + (page % 2) * 0.012;
+            fetches.push(
+              fetch(`${base}/api/places?lat=${lat}&lng=${lng}&category=hotel&limit=20`)
+                .then(r => r.ok ? r.json() : []).catch(() => []),
+            );
+          }
+        } catch {}
       }
+
+      // Page 0: Maps + TripAdvisor. Pages 1+: TripAdvisor pagination
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=h`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else {
+        fetches.push(
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=h&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+
       const results = await Promise.all(fetches);
       const all = results.flat()
         .filter((p: any) => p.name)
@@ -1181,7 +1212,7 @@ export default function HotelsScreen() {
       });
     } catch {}
     setIsLoadingMore(false);
-  }, [mapHotelResult]);
+  }, [mapHotelResult, destLat, destLng, destination]);
 
   // Initial search
   useEffect(() => {

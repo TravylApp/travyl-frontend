@@ -759,22 +759,56 @@ export default function RestaurantsScreen() {
     label: '',
   }), []);
 
+  // Get destination coordinates for Foursquare
+  const destLat = ctx?.destination_lat ?? ctx?.latitude ?? null;
+  const destLng = ctx?.destination_lng ?? ctx?.longitude ?? null;
+
   const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
     setIsLoadingMore(true);
     const base = getWebApiBase();
     try {
-      // Page 0: Google Maps + TripAdvisor for initial diverse results
-      // Pages 1+: TripAdvisor pagination only (Google Maps returns same results for varied queries)
-      const fetches: Promise<any[]>[] = [
-        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=r&offset=${page * 30}`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-      ];
+      const fetches: Promise<any[]>[] = [];
+
+      // Foursquare — reliable, always works, paginate with coord offsets
+      if (destLat && destLng) {
+        const offsetLat = destLat + (page % 3) * 0.015;
+        const offsetLng = destLng + (page % 2) * 0.012;
+        fetches.push(
+          fetch(`${base}/api/places?lat=${offsetLat}&lng=${offsetLng}&category=restaurant&limit=20`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else if (destination) {
+        // No coords — geocode via Nominatim then use Foursquare
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destination)}&format=json&limit=1`, { headers: { 'User-Agent': 'Travyl/1.0' } });
+          const geoData = await geoRes.json() as any[];
+          if (geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat) + (page % 3) * 0.015;
+            const lng = parseFloat(geoData[0].lon) + (page % 2) * 0.012;
+            fetches.push(
+              fetch(`${base}/api/places?lat=${lat}&lng=${lng}&category=restaurant&limit=20`)
+                .then(r => r.ok ? r.json() : []).catch(() => []),
+            );
+          }
+        } catch {}
+      }
+
+      // Page 0: also try Maps + TripAdvisor for richer initial results
       if (page === 0) {
         fetches.push(
           fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
             .then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=r`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else {
+        // Pages 1+: TripAdvisor pagination as bonus
+        fetches.push(
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=r&offset=${page * 30}`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
         );
       }
+
       const results = await Promise.all(fetches);
       const all = results.flat()
         .filter((p: any) => p.name)
@@ -782,14 +816,13 @@ export default function RestaurantsScreen() {
       if (all.length === 0 && page > 0) { setHasMore(false); setIsLoadingMore(false); return; }
       setSearchRestaurants(prev => {
         if (!append) return all;
-        // Dedup against existing results
         const existingNames = new Set(prev.map((r: any) => ((r.name || '') as string).toLowerCase()));
         const newItems = all.filter((r: any) => !existingNames.has(((r.name || '') as string).toLowerCase()));
         return [...prev, ...newItems];
       });
     } catch {}
     setIsLoadingMore(false);
-  }, [mapResult]);
+  }, [mapResult, destLat, destLng, destination]);
 
   // Initial search
   useEffect(() => {

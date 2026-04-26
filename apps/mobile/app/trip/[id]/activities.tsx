@@ -738,18 +738,47 @@ export default function ActivitiesScreen() {
   const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
     setIsLoadingMore(true);
     const base = getWebApiBase();
+    const actCtx = trip?.trip_context as any;
+    const dLat = actCtx?.destination_lat ?? actCtx?.latitude ?? null;
+    const dLng = actCtx?.destination_lng ?? actCtx?.longitude ?? null;
     try {
-      // Page 0: Maps + TripAdvisor. Pages 1+: TripAdvisor pagination only
-      const fetches: Promise<any[]>[] = [
-        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A&offset=${page * 30}`)
-          .then(r => r.ok ? r.json() : []).catch(() => []),
-      ];
-      if (page === 0) {
+      const fetches: Promise<any[]>[] = [];
+
+      // Foursquare — reliable endless scroll via coord offsets
+      if (dLat && dLng) {
+        const offsetLat = dLat + (page % 3) * 0.015;
+        const offsetLng = dLng + (page % 2) * 0.012;
         fetches.push(
-          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
+          fetch(`${base}/api/places?lat=${offsetLat}&lng=${offsetLng}&category=sightseeing&limit=20`)
             .then(r => r.ok ? r.json() : []).catch(() => []),
         );
+      } else if (destination) {
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destination)}&format=json&limit=1`, { headers: { 'User-Agent': 'Travyl/1.0' } });
+          const geoData = await geoRes.json() as any[];
+          if (geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat) + (page % 3) * 0.015;
+            const lng = parseFloat(geoData[0].lon) + (page % 2) * 0.012;
+            fetches.push(
+              fetch(`${base}/api/places?lat=${lat}&lng=${lng}&category=sightseeing&limit=20`)
+                .then(r => r.ok ? r.json() : []).catch(() => []),
+            );
+          }
+        } catch {}
       }
+
+      // Page 0: also Maps + TripAdvisor
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else {
+        fetches.push(
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+
       const results = await Promise.all(fetches);
       const all = results.flat()
         .filter((p: any) => p.name && !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''))
@@ -763,7 +792,7 @@ export default function ActivitiesScreen() {
       });
     } catch {}
     setIsLoadingMore(false);
-  }, [mapActivityResult]);
+  }, [mapActivityResult, trip, destination]);
 
   const runSearch = useCallback((query: string) => {
     setSearchPage(0);
