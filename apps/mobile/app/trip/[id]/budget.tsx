@@ -4,9 +4,24 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, TextStyles, FontSize, supabase, Navy } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 import { PageTransition, TabCtx, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
+
+/* ================================================================
+   Currency conversion
+   ================================================================ */
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'MXN', 'CAD'] as const;
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', MXN: '$', CAD: 'C$' };
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND']);
+
+function fmtCurrency(amount: number, code: string): string {
+  const sym = CURRENCY_SYMBOLS[code] || code;
+  const decimals = ZERO_DECIMAL.has(code) ? 0 : 2;
+  return `${sym}${amount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
 
 /* ================================================================
    Icon + colour mapping (matches web CATEGORY_COLORS / CATEGORY_ICONS)
@@ -94,6 +109,24 @@ export default function BudgetScreen() {
   const { tripId: ctxId } = useContext(TabCtx);
   const id = _id || ctxId;
   const { trip, isLoading } = useItineraryScreen(id);
+
+  // Currency conversion
+  const [displayCurrency, setDisplayCurrency] = useState('USD');
+  const { data: rates } = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: async () => {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.rates as Record<string, number>;
+    },
+    staleTime: 60 * 60 * 1000,
+  });
+  const cx = useCallback((usd: number) => {
+    if (displayCurrency === 'USD' || !rates) return usd;
+    return usd * (rates[displayCurrency] || 1);
+  }, [displayCurrency, rates]);
+  const fx = useCallback((usd: number) => fmtCurrency(cx(usd), displayCurrency), [cx, displayCurrency]);
 
   // Build budget items from trip_context (cost_of_living + hotels + trip.budget)
   const initialBudget = useMemo((): BudgetItem[] => {
@@ -439,6 +472,25 @@ export default function BudgetScreen() {
           })}
         </View>
       )}
+
+      {/* ===== Currency Selector ===== */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 12 }}>
+        {CURRENCIES.map(c => (
+          <Pressable
+            key={c}
+            onPress={() => setDisplayCurrency(c)}
+            style={{
+              paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16,
+              backgroundColor: displayCurrency === c ? ACCENT : colors.surface,
+              borderWidth: 1, borderColor: displayCurrency === c ? ACCENT : colors.border,
+            }}
+          >
+            <Text style={{ ...TextStyles.captionEm, color: displayCurrency === c ? '#fff' : colors.textSecondary }}>
+              {CURRENCY_SYMBOLS[c]} {c}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {/* ===== Summary Cards (3 columns) ===== */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
