@@ -1288,7 +1288,7 @@ export default function HotelsScreen() {
   // Build detail from the selected hotel in the browse list
   const hotel = useMemo<HotelData | null>(() => {
     const contextSource = ctx?.all_hotels ?? ctx?.hotels ?? [];
-    const searchSource = searchResults ? (Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? []) : [];
+    const searchSource = hookResults ? (Array.isArray(hookResults) ? hookResults : (hookResults as any)?.hotels ?? []) : [];
     const allSources = [...contextSource, ...searchSource];
     const h = realHotels[selectedHotelIdx] ?? allSources[0] ?? realHotels[0];
     if (!h) return null;
@@ -1348,7 +1348,7 @@ export default function HotelsScreen() {
         value: 0,
       },
     };
-  }, [ctx, trip, searchResults, realHotels, selectedHotelIdx]);
+  }, [ctx, trip, hookResults, realHotels, selectedHotelIdx]);
   if (!hotel && realHotels.length === 0) {
     return (
       <PageTransition>
