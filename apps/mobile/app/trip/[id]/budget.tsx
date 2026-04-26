@@ -13,14 +13,16 @@ import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
    Currency conversion
    ================================================================ */
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'MXN', 'CAD'] as const;
-const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', MXN: '$', CAD: 'C$' };
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND']);
+// Popular currencies shown first, then all others from the API
+const POPULAR_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'MXN', 'BRL', 'KRW', 'INR', 'CHF', 'CNY'];
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP', 'ISK', 'HUF']);
 
 function fmtCurrency(amount: number, code: string): string {
-  const sym = CURRENCY_SYMBOLS[code] || code;
-  const decimals = ZERO_DECIMAL.has(code) ? 0 : 2;
-  return `${sym}${amount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code, maximumFractionDigits: ZERO_DECIMAL.has(code) ? 0 : 2 }).format(amount);
+  } catch {
+    return `${code} ${amount.toFixed(2)}`;
+  }
 }
 
 /* ================================================================
@@ -475,21 +477,26 @@ export default function BudgetScreen() {
 
       {/* ===== Currency Selector ===== */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 12 }}>
-        {CURRENCIES.map(c => (
-          <Pressable
-            key={c}
-            onPress={() => setDisplayCurrency(c)}
-            style={{
-              paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16,
-              backgroundColor: displayCurrency === c ? ACCENT : colors.surface,
-              borderWidth: 1, borderColor: displayCurrency === c ? ACCENT : colors.border,
-            }}
-          >
-            <Text style={{ ...TextStyles.captionEm, color: displayCurrency === c ? '#fff' : colors.textSecondary }}>
-              {CURRENCY_SYMBOLS[c]} {c}
-            </Text>
-          </Pressable>
-        ))}
+        {(() => {
+          // Show popular currencies first, then all others from the API response
+          const allCodes = rates ? Object.keys(rates) : POPULAR_CURRENCIES;
+          const ordered = [...POPULAR_CURRENCIES.filter(c => allCodes.includes(c)), ...allCodes.filter(c => !POPULAR_CURRENCIES.includes(c)).sort()];
+          return ordered.map(c => (
+            <Pressable
+              key={c}
+              onPress={() => setDisplayCurrency(c)}
+              style={{
+                paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16,
+                backgroundColor: displayCurrency === c ? ACCENT : colors.surface,
+                borderWidth: 1, borderColor: displayCurrency === c ? ACCENT : colors.border,
+              }}
+            >
+              <Text style={{ ...TextStyles.captionEm, color: displayCurrency === c ? '#fff' : colors.textSecondary }}>
+                {c}
+              </Text>
+            </Pressable>
+          ));
+        })()}
       </ScrollView>
 
       {/* ===== Summary Cards (3 columns) ===== */}
