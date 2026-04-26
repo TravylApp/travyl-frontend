@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useContext, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, Platform } from 'react-native';
+import { useState, useMemo, useEffect, useContext, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform, TextInput, Keyboard, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1114,47 +1114,128 @@ export default function HotelsScreen() {
     }));
   }, [ctx]);
 
-  // Live hotel search via backend API
+  // Paginated hotel search — endless scroll
   const destination = trip?.destination?.split(',')[0]?.trim();
-  const { data: searchResults } = useHotelSearch({
+  const [searchHotels, setSearchHotels] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [hotelSearchPage, setHotelSearchPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreHotels, setHasMoreHotels] = useState(true);
+  const searchTimerRef2 = useRef<NodeJS.Timeout | null>(null);
+
+  // Also use the shared hook for initial results
+  const { data: hookResults } = useHotelSearch({
     destination,
     checkIn: trip?.start_date ?? undefined,
     checkOut: trip?.end_date ?? undefined,
   });
-  const searchHotels = useMemo(() => {
-    const hotels = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? [];
-    return hotels.map((h: any, i: number) => {
-      // Parse stars — can be number or string like "1-star hotel"
-      const rawStars = h.stars;
-      const parsedStars = typeof rawStars === 'number' ? rawStars : typeof rawStars === 'string' ? parseInt(rawStars) || 0 : 0;
-      return {
-        id: h.id || `search-${i}`,
-        name: h.name,
-        stars: parsedStars,
-        rating: h.rating ?? 0,
-        reviews: h.reviews ?? 0,
-        price: h.price ?? 0,
-        neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
-        image: h.images?.[0] ?? h.image ?? '',
-        images: h.images ?? [],
-        amenities: h.amenities ?? [],
-        checkIn: h.checkIn ?? '',
-        checkOut: h.checkOut ?? '',
-        link: h.link ?? '',
-        description: h.description ?? '',
-        address: h.address ?? '',
-        lat: h.lat ?? 0,
-        lng: h.lng ?? 0,
-        brand: '',
-        label: '',
-      };
-    });
-  }, [searchResults]);
 
-  // Merge: search results (have images) first, then context hotels without dupes
+  const mapHotelResult = useCallback((h: any, i: number, prefix: string) => {
+    const rawStars = h.stars;
+    const parsedStars = typeof rawStars === 'number' ? rawStars : typeof rawStars === 'string' ? parseInt(rawStars) || 0 : 0;
+    return {
+      id: h.id || `${prefix}-${i}`,
+      name: h.name,
+      stars: parsedStars,
+      rating: h.rating ?? 0,
+      reviews: h.reviewCount ?? h.reviews ?? 0,
+      price: h.price ?? 0,
+      neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
+      image: upscaleGoogleImage(h.images?.[0] ?? h.image) || h.images?.[0] || h.image || '',
+      images: (h.images ?? (h.image ? [h.image] : [])).map((img: string) => upscaleGoogleImage(img) || img),
+      amenities: h.amenities ?? [],
+      checkIn: h.checkIn ?? '',
+      checkOut: h.checkOut ?? '',
+      link: h.link ?? h.website ?? '',
+      description: h.description ?? h.tagline ?? '',
+      address: h.address ?? '',
+      lat: (h.lat || h.latitude) && (h.lat || h.latitude) !== 0 ? (h.lat || h.latitude) : null,
+      lng: (h.lng || h.longitude) && (h.lng || h.longitude) !== 0 ? (h.lng || h.longitude) : null,
+      brand: '',
+      label: '',
+    };
+  }, []);
+
+  const fetchHotelPage = useCallback(async (query: string, page: number, append: boolean) => {
+    setIsLoadingMore(true);
+    const base = getWebApiBase();
+    try {
+      const fetches: Promise<any[]>[] = [
+        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=h&offset=${page * 30}`)
+          .then(r => r.ok ? r.json() : []).catch(() => []),
+      ];
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+      const results = await Promise.all(fetches);
+      const all = results.flat()
+        .filter((p: any) => p.name)
+        .map((p: any, i: number) => mapHotelResult(p, i + page * 100, `sh-p${page}`));
+      if (all.length === 0 && page > 0) { setHasMoreHotels(false); setIsLoadingMore(false); return; }
+      setSearchHotels(prev => {
+        if (!append) return all;
+        const existingNames = new Set(prev.map((h: any) => ((h.name || '') as string).toLowerCase()));
+        return [...prev, ...all.filter((h: any) => !existingNames.has(((h.name || '') as string).toLowerCase()))];
+      });
+    } catch {}
+    setIsLoadingMore(false);
+  }, [mapHotelResult]);
+
+  // Initial search
+  useEffect(() => {
+    if (destination) {
+      setHotelSearchPage(0);
+      setHasMoreHotels(true);
+      fetchHotelPage(`hotels in ${destination}`, 0, false);
+    }
+  }, [destination]);
+
+  // Merge hook results into search results
+  useEffect(() => {
+    if (!hookResults) return;
+    const hotels = Array.isArray(hookResults) ? hookResults : (hookResults as any)?.hotels ?? [];
+    if (hotels.length === 0) return;
+    const mapped = hotels.map((h: any, i: number) => mapHotelResult(h, i, 'hook'));
+    setSearchHotels(prev => {
+      const existingNames = new Set(prev.map((h: any) => ((h.name || '') as string).toLowerCase()));
+      return [...prev, ...mapped.filter((h: any) => !existingNames.has(((h.name || '') as string).toLowerCase()))];
+    });
+  }, [hookResults, mapHotelResult]);
+
+  // User search
+  useEffect(() => {
+    if (!userSearch.trim()) return;
+    if (searchTimerRef2.current) clearTimeout(searchTimerRef2.current);
+    searchTimerRef2.current = setTimeout(() => {
+      setHotelSearchPage(0);
+      setHasMoreHotels(true);
+      fetchHotelPage(userSearch, 0, false);
+    }, 400) as unknown as NodeJS.Timeout;
+    return () => { if (searchTimerRef2.current) clearTimeout(searchTimerRef2.current); };
+  }, [userSearch]);
+
+  // Load more
+  const loadMoreHotels = useCallback(() => {
+    if (isLoadingMore || !hasMoreHotels) return;
+    const nextPage = hotelSearchPage + 1;
+    setHotelSearchPage(nextPage);
+    const q = userSearch.trim() || (destination ? `hotels in ${destination}` : '');
+    if (q) fetchHotelPage(q, nextPage, true);
+  }, [hotelSearchPage, isLoadingMore, hasMoreHotels, userSearch, destination, fetchHotelPage]);
+
+  const handleHotelScroll = useCallback((e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 800 && hasMoreHotels && !isLoadingMore) loadMoreHotels();
+  }, [hasMoreHotels, isLoadingMore, loadMoreHotels]);
+
+  // Merge: search results first, then context hotels without dupes
   const realHotels = useMemo(() => {
-    const seen = new Set(searchHotels.map((h: any) => h.name.toLowerCase()));
-    const extra = contextHotels.filter((h: any) => !seen.has(h.name.toLowerCase()));
+    const seen = new Set(searchHotels.filter((h: any) => h.name).map((h: any) => ((h.name || '') as string).toLowerCase()));
+    const extra = contextHotels.filter((h: any) => !seen.has(((h.name || '') as string).toLowerCase()));
     return [...searchHotels, ...extra];
   }, [contextHotels, searchHotels]);
 
@@ -1299,6 +1380,8 @@ export default function HotelsScreen() {
       style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
+      onScroll={handleHotelScroll}
+      scrollEventThrottle={16}
     >
       {/* ── Selected Hotel Detail (top, like Figma) ── */}
       {hotel && (() => {
@@ -1446,9 +1529,30 @@ export default function HotelsScreen() {
         );
       })()}
 
+      {/* ── Search bar ── */}
+      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(userSearch, 0, false); } }}
+            returnKeyType="search"
+            placeholder="Search hotels — Marriott, boutique, spa..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(`hotels in ${destination}`, 0, false); } }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Browse Hotels — toggle + list/card views ── */}
-      {realHotels.length > 1 && (
-        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+      {realHotels.length > 0 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
           {/* Header with toggle */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ ...TextStyles.subhead, color: colors.text }}>Browse Hotels</Text>
@@ -1511,6 +1615,14 @@ export default function HotelsScreen() {
               overlay
             />
           )}
+        </View>
+      )}
+
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={ACCENT} />
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 6 }}>Loading more hotels...</Text>
         </View>
       )}
     </ScrollView>
