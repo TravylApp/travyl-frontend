@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked
 
     const supabase = getSupabase()
-    const { tripId } = await req.json()
+    let tripId: any; try { ({ tripId } = await req.json()) } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
     if (!tripId || typeof tripId !== 'string') {
       return NextResponse.json({ error: 'Missing or invalid tripId' }, { status: 400 })
     }

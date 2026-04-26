@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { getSupabase, supabaseUrl, supabaseKey } from '@/lib/api-utils'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
   // Try to get user session from cookies
@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     supabaseUrl,
     supabaseKey,
     {
+  const rl = rateLimit(req, 'trips', 60, 60000)
+  if (rl) return rl
       cookies: {
         getAll() {
           return req.cookies.getAll()

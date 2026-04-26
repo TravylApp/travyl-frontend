@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 const DUFFEL_TOKEN = process.env.DUFFEL_API_TOKEN
@@ -14,6 +15,8 @@ export async function GET(req: NextRequest) {
     const res = await fetch(
       `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(q)}&types[]=airport&types[]=city`,
       {
+  const rl = rateLimit(req, 'airports', 60, 60000)
+  if (rl) return rl
         headers: {
           Authorization: `Bearer ${DUFFEL_TOKEN}`,
           'Duffel-Version': 'v2',

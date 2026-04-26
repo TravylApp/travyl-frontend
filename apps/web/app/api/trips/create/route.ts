@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked
 
     const supabase = getSupabase()
-    const body = await req.json()
+    let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
     const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
 
     // Derive user_id from verified session — never trust body.user_id

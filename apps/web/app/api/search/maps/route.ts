@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
 /** Google Maps local search via SerpAPI. */
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'search-maps', 20, 60000)
+  if (rl) return rl
   const query = getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
 

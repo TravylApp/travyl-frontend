@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 // TimeZoneDB — timezone conversion for multi-city trips
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest) {
       const res = await fetch(
         `https://worldtimeapi.org/api/timezone`,
         { next: { revalidate: 3600 } }
+  const rl = rateLimit(req, 'timezone', 60, 60000)
+  if (rl) return rl
       )
 
       // Use Nominatim + timezone lookup via coordinates

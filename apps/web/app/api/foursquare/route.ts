@@ -6,7 +6,7 @@ import {
   getOptionalParam,
   errorResponse,
   CACHE_1H,
-} from '@/lib/api-utils'
+rateLimit } from '@/lib/api-utils'
 import { upscaleGoogleImage } from '@travyl/shared'
 
 interface BackendPlace {
@@ -30,6 +30,8 @@ interface BackendPlace {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'foursquare', 30, 60000)
+  if (rl) return rl
   const params = getRequiredParams(req, 'lat', 'lng')
   if (params instanceof NextResponse) return params
 

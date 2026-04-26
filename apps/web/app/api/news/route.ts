@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '@/lib/api-utils'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 // ─── Response types ──────────────────────────────────────────────────────────
 
@@ -138,6 +138,8 @@ async function fetchSerpNews(destination: string, limit: number): Promise<NewsAr
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'news', 60, 60000)
+  if (rl) return rl
   try {
     const destination = requireParam(req.nextUrl.searchParams, 'destination')
     const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10', 10)

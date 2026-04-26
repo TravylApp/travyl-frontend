@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const originBlocked = checkOrigin(req)
   if (originBlocked) return originBlocked
 
-  const { tripId } = await req.json()
+  let tripId: any; try { ({ tripId } = await req.json()) } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
   if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
 
   // Use caller's auth token when available so RLS allows reading private trips (mobile sends Bearer token)

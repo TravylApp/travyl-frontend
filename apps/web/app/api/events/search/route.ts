@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
@@ -85,6 +85,8 @@ export async function GET(req: NextRequest) {
         const geoRes = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`,
           { headers: { 'User-Agent': 'Travyl/1.0' } }
+  const rl = rateLimit(req, 'events-search', 20, 60000)
+  if (rl) return rl
         )
         const geoData = await geoRes.json() as any[]
         if (geoData.length > 0) {

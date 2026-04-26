@@ -198,17 +198,27 @@ async function getTrending(): Promise<TrendingItem[]> {
   return _trendingPromise;
 }
 
+// ─── Fetch with timeout ──────────────────────────────────────
+
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // ─── Core fetch helpers (all take natural language) ──────────
 
 async function fetchMapsSearch(query: string): Promise<PlaceItem[]> {
-  return fetch(`${BASE()}/api/search/maps?q=${encodeURIComponent(query)}`)
+  return fetchWithTimeout(`${BASE()}/api/search/maps?q=${encodeURIComponent(query)}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
     .catch(() => []);
 }
 
 async function fetchTripAdvisor(query: string, ssrc = 'a'): Promise<PlaceItem[]> {
-  return fetch(`${BASE()}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=${ssrc}`)
+  return fetchWithTimeout(`${BASE()}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=${ssrc}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
     .catch(() => []);
@@ -217,7 +227,7 @@ async function fetchTripAdvisor(query: string, ssrc = 'a'): Promise<PlaceItem[]>
 async function fetchEvents(city: string, idPrefix: string): Promise<PlaceItem[]> {
   const today = new Date().toISOString().split('T')[0];
   const nextMonth = new Date(Date.now() + EVENT_LOOKAHEAD_DAYS * 86400000).toISOString().split('T')[0];
-  return fetch(`${BASE()}/api/events/search?city=${encodeURIComponent(city)}&start=${today}&end=${nextMonth}`)
+  return fetchWithTimeout(`${BASE()}/api/events/search?city=${encodeURIComponent(city)}&start=${today}&end=${nextMonth}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((events) => (Array.isArray(events) ? events : []).map((e, i) => mapEvent(e, idPrefix, i)))
     .catch(() => []);
@@ -225,7 +235,7 @@ async function fetchEvents(city: string, idPrefix: string): Promise<PlaceItem[]>
 
 /** Artist tour dates — searches for concerts/shows and maps them to PlaceItems */
 async function fetchArtistTour(query: string): Promise<PlaceItem[]> {
-  return fetch(`${BASE()}/api/events/artist?q=${encodeURIComponent(query)}`)
+  return fetchWithTimeout(`${BASE()}/api/events/artist?q=${encodeURIComponent(query)}`)
     .then(r => r.ok ? r.json() as Promise<any> : { events: [] })
     .then((data) => {
       const events = (data as any).events ?? [];
@@ -250,7 +260,7 @@ async function fetchArtistTour(query: string): Promise<PlaceItem[]> {
 
 async function fetchFoursquare(lat: string, lng: string, limit = FOURSQUARE_LIMIT): Promise<PlaceItem[]> {
   // No category — let Foursquare return whatever is nearby
-  return fetch(`${BASE()}/api/places?lat=${lat}&lng=${lng}&limit=${limit}`)
+  return fetchWithTimeout(`${BASE()}/api/places?lat=${lat}&lng=${lng}&limit=${limit}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
     .catch(() => []);

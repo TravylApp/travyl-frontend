@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { errorResponse, CACHE_1H } from '@/lib/api-utils'
+import { errorResponse, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 interface DetectCountryResponse {
   country: string
@@ -13,6 +13,8 @@ interface DetectCountryResponse {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'detect-country', 60, 60000)
+  if (rl) return rl
   try {
     const forwarded = req.headers.get('x-forwarded-for')
     const ip = forwarded?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || null

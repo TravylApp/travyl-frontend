@@ -1,8 +1,11 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'search-deep', 20, 60000)
+  if (rl) return rl
   const { searchParams } = req.nextUrl
   const q = searchParams.get('q')
   const intent = searchParams.get('intent')

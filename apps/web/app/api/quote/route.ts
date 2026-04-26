@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { CACHE_1H } from '@/lib/api-utils'
+import { CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 interface Quote {
   content: string
@@ -24,6 +24,8 @@ function randomFallback(): Quote {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'quote', 60, 60000)
+  if (rl) return rl
   try {
     const tag = req.nextUrl.searchParams.get('tag')
     const url = tag

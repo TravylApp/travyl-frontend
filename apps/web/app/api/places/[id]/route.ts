@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   BackendPlace,
@@ -9,6 +10,8 @@ const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
+  const rl = rateLimit(req, 'places-[id]', 30, 60000)
+  if (rl) return rl
 ) {
   const { id } = await params
 

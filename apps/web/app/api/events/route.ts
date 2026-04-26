@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, BACKEND_URL } from '@/lib/api-utils'
+import { getOptionalParam, BACKEND_URL, rateLimit } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'events', 30, 60000)
+  if (rl) return rl
   const city = getOptionalParam(req, 'city', '')
   if (!city) return NextResponse.json([])
 

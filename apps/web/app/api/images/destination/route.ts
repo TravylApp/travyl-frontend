@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface PexelsPhoto {
@@ -18,6 +19,8 @@ interface PexelsResponse {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'images-destination', 60, 60000)
+  if (rl) return rl
   const destination = req.nextUrl.searchParams.get('destination')
   if (!destination) {
     return NextResponse.json({ error: 'Missing destination param' }, { status: 400 })
