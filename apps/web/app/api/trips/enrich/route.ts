@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit, checkOrigin } from '@/lib/api-utils'
 import { upscaleGoogleImage } from '@travyl/shared'
 import { filterByRadius } from '@/lib/haversine'
 
@@ -11,13 +11,9 @@ export async function POST(req: NextRequest) {
   const blocked = rateLimit(req, 'enrich', 3, 60_000)
   if (blocked) return blocked
 
-  // Origin check — only accept requests from our own domain
-  const originHeader = req.headers.get('origin') || req.headers.get('referer') || ''
-  const host = req.headers.get('host') || ''
-  const IS_DEV = process.env.NODE_ENV === 'development'
-  if (!IS_DEV && originHeader && !originHeader.includes(host) && !['gotravyl.com', 'deeviaje.com', 'amplifyapp.com'].some(d => originHeader.includes(d))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  // Origin check — shared util
+  const originBlocked = checkOrigin(req)
+  if (originBlocked) return originBlocked
 
   const { tripId } = await req.json()
   if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })

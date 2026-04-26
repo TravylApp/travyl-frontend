@@ -97,7 +97,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
       iconSize: [28, 28],
       iconAnchor: [14, 14],
     });
-    L.marker([${lat}, ${lng}], { icon: icon }).addTo(map)${label ? `.bindPopup('${label.replace(/'/g, "\\'")}')` : ''};`;
+    L.marker([${lat}, ${lng}], { icon: icon }).addTo(map)${label ? `.bindPopup(${JSON.stringify(label)})` : ''};`;
 
   // Route line connecting non-muted markers (itinerary items) in order
   const routeMarkers = markers?.filter(m => !m.muted) ?? [];

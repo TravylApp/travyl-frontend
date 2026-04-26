@@ -45,20 +45,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
   }
 
-  // Ownership check: logged-in users must own the trip, anonymous can only update public unowned trips
+  // Ownership check: must be authenticated and own the trip
   const authHeader = req.headers.get('authorization')
-  if (authHeader) {
-    const { data: { user }, error: authErr } = await createClient(
-      supabaseUrl, supabaseKey,
-      { global: { headers: { Authorization: authHeader } } }
-    ).auth.getUser()
-    if (authErr || !user || (trip.user_id && trip.user_id !== user.id)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
-  } else {
-    if (trip.user_id || trip.visibility !== 'public') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
+  if (!authHeader) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  const { data: { user }, error: authErr } = await createClient(
+    supabaseUrl, supabaseKey,
+    { global: { headers: { Authorization: authHeader } } }
+  ).auth.getUser()
+  if (authErr || !user) {
+    return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+  }
+  if (trip.user_id && trip.user_id !== user.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 
   // Update trip_context
