@@ -139,7 +139,6 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
           router.push('/login' as never);
         } else {
           // Real error — show it
-          console.error('Save failed:', msg);
           setSaving(false);
         }
       }

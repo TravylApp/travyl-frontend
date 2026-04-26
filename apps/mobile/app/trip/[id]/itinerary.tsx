@@ -2364,7 +2364,6 @@ export default function ItineraryScreen() {
 
       await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
     } catch (e) {
-      console.error('[reorder] persist failed:', e);
     }
   }, [trip, id]);
 
@@ -2778,7 +2777,6 @@ export default function ItineraryScreen() {
           onSelectDay={setSelectedDayIndex}
           onMoveActivity={(activityId, newHour, newDayIdx) => {
             // TODO: persist move to Supabase — update activity starting_time and starting_date
-            console.log(`Move ${activityId} to hour ${newHour} on day ${newDayIdx}`);
           }}
         />
       ) : viewMode === 'glance' ? (
