@@ -450,9 +450,23 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Pressable>
         </View>
 
-        {/* Date + travelers + safety — always visible */}
+        {/* Date + travelers + safety — always visible, tappable to edit */}
         {trip && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            <Pressable
+              onPress={() => {
+                import('react-native').then(({ Alert }) => {
+                  Alert.alert(
+                    'Edit Trip Details',
+                    'To edit dates, destination, or travelers, go to the Settings tab.',
+                    [{ text: 'OK' }],
+                  );
+                });
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <FontAwesome name="pencil" size={10} color="rgba(255,255,255,0.5)" />
+            </Pressable>
             {[
               formatDateRange(trip.start_date, trip.end_date),
               `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
