@@ -709,8 +709,12 @@ export default function ActivitiesScreen() {
   const [userSearch, setUserSearch] = useState('');
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const mapActivityResult = useCallback((p: any, i: number) => ({
-    id: p.id || `search-act-${i}`,
+  const [searchPage, setSearchPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const mapActivityResult = useCallback((p: any, i: number, prefix: string) => ({
+    id: p.id || `${prefix}-${i}`,
     name: p.name,
     rating: p.rating ?? 0,
     reviews: p.reviewCount ?? p.reviews ?? 0,
@@ -731,18 +735,30 @@ export default function ActivitiesScreen() {
     label: '',
   }), []);
 
-  const runSearch = useCallback((query: string) => {
-    if (!query) return;
+  const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
+    setIsLoadingMore(true);
     const base = getWebApiBase();
-    Promise.all([
-      fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A`).then(r => r.ok ? r.json() : []).catch(() => []),
-    ]).then(([mapsData, taData]) => {
+    const queries = [query, `best ${query}`, `popular ${query}`, `top ${query}`, `unique ${query}`];
+    const q = queries[page % queries.length];
+    try {
+      const [mapsData, taData] = await Promise.all([
+        fetch(`${base}/api/search/maps?q=${encodeURIComponent(q)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(q)}&ssrc=A&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
+      ]);
       const all = [...(Array.isArray(mapsData) ? mapsData : []), ...(Array.isArray(taData) ? taData : [])]
-        .filter((p: any) => p.name && !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''));
-      setSearchActivities(all.map(mapActivityResult));
-    });
+        .filter((p: any) => p.name && !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''))
+        .map((p: any, i: number) => mapActivityResult(p, i + page * 100, `sa-p${page}`));
+      if (all.length === 0) setHasMore(false);
+      setSearchActivities(prev => append ? [...prev, ...all] : all);
+    } catch {}
+    setIsLoadingMore(false);
   }, [mapActivityResult]);
+
+  const runSearch = useCallback((query: string) => {
+    setSearchPage(0);
+    setHasMore(true);
+    fetchPage(query, 0, false);
+  }, [fetchPage]);
 
   // Auto-search on mount
   useEffect(() => {
@@ -756,6 +772,23 @@ export default function ActivitiesScreen() {
     searchTimerRef.current = setTimeout(() => runSearch(userSearch), 400) as unknown as NodeJS.Timeout;
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [userSearch]);
+
+  // Load more on scroll
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = searchPage + 1;
+    setSearchPage(nextPage);
+    const q = userSearch.trim() || (destination ? `things to do in ${destination}` : '');
+    if (q) fetchPage(q, nextPage, true);
+  }, [searchPage, isLoadingMore, hasMore, userSearch, destination, fetchPage]);
+
+  const handleScroll = useCallback((e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 800 && hasMore && !isLoadingMore) {
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
 
   // Also try TripAdvisor for activities
   const [taActivities, setTaActivities] = useState<any[]>([]);
@@ -904,6 +937,8 @@ export default function ActivitiesScreen() {
       ref={scrollRef}
       style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ paddingBottom: 40 }}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Selected Activity Detail (top, like hotels/restaurants pattern) ── */}
@@ -1138,6 +1173,14 @@ export default function ActivitiesScreen() {
               overlay
             />
           )}
+        </View>
+      )}
+
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={ACCENT} />
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 6 }}>Loading more activities...</Text>
         </View>
       )}
     </ScrollView>

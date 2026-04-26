@@ -726,57 +726,102 @@ export default function RestaurantsScreen() {
       }));
   }, [ctx]);
 
-  // Live search via Google Maps + TripAdvisor
+  // Paginated search — endless scroll like the Places page
   const destination = trip?.destination?.split(',')[0]?.trim();
   const [searchRestaurants, setSearchRestaurants] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
+  const [searchPage, setSearchPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const runSearch = useCallback((query: string) => {
-    if (!query) return;
-    const base = getWebApiBase();
-    Promise.all([
-      fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=r`).then(r => r.ok ? r.json() : []).catch(() => []),
-    ]).then(([mapsData, taData]) => {
-      const all = [...(Array.isArray(mapsData) ? mapsData : []), ...(Array.isArray(taData) ? taData : [])];
-      setSearchRestaurants(all.filter((p: any) => p.name).map((p: any, i: number) => ({
-        id: p.id || `search-rest-${i}`,
-        name: p.name,
-        rating: p.rating ?? 0,
-        reviews: p.reviewCount ?? p.reviews ?? 0,
-        priceLevel: p.priceLevel ?? 0,
-        cuisine: p.category || '',
-        address: p.address || '',
-        neighborhood: p.address?.split(',')[0] || '',
-        image: upscaleGoogleImage(p.images?.[0] ?? p.image) || p.images?.[0] || p.image || '',
-        images: (p.images ?? (p.image ? [p.image] : [])).map((img: string) => upscaleGoogleImage(img) || img),
-        hours: p.hours || '',
-        phone: p.phone || '',
-        website: p.website || '',
-        menuLink: '',
-        reservationLink: '',
-        orderOnlineLink: '',
-        description: p.description || p.tagline || '',
-        tags: p.tags ?? [p.category].filter(Boolean),
-        latitude: (p.latitude && p.latitude !== 0) ? p.latitude : null,
-        longitude: (p.longitude && p.longitude !== 0) ? p.longitude : null,
-        label: '',
-      })));
-    });
-  }, []);
+  const mapResult = useCallback((p: any, i: number, prefix: string) => ({
+    id: p.id || `${prefix}-${i}`,
+    name: p.name,
+    rating: p.rating ?? 0,
+    reviews: p.reviewCount ?? p.reviews ?? 0,
+    priceLevel: p.priceLevel ?? 0,
+    cuisine: p.category || '',
+    address: p.address || '',
+    neighborhood: p.address?.split(',')[0] || '',
+    image: upscaleGoogleImage(p.images?.[0] ?? p.image) || p.images?.[0] || p.image || '',
+    images: (p.images ?? (p.image ? [p.image] : [])).map((img: string) => upscaleGoogleImage(img) || img),
+    hours: p.hours || '',
+    phone: p.phone || '',
+    website: p.website || '',
+    menuLink: '',
+    reservationLink: '',
+    orderOnlineLink: '',
+    description: p.description || p.tagline || '',
+    tags: p.tags ?? [p.category].filter(Boolean),
+    latitude: (p.latitude && p.latitude !== 0) ? p.latitude : null,
+    longitude: (p.longitude && p.longitude !== 0) ? p.longitude : null,
+    label: '',
+  }), []);
 
-  // Auto-search on mount + when user types
+  const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
+    setIsLoadingMore(true);
+    const base = getWebApiBase();
+    // Vary query per page for fresh results
+    const queries = [
+      query,
+      `best ${query}`,
+      `popular ${query}`,
+      `top rated ${query}`,
+      `new ${query}`,
+    ];
+    const q = queries[page % queries.length];
+    try {
+      const [mapsData, taData] = await Promise.all([
+        fetch(`${base}/api/search/maps?q=${encodeURIComponent(q)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(q)}&ssrc=r&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
+      ]);
+      const all = [...(Array.isArray(mapsData) ? mapsData : []), ...(Array.isArray(taData) ? taData : [])]
+        .filter((p: any) => p.name)
+        .map((p: any, i: number) => mapResult(p, i + page * 100, `sr-p${page}`));
+      if (all.length === 0) setHasMore(false);
+      setSearchRestaurants(prev => append ? [...prev, ...all] : all);
+    } catch {}
+    setIsLoadingMore(false);
+  }, [mapResult]);
+
+  // Initial search
   useEffect(() => {
-    if (destination) runSearch(`restaurants in ${destination}`);
+    if (destination) {
+      setSearchPage(0);
+      setHasMore(true);
+      fetchPage(`restaurants in ${destination}`, 0, false);
+    }
   }, [destination]);
 
+  // User search
   useEffect(() => {
     if (!userSearch.trim()) return;
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => runSearch(userSearch), 400) as unknown as NodeJS.Timeout;
+    searchTimerRef.current = setTimeout(() => {
+      setSearchPage(0);
+      setHasMore(true);
+      fetchPage(userSearch, 0, false);
+    }, 400) as unknown as NodeJS.Timeout;
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [userSearch]);
+
+  // Load more on scroll
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = searchPage + 1;
+    setSearchPage(nextPage);
+    const q = userSearch.trim() || (destination ? `restaurants in ${destination}` : '');
+    if (q) fetchPage(q, nextPage, true);
+  }, [searchPage, isLoadingMore, hasMore, userSearch, destination, fetchPage]);
+
+  const handleScroll = useCallback((e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 800 && hasMore && !isLoadingMore) {
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
 
   // Merge: search results first (better images), then context + explore without dupes
   const realRestaurants = useMemo(() => {
@@ -889,6 +934,8 @@ export default function RestaurantsScreen() {
       style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
     >
       {/* ── Selected Restaurant Detail (top, like hotels pattern) ── */}
       {restaurant && (() => {
@@ -1137,6 +1184,14 @@ export default function RestaurantsScreen() {
               overlay
             />
           )}
+        </View>
+      )}
+
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={ACCENT} />
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 6 }}>Loading more restaurants...</Text>
         </View>
       )}
     </ScrollView>
