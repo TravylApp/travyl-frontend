@@ -474,10 +474,33 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               const border = safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)';
               const label = safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger';
               return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Pressable
+                  onPress={() => {
+                    const msg = safety.message || '';
+                    const tips = (trip?.trip_context as any)?.safety_tips;
+                    const dest = trip?.destination?.split(',')[0] || '';
+                    const explanation = safety.score <= 2
+                      ? 'Generally Safe — Standard travel precautions apply. Stay aware of your surroundings and keep valuables secure.'
+                      : safety.score <= 3
+                      ? 'Moderate Caution — Some areas may require extra awareness. Research neighborhoods before visiting and avoid isolated areas at night.'
+                      : 'Exercise Caution — Research local conditions before traveling. Register with your embassy and keep emergency contacts handy.';
+                    const details = [explanation, msg, ...(Array.isArray(tips) ? tips : [])].filter(Boolean).join('\n\n');
+                    import('react-native').then(({ Alert, Linking: L }) => {
+                      Alert.alert(
+                        `Safety: ${label} (${safety.score}/5)`,
+                        details,
+                        [
+                          { text: 'View Travel Advisory', onPress: () => L.openURL(`https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/${encodeURIComponent(dest)}.html`).catch(() => {}) },
+                          { text: 'OK', style: 'cancel' },
+                        ],
+                      );
+                    });
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}
+                >
                   <FontAwesome name="shield" size={9} color={color} />
                   <Text style={{ fontSize: 10, fontWeight: '600', color }}>{label} ({safety.score})</Text>
-                </View>
+                </Pressable>
               );
             })()}
           </View>

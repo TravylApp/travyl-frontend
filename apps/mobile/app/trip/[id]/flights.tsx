@@ -1130,6 +1130,9 @@ export default function FlightsScreen() {
   );
   const hasFlights = bookedFlights.length > 0;
 
+  // Search results from FlightSearchSection
+  const [searchFlights, setSearchFlights] = useState<any[]>([]);
+
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
   return (
@@ -1140,6 +1143,7 @@ export default function FlightsScreen() {
         destination={destAirport || city}
         departDate={trip?.start_date ?? undefined}
         returnDate={trip?.end_date ?? undefined}
+        onResults={setSearchFlights}
       />
 
       {/* Flight prompt when no flights booked */}
@@ -1172,6 +1176,51 @@ export default function FlightsScreen() {
       {bookedFlights.filter((f: any) => f.type === 'return').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
+
+      {/* Search Results */}
+      {searchFlights.length > 0 && (
+        <View style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Search Results</Text>
+            <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ ...TextStyles.smEm, color: ACCENT }}>{searchFlights.length} flights</Text>
+            </View>
+          </View>
+          {searchFlights.map((f: any, i: number) => {
+            const depTime = f.departure_time ? new Date(f.departure_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            const arrTime = f.arrival_time ? new Date(f.arrival_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            return (
+              <View key={f.id || i} style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+                      <FontAwesome name="plane" size={14} color="#fff" />
+                    </View>
+                    <View>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{f.airline || 'Airline'}</Text>
+                      <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{f.origin} → {f.destination}</Text>
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ ...TextStyles.subhead, color: ACCENT }}>${f.price ?? '—'}</Text>
+                    <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per person</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>{depTime} → {arrTime}</Text>
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{f.duration || ''}</Text>
+                  <Text style={{ ...TextStyles.smEm, color: f.stops === 0 ? colors.success : colors.warning }}>{f.stops === 0 ? 'Direct' : `${f.stops} stop`}</Text>
+                </View>
+                {f.link && (
+                  <Pressable onPress={() => Linking.openURL(f.link)} style={{ marginTop: 10, backgroundColor: ACCENT, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}>
+                    <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Book Flight</Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Add Flight button */}
       <Pressable
