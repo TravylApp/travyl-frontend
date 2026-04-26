@@ -384,7 +384,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       {/* Background image — fills entire hero, content determines height */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         {coverImage ? (
-          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" />
+          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" onError={() => {}} />
         ) : (
           <View style={{ flex: 1, backgroundColor: theme.base, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="picture-o" size={32} color="rgba(255,255,255,0.3)" />

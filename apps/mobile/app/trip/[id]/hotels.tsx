@@ -183,7 +183,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
 
   return (
     <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
-      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" defaultSource={require('@/assets/images/icon.png')} />
       {images.length > 1 && (
         <>
           <Pressable
@@ -573,7 +573,7 @@ function OtherHotelCard({ hotel, onPress }: { hotel: { id: string; name: string;
       })}
     >
       {hotel.image ? (
-        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" />
+        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" onError={() => {}} />
       ) : (
         <View style={{ width: 90, height: 100, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
           <FontAwesome name="building" size={24} color="rgba(255,255,255,0.3)" />
@@ -788,7 +788,7 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
 
       {/* Image */}
       {hotel.image ? (
-        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: '100%', height: 170 }} resizeMode="cover" />
+        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: '100%', height: 170 }} resizeMode="cover" onError={() => {}} />
       ) : (
         <View style={{ width: '100%', height: 110, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
           <FontAwesome name="building" size={28} color="rgba(255,255,255,0.3)" />
@@ -890,7 +890,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
         {/* ── Image ── */}
         <View style={{ height: 200, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' }}>
           {images.length > 0 ? (
-            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => {}} />
           ) : (
             <View style={{ flex: 1, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesome name="building" size={36} color="rgba(255,255,255,0.25)" />
@@ -1001,7 +1001,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
                   <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.borderLight }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       {r.avatar ? (
-                        <Image source={{ uri: r.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+                        <Image source={{ uri: r.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} onError={() => {}} />
                       ) : (
                         <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
                           <FontAwesome name="user" size={12} color={colors.textTertiary} />

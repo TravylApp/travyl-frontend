@@ -162,7 +162,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
 
   return (
     <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
-      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => {}} />
       {images.length > 1 && (
         <>
           <Pressable
@@ -457,7 +457,7 @@ function RestaurantListCard({ restaurant, onPress }: { restaurant: any; onPress:
         {/* Image */}
         <View style={{ height: 200, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' }}>
           {images.length > 0 ? (
-            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => {}} />
           ) : (
             <View style={{ flex: 1, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesome name="cutlery" size={36} color="rgba(255,255,255,0.25)" />
@@ -576,7 +576,7 @@ function RestaurantListCard({ restaurant, onPress }: { restaurant: any; onPress:
                   <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.borderLight }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       {r.authorPhoto ? (
-                        <Image source={{ uri: r.authorPhoto }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+                        <Image source={{ uri: r.authorPhoto }} style={{ width: 28, height: 28, borderRadius: 14 }} onError={() => {}} />
                       ) : (
                         <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
                           <FontAwesome name="user" size={12} color={colors.textTertiary} />
