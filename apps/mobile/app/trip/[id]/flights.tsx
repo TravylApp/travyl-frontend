@@ -556,7 +556,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
               </View>
               <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: colors.border }} />
             </View>
-            <Text style={{ ...TextStyles.smEm, color: '#059669', marginTop: 4 }}>{flight.stops}</Text>
+            <Text style={{ ...TextStyles.smEm, color: colors.success, marginTop: 4 }}>{flight.stops}</Text>
           </View>
 
           {/* Arrival */}
@@ -586,8 +586,8 @@ function BookedFlightCard({ flight }: { flight: any }) {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{flight.cabinClass}</Text>
-            <View style={{ backgroundColor: '#1e3a5f15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: '#1e3a5f' }}>On Time</Text>
+            <View style={{ backgroundColor: colors.tint + '15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: colors.tint }}>On Time</Text>
             </View>
           </View>
         </View>
@@ -596,10 +596,10 @@ function BookedFlightCard({ flight }: { flight: any }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
           <View>
             <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>Per traveler</Text>
-            <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>${flight.price.total}</Text>
+            <Text style={{ ...TextStyles.title, color: colors.tint }}>${flight.price.total}</Text>
           </View>
           <Pressable style={({ pressed }) => ({
-            backgroundColor: '#1e3a5f', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
+            backgroundColor: colors.tint, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
             flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.85 : 1,
           })}>
             <FontAwesome name="plane" size={12} color="#fff" />
@@ -736,10 +736,10 @@ function ComparisonAlternatives() {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: 8,
-                backgroundColor: altAirports ? '#dbeafe' : colors.borderLight,
+                backgroundColor: altAirports ? colors.infoBg : colors.borderLight,
               }}
             >
-              <Text style={{ ...TextStyles.caption, color: altAirports ? '#1d4ed8' : colors.textSecondary }}>Alt Airports</Text>
+              <Text style={{ ...TextStyles.caption, color: altAirports ? colors.info : colors.textSecondary }}>Alt Airports</Text>
             </Pressable>
           </View>
 
@@ -777,7 +777,7 @@ function ComparisonAlternatives() {
                   style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}
                 >
                   <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{ap.code}</Text>
-                  <Text style={{ ...TextStyles.captionEm, color: '#059669' }}>-${ap.savings}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: colors.success }}>-${ap.savings}</Text>
                 </Pressable>
               ))}
             </View>
@@ -861,7 +861,7 @@ function ComparisonAlternatives() {
                     <View style={{ alignItems: 'flex-end', marginRight: 4 }}>
                       <Text style={{ ...TextStyles.body, color: colors.text }}>{flight.duration}</Text>
                       {flight.stops === 0 ? (
-                        <Text style={{ ...TextStyles.smEm, color: '#059669' }}>Direct</Text>
+                        <Text style={{ ...TextStyles.smEm, color: colors.success }}>Direct</Text>
                       ) : (
                         <Text style={{ ...TextStyles.smEm, color: '#d97706' }}>{flight.stops} stop</Text>
                       )}
@@ -887,7 +887,7 @@ function ComparisonAlternatives() {
                     </View>
                     <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.airline}</Text>
                     {flight.businessAvailable && (
-                      <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                      <View style={{ backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
                         <Text style={{ ...TextStyles.xs, color: '#b45309' }}>Business avail.</Text>
                       </View>
                     )}
@@ -925,7 +925,7 @@ function ComparisonAlternatives() {
                       </View>
                       <View style={{ width: 1, height: 12, backgroundColor: colors.border }} />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? '#16a34a' : colors.textTertiary} />
+                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? colors.success : colors.textTertiary} />
                         <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{flight.co2}kg CO2</Text>
                       </View>
                     </View>
@@ -1020,7 +1020,7 @@ function BookingDetailsSection() {
             </View>
             <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Baggage Fees</Text>
-              <Text style={{ ...TextStyles.captionEm, color: '#059669' }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.success }}>
                 {d.baggageAllowance.fees === 0 ? 'Included' : `$${d.baggageAllowance.fees}/person`}
               </Text>
             </View>
@@ -1063,7 +1063,7 @@ function BookingDetailsSection() {
             </View>
             <Pressable
               onPress={() => Linking.openURL(d.checkInUrl)}
-              style={{ alignSelf: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+              style={{ alignSelf: 'flex-start', backgroundColor: colors.cardBackground, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
             >
               <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Check-in Online →</Text>
             </Pressable>

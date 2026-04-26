@@ -63,7 +63,7 @@ interface HotelData {
   checkOut: string;
   cancellation: string;
   phone: string;
-  email: string;
+  bookingLink: string;
   guestRatings: GuestRatings;
 }
 
@@ -148,7 +148,7 @@ function SectionToggle({
           </View>
         )}
       </View>
-      <FontAwesome name={isOpen ? 'chevron-up' : 'chevron-down'} size={12} color="#94a3b8" />
+      <FontAwesome name={isOpen ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
     </Pressable>
   );
 }
@@ -195,7 +195,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name="chevron-left" size={12} color="#374151" />
+            <FontAwesome name="chevron-left" size={12} color={colors.text} />
           </Pressable>
           <Pressable
             onPress={next}
@@ -205,7 +205,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name="chevron-right" size={12} color="#374151" />
+            <FontAwesome name="chevron-right" size={12} color={colors.text} />
           </Pressable>
           <View
             style={{
@@ -293,7 +293,7 @@ function RoomSelection({
                   <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginTop: 2 }}>{room.beds}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <FontAwesome name="users" size={9} color="#9ca3af" />
+                      <FontAwesome name="users" size={9} color={colors.textTertiary} />
                       <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{room.guests}</Text>
                     </View>
                     <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{room.size}</Text>
@@ -316,9 +316,14 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
   const colors = useThemeColors();
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const subtotal = pricePerNight * nights;
-  const cityTax = 3.5 * 2 * nights;
-  const serviceFee = 12;
-  const vat = subtotal * 0.1;
+  // Estimated taxes & fees — actual amounts vary by property and jurisdiction
+  const EST_CITY_TAX_PER_PERSON_PER_NIGHT = 3.5;
+  const EST_GUESTS = 2;
+  const EST_SERVICE_FEE = 12;
+  const EST_VAT_RATE = 0.1;
+  const cityTax = EST_CITY_TAX_PER_PERSON_PER_NIGHT * EST_GUESTS * nights;
+  const serviceFee = EST_SERVICE_FEE;
+  const vat = subtotal * EST_VAT_RATE;
   const total = subtotal + cityTax + serviceFee + vat;
 
   return (
@@ -340,13 +345,13 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ ...TextStyles.subhead, color: colors.tint }}>${total.toFixed(0)}</Text>
-            <FontAwesome name={breakdownOpen ? 'chevron-up' : 'chevron-down'} size={10} color="#94a3b8" />
+            <FontAwesome name={breakdownOpen ? 'chevron-up' : 'chevron-down'} size={10} color={colors.textTertiary} />
           </View>
         </View>
 
         {breakdownOpen && (
           <View style={{ marginTop: 12, gap: 8 }}>
-            <View style={{ height: 1, backgroundColor: 'colors.borderLight' }} />
+            <View style={{ height: 1, backgroundColor: colors.borderLight }} />
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Nightly Rate</Text>
@@ -357,15 +362,15 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
               <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>${subtotal.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Taxes</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Taxes (est.)</Text>
               <Text style={{ ...TextStyles.body, color: colors.text }}>${(cityTax + vat).toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Service Fee</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Service Fee (est.)</Text>
               <Text style={{ ...TextStyles.body, color: colors.text }}>${serviceFee.toFixed(2)}</Text>
             </View>
 
-            <View style={{ height: 1, backgroundColor: 'colors.border', marginTop: 4 }} />
+            <View style={{ height: 1, backgroundColor: colors.border, marginTop: 4 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Total</Text>
               <Text style={{ ...TextStyles.subhead, color: colors.tint }}>${total.toFixed(2)}</Text>
@@ -381,7 +386,7 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
 /*  Contact & Location                                                 */
 /* ------------------------------------------------------------------ */
 
-function ContactActions({ phone, email, address }: { phone: string; email: string; address: string }) {
+function ContactActions({ phone, bookingLink, address }: { phone: string; bookingLink: string; address: string }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('hotels');
   return (
@@ -393,37 +398,37 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
             onPress={() => Linking.openURL(`tel:${phone}`)}
             style={{
               flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-              backgroundColor: '#f0fdf4', borderRadius: 10, paddingVertical: 12,
-              borderWidth: 1, borderColor: '#bbf7d0',
+              backgroundColor: colors.successBg, borderRadius: 10, paddingVertical: 12,
+              borderWidth: 1, borderColor: colors.success,
             }}
           >
-            <FontAwesome name="phone" size={14} color="#16a34a" />
-            <Text style={{ ...TextStyles.bodyEm, color: '#16a34a' }}>Call</Text>
+            <FontAwesome name="phone" size={14} color={colors.success} />
+            <Text style={{ ...TextStyles.bodyEm, color: colors.success }}>Call</Text>
           </Pressable>
         )}
-        {!!email && (
+        {!!bookingLink && (
           <Pressable
-            onPress={() => Linking.openURL(`mailto:${email}`)}
+            onPress={() => Linking.openURL(bookingLink.startsWith('http') ? bookingLink : `https://www.google.com/search?q=${encodeURIComponent(bookingLink)}`)}
             style={{
               flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
               backgroundColor: ACCENT + '10', borderRadius: 10, paddingVertical: 12,
               borderWidth: 1, borderColor: ACCENT + '25',
             }}
           >
-            <FontAwesome name="envelope" size={13} color={ACCENT} />
-            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Email</Text>
+            <FontAwesome name="external-link" size={13} color={ACCENT} />
+            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Website</Text>
           </Pressable>
         )}
         <Pressable
           onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`)}
           style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: '#fef3c7', borderRadius: 10, paddingVertical: 12,
-            borderWidth: 1, borderColor: '#fde68a',
+            backgroundColor: colors.warningBg, borderRadius: 10, paddingVertical: 12,
+            borderWidth: 1, borderColor: colors.warning,
           }}
         >
-          <FontAwesome name="map-marker" size={14} color="#d97706" />
-          <Text style={{ ...TextStyles.bodyEm, color: '#d97706' }}>Map</Text>
+          <FontAwesome name="map-marker" size={14} color={colors.warning} />
+          <Text style={{ ...TextStyles.bodyEm, color: colors.warning }}>Map</Text>
         </Pressable>
       </View>
     </View>
@@ -648,7 +653,7 @@ function HotelFilterBar({
             borderWidth: 1, borderColor: activeCount > 0 ? ACCENT + '30' : colors.border,
           }}
         >
-          <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : '#64748b'} />
+          <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : colors.textSecondary} />
           <Text style={{ ...TextStyles.bodyEm, color: activeCount > 0 ? ACCENT : colors.textSecondary }}>Filters</Text>
           {activeCount > 0 && (
             <View style={{ backgroundColor: ACCENT, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
@@ -657,7 +662,7 @@ function HotelFilterBar({
           )}
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <FontAwesome name="sort" size={12} color="#9ca3af" />
+          <FontAwesome name="sort" size={12} color={colors.textTertiary} />
           <Pressable onPress={() => {
             const idx = SORT_OPTIONS.findIndex((o) => o.key === sortBy);
             setSortBy(SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key);
@@ -771,7 +776,7 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
         backgroundColor: colors.cardBackground, borderRadius: 14, overflow: 'hidden', marginBottom: 14,
         borderWidth: isSelected ? 2 : 1,
         borderColor: isSelected ? '#60a5fa' : isBooked ? 'rgba(30,58,95,0.3)' : colors.border,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+        shadowColor: colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
         opacity: pressed ? 0.92 : 1,
       })}
     >
@@ -799,21 +804,18 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
         {/* Badges row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
           {hotel.rating > 0 && (
-            <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-              <FontAwesome name="star" size={9} color="#2563eb" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#1e40af' }}>{hotel.rating}/5{hotel.reviews > 0 ? ` (${hotel.reviews})` : ''}</Text>
+            <View style={{ backgroundColor: colors.infoBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="star" size={9} color={colors.info} />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: colors.info }}>{hotel.rating}/5{hotel.reviews > 0 ? ` (${hotel.reviews})` : ''}</Text>
             </View>
           )}
           {hotel.stars > 0 && <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.stars}-Star</Text>}
-          <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: '#059669' }}>Free Cancel</Text>
-          </View>
         </View>
 
         {/* Address */}
         {!!hotel.neighborhood && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-            <FontAwesome name="map-marker" size={10} color="#9ca3af" />
+            <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
             <Text style={{ fontSize: 11, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{hotel.neighborhood}</Text>
           </View>
         )}
@@ -843,52 +845,12 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hotel Policies Section                                             */
+/*  Hotel Policies Section — only shown when real policy data exists   */
 /* ------------------------------------------------------------------ */
 
-function HotelPoliciesSection() {
-  const ACCENT = useTabAccent('hotels');
-  const colors = useThemeColors();
-  const [isOpen, setIsOpen] = useState(false);
-
-  const policies = [
-    { icon: 'sign-in', label: 'Check-in', value: 'From 2:00 PM' },
-    { icon: 'sign-out', label: 'Check-out', value: 'Until 11:00 AM' },
-    { icon: 'calendar-times-o', label: 'Cancellation', value: 'Free until 48h before' },
-    { icon: 'child', label: 'Children', value: 'All ages welcome' },
-    { icon: 'paw', label: 'Pets', value: 'Not allowed' },
-    { icon: 'ban', label: 'Smoking', value: 'Non-smoking property' },
-  ];
-
-  return (
-    <View style={{ marginTop: 14 }}>
-      <SectionToggle
-        title="Hotel Policies"
-        icon="info-circle"
-        isOpen={isOpen}
-        onToggle={() => setIsOpen(!isOpen)}
-        badge={`${policies.length} policies`}
-      />
-      {isOpen && (
-        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
-          <View style={{ gap: 12 }}>
-            {policies.map((p) => (
-              <View key={p.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' }}>
-                  <FontAwesome name={p.icon as any} size={13} color={ACCENT} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>{p.label}</Text>
-                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{p.value}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
+// Removed: previously displayed hardcoded fake policies.
+// Will be re-added when hotel API returns actual policy data
+// (check-in/out times, cancellation, pets, smoking, etc.).
 
 /* ------------------------------------------------------------------ */
 /*  Loading Skeleton                                                   */
@@ -915,14 +877,14 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
   return (
     <View style={{
       marginBottom: 28, marginHorizontal: 6, borderRadius: 18,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 8,
-      backgroundColor: '#fff',
+      shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 8,
+      backgroundColor: colors.cardBackground,
     }}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => ({
           borderRadius: 18, overflow: 'hidden',
-          borderWidth: 1, borderColor: '#e5e7eb',
+          borderWidth: 1, borderColor: colors.border,
           opacity: pressed ? 0.95 : 1,
         })}
       >
@@ -945,10 +907,10 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {hasMultiple && (
             <>
               <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === 0 ? images.length - 1 : i - 1)} style={{ position: 'absolute', left: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
-                <FontAwesome name="chevron-left" size={10} color="#374151" />
+                <FontAwesome name="chevron-left" size={10} color={colors.text} />
               </Pressable>
               <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === images.length - 1 ? 0 : i + 1)} style={{ position: 'absolute', right: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
-                <FontAwesome name="chevron-right" size={10} color="#374151" />
+                <FontAwesome name="chevron-right" size={10} color={colors.text} />
               </Pressable>
             </>
           )}
@@ -957,7 +919,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
         {/* ── Content ── */}
         <View style={{ padding: 20, paddingTop: 16 }}>
           {/* Name */}
-          <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: '#111827', lineHeight: 24 }} numberOfLines={2}>{hotel.name}</Text>
+          <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: colors.text, lineHeight: 24 }} numberOfLines={2}>{hotel.name}</Text>
 
           {/* Rating row — tappable to toggle reviews */}
           <Pressable
@@ -979,21 +941,18 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
             {hotel.rating > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome name="star" size={12} color="#f59e0b" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e40af' }}>{hotel.rating}/5</Text>
-                {hotel.reviews > 0 && <Text style={{ fontSize: 12, color: '#6b7280' }}>({hotel.reviews})</Text>}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.info }}>{hotel.rating}/5</Text>
+                {hotel.reviews > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>({hotel.reviews})</Text>}
               </View>
             )}
-            {hotel.stars > 0 && <Text style={{ fontSize: 12, color: '#6b7280' }}>{hotel.stars}-Star</Text>}
-            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: '#6ee7b7' }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#059669' }}>Free Cancel</Text>
-            </View>
+            {hotel.stars > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>{hotel.stars}-Star</Text>}
           </Pressable>
 
           {/* Address */}
           {!!address && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-              <FontAwesome name="map-marker" size={12} color="#9ca3af" />
-              <Text style={{ fontSize: 13, color: '#6b7280', flex: 1 }} numberOfLines={1}>{address}</Text>
+              <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>{address}</Text>
             </View>
           )}
 
@@ -1003,7 +962,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
               {hotel.amenities.slice(0, 5).map((a: string) => (
                 <View key={a} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <FontAwesome name={(AMENITY_MAP[a] || 'check') as any} size={12} color={colors.tint} />
-                  <Text style={{ fontSize: 12, color: '#4b5563' }}>{a}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{a}</Text>
                 </View>
               ))}
             </View>
@@ -1012,9 +971,9 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {/* Check-in/out */}
           {(!!hotel.checkIn || !!hotel.checkOut) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
-              <FontAwesome name="clock-o" size={11} color="#9ca3af" />
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>
-                Check-in: {hotel.checkIn || '3:00 PM'} {'\u00B7'} Check-out: {hotel.checkOut || '11:00 AM'}
+              <FontAwesome name="clock-o" size={11} color={colors.textTertiary} />
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                {hotel.checkIn ? `Check-in: ${hotel.checkIn}` : ''}{hotel.checkIn && hotel.checkOut ? ` ${'\u00B7'} ` : ''}{hotel.checkOut ? `Check-out: ${hotel.checkOut}` : ''}
               </Text>
             </View>
           )}
@@ -1023,8 +982,8 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {hotel.price > 0 && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                <Text style={{ fontSize: 28, fontFamily: FontFamily.sansBold, color: '#111827' }}>${total > 0 ? total.toFixed(0) : hotel.price}</Text>
-                <Text style={{ fontSize: 13, color: '#9ca3af', marginLeft: 8 }}>
+                <Text style={{ fontSize: 28, fontFamily: FontFamily.sansBold, color: colors.text }}>${total > 0 ? total.toFixed(0) : hotel.price}</Text>
+                <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
                   (${hotel.price}/nt {'\u00B7'} {nights} night{nights !== 1 ? 's' : ''})
                 </Text>
               </View>
@@ -1033,33 +992,33 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
 
           {/* Inline reviews — shown when stars are tapped */}
           {showReviews && (
-            <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 10 }}>
+            <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 10 }}>
               {loadingReviews ? (
                 <ActivityIndicator size="small" color={colors.tint} style={{ paddingVertical: 12 }} />
               ) : reviews.length === 0 ? (
-                <Text style={{ fontSize: 13, color: '#9ca3af', paddingVertical: 8 }}>No reviews loaded yet</Text>
+                <Text style={{ fontSize: 13, color: colors.textTertiary, paddingVertical: 8 }}>No reviews loaded yet</Text>
               ) : (
                 reviews.map((r: any, i: number) => (
-                  <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f3f4f6' }}>
+                  <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.borderLight }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       {r.avatar ? (
                         <Image source={{ uri: r.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
                       ) : (
-                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' }}>
-                          <FontAwesome name="user" size={12} color="#9ca3af" />
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                          <FontAwesome name="user" size={12} color={colors.textTertiary} />
                         </View>
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{r.author}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{r.author}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                           {Array.from({ length: 5 }).map((_, si) => (
-                            <FontAwesome key={si} name="star" size={9} color={si < r.rating ? '#f59e0b' : '#e5e7eb'} />
+                            <FontAwesome key={si} name="star" size={9} color={si < r.rating ? '#f59e0b' : colors.border} />
                           ))}
-                          {!!r.date && <Text style={{ fontSize: 10, color: '#9ca3af', marginLeft: 4 }}>{r.date}</Text>}
+                          {!!r.date && <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{r.date}</Text>}
                         </View>
                       </View>
                     </View>
-                    {!!r.text && <Text style={{ fontSize: 13, color: '#4b5563', lineHeight: 19, marginTop: 6 }} numberOfLines={3}>{r.text}</Text>}
+                    {!!r.text && <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginTop: 6 }} numberOfLines={3}>{r.text}</Text>}
                   </View>
                 ))
               )}
@@ -1298,7 +1257,7 @@ export default function HotelsScreen() {
       checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
       cancellation: '',
       phone: '',
-      email: h.link ?? '',
+      bookingLink: h.link ?? '',
       guestRatings: {
         overall: rating,
         label: ratingLabel,
@@ -1348,9 +1307,14 @@ export default function HotelsScreen() {
           : 1;
         const pricePerNight = currentRoom?.price ?? hotel.price;
         const subtotal = pricePerNight * nights;
-        const cityTax = 3.5 * 2 * nights;
-        const serviceFee = 12;
-        const vat = subtotal * 0.1;
+        // Estimated taxes & fees — actual amounts vary by property
+        const EST_CITY_TAX_PP_PN = 3.5;
+        const EST_GUESTS = 2;
+        const EST_SVC_FEE = 12;
+        const EST_VAT = 0.1;
+        const cityTax = EST_CITY_TAX_PP_PN * EST_GUESTS * nights;
+        const serviceFee = EST_SVC_FEE;
+        const vat = subtotal * EST_VAT;
         const totalCost = subtotal + cityTax + serviceFee + vat;
         return (
       <View onLayout={(e) => { detailYRef.current = e.nativeEvent.layout.y; }} style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -1379,10 +1343,10 @@ export default function HotelsScreen() {
               <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{booked ? 'Confirmed' : 'Selected'}</Text>
             </View>
             {hotel.rating > 0 && (
-              <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <FontAwesome name="star" size={10} color="#2563eb" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1e40af' }}>{hotel.rating}/5</Text>
-                {hotel.reviews > 0 && <Text style={{ fontSize: 11, color: '#3b82f6' }}>({hotel.reviews.toLocaleString()})</Text>}
+              <View style={{ backgroundColor: colors.infoBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="star" size={10} color={colors.info} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.info }}>{hotel.rating}/5</Text>
+                {hotel.reviews > 0 && <Text style={{ fontSize: 11, color: colors.info }}>({hotel.reviews.toLocaleString()})</Text>}
               </View>
             )}
           </View>
@@ -1401,11 +1365,8 @@ export default function HotelsScreen() {
           {(!!hotel.checkIn || !!hotel.checkOut) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingHorizontal: 14, marginTop: 8 }}>
               <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>
-                {hotel.checkIn ? `Check-in: 3pm` : ''}{hotel.checkIn && hotel.checkOut ? ' \u00B7 ' : ''}{hotel.checkOut ? `Check-out: 11am` : ''}
+                {hotel.checkIn ? `Check-in: ${hotel.checkIn}` : ''}{hotel.checkIn && hotel.checkOut ? ' \u00B7 ' : ''}{hotel.checkOut ? `Check-out: ${hotel.checkOut}` : ''}
               </Text>
-              <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0' }}>
-                <Text style={{ ...TextStyles.xs, color: '#16a34a', fontWeight: '600' }}>Free Cancellation</Text>
-              </View>
             </View>
           )}
 
@@ -1436,18 +1397,18 @@ export default function HotelsScreen() {
                 {/* 3-column grid: Call / Email (or Website) / Map */}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {!!hotel.phone && (
-                    <Pressable onPress={() => Linking.openURL(`tel:${hotel.phone}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                    <Pressable onPress={() => Linking.openURL(`tel:${hotel.phone}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
                       <FontAwesome name="phone" size={16} color={colors.tint} />
                       <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Call</Text>
                     </Pressable>
                   )}
-                  {!!hotel.email && (
-                    <Pressable onPress={() => Linking.openURL(hotel.email.startsWith('http') ? hotel.email : `mailto:${hotel.email}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
-                      <FontAwesome name={hotel.email.startsWith('http') ? 'external-link' : 'envelope'} size={15} color={colors.tint} />
-                      <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>{hotel.email.startsWith('http') ? 'Website' : 'Email'}</Text>
+                  {!!hotel.bookingLink && (
+                    <Pressable onPress={() => Linking.openURL(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.bookingLink)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                      <FontAwesome name="external-link" size={15} color={colors.tint} />
+                      <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Website</Text>
                     </Pressable>
                   )}
-                  <Pressable onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(hotel.address)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                  <Pressable onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(hotel.address)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
                     <FontAwesome name="map-pin" size={16} color="#8b6f47" />
                     <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Map</Text>
                   </Pressable>
@@ -1455,7 +1416,7 @@ export default function HotelsScreen() {
 
                 {/* Address card */}
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 10, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
-                  <FontAwesome name="map-marker" size={14} color="#9ca3af" style={{ marginTop: 2 }} />
+                  <FontAwesome name="map-marker" size={14} color={colors.textTertiary} style={{ marginTop: 2 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ ...TextStyles.body, color: colors.text }}>{hotel.address}</Text>
                     {!!hotel.neighborhood && (
@@ -1467,9 +1428,9 @@ export default function HotelsScreen() {
             )}
 
             {/* ── Book Now — opens hotel site in-app ── */}
-            {!!hotel.email && (
+            {!!hotel.bookingLink && (
               <Pressable
-                onPress={() => WebBrowser.openBrowserAsync(hotel.email.startsWith('http') ? hotel.email : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
                 style={({ pressed }) => ({
                   marginTop: 16, backgroundColor: pressed ? '#2d4a6f' : '#1e3a5f', borderRadius: 12, paddingVertical: 15,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -1491,19 +1452,19 @@ export default function HotelsScreen() {
           {/* Header with toggle */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ ...TextStyles.subhead, color: colors.text }}>Browse Hotels</Text>
-            <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 8, padding: 2 }}>
+            <View style={{ flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 8, padding: 2 }}>
               <Pressable
                 onPress={() => setBrowseMode('list')}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'list' ? '#fff' : 'transparent',
-                  ...(browseMode === 'list' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'list' ? colors.cardBackground : 'transparent',
+                  ...(browseMode === 'list' ? { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
                 }}
               >
                 <FontAwesome name="list" size={13} color={browseMode === 'list' ? colors.tint : colors.textTertiary} />
               </Pressable>
               <Pressable
                 onPress={() => setBrowseMode('cards')}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'cards' ? '#fff' : 'transparent',
-                  ...(browseMode === 'cards' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'cards' ? colors.cardBackground : 'transparent',
+                  ...(browseMode === 'cards' ? { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
                 }}
               >
                 <FontAwesome name="th-large" size={13} color={browseMode === 'cards' ? colors.tint : colors.textTertiary} />
