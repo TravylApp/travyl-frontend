@@ -129,7 +129,7 @@ export function TripShareModal({ trip, isOpen, onClose }: TripShareModalProps) {
 
               {/* Share URL */}
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 min-w-0">
                   <LinkIcon size={14} className="text-gray-400 shrink-0" />
                   {loading ? (
                     <div className="flex items-center gap-2">
@@ -137,13 +137,13 @@ export function TripShareModal({ trip, isOpen, onClose }: TripShareModalProps) {
                       <span className="text-sm text-gray-400">Generating link...</span>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-600 dark:text-gray-300 truncate">{shareUrl}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300 truncate" title={shareUrl}>{shareUrl}</span>
                   )}
                 </div>
                 <button
                   onClick={handleCopy}
                   disabled={loading || !shareUrl}
-                  className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1e3a5f] text-white text-sm font-medium hover:bg-[#2a4d78] transition-colors disabled:opacity-50"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#1e3a5f] text-white text-sm font-medium hover:bg-[#2a4d78] transition-colors disabled:opacity-50"
                 >
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                   {copied ? 'Copied!' : 'Copy'}

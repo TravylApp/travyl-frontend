@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked
 
     const supabase = getSupabase()
-    const { tripId } = await req.json()
+    let tripId: any; try { ({ tripId } = await req.json()) } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
     if (!tripId || typeof tripId !== 'string') {
       return NextResponse.json({ error: 'Missing or invalid tripId' }, { status: 400 })
     }
@@ -54,12 +54,11 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supabase.rpc('delete_trip_cascade', { p_trip_id: tripId })
     if (error) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+      return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
     }
 
     return NextResponse.json({ status: 'deleted' })
   } catch (e) {
-    console.error('[Trip Delete] Error:', e)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

@@ -3,7 +3,10 @@ import {
   View, Text, TextInput, Pressable, Modal, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, Keyboard,
 } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn, SlideInDown,
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+} from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,6 +50,12 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
 
   const [prompt, setPrompt] = useState('');
   const inputRef = useRef<TextInput>(null);
+
+  // Spinning plane animation
+  const spinValue = useSharedValue(0);
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${spinValue.value}deg` }],
+  }));
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [progressMsg, setProgressMsg] = useState(0);
@@ -74,6 +83,18 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
       Keyboard.dismiss();
     }
   }, [planner.state.phase]);
+
+  // Start/stop spinning plane
+  useEffect(() => {
+    if (isWorking) {
+      spinValue.value = withRepeat(
+        withTiming(360, { duration: 2000, easing: Easing.linear }),
+        -1, // infinite
+      );
+    } else {
+      spinValue.value = withTiming(0, { duration: 300 });
+    }
+  }, [isWorking]);
 
   // Cycle progress messages during planning
   useEffect(() => {
@@ -118,7 +139,6 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
           router.push('/login' as never);
         } else {
           // Real error — show it
-          console.error('Save failed:', msg);
           setSaving(false);
         }
       }
@@ -246,14 +266,12 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
           {/* ─── Working: Progress animation ─── */}
           {isWorking && (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-              <Animated.View entering={FadeIn.duration(300)}>
-                <View style={{
+              <Animated.View entering={FadeIn.duration(300)} style={[{
                   width: 64, height: 64, borderRadius: 32,
                   backgroundColor: `${Navy.DEFAULT}15`, alignItems: 'center', justifyContent: 'center',
                   marginBottom: 20,
-                }}>
-                  <PaperPlane size={28} color={Navy.DEFAULT} style={{ transform: [{ rotate: '-12deg' }] }} />
-                </View>
+                }, spinStyle]}>
+                <PaperPlane size={28} color={Navy.DEFAULT} />
               </Animated.View>
               <ActivityIndicator size="small" color={Navy.DEFAULT} style={{ marginBottom: 16 }} />
               <Text style={{ ...TextStyles.bodyLgEm, color: Navy.DEFAULT, textAlign: 'center', marginBottom: 6 }}>

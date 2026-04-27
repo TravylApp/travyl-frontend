@@ -266,7 +266,10 @@ export default function ProfileSettings() {
 
   // ─── Change Detection ──────────────────────────────
   const isModified = useCallback(() => {
-    const formChanged = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+    // Exclude email from change detection since it's read-only
+    const { email: _, ...formDataNoEmail } = formData;
+    const { email: __, ...originalNoEmail } = originalFormData;
+    const formChanged = JSON.stringify(formDataNoEmail) !== JSON.stringify(originalNoEmail);
     const travelChanged = JSON.stringify({ homeAirport, typicalDuration, budget, travelPace, travelers, selectedAirlines, selectedHotels, selectedStayTypes, selectedInterests, selectedRegions }) !== JSON.stringify(originalTravelStyle);
     const notifChanged = JSON.stringify(notifications) !== JSON.stringify(originalNotifications);
     const accountChanged = JSON.stringify({ profileVisibility, privacyControls, twoFactorEnabled }) !== JSON.stringify(originalAccount);
@@ -323,13 +326,19 @@ export default function ProfileSettings() {
         const profile = await fetchProfile(user.id);
         setProfileData(profile);
 
+        // Extract preferences from profile
+        const prefs = profile?.preferences as Record<string, any> || {};
+        const travelStyle = prefs.travelStyle || {};
+        const notificationPrefs = prefs.notifications || {};
+        const accountPrefs = prefs.account || {};
+
         // Populate form data from profile and user
         setFormData({
           profilePhoto: profile?.avatar_url || null,
           firstName: profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || '',
           lastName: user.user_metadata?.lastName || '',
           email: user.email || '',
-          phone: user.phone || '',
+          phone: user.user_metadata?.phone || user.phone || '',
           city: profile?.city || user.user_metadata?.city || '',
           country: profile?.country || user.user_metadata?.country || '',
           emergencyName: user.user_metadata?.emergencyName || '',
@@ -351,7 +360,7 @@ export default function ProfileSettings() {
           firstName: profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || '',
           lastName: user.user_metadata?.lastName || '',
           email: user.email || '',
-          phone: user.phone || '',
+          phone: user.user_metadata?.phone || user.phone || '',
           city: profile?.city || user.user_metadata?.city || '',
           country: profile?.country || user.user_metadata?.country || '',
           emergencyName: user.user_metadata?.emergencyName || '',
@@ -368,17 +377,78 @@ export default function ProfileSettings() {
           temperatureUnit: user.user_metadata?.temperatureUnit || '°F',
         });
 
+        // Load travel style preferences
+        setHomeAirport(travelStyle.homeAirport || '');
+        setTypicalDuration(travelStyle.typicalDuration || 0);
+        setBudget(travelStyle.budget || '');
+        setTravelPace(travelStyle.travelPace || '');
+        setTravelers(travelStyle.travelers || { adults: 0, children: 0, infants: 0, pets: 0 });
+        setSelectedAirlines(travelStyle.selectedAirlines || []);
+        setSelectedHotels(travelStyle.selectedHotels || []);
+        setSelectedStayTypes(travelStyle.selectedStayTypes || []);
+        setSelectedInterests(travelStyle.selectedInterests || []);
+        setSelectedRegions(travelStyle.selectedRegions || []);
+
+        setOriginalTravelStyle({
+          homeAirport: travelStyle.homeAirport || '',
+          typicalDuration: travelStyle.typicalDuration || 0,
+          budget: travelStyle.budget || '',
+          travelPace: travelStyle.travelPace || '',
+          travelers: travelStyle.travelers || { adults: 0, children: 0, infants: 0, pets: 0 },
+          selectedAirlines: travelStyle.selectedAirlines || [],
+          selectedHotels: travelStyle.selectedHotels || [],
+          selectedStayTypes: travelStyle.selectedStayTypes || [],
+          selectedInterests: travelStyle.selectedInterests || [],
+          selectedRegions: travelStyle.selectedRegions || [],
+        });
+
+        // Load notification preferences
+        setNotifications({
+          email: notificationPrefs.email ?? true,
+          push: notificationPrefs.push ?? true,
+          sms: notificationPrefs.sms ?? false,
+          personalizedPicks: notificationPrefs.personalizedPicks ?? true,
+          travelNewsletter: notificationPrefs.travelNewsletter ?? false,
+          newFeatures: notificationPrefs.newFeatures ?? true,
+          socialActivity: notificationPrefs.socialActivity ?? true,
+          tripReminders: notificationPrefs.tripReminders ?? true,
+          priceDropAlerts: notificationPrefs.priceDropAlerts ?? true,
+          eventAlerts: notificationPrefs.eventAlerts ?? true,
+        });
+
+        setOriginalNotifications({
+          email: notificationPrefs.email ?? true,
+          push: notificationPrefs.push ?? true,
+          sms: notificationPrefs.sms ?? false,
+          personalizedPicks: notificationPrefs.personalizedPicks ?? true,
+          travelNewsletter: notificationPrefs.travelNewsletter ?? false,
+          newFeatures: notificationPrefs.newFeatures ?? true,
+          socialActivity: notificationPrefs.socialActivity ?? true,
+          tripReminders: notificationPrefs.tripReminders ?? true,
+          priceDropAlerts: notificationPrefs.priceDropAlerts ?? true,
+          eventAlerts: notificationPrefs.eventAlerts ?? true,
+        });
+
+        // Load account preferences
+        setProfileVisibility(accountPrefs.profileVisibility || 'Private');
+        setPrivacyControls(accountPrefs.privacyControls || { showEmail: false, showActivity: false, sharePartners: false, analytics: false });
+        setTwoFactorEnabled(accountPrefs.twoFactorEnabled || false);
+
+        setOriginalAccount({
+          profileVisibility: accountPrefs.profileVisibility || 'Private',
+          privacyControls: accountPrefs.privacyControls || { showEmail: false, showActivity: false, sharePartners: false, analytics: false },
+          twoFactorEnabled: accountPrefs.twoFactorEnabled || false,
+        });
+
         // Fetch user's trips for stats
         try {
           const userTrips = await fetchTrips(user.id);
           setTrips(userTrips);
         } catch (tripErr) {
-          console.error('Error loading trips:', tripErr);
           // Continue without trips - stats will show 0
         }
 
       } catch (err) {
-        console.error('Error loading profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load profile');
       } finally {
         setIsLoading(false);
@@ -411,7 +481,6 @@ export default function ProfileSettings() {
         try {
           finalAvatarUrl = await uploadAvatar(user.id, formData.profilePhoto);
         } catch (uploadErr) {
-          console.error('Error uploading avatar:', uploadErr);
           toast.error('Failed to upload image. Please try again.');
           setIsSaving(false);
           return false;
@@ -419,39 +488,80 @@ export default function ProfileSettings() {
       }
 
       // Update profile fields in profiles table
-      if (formData.firstName || formData.city || formData.country || formData.profilePhoto !== originalFormData.profilePhoto) {
-        await updateProfile(user.id, {
-          display_name: formData.firstName || null,
-          avatar_url: finalAvatarUrl || null,
-          city: formData.city || null,
-          country: formData.country || null,
-        });
+      const profileUpdates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'preferences'>> = {};
+
+      // Only update profile fields that changed
+      if (formData.firstName !== originalFormData.firstName) {
+        profileUpdates.display_name = formData.firstName || null;
+      }
+      if (finalAvatarUrl !== originalFormData.profilePhoto) {
+        profileUpdates.avatar_url = finalAvatarUrl || null;
+      }
+      if (formData.city !== originalFormData.city) {
+        profileUpdates.city = formData.city || null;
+      }
+      if (formData.country !== originalFormData.country) {
+        profileUpdates.country = formData.country || null;
       }
 
-      // Update user metadata in auth
-      const metadataUpdates: Record<string, unknown> = {
-        display_name: formData.firstName || null,
-        avatar_url: finalAvatarUrl && !finalAvatarUrl.startsWith('data:') ? finalAvatarUrl : null, // Only store URLs, not base64 data
-        lastName: formData.lastName || null,
-        phone: formData.phone || null,
-        emergencyName: formData.emergencyName || null,
-        emergencyPhone: formData.emergencyPhone || null,
-        emergencyRelation: formData.emergencyRelation || null,
-        dietaryRequirements: formData.dietaryRequirements || null,
-        currency: formData.currency || null,
-        language: formData.language || null,
-        timezone: formData.timezone || null,
-        distanceUnit: formData.distanceUnit || null,
-        temperatureUnit: formData.temperatureUnit || null,
+      // Build preferences object
+      const preferences: Record<string, any> = {
+        travelStyle: {
+          homeAirport,
+          typicalDuration,
+          budget,
+          travelPace,
+          travelers,
+          selectedAirlines,
+          selectedHotels,
+          selectedStayTypes,
+          selectedInterests,
+          selectedRegions,
+        },
+        notifications,
+        account: {
+          profileVisibility,
+          privacyControls,
+          twoFactorEnabled,
+        },
       };
 
-      // Only include non-null values
-      const cleanMetadataUpdates = Object.fromEntries(
-        Object.entries(metadataUpdates).filter(([_, v]) => v !== null)
-      );
+      profileUpdates.preferences = preferences;
 
-      if (Object.keys(cleanMetadataUpdates).length > 0) {
-        await updateUserMetadata(cleanMetadataUpdates);
+      // Only call updateProfile if there are actual changes
+      if (Object.keys(profileUpdates).length > 0) {
+        await updateProfile(user.id, profileUpdates);
+      }
+
+      // Update user metadata in auth (for fields that need to be in user_metadata)
+      // Only include fields that have changed from original to avoid clearing unchanged empty fields
+      const metadataUpdates: Record<string, unknown> = {};
+
+      // Helper to add field if it changed
+      const addIfChanged = (key: string, currentValue: string, originalValue: string) => {
+        if (currentValue !== originalValue) {
+          metadataUpdates[key] = currentValue || null; // Use null for empty strings to clear the field
+        }
+      };
+
+      addIfChanged('display_name', formData.firstName, originalFormData.firstName);
+      if (finalAvatarUrl && !finalAvatarUrl.startsWith('data:')) {
+        metadataUpdates['avatar_url'] = finalAvatarUrl;
+      }
+      addIfChanged('phone', formData.phone, originalFormData.phone);
+      addIfChanged('lastName', formData.lastName, originalFormData.lastName);
+      addIfChanged('emergencyName', formData.emergencyName, originalFormData.emergencyName);
+      addIfChanged('emergencyPhone', formData.emergencyPhone, originalFormData.emergencyPhone);
+      addIfChanged('emergencyRelation', formData.emergencyRelation, originalFormData.emergencyRelation);
+      addIfChanged('dietaryRequirements', formData.dietaryRequirements, originalFormData.dietaryRequirements);
+      addIfChanged('currency', formData.currency, originalFormData.currency);
+      addIfChanged('language', formData.language, originalFormData.language);
+      addIfChanged('timezone', formData.timezone, originalFormData.timezone);
+      addIfChanged('distanceUnit', formData.distanceUnit, originalFormData.distanceUnit);
+      addIfChanged('temperatureUnit', formData.temperatureUnit, originalFormData.temperatureUnit);
+
+      if (Object.keys(metadataUpdates).length > 0) {
+        await updateUserMetadata(metadataUpdates);
       }
 
       // Invalidate profile query to update navbar and other components
@@ -484,7 +594,6 @@ export default function ProfileSettings() {
       snapshotAll();
       return true;
     } catch (err) {
-      console.error('Error saving settings:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to save settings. Please try again.');
       return false;
     } finally {
@@ -787,7 +896,8 @@ export default function ProfileSettings() {
                   <div className="flex-1 space-y-8">
                     <SectionCard title="Contact & Location">
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                          <SettingsInput id="em" label="EMAIL ADDRESS" value={formData.email} onChange={v => updateForm('email', v)} type="email" />
+                          <SettingsInput id="em" label="EMAIL ADDRESS" value={formData.email} onChange={v => updateForm('email', v)} type="email" disabled />
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 ml-1">Email changes require verification. Contact support to update your email.</p>
                           <SettingsInput id="ph" label="PHONE NUMBER" value={formData.phone} onChange={v => updateForm('phone', v)} type="tel" />
                           <SettingsInput id="ct" label="HOME CITY" value={formData.city} onChange={v => updateForm('city', v)} />
                           <SettingsInput id="cn" label="COUNTRY" value={formData.country} onChange={v => updateForm('country', v)} />
@@ -873,25 +983,129 @@ export default function ProfileSettings() {
                     <div className="xl:col-span-8 space-y-8">
                        <SectionCard title="Interests & Environment">
                           <div className="space-y-8">
-                             {/* Mock data removed - EXPLORATION INTERESTS, STAY TYPES, REGIONS will be populated from API */}
-                             <div><SectionLabel>EXPLORATION INTERESTS</SectionLabel><div className="text-sm text-gray-400 italic">Data will be loaded from API</div></div>
+                             {/* Exploration Interests */}
+                             <div>
+                                <SectionLabel>EXPLORATION INTERESTS</SectionLabel>
+                                <div className="flex flex-wrap gap-2">
+                                   {['Adventure', 'Culture', 'Food & Drink', 'Nature', 'Nightlife', 'Relaxation', 'Shopping', 'History'].map(interest => (
+                                      <Chip
+                                         key={interest}
+                                         label={interest}
+                                         selected={selectedInterests.includes(interest)}
+                                         onClick={() => setSelectedInterests(prev => toggleArray(prev, interest))}
+                                      />
+                                   ))}
+                                </div>
+                             </div>
+
+                             {/* Stay Types & Regions */}
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                <div><SectionLabel>STAY TYPES</SectionLabel><div className="text-sm text-gray-400 italic">Data will be loaded from API</div></div>
-                                <div><SectionLabel>REGIONS</SectionLabel><div className="text-sm text-gray-400 italic">Data will be loaded from API</div></div>
+                                <div>
+                                   <SectionLabel>STAY TYPES</SectionLabel>
+                                   <div className="space-y-2">
+                                      {[
+                                         { id: 'hotel', label: 'Hotels & Resorts', icon: '🏨' },
+                                         { id: 'hostel', label: 'Hostels', icon: '🛏️' },
+                                         { id: 'airbnb', label: 'Vacation Rentals', icon: '🏠' },
+                                         { id: 'boutique', label: 'Boutique Hotels', icon: '✨' },
+                                      ].map(type => (
+                                         <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => setSelectedStayTypes(prev => toggleArray(prev, type.id))}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                                               selectedStayTypes.includes(type.id)
+                                                  ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                                                  : 'bg-card border-border text-card-foreground hover:border-border/80'
+                                            }`}
+                                         >
+                                            <span className="text-xl">{type.icon}</span>
+                                            <span className="text-sm font-medium">{type.label}</span>
+                                            {selectedStayTypes.includes(type.id) && <Check size={14} className="ml-auto text-primary" />}
+                                         </button>
+                                      ))}
+                                   </div>
+                                </div>
+                                <div>
+                                   <SectionLabel>REGIONS</SectionLabel>
+                                   <div className="flex flex-wrap gap-2">
+                                      {['Europe', 'Asia', 'North America', 'South America', 'Africa', 'Oceania', 'Middle East', 'Caribbean'].map(region => (
+                                         <Chip
+                                            key={region}
+                                            label={region}
+                                            selected={selectedRegions.includes(region)}
+                                            onClick={() => setSelectedRegions(prev => toggleArray(prev, region))}
+                                         />
+                                      ))}
+                                   </div>
+                                </div>
                              </div>
                           </div>
                        </SectionCard>
 
-                       {/* Mock data removed - BRAND LOYALTY section will be populated from API */}
+                       {/* Brand Loyalty */}
                        <SectionCard title="Brand Loyalty">
                           <div className="space-y-8">
+                             {/* Favorite Airlines */}
                              <div>
                                 <SectionLabel>FAVORITE AIRLINES</SectionLabel>
-                                <div className="text-sm text-gray-400 italic">Data will be loaded from API</div>
+                                <div className="space-y-2">
+                                   {[
+                                     { id: 'delta', name: 'Delta', color: '#E31837' },
+                                     { id: 'united', name: 'United', color: '#005DAA' },
+                                     { id: 'american', name: 'American', color: '#0078D2' },
+                                     { id: 'southwest', name: 'Southwest', color: '#F9A01B' },
+                                     { id: 'jetblue', name: 'JetBlue', color: '#003876' },
+                                   ].map(airline => (
+                                      <button
+                                         key={airline.id}
+                                         type="button"
+                                         onClick={() => setSelectedAirlines(prev => toggleArray(prev, airline.id))}
+                                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                                            selectedAirlines.includes(airline.id)
+                                               ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                                               : 'bg-card border-border text-card-foreground hover:border-border/80'
+                                         }`}
+                                      >
+                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: airline.color }}>
+                                            {airline.name[0]}
+                                         </div>
+                                         <span className="text-sm font-medium">{airline.name}</span>
+                                         {selectedAirlines.includes(airline.id) && <Check size={14} className="ml-auto text-primary" />}
+                                      </button>
+                                   ))}
+                                </div>
                              </div>
+
+                             {/* Preferred Hotels */}
                              <div>
                                 <SectionLabel>PREFERRED HOTELS</SectionLabel>
-                                <div className="text-sm text-gray-400 italic">Data will be loaded from API</div>
+                                <div className="space-y-2">
+                                   {[
+                                     { id: 'marriott', name: 'Marriott', color: '#1C1C1C' },
+                                     { id: 'hilton', name: 'Hilton', color: '#1A3B8C' },
+                                     { id: 'hyatt', name: 'Hyatt', color: '#B32317' },
+                                     { id: 'ihg', name: 'IHG', color: '#BD3D26' },
+                                     { id: 'accor', name: 'Accor', color: '#DA291C' },
+                                   ].map(hotel => (
+                                      <button
+                                         key={hotel.id}
+                                         type="button"
+                                         onClick={() => setSelectedHotels(prev => toggleArray(prev, hotel.id))}
+                                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                                            selectedHotels.includes(hotel.id)
+                                               ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                                               : 'bg-card border-border text-card-foreground hover:border-border/80'
+                                         }`}
+                                      >
+                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: hotel.color }}>
+                                            {hotel.name[0]}
+                                         </div>
+                                         <span className="text-sm font-medium">{hotel.name}</span>
+                                         {selectedHotels.includes(hotel.id) && <Check size={14} className="ml-auto text-primary" />}
+                                      </button>
+                                   ))}
+                                </div>
                              </div>
                           </div>
                        </SectionCard>

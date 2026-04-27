@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequiredParams, errorResponse, CACHE_24H } from '@/lib/api-utils'
+import { getRequiredParams, errorResponse, CACHE_24H, rateLimit } from '@/lib/api-utils'
 
 // ---------------------------------------------------------------------------
 // Cost-of-living estimates by country/region, scaled from a US-dollar baseline.
@@ -199,6 +199,8 @@ function scalePrices(multiplier: number) {
 // GET /api/costliving?city=Tokyo&country=Japan
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'costliving', 60, 60000)
+  if (rl) return rl
   const params = getRequiredParams(req, 'city', 'country')
   if (params instanceof NextResponse) return params
 

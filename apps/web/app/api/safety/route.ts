@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '@/lib/api-utils'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 // ─── Route handler ───────────────────────────────────────────────────────────
 // Uses US State Dept travel advisories RSS feed.
@@ -7,6 +7,8 @@ import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H 
 // Returns score (1-4 from advisory level), message, level text, and source URL.
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'safety', 60, 60000)
+  if (rl) return rl
   try {
     const country = requireParam(req.nextUrl.searchParams, 'country', 'country name or ISO code')
 

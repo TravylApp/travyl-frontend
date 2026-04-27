@@ -40,7 +40,7 @@ export default function LoginCallback() {
         }
         if (data.session) {
           if (__DEV__) {
-            console.log('OAuth login success:', data.user?.email);
+            if (__DEV__) console.log("OAuth login success");
           }
           router.replace('/');
           return;

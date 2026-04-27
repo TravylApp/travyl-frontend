@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
@@ -9,6 +9,8 @@ const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
  * Returns upcoming tour dates with venues, dates, ticket links, and coordinates.
  */
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'events-artist', 20, 60000)
+  if (rl) return rl
   const query = getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
   if (!SERPAPI_KEY) return NextResponse.json({ error: 'SerpAPI key not configured' }, { status: 503 })
@@ -18,11 +20,11 @@ export async function GET(req: NextRequest) {
     const [eventsRes, organicRes] = await Promise.all([
       // Google Events: direct concert search
       fetch(`https://serpapi.com/search.json?engine=google_events&q=${encodeURIComponent(`${query} concert tour`)}&api_key=${SERPAPI_KEY}`, CACHE_1H)
-        .then(r => r.ok ? r.json() : {})
+        .then(r => r.ok ? r.json() as Promise<any> : {} as any)
         .catch(() => ({})),
       // Google organic: find tour pages on Ticketmaster/LiveNation/Songkick
       fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(`${query} tour dates 2026 concert tickets`)}&api_key=${SERPAPI_KEY}`, CACHE_1H)
-        .then(r => r.ok ? r.json() : {})
+        .then(r => r.ok ? r.json() as Promise<any> : {} as any)
         .catch(() => ({})),
     ])
 
@@ -96,7 +98,6 @@ export async function GET(req: NextRequest) {
       tourLinks,
     })
   } catch (err) {
-    console.error('[/api/events/artist] error:', err)
     return NextResponse.json({ artist: query, events: [], tourLinks: [] })
   }
 }

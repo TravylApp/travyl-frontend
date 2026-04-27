@@ -110,7 +110,6 @@ export async function GET(req: NextRequest) {
       total: results.length,
     })
   } catch (err) {
-    console.error('[flights/search] error:', err)
     return NextResponse.json({ error: 'Flight search failed' }, { status: 500 })
   }
 }

@@ -85,18 +85,21 @@ function mapEvent(e: any, idPrefix: string, idx: number): PlaceItem {
 
 // ─── Dedup ───────────────────────────────────────────────────
 
-/** Dedup places by normalized name + approximate coordinates */
+/** Dedup places by normalized name within a coarse geo bucket (~11km).
+ * Same name in the same metro = duplicate (different API sources for the same POI).
+ * Same name in different metros = distinct (e.g., chains).
+ */
 export function dedupPlaces(places: PlaceItem[]): PlaceItem[] {
   const seen = new Set<string>();
   return places.filter((p) => {
     if (!p.name) return false;
     const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const locKey = p.latitude != null ? `${p.latitude.toFixed(3)}_${p.longitude?.toFixed(3)}` : '';
-    const key = `${normName}_${locKey}`;
+    const bucket = p.latitude != null && p.longitude != null
+      ? `${p.latitude.toFixed(1)}_${p.longitude.toFixed(1)}`
+      : 'no-geo';
+    const key = `${normName}@${bucket}`;
     if (seen.has(key)) return false;
-    if (!locKey && seen.has(normName)) return false;
     seen.add(key);
-    if (!locKey) seen.add(normName);
     return true;
   });
 }
@@ -198,17 +201,46 @@ async function getTrending(): Promise<TrendingItem[]> {
   return _trendingPromise;
 }
 
+// ─── Fetch with timeout ──────────────────────────────────────
+
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // ─── Core fetch helpers (all take natural language) ──────────
 
 async function fetchMapsSearch(query: string): Promise<PlaceItem[]> {
-  return fetch(`${BASE()}/api/search/maps?q=${encodeURIComponent(query)}`)
+  return fetchWithTimeout(`${BASE()}/api/search/maps?q=${encodeURIComponent(query)}`)
+    .then(r => r.ok ? r.json() as Promise<any[]> : [])
+    .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
+    .catch(() => []);
+}
+
+// /api/places NLP search — primary source. Works for free-text queries
+// like "big library", "park", "rooftop bars". Backend forwards to SerpAPI
+// google_local with proper location context.
+async function fetchPlacesNlp(
+  query: string,
+  userLoc?: { lat: number; lng: number } | null,
+  limit = 30,
+): Promise<PlaceItem[]> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  if (userLoc) {
+    params.set('lat', String(userLoc.lat));
+    params.set('lng', String(userLoc.lng));
+  }
+  return fetchWithTimeout(`${BASE()}/api/places?${params.toString()}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
     .catch(() => []);
 }
 
 async function fetchTripAdvisor(query: string, ssrc = 'a'): Promise<PlaceItem[]> {
-  return fetch(`${BASE()}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=${ssrc}`)
+  return fetchWithTimeout(`${BASE()}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=${ssrc}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
     .catch(() => []);
@@ -217,7 +249,7 @@ async function fetchTripAdvisor(query: string, ssrc = 'a'): Promise<PlaceItem[]>
 async function fetchEvents(city: string, idPrefix: string): Promise<PlaceItem[]> {
   const today = new Date().toISOString().split('T')[0];
   const nextMonth = new Date(Date.now() + EVENT_LOOKAHEAD_DAYS * 86400000).toISOString().split('T')[0];
-  return fetch(`${BASE()}/api/events/search?city=${encodeURIComponent(city)}&start=${today}&end=${nextMonth}`)
+  return fetchWithTimeout(`${BASE()}/api/events/search?city=${encodeURIComponent(city)}&start=${today}&end=${nextMonth}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((events) => (Array.isArray(events) ? events : []).map((e, i) => mapEvent(e, idPrefix, i)))
     .catch(() => []);
@@ -225,7 +257,7 @@ async function fetchEvents(city: string, idPrefix: string): Promise<PlaceItem[]>
 
 /** Artist tour dates — searches for concerts/shows and maps them to PlaceItems */
 async function fetchArtistTour(query: string): Promise<PlaceItem[]> {
-  return fetch(`${BASE()}/api/events/artist?q=${encodeURIComponent(query)}`)
+  return fetchWithTimeout(`${BASE()}/api/events/artist?q=${encodeURIComponent(query)}`)
     .then(r => r.ok ? r.json() as Promise<any> : { events: [] })
     .then((data) => {
       const events = (data as any).events ?? [];
@@ -250,7 +282,7 @@ async function fetchArtistTour(query: string): Promise<PlaceItem[]> {
 
 async function fetchFoursquare(lat: string, lng: string, limit = FOURSQUARE_LIMIT): Promise<PlaceItem[]> {
   // No category — let Foursquare return whatever is nearby
-  return fetch(`${BASE()}/api/places?lat=${lat}&lng=${lng}&limit=${limit}`)
+  return fetchWithTimeout(`${BASE()}/api/places?lat=${lat}&lng=${lng}&limit=${limit}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
     .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
     .catch(() => []);
@@ -390,7 +422,13 @@ export async function searchPlaces(
     // Vary sources per page for fresh results each scroll
     const fetches: Promise<PlaceItem[]>[] = [];
 
-    // Google Maps — every page, but vary the query slightly
+    // Primary source: /api/places?q= — NLP search via backend SerpAPI integration.
+    // Works for free-text and produces 50+ results for queries like "big library".
+    if (page === 0) {
+      fetches.push(fetchPlacesNlp(query, userLoc, 30));
+    }
+
+    // Google Maps fallback — every page, but vary the query slightly
     if (page === 0) {
       fetches.push(fetchMapsSearch(mapsQuery));
     } else {

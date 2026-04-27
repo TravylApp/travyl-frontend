@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getOptionalParam, proxyToBackend } from '@/lib/api-utils'
+import { getOptionalParam, proxyToBackend, rateLimit } from '@/lib/api-utils'
 
 // Cache trending destinations from the API (refreshes every 30 min)
 let trendingCache: string[] = []
@@ -27,6 +27,8 @@ async function getTrendingDestinations(): Promise<string[]> {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'places-suggest', 30, 60000)
+  if (rl) return rl
   const page = getOptionalParam(req, 'page', '0')
   const pageNum = parseInt(page, 10) || 0
 

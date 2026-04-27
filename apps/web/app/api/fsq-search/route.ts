@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 const FSQ_API_KEY = process.env.FOURSQUARE_API_KEY
@@ -35,6 +36,8 @@ function inferType(categories: FsqCategory[] = []): 'restaurant' | 'hotel' | 'ac
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'fsq-search', 20, 60000)
+  if (rl) return rl
   const q = req.nextUrl.searchParams.get('q')
   const near = req.nextUrl.searchParams.get('near')
 
@@ -52,7 +55,6 @@ export async function GET(req: NextRequest) {
     })
 
     if (!res.ok) {
-      console.error('[fsq-search] Foursquare error:', res.status)
       return NextResponse.json({ results: [] })
     }
 
@@ -88,7 +90,6 @@ export async function GET(req: NextRequest) {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' },
     })
   } catch (err) {
-    console.error('[fsq-search] error:', err)
     return NextResponse.json({ results: [] })
   }
 }

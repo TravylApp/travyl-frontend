@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_24H } from '@/lib/api-utils'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_24H, rateLimit } from '@/lib/api-utils'
 
 const FALLBACK_URL = 'https://api.frankfurter.app'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'exchange-rates', 60, 60000)
+  if (rl) return rl
   try {
     const base = requireParam(req.nextUrl.searchParams, 'base', 'e.g. USD')
     const primaryUrl = `https://open.er-api.com/v6/latest/${encodeURIComponent(base)}`

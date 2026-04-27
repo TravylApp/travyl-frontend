@@ -344,9 +344,9 @@ export default function PackingScreen() {
             borderRadius: 14,
             padding: 16,
             width: 200,
-            backgroundColor: '#fffbeb',
+            backgroundColor: colors.warningBg,
             borderWidth: 1,
-            borderColor: '#fde68a',
+            borderColor: colors.warning,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -356,7 +356,7 @@ export default function PackingScreen() {
             </Text>
           </View>
           {['Roll clothes to save space', 'Pack versatile layers', 'Keep essentials in carry-on'].map((tip, i) => (
-            <Text key={i} style={{ ...TextStyles.caption, color: '#78350f', marginTop: 4 }}>- {tip}</Text>
+            <Text key={i} style={{ ...TextStyles.caption, color: colors.warning, marginTop: 4 }}>- {tip}</Text>
           ))}
         </View>
       </ScrollView>
@@ -431,7 +431,7 @@ export default function PackingScreen() {
                   percent={catPercent}
                   height={5}
                   trackColor={colors.border}
-                  fillColor={catPercent === 100 ? '#22c55e' : ACCENT}
+                  fillColor={catPercent === 100 ? colors.success : ACCENT}
                 />
               </View>
 

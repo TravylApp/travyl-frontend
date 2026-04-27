@@ -1,8 +1,11 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 const GEONAMES_USER = process.env.GEONAMES_USERNAME || 'demo'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'airports-nearest', 60, 60000)
+  if (rl) return rl
   const sp = req.nextUrl.searchParams
   const lat = sp.get('lat')
   const lng = sp.get('lng')

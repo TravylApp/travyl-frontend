@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
@@ -9,6 +9,8 @@ const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
  * ?q=Nobu+Los+Angeles — place name (natural language)
  */
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'search-place-detail', 20, 60000)
+  if (rl) return rl
   const query = getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json({ error: 'q is required' }, { status: 400 })
   if (!SERPAPI_KEY) return NextResponse.json({ error: 'SerpAPI key not configured' }, { status: 503 })
@@ -70,10 +72,10 @@ export async function GET(req: NextRequest) {
     if (dataId) {
       const [reviewsRes, photosRes] = await Promise.all([
         fetch(`https://serpapi.com/search.json?engine=google_maps_reviews&data_id=${encodeURIComponent(dataId)}&api_key=${SERPAPI_KEY}`, CACHE_1H)
-          .then(r => r.ok ? r.json() : {})
+          .then(r => r.ok ? r.json() as Promise<any> : {} as any)
           .catch(() => ({})),
         fetch(`https://serpapi.com/search.json?engine=google_maps_photos&data_id=${encodeURIComponent(dataId)}&api_key=${SERPAPI_KEY}`, CACHE_1H)
-          .then(r => r.ok ? r.json() : {})
+          .then(r => r.ok ? r.json() as Promise<any> : {} as any)
           .catch(() => ({})),
       ])
 
@@ -103,7 +105,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (err) {
-    console.error('[/api/search/place-detail] error:', err)
     return NextResponse.json({})
   }
 }

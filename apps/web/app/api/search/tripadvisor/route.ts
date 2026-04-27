@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
@@ -10,6 +10,8 @@ const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
  * ?offset=0 — pagination offset (30 per page)
  */
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'search-tripadvisor', 20, 60000)
+  if (rl) return rl
   const query = getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
   if (!SERPAPI_KEY) return NextResponse.json({ error: 'SerpAPI key not configured' }, { status: 503 })
@@ -57,7 +59,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(results.slice(0, 30))
   } catch (err) {
-    console.error('[/api/search/tripadvisor] error:', err)
     return NextResponse.json([])
   }
 }

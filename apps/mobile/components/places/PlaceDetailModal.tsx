@@ -13,11 +13,12 @@ import {
   Platform,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Constants from 'expo-constants';
 
-// Conditionally import react-native-maps (crashes on web)
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -111,7 +112,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
   const mapRef = useRef<any>(null);
   useEffect(() => {
     if (currentPlace?.latitude != null && currentPlace?.longitude != null) {
-      mapRef.current?.animateToRegion({
+      typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
         latitude: currentPlace.latitude,
         longitude: currentPlace.longitude,
         latitudeDelta: 0.02,
@@ -177,7 +178,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
     }).start();
     if (opening && currentPlace?.latitude != null && currentPlace?.longitude != null) {
       setTimeout(() => {
-        mapRef.current?.animateToRegion({
+        typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
           latitude: currentPlace.latitude!,
           longitude: currentPlace.longitude!,
           latitudeDelta: 0.02,
@@ -242,7 +243,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
             <Pressable
               onPress={() => {
                 if (currentPlace?.latitude != null && currentPlace?.longitude != null) {
-                  mapRef.current?.animateToRegion({
+                  typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
                     latitude: currentPlace.latitude,
                     longitude: currentPlace.longitude,
                     latitudeDelta: 0.02,

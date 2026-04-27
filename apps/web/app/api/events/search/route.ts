@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || ''
 
@@ -22,6 +22,8 @@ interface SerpEvent {
  * ?pages=1 — number of pages to fetch (10 results each, default 2 = 20 results)
  */
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'events-search', 20, 60000)
+  if (rl) return rl
   const query = getOptionalParam(req, 'city', '') || getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
 
@@ -104,7 +106,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(mapped)
   } catch (err) {
-    console.error('[/api/events/search] SerpAPI error:', err)
     return NextResponse.json([])
   }
 }
