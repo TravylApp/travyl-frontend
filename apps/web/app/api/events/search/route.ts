@@ -22,6 +22,8 @@ interface SerpEvent {
  * ?pages=1 — number of pages to fetch (10 results each, default 2 = 20 results)
  */
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'events-search', 20, 60000)
+  if (rl) return rl
   const query = getOptionalParam(req, 'city', '') || getOptionalParam(req, 'q', '')
   if (!query) return NextResponse.json([])
 
@@ -85,8 +87,6 @@ export async function GET(req: NextRequest) {
         const geoRes = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`,
           { headers: { 'User-Agent': 'Travyl/1.0' } }
-  const rl = rateLimit(req, 'events-search', 20, 60000)
-  if (rl) return rl
         )
         const geoData = await geoRes.json() as any[]
         if (geoData.length > 0) {

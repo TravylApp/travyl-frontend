@@ -22,6 +22,8 @@ const FOURSQUARE_CAT_MAP: Record<string, string> = {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'places', 30, 60000)
+  if (rl) return rl
   const lat = req.nextUrl.searchParams.get('lat') ?? ''
   const lng = req.nextUrl.searchParams.get('lng') ?? ''
   const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
@@ -56,8 +58,6 @@ export async function GET(req: NextRequest) {
       const nlpRes = await fetch(
         `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}&lat=${lat}&lng=${lng}`,
         { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
-  const rl = rateLimit(req, 'places', 30, 60000)
-  if (rl) return rl
       )
       if (nlpRes.ok) {
         const nlpData = await nlpRes.json()

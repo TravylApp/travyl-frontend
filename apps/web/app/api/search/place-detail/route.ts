@@ -72,10 +72,10 @@ export async function GET(req: NextRequest) {
     if (dataId) {
       const [reviewsRes, photosRes] = await Promise.all([
         fetch(`https://serpapi.com/search.json?engine=google_maps_reviews&data_id=${encodeURIComponent(dataId)}&api_key=${SERPAPI_KEY}`, CACHE_1H)
-          .then(r => r.ok ? r.json() : {})
+          .then(r => r.ok ? r.json() as Promise<any> : {} as any)
           .catch(() => ({})),
         fetch(`https://serpapi.com/search.json?engine=google_maps_photos&data_id=${encodeURIComponent(dataId)}&api_key=${SERPAPI_KEY}`, CACHE_1H)
-          .then(r => r.ok ? r.json() : {})
+          .then(r => r.ok ? r.json() as Promise<any> : {} as any)
           .catch(() => ({})),
       ])
 

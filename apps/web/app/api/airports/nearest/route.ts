@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 const GEONAMES_USER = process.env.GEONAMES_USERNAME || 'demo'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'airports-nearest', 60, 60000)
+  if (rl) return rl
   const sp = req.nextUrl.searchParams
   const lat = sp.get('lat')
   const lng = sp.get('lng')
@@ -53,8 +55,6 @@ export async function GET(req: NextRequest) {
           const duffelRes = await fetch(
             `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(cityName)}&types[]=airport`,
             {
-  const rl = rateLimit(req, 'airports-nearest', 60, 60000)
-  if (rl) return rl
               headers: {
                 Authorization: `Bearer ${duffelToken}`,
                 'Duffel-Version': 'v2',
