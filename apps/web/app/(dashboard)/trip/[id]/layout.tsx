@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import TripLayoutInner from "./trip-layout-inner";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-if (!supabaseKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for trip layout server component')
+// Use service role key if available (production), otherwise fall back to anon key (local dev)
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
