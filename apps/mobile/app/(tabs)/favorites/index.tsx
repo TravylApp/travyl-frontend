@@ -382,10 +382,20 @@ export default function FavoritesScreen() {
     return dedupPlaces(searchData.pages.flatMap(p => p.items));
   }, [searchData]);
 
-  // Merge: search results when searching, discover feed otherwise
+  // When searching, merge API results with locally-filtered nearby places.
+  // The /api/search/maps backend ignores location, so local matches surface
+  // relevant nearby places (e.g. "park" hits Tilden, Marina Park, etc).
   const PLACES = useMemo(() => {
-    if (searchCity) return searchResults;
-    return discoveredPlaces;
+    if (!searchCity) return discoveredPlaces;
+    const q = searchCity.toLowerCase();
+    const localMatches = discoveredPlaces.filter((p) =>
+      p.name?.toLowerCase().includes(q) ||
+      p.tagline?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q) ||
+      p.tags?.some((t) => t.toLowerCase().includes(q))
+    );
+    return dedupPlaces([...localMatches, ...searchResults]);
   }, [discoveredPlaces, searchCity, searchResults]);
 
   // Active pagination state — depends on whether searching or browsing
@@ -443,14 +453,15 @@ export default function FavoritesScreen() {
   const filteredPlaces = useMemo(() => {
     let result = [...tabFiltered];
     if (activeSubcategory) result = result.filter((p) => p.category === activeSubcategory);
-    // Only apply local text filter when NOT in API search mode
-    if (searchQuery.trim() && !searchCity) {
+    // Local text filter — narrows the merged set further while user types
+    if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
           p.name?.toLowerCase().includes(q) ||
           p.tagline?.toLowerCase().includes(q) ||
           p.category?.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }

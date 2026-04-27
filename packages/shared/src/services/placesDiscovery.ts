@@ -85,18 +85,21 @@ function mapEvent(e: any, idPrefix: string, idx: number): PlaceItem {
 
 // ─── Dedup ───────────────────────────────────────────────────
 
-/** Dedup places by normalized name + approximate coordinates */
+/** Dedup places by normalized name within a coarse geo bucket (~11km).
+ * Same name in the same metro = duplicate (different API sources for the same POI).
+ * Same name in different metros = distinct (e.g., chains).
+ */
 export function dedupPlaces(places: PlaceItem[]): PlaceItem[] {
   const seen = new Set<string>();
   return places.filter((p) => {
     if (!p.name) return false;
     const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const locKey = p.latitude != null ? `${p.latitude.toFixed(3)}_${p.longitude?.toFixed(3)}` : '';
-    const key = `${normName}_${locKey}`;
+    const bucket = p.latitude != null && p.longitude != null
+      ? `${p.latitude.toFixed(1)}_${p.longitude.toFixed(1)}`
+      : 'no-geo';
+    const key = `${normName}@${bucket}`;
     if (seen.has(key)) return false;
-    if (!locKey && seen.has(normName)) return false;
     seen.add(key);
-    if (!locKey) seen.add(normName);
     return true;
   });
 }

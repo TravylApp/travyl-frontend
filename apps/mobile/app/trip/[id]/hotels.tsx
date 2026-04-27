@@ -4,11 +4,12 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-// Conditionally import react-native-maps (crashes on web)
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
