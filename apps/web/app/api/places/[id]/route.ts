@@ -8,11 +8,11 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
+) {
   const rl = rateLimit(req, 'places-[id]', 30, 60000)
   if (rl) return rl
-) {
   const { id } = await params
 
   if (!API_URL) {

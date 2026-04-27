@@ -13,10 +13,11 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-// Conditionally import react-native-maps (crashes on web)
+import Constants from 'expo-constants';
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -154,10 +155,12 @@ export function CardStackCarousel({
     const id = setTimeout(() => {
       // Offset center south so pin appears in top 25% (above the card)
       const latDelta = 0.025;
-      mapRef.current?.animateToRegion({
-        latitude: p!.latitude! - latDelta * 0.35, longitude: p!.longitude!,
-        latitudeDelta: latDelta, longitudeDelta: latDelta,
-      }, 400);
+      if (typeof mapRef.current?.animateToRegion === 'function') {
+        mapRef.current.animateToRegion({
+          latitude: p!.latitude! - latDelta * 0.35, longitude: p!.longitude!,
+          latitudeDelta: latDelta, longitudeDelta: latDelta,
+        }, 400);
+      }
     }, delay);
     return () => clearTimeout(id);
   }, [currentIdx, showMap, overlay]);

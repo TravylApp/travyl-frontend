@@ -163,11 +163,11 @@ interface NominatimResult {
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ name: string }> }
+) {
   const rl = rateLimit(req, 'destinations-[name]', 60, 60000)
   if (rl) return rl
-) {
   const { name } = await params
   const slug = decodeURIComponent(name).toLowerCase().replace(/-/g, ' ').trim()
 

@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 const API_KEY = process.env.TIMEZONEDB_API_KEY || ''
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'timezone', 60, 60000)
+  if (rl) return rl
   const sp = req.nextUrl.searchParams
   const lat = sp.get('lat')
   const lng = sp.get('lng')
@@ -22,8 +24,6 @@ export async function GET(req: NextRequest) {
       const res = await fetch(
         `https://worldtimeapi.org/api/timezone`,
         { next: { revalidate: 3600 } }
-  const rl = rateLimit(req, 'timezone', 60, 60000)
-  if (rl) return rl
       )
 
       // Use Nominatim + timezone lookup via coordinates

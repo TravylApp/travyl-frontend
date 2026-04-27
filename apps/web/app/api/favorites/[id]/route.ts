@@ -27,9 +27,9 @@ async function getAuthHeader(req: NextRequest): Promise<string | null> {
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
+) {
   const rl = rateLimit(req, 'favorites-[id]', 60, 60000)
   if (rl) return rl
-) {
   const { id } = await params
   if (!BACKEND_URL) return NextResponse.json({ error: 'Backend URL not configured' }, { status: 503 })
   const auth = await getAuthHeader(req)

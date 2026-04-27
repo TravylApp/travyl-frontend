@@ -26,10 +26,11 @@ import {
   supabase,
 } from '@travyl/shared';
 import type { FlightDetail, HotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
-// Conditionally import react-native-maps (crashes on web)
+import Constants from 'expo-constants';
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -286,7 +287,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
   const focusStop = useCallback((index: number) => {
     setSelectedStop((prev) => {
       if (prev === index) {
-        mapRef.current?.animateToRegion({
+        typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
           latitude: centerLat,
           longitude: centerLng,
           latitudeDelta: 0.05,
@@ -296,7 +297,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
       }
       const m = markers[index];
       if (m) {
-        mapRef.current?.animateToRegion({
+        typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
           latitude: m.lat,
           longitude: m.lng,
           latitudeDelta: 0.01,
@@ -391,12 +392,14 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
           </Pressable>
           {/* Recenter button */}
           <Pressable
-            onPress={() => mapRef.current?.animateToRegion({
-              latitude: centerLat,
-              longitude: centerLng,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }, 400)}
+            onPress={() => {
+              if (typeof mapRef.current?.animateToRegion === 'function') {
+                mapRef.current.animateToRegion({
+                  latitude: centerLat, longitude: centerLng,
+                  latitudeDelta: 0.05, longitudeDelta: 0.05,
+                }, 400);
+              }
+            }}
             style={{
               position: 'absolute', top: 52, left: 16,
               width: 32, height: 32, borderRadius: 16,

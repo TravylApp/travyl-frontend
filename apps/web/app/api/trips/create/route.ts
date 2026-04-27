@@ -24,6 +24,10 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
+    if (!user_id) {
+      return NextResponse.json({ error: 'Sign in to plan a trip', code: 'AUTH_REQUIRED' }, { status: 401 })
+    }
+
     if (!destination || typeof destination !== 'string' || destination.length > 200) {
       return NextResponse.json({ error: 'Missing or invalid destination' }, { status: 400 })
     }
@@ -40,12 +44,12 @@ export async function POST(req: NextRequest) {
         start_date: start_date || null,
         end_date: end_date || null,
         status: 'planning',
-        user_id: user_id || null,
+        user_id,
         travelers: safeTravelers,
         budget: safeBudget,
         currency: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'MXN', 'BRL'].includes(currency) ? currency : 'USD',
         trip_context: trip_context || {},
-        visibility: user_id ? 'private' : 'public',
+        visibility: 'private',
         is_generated: true,
       })
       .select()

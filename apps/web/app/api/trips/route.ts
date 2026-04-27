@@ -3,13 +3,13 @@ import { createServerClient } from '@supabase/ssr'
 import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'trips', 60, 60000)
+  if (rl) return rl
   // Try to get user session from cookies
   const supabase = createServerClient(
     supabaseUrl,
     supabaseKey,
     {
-  const rl = rateLimit(req, 'trips', 60, 60000)
-  if (rl) return rl
       cookies: {
         getAll() {
           return req.cookies.getAll()
