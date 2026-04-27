@@ -104,7 +104,7 @@ function WeatherForecastCard({ forecast }: {
 
   return (
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
-      <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ backgroundColor: colors.warning, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name="sun-o" size={14} color="#fff" />
         <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Weather Forecast</Text>
       </View>

@@ -637,7 +637,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
 
       // 1. Update trip_context.itinerary (always works — trips table is public writable)
       const { data: tripData, error: readErr } = await supabase.from('trips').select('trip_context').eq('id', id).single();
-      if (readErr) { console.error('[persist] read failed:', readErr.message); return; }
       if (tripData?.trip_context) {
         const itinerary = (tripData.trip_context.itinerary || []) as any[];
 
@@ -676,8 +675,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         userHistory.push({ action: historyAction, timestamp: new Date().toISOString(), actor: 'You' });
 
         const { error: updateErr } = await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary, user_history: userHistory } }).eq('id', id);
-        if (updateErr) console.error('[persist] update failed:', updateErr.message);
-        else console.log('[persist] trip_context updated successfully, days:', itinerary.map((d: any) => ({ day: d.day, slots: d.slots?.length })));
       }
 
       // 2. Activity table — best effort (may fail for anonymous users due to RLS)
@@ -691,7 +688,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       }));
       await supabase.from('activity').insert(rows).then(() => {}, () => {});
     } catch (e) {
-      console.error('Failed to persist activities:', e);
     }
   }, [id]);
 
@@ -749,7 +745,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         alert(`No ${category} suggestions found for ${dest}. Try a different category.`);
       }
     } catch (e) {
-      console.error('Suggest failed:', e);
     } finally {
       setRegenerating(false);
     }
@@ -835,7 +830,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       await supabase.from('activity').delete().eq('trip_id', id).eq('starting_date', dayDateStr);
       await persistActivitiesToDb(added, dayDateStr);
     } catch (e) {
-      console.error('Regenerate day failed:', e);
     } finally {
       setRegenerating(false);
     }
@@ -899,7 +893,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
       }
       if (added.length) await persistActivitiesToDb(added);
     } catch (e) {
-      console.error('Fill empty failed:', e);
     } finally {
       setRegenerating(false);
     }
@@ -966,7 +959,6 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
         await persistActivitiesToDb(added, dayDateStr);
       }
     } catch (e) {
-      console.error('Regenerate failed:', e);
     } finally {
       setRegenerating(false);
     }

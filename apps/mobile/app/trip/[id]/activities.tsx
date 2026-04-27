@@ -1,870 +1,972 @@
-import { useState, useMemo, useCallback, useRef, useEffect, useContext } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Image, Modal, Dimensions, Animated, Linking, Share } from 'react-native';
+import { useState, useMemo, useEffect, useContext, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, Image, Linking, ActivityIndicator, TextInput, Keyboard } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import {
-  useItineraryScreen,
-  useActivityFilters,
-  useSimilarPlaces,
-  Navy,
-  ACTIVITY_CATEGORIES,
-  ACTIVITY_CATEGORY_ICONS,
-  ACTIVITY_SUBFILTERS,
-  ACTIVITY_SORT_OPTIONS,
-  supabase,
-  getWebApiBase,
-} from '@travyl/shared';
-import { TextStyles, FontSize, FontFamily } from '@travyl/shared';
-import type { DiscoverItem, PlaceItem } from '@travyl/shared';
-import { useThemeColors } from '@/hooks/useThemeColors';
-import { useAddToTrip } from '@/hooks/useAddToTrip';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
-import { RatingStars } from '@/components/ui/RatingStars';
-import { MapPreview } from '@/components/itinerary/MapPreview';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
-import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
+import type { PlaceItem } from '@travyl/shared';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_IMG_W = SCREEN_WIDTH - 32 - 2; // 16px padding each side, minus 2px border
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
-// ---- Placeholder colors for cards without images ----
-const PLACEHOLDER_COLORS = ['#e0f2fe', '#fef3c7', '#ede9fe', '#ecfdf5', '#fce7f3', '#fff7ed', '#f0fdfa'];
-function placeholderColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return PLACEHOLDER_COLORS[Math.abs(hash) % PLACEHOLDER_COLORS.length];
+interface ActivityData {
+  id: string;
+  name: string;
+  rating: number;
+  reviews: number;
+  activityType: string;
+  address: string;
+  neighborhood: string;
+  images: string[];
+  hours: string;
+  duration: string;
+  phone: string;
+  website: string;
+  bookingLink: string;
+  description: string;
+  tags: string[];
+  latitude: number;
+  longitude: number;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 
-// ---- Min Rating Filter ----
-function MinRatingFilter({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
-  const colors = useThemeColors();
-  const ACCENT = useTabAccent('activities');
-  const options: { label: string; value: number | null }[] = [
-    { label: 'Any', value: null },
-    { label: '3.5+', value: 3.5 },
-    { label: '4.0+', value: 4.0 },
-    { label: '4.5+', value: 4.5 },
-  ];
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-      <FontAwesome name="star" size={12} color="#fbbf24" />
-      <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Min rating:</Text>
-      {options.map((opt) => {
-        const isActive = value === opt.value;
-        return (
-          <Pressable
-            key={opt.label}
-            onPress={() => onChange(opt.value)}
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 5,
-              borderRadius: 16,
-              backgroundColor: isActive ? ACCENT : colors.borderLight,
-            }}
-          >
-            <Text
-              style={{
-                ...(isActive ? TextStyles.bodyEm : TextStyles.body),
-                color: isActive ? '#fff' : colors.textSecondary,
-              }}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+const TYPE_FILTERS = ['Outdoors', 'Cultural', 'Adventure', 'Tours', 'Entertainment', 'Nightlife', 'Wellness', 'Shopping'];
+
+const SORT_OPTIONS = [
+  { key: 'recommended', label: 'Recommended' },
+  { key: 'rating', label: 'Highest Rated' },
+  { key: 'reviews', label: 'Most Reviewed' },
+  { key: 'distance', label: 'Nearest' },
+];
+
+const TYPE_ICONS: Record<string, string> = {
+  Outdoors: 'tree', Cultural: 'university', Adventure: 'bolt',
+  Tours: 'map', Entertainment: 'film', Nightlife: 'moon-o',
+  Wellness: 'heart', Shopping: 'shopping-bag',
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function ratingColor(r: number, accent = '#8b5cf6'): string {
+  if (r >= 4.5) return '#10b981';
+  if (r >= 4.0) return accent;
+  if (r >= 3.0) return '#f59e0b';
+  return '#ef4444';
 }
 
-// ---- Activity Card with expandable details ----
-// Deterministic card height from ID (matches web PinCard)
-function cardHeight(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
-  return 220 + (Math.abs(hash) % 60);
+function guessActivityType(item: any): string {
+  const text = [item?.type, item?.category, item?.name, ...(item.tags || [])].join(' ').toLowerCase();
+  if (/hike|trek|kayak|surf|climb|dive|snorkel|zip/i.test(text)) return 'Adventure';
+  if (/museum|gallery|temple|church|monument|heritage|historic/i.test(text)) return 'Cultural';
+  if (/park|garden|beach|lake|mountain|nature|trail|outdoor/i.test(text)) return 'Outdoors';
+  if (/tour|walk|cruise|boat|bus|segway|guide/i.test(text)) return 'Tours';
+  if (/show|theater|cinema|concert|comedy|amusement|theme park|zoo|aquarium/i.test(text)) return 'Entertainment';
+  if (/bar|club|nightlife|pub|lounge/i.test(text)) return 'Nightlife';
+  if (/spa|yoga|massage|wellness|sauna|bath/i.test(text)) return 'Wellness';
+  if (/shop|market|mall|boutique|souvenir/i.test(text)) return 'Shopping';
+  return 'Activity';
 }
 
-function ActivityCard({
-  item,
-  isFavorited,
-  onFavorite,
-  onAddToItinerary,
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function SectionToggle({
+  title,
+  icon,
+  isOpen,
+  onToggle,
+  badge,
 }: {
-  item: DiscoverItem;
-  isFavorited: boolean;
-  onFavorite: (id: string) => void;
-  onAddToItinerary?: (id: string) => void;
+  title: string;
+  icon: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  badge?: string;
 }) {
-  const colors = useThemeColors();
   const ACCENT = useTabAccent('activities');
-  const [imgError, setImgError] = useState(false);
-  const hasImage = item.images.length > 0 && !imgError;
-  const height = cardHeight(item.id);
-  const categoryLabel = item.category || 'Activity';
-
+  const colors = useThemeColors();
   return (
-    <Pressable onPress={() => {}}>
-      <View
-        style={{
-          borderRadius: 16,
-          overflow: 'hidden',
-          height,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 6,
-        }}
-      >
-        {/* Full-bleed image */}
-        {hasImage ? (
-          <Image
-            source={{ uri: item.images[0], headers: { Referer: '' } }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            resizeMode="cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <View
-            style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: placeholderColor(item.id),
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <FontAwesome name="image" size={32} color={colors.border} />
-          </View>
-        )}
-
-        {/* Gradient overlay — bottom half */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6,
-            backgroundColor: 'transparent',
-          }}
-        >
-          <View style={{ flex: 1, opacity: 0.7, backgroundColor: 'black' }} />
-        </View>
-
-        {/* Category badge — top left */}
-        <View style={{
-          position: 'absolute', top: 10, left: 10,
-          backgroundColor: 'rgba(0,0,0,0.6)',
-          paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
-        }}>
-          <Text style={{ ...TextStyles.xs, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            {categoryLabel}
-          </Text>
-        </View>
-
-        {/* Favorite heart — top right */}
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation?.();
-            onFavorite(item.id);
-          }}
-          style={{
-            position: 'absolute', top: 10, right: 10,
-            width: 32, height: 32, borderRadius: 16,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <FontAwesome
-            name={isFavorited ? 'heart' : 'heart-o'}
-            size={14}
-            color={isFavorited ? '#ef4444' : '#fff'}
-          />
-        </Pressable>
-
-        {/* Bottom content overlay */}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 }}>
-          {/* Rating row */}
-          {item.rating > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-              <FontAwesome name="star" size={11} color="#fbbf24" />
-              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{item.rating.toFixed(1)}</Text>
-              {item.reviewCount != null && item.reviewCount > 0 && (
-                <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.6)' }}>
-                  ({item.reviewCount >= 1000 ? `${(item.reviewCount / 1000).toFixed(1)}k` : item.reviewCount})
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Name */}
-          <Text style={{ ...TextStyles.bodyXlEm, color: '#fff', marginBottom: 2 }} numberOfLines={2}>
-            {item.name}
-          </Text>
-
-          {/* Description / tagline */}
-          {item.description ? (
-            <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }} numberOfLines={1}>
-              {item.description}
-            </Text>
-          ) : null}
-
-          {/* Tags */}
-          {item.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-              {item.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6,
-                }}>
-                  <Text style={{ ...TextStyles.xs, color: '#fff' }}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Booked badge — bottom of category badge area */}
-        {item.isBooked && (
-          <View style={{
-            position: 'absolute', top: 10, left: 10,
-            flexDirection: 'row', alignItems: 'center', gap: 4,
-            backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
-            marginTop: 26,
-          }}>
-            <FontAwesome name="calendar-check-o" size={9} color="#fff" />
-            <Text style={{ ...TextStyles.xs, color: '#fff' }}>Day {item.bookedDay}</Text>
+    <Pressable
+      onPress={onToggle}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        backgroundColor: colors.surface,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: colors.border,
+        marginBottom: isOpen ? 10 : 0,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <FontAwesome name={icon as any} size={14} color={ACCENT} />
+        <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{title}</Text>
+        {badge && (
+          <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+            <Text style={{ ...TextStyles.smEm, color: ACCENT }}>{badge}</Text>
           </View>
         )}
       </View>
+      <FontAwesome name={isOpen ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
     </Pressable>
   );
 }
 
-// ---- Activity Detail Bottom Sheet ----
-function ActivityDetailSheet({
-  item,
-  isFavorited,
-  onFavorite,
-  onClose,
-  allItems,
-  onSelectItem,
-}: {
-  item: DiscoverItem;
-  isFavorited: boolean;
-  onFavorite: (id: string) => void;
-  onClose: () => void;
-  allItems: DiscoverItem[];
-  onSelectItem: (item: DiscoverItem) => void;
-}) {
-  const colors = useThemeColors();
+function RatingBadge({ rating }: { rating: number }) {
   const ACCENT = useTabAccent('activities');
-  const [imgError, setImgError] = useState(false);
-  const hasImage = item.images.length > 0 && !imgError;
-
-  // Animations: map from top, content from bottom
-  const mapSlide = useRef(new Animated.Value(-160)).current;
-  const contentSlide = useRef(new Animated.Value(300)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.spring(mapSlide, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }),
-      Animated.spring(contentSlide, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(mapSlide, { toValue: -160, duration: 200, useNativeDriver: true }),
-      Animated.timing(contentSlide, { toValue: 300, duration: 200, useNativeDriver: true }),
-    ]).start(() => onClose());
-  };
-
-  // Similar items: same category or overlapping tags, excluding current item
-  const similarItems = useMemo(() => {
-    const scored = allItems
-      .filter(other => other.id !== item.id)
-      .map(other => {
-        let score = 0;
-        if (other.category && other.category === item.category) score += 3;
-        const overlap = other.tags.filter(t => item.tags.includes(t)).length;
-        score += overlap;
-        return { item: other, score };
-      })
-      .filter(s => s.score > 0)
-      .sort((a, b) => b.score - a.score);
-    return scored.slice(0, 8).map(s => s.item);
-  }, [item.id, item.category, item.tags, allItems]);
-
-  const hasLocation = item.lat != null && item.lng != null;
-
   return (
-    <Modal visible transparent animationType="none" onRequestClose={handleClose}>
-      <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', opacity: fadeAnim }}>
-        <Pressable onPress={handleClose} style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <Pressable onPress={(e) => e.stopPropagation?.()} style={{ maxHeight: '90%', backgroundColor: colors.cardBackground, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' }}>
-            {/* Drag handle */}
-            <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
-            </View>
-
-            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-              {/* Map — slides in from the top */}
-              {hasLocation && (
-                <Animated.View style={{ transform: [{ translateY: mapSlide }], overflow: 'hidden' }}>
-                  <MapPreview
-                    lat={item.lat!}
-                    lng={item.lng!}
-                    label={item.name}
-                    height={160}
-                    zoom={14}
-                    borderless
-                  />
-                </Animated.View>
-              )}
-
-              {/* Content — slides in from the bottom */}
-              <Animated.View style={{ transform: [{ translateY: contentSlide }] }}>
-                {/* Image */}
-                {hasImage ? (
-                  <Image
-                    source={{ uri: item.images[0], headers: { Referer: '' } }}
-                    style={{ width: '100%', height: 200 }}
-                    resizeMode="cover"
-                    onError={() => setImgError(true)}
-                  />
-                ) : (
-                  <View style={{ width: '100%', height: 200, backgroundColor: placeholderColor(item.id), alignItems: 'center', justifyContent: 'center' }}>
-                    <FontAwesome name="image" size={32} color={colors.border} />
-                  </View>
-                )}
-
-                <View style={{ padding: 16 }}>
-                  {/* Name */}
-                  <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 6 }}>{item.name}</Text>
-
-                  {/* Category badge */}
-                  {item.category && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 4,
-                          backgroundColor: ACCENT + '15',
-                          paddingHorizontal: 10,
-                          paddingVertical: 4,
-                          borderRadius: 12,
-                        }}
-                      >
-                        <FontAwesome
-                          name={(ACTIVITY_CATEGORY_ICONS[item.category] || 'compass') as any}
-                          size={11}
-                          color={ACCENT}
-                        />
-                        <Text style={{ ...TextStyles.body, color: ACCENT }}>{item.category}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Rating stars + reviews */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <RatingStars rating={item.rating} size={14} />
-                    <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{item.rating.toFixed(1)}</Text>
-                    {item.reviewCount != null && (
-                      <Text style={{ ...TextStyles.body, color: colors.textTertiary }}>({item.reviewCount.toLocaleString()} reviews)</Text>
-                    )}
-                  </View>
-
-                  {/* Price row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    {item.price && (
-                      <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>{item.price}</Text>
-                    )}
-                    {item.dealPrice && item.originalPrice && (
-                      <>
-                        <Text style={{ ...TextStyles.body, color: colors.textTertiary, textDecorationLine: 'line-through' }}>{item.originalPrice}</Text>
-                        <Text style={{ ...TextStyles.bodyXlEm, color: '#ef4444' }}>{item.dealPrice}</Text>
-                      </>
-                    )}
-                  </View>
-
-                  {/* Tags */}
-                  {item.tags.length > 0 && (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                      {item.tags.map((tag, i) => (
-                        <View
-                          key={i}
-                          style={{
-                            backgroundColor: ACCENT + '12',
-                            borderWidth: 1,
-                            borderColor: ACCENT + '25',
-                            paddingHorizontal: 10,
-                            paddingVertical: 4,
-                            borderRadius: 20,
-                          }}
-                        >
-                          <Text style={{ ...TextStyles.caption, color: ACCENT }}>{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* Description */}
-                  <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, marginBottom: 14 }}>{item.description}</Text>
-
-                  {/* Open / Closed status */}
-                  {item.isOpen !== undefined && (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 8,
-                        backgroundColor: item.isOpen ? '#f0fdf4' : '#fef2f2',
-                        borderRadius: 10,
-                        padding: 12,
-                        borderWidth: 1,
-                        borderColor: item.isOpen ? '#bbf7d0' : '#fecaca',
-                        marginBottom: 12,
-                      }}
-                    >
-                      <FontAwesome
-                        name={item.isOpen ? 'check-circle' : 'times-circle'}
-                        size={13}
-                        color={item.isOpen ? '#16a34a' : '#ef4444'}
-                      />
-                      <Text style={{ ...TextStyles.bodyLgEm, color: item.isOpen ? '#16a34a' : '#ef4444' }}>
-                        {item.isOpen ? 'Open Now' : 'Currently Closed'}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Action buttons */}
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, marginBottom: 8 }}>
-                    <Pressable
-                      onPress={() => onFavorite(item.id)}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 10,
-                        borderWidth: 1.5,
-                        borderColor: isFavorited ? '#ef4444' : colors.border,
-                        backgroundColor: isFavorited ? '#fef2f2' : colors.cardBackground,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <FontAwesome
-                        name={isFavorited ? 'heart' : 'heart-o'}
-                        size={16}
-                        color={isFavorited ? '#ef4444' : colors.border}
-                      />
-                    </Pressable>
-
-                    <Pressable
-                      style={{
-                        flex: 1,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        paddingVertical: 12,
-                        borderRadius: 10,
-                        backgroundColor: ACCENT,
-                      }}
-                    >
-                      <FontAwesome name="plus" size={12} color="#fff" />
-                      <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add to Itinerary</Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={{
-                        flex: 1,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        paddingVertical: 12,
-                        borderRadius: 10,
-                        borderWidth: 1.5,
-                        borderColor: '#10b981',
-                        backgroundColor: colors.cardBackground,
-                      }}
-                    >
-                      <FontAwesome name="external-link" size={12} color="#10b981" />
-                      <Text style={{ ...TextStyles.bodyLgEm, color: '#10b981' }}>Book Now</Text>
-                    </Pressable>
-                  </View>
-
-                  {/* ---- Explore Similar Items ---- */}
-                  {similarItems.length > 0 && (
-                    <View style={{ marginTop: 16, marginBottom: 8 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                        <FontAwesome name="compass" size={14} color={ACCENT} />
-                        <Text style={{ ...TextStyles.subhead, color: colors.text }}>Explore Similar</Text>
-                      </View>
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ gap: 10, paddingRight: 4 }}
-                      >
-                        {similarItems.map((sim) => (
-                          <Pressable
-                            key={sim.id}
-                            onPress={() => onSelectItem(sim)}
-                            style={({ pressed }) => ({
-                              width: 150,
-                              borderRadius: 12,
-                              overflow: 'hidden',
-                              borderWidth: 1,
-                              borderColor: colors.borderLight,
-                              backgroundColor: colors.cardBackground,
-                              opacity: pressed ? 0.85 : 1,
-                              transform: [{ scale: pressed ? 0.97 : 1 }],
-                            })}
-                          >
-                            {sim.images.length > 0 ? (
-                              <Image
-                                source={{ uri: sim.images[0], headers: { Referer: '' } }}
-                                style={{ width: 150, height: 90 }}
-                                resizeMode="cover"
-                              />
-                            ) : (
-                              <View style={{ width: 150, height: 90, backgroundColor: placeholderColor(sim.id), alignItems: 'center', justifyContent: 'center' }}>
-                                <FontAwesome name="image" size={20} color={colors.border} />
-                              </View>
-                            )}
-                            <View style={{ padding: 8 }}>
-                              <Text numberOfLines={1} style={{ ...TextStyles.bodyEm, color: colors.text, marginBottom: 2 }}>{sim.name}</Text>
-                              <Text numberOfLines={1} style={{ ...TextStyles.sm, color: colors.textTertiary }}>{sim.location}</Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 }}>
-                                <FontAwesome name="star" size={9} color="#f59e0b" />
-                                <Text style={{ ...TextStyles.smEm, color: colors.text }}>{sim.rating.toFixed(1)}</Text>
-                                {sim.category && (
-                                  <Text style={{ ...TextStyles.xs, color: ACCENT, marginLeft: 4 }}>{sim.category}</Text>
-                                )}
-                              </View>
-                            </View>
-                          </Pressable>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-
-                  {/* Close button */}
-                  <Pressable
-                    onPress={handleClose}
-                    style={{
-                      alignItems: 'center',
-                      paddingVertical: 10,
-                      marginTop: 4,
-                    }}
-                  >
-                    <Text style={{ ...TextStyles.bodyLg, color: colors.textTertiary }}>Close</Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Animated.View>
-    </Modal>
+    <View style={{ backgroundColor: ratingColor(rating, ACCENT), paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 }}>
+      <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>{rating.toFixed(1)}</Text>
+    </View>
   );
 }
 
-// ---- Detail Footer (Explore + Actions) ----
+/* ------------------------------------------------------------------ */
+/*  Image Carousel                                                     */
+/* ------------------------------------------------------------------ */
 
-function ActivityDetailFooter({
-  place,
-  allPlaces,
-  onSelectPlace,
-  favorites,
-  onToggleFav,
-}: {
-  place: PlaceItem;
-  allPlaces: PlaceItem[];
-  onSelectPlace: (p: PlaceItem) => void;
-  favorites: string[];
-  onToggleFav: (id: string) => void;
-}) {
+function ImageCarousel({ images, height = 220 }: { images: string[]; height?: number }) {
   const colors = useThemeColors();
-  const ACCENT = useTabAccent('activities');
-  const similar = useSimilarPlaces(place, allPlaces, 10);
-  const isFav = favorites.includes(place.id);
-
-  const hasCoords = !!(place.latitude && place.longitude);
-  const directionsUrl = hasCoords
-    ? `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`
-    : place.address
-    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.address)}`
-    : undefined;
-
-  const handleShare = useCallback(async () => {
-    const text = `Check out ${place.name}!${place.website ? `\n${place.website}` : ''}`;
-    try { await Share.share({ message: text }); } catch {}
-  }, [place]);
+  const [idx, setIdx] = useState(0);
+  const prev = () => setIdx((i) => (i === 0 ? images.length - 1 : i - 1));
+  const next = () => setIdx((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
-    <View style={{ marginTop: 16 }}>
-      {/* Action buttons */}
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-        <Pressable
-          onPress={() => onToggleFav(place.id)}
-          style={{
-            width: 44, height: 44, borderRadius: 12,
-            borderWidth: 1.5, borderColor: isFav ? '#ef4444' : colors.border,
-            backgroundColor: isFav ? '#fef2f2' : colors.cardBackground,
-            alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={16} color={isFav ? '#ef4444' : colors.textTertiary} />
-        </Pressable>
-
-        {directionsUrl && (
+    <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
+      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => {}} />
+      {images.length > 1 && (
+        <>
           <Pressable
-            onPress={() => Linking.openURL(directionsUrl)}
+            onPress={prev}
             style={{
-              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-              gap: 6, paddingVertical: 12, borderRadius: 12,
-              borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.cardBackground,
+              position: 'absolute', left: 10, top: '50%', marginTop: -16,
+              width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.9)',
+              alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name="location-arrow" size={13} color={colors.text} />
-            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Directions</Text>
+            <FontAwesome name="chevron-left" size={12} color={colors.text} />
           </Pressable>
-        )}
-
-        <Pressable
-          onPress={handleShare}
-          style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            gap: 6, paddingVertical: 12, borderRadius: 12,
-            borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.cardBackground,
-          }}
-        >
-          <FontAwesome name="share-alt" size={13} color={colors.text} />
-          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Share</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => {
-            const url = `https://www.google.com/search?q=${encodeURIComponent(place.name + ' ' + (place.tagline || '') + ' book')}`;
-            Linking.openURL(url);
-          }}
-          style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            gap: 6, paddingVertical: 12, borderRadius: 12,
-            backgroundColor: Navy.DEFAULT,
-          }}
-        >
-          <FontAwesome name="external-link" size={12} color="#fff" />
-          <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Book</Text>
-        </Pressable>
-      </View>
-
-      {/* Explore Similar */}
-      {similar.length > 0 && (
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <FontAwesome name="compass" size={14} color={ACCENT} />
-            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Explore Similar</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingRight: 4 }}
+          <Pressable
+            onPress={next}
+            style={{
+              position: 'absolute', right: 10, top: '50%', marginTop: -16,
+              width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.9)',
+              alignItems: 'center', justifyContent: 'center',
+            }}
           >
-            {similar.map((sim) => (
-              <Pressable
-                key={sim.id}
-                onPress={() => onSelectPlace(sim)}
-                style={({ pressed }) => ({
-                  width: 150, borderRadius: 12, overflow: 'hidden',
-                  borderWidth: 1, borderColor: colors.borderLight,
-                  backgroundColor: colors.cardBackground,
-                  opacity: pressed ? 0.85 : 1,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
-                })}
-              >
-                {sim.images?.length ? (
-                  <Image source={{ uri: sim.images[0], headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
-                ) : sim.image ? (
-                  <Image source={{ uri: sim.image, headers: { Referer: '' } }} style={{ width: 150, height: 90 }} resizeMode="cover" />
-                ) : (
-                  <View style={{ width: 150, height: 90, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
-                    <FontAwesome name="image" size={20} color={colors.border} />
-                  </View>
-                )}
-                <View style={{ padding: 8 }}>
-                  <Text numberOfLines={1} style={{ ...TextStyles.bodyEm, color: colors.text, marginBottom: 2 }}>{sim.name}</Text>
-                  <Text numberOfLines={1} style={{ ...TextStyles.sm, color: colors.textTertiary }}>{sim.tagline}</Text>
-                  {sim.rating != null && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 }}>
-                      <FontAwesome name="star" size={9} color="#f59e0b" />
-                      <Text style={{ ...TextStyles.smEm, color: colors.text }}>{sim.rating.toFixed(1)}</Text>
-                    </View>
-                  )}
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
+            <FontAwesome name="chevron-right" size={12} color={colors.text} />
+          </Pressable>
+          <View
+            style={{
+              position: 'absolute', bottom: 10, right: 10,
+              backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+            }}
+          >
+            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
+              {idx + 1} / {images.length}
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hours Section                                                      */
+/* ------------------------------------------------------------------ */
+
+function HoursSection({ hours }: { hours: string }) {
+  const ACCENT = useTabAccent('activities');
+  const colors = useThemeColors();
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <SectionToggle
+        title="Hours"
+        icon="clock-o"
+        isOpen={isOpen}
+        onToggle={() => setIsOpen(!isOpen)}
+        badge={hours.includes('Open') ? 'Open Now' : undefined}
+      />
+      {isOpen && (
+        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <FontAwesome name="clock-o" size={14} color={ACCENT} />
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{hours}</Text>
+          </View>
         </View>
       )}
     </View>
   );
 }
 
-// ---- Skeleton ----
+/* ------------------------------------------------------------------ */
+/*  Tags Section                                                       */
+/* ------------------------------------------------------------------ */
 
-function SkeletonCard() {
+function TagsSection({ tags, activityType }: { tags: string[]; activityType: string }) {
+  const ACCENT = useTabAccent('activities');
   const colors = useThemeColors();
+  const [isOpen, setIsOpen] = useState(false);
+  const displayTags = tags.length > 0 ? tags : activityType ? [activityType] : [];
+
+  if (displayTags.length === 0) return null;
+
   return (
-    <View style={{ backgroundColor: colors.cardBackground, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
-      <View style={{ height: 180, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
-        <FontAwesome name="image" size={28} color={colors.border} />
-      </View>
-      <View style={{ padding: 14, gap: 8 }}>
-        <SkeletonBlock width="40%" height={12} />
-        <SkeletonBlock width="75%" height={16} />
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <SkeletonBlock width={80} height={12} />
-          <SkeletonBlock width={60} height={12} />
+    <View style={{ marginTop: 14 }}>
+      <SectionToggle
+        title="Activity Tags"
+        icon="tags"
+        isOpen={isOpen}
+        onToggle={() => setIsOpen(!isOpen)}
+        badge={`${displayTags.length} tags`}
+      />
+      {isOpen && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {displayTags.map((tag) => (
+            <View
+              key={tag}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                backgroundColor: colors.surface, borderRadius: 8,
+                paddingHorizontal: 10, paddingVertical: 7,
+                borderWidth: 1, borderColor: colors.border,
+              }}
+            >
+              <FontAwesome name="tag" size={11} color={ACCENT} />
+              <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{tag}</Text>
+            </View>
+          ))}
         </View>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <SkeletonBlock width={60} height={22} radius={12} />
-          <SkeletonBlock width={50} height={22} radius={12} />
-          <SkeletonBlock width={70} height={22} radius={12} />
-        </View>
-      </View>
+      )}
     </View>
   );
 }
 
-// ---- Main Screen ----
+/* ------------------------------------------------------------------ */
+/*  Contact & Location                                                 */
+/* ------------------------------------------------------------------ */
+
+function ContactActions({ phone, website, address }: { phone: string; website: string; address: string }) {
+  const colors = useThemeColors();
+  return (
+    <View style={{ marginTop: 14 }}>
+      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 10 }}>Contact & Location</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {!!phone && (
+          <Pressable
+            onPress={() => Linking.openURL(`tel:${phone}`)}
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}
+          >
+            <FontAwesome name="phone" size={16} color={colors.tint} />
+            <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Call</Text>
+          </Pressable>
+        )}
+        {!!website && (
+          <Pressable
+            onPress={() => Linking.openURL(website.startsWith('http') ? website : `https://${website}`)}
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}
+          >
+            <FontAwesome name="external-link" size={15} color={colors.tint} />
+            <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Website</Text>
+          </Pressable>
+        )}
+        <Pressable
+          onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`)}
+          style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}
+        >
+          <FontAwesome name="map-pin" size={16} color="#8b6f47" />
+          <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Map</Text>
+        </Pressable>
+      </View>
+
+      {/* Address card */}
+      {!!address && (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 10, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+          <FontAwesome name="map-marker" size={14} color={colors.textTertiary} style={{ marginTop: 2 }} />
+          <Text style={{ ...TextStyles.body, color: colors.text, flex: 1 }}>{address}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Activity Filter Bar                                                */
+/* ------------------------------------------------------------------ */
+
+function ActivityFilterBar({
+  showFilters,
+  setShowFilters,
+  sortBy,
+  setSortBy,
+  typeFilter,
+  setTypeFilter,
+}: {
+  showFilters: boolean;
+  setShowFilters: (v: boolean) => void;
+  sortBy: string;
+  setSortBy: (v: string) => void;
+  typeFilter: string[];
+  setTypeFilter: (v: string[]) => void;
+}) {
+  const ACCENT = useTabAccent('activities');
+  const colors = useThemeColors();
+  const activeCount = typeFilter.length;
+
+  const toggleType = (t: string) =>
+    setTypeFilter(typeFilter.includes(t) ? typeFilter.filter((x) => x !== t) : [...typeFilter, t]);
+  const resetAll = () => { setTypeFilter([]); setSortBy('recommended'); };
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      {/* Toggle row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: showFilters ? 12 : 0 }}>
+        <Pressable
+          onPress={() => setShowFilters(!showFilters)}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            backgroundColor: activeCount > 0 ? ACCENT + '15' : colors.surface,
+            paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+            borderWidth: 1, borderColor: activeCount > 0 ? ACCENT + '30' : colors.border,
+          }}
+        >
+          <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : colors.textSecondary} />
+          <Text style={{ ...TextStyles.bodyEm, color: activeCount > 0 ? ACCENT : colors.textSecondary }}>Filters</Text>
+          {activeCount > 0 && (
+            <View style={{ backgroundColor: ACCENT, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{activeCount}</Text>
+            </View>
+          )}
+        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <FontAwesome name="sort" size={12} color={colors.textTertiary} />
+          <Pressable onPress={() => {
+            const idx = SORT_OPTIONS.findIndex((o) => o.key === sortBy);
+            setSortBy(SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key);
+          }}>
+            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>
+              {SORT_OPTIONS.find((o) => o.key === sortBy)?.label}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          {/* Activity Type */}
+          <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            Activity Type
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+            {TYPE_FILTERS.map((t) => {
+              const active = typeFilter.includes(t);
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => toggleType(t)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 5,
+                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                    backgroundColor: active ? ACCENT + '15' : colors.cardBackground,
+                    borderWidth: 1, borderColor: active ? ACCENT : colors.border,
+                  }}
+                >
+                  <FontAwesome name={(TYPE_ICONS[t] || 'compass') as any} size={11} color={active ? ACCENT : colors.textTertiary} />
+                  <Text style={{ ...TextStyles.caption, color: active ? ACCENT : colors.textSecondary }}>{t}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Reset */}
+          {activeCount > 0 && (
+            <Pressable onPress={resetAll} style={{ alignSelf: 'flex-start' }}>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.error }}>Reset Filters</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Activity List Card — rich card for browse list view                */
+/* ------------------------------------------------------------------ */
+
+function ActivityListCard({ activity, onPress }: { activity: any; onPress: () => void }) {
+  const colors = useThemeColors();
+  const ACCENT = useTabAccent('activities');
+  const [imgIdx, setImgIdx] = useState(0);
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const images: string[] = [];
+  if (activity.images) images.push(...activity.images);
+  if (activity.image && !images.includes(activity.image)) images.push(activity.image);
+  const hasMultiple = images.length > 1;
+  const address = activity.address || activity.neighborhood || '';
+
+  return (
+    <View style={{
+      marginBottom: 28, marginHorizontal: 6, borderRadius: 18,
+      shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 8,
+      backgroundColor: colors.cardBackground,
+    }}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          borderRadius: 18, overflow: 'hidden',
+          borderWidth: 1, borderColor: colors.border,
+          opacity: pressed ? 0.95 : 1,
+        })}
+      >
+        {/* Image */}
+        <View style={{ height: 200, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' }}>
+          {images.length > 0 ? (
+            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => {}} />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome name="compass" size={36} color="rgba(255,255,255,0.25)" />
+            </View>
+          )}
+          {/* Counter */}
+          {images.length > 0 && (
+            <View style={{ position: 'absolute', bottom: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>{imgIdx + 1}/{images.length}</Text>
+            </View>
+          )}
+          {/* Arrows */}
+          {hasMultiple && (
+            <>
+              <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === 0 ? images.length - 1 : i - 1)} style={{ position: 'absolute', left: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome name="chevron-left" size={10} color={colors.text} />
+              </Pressable>
+              <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === images.length - 1 ? 0 : i + 1)} style={{ position: 'absolute', right: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome name="chevron-right" size={10} color={colors.text} />
+              </Pressable>
+            </>
+          )}
+          {/* Type badge */}
+          {!!activity.activityType && activity.activityType !== 'Activity' && (
+            <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: ACCENT, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{activity.activityType}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Content */}
+        <View style={{ padding: 20, paddingTop: 16 }}>
+          {/* Name */}
+          <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: colors.text, lineHeight: 24 }} numberOfLines={2}>{activity.name}</Text>
+
+          {/* Rating row — tappable to toggle reviews */}
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (!activity.reviews) return;
+              if (showReviews) { setShowReviews(false); return; }
+              setShowReviews(true);
+              if (reviews.length > 0) return;
+              setLoadingReviews(true);
+              const base = getWebApiBase();
+              fetch(`${base}/api/search/place-detail?q=${encodeURIComponent(activity.name + ' ' + address)}`)
+                .then(r => r.ok ? r.json() : { reviews: [] })
+                .then(d => { setReviews(d.reviews ?? []); setLoadingReviews(false); })
+                .catch(() => setLoadingReviews(false));
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 10 }}
+          >
+            {activity.rating > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="star" size={12} color="#f59e0b" />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.info }}>{activity.rating}/5</Text>
+                {activity.reviews > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>({activity.reviews})</Text>}
+              </View>
+            )}
+            {!!activity.activityType && activity.activityType !== 'Activity' && (
+              <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>{activity.activityType}</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Address */}
+          {!!address && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+              <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>{address}</Text>
+            </View>
+          )}
+
+          {/* Tags */}
+          {activity.tags && activity.tags.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 }}>
+              {activity.tags.slice(0, 4).map((t: string) => (
+                <View key={t} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <FontAwesome name="tag" size={10} color={colors.tint} />
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Duration */}
+          {!!activity.duration && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
+              <FontAwesome name="clock-o" size={11} color={colors.textTertiary} />
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{activity.duration}</Text>
+            </View>
+          )}
+
+          {/* Hours */}
+          {!!activity.hours && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 }}>
+              <FontAwesome name="calendar" size={11} color={colors.textTertiary} />
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{activity.hours}</Text>
+            </View>
+          )}
+
+          {/* Inline reviews — shown when rating is tapped */}
+          {showReviews && (
+            <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 10 }}>
+              {loadingReviews ? (
+                <ActivityIndicator size="small" color={colors.tint} style={{ paddingVertical: 12 }} />
+              ) : reviews.length === 0 ? (
+                <Text style={{ fontSize: 13, color: colors.textTertiary, paddingVertical: 8 }}>No reviews loaded yet</Text>
+              ) : (
+                reviews.map((r: any, i: number) => (
+                  <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.borderLight }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {r.authorPhoto ? (
+                        <Image source={{ uri: r.authorPhoto }} style={{ width: 28, height: 28, borderRadius: 14 }} onError={() => {}} />
+                      ) : (
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                          <FontAwesome name="user" size={12} color={colors.textTertiary} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{r.author}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          {Array.from({ length: 5 }).map((_, si) => (
+                            <FontAwesome key={si} name="star" size={9} color={si < r.rating ? '#f59e0b' : colors.border} />
+                          ))}
+                          {!!r.date && <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{r.date}</Text>}
+                        </View>
+                      </View>
+                    </View>
+                    {!!r.text && <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginTop: 6 }} numberOfLines={3}>{r.text}</Text>}
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Loading Skeleton                                                   */
+/* ------------------------------------------------------------------ */
+
+function ActivitySkeleton() {
+  const colors = useThemeColors();
+  return (
+    <View style={{ gap: 10 }}>
+      {[1, 2].map((i) => (
+        <View
+          key={i}
+          style={{
+            flexDirection: 'row', backgroundColor: colors.cardBackground, borderRadius: 12,
+            borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
+          }}
+        >
+          <View style={{ width: 110, height: 120, backgroundColor: colors.skeleton }} />
+          <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
+            <View>
+              <View style={{ height: 14, width: '70%', backgroundColor: colors.skeleton, borderRadius: 4 }} />
+              <View style={{ height: 10, width: '40%', backgroundColor: colors.skeleton, borderRadius: 4, marginTop: 8 }} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <View style={{ height: 20, width: 32, backgroundColor: colors.skeleton, borderRadius: 4 }} />
+              <View style={{ height: 10, width: '30%', backgroundColor: colors.skeleton, borderRadius: 4 }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+              <View style={{ height: 12, width: 60, backgroundColor: colors.skeleton, borderRadius: 4 }} />
+              <View style={{ height: 16, width: 40, backgroundColor: colors.skeleton, borderRadius: 4 }} />
+            </View>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Screen                                                        */
+/* ------------------------------------------------------------------ */
+
 export default function ActivitiesScreen() {
   const ACCENT = useTabAccent('activities');
+  const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
   const { tripId: ctxId } = useContext(TabCtx);
   const id = _id || ctxId;
-  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
-  const { trip, days, isLoading } = useItineraryScreen(id);
+  const { trip } = useItineraryScreen(id);
+  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('list');
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('recommended');
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const scrollRef = useRef<ScrollView>(null);
 
-  // Fetch live places when trip_context has no explore items
-  const ctx = trip?.trip_context as any;
-  const [livePlaces, setLivePlaces] = useState<any[]>([]);
   useEffect(() => {
-    const hasContextItems = (ctx?.explore_items?.length || 0) + (ctx?.foursquare_venues?.length || 0) > 0;
-    if (hasContextItems || !trip?.destination) return;
-    const city = trip.destination.split(',')[0].trim();
-    if (!city) return;
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Activities from trip_context
+  const ctx = trip?.trip_context as any;
+  const contextActivities = useMemo(() => {
+    const source = ctx?.activities ?? [];
+    if (source.length === 0) return [];
+    return source.map((a: any, i: number) => ({
+      id: a.id || `act-${i}`,
+      name: a.name,
+      rating: a.rating ?? 0,
+      reviews: a.reviewCount ?? a.review_count ?? a.ratingCount ?? 0,
+      activityType: a.activityType || a.type || a.category || guessActivityType(a),
+      address: a.address || '',
+      neighborhood: a.address?.split(',')[0] || '',
+      image: upscaleGoogleImage(a.image ?? a.photo_url) || a.image || a.photo_url || '',
+      images: a.images ?? (a.image ? [upscaleGoogleImage(a.image) || a.image] : []),
+      hours: a.hours || '',
+      duration: a.duration || '',
+      phone: a.phone || '',
+      website: a.website || '',
+      bookingLink: a.bookingLink || a.booking_link || a.website || '',
+      description: a.tip || a.description || '',
+      tags: a.tags ?? [a.category || a.type].filter(Boolean),
+      latitude: a.latitude ?? a.lat ?? 0,
+      longitude: a.longitude ?? a.lng ?? 0,
+      label: i === 0 ? 'Top Pick' : i < 3 ? 'Popular' : '',
+    }));
+  }, [ctx]);
+
+  // Also extract non-food items from explore_items
+  const exploreActivities = useMemo(() => {
+    const items = ctx?.explore_items ?? [];
+    if (items.length === 0) return [];
+    return items
+      .filter((e: any) => !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger|bar\b|pub\b/i.test(e.type || e.category || ''))
+      .map((e: any, i: number) => ({
+        id: e.id || `exp-act-${i}`,
+        name: e.name || e.title,
+        rating: e.rating ?? 0,
+        reviews: e.reviewCount ?? e.review_count ?? 0,
+        activityType: e.activityType || e.type || e.category || guessActivityType(e),
+        address: e.address || '',
+        neighborhood: e.address?.split(',')[0] || '',
+        image: upscaleGoogleImage(e.image) || e.image || '',
+        images: e.images ?? (e.image ? [upscaleGoogleImage(e.image) || e.image] : []),
+        hours: e.hours || '',
+        duration: e.duration || '',
+        phone: e.phone || '',
+        website: e.website || '',
+        bookingLink: e.bookingLink || e.website || '',
+        description: e.description || e.tagline || '',
+        tags: e.tags ?? [e.category || e.type].filter(Boolean),
+        latitude: e.latitude ?? e.lat ?? 0,
+        longitude: e.longitude ?? e.lng ?? 0,
+        label: '',
+      }));
+  }, [ctx]);
+
+  // Live search + user search
+  const destination = trip?.destination?.split(',')[0]?.trim();
+  const [searchActivities, setSearchActivities] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [searchPage, setSearchPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const mapActivityResult = useCallback((p: any, i: number, prefix: string) => ({
+    id: p.id || `${prefix}-${i}`,
+    name: p.name,
+    rating: p.rating ?? 0,
+    reviews: p.reviewCount ?? p.reviews ?? 0,
+    activityType: p.activityType || p.type || p.category || guessActivityType(p),
+    address: p.address || '',
+    neighborhood: p.address?.split(',')[0] || '',
+    image: upscaleGoogleImage(p.images?.[0] ?? p.image) || p.images?.[0] || p.image || '',
+    images: (p.images ?? (p.image ? [p.image] : [])).map((img: string) => upscaleGoogleImage(img) || img),
+    hours: p.hours || '',
+    duration: p.duration || '',
+    phone: p.phone || '',
+    website: p.website || '',
+    bookingLink: p.bookingLink || p.website || '',
+    description: p.description || p.tagline || '',
+    tags: p.tags ?? [p.category || p.type].filter(Boolean),
+    latitude: (p.latitude && p.latitude !== 0) ? p.latitude : null,
+    longitude: (p.longitude && p.longitude !== 0) ? p.longitude : null,
+    label: '',
+  }), []);
+
+  const fetchPage = useCallback(async (query: string, page: number, append: boolean) => {
+    setIsLoadingMore(true);
     const base = getWebApiBase();
-    const lat = ctx?.lat;
-    const lng = ctx?.lng;
-    const query = lat && lng
-      ? `${base}/api/places?q=${encodeURIComponent(city + ' things to do')}&lat=${lat}&lng=${lng}&limit=20`
-      : `${base}/api/places?q=${encodeURIComponent(city + ' things to do')}&limit=20`;
-    fetch(query)
+    const actCtx = trip?.trip_context as any;
+    const dLat = actCtx?.destination_lat ?? actCtx?.latitude ?? null;
+    const dLng = actCtx?.destination_lng ?? actCtx?.longitude ?? null;
+    try {
+      const fetches: Promise<any[]>[] = [];
+
+      // Foursquare — reliable endless scroll via coord offsets
+      if (dLat && dLng) {
+        const offsetLat = dLat + (page % 3) * 0.015;
+        const offsetLng = dLng + (page % 2) * 0.012;
+        fetches.push(
+          fetch(`${base}/api/places?lat=${offsetLat}&lng=${offsetLng}&category=sightseeing&limit=20`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else if (destination) {
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destination)}&format=json&limit=1`, { headers: { 'User-Agent': 'Travyl/1.0' } });
+          const geoData = await geoRes.json() as any[];
+          if (geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat) + (page % 3) * 0.015;
+            const lng = parseFloat(geoData[0].lon) + (page % 2) * 0.012;
+            fetches.push(
+              fetch(`${base}/api/places?lat=${lat}&lng=${lng}&category=sightseeing&limit=20`)
+                .then(r => r.ok ? r.json() : []).catch(() => []),
+            );
+          }
+        } catch {}
+      }
+
+      // Page 0: also Maps + TripAdvisor
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else {
+        fetches.push(
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=A&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+
+      const results = await Promise.all(fetches);
+      const all = results.flat()
+        .filter((p: any) => p.name && !/restaurant|food|dining|cafe|coffee|bakery|pizza|sushi|burger/i.test(p.type || p.category || ''))
+        .map((p: any, i: number) => mapActivityResult(p, i + page * 100, `sa-p${page}`));
+      if (all.length === 0 && page > 0) { setHasMore(false); setIsLoadingMore(false); return; }
+      setSearchActivities(prev => {
+        if (!append) return all;
+        const existingNames = new Set(prev.map((a: any) => ((a.name || '') as string).toLowerCase()));
+        const newItems = all.filter((a: any) => !existingNames.has(((a.name || '') as string).toLowerCase()));
+        return [...prev, ...newItems];
+      });
+    } catch {}
+    setIsLoadingMore(false);
+  }, [mapActivityResult, trip, destination]);
+
+  const runSearch = useCallback((query: string) => {
+    setSearchPage(0);
+    setHasMore(true);
+    fetchPage(query, 0, false);
+  }, [fetchPage]);
+
+  // Auto-search on mount
+  useEffect(() => {
+    if (destination) runSearch(`things to do in ${destination}`);
+  }, [destination]);
+
+  // User search with debounce
+  useEffect(() => {
+    if (!userSearch.trim()) return;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => runSearch(userSearch), 400) as unknown as NodeJS.Timeout;
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [userSearch]);
+
+  // Load more on scroll
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = searchPage + 1;
+    setSearchPage(nextPage);
+    const q = userSearch.trim() || (destination ? `things to do in ${destination}` : '');
+    if (q) fetchPage(q, nextPage, true);
+  }, [searchPage, isLoadingMore, hasMore, userSearch, destination, fetchPage]);
+
+  const handleScroll = useCallback((e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 800 && hasMore && !isLoadingMore) {
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
+
+  // Also try TripAdvisor for activities
+  const [taActivities, setTaActivities] = useState<any[]>([]);
+  useEffect(() => {
+    if (!destination) return;
+    const base = getWebApiBase();
+    fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(destination)}&ssrc=A`)
       .then(r => r.ok ? r.json() : [])
-      .then((items: any[]) => {
-        if (Array.isArray(items) && items.length > 0) setLivePlaces(items);
+      .then((data: any) => {
+        const results = Array.isArray(data) ? data : data?.results ?? data?.data ?? [];
+        if (!Array.isArray(results) || results.length === 0) return;
+        setTaActivities(results.map((p: any, i: number) => ({
+          id: p.id || `ta-act-${i}`,
+          name: p.name || p.title,
+          rating: p.rating ?? 0,
+          reviews: p.reviewCount ?? p.reviews ?? p.num_reviews ?? 0,
+          activityType: p.activityType || p.type || p.category || guessActivityType(p),
+          address: p.address || '',
+          neighborhood: p.address?.split(',')[0] || '',
+          image: p.images?.[0] ?? p.image ?? p.thumbnail ?? '',
+          images: p.images ?? (p.image ? [p.image] : p.thumbnail ? [p.thumbnail] : []),
+          hours: p.hours || '',
+          duration: p.duration || '',
+          phone: p.phone || '',
+          website: p.website || p.url || '',
+          bookingLink: p.bookingLink || p.url || p.website || '',
+          description: p.description || p.tagline || p.snippet || '',
+          tags: p.tags ?? [p.category || p.type].filter(Boolean),
+          latitude: p.latitude ?? p.lat ?? 0,
+          longitude: p.longitude ?? p.lng ?? 0,
+          label: '',
+        })));
       })
       .catch(() => {});
-  }, [trip?.destination, ctx?.explore_items, ctx?.foursquare_venues]);
+  }, [destination]);
 
-  // Merge live places into trip_context for the filter hook
-  const enrichedContext = useMemo(() => {
-    if (livePlaces.length === 0) return ctx;
-    const liveExploreItems = livePlaces.map((p: any) => ({
-      id: p.id, title: p.name, description: p.description || p.category,
-      category: p.category, image: p.image, rating: p.rating,
-      tags: p.tags ?? [p.category].filter(Boolean),
-    }));
-    return { ...ctx, explore_items: [...(ctx?.explore_items ?? []), ...liveExploreItems] };
-  }, [ctx, livePlaces]);
-
-  const {
-    viewMode, setViewMode,
-    searchQuery, setSearchQuery,
-    categoryFilter, handleCategoryChange,
-    activitySubFilter, setActivitySubFilter,
-    sortBy, setSortBy,
-    favorites, toggleFavorite,
-    sourceItems,
-    filteredItems,
-    bookedItems,
-    discoverItems,
-    clearFilters,
-  } = useActivityFilters(days, enrichedContext);
-
-  const colors = useThemeColors();
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
-
-  // Add to trip — persist to Supabase activity table
-  const handleAddToTrip = useCallback((itemId: string) => {
-    const item = [...discoverItems, ...sourceItems].find(i => i.id === itemId);
-    if (!item) return;
-    const startDate = trip?.start_date || new Date().toISOString().split('T')[0];
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      supabase.from('activity').insert({
-        trip_id: id,
-        user_id: user?.id || null,
-        activity_name: item.name,
-        activity_type: 'other',
-        starting_date: startDate,
-        ending_date: startDate,
-        starting_time: '09:00',
-        ending_time: '11:00',
-        latitude: (item as any).latitude ?? (item as any).lat ?? 0,
-        longitude: (item as any).longitude ?? (item as any).lng ?? 0,
-        sort_order: 0,
-        notes: item.description || '',
-        activity_data: { image: item.images?.[0] || '', category: item.category },
-      }).then(({ error }) => {
-        if (error) console.error('[addToTrip] insert failed:', error.message);
-      });
+  // Merge: search results first (better images), then TA, then context + explore without dupes
+  const realActivities = useMemo(() => {
+    const seen = new Set(searchActivities.filter((a: any) => a.name).map((a: any) => ((a.name || '') as string).toLowerCase()));
+    const taExtra = taActivities.filter((a: any) => {
+      if (seen.has(((a.name || '') as string).toLowerCase())) return false;
+      seen.add(((a.name || '') as string).toLowerCase());
+      return true;
     });
-  }, [id, trip, discoverItems, sourceItems]);
-  const [minRating, setMinRating] = useState<number | null>(null);
-  const [selectedItem, setSelectedItem] = useState<DiscoverItem | null>(null);
+    const contextExtra = contextActivities.filter((a: any) => {
+      if (seen.has(((a.name || '') as string).toLowerCase())) return false;
+      seen.add(((a.name || '') as string).toLowerCase());
+      return true;
+    });
+    const exploreExtra = exploreActivities.filter((a: any) => {
+      if (seen.has(((a.name || '') as string).toLowerCase())) return false;
+      seen.add(((a.name || '') as string).toLowerCase());
+      return true;
+    });
+    return [...searchActivities, ...taExtra, ...contextExtra, ...exploreExtra];
+  }, [contextActivities, exploreActivities, searchActivities, taActivities]);
 
-  const displayItems = useMemo(() => {
-    if (minRating === null) return filteredItems;
-    return filteredItems.filter(item => (item.rating ?? 0) >= minRating);
-  }, [filteredItems, minRating]);
-
-  const allPlacesFromSource = useMemo(
-    () => sourceItems.map(discoverItemToPlaceItem),
-    [sourceItems],
+  // Convert to PlaceItem[] for CardStackCarousel
+  const activityPlaces = useMemo<PlaceItem[]>(() =>
+    realActivities.map((a: any) => ({
+      id: a.id,
+      name: a.name,
+      image: a.image || '',
+      images: a.images ?? (a.image ? [a.image] : []),
+      type: 'attraction' as const,
+      rating: a.rating ?? 0,
+      tagline: [a.activityType !== 'Activity' ? a.activityType : '', a.duration].filter(Boolean).join(' · '),
+      category: a.activityType || 'Activity',
+      description: [
+        a.description,
+        a.hours ? `Hours: ${a.hours}` : '',
+        a.duration ? `Duration: ${a.duration}` : '',
+      ].filter(Boolean).join('\n'),
+      tags: a.tags?.slice(0, 4) ?? [],
+      hours: a.hours || undefined,
+      phone: a.phone || undefined,
+      website: a.website || undefined,
+      address: a.address || a.neighborhood || '',
+      latitude: a.latitude || undefined,
+      longitude: a.longitude || undefined,
+      reviewCount: a.reviews || undefined,
+    })),
+    [realActivities],
   );
 
-  const activeFilterCount = [
-    categoryFilter !== 'All',
-    searchQuery !== '',
-    activitySubFilter !== 'All' && activitySubFilter !== '',
-    minRating !== null,
-  ].filter(Boolean).length;
+  // Filtered + sorted list
+  const filteredActivities = useMemo(() => {
+    let result = [...realActivities];
+    if (typeFilter.length > 0) {
+      result = result.filter((a) => {
+        const aType = (a?.activityType || '').toLowerCase();
+        const aTags = (a.tags || []).map((t: string) => t.toLowerCase());
+        return typeFilter.some((t) => aType.includes(t.toLowerCase()) || aTags.some((tag: string) => tag.includes(t.toLowerCase())));
+      });
+    }
+    switch (sortBy) {
+      case 'rating': result.sort((a, b) => b.rating - a.rating); break;
+      case 'reviews': result.sort((a, b) => (b.reviews || 0) - (a.reviews || 0)); break;
+      case 'distance': break; // Would need geo, keep natural order
+      default: break;
+    }
+    return result;
+  }, [realActivities, typeFilter, sortBy]);
 
-  // ---- Loading state ----
-  if (isLoading) {
+  // Build detail for selected activity
+  const activity = useMemo<ActivityData | null>(() => {
+    const a = realActivities[selectedIdx] ?? realActivities[0];
+    if (!a) return null;
+    return {
+      id: a.id,
+      name: a.name,
+      rating: a.rating ?? 0,
+      reviews: a.reviews ?? 0,
+      activityType: a?.activityType || '',
+      address: a.address || '',
+      neighborhood: a.neighborhood || '',
+      images: [...new Set([...(a.images || []), a.image].filter(Boolean))],
+      hours: a.hours || '',
+      duration: a.duration || '',
+      phone: a.phone || '',
+      website: a.website || '',
+      bookingLink: a.bookingLink || a.website || '',
+      description: a.description || '',
+      tags: a.tags || [],
+      latitude: a.latitude ?? 0,
+      longitude: a.longitude ?? 0,
+    };
+  }, [realActivities, selectedIdx]);
+
+  // Empty state
+  if (!activity && realActivities.length === 0 && !isLoading) {
     return (
       <PageTransition>
-      <ScrollView
-        style={{ flex: 1, backgroundColor: colors.surface }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
-      >
-        <SkeletonBlock width="100%" height={42} radius={12} />
-        <SkeletonBlock width="100%" height={38} radius={12} />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <SkeletonBlock width={60} height={30} radius={20} />
-          <SkeletonBlock width={70} height={30} radius={20} />
-          <SkeletonBlock width={80} height={30} radius={20} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 32 }}>
+          <FontAwesome name="compass" size={28} color={colors.textTertiary} />
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 12 }}>No Activities Yet</Text>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginTop: 4 }}>Activity recommendations will appear once the trip is enriched.</Text>
         </View>
-        <SkeletonCard />
-        <SkeletonCard />
-      </ScrollView>
       </PageTransition>
     );
   }
@@ -872,326 +974,254 @@ export default function ActivitiesScreen() {
   return (
     <PageTransition>
     <ScrollView
+      ref={scrollRef}
       style={{ flex: 1, backgroundColor: colors.surface }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 40 }}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+      showsVerticalScrollIndicator={false}
     >
-      {/* -- Segmented Control: Booked / Discover -- */}
-      <View style={{
-        flexDirection: 'row',
-        backgroundColor: colors.borderLight,
-        borderRadius: 12,
-        padding: 3,
-        marginBottom: 8,
-      }}>
-        <Pressable
-          onPress={() => setViewMode('booked')}
-          style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            gap: 6, paddingVertical: 9, borderRadius: 10,
-            backgroundColor: viewMode === 'booked' ? ACCENT : 'transparent',
-          }}
-        >
-          <FontAwesome name="calendar-check-o" size={12} color={viewMode === 'booked' ? '#fff' : colors.textSecondary} />
-          <Text style={{ ...TextStyles.bodyLgEm, color: viewMode === 'booked' ? '#fff' : colors.textSecondary }}>
-            Booked ({bookedItems.length})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setViewMode('discover')}
-          style={{
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            gap: 6, paddingVertical: 9, borderRadius: 10,
-            backgroundColor: viewMode === 'discover' ? ACCENT : 'transparent',
-          }}
-        >
-          <FontAwesome name="compass" size={12} color={viewMode === 'discover' ? '#fff' : colors.textSecondary} />
-          <Text style={{ ...TextStyles.bodyLgEm, color: viewMode === 'discover' ? '#fff' : colors.textSecondary }}>
-            Discover ({discoverItems.length})
-          </Text>
-        </Pressable>
-      </View>
+      {/* ── Selected Activity Detail (top, like hotels/restaurants pattern) ── */}
+      {activity && (() => {
+        return (
+      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
 
-      {/* -- Search + Sort (same row) -- */}
-      <View style={{ marginBottom: 8, position: 'relative' }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.cardBackground,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            height: 38,
-          }}
+        {/* Banner */}
+        <LinearGradient
+          colors={[ACCENT, ACCENT]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
-          <FontAwesome name="search" size={12} color={colors.textTertiary} style={{ marginRight: 8 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <FontAwesome name="compass" size={14} color="#fff" />
+            <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Selected Activity</Text>
+          </View>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
+            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{selectedIdx + 1}/{realActivities.length}</Text>
+          </View>
+        </LinearGradient>
+
+        {/* Card Body */}
+        <View style={{ backgroundColor: colors.cardBackground, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, borderWidth: 1, borderTopWidth: 0, borderColor: colors.border, overflow: 'hidden' }}>
+
+          {/* Badges Row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingTop: 14 }}>
+            <View style={{ backgroundColor: ACCENT, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 }}>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>Selected</Text>
+            </View>
+            {activity.rating > 0 && (
+              <View style={{ backgroundColor: colors.infoBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="star" size={10} color={colors.info} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.info }}>{activity.rating}/5</Text>
+                {activity.reviews > 0 && <Text style={{ fontSize: 11, color: colors.info }}>({activity.reviews.toLocaleString()})</Text>}
+              </View>
+            )}
+            {!!activity.activityType && activity.activityType !== 'Activity' && (
+              <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14 }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>{activity.activityType}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Activity Name */}
+          <Text style={{ ...TextStyles.title, fontFamily: FontFamily.serif, color: colors.text, paddingHorizontal: 14, marginTop: 8 }} numberOfLines={2}>{activity.name}</Text>
+
+          {/* Type + Duration */}
+          {(!!activity.activityType || !!activity.duration) && (
+            <View style={{ paddingHorizontal: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <FontAwesome name="compass" size={10} color={colors.textTertiary} />
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>
+                {[activity.activityType !== 'Activity' ? activity.activityType : '', activity.duration].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
+          )}
+
+          {/* Image Carousel */}
+          {activity.images.length > 0 && (
+            <View style={{ marginTop: 12, marginHorizontal: 14, borderRadius: 10, overflow: 'hidden' }}>
+              <ImageCarousel images={activity.images} height={208} />
+            </View>
+          )}
+
+          <View style={{ padding: 14, gap: 0 }}>
+
+            {/* Description */}
+            {!!activity.description && (
+              <View style={{ marginBottom: 10 }}>
+                <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, lineHeight: 22 }}>{activity.description}</Text>
+              </View>
+            )}
+
+            {/* Duration display */}
+            {!!activity.duration && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <FontAwesome name="clock-o" size={14} color={ACCENT} />
+                <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>Duration</Text>
+                <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{activity.duration}</Text>
+              </View>
+            )}
+
+            {/* Hours (collapsible) */}
+            {!!activity.hours && (
+              <HoursSection hours={activity.hours} />
+            )}
+
+            {/* Tags (collapsible) */}
+            <TagsSection tags={activity.tags} activityType={activity.activityType} />
+
+            {/* Contact & Location */}
+            {(!!activity.address || !!activity.phone || !!activity.website) && (
+              <ContactActions phone={activity.phone} website={activity.website} address={activity.address} />
+            )}
+
+            {/* Action Button — Book Activity / Get Tickets */}
+            {(!!activity.bookingLink || !!activity.website) && (
+              <Pressable
+                onPress={() => {
+                  const link = activity.bookingLink || activity.website || '';
+                  if (link) {
+                    WebBrowser.openBrowserAsync(link.startsWith('http') ? link : `https://www.google.com/search?q=${encodeURIComponent(activity.name + ' tickets')}`);
+                  }
+                }}
+                style={({ pressed }) => ({
+                  marginTop: 16, backgroundColor: pressed ? colors.tint : colors.tint, borderRadius: 12, paddingVertical: 15,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                })}
+              >
+                <FontAwesome name="ticket" size={14} color="#fff" />
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
+                  {/ticket|show|concert|theater|theme park|museum|gallery|exhibit/i.test(activity.activityType + ' ' + activity.name) ? 'Get Tickets' : 'Book Activity'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </View>
+        );
+      })()}
+
+      {/* ── Search bar ── */}
+      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
           <TextInput
-            placeholder="Search activities..."
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) runSearch(userSearch.trim()); }}
+            returnKeyType="search"
+            placeholder="Search activities — hiking, museums, tours..."
             placeholderTextColor={colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={{ flex: 1, ...TextStyles.bodyLg, color: colors.text, paddingVertical: 0 }}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
           />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) runSearch(`things to do in ${destination}`); }}>
               <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
             </Pressable>
           )}
-          <View style={{ width: 1, height: 18, backgroundColor: colors.border, marginHorizontal: 8 }} />
-          <Pressable
-            onPress={() => setShowSortDropdown(!showSortDropdown)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
-          >
-            <FontAwesome name="sort-amount-desc" size={11} color={ACCENT} />
-            <Text style={{ ...TextStyles.caption, color: ACCENT }}>
-              {ACTIVITY_SORT_OPTIONS.find((s) => s.key === sortBy)?.label}
-            </Text>
-            <FontAwesome name={showSortDropdown ? 'chevron-up' : 'chevron-down'} size={8} color={colors.textTertiary} />
-            {activeFilterCount > 0 && (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -6,
-                  right: -8,
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: ACCENT,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ ...TextStyles.xs, color: '#fff' }}>{activeFilterCount}</Text>
-              </View>
-            )}
-          </Pressable>
         </View>
-
-        {/* Sort dropdown (anchored below search bar) */}
-        {showSortDropdown && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 42,
-              right: 0,
-              backgroundColor: colors.cardBackground,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: colors.border,
-              paddingVertical: 4,
-              minWidth: 160,
-              zIndex: 100,
-              shadowColor: colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5,
-            }}
-          >
-            {ACTIVITY_SORT_OPTIONS.map((opt) => {
-              const isActive = sortBy === opt.key;
-              return (
-                <Pressable
-                  key={opt.key}
-                  onPress={() => { setSortBy(opt.key); setShowSortDropdown(false); }}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    backgroundColor: isActive ? ACCENT + '10' : 'transparent',
-                  }}
-                >
-                  <Text style={{ ...(isActive ? TextStyles.bodyEm : TextStyles.body), color: isActive ? ACCENT : colors.textSecondary }}>
-                    {opt.label}
-                  </Text>
-                  {isActive && <FontAwesome name="check" size={10} color={ACCENT} />}
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
       </View>
 
-      {/* -- Category pills (compact, icon+label inline) -- */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 6 }}
-        contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-      >
-        {ACTIVITY_CATEGORIES.map((f) => {
-          const count = sourceItems.filter((i) => f === 'All' || i.category === f).length;
-          if (count === 0 && f !== 'All') return null;
-          const isActive = categoryFilter === f;
-          return (
-            <Pressable
-              key={f}
-              onPress={() => handleCategoryChange(f)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: isActive ? ACCENT : colors.border,
-                backgroundColor: isActive ? ACCENT : colors.cardBackground,
-              }}
-            >
-              <FontAwesome
-                name={ACTIVITY_CATEGORY_ICONS[f] as any}
-                size={11}
-                color={isActive ? '#fff' : colors.textSecondary}
-              />
-              <Text
-                style={{
-                  ...(isActive ? TextStyles.bodyEm : TextStyles.body),
-                  color: isActive ? '#fff' : colors.textSecondary,
-                }}
-              >
-                {f}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {/* -- Subcategory pills -- */}
-      {categoryFilter !== 'All' && ACTIVITY_SUBFILTERS[categoryFilter]?.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 6 }}
-          contentContainerStyle={{ gap: 6, paddingVertical: 2 }}
-        >
-          {ACTIVITY_SUBFILTERS[categoryFilter].map((sub) => {
-            const isAll = sub.startsWith('All ');
-            const isActive = isAll ? !activitySubFilter : activitySubFilter === sub;
-            return (
+      {/* ── Browse Activities — toggle + list/card views ── */}
+      {realActivities.length > 0 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+          {/* Header with toggle */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Browse Activities</Text>
+            <View style={{ flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 8, padding: 2 }}>
               <Pressable
-                key={sub}
-                onPress={() => setActivitySubFilter(isAll ? '' : sub)}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 5,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: isActive ? ACCENT + '40' : colors.border,
-                  backgroundColor: isActive ? ACCENT + '15' : colors.cardBackground,
+                onPress={() => setBrowseMode('list')}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'list' ? colors.cardBackground : 'transparent',
+                  ...(browseMode === 'list' ? { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
                 }}
               >
-                <Text
-                  style={{
-                    ...(isActive ? TextStyles.captionEm : TextStyles.caption),
-                    color: isActive ? ACCENT : colors.textSecondary,
-                  }}
-                >
-                  {sub}
-                </Text>
+                <FontAwesome name="list" size={13} color={browseMode === 'list' ? colors.tint : colors.textTertiary} />
               </Pressable>
-            );
-          })}
-        </ScrollView>
+              <Pressable
+                onPress={() => setBrowseMode('cards')}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'cards' ? colors.cardBackground : 'transparent',
+                  ...(browseMode === 'cards' ? { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                }}
+              >
+                <FontAwesome name="th-large" size={13} color={browseMode === 'cards' ? colors.tint : colors.textTertiary} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Filter Bar */}
+          <ActivityFilterBar
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+          />
+
+          {/* List View */}
+          {browseMode === 'list' && (
+            isLoading ? <ActivitySkeleton /> : (
+              filteredActivities.filter((_: any) => {
+                const realIdx = realActivities.findIndex((ra: any) => ra.id === _.id);
+                return realIdx !== selectedIdx;
+              }).length > 0 ? (
+                filteredActivities.filter((_: any) => {
+                  const realIdx = realActivities.findIndex((ra: any) => ra.id === _.id);
+                  return realIdx !== selectedIdx;
+                }).map((a: any) => (
+                  <ActivityListCard
+                    key={a.id}
+                    activity={a}
+                    onPress={() => {
+                      const idx = realActivities.findIndex((ra: any) => ra.id === a.id);
+                      if (idx >= 0) {
+                        setSelectedIdx(idx);
+                        setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+                      }
+                    }}
+                  />
+                ))
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                  <FontAwesome name="search" size={28} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, marginTop: 8 }}>No activities match your filters</Text>
+                  <Pressable onPress={() => { setTypeFilter([]); setSortBy('recommended'); }} style={{ marginTop: 8 }}>
+                    <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Clear filters</Text>
+                  </Pressable>
+                </View>
+              )
+            )
+          )}
+
+          {/* Card View — swipeable CardStackCarousel */}
+          {browseMode === 'cards' && activityPlaces.length > 0 && (
+            <CardStackCarousel
+              places={activityPlaces}
+              initialIndex={0}
+              favorites={[]}
+              onToggleFav={() => {}}
+              onAddToTrip={(place) => {
+                const idx = realActivities.findIndex((ra: any) => ra.id === place.id);
+                if (idx >= 0) {
+                  setSelectedIdx(idx);
+                  setBrowseMode('list');
+                  setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+                }
+              }}
+              onClose={() => setBrowseMode('list')}
+              hideArrows
+              showMapBg
+              overlay
+            />
+          )}
+        </View>
       )}
 
-      {/* -- Min Rating Filter -- */}
-      <MinRatingFilter value={minRating} onChange={setMinRating} />
-
-      {/* -- Results count -- */}
-      <View style={{ paddingVertical: 6, paddingHorizontal: 2 }}>
-        <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
-          {displayItems.length} {displayItems.length === 1 ? 'activity' : 'activities'} found
-        </Text>
-      </View>
-
-        {/* ---- Activity Cards — 2-column masonry grid ---- */}
-        {displayItems.length > 0 ? (
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {/* Left column */}
-            <View style={{ flex: 1, gap: 10 }}>
-              {displayItems.filter((_, i) => i % 2 === 0).map((item) => (
-                <Pressable key={item.id} onPress={() => setSelectedItem(item)}>
-                  <ActivityCard
-                    item={item}
-                    isFavorited={favorites.includes(item.id)}
-                    onFavorite={toggleFavorite}
-                    onAddToItinerary={handleAddToTrip}
-                  />
-                </Pressable>
-              ))}
-            </View>
-            {/* Right column */}
-            <View style={{ flex: 1, gap: 10 }}>
-              {displayItems.filter((_, i) => i % 2 === 1).map((item) => (
-                <Pressable key={item.id} onPress={() => setSelectedItem(item)}>
-                  <ActivityCard
-                    item={item}
-                    isFavorited={favorites.includes(item.id)}
-                    onFavorite={toggleFavorite}
-                    onAddToItinerary={handleAddToTrip}
-                  />
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : (
-          /* ---- Empty / No Results State ---- */
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24 }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                backgroundColor: ACCENT + '15',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <FontAwesome name="search" size={22} color={ACCENT} />
-            </View>
-            <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 6 }}>
-              No results found
-            </Text>
-            <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
-              Try adjusting your search or filters to find activities.
-            </Text>
-            <Pressable
-              onPress={clearFilters}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 12,
-                borderWidth: 1.5,
-                borderColor: ACCENT,
-              }}
-            >
-              <FontAwesome name="refresh" size={12} color={ACCENT} />
-              <Text style={{ ...TextStyles.bodyLgEm, color: ACCENT }}>Clear Filters</Text>
-            </Pressable>
-          </View>
-        )}
-
-      {/* ---- Activity Detail — magazine card overlay ---- */}
-      {selectedItem && (
-        <CardStackCarousel
-          places={allPlacesFromSource}
-          initialIndex={Math.max(0, sourceItems.findIndex((i) => i.id === selectedItem.id))}
-          favorites={favorites}
-          onToggleFav={toggleFavorite}
-          onAddToTrip={addToTrip}
-          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
-          overlay
-          onClose={() => setSelectedItem(null)}
-        />
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={ACCENT} />
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 6 }}>Loading more activities...</Text>
+        </View>
       )}
     </ScrollView>
     </PageTransition>

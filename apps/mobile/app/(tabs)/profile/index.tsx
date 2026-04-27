@@ -129,7 +129,7 @@ export default function ProfileScreen() {
 
         {/* Avatar */}
         <View style={{ position: 'relative', marginBottom: 10 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#2a4d78', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.tint, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
               <Image
                 source={{ uri: profile?.avatar_url || user?.user_metadata?.avatar_url }}
@@ -140,7 +140,7 @@ export default function ProfileScreen() {
               <Text style={{ ...TextStyles.headline, color: '#fff' }}>{initials}</Text>
             )}
           </View>
-          <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: '#3b82f6', borderWidth: 2, borderColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.info, borderWidth: 2, borderColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="camera" size={10} color="#fff" />
           </View>
         </View>
@@ -262,9 +262,9 @@ export default function ProfileScreen() {
       <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         <Pressable
           onPress={() => signOut()}
-          style={{ height: 44, borderRadius: 12, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' }}
+          style={{ height: 44, borderRadius: 12, backgroundColor: colors.errorBg, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ ...TextStyles.bodyXl, color: '#dc2626' }}>Sign Out</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.error }}>Sign Out</Text>
         </Pressable>
       </View>
     </ScrollView>

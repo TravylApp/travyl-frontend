@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, CACHE_1H, MissingParamError } from '@/lib/api-utils'
+import { errorResponse, jsonResponse, CACHE_1H, MissingParamError, rateLimit } from '@/lib/api-utils'
 
 const GEONAMES_USER = process.env.GEONAMES_USERNAME || 'demo'
 
@@ -83,6 +83,8 @@ async function searchActivities(query: string, limit: number): Promise<ActivityR
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'autocomplete', 60, 60000)
+  if (rl) return rl
   const sp = req.nextUrl.searchParams
   const q = sp.get('q')
   const mode = sp.get('mode') || 'destination'

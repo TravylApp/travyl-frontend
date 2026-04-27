@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked
 
     const supabase = getSupabase()
-    const body = await req.json()
+    let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
     const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
 
     // Derive user_id from verified session — never trust body.user_id
@@ -52,8 +52,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Trip Create] Supabase error:', error.message, error.code)
-      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+      return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
     }
 
   const tripId = data.id
@@ -82,7 +81,6 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       // Non-blocking — trip still works without hero image
-      console.error('Failed to fetch hero image:', e)
     }
   }
 
@@ -110,7 +108,6 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-    if (hotelErr) console.error('Failed to save hotels:', hotelErr.message, hotelErr.code, hotelErr.details)
   }
 
   // Save flights to flights table (best effort)
@@ -134,14 +131,12 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-    if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 
   // Itinerary is stored in trip_context — no separate tables needed
 
   return NextResponse.json(data)
   } catch (e) {
-    console.error('[Trip Create] Unhandled error:', e)
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500 })
   }
 }

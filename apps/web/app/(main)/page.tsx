@@ -545,7 +545,6 @@ export default function Home() {
           router.push(`/trip/${tripId}`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to save trip';
-          console.error('Save failed:', msg);
           setLoadingError(msg);
           isSaving.current = false;
         }
@@ -575,7 +574,6 @@ export default function Home() {
           });
           if (!createRes.ok) {
             const errBody = await createRes.text().catch(() => '');
-            console.error('[Trip Create] Failed:', createRes.status, errBody);
             throw new Error(`Create failed: ${createRes.status}`);
           }
           const trip = await createRes.json();
@@ -621,7 +619,6 @@ export default function Home() {
               })),
             },
           }).eq('id', tripId).then(({ error }) => {
-            if (error) console.error('[Trip Context] Update failed:', error.message);
           });
 
           // Enrich in background
@@ -638,7 +635,6 @@ export default function Home() {
           isSaving.current = false;
           router.push(`/trip/${tripId}`);
         } catch (saveErr) {
-          console.error('[Trip Create] Failed:', saveErr);
           setLoadingError(saveErr instanceof Error ? saveErr.message : 'Failed to save trip');
           setShowTakeoff(false);
           isSaving.current = false;

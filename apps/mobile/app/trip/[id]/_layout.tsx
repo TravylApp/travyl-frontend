@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal, ScrollView,
+  View, Text, Pressable, Share, Modal, ScrollView, TextInput,
   Platform, PanResponder, Animated, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -332,6 +332,14 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
   const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
 
+  // Inline trip editing
+  const [editingTrip, setEditingTrip] = useState(false);
+  const [editDest, setEditDest] = useState(destination);
+  const [editStart, setEditStart] = useState(trip?.start_date || '');
+  const [editEnd, setEditEnd] = useState(trip?.end_date || '');
+  const [editTravelers, setEditTravelers] = useState(trip?.travelers || 2);
+  const [editSaving, setEditSaving] = useState(false);
+
   // Dynamic hero image: trip_context → override → fetch from Unsplash/Pexels
   const staticHero = heroImageOverride
     || trip?.trip_context?.hero_image_url
@@ -376,7 +384,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       {/* Background image — fills entire hero, content determines height */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         {coverImage ? (
-          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" />
+          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" onError={() => {}} />
         ) : (
           <View style={{ flex: 1, backgroundColor: theme.base, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="picture-o" size={32} color="rgba(255,255,255,0.3)" />
@@ -450,9 +458,15 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Pressable>
         </View>
 
-        {/* Date + travelers + safety — always visible */}
+        {/* Date + travelers + safety — always visible, tappable to edit */}
         {trip && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            <Pressable
+              onPress={() => setEditingTrip(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <FontAwesome name="pencil" size={10} color="rgba(255,255,255,0.5)" />
+            </Pressable>
             {[
               formatDateRange(trip.start_date, trip.end_date),
               `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
@@ -474,10 +488,33 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               const border = safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)';
               const label = safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger';
               return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Pressable
+                  onPress={() => {
+                    const msg = safety.message || '';
+                    const tips = (trip?.trip_context as any)?.safety_tips;
+                    const dest = trip?.destination?.split(',')[0] || '';
+                    const explanation = safety.score <= 2
+                      ? 'Generally Safe — Standard travel precautions apply. Stay aware of your surroundings and keep valuables secure.'
+                      : safety.score <= 3
+                      ? 'Moderate Caution — Some areas may require extra awareness. Research neighborhoods before visiting and avoid isolated areas at night.'
+                      : 'Exercise Caution — Research local conditions before traveling. Register with your embassy and keep emergency contacts handy.';
+                    const details = [explanation, msg, ...(Array.isArray(tips) ? tips : [])].filter(Boolean).join('\n\n');
+                    import('react-native').then(({ Alert, Linking: L }) => {
+                      Alert.alert(
+                        `Safety: ${label} (${safety.score}/5)`,
+                        details,
+                        [
+                          { text: 'View Travel Advisory', onPress: () => L.openURL(`https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/${encodeURIComponent(dest)}.html`).catch(() => {}) },
+                          { text: 'OK', style: 'cancel' },
+                        ],
+                      );
+                    });
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}
+                >
                   <FontAwesome name="shield" size={9} color={color} />
                   <Text style={{ fontSize: 10, fontWeight: '600', color }}>{label} ({safety.score})</Text>
-                </View>
+                </Pressable>
               );
             })()}
           </View>
@@ -582,6 +619,94 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </View>
         )}
       </View>
+
+      {/* ── Edit Trip Modal ── */}
+      {editingTrip && trip && (
+        <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditingTrip(false)}>
+          <View style={{ flex: 1, backgroundColor: isDark ? '#0c1117' : '#fff' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb' }}>
+              <Text style={{ ...TextStyles.title, color: isDark ? '#e5e7eb' : '#111827' }}>Edit Trip</Text>
+              <Pressable onPress={() => setEditingTrip(false)} hitSlop={12}>
+                <FontAwesome name="times" size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
+              {/* Destination */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Destination</Text>
+                <TextInput
+                  value={editDest}
+                  onChangeText={setEditDest}
+                  style={{ borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#e5e7eb', borderRadius: 10, padding: 14, fontSize: 16, color: isDark ? '#e5e7eb' : '#111827', backgroundColor: isDark ? '#151d28' : '#f9fafb' }}
+                  placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+                />
+              </View>
+              {/* Start Date */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Start Date</Text>
+                <TextInput
+                  value={editStart}
+                  onChangeText={setEditStart}
+                  placeholder="YYYY-MM-DD"
+                  style={{ borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#e5e7eb', borderRadius: 10, padding: 14, fontSize: 16, color: isDark ? '#e5e7eb' : '#111827', backgroundColor: isDark ? '#151d28' : '#f9fafb' }}
+                  placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+                />
+              </View>
+              {/* End Date */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>End Date</Text>
+                <TextInput
+                  value={editEnd}
+                  onChangeText={setEditEnd}
+                  placeholder="YYYY-MM-DD"
+                  style={{ borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#e5e7eb', borderRadius: 10, padding: 14, fontSize: 16, color: isDark ? '#e5e7eb' : '#111827', backgroundColor: isDark ? '#151d28' : '#f9fafb' }}
+                  placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+                />
+              </View>
+              {/* Travelers */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Travelers</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                  <Pressable onPress={() => setEditTravelers(Math.max(1, editTravelers - 1))} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1a2230' : '#f3f4f6', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+                    <FontAwesome name="minus" size={14} color={isDark ? '#e5e7eb' : '#374151'} />
+                  </Pressable>
+                  <Text style={{ ...TextStyles.title, color: isDark ? '#e5e7eb' : '#111827', minWidth: 30, textAlign: 'center' }}>{editTravelers}</Text>
+                  <Pressable onPress={() => setEditTravelers(editTravelers + 1)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1a2230' : '#f3f4f6', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+                    <FontAwesome name="plus" size={14} color={isDark ? '#e5e7eb' : '#374151'} />
+                  </Pressable>
+                </View>
+              </View>
+              {/* Save Button */}
+              <Pressable
+                onPress={async () => {
+                  if (!trip?.id) return;
+                  setEditSaving(true);
+                  try {
+                    const { updateTripDetails } = await import('@travyl/shared');
+                    await updateTripDetails(trip.id, {
+                      destination: editDest.trim() || undefined,
+                      start_date: editStart || undefined,
+                      end_date: editEnd || undefined,
+                      travelers: editTravelers,
+                    });
+                    refetch();
+                    setEditingTrip(false);
+                  } catch {}
+                  setEditSaving(false);
+                }}
+                disabled={editSaving}
+                style={({ pressed }) => ({
+                  backgroundColor: pressed ? '#2d4a6f' : '#1e3a5f',
+                  borderRadius: 12, paddingVertical: 16, alignItems: 'center',
+                  opacity: editSaving ? 0.6 : 1,
+                })}
+              >
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{editSaving ? 'Saving...' : 'Save Changes'}</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }

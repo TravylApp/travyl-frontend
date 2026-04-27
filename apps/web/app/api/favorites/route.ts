@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { proxyToBackend, BACKEND_URL } from '@/lib/api-utils'
+import { proxyToBackend, BACKEND_URL, rateLimit } from '@/lib/api-utils'
 import { createServerClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -25,6 +25,8 @@ async function getAuthHeader(req: NextRequest): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'favorites', 60, 60000)
+  if (rl) return rl
   return proxyToBackend('/api/favorites', req)
 }
 
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
   const auth = await getAuthHeader(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
   const res = await fetch(`${BACKEND_URL}/api/favorites`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: auth },

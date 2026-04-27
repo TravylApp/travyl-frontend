@@ -1,10 +1,9 @@
-import { useState, useMemo, useEffect, useContext, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, Platform } from 'react-native';
+import { useState, useMemo, useEffect, useContext, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform, TextInput, Keyboard, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import { ActivityIndicator } from 'react-native';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
 // Conditionally import react-native-maps (crashes on web)
 let MapView: any = View;
@@ -19,7 +18,7 @@ if (Platform.OS !== 'web') {
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontSize, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
+import { TextStyles, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -63,7 +62,7 @@ interface HotelData {
   checkOut: string;
   cancellation: string;
   phone: string;
-  email: string;
+  bookingLink: string;
   guestRatings: GuestRatings;
 }
 
@@ -148,7 +147,7 @@ function SectionToggle({
           </View>
         )}
       </View>
-      <FontAwesome name={isOpen ? 'chevron-up' : 'chevron-down'} size={12} color="#94a3b8" />
+      <FontAwesome name={isOpen ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textTertiary} />
     </Pressable>
   );
 }
@@ -184,7 +183,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
 
   return (
     <View style={{ width: '100%', height, backgroundColor: colors.skeleton, position: 'relative' }}>
-      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      <Image source={{ uri: images[idx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" defaultSource={require('@/assets/images/icon.png')} />
       {images.length > 1 && (
         <>
           <Pressable
@@ -195,7 +194,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name="chevron-left" size={12} color="#374151" />
+            <FontAwesome name="chevron-left" size={12} color={colors.text} />
           </Pressable>
           <Pressable
             onPress={next}
@@ -205,7 +204,7 @@ function ImageCarousel({ images, height = 220 }: { images: string[]; height?: nu
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name="chevron-right" size={12} color="#374151" />
+            <FontAwesome name="chevron-right" size={12} color={colors.text} />
           </Pressable>
           <View
             style={{
@@ -293,7 +292,7 @@ function RoomSelection({
                   <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginTop: 2 }}>{room.beds}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <FontAwesome name="users" size={9} color="#9ca3af" />
+                      <FontAwesome name="users" size={9} color={colors.textTertiary} />
                       <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{room.guests}</Text>
                     </View>
                     <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{room.size}</Text>
@@ -316,9 +315,14 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
   const colors = useThemeColors();
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const subtotal = pricePerNight * nights;
-  const cityTax = 3.5 * 2 * nights;
-  const serviceFee = 12;
-  const vat = subtotal * 0.1;
+  // Estimated taxes & fees — actual amounts vary by property and jurisdiction
+  const EST_CITY_TAX_PER_PERSON_PER_NIGHT = 3.5;
+  const EST_GUESTS = 2;
+  const EST_SERVICE_FEE = 12;
+  const EST_VAT_RATE = 0.1;
+  const cityTax = EST_CITY_TAX_PER_PERSON_PER_NIGHT * EST_GUESTS * nights;
+  const serviceFee = EST_SERVICE_FEE;
+  const vat = subtotal * EST_VAT_RATE;
   const total = subtotal + cityTax + serviceFee + vat;
 
   return (
@@ -340,13 +344,13 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ ...TextStyles.subhead, color: colors.tint }}>${total.toFixed(0)}</Text>
-            <FontAwesome name={breakdownOpen ? 'chevron-up' : 'chevron-down'} size={10} color="#94a3b8" />
+            <FontAwesome name={breakdownOpen ? 'chevron-up' : 'chevron-down'} size={10} color={colors.textTertiary} />
           </View>
         </View>
 
         {breakdownOpen && (
           <View style={{ marginTop: 12, gap: 8 }}>
-            <View style={{ height: 1, backgroundColor: 'colors.borderLight' }} />
+            <View style={{ height: 1, backgroundColor: colors.borderLight }} />
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Nightly Rate</Text>
@@ -357,15 +361,15 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
               <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>${subtotal.toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Taxes</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Taxes (est.)</Text>
               <Text style={{ ...TextStyles.body, color: colors.text }}>${(cityTax + vat).toFixed(2)}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Service Fee</Text>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Service Fee (est.)</Text>
               <Text style={{ ...TextStyles.body, color: colors.text }}>${serviceFee.toFixed(2)}</Text>
             </View>
 
-            <View style={{ height: 1, backgroundColor: 'colors.border', marginTop: 4 }} />
+            <View style={{ height: 1, backgroundColor: colors.border, marginTop: 4 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Total</Text>
               <Text style={{ ...TextStyles.subhead, color: colors.tint }}>${total.toFixed(2)}</Text>
@@ -381,7 +385,7 @@ function PricingSummary({ room, pricePerNight, nights }: { room: RoomType; price
 /*  Contact & Location                                                 */
 /* ------------------------------------------------------------------ */
 
-function ContactActions({ phone, email, address }: { phone: string; email: string; address: string }) {
+function ContactActions({ phone, bookingLink, address }: { phone: string; bookingLink: string; address: string }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('hotels');
   return (
@@ -393,37 +397,37 @@ function ContactActions({ phone, email, address }: { phone: string; email: strin
             onPress={() => Linking.openURL(`tel:${phone}`)}
             style={{
               flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-              backgroundColor: '#f0fdf4', borderRadius: 10, paddingVertical: 12,
-              borderWidth: 1, borderColor: '#bbf7d0',
+              backgroundColor: colors.successBg, borderRadius: 10, paddingVertical: 12,
+              borderWidth: 1, borderColor: colors.success,
             }}
           >
-            <FontAwesome name="phone" size={14} color="#16a34a" />
-            <Text style={{ ...TextStyles.bodyEm, color: '#16a34a' }}>Call</Text>
+            <FontAwesome name="phone" size={14} color={colors.success} />
+            <Text style={{ ...TextStyles.bodyEm, color: colors.success }}>Call</Text>
           </Pressable>
         )}
-        {!!email && (
+        {!!bookingLink && (
           <Pressable
-            onPress={() => Linking.openURL(`mailto:${email}`)}
+            onPress={() => Linking.openURL(bookingLink.startsWith('http') ? bookingLink : `https://www.google.com/search?q=${encodeURIComponent(bookingLink)}`)}
             style={{
               flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
               backgroundColor: ACCENT + '10', borderRadius: 10, paddingVertical: 12,
               borderWidth: 1, borderColor: ACCENT + '25',
             }}
           >
-            <FontAwesome name="envelope" size={13} color={ACCENT} />
-            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Email</Text>
+            <FontAwesome name="external-link" size={13} color={ACCENT} />
+            <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Website</Text>
           </Pressable>
         )}
         <Pressable
           onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`)}
           style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: '#fef3c7', borderRadius: 10, paddingVertical: 12,
-            borderWidth: 1, borderColor: '#fde68a',
+            backgroundColor: colors.warningBg, borderRadius: 10, paddingVertical: 12,
+            borderWidth: 1, borderColor: colors.warning,
           }}
         >
-          <FontAwesome name="map-marker" size={14} color="#d97706" />
-          <Text style={{ ...TextStyles.bodyEm, color: '#d97706' }}>Map</Text>
+          <FontAwesome name="map-marker" size={14} color={colors.warning} />
+          <Text style={{ ...TextStyles.bodyEm, color: colors.warning }}>Map</Text>
         </Pressable>
       </View>
     </View>
@@ -569,9 +573,9 @@ function OtherHotelCard({ hotel, onPress }: { hotel: { id: string; name: string;
       })}
     >
       {hotel.image ? (
-        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" />
+        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: 90, height: 100 }} resizeMode="cover" onError={() => {}} />
       ) : (
-        <View style={{ width: 90, height: 100, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 90, height: 100, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
           <FontAwesome name="building" size={24} color="rgba(255,255,255,0.3)" />
         </View>
       )}
@@ -648,7 +652,7 @@ function HotelFilterBar({
             borderWidth: 1, borderColor: activeCount > 0 ? ACCENT + '30' : colors.border,
           }}
         >
-          <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : '#64748b'} />
+          <FontAwesome name="sliders" size={13} color={activeCount > 0 ? ACCENT : colors.textSecondary} />
           <Text style={{ ...TextStyles.bodyEm, color: activeCount > 0 ? ACCENT : colors.textSecondary }}>Filters</Text>
           {activeCount > 0 && (
             <View style={{ backgroundColor: ACCENT, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
@@ -657,7 +661,7 @@ function HotelFilterBar({
           )}
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <FontAwesome name="sort" size={12} color="#9ca3af" />
+          <FontAwesome name="sort" size={12} color={colors.textTertiary} />
           <Pressable onPress={() => {
             const idx = SORT_OPTIONS.findIndex((o) => o.key === sortBy);
             setSortBy(SORT_OPTIONS[(idx + 1) % SORT_OPTIONS.length].key);
@@ -748,7 +752,7 @@ function HotelFilterBar({
           {/* Reset */}
           {activeCount > 0 && (
             <Pressable onPress={resetAll} style={{ alignSelf: 'flex-start' }}>
-              <Text style={{ ...TextStyles.bodyEm, color: '#ef4444' }}>Reset Filters</Text>
+              <Text style={{ ...TextStyles.bodyEm, color: colors.error }}>Reset Filters</Text>
             </Pressable>
           )}
         </View>
@@ -770,23 +774,23 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
       style={({ pressed }) => ({
         backgroundColor: colors.cardBackground, borderRadius: 14, overflow: 'hidden', marginBottom: 14,
         borderWidth: isSelected ? 2 : 1,
-        borderColor: isSelected ? '#60a5fa' : isBooked ? 'rgba(30,58,95,0.3)' : colors.border,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+        borderColor: isSelected ? colors.info : isBooked ? 'rgba(30,58,95,0.3)' : colors.border,
+        shadowColor: colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
         opacity: pressed ? 0.92 : 1,
       })}
     >
       {/* Selected/Booked indicator */}
       {(isSelected || isBooked) && (
-        <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, backgroundColor: isBooked ? '#1e3a5f' : '#60a5fa', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+        <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, backgroundColor: isBooked ? colors.tint : colors.info, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
           <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>{isBooked ? 'Booked' : 'Viewing'}</Text>
         </View>
       )}
 
       {/* Image */}
       {hotel.image ? (
-        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: '100%', height: 170 }} resizeMode="cover" />
+        <Image source={{ uri: hotel.image, headers: { Referer: '' } }} style={{ width: '100%', height: 170 }} resizeMode="cover" onError={() => {}} />
       ) : (
-        <View style={{ width: '100%', height: 110, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: '100%', height: 110, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
           <FontAwesome name="building" size={28} color="rgba(255,255,255,0.3)" />
         </View>
       )}
@@ -799,21 +803,18 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
         {/* Badges row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
           {hotel.rating > 0 && (
-            <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-              <FontAwesome name="star" size={9} color="#2563eb" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#1e40af' }}>{hotel.rating}/5{hotel.reviews > 0 ? ` (${hotel.reviews})` : ''}</Text>
+            <View style={{ backgroundColor: colors.infoBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FontAwesome name="star" size={9} color={colors.info} />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: colors.info }}>{hotel.rating}/5{hotel.reviews > 0 ? ` (${hotel.reviews})` : ''}</Text>
             </View>
           )}
           {hotel.stars > 0 && <Text style={{ fontSize: 10, color: colors.textTertiary }}>{hotel.stars}-Star</Text>}
-          <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: '#059669' }}>Free Cancel</Text>
-          </View>
         </View>
 
         {/* Address */}
         {!!hotel.neighborhood && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-            <FontAwesome name="map-marker" size={10} color="#9ca3af" />
+            <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
             <Text style={{ fontSize: 11, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{hotel.neighborhood}</Text>
           </View>
         )}
@@ -843,52 +844,12 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hotel Policies Section                                             */
+/*  Hotel Policies Section — only shown when real policy data exists   */
 /* ------------------------------------------------------------------ */
 
-function HotelPoliciesSection() {
-  const ACCENT = useTabAccent('hotels');
-  const colors = useThemeColors();
-  const [isOpen, setIsOpen] = useState(false);
-
-  const policies = [
-    { icon: 'sign-in', label: 'Check-in', value: 'From 2:00 PM' },
-    { icon: 'sign-out', label: 'Check-out', value: 'Until 11:00 AM' },
-    { icon: 'calendar-times-o', label: 'Cancellation', value: 'Free until 48h before' },
-    { icon: 'child', label: 'Children', value: 'All ages welcome' },
-    { icon: 'paw', label: 'Pets', value: 'Not allowed' },
-    { icon: 'ban', label: 'Smoking', value: 'Non-smoking property' },
-  ];
-
-  return (
-    <View style={{ marginTop: 14 }}>
-      <SectionToggle
-        title="Hotel Policies"
-        icon="info-circle"
-        isOpen={isOpen}
-        onToggle={() => setIsOpen(!isOpen)}
-        badge={`${policies.length} policies`}
-      />
-      {isOpen && (
-        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
-          <View style={{ gap: 12 }}>
-            {policies.map((p) => (
-              <View key={p.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' }}>
-                  <FontAwesome name={p.icon as any} size={13} color={ACCENT} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>{p.label}</Text>
-                  <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{p.value}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
+// Removed: previously displayed hardcoded fake policies.
+// Will be re-added when hotel API returns actual policy data
+// (check-in/out times, cancellation, pets, smoking, etc.).
 
 /* ------------------------------------------------------------------ */
 /*  Loading Skeleton                                                   */
@@ -915,23 +876,23 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
   return (
     <View style={{
       marginBottom: 28, marginHorizontal: 6, borderRadius: 18,
-      shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 8,
-      backgroundColor: '#fff',
+      shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 8,
+      backgroundColor: colors.cardBackground,
     }}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => ({
           borderRadius: 18, overflow: 'hidden',
-          borderWidth: 1, borderColor: '#e5e7eb',
+          borderWidth: 1, borderColor: colors.border,
           opacity: pressed ? 0.95 : 1,
         })}
       >
         {/* ── Image ── */}
         <View style={{ height: 200, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' }}>
           {images.length > 0 ? (
-            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image source={{ uri: images[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => {}} />
           ) : (
-            <View style={{ flex: 1, backgroundColor: '#1e3a5f', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ flex: 1, backgroundColor: colors.tint, alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesome name="building" size={36} color="rgba(255,255,255,0.25)" />
             </View>
           )}
@@ -945,10 +906,10 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {hasMultiple && (
             <>
               <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === 0 ? images.length - 1 : i - 1)} style={{ position: 'absolute', left: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
-                <FontAwesome name="chevron-left" size={10} color="#374151" />
+                <FontAwesome name="chevron-left" size={10} color={colors.text} />
               </Pressable>
               <Pressable hitSlop={8} onPress={() => setImgIdx(i => i === images.length - 1 ? 0 : i + 1)} style={{ position: 'absolute', right: 8, top: '50%', marginTop: -15, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' }}>
-                <FontAwesome name="chevron-right" size={10} color="#374151" />
+                <FontAwesome name="chevron-right" size={10} color={colors.text} />
               </Pressable>
             </>
           )}
@@ -957,7 +918,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
         {/* ── Content ── */}
         <View style={{ padding: 20, paddingTop: 16 }}>
           {/* Name */}
-          <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: '#111827', lineHeight: 24 }} numberOfLines={2}>{hotel.name}</Text>
+          <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: colors.text, lineHeight: 24 }} numberOfLines={2}>{hotel.name}</Text>
 
           {/* Rating row — tappable to toggle reviews */}
           <Pressable
@@ -979,21 +940,18 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
             {hotel.rating > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <FontAwesome name="star" size={12} color="#f59e0b" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e40af' }}>{hotel.rating}/5</Text>
-                {hotel.reviews > 0 && <Text style={{ fontSize: 12, color: '#6b7280' }}>({hotel.reviews})</Text>}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.info }}>{hotel.rating}/5</Text>
+                {hotel.reviews > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>({hotel.reviews})</Text>}
               </View>
             )}
-            {hotel.stars > 0 && <Text style={{ fontSize: 12, color: '#6b7280' }}>{hotel.stars}-Star</Text>}
-            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: '#6ee7b7' }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#059669' }}>Free Cancel</Text>
-            </View>
+            {hotel.stars > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>{hotel.stars}-Star</Text>}
           </Pressable>
 
           {/* Address */}
           {!!address && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-              <FontAwesome name="map-marker" size={12} color="#9ca3af" />
-              <Text style={{ fontSize: 13, color: '#6b7280', flex: 1 }} numberOfLines={1}>{address}</Text>
+              <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>{address}</Text>
             </View>
           )}
 
@@ -1003,7 +961,7 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
               {hotel.amenities.slice(0, 5).map((a: string) => (
                 <View key={a} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <FontAwesome name={(AMENITY_MAP[a] || 'check') as any} size={12} color={colors.tint} />
-                  <Text style={{ fontSize: 12, color: '#4b5563' }}>{a}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{a}</Text>
                 </View>
               ))}
             </View>
@@ -1012,9 +970,9 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {/* Check-in/out */}
           {(!!hotel.checkIn || !!hotel.checkOut) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
-              <FontAwesome name="clock-o" size={11} color="#9ca3af" />
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>
-                Check-in: {hotel.checkIn || '3:00 PM'} {'\u00B7'} Check-out: {hotel.checkOut || '11:00 AM'}
+              <FontAwesome name="clock-o" size={11} color={colors.textTertiary} />
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                {hotel.checkIn ? `Check-in: ${hotel.checkIn}` : ''}{hotel.checkIn && hotel.checkOut ? ` ${'\u00B7'} ` : ''}{hotel.checkOut ? `Check-out: ${hotel.checkOut}` : ''}
               </Text>
             </View>
           )}
@@ -1023,8 +981,8 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
           {hotel.price > 0 && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                <Text style={{ fontSize: 28, fontFamily: FontFamily.sansBold, color: '#111827' }}>${total > 0 ? total.toFixed(0) : hotel.price}</Text>
-                <Text style={{ fontSize: 13, color: '#9ca3af', marginLeft: 8 }}>
+                <Text style={{ fontSize: 28, fontFamily: FontFamily.sansBold, color: colors.text }}>${total > 0 ? total.toFixed(0) : hotel.price}</Text>
+                <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
                   (${hotel.price}/nt {'\u00B7'} {nights} night{nights !== 1 ? 's' : ''})
                 </Text>
               </View>
@@ -1033,33 +991,33 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
 
           {/* Inline reviews — shown when stars are tapped */}
           {showReviews && (
-            <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 10 }}>
+            <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 10 }}>
               {loadingReviews ? (
                 <ActivityIndicator size="small" color={colors.tint} style={{ paddingVertical: 12 }} />
               ) : reviews.length === 0 ? (
-                <Text style={{ fontSize: 13, color: '#9ca3af', paddingVertical: 8 }}>No reviews loaded yet</Text>
+                <Text style={{ fontSize: 13, color: colors.textTertiary, paddingVertical: 8 }}>No reviews loaded yet</Text>
               ) : (
                 reviews.map((r: any, i: number) => (
-                  <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f3f4f6' }}>
+                  <View key={i} style={{ paddingVertical: 10, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: colors.borderLight }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       {r.avatar ? (
-                        <Image source={{ uri: r.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
+                        <Image source={{ uri: r.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} onError={() => {}} />
                       ) : (
-                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' }}>
-                          <FontAwesome name="user" size={12} color="#9ca3af" />
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                          <FontAwesome name="user" size={12} color={colors.textTertiary} />
                         </View>
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{r.author}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>{r.author}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                           {Array.from({ length: 5 }).map((_, si) => (
-                            <FontAwesome key={si} name="star" size={9} color={si < r.rating ? '#f59e0b' : '#e5e7eb'} />
+                            <FontAwesome key={si} name="star" size={9} color={si < r.rating ? '#f59e0b' : colors.border} />
                           ))}
-                          {!!r.date && <Text style={{ fontSize: 10, color: '#9ca3af', marginLeft: 4 }}>{r.date}</Text>}
+                          {!!r.date && <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 4 }}>{r.date}</Text>}
                         </View>
                       </View>
                     </View>
-                    {!!r.text && <Text style={{ fontSize: 13, color: '#4b5563', lineHeight: 19, marginTop: 6 }} numberOfLines={3}>{r.text}</Text>}
+                    {!!r.text && <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginTop: 6 }} numberOfLines={3}>{r.text}</Text>}
                   </View>
                 ))
               )}
@@ -1155,47 +1113,159 @@ export default function HotelsScreen() {
     }));
   }, [ctx]);
 
-  // Live hotel search via backend API
+  // Paginated hotel search — endless scroll
   const destination = trip?.destination?.split(',')[0]?.trim();
-  const { data: searchResults } = useHotelSearch({
+  const [searchHotels, setSearchHotels] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [hotelSearchPage, setHotelSearchPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreHotels, setHasMoreHotels] = useState(true);
+  const searchTimerRef2 = useRef<NodeJS.Timeout | null>(null);
+
+  // Also use the shared hook for initial results
+  const { data: hookResults } = useHotelSearch({
     destination,
     checkIn: trip?.start_date ?? undefined,
     checkOut: trip?.end_date ?? undefined,
   });
-  const searchHotels = useMemo(() => {
-    const hotels = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? [];
-    return hotels.map((h: any, i: number) => {
-      // Parse stars — can be number or string like "1-star hotel"
-      const rawStars = h.stars;
-      const parsedStars = typeof rawStars === 'number' ? rawStars : typeof rawStars === 'string' ? parseInt(rawStars) || 0 : 0;
-      return {
-        id: h.id || `search-${i}`,
-        name: h.name,
-        stars: parsedStars,
-        rating: h.rating ?? 0,
-        reviews: h.reviews ?? 0,
-        price: h.price ?? 0,
-        neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
-        image: h.images?.[0] ?? h.image ?? '',
-        images: h.images ?? [],
-        amenities: h.amenities ?? [],
-        checkIn: h.checkIn ?? '',
-        checkOut: h.checkOut ?? '',
-        link: h.link ?? '',
-        description: h.description ?? '',
-        address: h.address ?? '',
-        lat: h.lat ?? 0,
-        lng: h.lng ?? 0,
-        brand: '',
-        label: '',
-      };
-    });
-  }, [searchResults]);
 
-  // Merge: search results (have images) first, then context hotels without dupes
+  const mapHotelResult = useCallback((h: any, i: number, prefix: string) => {
+    const rawStars = h.stars;
+    const parsedStars = typeof rawStars === 'number' ? rawStars : typeof rawStars === 'string' ? parseInt(rawStars) || 0 : 0;
+    return {
+      id: h.id || `${prefix}-${i}`,
+      name: h.name,
+      stars: parsedStars,
+      rating: h.rating ?? 0,
+      reviews: h.reviewCount ?? h.reviews ?? 0,
+      price: h.price ?? 0,
+      neighborhood: h.neighborhood ?? h.address?.split(',')[0] ?? '',
+      image: upscaleGoogleImage(h.images?.[0] ?? h.image) || h.images?.[0] || h.image || '',
+      images: (h.images ?? (h.image ? [h.image] : [])).map((img: string) => upscaleGoogleImage(img) || img),
+      amenities: h.amenities ?? [],
+      checkIn: h.checkIn ?? '',
+      checkOut: h.checkOut ?? '',
+      link: h.link ?? h.website ?? '',
+      description: h.description ?? h.tagline ?? '',
+      address: h.address ?? '',
+      lat: (h.lat || h.latitude) && (h.lat || h.latitude) !== 0 ? (h.lat || h.latitude) : null,
+      lng: (h.lng || h.longitude) && (h.lng || h.longitude) !== 0 ? (h.lng || h.longitude) : null,
+      brand: '',
+      label: '',
+    };
+  }, []);
+
+  // Get destination coordinates for Foursquare
+  const destLat = ctx?.destination_lat ?? ctx?.latitude ?? null;
+  const destLng = ctx?.destination_lng ?? ctx?.longitude ?? null;
+
+  const fetchHotelPage = useCallback(async (query: string, page: number, append: boolean) => {
+    setIsLoadingMore(true);
+    const base = getWebApiBase();
+    try {
+      const fetches: Promise<any[]>[] = [];
+
+      // Foursquare — reliable pagination via coord offsets
+      if (destLat && destLng) {
+        const offsetLat = destLat + (page % 3) * 0.015;
+        const offsetLng = destLng + (page % 2) * 0.012;
+        fetches.push(
+          fetch(`${base}/api/places?lat=${offsetLat}&lng=${offsetLng}&category=hotel&limit=20`)
+            .then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else if (destination) {
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destination)}&format=json&limit=1`, { headers: { 'User-Agent': 'Travyl/1.0' } });
+          const geoData = await geoRes.json() as any[];
+          if (geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat) + (page % 3) * 0.015;
+            const lng = parseFloat(geoData[0].lon) + (page % 2) * 0.012;
+            fetches.push(
+              fetch(`${base}/api/places?lat=${lat}&lng=${lng}&category=hotel&limit=20`)
+                .then(r => r.ok ? r.json() : []).catch(() => []),
+            );
+          }
+        } catch {}
+      }
+
+      // Page 0: Maps + TripAdvisor. Pages 1+: TripAdvisor pagination
+      if (page === 0) {
+        fetches.push(
+          fetch(`${base}/api/search/maps?q=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=h`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      } else {
+        fetches.push(
+          fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=h&offset=${page * 30}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        );
+      }
+
+      const results = await Promise.all(fetches);
+      const all = results.flat()
+        .filter((p: any) => p.name)
+        .map((p: any, i: number) => mapHotelResult(p, i + page * 100, `sh-p${page}`));
+      if (all.length === 0 && page > 0) { setHasMoreHotels(false); setIsLoadingMore(false); return; }
+      setSearchHotels(prev => {
+        if (!append) return all;
+        const existingNames = new Set(prev.map((h: any) => ((h.name || '') as string).toLowerCase()));
+        return [...prev, ...all.filter((h: any) => !existingNames.has(((h.name || '') as string).toLowerCase()))];
+      });
+    } catch {}
+    setIsLoadingMore(false);
+  }, [mapHotelResult, destLat, destLng, destination]);
+
+  // Initial search
+  useEffect(() => {
+    if (destination) {
+      setHotelSearchPage(0);
+      setHasMoreHotels(true);
+      fetchHotelPage(`hotels in ${destination}`, 0, false);
+    }
+  }, [destination]);
+
+  // Merge hook results into search results
+  useEffect(() => {
+    if (!hookResults) return;
+    const hotels = Array.isArray(hookResults) ? hookResults : (hookResults as any)?.hotels ?? [];
+    if (hotels.length === 0) return;
+    const mapped = hotels.map((h: any, i: number) => mapHotelResult(h, i, 'hook'));
+    setSearchHotels(prev => {
+      const existingNames = new Set(prev.map((h: any) => ((h.name || '') as string).toLowerCase()));
+      return [...prev, ...mapped.filter((h: any) => !existingNames.has(((h.name || '') as string).toLowerCase()))];
+    });
+  }, [hookResults, mapHotelResult]);
+
+  // User search
+  useEffect(() => {
+    if (!userSearch.trim()) return;
+    if (searchTimerRef2.current) clearTimeout(searchTimerRef2.current);
+    searchTimerRef2.current = setTimeout(() => {
+      setHotelSearchPage(0);
+      setHasMoreHotels(true);
+      fetchHotelPage(userSearch, 0, false);
+    }, 400) as unknown as NodeJS.Timeout;
+    return () => { if (searchTimerRef2.current) clearTimeout(searchTimerRef2.current); };
+  }, [userSearch]);
+
+  // Load more
+  const loadMoreHotels = useCallback(() => {
+    if (isLoadingMore || !hasMoreHotels) return;
+    const nextPage = hotelSearchPage + 1;
+    setHotelSearchPage(nextPage);
+    const q = userSearch.trim() || (destination ? `hotels in ${destination}` : '');
+    if (q) fetchHotelPage(q, nextPage, true);
+  }, [hotelSearchPage, isLoadingMore, hasMoreHotels, userSearch, destination, fetchHotelPage]);
+
+  const handleHotelScroll = useCallback((e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < 800 && hasMoreHotels && !isLoadingMore) loadMoreHotels();
+  }, [hasMoreHotels, isLoadingMore, loadMoreHotels]);
+
+  // Merge: search results first, then context hotels without dupes
   const realHotels = useMemo(() => {
-    const seen = new Set(searchHotels.map((h: any) => h.name.toLowerCase()));
-    const extra = contextHotels.filter((h: any) => !seen.has(h.name.toLowerCase()));
+    const seen = new Set(searchHotels.filter((h: any) => h.name).map((h: any) => ((h.name || '') as string).toLowerCase()));
+    const extra = contextHotels.filter((h: any) => !seen.has(((h.name || '') as string).toLowerCase()));
     return [...searchHotels, ...extra];
   }, [contextHotels, searchHotels]);
 
@@ -1249,7 +1319,7 @@ export default function HotelsScreen() {
   // Build detail from the selected hotel in the browse list
   const hotel = useMemo<HotelData | null>(() => {
     const contextSource = ctx?.all_hotels ?? ctx?.hotels ?? [];
-    const searchSource = searchResults ? (Array.isArray(searchResults) ? searchResults : (searchResults as any)?.hotels ?? []) : [];
+    const searchSource = hookResults ? (Array.isArray(hookResults) ? hookResults : (hookResults as any)?.hotels ?? []) : [];
     const allSources = [...contextSource, ...searchSource];
     const h = realHotels[selectedHotelIdx] ?? allSources[0] ?? realHotels[0];
     if (!h) return null;
@@ -1298,7 +1368,7 @@ export default function HotelsScreen() {
       checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
       cancellation: '',
       phone: '',
-      email: h.link ?? '',
+      bookingLink: h.link ?? '',
       guestRatings: {
         overall: rating,
         label: ratingLabel,
@@ -1309,7 +1379,7 @@ export default function HotelsScreen() {
         value: 0,
       },
     };
-  }, [ctx, trip, searchResults, realHotels, selectedHotelIdx]);
+  }, [ctx, trip, hookResults, realHotels, selectedHotelIdx]);
   if (!hotel && realHotels.length === 0) {
     return (
       <PageTransition>
@@ -1340,6 +1410,8 @@ export default function HotelsScreen() {
       style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
+      onScroll={handleHotelScroll}
+      scrollEventThrottle={16}
     >
       {/* ── Selected Hotel Detail (top, like Figma) ── */}
       {hotel && (() => {
@@ -1348,9 +1420,14 @@ export default function HotelsScreen() {
           : 1;
         const pricePerNight = currentRoom?.price ?? hotel.price;
         const subtotal = pricePerNight * nights;
-        const cityTax = 3.5 * 2 * nights;
-        const serviceFee = 12;
-        const vat = subtotal * 0.1;
+        // Estimated taxes & fees — actual amounts vary by property
+        const EST_CITY_TAX_PP_PN = 3.5;
+        const EST_GUESTS = 2;
+        const EST_SVC_FEE = 12;
+        const EST_VAT = 0.1;
+        const cityTax = EST_CITY_TAX_PP_PN * EST_GUESTS * nights;
+        const serviceFee = EST_SVC_FEE;
+        const vat = subtotal * EST_VAT;
         const totalCost = subtotal + cityTax + serviceFee + vat;
         return (
       <View onLayout={(e) => { detailYRef.current = e.nativeEvent.layout.y; }} style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -1379,10 +1456,10 @@ export default function HotelsScreen() {
               <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{booked ? 'Confirmed' : 'Selected'}</Text>
             </View>
             {hotel.rating > 0 && (
-              <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <FontAwesome name="star" size={10} color="#2563eb" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1e40af' }}>{hotel.rating}/5</Text>
-                {hotel.reviews > 0 && <Text style={{ fontSize: 11, color: '#3b82f6' }}>({hotel.reviews.toLocaleString()})</Text>}
+              <View style={{ backgroundColor: colors.infoBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="star" size={10} color={colors.info} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.info }}>{hotel.rating}/5</Text>
+                {hotel.reviews > 0 && <Text style={{ fontSize: 11, color: colors.info }}>({hotel.reviews.toLocaleString()})</Text>}
               </View>
             )}
           </View>
@@ -1401,11 +1478,8 @@ export default function HotelsScreen() {
           {(!!hotel.checkIn || !!hotel.checkOut) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingHorizontal: 14, marginTop: 8 }}>
               <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>
-                {hotel.checkIn ? `Check-in: 3pm` : ''}{hotel.checkIn && hotel.checkOut ? ' \u00B7 ' : ''}{hotel.checkOut ? `Check-out: 11am` : ''}
+                {hotel.checkIn ? `Check-in: ${hotel.checkIn}` : ''}{hotel.checkIn && hotel.checkOut ? ' \u00B7 ' : ''}{hotel.checkOut ? `Check-out: ${hotel.checkOut}` : ''}
               </Text>
-              <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0' }}>
-                <Text style={{ ...TextStyles.xs, color: '#16a34a', fontWeight: '600' }}>Free Cancellation</Text>
-              </View>
             </View>
           )}
 
@@ -1436,18 +1510,18 @@ export default function HotelsScreen() {
                 {/* 3-column grid: Call / Email (or Website) / Map */}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {!!hotel.phone && (
-                    <Pressable onPress={() => Linking.openURL(`tel:${hotel.phone}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                    <Pressable onPress={() => Linking.openURL(`tel:${hotel.phone}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
                       <FontAwesome name="phone" size={16} color={colors.tint} />
                       <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Call</Text>
                     </Pressable>
                   )}
-                  {!!hotel.email && (
-                    <Pressable onPress={() => Linking.openURL(hotel.email.startsWith('http') ? hotel.email : `mailto:${hotel.email}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
-                      <FontAwesome name={hotel.email.startsWith('http') ? 'external-link' : 'envelope'} size={15} color={colors.tint} />
-                      <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>{hotel.email.startsWith('http') ? 'Website' : 'Email'}</Text>
+                  {!!hotel.bookingLink && (
+                    <Pressable onPress={() => Linking.openURL(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.bookingLink)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                      <FontAwesome name="external-link" size={15} color={colors.tint} />
+                      <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Website</Text>
                     </Pressable>
                   )}
-                  <Pressable onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(hotel.address)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                  <Pressable onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(hotel.address)}`)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
                     <FontAwesome name="map-pin" size={16} color="#8b6f47" />
                     <Text style={{ ...TextStyles.xs, color: colors.text, marginTop: 4, fontWeight: '600' }}>Map</Text>
                   </Pressable>
@@ -1455,7 +1529,7 @@ export default function HotelsScreen() {
 
                 {/* Address card */}
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 10, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
-                  <FontAwesome name="map-marker" size={14} color="#9ca3af" style={{ marginTop: 2 }} />
+                  <FontAwesome name="map-marker" size={14} color={colors.textTertiary} style={{ marginTop: 2 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ ...TextStyles.body, color: colors.text }}>{hotel.address}</Text>
                     {!!hotel.neighborhood && (
@@ -1467,11 +1541,11 @@ export default function HotelsScreen() {
             )}
 
             {/* ── Book Now — opens hotel site in-app ── */}
-            {!!hotel.email && (
+            {!!hotel.bookingLink && (
               <Pressable
-                onPress={() => WebBrowser.openBrowserAsync(hotel.email.startsWith('http') ? hotel.email : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
                 style={({ pressed }) => ({
-                  marginTop: 16, backgroundColor: pressed ? '#2d4a6f' : '#1e3a5f', borderRadius: 12, paddingVertical: 15,
+                  marginTop: 16, backgroundColor: pressed ? colors.tint : colors.tint, borderRadius: 12, paddingVertical: 15,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
                 })}
               >
@@ -1485,25 +1559,46 @@ export default function HotelsScreen() {
         );
       })()}
 
+      {/* ── Search bar ── */}
+      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(userSearch, 0, false); } }}
+            returnKeyType="search"
+            placeholder="Search hotels — Marriott, boutique, spa..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(`hotels in ${destination}`, 0, false); } }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Browse Hotels — toggle + list/card views ── */}
-      {realHotels.length > 1 && (
-        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+      {realHotels.length > 0 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
           {/* Header with toggle */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ ...TextStyles.subhead, color: colors.text }}>Browse Hotels</Text>
-            <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderRadius: 8, padding: 2 }}>
+            <View style={{ flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 8, padding: 2 }}>
               <Pressable
                 onPress={() => setBrowseMode('list')}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'list' ? '#fff' : 'transparent',
-                  ...(browseMode === 'list' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'list' ? colors.cardBackground : 'transparent',
+                  ...(browseMode === 'list' ? { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
                 }}
               >
                 <FontAwesome name="list" size={13} color={browseMode === 'list' ? colors.tint : colors.textTertiary} />
               </Pressable>
               <Pressable
                 onPress={() => setBrowseMode('cards')}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'cards' ? '#fff' : 'transparent',
-                  ...(browseMode === 'cards' ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: browseMode === 'cards' ? colors.cardBackground : 'transparent',
+                  ...(browseMode === 'cards' ? { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}),
                 }}
               >
                 <FontAwesome name="th-large" size={13} color={browseMode === 'cards' ? colors.tint : colors.textTertiary} />
@@ -1550,6 +1645,14 @@ export default function HotelsScreen() {
               overlay
             />
           )}
+        </View>
+      )}
+
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={ACCENT} />
+          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 6 }}>Loading more hotels...</Text>
         </View>
       )}
     </ScrollView>

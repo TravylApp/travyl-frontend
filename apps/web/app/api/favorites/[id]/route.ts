@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BACKEND_URL } from '@/lib/api-utils'
+import { BACKEND_URL, rateLimit } from '@/lib/api-utils'
 import { createServerClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -27,6 +27,8 @@ async function getAuthHeader(req: NextRequest): Promise<string | null> {
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
+  const rl = rateLimit(req, 'favorites-[id]', 60, 60000)
+  if (rl) return rl
 ) {
   const { id } = await params
   if (!BACKEND_URL) return NextResponse.json({ error: 'Backend URL not configured' }, { status: 503 })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { getSupabase, supabaseUrl, supabaseKey } from '@/lib/api-utils'
+import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
   // Try to get user session from cookies
@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     supabaseUrl,
     supabaseKey,
     {
+  const rl = rateLimit(req, 'trips', 60, 60000)
+  if (rl) return rl
       cookies: {
         getAll() {
           return req.cookies.getAll()
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
     return NextResponse.json(data ?? [])
   }
 
@@ -45,6 +47,6 @@ export async function GET(req: NextRequest) {
     .in('id', tripIds)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
   return NextResponse.json(data ?? [])
 }

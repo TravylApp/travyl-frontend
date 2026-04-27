@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   BackendPlace,
@@ -55,6 +56,8 @@ export async function GET(req: NextRequest) {
       const nlpRes = await fetch(
         `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}&lat=${lat}&lng=${lng}`,
         { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
+  const rl = rateLimit(req, 'places', 30, 60000)
+  if (rl) return rl
       )
       if (nlpRes.ok) {
         const nlpData = await nlpRes.json()
@@ -109,7 +112,6 @@ export async function GET(req: NextRequest) {
     res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
     return res_out
   } catch (err) {
-    console.error('[places] Route error:', err)
     return NextResponse.json([])
   }
 }

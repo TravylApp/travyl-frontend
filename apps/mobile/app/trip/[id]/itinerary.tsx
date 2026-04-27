@@ -328,7 +328,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
             lat: i.lat!,
             lng: i.lng!,
             label: i.name,
-            color: '#94a3b8',
+            color: colors.textTertiary,
             muted: true,
           }))
       : [],
@@ -582,7 +582,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
                       )}
                     </View>
                     {item.price && (
-                      <Text style={{ ...TextStyles.captionEm, color: '#6366f1', marginTop: 3 }}>
+                      <Text style={{ ...TextStyles.captionEm, color: colors.tint, marginTop: 3 }}>
                         {item.dealPrice ?? item.price}
                       </Text>
                     )}
@@ -814,8 +814,8 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
 
               {/* Current time line */}
               {currentHour >= 0 && currentHour <= 24 && (
-                <View style={{ position: 'absolute', top: currentHour * HOUR_HEIGHT, left: 0, right: 0, height: 2, backgroundColor: '#ef4444', zIndex: 10 }}>
-                  {colIdx === 0 && <View style={{ position: 'absolute', left: -3, top: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' }} />}
+                <View style={{ position: 'absolute', top: currentHour * HOUR_HEIGHT, left: 0, right: 0, height: 2, backgroundColor: colors.error, zIndex: 10 }}>
+                  {colIdx === 0 && <View style={{ position: 'absolute', left: -3, top: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error }} />}
                 </View>
               )}
 
@@ -867,7 +867,7 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
               {movingActivityId && (
                 <View style={{
                   position: 'absolute', top: 0, left: 0, right: 0,
-                  backgroundColor: '#3b82f6', paddingVertical: 3,
+                  backgroundColor: colors.info, paddingVertical: 3,
                   alignItems: 'center', zIndex: 200,
                 }}>
                   <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }}>Tap a time slot to move</Text>
@@ -1054,7 +1054,7 @@ function FlightSection({ flight, collapsed }: { flight: FlightDetail; collapsed?
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{label}</Text>
                 {flight.isBooked && (
-                  <View style={{ backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                  <View style={{ backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
                     <Text style={{ ...TextStyles.smEm, color: '#fff' }}>Booked</Text>
                   </View>
                 )}
@@ -1079,7 +1079,7 @@ function FlightSection({ flight, collapsed }: { flight: FlightDetail; collapsed?
           backgroundColor: colors.cardBackground,
           borderRadius: 12,
           borderWidth: 1,
-          borderColor: '#bfdbfe',
+          borderColor: colors.info,
           overflow: 'hidden',
           shadowColor: colors.shadow,
           shadowOffset: { width: 0, height: 1 },
@@ -1118,7 +1118,7 @@ function FlightSection({ flight, collapsed }: { flight: FlightDetail; collapsed?
                   </View>
                 </View>
                 <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginTop: 12 }}>{flight.duration}</Text>
-                <Text style={{ ...TextStyles.smEm, color: '#10b981' }}>Direct</Text>
+                <Text style={{ ...TextStyles.smEm, color: colors.success }}>Direct</Text>
               </View>
 
               {/* Arrival */}
@@ -2364,7 +2364,6 @@ export default function ItineraryScreen() {
 
       await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
     } catch (e) {
-      console.error('[reorder] persist failed:', e);
     }
   }, [trip, id]);
 
@@ -2778,7 +2777,6 @@ export default function ItineraryScreen() {
           onSelectDay={setSelectedDayIndex}
           onMoveActivity={(activityId, newHour, newDayIdx) => {
             // TODO: persist move to Supabase — update activity starting_time and starting_date
-            console.log(`Move ${activityId} to hour ${newHour} on day ${newDayIdx}`);
           }}
         />
       ) : viewMode === 'glance' ? (
