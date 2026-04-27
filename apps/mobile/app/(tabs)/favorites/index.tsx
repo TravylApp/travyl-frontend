@@ -62,7 +62,7 @@ function balanceColumns(places: PlaceItem[]): [PlaceItem[], PlaceItem[]] {
 }
 
 type TabKey = 'all' | 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' | 'favorites';
-type SortKey = 'default' | 'top_rated' | 'nearest' | 'az';
+type SortKey = 'default' | 'top_rated' | 'nearest' | 'popular' | 'az';
 type ViewMode = 'grid' | 'stack' | 'flush';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
@@ -76,9 +76,9 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
 ];
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'default', label: 'Default' },
-  { key: 'nearest', label: 'Nearest' },
+  { key: 'default', label: 'Distance' },
   { key: 'top_rated', label: 'Top Rated' },
+  { key: 'popular', label: 'Most Reviewed' },
   { key: 'az', label: 'A-Z' },
 ];
 
@@ -466,6 +466,7 @@ export default function FavoritesScreen() {
       );
     }
     if (sortBy === 'top_rated') result.sort((a, b) => b.rating - a.rating);
+    else if (sortBy === 'popular') result.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
     else if ((sortBy === 'nearest' || sortBy === 'default') && userLocation) {
       // Default and Nearest both sort by distance when location is available
       result.sort((a, b) => {
@@ -503,20 +504,29 @@ export default function FavoritesScreen() {
     return { sections, remaining: [] as typeof filteredPlaces };
   }, [filteredPlaces]);
 
-  // Combine nearby query + nearby discover feed places into one "Near You" section
+  // Split results into "Near You" (within ~10 miles) and "More results".
+  // Runs for both browse and search modes — when searching, Near You shows
+  // local matches, More results shows further-afield API hits.
   const themedSections = useMemo(() => {
-    if (searchCity || activeTab !== 'all') return baseSections;
+    if (activeTab !== 'all') return baseSections;
     if (!userLocation) return baseSections;
 
-    // Merge nearby query + any discover feed places within 10 miles
+    // Build the candidate "near you" pool. When searching, pull from the
+    // already-filtered set (which contains both API and local matches).
+    // When browsing, also fold in discover-feed nearby places.
     const nearIds = new Set(nearbyPlaces.map(p => p.id));
-    const discoverNearby = discoveredPlaces.filter(p =>
-      !nearIds.has(p.id) &&
+    const filteredIds = new Set(filteredPlaces.map(p => p.id));
+    const isWithinRadius = (p: typeof filteredPlaces[number]) =>
       p.latitude != null && p.longitude != null &&
-      distanceKm(userLocation.lat, userLocation.lng, p.latitude!, p.longitude!) <= NEARBY_MERGE_RADIUS_KM
-    );
+      distanceKm(userLocation.lat, userLocation.lng, p.latitude!, p.longitude!) <= NEARBY_MERGE_RADIUS_KM;
 
-    const allNearby = dedupPlaces([...nearbyPlaces, ...discoverNearby])
+    const filteredNearby = filteredPlaces.filter(isWithinRadius);
+    const discoverNearby = !searchCity
+      ? discoveredPlaces.filter(p => !nearIds.has(p.id) && !filteredIds.has(p.id) && isWithinRadius(p))
+      : [];
+    const seedNearby = !searchCity ? nearbyPlaces : [];
+
+    const allNearby = dedupPlaces([...seedNearby, ...filteredNearby, ...discoverNearby])
       .sort((a, b) => {
         const dA = a.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) : NO_COORDS_DISTANCE;
         const dB = b.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!) : NO_COORDS_DISTANCE;
@@ -526,18 +536,29 @@ export default function FavoritesScreen() {
     if (!allNearby.length) return baseSections;
 
     const nearYouSection = {
-      collection: { key: 'near-you', label: 'Near You', icon: 'map-marker' },
+      collection: { key: 'near-you', label: 'Near You', match: {} },
       places: allNearby,
     };
 
-    // Other sections: only places NOT in the nearby section
+    // When searching, the rest goes under "More results" — flattened, not split by category
+    if (searchCity) {
+      const nearSet = new Set(allNearby.map(p => p.id));
+      const remaining = filteredPlaces.filter(p => !nearSet.has(p.id));
+      const sections: typeof baseSections.sections = [nearYouSection];
+      if (remaining.length > 0) {
+        sections.push({ collection: { key: 'more-results', label: 'More results', match: {} }, places: remaining });
+      }
+      return { ...baseSections, sections };
+    }
+
+    // Browse mode: keep category sections, just hoist nearby out
     const nearSet = new Set(allNearby.map(p => p.id));
     const otherSections = baseSections.sections
       .map(s => ({ ...s, places: s.places.filter(p => !nearSet.has(p.id)) }))
       .filter(s => s.places.length > 0);
 
     return { ...baseSections, sections: [nearYouSection, ...otherSections] };
-  }, [baseSections, nearbyPlaces, discoveredPlaces, searchCity, activeTab, userLocation]);
+  }, [baseSections, filteredPlaces, nearbyPlaces, discoveredPlaces, searchCity, activeTab, userLocation]);
 
   // All places for the showcase — nearby + filtered combined
   const allShowcasePlaces = useMemo(() => {
@@ -646,23 +667,6 @@ export default function FavoritesScreen() {
         {/* Search + Sort row */}
         <View style={{ paddingHorizontal: PAD, paddingBottom: 10, paddingTop: subcategories.length > 1 ? 0 : 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Pressable
-              onPress={() => {
-                const keys: SortKey[] = ['default', 'nearest', 'top_rated', 'az'];
-                const idx = keys.indexOf(sortBy);
-                setSortBy(keys[(idx + 1) % keys.length]);
-              }}
-              style={{
-                flexDirection: 'row', alignItems: 'center',
-                paddingHorizontal: 12, height: 36, borderRadius: 20,
-                backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border,
-              }}
-            >
-              <FontAwesome name="sort" size={11} color={colors.textTertiary} style={{ marginRight: 6 }} />
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>
-                {SORT_OPTIONS.find((o) => o.key === sortBy)?.label}
-              </Text>
-            </Pressable>
             <View style={{
               flex: 1, flexDirection: 'row', alignItems: 'center',
               backgroundColor: colors.cardBackground, borderRadius: 20,
@@ -699,6 +703,38 @@ export default function FavoritesScreen() {
               )}
             </View>
           </View>
+
+          {/* Sort chips — visible options */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, paddingRight: 4 }}
+          >
+            {SORT_OPTIONS.map((opt) => {
+              const active = sortBy === opt.key;
+              return (
+                <Pressable
+                  key={opt.key}
+                  onPress={() => setSortBy(opt.key)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    paddingHorizontal: 12, height: 30, borderRadius: 15,
+                    backgroundColor: active ? colors.tint : colors.cardBackground,
+                    borderWidth: 1,
+                    borderColor: active ? colors.tint : colors.border,
+                  }}
+                >
+                  <Text style={{
+                    ...TextStyles.caption,
+                    color: active ? '#fff' : colors.textSecondary,
+                    fontWeight: active ? '600' : '400',
+                  }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Near You — rendered as a section in the same grid style */}

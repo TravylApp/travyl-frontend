@@ -220,6 +220,25 @@ async function fetchMapsSearch(query: string): Promise<PlaceItem[]> {
     .catch(() => []);
 }
 
+// /api/places NLP search — primary source. Works for free-text queries
+// like "big library", "park", "rooftop bars". Backend forwards to SerpAPI
+// google_local with proper location context.
+async function fetchPlacesNlp(
+  query: string,
+  userLoc?: { lat: number; lng: number } | null,
+  limit = 30,
+): Promise<PlaceItem[]> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  if (userLoc) {
+    params.set('lat', String(userLoc.lat));
+    params.set('lng', String(userLoc.lng));
+  }
+  return fetchWithTimeout(`${BASE()}/api/places?${params.toString()}`)
+    .then(r => r.ok ? r.json() as Promise<any[]> : [])
+    .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
+    .catch(() => []);
+}
+
 async function fetchTripAdvisor(query: string, ssrc = 'a'): Promise<PlaceItem[]> {
   return fetchWithTimeout(`${BASE()}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=${ssrc}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
@@ -403,7 +422,13 @@ export async function searchPlaces(
     // Vary sources per page for fresh results each scroll
     const fetches: Promise<PlaceItem[]>[] = [];
 
-    // Google Maps — every page, but vary the query slightly
+    // Primary source: /api/places?q= — NLP search via backend SerpAPI integration.
+    // Works for free-text and produces 50+ results for queries like "big library".
+    if (page === 0) {
+      fetches.push(fetchPlacesNlp(query, userLoc, 30));
+    }
+
+    // Google Maps fallback — every page, but vary the query slightly
     if (page === 0) {
       fetches.push(fetchMapsSearch(mapsQuery));
     } else {
