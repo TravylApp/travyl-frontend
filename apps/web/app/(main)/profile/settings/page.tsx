@@ -445,12 +445,10 @@ export default function ProfileSettings() {
           const userTrips = await fetchTrips(user.id);
           setTrips(userTrips);
         } catch (tripErr) {
-          console.error('Error loading trips:', tripErr);
           // Continue without trips - stats will show 0
         }
 
       } catch (err) {
-        console.error('Error loading profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load profile');
       } finally {
         setIsLoading(false);
@@ -483,7 +481,6 @@ export default function ProfileSettings() {
         try {
           finalAvatarUrl = await uploadAvatar(user.id, formData.profilePhoto);
         } catch (uploadErr) {
-          console.error('Error uploading avatar:', uploadErr);
           toast.error('Failed to upload image. Please try again.');
           setIsSaving(false);
           return false;
@@ -597,7 +594,6 @@ export default function ProfileSettings() {
       snapshotAll();
       return true;
     } catch (err) {
-      console.error('Error saving settings:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to save settings. Please try again.');
       return false;
     } finally {

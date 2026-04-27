@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequiredParams, getOptionalParam, errorResponse, CACHE_1H } from '@/lib/api-utils'
+import { getRequiredParams, getOptionalParam, errorResponse, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 interface SunriseResponse {
   sunrise: string
@@ -10,6 +10,8 @@ interface SunriseResponse {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'sunrise', 60, 60000)
+  if (rl) return rl
   const params = getRequiredParams(req, 'lat', 'lng')
   if (params instanceof NextResponse) return params
 

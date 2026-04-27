@@ -5,7 +5,7 @@ import {
   getOptionalParam,
   errorResponse,
   CACHE_1H,
-} from '@/lib/api-utils'
+rateLimit } from '@/lib/api-utils'
 import { upscaleGoogleImage } from '@travyl/shared'
 
 interface BackendPlace {
@@ -29,6 +29,8 @@ interface BackendPlace {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'tripadvisor', 20, 60000)
+  if (rl) return rl
   const lat = req.nextUrl.searchParams.get('lat')
   const lng = req.nextUrl.searchParams.get('lng')
   const category = getOptionalParam(req, 'category', 'restaurants')

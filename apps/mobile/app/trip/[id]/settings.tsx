@@ -123,7 +123,7 @@ function ToggleRow({
         value={value}
         onValueChange={onToggle}
         trackColor={{ false: colors.border, true: accentColor + '60' }}
-        thumbColor={value ? accentColor : '#f4f3f4'}
+        thumbColor={value ? accentColor : colors.border}
         ios_backgroundColor="#e5e7eb"
       />
     </View>
@@ -639,7 +639,7 @@ export default function SettingsScreen() {
             <Text style={{ ...TextStyles.body, color: colors.textTertiary, textAlign: 'center', marginBottom: 12 }}>
               Share this trip with friends and family to plan together.
             </Text>
-            <Pressable style={{ backgroundColor: '#3b82f6', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable style={{ backgroundColor: colors.info, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <FontAwesome name="envelope" size={12} color="#fff" />
               <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Send Invite</Text>
             </Pressable>
@@ -647,15 +647,15 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* Danger zone */}
-        <View style={{ backgroundColor: colors.errorBg, borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', padding: 14, marginBottom: 12 }}>
+        <View style={{ backgroundColor: colors.errorBg, borderRadius: 12, borderWidth: 1, borderColor: colors.error, padding: 14, marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <FontAwesome name="exclamation-triangle" size={14} color="#ef4444" />
-            <Text style={{ ...TextStyles.bodyXlEm, color: '#ef4444' }}>Danger Zone</Text>
+            <Text style={{ ...TextStyles.bodyXlEm, color: colors.error }}>Danger Zone</Text>
           </View>
           <Pressable
             onPress={handleDeleteTrip}
             style={{
-              backgroundColor: '#ef4444',
+              backgroundColor: colors.error,
               paddingVertical: 12,
               borderRadius: 10,
               alignItems: 'center',

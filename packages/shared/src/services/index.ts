@@ -71,3 +71,14 @@ export {
 export {
   generatePackingSuggestions,
 } from './packingSuggestions';
+
+export {
+  fetchDiscoverPage,
+  fetchNearbyPlaces,
+  fetchNearbyPage,
+  searchPlaces,
+  dedupPlaces,
+  distanceLabel,
+  mapApiPlace,
+} from './placesDiscovery';
+export type { DiscoverPageResult } from './placesDiscovery';

@@ -4,12 +4,12 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 // Airport cache — populated dynamically from API search results
 const airportCache: { code: string; name: string; city: string }[] = [];
 
-// Empty stubs — comparison and booking details are not wired to real data yet
+// Stubs — flight comparison and booking details not wired to live data yet
 const COMPARISON_FLIGHTS: any[] = [];
 const BOOKING_DETAILS = {
   confirmationNumber: '', pnr: '', ticketNumbers: [] as string[],
@@ -528,7 +528,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
             <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }}>{flight.date}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+            <View style={{ backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
               <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{flight.status}</Text>
             </View>
             <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={11} color="#fff" />
@@ -556,7 +556,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
               </View>
               <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: colors.border }} />
             </View>
-            <Text style={{ ...TextStyles.smEm, color: '#059669', marginTop: 4 }}>{flight.stops}</Text>
+            <Text style={{ ...TextStyles.smEm, color: colors.success, marginTop: 4 }}>{flight.stops}</Text>
           </View>
 
           {/* Arrival */}
@@ -564,7 +564,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               <Text style={{ ...TextStyles.title, color: colors.text }}>{flight.arrival.time}</Text>
               {flight.arrival.nextDay && (
-                <Text style={{ ...TextStyles.xs, color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
+                <Text style={{ ...TextStyles.xs, color: colors.warning, marginLeft: 2, marginTop: -2 }}>+1</Text>
               )}
             </View>
             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{flight.arrival.code}</Text>
@@ -586,8 +586,8 @@ function BookedFlightCard({ flight }: { flight: any }) {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{flight.cabinClass}</Text>
-            <View style={{ backgroundColor: '#1e3a5f15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: '#1e3a5f' }}>On Time</Text>
+            <View style={{ backgroundColor: colors.tint + '15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: colors.tint }}>On Time</Text>
             </View>
           </View>
         </View>
@@ -596,10 +596,10 @@ function BookedFlightCard({ flight }: { flight: any }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
           <View>
             <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>Per traveler</Text>
-            <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>${flight.price.total}</Text>
+            <Text style={{ ...TextStyles.title, color: colors.tint }}>${flight.price.total}</Text>
           </View>
           <Pressable style={({ pressed }) => ({
-            backgroundColor: '#1e3a5f', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
+            backgroundColor: colors.tint, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
             flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.85 : 1,
           })}>
             <FontAwesome name="plane" size={12} color="#fff" />
@@ -736,10 +736,10 @@ function ComparisonAlternatives() {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: 8,
-                backgroundColor: altAirports ? '#dbeafe' : colors.borderLight,
+                backgroundColor: altAirports ? colors.infoBg : colors.borderLight,
               }}
             >
-              <Text style={{ ...TextStyles.caption, color: altAirports ? '#1d4ed8' : colors.textSecondary }}>Alt Airports</Text>
+              <Text style={{ ...TextStyles.caption, color: altAirports ? colors.info : colors.textSecondary }}>Alt Airports</Text>
             </Pressable>
           </View>
 
@@ -777,7 +777,7 @@ function ComparisonAlternatives() {
                   style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}
                 >
                   <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{ap.code}</Text>
-                  <Text style={{ ...TextStyles.captionEm, color: '#059669' }}>-${ap.savings}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: colors.success }}>-${ap.savings}</Text>
                 </Pressable>
               ))}
             </View>
@@ -848,7 +848,7 @@ function ComparisonAlternatives() {
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                           <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{flight.arrival.time}</Text>
                           {flight.arrival.nextDay && (
-                            <Text style={{ ...TextStyles.micro, color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
+                            <Text style={{ ...TextStyles.micro, color: colors.warning, marginLeft: 2, marginTop: -2 }}>+1</Text>
                           )}
                         </View>
                         <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.arrival.airport}</Text>
@@ -861,9 +861,9 @@ function ComparisonAlternatives() {
                     <View style={{ alignItems: 'flex-end', marginRight: 4 }}>
                       <Text style={{ ...TextStyles.body, color: colors.text }}>{flight.duration}</Text>
                       {flight.stops === 0 ? (
-                        <Text style={{ ...TextStyles.smEm, color: '#059669' }}>Direct</Text>
+                        <Text style={{ ...TextStyles.smEm, color: colors.success }}>Direct</Text>
                       ) : (
-                        <Text style={{ ...TextStyles.smEm, color: '#d97706' }}>{flight.stops} stop</Text>
+                        <Text style={{ ...TextStyles.smEm, color: colors.warning }}>{flight.stops} stop</Text>
                       )}
                     </View>
 
@@ -887,8 +887,8 @@ function ComparisonAlternatives() {
                     </View>
                     <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.airline}</Text>
                     {flight.businessAvailable && (
-                      <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
-                        <Text style={{ ...TextStyles.xs, color: '#b45309' }}>Business avail.</Text>
+                      <View style={{ backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                        <Text style={{ ...TextStyles.xs, color: colors.warning }}>Business avail.</Text>
                       </View>
                     )}
                   </View>
@@ -905,7 +905,7 @@ function ComparisonAlternatives() {
                       {flight.layover && (
                         <>
                           <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>·</Text>
-                          <Text style={{ ...TextStyles.sm, color: '#d97706' }}>Stop: {flight.layover}</Text>
+                          <Text style={{ ...TextStyles.sm, color: colors.warning }}>Stop: {flight.layover}</Text>
                         </>
                       )}
                     </View>
@@ -918,14 +918,14 @@ function ComparisonAlternatives() {
                             width: 6,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: flight.onTime >= 85 ? '#22c55e' : flight.onTime >= 78 ? '#fbbf24' : '#f87171',
+                            backgroundColor: flight.onTime >= 85 ? colors.success : flight.onTime >= 78 ? colors.warning : colors.error,
                           }}
                         />
                         <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{flight.onTime}% on-time</Text>
                       </View>
                       <View style={{ width: 1, height: 12, backgroundColor: colors.border }} />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? '#16a34a' : colors.textTertiary} />
+                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? colors.success : colors.textTertiary} />
                         <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{flight.co2}kg CO2</Text>
                       </View>
                     </View>
@@ -1020,7 +1020,7 @@ function BookingDetailsSection() {
             </View>
             <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Baggage Fees</Text>
-              <Text style={{ ...TextStyles.captionEm, color: '#059669' }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.success }}>
                 {d.baggageAllowance.fees === 0 ? 'Included' : `$${d.baggageAllowance.fees}/person`}
               </Text>
             </View>
@@ -1063,7 +1063,7 @@ function BookingDetailsSection() {
             </View>
             <Pressable
               onPress={() => Linking.openURL(d.checkInUrl)}
-              style={{ alignSelf: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+              style={{ alignSelf: 'flex-start', backgroundColor: colors.cardBackground, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
             >
               <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Check-in Online →</Text>
             </Pressable>
@@ -1130,6 +1130,9 @@ export default function FlightsScreen() {
   );
   const hasFlights = bookedFlights.length > 0;
 
+  // Search results from FlightSearchSection
+  const [searchFlights, setSearchFlights] = useState<any[]>([]);
+
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
   return (
@@ -1140,6 +1143,7 @@ export default function FlightsScreen() {
         destination={destAirport || city}
         departDate={trip?.start_date ?? undefined}
         returnDate={trip?.end_date ?? undefined}
+        onResults={setSearchFlights}
       />
 
       {/* Flight prompt when no flights booked */}
@@ -1172,6 +1176,51 @@ export default function FlightsScreen() {
       {bookedFlights.filter((f: any) => f.type === 'return').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
+
+      {/* Search Results */}
+      {searchFlights.length > 0 && (
+        <View style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Search Results</Text>
+            <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ ...TextStyles.smEm, color: ACCENT }}>{searchFlights.length} flights</Text>
+            </View>
+          </View>
+          {searchFlights.map((f: any, i: number) => {
+            const depTime = f.departure_time ? new Date(f.departure_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            const arrTime = f.arrival_time ? new Date(f.arrival_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            return (
+              <View key={f.id || i} style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+                      <FontAwesome name="plane" size={14} color="#fff" />
+                    </View>
+                    <View>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{f.airline || 'Airline'}</Text>
+                      <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{f.origin} → {f.destination}</Text>
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ ...TextStyles.subhead, color: ACCENT }}>${f.price ?? '—'}</Text>
+                    <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per person</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>{depTime} → {arrTime}</Text>
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{f.duration || ''}</Text>
+                  <Text style={{ ...TextStyles.smEm, color: f.stops === 0 ? colors.success : colors.warning }}>{f.stops === 0 ? 'Direct' : `${f.stops} stop`}</Text>
+                </View>
+                {f.link && (
+                  <Pressable onPress={() => Linking.openURL(f.link)} style={{ marginTop: 10, backgroundColor: ACCENT, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}>
+                    <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Book Flight</Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Add Flight button */}
       <Pressable

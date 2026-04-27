@@ -13,7 +13,6 @@ import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
 import dynamic from "next/dynamic";
-import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 const HowItWorks = dynamic(
   () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
@@ -462,6 +461,19 @@ export default function Home() {
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [planner, setTripQuery]);
 
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [takeoffCompleted, setTakeoffCompleted] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const isSaving = useRef(false);
+  const user = useAuthStore((s) => s.user);
+
+  const requireAuth = (prompt: string) => {
+    if (user) return false;
+    try { sessionStorage.setItem('pending-trip-prompt', prompt); } catch {}
+    setShowAuthGate(true);
+    return true;
+  };
+
   const onSearch = () => {
     const val = tripQuery.trim();
     if (!val) return;
@@ -473,6 +485,7 @@ export default function Home() {
     const prompt = words <= 3 && !val.match(/\d/)
       ? `Plan a 5-day trip to ${val}`
       : val;
+    if (requireAuth(prompt)) return;
     planner.submitPrompt(prompt);
     setTripQuery("");
   };
@@ -480,16 +493,26 @@ export default function Home() {
   const onRefine = () => {
     const val = tripQuery.trim();
     if (!val) return;
+    if (requireAuth(val)) return;
     skipQuestionsRef.current = false;
     setShowQuestions(true);
     planner.submitPrompt(val);
     setTripQuery("");
   };
 
-  const [loadingError, setLoadingError] = useState<string | null>(null);
-  const [takeoffCompleted, setTakeoffCompleted] = useState(false);
-  const isSaving = useRef(false);
-  const user = useAuthStore((s) => s.user);
+  // Resume a pending trip prompt after the user signs in
+  useEffect(() => {
+    if (!user) return;
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem('pending-trip-prompt'); } catch {}
+    if (!pending) return;
+    try { sessionStorage.removeItem('pending-trip-prompt'); } catch {}
+    setShowAuthGate(false);
+    skipQuestionsRef.current = true;
+    skipRetryCountRef.current = 0;
+    clarifyRoundRef.current = 0;
+    planner.submitPrompt(pending);
+  }, [user]);
 
   // Show takeoff when planning starts
   useEffect(() => {
@@ -545,104 +568,15 @@ export default function Home() {
           router.push(`/trip/${tripId}`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to save trip';
-          console.error('Save failed:', msg);
           setLoadingError(msg);
           isSaving.current = false;
         }
       } else {
-        // Not logged in:
-        // 1. Tiny create through CloudFront (~500 bytes, no trip_context)
-        // 2. Update trip_context via direct Supabase (bypasses CloudFront WAF)
-        //    Secured by time-limited RLS policy (1hr window after creation)
-        try {
-          const ext = plan.extracted;
-          if (!ext?.destination) throw new Error('No destination extracted');
-          const dest = ext.destination;
-          const totalBudget = ext.daily_estimate_usd ? ext.daily_estimate_usd * ext.duration_days : null;
-
-          // Step 1 — tiny create (no trip_context, bypasses WAF)
-          const createRes = await fetch('/api/trips/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              destination: `${dest.city}, ${dest.country}`,
-              start_date: ext.dates.start,
-              end_date: ext.dates.end,
-              travelers: ext.travelers.count,
-              budget: totalBudget,
-              currency: 'USD',
-            }),
-          });
-          if (!createRes.ok) {
-            const errBody = await createRes.text().catch(() => '');
-            console.error('[Trip Create] Failed:', createRes.status, errBody);
-            throw new Error(`Create failed: ${createRes.status}`);
-          }
-          const trip = await createRes.json();
-          const tripId = trip.id;
-
-          // Track in localStorage for anonymous persistence
-          try {
-            const stored = localStorage.getItem('my-trip-ids');
-            const ids: string[] = stored ? JSON.parse(stored) : [];
-            if (!ids.includes(tripId)) ids.push(tripId);
-            localStorage.setItem('my-trip-ids', JSON.stringify(ids));
-          } catch {}
-
-          // Step 2 — update trip_context direct to Supabase (no CloudFront)
-          // RLS: anon can only update public trips created in last 1 hour
-          const sb = getSupabaseBrowser();
-          sb.from('trips').update({
-            trip_context: {
-              lat: dest.lat, lng: dest.lng,
-              hero_image_url: plan.destination_photo_url || null,
-              hero_images: plan.destination_photo_url ? [plan.destination_photo_url] : [],
-              lede_text: `A ${ext.duration_days}-day trip to ${dest.city}.`,
-              quick_facts: {
-                budget_level: ext.budget_level,
-                daily_budget: ext.daily_estimate_usd,
-                interests: ext.interests,
-                timezone: (plan as any).timezone,
-              },
-              hotels: (plan.hotels ?? []).slice(0, 5).map((h: any) => ({
-                id: `hotel-${h.name?.replace(/\s+/g, '-').toLowerCase()}`,
-                name: h.name, rating: h.rating, price: h.price_per_night, stars: h.stars,
-              })),
-              flights: (plan.flights ?? []).slice(0, 5).map((f: any) => ({
-                airline: f.airline, price: f.price,
-                departure_time: f.departure_time, arrival_time: f.arrival_time,
-              })),
-              itinerary: (plan.itinerary ?? []).map((day: any) => ({
-                day: day.day, date: day.date,
-                slots: (day.slots ?? []).map((slot: any) => ({
-                  start_time: slot.start_time, end_time: slot.end_time,
-                  poi: { id: slot.poi.id, name: slot.poi.name, category: slot.poi.category, lat: slot.poi.lat, lng: slot.poi.lng },
-                })),
-              })),
-            },
-          }).eq('id', tripId).then(({ error }) => {
-            if (error) console.error('[Trip Context] Update failed:', error.message);
-          });
-
-          // Enrich in background
-          fetch('/api/trips/enrich', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tripId }),
-          }).catch(() => {});
-
-          setTakeoffCompleted(true);
-          await new Promise((r) => setTimeout(r, 800));
-          setShowTakeoff(false);
-          planner.reset();
-          isSaving.current = false;
-          router.push(`/trip/${tripId}`);
-        } catch (saveErr) {
-          console.error('[Trip Create] Failed:', saveErr);
-          setLoadingError(saveErr instanceof Error ? saveErr.message : 'Failed to save trip');
-          setShowTakeoff(false);
-          isSaving.current = false;
-        }
+        // Not logged in — show clean auth gate (should have been caught earlier,
+        // but guard here in case a plan completed before user signed in)
+        setShowTakeoff(false);
+        isSaving.current = false;
+        setShowAuthGate(true);
       }
     })();
   }, [planner.state.phase]);
@@ -873,9 +807,11 @@ export default function Home() {
                     <button
                       key={s.id}
                       onClick={() => {
+                        const prompt = `Plan a trip to ${s.label}`;
+                        if (requireAuth(prompt)) return;
                         skipQuestionsRef.current = true;
                         skipRetryCountRef.current = 0;
-                        planner.submitPrompt(`Plan a trip to ${s.label}`);
+                        planner.submitPrompt(prompt);
                       }}
                       className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
                     >
@@ -925,6 +861,44 @@ export default function Home() {
         }}
         onComplete={() => {}}
       />
+
+      {/* ─── Auth gate for trip planning ─────────────────────────── */}
+      {showAuthGate && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowAuthGate(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-serif text-slate-900 dark:text-white mb-2">Sign in to plan your trip</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+              We&apos;ll save your itinerary, hotels, and flights to your account so you can come back to it anytime.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => router.push('/signup?next=/')}
+                className="w-full rounded-xl bg-[#1e3a5f] hover:bg-[#16314f] text-white font-semibold py-3 transition-colors"
+              >
+                Create free account
+              </button>
+              <button
+                onClick={() => router.push('/login?next=/')}
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white font-semibold py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                I already have an account
+              </button>
+              <button
+                onClick={() => setShowAuthGate(false)}
+                className="text-xs text-slate-500 dark:text-slate-400 hover:underline mt-1"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

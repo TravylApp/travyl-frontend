@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOptionalParam, CACHE_1H } from '@/lib/api-utils'
+import { getOptionalParam, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 interface Meal {
   id: string
@@ -81,6 +81,8 @@ async function resolveArea(country: string): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'cuisine', 60, 60000)
+  if (rl) return rl
   const area = getOptionalParam(req, 'area', '')
   const country = getOptionalParam(req, 'country', '')
 

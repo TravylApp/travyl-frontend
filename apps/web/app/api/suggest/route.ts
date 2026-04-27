@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
-import { proxyToBackend } from '@/lib/api-utils'
+import { proxyToBackend, rateLimit } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'suggest', 60, 60000)
+  if (rl) return rl
   const sp = req.nextUrl.searchParams
   const params: Record<string, string> = {}
 

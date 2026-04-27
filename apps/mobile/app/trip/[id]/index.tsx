@@ -257,7 +257,7 @@ export default function OverviewScreen() {
                 style={{ width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden' }}
               >
                 {place.image ? (
-                  <Image source={{ uri: place.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  <Image source={{ uri: place.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" onError={() => {}} />
                 ) : (
                   <View style={{ flex: 1, backgroundColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="compass" size={32} color="rgba(255,255,255,0.3)" />
@@ -447,7 +447,7 @@ export default function OverviewScreen() {
                 width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden',
               }}>
                 {dish.image ? (
-                  <Image source={{ uri: dish.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  <Image source={{ uri: dish.image, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" onError={() => {}} />
                 ) : (
                   <View style={{ flex: 1, backgroundColor: Navy.DEFAULT, alignItems: 'center', justifyContent: 'center' }}>
                     <FontAwesome name="cutlery" size={28} color="rgba(255,255,255,0.3)" />

@@ -12,8 +12,7 @@ import 'react-native-reanimated';
 
 import { Text, TextInput } from 'react-native';
 import { useAuthStore, configureSupabase } from '@travyl/shared';
-import { createClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Set Satoshi as the default font for all Text and TextInput components
 const originalTextRender = (Text as any).render;
@@ -41,22 +40,10 @@ export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
 
-// Configure Supabase with AsyncStorage for session persistence on mobile
-const mobileSupabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-  {
-    auth: {
-      storage: AsyncStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-    },
-  }
-);
-configureSupabase(mobileSupabase);
-
 SplashScreen.preventAutoHideAsync();
+
+// Track if supabase has been configured
+let _supabaseConfigured = false;
 
 export default function RootLayout() {
   const queryClientRef = useRef(new QueryClient());
@@ -85,8 +72,31 @@ export default function RootLayout() {
   }, [loaded]);
 
   useEffect(() => {
-    const unsubscribe = initialize();
-    return unsubscribe;
+    let unsubscribe: (() => void) | undefined;
+
+    const setup = async () => {
+      // Configure Supabase with AsyncStorage on native platforms
+      if (!_supabaseConfigured && Platform.OS !== 'web') {
+        _supabaseConfigured = true;
+        try {
+          const [{ createClient }, { default: AsyncStorage }] = await Promise.all([
+            import('@supabase/supabase-js'),
+            import('@react-native-async-storage/async-storage'),
+          ]);
+          const sb = createClient(
+            process.env.EXPO_PUBLIC_SUPABASE_URL!,
+            process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+            { auth: { storage: AsyncStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }
+          );
+          configureSupabase(sb);
+        } catch {}
+      }
+      // Initialize auth AFTER supabase is configured
+      unsubscribe = initialize();
+    };
+
+    setup();
+    return () => unsubscribe?.();
   }, [initialize]);
 
   if (!loaded) {

@@ -1,3 +1,4 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   BackendPlace,
@@ -21,6 +22,8 @@ const FOURSQUARE_CAT_MAP: Record<string, string> = {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'places', 30, 60000)
+  if (rl) return rl
   const lat = req.nextUrl.searchParams.get('lat') ?? ''
   const lng = req.nextUrl.searchParams.get('lng') ?? ''
   const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
@@ -109,7 +112,6 @@ export async function GET(req: NextRequest) {
     res_out.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
     return res_out
   } catch (err) {
-    console.error('[places] Route error:', err)
     return NextResponse.json([])
   }
 }

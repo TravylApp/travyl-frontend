@@ -482,7 +482,6 @@ function TravelersSection({
         .eq('id', tripId);
       if (updateError) throw updateError;
     } catch (err) {
-      console.error('Failed to save traveler metadata:', err);
     } finally {
       setSaving(false);
     }
@@ -708,7 +707,6 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       setDirty(false);
       refetch();
     } catch (err) {
-      console.error('Failed to save settings:', err);
       alert('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);

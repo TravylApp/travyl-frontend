@@ -95,15 +95,22 @@ export default function LoginScreen() {
   const handleOAuthSignIn = async (provider: typeof OAUTH_PROVIDERS[number]['provider']) => {
     setOAuthLoading(provider);
     setError('');
-    const redirectTo = Linking.createURL('login-callback');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo },
-    });
-    if (error) {
-      const msg = error.message.includes('not configured') || error.message.includes('not enabled')
-        ? `${provider} sign-in is not available yet. Try Google or sign in with email.`
-        : error.message;
+    try {
+      const redirectTo = Linking.createURL('login-callback');
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (oauthError) throw oauthError;
+      if (data?.url) {
+        // Open the OAuth URL in the system browser
+        const WebBrowser = await import('expo-web-browser');
+        await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      }
+    } catch (err: any) {
+      const msg = err.message?.includes('not configured') || err.message?.includes('not enabled')
+        ? `${provider} sign-in is not available yet. Try email instead.`
+        : err.message || 'Sign in failed';
       setError(msg);
     }
     setOAuthLoading(null);
@@ -224,7 +231,7 @@ export default function LoginScreen() {
               disabled={submitting}
               style={{ alignSelf: 'flex-end', marginBottom: 16 }}
             >
-              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? '#16a34a' : colors.textSecondary }}>
+              <Text style={{ ...TextStyles.caption, color: resetEmailSent ? colors.success : colors.textSecondary }}>
                 {resetEmailSent ? 'Check your email for a reset link.' : 'Forgot password?'}
               </Text>
             </Pressable>

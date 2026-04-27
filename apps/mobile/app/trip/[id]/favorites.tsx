@@ -11,9 +11,6 @@ import { PageTransition, TabCtx, useTabAccent } from './_layout';
 /* ─── Constants ─────────────────────────────────────────────── */
 
 // Start empty — user adds favorites as they browse
-const INITIAL_ACTIVITY_FAVORITES: string[] = [];
-const INITIAL_RESTAURANT_FAVORITES: string[] = [];
-const INITIAL_DESTINATION_FAVORITES: string[] = [];
 
 // Separate storage keys to prevent cross-contamination (issue #650 item 9)
 const ACTIVITY_FAVORITES_KEY = 'travyl-activity-favorites';
@@ -386,7 +383,7 @@ export default function FavoritesScreen() {
       } catch {}
     });
   }, []);
-  const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
+  const [destinationFavorites, setDestinationFavorites] = useState<string[]>([]);
   const colors = useThemeColors();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const toggleSection = (key: string) => {

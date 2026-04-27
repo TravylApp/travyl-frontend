@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequiredParams, errorResponse, CACHE_1H } from '@/lib/api-utils'
+import { getRequiredParams, errorResponse, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 type AqiLevel =
   | 'Good'
@@ -26,6 +26,8 @@ function getUsAqiLevel(aqi: number): AqiLevel {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'aqi', 60, 60000)
+  if (rl) return rl
   const params = getRequiredParams(req, 'lat', 'lon')
   if (params instanceof NextResponse) return params
 

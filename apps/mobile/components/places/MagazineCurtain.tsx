@@ -12,8 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { usePlaceDetail, usePlaceEnrich, usePlaceMenu, Navy, TextStyles } from '@travyl/shared';
+import { Navy, TextStyles, getWebApiBase } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
+import { useQuery } from '@tanstack/react-query';
 
 const FLIP_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
@@ -77,12 +78,19 @@ export function MagazineCurtain({
     zIndex: isPastHalf.value ? 1 : 0,
   }));
 
-  // Enriched data via shared hooks — only fetch when flipped
-  const { data: detailData, isLoading: enriching } = usePlaceDetail(isFlipped ? place.id : undefined);
-  const { data: enrichPhotos } = usePlaceEnrich(isFlipped ? place.id : undefined, place.name);
-  const { data: menuData } = usePlaceMenu(
-    isFlipped && place.type === 'restaurant' ? place.name : undefined,
-  );
+  // Enriched data — fetch from SerpAPI when flipped (by name, works for any source)
+  const searchQuery = place.address ? `${place.name} ${place.address}` : place.name;
+  const { data: detail, isLoading: enriching } = useQuery({
+    queryKey: ['place-detail', place.id],
+    queryFn: async () => {
+      const base = getWebApiBase();
+      const res = await fetch(`${base}/api/search/place-detail?q=${encodeURIComponent(searchQuery)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+    enabled: isFlipped,
+  });
 
   const toggleFlip = useCallback(() => {
     const next = !isFlipped;
@@ -91,7 +99,17 @@ export function MagazineCurtain({
   }, [isFlipped]);
 
   // Merge enriched data with place — detail takes priority
-  const p = detailData ? { ...place, ...detailData } : place;
+  const p = detail ? {
+    ...place,
+    description: detail.description || place.description,
+    address: detail.address || place.address,
+    phone: detail.phone || place.phone,
+    website: detail.website || place.website,
+    hours: detail.hours || place.hours,
+    rating: detail.rating || place.rating,
+    reviewCount: detail.reviewCount || place.reviewCount,
+    priceLevel: detail.priceLevel || place.priceLevel,
+  } : place;
 
   return (
     <Animated.View
@@ -274,7 +292,7 @@ export function MagazineCurtain({
                 </View>
               )}
               {/* Rating moved to inline with name */}
-              {place.priceLevel && (
+              {place.priceLevel != null && place.priceLevel >= 1 && place.priceLevel <= 4 && (
                 <View>
                   <Text style={{ ...TextStyles.micro, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>Price</Text>
                   <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>
@@ -307,28 +325,48 @@ export function MagazineCurtain({
 
       {/* ── Back — enriched detail view ── */}
       <Animated.View style={[{ position: 'absolute', width, height, backgroundColor: Navy.DEFAULT, borderRadius: 20 }, backStyle]}>
-        <TouchableWithoutFeedback onPress={toggleFlip}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, flexGrow: 1 }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+        {/* Flip-back button — always visible, not inside scroll */}
+        <Pressable
+          onPress={toggleFlip}
+          style={{
+            position: 'absolute', top: 14, right: 14, zIndex: 50,
+            flexDirection: 'row', alignItems: 'center', gap: 5,
+            backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16,
+            paddingHorizontal: 12, paddingVertical: 7,
+          }}
+        >
+          <FontAwesome name="repeat" size={11} color="#7dd3fc" />
+          <Text style={{ ...TextStyles.smEm, color: '#7dd3fc' }}>Flip</Text>
+        </Pressable>
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingTop: 16, flexGrow: 1 }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
           {/* Header */}
           <Text style={{ ...TextStyles.xs, color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: 3, marginBottom: 6 }}>
             {p.type}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, paddingRight: 70 }}>
             <Text style={{ ...TextStyles.title, color: '#fff', flex: 1 }} numberOfLines={2}>
               {p.name}
             </Text>
+          </View>
+
+          {/* Rating + reviews */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             {(p.rating ?? 0) > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                 <FontAwesome name="star" size={12} color="#facc15" />
                 <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{(p.rating ?? 0).toFixed(1)}</Text>
               </View>
             )}
+            {p.reviewCount != null && p.reviewCount > 0 && (
+              <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.4)' }}>({p.reviewCount.toLocaleString()} reviews)</Text>
+            )}
+            {p.priceLevel != null && p.priceLevel >= 1 && p.priceLevel <= 4 && (
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#10b981' }}>{'$'.repeat(p.priceLevel)}</Text>
+            )}
           </View>
-          {p.reviewCount != null && p.reviewCount > 0 && (
-            <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{p.reviewCount.toLocaleString()} reviews</Text>
-          )}
 
-          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 10 }} />
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 10 }} />
 
           {/* Loading indicator while enriching */}
           {enriching && (
@@ -338,43 +376,64 @@ export function MagazineCurtain({
             </View>
           )}
 
-          {/* Info rows — only show what we actually have */}
+          {/* Info rows */}
+          {p.address && (
+            <Pressable
+              onPress={() => p.address && Linking.openURL(`https://maps.apple.com/?q=${encodeURIComponent(p.address)}`).catch(() => {})}
+              style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}
+            >
+              <FontAwesome name="map-marker" size={14} color="#7dd3fc" style={{ marginTop: 2 }} />
+              <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.8)', flex: 1 }} numberOfLines={2}>{p.address}</Text>
+            </Pressable>
+          )}
           {p.hours && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <FontAwesome name="clock-o" size={13} color="rgba(255,255,255,0.5)" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <FontAwesome name="clock-o" size={14} color="rgba(255,255,255,0.5)" />
               <Text style={{ ...TextStyles.bodyLg, color: '#fff' }}>{p.hours}</Text>
             </View>
           )}
-          {p.address && (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-              <FontAwesome name="map-marker" size={13} color="rgba(255,255,255,0.5)" style={{ marginTop: 2 }} />
-              <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.7)', flex: 1 }} numberOfLines={2}>{p.address}</Text>
-            </View>
-          )}
-          {p.website && (
-            <Pressable onPress={() => Linking.openURL(p.website!).catch(() => {})} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <FontAwesome name="globe" size={13} color="#7dd3fc" />
-              <Text style={{ ...TextStyles.bodyLg, color: '#7dd3fc' }} numberOfLines={1}>Visit website</Text>
-            </Pressable>
-          )}
           {p.phone && (
-            <Pressable onPress={() => Linking.openURL(`tel:${p.phone}`).catch(() => {})} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <FontAwesome name="phone" size={13} color="#7dd3fc" />
+            <Pressable onPress={() => Linking.openURL(`tel:${p.phone}`).catch(() => {})} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <FontAwesome name="phone" size={14} color="#7dd3fc" />
               <Text style={{ ...TextStyles.bodyLg, color: '#7dd3fc' }}>{p.phone}</Text>
             </Pressable>
+          )}
+          {p.duration && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <FontAwesome name="hourglass-half" size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={{ ...TextStyles.bodyLg, color: '#fff' }}>Suggested duration: {p.duration}</Text>
+            </View>
+          )}
+          {p.bestTimeToVisit && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <FontAwesome name="sun-o" size={14} color="rgba(255,255,255,0.5)" />
+              <Text style={{ ...TextStyles.bodyLg, color: '#fff' }}>Best time: {p.bestTimeToVisit}</Text>
+            </View>
           )}
 
           {/* Description */}
           {p.description && (
-            <Text style={{ ...TextStyles.bodyXl, color: 'rgba(255,255,255,0.75)', marginBottom: 10 }} numberOfLines={5}>
+            <Text style={{ ...TextStyles.bodyXl, color: 'rgba(255,255,255,0.75)', marginBottom: 12, lineHeight: 24 }}>
               {p.description}
             </Text>
           )}
 
-          {/* Tags */}
+          {/* Tagline as secondary description if different from description */}
+          {p.tagline && p.tagline !== p.description?.split('.')[0] && !p.description && (
+            <Text style={{ ...TextStyles.bodyLg, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginBottom: 12 }}>
+              {p.tagline}
+            </Text>
+          )}
+
+          {/* Category + Tags */}
           {p.tags && p.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {p.tags.slice(0, 5).map((tag: string) => (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {p.category && (
+                <View style={{ backgroundColor: 'rgba(125,211,252,0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
+                  <Text style={{ ...TextStyles.captionEm, color: '#7dd3fc' }}>{p.category}</Text>
+                </View>
+              )}
+              {p.tags.filter(t => t !== p.category).slice(0, 4).map((tag: string) => (
                 <View key={tag} style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
                   <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.6)' }}>{tag}</Text>
                 </View>
@@ -382,49 +441,96 @@ export function MagazineCurtain({
             </View>
           )}
 
-          {/* Stats — compact row */}
-          {(p.priceLevel || p.duration) && (
-            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 10 }}>
-              {p.priceLevel && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.4)' }}>Price</Text>
-                  <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
-                    {'$'.repeat(p.priceLevel)}<Text style={{ color: 'rgba(255,255,255,0.2)' }}>{'$'.repeat(4 - p.priceLevel)}</Text>
-                  </Text>
-                </View>
-              )}
-              {p.duration && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.4)' }}>Duration</Text>
-                  <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{p.duration}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Menu highlights (restaurants only) */}
-          {menuData?.items && menuData.items.length > 0 && (
-            <View style={{ marginBottom: 10 }}>
+          {/* Reviews */}
+          {detail?.reviews?.length > 0 && (
+            <View style={{ marginBottom: 12 }}>
               <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>
-                Popular dishes
+                Reviews
               </Text>
-              {menuData.items.slice(0, 4).map((item: any, i: number) => (
-                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.8)', flex: 1 }} numberOfLines={1}>{item.name}</Text>
-                  {item.price && <Text style={{ ...TextStyles.bodyEm, color: '#d4af37', marginLeft: 8 }}>{item.price}</Text>}
+              {detail.reviews.slice(0, 3).map((r: any, i: number) => (
+                <View key={i} style={{ marginBottom: 10, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
+                      {Array.from({ length: 5 }, (_, j) => (
+                        <FontAwesome key={j} name="star" size={10} color={j < r.rating ? '#facc15' : 'rgba(255,255,255,0.15)'} />
+                      ))}
+                    </View>
+                    <Text style={{ ...TextStyles.captionEm, color: 'rgba(255,255,255,0.6)' }}>{r.author}</Text>
+                    {r.date && <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.3)' }}>· {r.date}</Text>}
+                  </View>
+                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.7)' }} numberOfLines={3}>{r.text}</Text>
                 </View>
               ))}
             </View>
           )}
 
-          {/* Bottom — Save + flip hint */}
-          <View style={{ marginTop: 'auto', gap: 10 }}>
+          {/* Photos grid */}
+          {detail?.photos?.length > 0 && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>
+                Photos
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -10 }} contentContainerStyle={{ paddingHorizontal: 10, gap: 6 }}>
+                {detail.photos.slice(0, 8).map((url: string, i: number) => (
+                  <Image key={i} source={{ uri: url }} style={{ width: 100, height: 80, borderRadius: 8 }} contentFit="cover" cachePolicy="memory-disk" />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Action buttons */}
+          <View style={{ marginTop: 'auto', gap: 8, paddingTop: 10 }}>
+            {/* Menu + Reservation links */}
+            {(detail?.menuLink || detail?.reservationLink) && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {detail.menuLink && (
+                  <Pressable
+                    onPress={() => Linking.openURL(detail.menuLink).catch(() => {})}
+                    style={{
+                      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      backgroundColor: 'rgba(212,175,55,0.12)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.25)',
+                      borderRadius: 12, paddingVertical: 10,
+                    }}
+                  >
+                    <FontAwesome name="cutlery" size={12} color="#d4af37" />
+                    <Text style={{ ...TextStyles.bodyEm, color: '#d4af37' }}>Menu</Text>
+                  </Pressable>
+                )}
+                {detail.reservationLink && (
+                  <Pressable
+                    onPress={() => Linking.openURL(detail.reservationLink).catch(() => {})}
+                    style={{
+                      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      backgroundColor: 'rgba(16,185,129,0.12)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)',
+                      borderRadius: 12, paddingVertical: 10,
+                    }}
+                  >
+                    <FontAwesome name="calendar-check-o" size={12} color="#10b981" />
+                    <Text style={{ ...TextStyles.bodyEm, color: '#10b981' }}>Reserve</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+            {p.website && (
+              <Pressable
+                onPress={() => Linking.openURL(p.website!).catch(() => {})}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  backgroundColor: 'rgba(125,211,252,0.12)',
+                  borderWidth: 1, borderColor: 'rgba(125,211,252,0.25)',
+                  borderRadius: 12, paddingVertical: 12,
+                }}
+              >
+                <FontAwesome name="globe" size={13} color="#7dd3fc" />
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#7dd3fc' }}>Visit Website</Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={(e) => { e.stopPropagation?.(); onToggleFav(); }}
               style={{
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                backgroundColor: isFav ? 'rgba(239,68,68,0.2)' : 'rgba(125,211,252,0.12)',
-                borderWidth: 1, borderColor: isFav ? 'rgba(239,68,68,0.4)' : 'rgba(125,211,252,0.25)',
+                backgroundColor: isFav ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
+                borderWidth: 1, borderColor: isFav ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.1)',
                 borderRadius: 12, paddingVertical: 12,
               }}
             >
@@ -433,16 +539,8 @@ export function MagazineCurtain({
                 {isFav ? 'Saved' : 'Save to Favorites'}
               </Text>
             </Pressable>
-
-            <View style={{ alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <FontAwesome name="repeat" size={10} color="rgba(255,255,255,0.3)" />
-                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.3)' }}>Tap to flip back</Text>
-              </View>
-            </View>
           </View>
         </ScrollView>
-        </TouchableWithoutFeedback>
       </Animated.View>
     </Animated.View>
   );

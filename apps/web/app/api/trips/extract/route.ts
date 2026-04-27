@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trip extraction API not configured' }, { status: 503 })
   }
 
-  const body = await req.json()
+  let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
 
   // Validate prompt exists and isn't absurdly long
   if (!body.prompt || typeof body.prompt !== 'string' || body.prompt.length > 2000) {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -41,6 +41,7 @@ if (Platform.OS === 'android') {
 
 const PAD = 16;
 const GAP = 10;
+const FAV_TRIPS_KEY = 'travyl-favorite-trips';
 
 // ─── Status helpers (matches web) ─────────────────────────────
 
@@ -334,7 +335,7 @@ function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; heigh
 
 // ─── Feed Card ────────────────────────────────────────────────
 
-function FeedCard({ item, onPress, onDelete }: { item: TripCard; onPress: () => void; onDelete?: (id: string) => void }) {
+function FeedCard({ item, onPress, onDelete, isFav, onToggleFav }: { item: TripCard; onPress: () => void; onDelete?: (id: string) => void; isFav?: boolean; onToggleFav?: (id: string) => void }) {
   const colors = useThemeColors();
   const duration = getTripDuration(item.start_date, item.end_date);
   const badge = getStatusBadge(item);
@@ -379,17 +380,30 @@ function FeedCard({ item, onPress, onDelete }: { item: TripCard; onPress: () => 
             <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
               <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>{duration} days</Text>
             </View>
-            <Pressable
-              onPress={handleMenu}
-              hitSlop={12}
-              style={{
-                width: 30, height: 30, borderRadius: 15,
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <FontAwesome name="ellipsis-v" size={14} color="#fff" />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Pressable
+                onPress={() => onToggleFav?.(item.id)}
+                hitSlop={12}
+                style={{
+                  width: 30, height: 30, borderRadius: 15,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={14} color={isFav ? '#ef4444' : '#fff'} />
+              </Pressable>
+              <Pressable
+                onPress={handleMenu}
+                hitSlop={12}
+                style={{
+                  width: 30, height: 30, borderRadius: 15,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <FontAwesome name="ellipsis-v" size={14} color="#fff" />
+              </Pressable>
+            </View>
           </View>
           {/* Bottom content */}
           <View style={{ position: 'absolute', bottom: 14, left: 14, right: 14 }}>
@@ -504,6 +518,26 @@ export default function TripsScreen() {
   const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  // Trip favorites — persisted in AsyncStorage
+  const [favIds, setFavIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    import('@react-native-async-storage/async-storage').then(({ default: AS }) => {
+      AS.getItem(FAV_TRIPS_KEY).then(raw => {
+        if (raw) try { setFavIds(new Set(JSON.parse(raw))); } catch {}
+      });
+    }).catch(() => {});
+  }, []);
+  const toggleFav = useCallback((id: string) => {
+    setFavIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      import('@react-native-async-storage/async-storage').then(({ default: AS }) => {
+        AS.setItem(FAV_TRIPS_KEY, JSON.stringify([...next]));
+      }).catch(() => {});
+      return next;
+    });
+  }, []);
 
   const handleDeleteTrip = useCallback(async (tripId: string) => {
     try {
@@ -754,7 +788,7 @@ export default function TripsScreen() {
         contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 32 }}
         ListHeaderComponent={<>{titleRow}{statusTabs}{searchBar}</>}
         renderItem={({ item }) => (
-          <FeedCard item={item} onPress={() => router.push(`/trip/${item.id}`)} onDelete={handleDeleteTrip} />
+          <FeedCard item={item} onPress={() => router.push(`/trip/${item.id}`)} onDelete={handleDeleteTrip} isFav={favIds.has(item.id)} onToggleFav={toggleFav} />
         )}
         ItemSeparatorComponent={() => <View style={{ height: GAP + 2 }} />}
         ListEmptyComponent={
