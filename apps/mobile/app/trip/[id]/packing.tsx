@@ -117,16 +117,21 @@ export default function PackingScreen() {
   const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
 
-  const defaultList = buildPackingList(trip);
-  const [packingList, setPackingList] = useState<PackingList>(defaultList);
+  // Start empty so the user doesn't see a list built from default trip
+  // duration / weather. The effect below populates from trip_context once
+  // `trip` loads, or builds defaults from the real trip data.
+  const [packingList, setPackingList] = useState<PackingList>({});
   const seeded = useRef(false);
 
-  // Load saved packing list from trip_context if available
+  // Load saved packing list from trip_context if available — otherwise
+  // generate defaults from the actual trip (duration + weather).
   useEffect(() => {
     if (trip && !seeded.current) {
       const saved = (trip.trip_context as any)?.packing_data;
       if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
         setPackingList(saved);
+      } else {
+        setPackingList(buildPackingList(trip));
       }
       seeded.current = true;
     }
@@ -156,9 +161,15 @@ export default function PackingScreen() {
     });
   }, [persistPacking]);
 
+  // Categories expand to whichever list is currently displayed; recomputed
+  // by the effect below once `packingList` populates.
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(Object.keys(defaultList)),
+    new Set(),
   );
+
+  useEffect(() => {
+    setExpandedCategories(new Set(Object.keys(packingList)));
+  }, [packingList]);
   const [newItemInputs, setNewItemInputs] = useState<Record<string, string>>({});
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');

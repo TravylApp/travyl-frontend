@@ -393,9 +393,9 @@ export default function FavoritesScreen() {
   // Build from trip_context instead of mock data
   const ctx = trip?.trip_context as any;
   const allDiscoverItems: DiscoverItem[] = useMemo(() => [
-    ...(ctx?.explore_items ?? []).map((e: any) => ({ id: e.id, name: e.title || e.name, description: e.description || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [] })),
-    ...(ctx?.foursquare_venues ?? []).map((v: any) => ({ id: v.id, name: v.title || v.name, description: v.description || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [] })),
-  ], [ctx]);
+    ...(ctx?.explore_items ?? []).map((e: any) => ({ id: e.id, name: e.title || e.name, description: e.description || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [], location: e.address || e.location || trip?.destination || '' })),
+    ...(ctx?.foursquare_venues ?? []).map((v: any) => ({ id: v.id, name: v.title || v.name, description: v.description || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [], location: v.address || v.location || trip?.destination || '' })),
+  ], [ctx, trip?.destination]);
   const favoritedActivities = allDiscoverItems.filter((a) => activityFavorites.includes(a.id));
   const favoritedRestaurants = allDiscoverItems.filter((r) => restaurantFavorites.includes(r.id));
   const favoritedDestinations = allDiscoverItems.filter((a) => destinationFavorites.includes(a.id));

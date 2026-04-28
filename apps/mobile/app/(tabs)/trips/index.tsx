@@ -149,6 +149,32 @@ function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; heigh
   const visibleMembers = members.slice(0, 3);
   const extraCount = members.length - 3;
 
+  // useCallback must be called unconditionally — declare before any early
+  // return so React's hook ordering stays consistent across the skeleton
+  // and real-card render paths.
+  const handleMenu = useCallback(() => {
+    Alert.alert(trip.title || 'Trip', undefined, [
+      {
+        text: 'Share',
+        onPress: () => Share.share({
+          message: `Check out my trip to ${trip.destination}!`,
+          url: `https://gotravyl.com/trip/${trip.id}`,
+        }),
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Delete Trip', `Are you sure you want to delete "${trip.title}"?`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(trip.id) },
+          ]);
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [trip, onDelete]);
+
   // Skeleton mode
   if (!trip.id || trip.id.startsWith('skeleton-')) {
     return (
@@ -190,29 +216,6 @@ function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; heigh
       </View>
     );
   }
-
-  const handleMenu = useCallback(() => {
-    Alert.alert(trip.title || 'Trip', undefined, [
-      {
-        text: 'Share',
-        onPress: () => Share.share({
-          message: `Check out my trip to ${trip.destination}!`,
-          url: `https://gotravyl.com/trip/${trip.id}`,
-        }),
-      },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Delete Trip', `Are you sure you want to delete "${trip.title}"?`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(trip.id) },
-          ]);
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }, [trip, onDelete]);
 
   return (
     <View style={{ width }}>
@@ -578,8 +581,8 @@ export default function TripsScreen() {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.destination.toLowerCase().includes(q)
+          (t.title ?? '').toLowerCase().includes(q) ||
+          (t.destination ?? '').toLowerCase().includes(q)
       );
     }
 

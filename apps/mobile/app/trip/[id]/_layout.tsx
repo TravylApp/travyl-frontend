@@ -695,8 +695,17 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
                     });
                     refetch();
                     setEditingTrip(false);
-                  } catch {}
-                  setEditSaving(false);
+                  } catch (e: any) {
+                    // Surface the failure — silent catch left users thinking
+                    // their edit was saved when it wasn't.
+                    const { Alert } = await import('react-native');
+                    Alert.alert(
+                      'Save failed',
+                      e?.message ?? 'Could not save your changes. Please try again.',
+                    );
+                  } finally {
+                    setEditSaving(false);
+                  }
                 }}
                 disabled={editSaving}
                 style={({ pressed }) => ({

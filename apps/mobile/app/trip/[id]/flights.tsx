@@ -783,15 +783,18 @@ function ComparisonAlternatives() {
             </View>
           )}
 
-          {/* Price range info */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
-            <FontAwesome name="info-circle" size={10} color={colors.textTertiary} />
-            <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>
-              Prices from{' '}
-              <Text style={{ fontWeight: '700', color: colors.text }}>${Math.min(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> to{' '}
-              <Text style={{ fontWeight: '700', color: colors.text }}>${Math.max(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> per person incl. taxes
-            </Text>
-          </View>
+          {/* Price range info — only show when we have comparison data.
+              Empty array would render $Infinity to $-Infinity. */}
+          {COMPARISON_FLIGHTS.length > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
+              <FontAwesome name="info-circle" size={10} color={colors.textTertiary} />
+              <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>
+                Prices from{' '}
+                <Text style={{ fontWeight: '700', color: colors.text }}>${Math.min(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> to{' '}
+                <Text style={{ fontWeight: '700', color: colors.text }}>${Math.max(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> per person incl. taxes
+              </Text>
+            </View>
+          )}
 
           {/* Flight option cards */}
           {sorted.map((flight) => {
@@ -961,6 +964,14 @@ function BookingDetailsSection() {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const d = BOOKING_DETAILS;
+
+  // Hide the entire section until there's at least one real value.
+  // Booking reference / fare class / baggage are not yet wired to live
+  // data, and a card full of blank rows looks broken to demo viewers.
+  const hasAnyData =
+    d.confirmationNumber || d.pnr || d.fareClass ||
+    d.baggageAllowance.carryOn || d.cancellationPolicy || d.checkInUrl;
+  if (!hasAnyData) return null;
 
   return (
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
