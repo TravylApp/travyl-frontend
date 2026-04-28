@@ -13,43 +13,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing or invalid tripId' }, { status: 400 })
     }
 
-    // Verify the caller owns this trip
-    // Check auth header for logged-in user
+    // Authentication is required to delete a trip — no anonymous deletes.
+    // The previous anonymous branch let any caller delete any trip whose
+    // user_id was NULL and visibility was 'public'. Currently RLS-mitigated
+    // (anon trips are forced to visibility='private' by migration
+    // 20260327000000_fix_trips_rls.sql), but the code path was still a hole.
     const authHeader = req.headers.get('authorization')
-    if (authHeader) {
-      // Logged-in user — verify they own the trip
-      const { data: { user }, error: authErr } = await createClient(
-        supabaseUrl, supabaseKey,
-        { global: { headers: { Authorization: authHeader } } }
-      ).auth.getUser()
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
 
-      if (authErr || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    const { data: { user }, error: authErr } = await createClient(
+      supabaseUrl, supabaseKey,
+      { global: { headers: { Authorization: authHeader } } }
+    ).auth.getUser()
+    if (authErr || !user) {
+      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+    }
 
-      // Check trip ownership
-      const { data: trip } = await supabase
-        .from('trips')
-        .select('user_id')
-        .eq('id', tripId)
-        .single()
+    const { data: trip } = await supabase
+      .from('trips')
+      .select('user_id')
+      .eq('id', tripId)
+      .single()
 
-      if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
-      if (trip.user_id !== user.id) {
-        return NextResponse.json({ error: 'Not your trip' }, { status: 403 })
-      }
-    } else {
-      // Anonymous — only allow deleting public trips with no owner
-      const { data: trip } = await supabase
-        .from('trips')
-        .select('user_id, visibility')
-        .eq('id', tripId)
-        .single()
-
-      if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
-      if (trip.user_id || trip.visibility !== 'public') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-      }
+    if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
+    // Reject if the trip has no owner (legacy anonymous) OR the owner is
+    // someone else.
+    if (!trip.user_id || trip.user_id !== user.id) {
+      return NextResponse.json({ error: 'Not your trip' }, { status: 403 })
     }
 
     const { error } = await supabase.rpc('delete_trip_cascade', { p_trip_id: tripId })
