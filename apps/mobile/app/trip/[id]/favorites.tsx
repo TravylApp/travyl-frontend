@@ -367,6 +367,7 @@ export default function FavoritesScreen() {
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
   const [activityFavorites, setActivityFavorites] = useState<string[]>([]);
   const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>([]);
+  const [destinationFavorites, setDestinationFavorites] = useState<string[]>([]);
 
   // Load favorites from AsyncStorage on mount
   // Using separate keys to prevent cross-contamination (issue #650 item 9)
@@ -383,7 +384,6 @@ export default function FavoritesScreen() {
       } catch {}
     });
   }, []);
-  const [destinationFavorites, setDestinationFavorites] = useState<string[]>([]);
   const colors = useThemeColors();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const toggleSection = (key: string) => {

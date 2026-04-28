@@ -845,6 +845,15 @@ export default function RestaurantsScreen() {
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [userSearch]);
 
+  // Immediate search — fired by keyboard "Search" key and clear-button.
+  // Cancels any pending debounce so the explicit submit takes precedence.
+  const runSearch = useCallback((query: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setSearchPage(0);
+    setHasMore(true);
+    fetchPage(query, 0, false);
+  }, [fetchPage]);
+
   // Load more on scroll
   const loadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return;
