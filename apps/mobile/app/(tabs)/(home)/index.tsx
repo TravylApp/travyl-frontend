@@ -337,6 +337,15 @@ export default function HomeScreen() {
 
   // Conversational flow removed — direct AI planner
   const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  // Bring the user back to the search field — used by empty-state and
+  // HowItWorks CTAs that previously dead-ended on the empty Trips tab.
+  const focusSearchAtTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    // Small delay so the scroll lands before the keyboard pops up
+    setTimeout(() => inputRef.current?.focus(), 350);
+  }, []);
 
   const sendButtonRef = useRef<View>(null);
   const clarifyRetries = useRef(0);
@@ -462,6 +471,7 @@ export default function HomeScreen() {
     <View style={{ flex: 1 }}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <Animated.ScrollView
+      ref={scrollRef}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -821,7 +831,7 @@ export default function HomeScreen() {
               search bar above or tap the button below.
             </Text>
             <Pressable
-              onPress={() => router.push('/(tabs)/trips')}
+              onPress={focusSearchAtTop}
               style={{
                 backgroundColor: Blue[600],
                 borderRadius: 12,
@@ -843,7 +853,7 @@ export default function HomeScreen() {
 
       {/* ─── Scroll-animated Sections ─────────────────────────── */}
       <FadeInOnScroll scrollY={scrollY}>
-        <HowItWorks onCtaPress={() => router.push('/(tabs)/trips')} />
+        <HowItWorks onCtaPress={focusSearchAtTop} />
       </FadeInOnScroll>
 
       <TravelMosaic scrollY={scrollY} />
