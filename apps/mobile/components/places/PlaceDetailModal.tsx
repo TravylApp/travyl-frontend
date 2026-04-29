@@ -162,10 +162,10 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
     ]).start(() => onClose());
   }, [onClose]);
 
-  if (!place) return null;
-
-  const hasLocation = currentPlace?.latitude != null && currentPlace?.longitude != null;
-  const cardW = SCREEN_WIDTH - 32;
+  // Hooks must come before any early return to keep the call order stable
+  // across renders. When `place` flips to null on close, React would otherwise
+  // see a different number of hooks and throw "Rendered more hooks than during
+  // the previous render."
   const [showMap, setShowMap] = useState(false);
   const mapPanelSlide = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
@@ -186,7 +186,12 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
         }, 400);
       }, 300);
     }
-  }, [showMap, currentPlace]);
+  }, [showMap, currentPlace, mapPanelSlide]);
+
+  if (!place) return null;
+
+  const hasLocation = currentPlace?.latitude != null && currentPlace?.longitude != null;
+  const cardW = SCREEN_WIDTH - 32;
 
   // Reset map panel when place changes
   useEffect(() => {
