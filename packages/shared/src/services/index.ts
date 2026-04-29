@@ -82,3 +82,9 @@ export {
   mapApiPlace,
 } from './placesDiscovery';
 export type { DiscoverPageResult } from './placesDiscovery';
+
+export {
+  fetchAuditEntries,
+  groupAuditEntries,
+  buildRestorePlan,
+} from './historyService';

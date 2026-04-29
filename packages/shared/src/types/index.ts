@@ -1058,3 +1058,29 @@ export interface BudgetItem {
   fixed: boolean;
   expenses: BudgetExpense[];
 }
+
+// ─── History / Audit ───────────────────────────────────────
+
+export interface ItineraryEditRow {
+  id: string
+  trip_id: string
+  activity_id: string
+  edit_type: 'create' | 'delete' | 'move' | 'edit' | 'revert'
+  original_data: Record<string, unknown> | null
+  new_data: Record<string, unknown> | null
+  user_id: string | null
+  created_at: string
+}
+
+export interface EnrichedAuditEntry extends ItineraryEditRow {
+  displayName: string
+  activityName: string
+}
+
+export interface TimelineGroup {
+  id: string
+  entries: EnrichedAuditEntry[]
+  label: string
+  timestamp: string
+  earliestId: string
+}
