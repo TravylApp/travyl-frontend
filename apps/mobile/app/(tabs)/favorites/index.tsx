@@ -11,12 +11,14 @@ import {
   ActivityIndicator,
   Linking,
   Keyboard,
+  Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   Navy, TextStyles, FontSize, FontFamily,
   haversineKm as distanceKm, fetchDiscoverPage, fetchNearbyPlaces, searchPlaces, dedupPlaces, distanceLabel,
+  inferSearchHint,
   type PlaceItem, type DiscoverPageResult,
 } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -426,13 +428,35 @@ export default function FavoritesScreen() {
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) => {
-      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      const wasFavorited = prev.includes(id);
+      const next = wasFavorited ? prev.filter((f) => f !== id) : [...prev, id];
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
         AsyncStorage.setItem('travyl-favorites', JSON.stringify(next)).catch(() => {});
       }).catch(() => {});
+      // Surface a toast so the user gets concrete feedback that the save
+      // succeeded — silent state flips made the heart feel decorative.
+      setToastMessage(
+        wasFavorited
+          ? `Removed (${next.length} saved)`
+          : `Saved to your places (${next.length} total)`,
+      );
       return next;
     });
   }, []);
+
+  // Toast lifecycle — fade in on message, fade out after 1.5s.
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!toastMessage) return;
+    Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    const t = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setToastMessage(null);
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [toastMessage]);
 
   const tabFiltered = useMemo(() => {
     if (activeTab === 'all') return PLACES;
@@ -577,6 +601,38 @@ export default function FavoritesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
+
+      {/* Favorite-toggle toast — floats above content, doesn't block taps */}
+      {toastMessage && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: insets.top + 12,
+            left: PAD,
+            right: PAD,
+            zIndex: 1000,
+            opacity: toastOpacity,
+            backgroundColor: 'rgba(15,23,42,0.92)',
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            elevation: 8,
+          }}
+        >
+          <FontAwesome name="heart" size={14} color="#ef4444" />
+          <Text style={{ ...TextStyles.bodyEm, color: '#fff', flex: 1 }} numberOfLines={1}>
+            {toastMessage}
+          </Text>
+        </Animated.View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* Header */}
@@ -741,6 +797,18 @@ export default function FavoritesScreen() {
         {nearbyLoading && !searchCity && activeTab === 'all' && (
           <View style={{ paddingHorizontal: PAD, paddingVertical: 20, alignItems: 'center' }}>
             <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>Finding places near you...</Text>
+          </View>
+        )}
+
+        {/* Searching feedback — show inferred intent so the user sees what
+            we understood (e.g. "Searching nightlife near San Francisco…")
+            instead of a bare spinner. */}
+        {searchCity && searchLoading && (
+          <View style={{ paddingHorizontal: PAD, paddingVertical: 20, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ActivityIndicator size="small" color={colors.tint} />
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>
+              {inferSearchHint(searchCity, null)}
+            </Text>
           </View>
         )}
 
