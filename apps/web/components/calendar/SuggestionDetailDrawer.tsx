@@ -69,7 +69,7 @@ export function SuggestionDetailDrawer({
     <div
       className={[
         'absolute inset-y-0 right-0 w-full z-30',
-        'bg-[var(--cal-surface-elevated)] flex flex-col',
+        'bg-cal-surface-elevated flex flex-col',
         'transition-transform duration-300 ease-out',
         !isVisible || isClosing ? 'translate-x-full' : 'translate-x-0',
       ].join(' ')}
@@ -159,7 +159,7 @@ export function SuggestionDetailDrawer({
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {/* Name */}
-        <h3 className="text-[15px] font-semibold text-[var(--cal-text)] leading-snug">
+        <h3 className="text-[15px] font-semibold text-cal-text leading-snug">
           {suggestion.name}
         </h3>
 
@@ -171,7 +171,7 @@ export function SuggestionDetailDrawer({
             </span>
           )}
           {suggestion.price != null && (
-            <span className="text-[11px] text-[var(--cal-text-secondary)]">
+            <span className="text-[11px] text-cal-text-secondary">
               {formatPrice(suggestion.price, suggestion.currency)}
             </span>
           )}
@@ -185,14 +185,14 @@ export function SuggestionDetailDrawer({
             {suggestion.category.charAt(0).toUpperCase() +
               suggestion.category.slice(1)}
           </span>
-          <span className="text-[11px] text-[var(--cal-text-tertiary)]">
+          <span className="text-[11px] text-cal-text-tertiary">
             ~{formatDuration(suggestion.duration)}
           </span>
         </div>
 
         {/* Location */}
         {suggestion.location && (
-          <p className="text-[11px] text-[var(--cal-text-secondary)] flex items-start gap-1">
+          <p className="text-[11px] text-cal-text-secondary flex items-start gap-1">
             <span className="mt-[1px] shrink-0" aria-hidden="true">📍</span>
             <span>{suggestion.location}</span>
           </p>
@@ -200,7 +200,7 @@ export function SuggestionDetailDrawer({
 
         {/* Description */}
         {suggestion.description && (
-          <p className="text-[12px] text-[var(--cal-text-secondary)] leading-relaxed">
+          <p className="text-[12px] text-cal-text-secondary leading-relaxed">
             {suggestion.description}
           </p>
         )}
@@ -210,7 +210,7 @@ export function SuggestionDetailDrawer({
           <Link
             href={`/activity/${suggestion.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-[var(--cal-border)] text-[12px] font-medium text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)] transition-colors"
+            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-cal-border text-[12px] font-medium text-cal-text-secondary hover:bg-cal-border-light hover:text-cal-text transition-colors"
           >
             View full details
           </Link>

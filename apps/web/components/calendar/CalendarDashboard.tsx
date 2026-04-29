@@ -713,7 +713,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className={`flex h-full overflow-hidden bg-[var(--cal-bg)] text-[var(--cal-text)]${isResizingPanel ? ' select-none' : ''}`}>
+      className={`flex h-full overflow-hidden bg-cal-bg text-cal-text${isResizingPanel ? ' select-none' : ''}`}>
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
@@ -853,7 +853,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
               <>
                 {/* Resize handle */}
                 <div
-                  className="shrink-0 w-1 cursor-col-resize hover:bg-[var(--cal-accent)]/30 active:bg-[var(--cal-accent)]/50 transition-colors relative group"
+                  className="shrink-0 w-1 cursor-col-resize hover:bg-cal-accent/30 active:bg-cal-accent/50 transition-colors relative group"
                   onPointerDown={(e) => {
                     e.preventDefault()
                     handlePanelDragStart()
@@ -872,7 +872,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                   }}
                 >
                   <div className="absolute inset-y-0 -left-1 -right-1" />
-                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-[var(--cal-text-tertiary)] opacity-0 group-hover:opacity-40 transition-opacity" />
+                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 rounded-full bg-cal-text-tertiary opacity-0 group-hover:opacity-40 transition-opacity" />
                 </div>
 
                 {/* Right column: Sidebar with For You / Map tabs */}
@@ -913,16 +913,16 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           {/* Drag overlay — shows ghost of dragged item */}
           <DragOverlay dropAnimation={null} style={{ zIndex: 9999 }}>
             {activeData?.type === 'suggestion' ? (
-              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
+              <div className="bg-cal-surface rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-cal-border">
                 <span className="text-lg">{getCategoryIcon(activeData.suggestion.category)}</span>
-                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
+                <span className="font-medium text-sm text-cal-text truncate max-w-[150px]">
                   {activeData.suggestion.name}
                 </span>
               </div>
             ) : activeData?.type === 'activity' ? (
-              <div className="bg-[var(--cal-surface)] rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-[var(--cal-border)]">
+              <div className="bg-cal-surface rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 border border-cal-border">
                 <span className="text-lg">{getCategoryIcon(activeData.activity.type)}</span>
-                <span className="font-medium text-sm text-[var(--cal-text)] truncate max-w-[150px]">
+                <span className="font-medium text-sm text-cal-text truncate max-w-[150px]">
                   {activeData.activity.title || 'Untitled'}
                 </span>
               </div>

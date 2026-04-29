@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { EditPencil, Xmark, NavArrowDown, Plus } from 'iconoir-react'
 import type { BudgetCategoryData } from '@travyl/shared'
+import { Red, Amber } from '@travyl/shared'
 import { BudgetCategoryDetail } from './BudgetCategoryDetail'
 import { AddCategoryForm } from './AddCategoryForm'
 import { getCategoryColor } from './budgetColors'
@@ -49,7 +50,7 @@ export function BudgetCategoryList({
         const isHovered = hoveredCategory === cat.name
         const color = getCategoryColor(cat.name)
         const percentClamped = Math.min(cat.percentUsed, 100)
-        const barColor = cat.percentUsed >= 100 ? '#EF4444' : cat.percentUsed >= 80 ? '#F59E0B' : color
+        const barColor = cat.percentUsed >= 100 ? Red[500] : cat.percentUsed >= 80 ? Amber[500] : color
 
         return (
           <div key={cat.id}>

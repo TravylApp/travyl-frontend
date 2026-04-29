@@ -99,7 +99,7 @@ export default function DayMap({
       const el = document.createElement('div')
       el.className = [
         'w-6 h-6 rounded-full text-white text-xs flex items-center justify-center font-bold ring-2 ring-white shadow cursor-pointer',
-        isSelected ? 'bg-amber-500' : 'bg-[#003594]',
+        isSelected ? 'bg-amber-500' : 'bg-primary',
       ].join(' ')
       el.style.width = '24px'
       el.style.height = '24px'
@@ -171,7 +171,7 @@ export default function DayMap({
   if (validActivities.length === 0) {
     return (
       <div
-        className={`flex items-center justify-center h-full text-sm text-[var(--cal-text-secondary)] ${className ?? ''}`}
+        className={`flex items-center justify-center h-full text-sm text-cal-text-secondary ${className ?? ''}`}
       >
         Add locations to see the route map
       </div>

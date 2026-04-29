@@ -180,7 +180,7 @@ export function EventBlock({
       {hasConflict && conflictTooltip && (
         <div
           title={conflictTooltip}
-          className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white dark:ring-[#0f1a28] z-10"
+          className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white dark:ring-cal-surface-elevated z-10"
         />
       )}
 
@@ -302,13 +302,13 @@ export function EventBlock({
       {bookingStatus === 'matched' && (
         <span
           title="Bookable"
-          className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white dark:ring-[#0a1520]"
+          className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-white dark:ring-cal-bg"
         />
       )}
       {bookingStatus === 'opened' && (
         <span
           title="Booking opened"
-          className="absolute bottom-1 right-1 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-green-500 ring-1 ring-white dark:ring-[#0a1520]"
+          className="absolute bottom-1 right-1 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-green-500 ring-1 ring-white dark:ring-cal-bg"
         >
           <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden>
             <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

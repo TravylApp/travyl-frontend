@@ -203,7 +203,7 @@ export function CompactTripHeader({
                 )}
                 {/* Wiki */}
                 {wiki && (
-                  <p className="text-[13px] leading-relaxed text-white/80 font-serif line-clamp-4 backdrop-blur-sm bg-black/25 rounded-lg px-4 py-3"
+                  <p className="text-[13px] leading-relaxed text-white/80 font-sans line-clamp-4 backdrop-blur-sm bg-black/25 rounded-lg px-4 py-3"
                     style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
                     {wiki}
                   </p>

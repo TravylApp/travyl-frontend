@@ -447,7 +447,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             {wiki?.extract && (
               <div className="rounded-xl px-4 py-3"
                 style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
-                <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/90 font-serif line-clamp-3">
+                <p className="text-[13px] sm:text-[14px] leading-[1.7] text-white/90 font-sans line-clamp-3">
                   {wiki.extract}
                 </p>
               </div>

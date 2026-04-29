@@ -63,12 +63,12 @@ export function EventsPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-3.5 pb-3 border-b border-[var(--cal-border-light)]">
-        <h2 className="text-sm font-semibold text-[var(--cal-text)]">
+      <div className="p-3.5 pb-3 border-b border-cal-border-light">
+        <h2 className="text-sm font-semibold text-cal-text">
           Events{cityName ? ` in ${cityName}` : ''}
         </h2>
         {dateRange && (
-          <p className="text-[11px] text-[var(--cal-text-secondary)] mt-0.5">{dateRange}</p>
+          <p className="text-[11px] text-cal-text-secondary mt-0.5">{dateRange}</p>
         )}
       </div>
 
@@ -82,8 +82,8 @@ export function EventsPanel({
             className={[
               'text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap transition-all border',
               activeChip === chip
-                ? 'bg-[#003594] border-[#003594] text-white'
-                : 'border-[var(--cal-border)] text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]',
+                ? 'bg-primary border-primary text-white'
+                : 'border-cal-border text-cal-text-secondary hover:bg-cal-border-light hover:text-cal-text',
             ].join(' ')}
           >
             {chip}
@@ -96,7 +96,7 @@ export function EventsPanel({
       <div className="h-0 grow overflow-y-auto py-2 scrollbar-thin">
         {isDisabled ? (
           <div className="flex items-center justify-center h-full px-4 text-center">
-            <p className="text-sm text-[var(--cal-text-secondary)]">
+            <p className="text-sm text-cal-text-secondary">
               Add trip dates to see local events
             </p>
           </div>
@@ -104,11 +104,11 @@ export function EventsPanel({
           <div className="px-3 space-y-3 pt-2">
             {[0, 1].map(i => (
               <div key={i} className="flex gap-3">
-                <div className="w-12 h-12 rounded-lg bg-[var(--cal-border)] animate-pulse shrink-0" />
+                <div className="w-12 h-12 rounded-lg bg-cal-border animate-pulse shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 bg-[var(--cal-border)] animate-pulse rounded w-3/4" />
-                  <div className="h-2.5 bg-[var(--cal-border)] animate-pulse rounded w-1/2" />
-                  <div className="h-2.5 bg-[var(--cal-border)] animate-pulse rounded w-2/3" />
+                  <div className="h-3 bg-cal-border animate-pulse rounded w-3/4" />
+                  <div className="h-2.5 bg-cal-border animate-pulse rounded w-1/2" />
+                  <div className="h-2.5 bg-cal-border animate-pulse rounded w-2/3" />
                 </div>
               </div>
             ))}
@@ -116,17 +116,17 @@ export function EventsPanel({
         ) : onRetry && events.length === 0 ? (
           // Error state takes precedence over empty state when onRetry is provided
           <div className="flex flex-col items-center justify-center h-full gap-2 px-4 text-center">
-            <p className="text-sm text-[var(--cal-text-secondary)]">Couldn't load events</p>
+            <p className="text-sm text-cal-text-secondary">Couldn't load events</p>
             <button
               onClick={onRetry}
-              className="text-xs text-[var(--cal-accent)] hover:underline"
+              className="text-xs text-cal-accent hover:underline"
             >
               Retry
             </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex items-center justify-center h-full px-4 text-center">
-            <p className="text-sm text-[var(--cal-text-secondary)]">
+            <p className="text-sm text-cal-text-secondary">
               No events found in {cityName} during your trip
             </p>
           </div>
