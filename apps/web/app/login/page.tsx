@@ -7,6 +7,7 @@ import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore, LOGIN_DESTINATIONS } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
+import { safeNextPath } from '@/lib/safe-redirect';
 
 export default function LoginPage() {
   return (
@@ -44,7 +45,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace(searchParams.get('next') || '/');
+      router.replace(safeNextPath(searchParams.get('next')));
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {
