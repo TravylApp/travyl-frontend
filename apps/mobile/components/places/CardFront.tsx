@@ -40,15 +40,23 @@ export default function CardFront({
   height,
   imageIndex = 0,
 }: CardFrontProps) {
-  const images: string[] =
+  // Strip empty/falsy strings — when the API returns no image, `place.image`
+  // is '' and the array would otherwise be [''], crashing expo-image with
+  // a "URI is required" error and showing a black card.
+  const rawImages =
     place.images && place.images.length > 0 ? place.images : [place.image];
-
+  const images: string[] = rawImages.filter(
+    (u): u is string => typeof u === 'string' && u.length > 0,
+  );
+  const hasImages = images.length > 0;
   const hasMultiple = images.length > 1;
 
   // ── Crossfade on imageIndex change ──────────────────────────────────────
-  const safeIdx = imageIndex % images.length;
-  const [imgA, setImgA] = useState(images[safeIdx]);
-  const [imgB, setImgB] = useState(images[(safeIdx + 1) % images.length]);
+  const safeIdx = hasImages ? imageIndex % images.length : 0;
+  const [imgA, setImgA] = useState<string | undefined>(images[safeIdx]);
+  const [imgB, setImgB] = useState<string | undefined>(
+    hasImages ? images[(safeIdx + 1) % images.length] : undefined,
+  );
   const opacityA = useSharedValue(1);
   const opacityB = useSharedValue(0);
   const showingA = useRef(true);
@@ -59,6 +67,11 @@ export default function CardFront({
   useEffect(() => {
     if (place.id === prevPlaceId.current) return;
     prevPlaceId.current = place.id;
+    if (!hasImages) {
+      setImgA(undefined);
+      setImgB(undefined);
+      return;
+    }
     const idx = imageIndex % images.length;
     setImgA(images[idx]);
     setImgB(images[(idx + 1) % images.length]);
@@ -101,7 +114,11 @@ export default function CardFront({
       }}
     >
       {/* ── Background images ─────────────────────────────────────────── */}
-      {hasMultiple ? (
+      {!hasImages ? (
+        // No image fallback — keep the black card background; the category
+        // badge and text overlay still render legibly on top.
+        null
+      ) : hasMultiple ? (
         <>
           <Animated.View
             style={[
