@@ -104,7 +104,7 @@ export function RescoperPopover({
     <>
       <div
         ref={popoverRef}
-        className="absolute top-full mt-1 left-0 z-40 bg-white dark:bg-[#0f1a28] border border-gray-200 dark:border-[#1e3a5f]/40 rounded-xl shadow-xl w-80 p-4"
+        className="absolute top-full mt-1 left-0 z-40 bg-white dark:bg-cal-surface-elevated border border-gray-200 dark:border-cal-border rounded-xl shadow-xl w-80 p-4"
       >
         {errorMsg && (
           <div className="mb-3 text-[12px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">
@@ -114,26 +114,26 @@ export function RescoperPopover({
 
         {/* Destination */}
         <div className="mb-3">
-          <label className="block text-[11px] uppercase tracking-wide text-gray-400 dark:text-[#4a7ab5] mb-1">
+          <label className="block text-[11px] uppercase tracking-wide text-gray-400 dark:text-cal-text-secondary mb-1">
             Destination
           </label>
           <input
             type="text"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 bg-transparent px-3 py-1.5 text-[13px] text-gray-800 dark:text-[#f5efe8] focus:outline-none focus:ring-1 focus:ring-[#003594]"
+            className="w-full rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-3 py-1.5 text-[13px] text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
         {/* Start date */}
         <div className="mb-2">
-          <label className="block text-[11px] uppercase tracking-wide text-gray-400 dark:text-[#4a7ab5] mb-1">
+          <label className="block text-[11px] uppercase tracking-wide text-gray-400 dark:text-cal-text-secondary mb-1">
             Start
           </label>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setStartDate(subtractOneDayFrom(startDate))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 text-[15px] font-light transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-cal-border text-gray-500 dark:text-cal-text-secondary hover:bg-gray-50 dark:hover:bg-cal-accent-bg/60 text-[15px] font-light transition-colors"
               aria-label="Remove start day"
             >
               −
@@ -142,14 +142,14 @@ export function RescoperPopover({
               type="date"
               value={toInputValue(startDate)}
               onChange={(e) => e.target.value && setStartDate(fromInputValue(e.target.value))}
-              className="flex-1 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 bg-transparent px-2 py-1.5 text-[13px] text-gray-800 dark:text-[#f5efe8] focus:outline-none focus:ring-1 focus:ring-[#003594]"
+              className="flex-1 rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-2 py-1.5 text-[13px] text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         </div>
 
         {/* End date */}
         <div className="mb-3">
-          <label className="block text-[11px] uppercase tracking-wide text-gray-400 dark:text-[#4a7ab5] mb-1">
+          <label className="block text-[11px] uppercase tracking-wide text-gray-400 dark:text-cal-text-secondary mb-1">
             End
           </label>
           <div className="flex items-center gap-2">
@@ -157,11 +157,11 @@ export function RescoperPopover({
               type="date"
               value={toInputValue(endDate)}
               onChange={(e) => e.target.value && setEndDate(fromInputValue(e.target.value))}
-              className="flex-1 rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 bg-transparent px-2 py-1.5 text-[13px] text-gray-800 dark:text-[#f5efe8] focus:outline-none focus:ring-1 focus:ring-[#003594]"
+              className="flex-1 rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-2 py-1.5 text-[13px] text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
               onClick={() => setEndDate(addOneDayTo(endDate))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 text-gray-500 dark:text-[#4a7ab5] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 text-[15px] font-light transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-cal-border text-gray-500 dark:text-cal-text-secondary hover:bg-gray-50 dark:hover:bg-cal-accent-bg/60 text-[15px] font-light transition-colors"
               aria-label="Add end day"
             >
               +
@@ -170,7 +170,7 @@ export function RescoperPopover({
         </div>
 
         {/* Night count */}
-        <p className="text-[12px] text-gray-400 dark:text-[#4a7ab5] mb-4">
+        <p className="text-[12px] text-gray-400 dark:text-cal-text-secondary mb-4">
           {isInvalid ? (
             <span className="text-red-500">End must be after start</span>
           ) : (
@@ -182,14 +182,14 @@ export function RescoperPopover({
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-[13px] text-gray-500 dark:text-[#4a7ab5] hover:text-gray-700 dark:hover:text-white transition-colors"
+            className="px-3 py-1.5 text-[13px] text-gray-500 dark:text-cal-text-secondary hover:text-gray-700 dark:hover:text-cal-text transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleApply}
             disabled={isInvalid || isLoading}
-            className="px-4 py-1.5 rounded-lg bg-[#003594] text-white text-[13px] font-medium hover:bg-[#002a7a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-1.5 rounded-lg bg-primary text-white text-[13px] font-medium hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Saving…' : 'Apply'}
           </button>

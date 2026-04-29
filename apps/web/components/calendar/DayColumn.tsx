@@ -183,9 +183,9 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-[var(--cal-border)] text-[var(--cal-text-secondary)] select-none',
+          'text-center text-xs font-medium py-1 border-b border-cal-border text-cal-text-secondary select-none',
           onClickDayHeader
-            ? 'cursor-pointer hover:bg-[var(--cal-border-light)] transition-colors'
+            ? 'cursor-pointer hover:bg-cal-border-light transition-colors'
             : '',
         ].join(' ')}
         onClick={onClickDayHeader}
@@ -205,7 +205,7 @@ export function DayColumn({
         <span className="inline-flex items-center gap-1">
           {label}
           {dayIntel?.weather && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--cal-text-secondary)]">
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-cal-text-secondary">
               {getWmoWeather(dayIntel.weather.weatherCode).icon}
               {dayIntel.weather.tempMaxC !== null && `${Math.round(dayIntel.weather.tempMaxC)}°`}
             </span>
@@ -231,13 +231,13 @@ export function DayColumn({
                   marginLeft: i === 0 ? 0 : '-4px',
                   zIndex: 3 - i,
                 }}
-                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-[var(--cal-surface)]"
+                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-cal-surface"
               >
                 {c.avatarInitial}
               </div>
             ))}
             {dayCollaborators.length > 3 && (
-              <span className="text-[9px] text-[var(--cal-text-tertiary)] ml-1">
+              <span className="text-[9px] text-cal-text-tertiary ml-1">
                 +{dayCollaborators.length - 3}
               </span>
             )}
@@ -250,8 +250,8 @@ export function DayColumn({
         ref={setNodeRef}
         data-day-grid={dayIndex}
         className={[
-          'relative flex-1 border-l border-[var(--cal-border-light)]',
-          isOver ? 'bg-[var(--cal-drag-over)]' : '',
+          'relative flex-1 border-l border-cal-border-light',
+          isOver ? 'bg-cal-drag-over' : '',
         ].join(' ')}
         style={{ minHeight: hourCount * HOUR_HEIGHT }}
         onClick={handleBackgroundClick}
@@ -260,7 +260,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={hour}
-            className="absolute w-full border-t border-[var(--cal-grid-line)] pointer-events-none"
+            className="absolute w-full border-t border-cal-grid-line pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT }}
           />
         ))}
@@ -269,7 +269,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-[var(--cal-grid-line-half)] pointer-events-none"
+            className="absolute w-full border-t border-dashed border-cal-grid-line-half pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
           />
         ))}

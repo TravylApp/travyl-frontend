@@ -58,11 +58,11 @@ export function BudgetSummaryStrip({
                 onChange={(e) => setTempValue(e.target.value)}
                 onBlur={handleCommit}
                 onKeyDown={handleKeyDown}
-                className="text-3xl font-serif font-normal tracking-wide text-gray-900 bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none w-36 transition-all duration-150"
+                className="text-3xl font-sans font-normal tracking-wide text-gray-900 bg-transparent border-b border-gray-300 focus:border-gray-500 outline-none w-36 transition-all duration-150"
               />
             ) : (
               <>
-                <span className="text-3xl font-serif font-normal tracking-wide text-gray-900">
+                <span className="text-3xl font-sans font-normal tracking-wide text-gray-900">
                   {formatAmount(totalBudgeted)}
                 </span>
                 <button
@@ -81,7 +81,7 @@ export function BudgetSummaryStrip({
 
         {/* Total Spent */}
         <div>
-          <span className="text-3xl font-serif font-normal tracking-wide text-gray-900 block">
+          <span className="text-3xl font-sans font-normal tracking-wide text-gray-900 block">
             {formatAmount(totalSpent)}
           </span>
           <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-400 mt-1 block">
@@ -91,7 +91,7 @@ export function BudgetSummaryStrip({
 
         {/* Remaining */}
         <div>
-          <span className={`text-3xl font-serif font-normal tracking-wide block ${
+          <span className={`text-3xl font-sans font-normal tracking-wide block ${
             remaining >= 0 ? 'text-emerald-600' : 'text-red-500'
           }`}>
             {formatAmount(Math.abs(remaining))}

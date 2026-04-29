@@ -39,7 +39,7 @@ export function EventCard({ event }: EventCardProps) {
   const color = CATEGORY_COLORS[event.category]
 
   return (
-    <div className="flex items-start gap-3 px-3 py-2.5 hover:bg-[var(--cal-border-light)] transition-colors rounded-lg">
+    <div className="flex items-start gap-3 px-3 py-2.5 hover:bg-cal-border-light transition-colors rounded-lg">
       {/* Thumbnail */}
       <div
         className="shrink-0 w-12 h-12 rounded-lg overflow-hidden"
@@ -56,13 +56,13 @@ export function EventCard({ event }: EventCardProps) {
 
       {/* Details */}
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-[var(--cal-text)] line-clamp-2 leading-snug">
+        <p className="text-[13px] font-medium text-cal-text line-clamp-2 leading-snug">
           {event.name}
         </p>
-        <p className="text-[11px] text-[var(--cal-text-secondary)] mt-0.5">
+        <p className="text-[11px] text-cal-text-secondary mt-0.5">
           {formatEventDate(event.date, event.startTime)}
         </p>
-        <p className="text-[11px] text-[var(--cal-text-tertiary)] truncate">
+        <p className="text-[11px] text-cal-text-tertiary truncate">
           {event.venueName}
         </p>
         <span

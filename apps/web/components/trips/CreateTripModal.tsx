@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import { X, MapPin } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { PaperPlane } from '@/components/ui'
-import { useAuthStore } from '@travyl/shared'
+import { useAuthStore, Navy } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
 import { useIndexTrip } from '@/hooks/useIndexTrip'
 
@@ -257,10 +257,10 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#1e3a5f] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-[var(--trip-base)] flex items-center justify-center">
                 <PaperPlane size={14} className="text-white -rotate-12" />
               </div>
-              <h2 id="create-trip-title" className="text-lg font-bold text-[#1e3a5f]">Plan a Trip</h2>
+              <h2 id="create-trip-title" className="text-lg font-bold text-[var(--trip-base)]">Plan a Trip</h2>
             </div>
             <button aria-label="Close dialog" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
               <X size={18} aria-hidden />
@@ -277,7 +277,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
               <input id="trip-title" type="text" value={title}
                 onChange={(e) => { setTitle(e.target.value); setFieldErrors((prev) => ({ ...prev, title: undefined })) }}
                 placeholder="e.g. Paris Adventure" disabled={submitting}
-                className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-50 transition-all"
+                className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 disabled:opacity-50 transition-all"
               />
               {fieldErrors.title && <p className="mt-1 text-xs text-red-500">{fieldErrors.title}</p>}
             </div>
@@ -289,7 +289,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
                 onFocus={() => { if (suggestions.length > 0) setSuggestionsOpen(true) }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && suggestionsOpen && suggestions.length > 0) { e.preventDefault(); selectSuggestion(suggestions[0]) } }}
                 placeholder="e.g. Paris, France" disabled={submitting} autoComplete="off"
-                className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-50 transition-all"
+                className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 disabled:opacity-50 transition-all"
               />
               {suggestionsOpen && (
                 <ul role="listbox" aria-label="Destination suggestions"
@@ -312,7 +312,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
                 <input id="trip-start-date" type="date" value={startDate}
                   onChange={(e) => { setStartDate(e.target.value); setFieldErrors((prev) => ({ ...prev, start_date: undefined })) }}
                   disabled={submitting}
-                  className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-50 transition-all"
+                  className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 disabled:opacity-50 transition-all"
                 />
                 {fieldErrors.start_date && <p className="mt-1 text-xs text-red-500">{fieldErrors.start_date}</p>}
               </div>
@@ -321,14 +321,14 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
                 <input id="trip-end-date" type="date" value={endDate}
                   onChange={(e) => { setEndDate(e.target.value); setFieldErrors((prev) => ({ ...prev, end_date: undefined })) }}
                   disabled={submitting}
-                  className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-50 transition-all"
+                  className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 disabled:opacity-50 transition-all"
                 />
                 {fieldErrors.end_date && <p className="mt-1 text-xs text-red-500">{fieldErrors.end_date}</p>}
               </div>
             </div>
 
             <button type="submit" disabled={submitting}
-              className="w-full h-11 rounded-xl bg-[#1e3a5f] text-white text-sm font-semibold hover:bg-[#2a4d78] disabled:opacity-50 transition-all mt-2">
+              className="w-full h-11 rounded-xl bg-[var(--trip-base)] text-white text-sm font-semibold hover:brightness-125 disabled:opacity-50 transition-all mt-2">
               {submitting ? 'Creating...' : 'Create Trip'}
             </button>
           </form>
@@ -347,7 +347,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
               <div className="w-full h-full relative flex-1" style={{ minHeight: 420 }}>
                 <LeafletMap
                   locations={[
-                    { id: 'dest', lat: selectedCoords.lat, lng: selectedCoords.lon, name: `📍 ${destination.split(',')[0]}`, color: '#1e3a5f', category: 'destination' },
+                    { id: 'dest', lat: selectedCoords.lat, lng: selectedCoords.lon, name: `📍 ${destination.split(',')[0]}`, color: Navy.DEFAULT, category: 'destination' },
                     ...landmarks,
                   ]}
                   zoom={13}
@@ -358,8 +358,8 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
                 <div className="absolute bottom-4 left-4 right-4 z-[1000]">
                   <div className="bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md">
                     <div className="flex items-center gap-1.5">
-                      <MapPin size={12} className="text-[#1e3a5f] shrink-0" />
-                      <span className="text-xs font-medium text-[#1e3a5f] truncate">{destination.split(',')[0]}</span>
+                      <MapPin size={12} className="text-[var(--trip-base)] shrink-0" />
+                      <span className="text-xs font-medium text-[var(--trip-base)] truncate">{destination.split(',')[0]}</span>
                     </div>
                   </div>
                 </div>

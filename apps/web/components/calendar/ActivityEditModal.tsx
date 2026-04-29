@@ -175,7 +175,7 @@ export function ActivityEditModal({
           exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.15, ease: 'easeOut' }}
           style={{ width: MODAL_WIDTH }}
-          className="rounded-xl border border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+          className="rounded-xl border border-cal-border bg-cal-surface-elevated shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Hero header */}
@@ -226,7 +226,7 @@ export function ActivityEditModal({
               <select
                 value={form.type}
                 onChange={(e) => update('type', e.target.value)}
-                className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
               >
                 {ACTIVITY_TYPE_OPTIONS.map((t) => (
                   <option key={t} value={t}>
@@ -242,7 +242,7 @@ export function ActivityEditModal({
               <select
                 value={form.day}
                 onChange={(e) => update('day', Number(e.target.value))}
-                className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
               >
                 {tripDays.map((d) => (
                   <option key={d.dayIndex} value={d.dayIndex}>{d.label}</option>
@@ -254,19 +254,19 @@ export function ActivityEditModal({
                 <select
                   value={form.startHour}
                   onChange={(e) => update('startHour', Number(e.target.value))}
-                  className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                  className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                 >
                   {TIME_OPTIONS.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
-                <span className="text-[var(--cal-text-tertiary)] text-sm">–</span>
+                <span className="text-cal-text-tertiary text-sm">–</span>
                 <select
                   value={form.endHour}
                   onChange={(e) => update('endHour', Number(e.target.value))}
                   className={[
-                    'flex-1 bg-[var(--cal-bg)] border rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]',
-                    errors.endHour ? 'border-red-500' : 'border-[var(--cal-border)]',
+                    'flex-1 bg-cal-bg border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent',
+                    errors.endHour ? 'border-red-500' : 'border-cal-border',
                   ].join(' ')}
                 >
                   {TIME_OPTIONS.map((t) => (
@@ -285,7 +285,7 @@ export function ActivityEditModal({
               <input
                 value={form.location}
                 onChange={(e) => update('location', e.target.value)}
-                className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                 placeholder="Address or place name"
               />
             </FieldRow>
@@ -297,8 +297,8 @@ export function ActivityEditModal({
                 value={form.price}
                 onChange={(e) => update('price', e.target.value)}
                 className={[
-                  'flex-1 bg-[var(--cal-bg)] border rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]',
-                  errors.price ? 'border-red-500' : 'border-[var(--cal-border)]',
+                  'flex-1 bg-cal-bg border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent',
+                  errors.price ? 'border-red-500' : 'border-cal-border',
                 ].join(' ')}
                 placeholder="0.00"
               />
@@ -313,7 +313,7 @@ export function ActivityEditModal({
               value={form.notes}
               onChange={(e) => update('notes', e.target.value)}
               rows={3}
-              className="bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-2 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)] resize-none"
+              className="bg-cal-bg border border-cal-border rounded-md px-3 py-2 text-sm text-cal-text outline-none focus:border-cal-accent resize-none"
               placeholder="Add notes..."
             />
 
@@ -327,7 +327,7 @@ export function ActivityEditModal({
                       <input
                         value={form.flightNumber}
                         onChange={(e) => update('flightNumber', e.target.value)}
-                        className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                        className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                         placeholder="BA 123"
                       />
                     </FieldRow>
@@ -335,7 +335,7 @@ export function ActivityEditModal({
                       <input
                         value={form.airline}
                         onChange={(e) => update('airline', e.target.value)}
-                        className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                        className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                         placeholder="British Airways"
                       />
                     </FieldRow>
@@ -347,7 +347,7 @@ export function ActivityEditModal({
                       <input
                         value={form.checkIn}
                         onChange={(e) => update('checkIn', e.target.value)}
-                        className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                        className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                         placeholder="3:00 PM"
                       />
                     </FieldRow>
@@ -355,7 +355,7 @@ export function ActivityEditModal({
                       <input
                         value={form.checkOut}
                         onChange={(e) => update('checkOut', e.target.value)}
-                        className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                        className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                         placeholder="11:00 AM"
                       />
                     </FieldRow>
@@ -365,7 +365,7 @@ export function ActivityEditModal({
                   <input
                     value={form.bookingRef}
                     onChange={(e) => update('bookingRef', e.target.value)}
-                    className="flex-1 bg-[var(--cal-bg)] border border-[var(--cal-border)] rounded-md px-3 py-1.5 text-sm text-[var(--cal-text)] outline-none focus:border-[var(--cal-accent)]"
+                    className="flex-1 bg-cal-bg border border-cal-border rounded-md px-3 py-1.5 text-sm text-cal-text outline-none focus:border-cal-accent"
                     placeholder="ABC123"
                   />
                 </FieldRow>
@@ -374,16 +374,16 @@ export function ActivityEditModal({
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 border-t border-[var(--cal-border)] px-4 py-3 flex justify-end gap-2">
+          <div className="shrink-0 border-t border-cal-border px-4 py-3 flex justify-end gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg border border-[var(--cal-border)] text-sm text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)] transition-colors"
+              className="px-4 py-1.5 rounded-lg border border-cal-border text-sm text-cal-text-secondary hover:bg-cal-border-light hover:text-cal-text transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-1.5 rounded-lg bg-[#003594] text-sm text-white hover:bg-[#002a7a] transition-colors"
+              className="px-4 py-1.5 rounded-lg bg-primary text-sm text-white hover:bg-primary transition-colors"
             >
               Save
             </button>
@@ -399,7 +399,7 @@ export function ActivityEditModal({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--cal-text-tertiary)] border-b border-[var(--cal-border-light)] pb-1">
+    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-cal-text-tertiary border-b border-cal-border-light pb-1">
       {children}
     </div>
   )
@@ -408,7 +408,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-[var(--cal-text-secondary)] w-[70px] shrink-0">{label}</span>
+      <span className="text-sm text-cal-text-secondary w-[70px] shrink-0">{label}</span>
       {children}
     </div>
   )

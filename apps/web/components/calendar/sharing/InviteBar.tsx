@@ -31,7 +31,7 @@ export function InviteBar({ onInvite, isLoading }: InviteBarProps) {
         onChange={(e) => setEmail(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
         placeholder="Add people by email..."
-        className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-[#003594]"
+        className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-primary"
       />
       <select
         value={role}
@@ -44,7 +44,7 @@ export function InviteBar({ onInvite, isLoading }: InviteBarProps) {
       <button
         onClick={handleSubmit}
         disabled={isLoading || !email.trim()}
-        className="rounded-lg bg-[#003594] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         Invite
       </button>

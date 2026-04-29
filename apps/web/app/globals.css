@@ -140,6 +140,24 @@
   --color-trip-base-dark: var(--trip-base-dark, #0f1d30);
   --color-trip-accent: var(--trip-accent, #60a5fa);
   --color-trip-text: var(--trip-text, #ffffff);
+
+  /* Calendar light/dark variables */
+  --color-cal-bg: var(--cal-bg);
+  --color-cal-surface: var(--cal-surface);
+  --color-cal-surface-elevated: var(--cal-surface-elevated);
+  --color-cal-text: var(--cal-text);
+  --color-cal-text-secondary: var(--cal-text-secondary);
+  --color-cal-text-tertiary: var(--cal-text-tertiary);
+  --color-cal-border: var(--cal-border);
+  --color-cal-border-light: var(--cal-border-light);
+  --color-cal-accent: var(--cal-accent);
+  --color-cal-accent-bg: var(--cal-accent-bg);
+  --color-cal-nav-active-bg: var(--cal-nav-active-bg);
+  --color-cal-nav-active-text: var(--cal-nav-active-text);
+  --color-cal-nav-inactive: var(--cal-nav-inactive);
+  --color-cal-grid-line: var(--cal-grid-line);
+  --color-cal-drag-over: var(--cal-drag-over);
+  --color-cal-hour-text: var(--cal-hour-text);
 }
 
 body {
@@ -203,6 +221,11 @@ body::-webkit-scrollbar {
 /* Masonry layout for For You panel suggestions */
 .masonry-grid {
   column-count: 2;
+  column-gap: 0.5rem;
+}
+
+.masonry-grid-3 {
+  column-count: 3;
   column-gap: 0.5rem;
 }
 
