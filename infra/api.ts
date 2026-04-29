@@ -206,11 +206,6 @@ api.route('GET /events', {
   link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
 })
 
-api.route('GET /api/events/search', {
-  handler: 'services/events.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
-})
-
 api.route('GET /events/{id}/details', {
   handler: 'services/events.detailsHandler',
   link: [supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
