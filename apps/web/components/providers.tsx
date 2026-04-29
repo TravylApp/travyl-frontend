@@ -10,6 +10,7 @@ configureSupabase(getSupabaseBrowser());
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
 import { Toaster } from './ui/sonner';
+import { OnboardingOverlay } from './onboarding';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -56,6 +57,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <GlobalNavbar />
       {children}
       <SpotlightSearch />
+      <OnboardingOverlay />
       <Toaster />
     </QueryClientProvider>
   );
