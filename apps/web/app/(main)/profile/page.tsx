@@ -38,7 +38,7 @@ export default function ProfilePage() {
     }
   }
 
-  const displayName = profile?.display_name || user.email?.split('@')[0] || 'User'
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
   const initials = displayName
     .split(' ')
     .map((word) => word[0])
@@ -71,7 +71,7 @@ export default function ProfilePage() {
               {/* User Info */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayName}</h1>
-                <p className="text-gray-600 mb-4">{user.email}</p>
+                <p className="text-gray-600 mb-4">{user?.email}</p>
 
                 {/* Stats */}
                 <div className="flex gap-6">

@@ -310,6 +310,13 @@ export default function ProfileSettings() {
           return;
         }
 
+        // AuthGuard wraps the page so user should exist by the time this
+        // effect runs, but TypeScript needs the explicit narrow.
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
         // Fetch profile data
         const profile = await fetchProfile(user.id);
         setProfileData(profile);
