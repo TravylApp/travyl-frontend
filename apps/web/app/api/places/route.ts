@@ -109,10 +109,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Filter by geographic radius to avoid returning places from wrong cities
-    // (e.g. Universal Studios Orlando in a New Delhi trip)
+    // (e.g. Universal Studios Orlando in a New Delhi trip). Skip when the
+    // caller didn't provide coords — `parseFloat('')` is NaN and every
+    // distance check returns NaN, which the filter would treat as out-of-
+    // range and silently drop every result for NLP-only queries.
     const searchLat = parseFloat(lat)
     const searchLng = parseFloat(lng)
-    data = filterByRadius(data, searchLat, searchLng, 50)
+    if (Number.isFinite(searchLat) && Number.isFinite(searchLng)) {
+      data = filterByRadius(data, searchLat, searchLng, 50)
+    }
 
     // Map to PlaceItem format using the canonical shared mapper — strip items with no valid image
     const requestedCat = category
