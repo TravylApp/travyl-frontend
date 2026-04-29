@@ -22,6 +22,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useHomeScreen,
@@ -248,6 +249,7 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
 
 export default function HomeScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const colors = useThemeColors();
   const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const { height: screenHeight } = useWindowDimensions();
@@ -279,11 +281,13 @@ export default function HomeScreen() {
   }, []);
   useEffect(() => {
     if (heroSlides.length <= 1) return;
+    // Pause rotation while user is typing — context shifts are jarring mid-input
+    if (tripQuery.length > 0) return;
     const interval = setInterval(() => {
       setHeroSlide((prev) => (prev + 1) % heroSlides.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [heroSlides.length]);
+  }, [heroSlides.length, tripQuery.length === 0]);
 
   // Subtitle from API config only
 
@@ -333,6 +337,15 @@ export default function HomeScreen() {
 
   // Conversational flow removed — direct AI planner
   const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  // Bring the user back to the search field — used by empty-state and
+  // HowItWorks CTAs that previously dead-ended on the empty Trips tab.
+  const focusSearchAtTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    // Small delay so the scroll lands before the keyboard pops up
+    setTimeout(() => inputRef.current?.focus(), 350);
+  }, []);
 
   const sendButtonRef = useRef<View>(null);
   const clarifyRetries = useRef(0);
@@ -376,9 +389,13 @@ export default function HomeScreen() {
       (async () => {
         try {
           const tripId = await savePlanToSupabase(s.plan as any);
+          if (!tripId || typeof tripId !== 'string') {
+            throw new Error('savePlanToSupabase returned no tripId');
+          }
+          // Refresh the trips list so the new trip shows on Trips tab + home recents
+          queryClient.invalidateQueries({ queryKey: ['trips'] });
           // Navigate FIRST while takeoff animation is still covering the screen
           router.push(`/trip/${tripId}` as any);
-          // Then clean up after navigation transition starts
           setTimeout(() => {
             planner.reset();
             setShowTakeoff(false);
@@ -387,18 +404,21 @@ export default function HomeScreen() {
           if (__DEV__) console.error('Failed to save trip:', err?.message || err);
           // Navigate anyway — trip was likely created, only activities may have failed
           const partialId = (err as any)?.tripId;
-          if (partialId) {
+          if (partialId && typeof partialId === 'string') {
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
             router.push(`/trip/${partialId}` as any);
             setTimeout(() => {
               planner.reset();
               setShowTakeoff(false);
             }, 800);
           } else {
-            setPlannerError('Trip save failed. Please try again.');
+            // Trip may still have been created — refresh trips list and surface a friendly error
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            setPlannerError("Couldn't open your new trip — check the Trips tab.");
             setTimeout(() => {
               planner.reset();
               setShowTakeoff(false);
-            }, 2000);
+            }, 2500);
           }
         }
       })();
@@ -451,6 +471,7 @@ export default function HomeScreen() {
     <View style={{ flex: 1 }}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <Animated.ScrollView
+      ref={scrollRef}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -481,7 +502,7 @@ export default function HomeScreen() {
           />
         ))}
         <LinearGradient
-          colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.45)']}
+          colors={['rgba(0,0,0,0.40)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.55)']}
           locations={[0, 0.5, 1]}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
@@ -514,12 +535,12 @@ export default function HomeScreen() {
               left: 0,
               right: 0,
               ...TextStyles.subhead,
-              color: 'rgba(255,255,255,0.85)',
+              color: '#fff',
               textAlign: 'center',
               paddingHorizontal: 16,
-              textShadowColor: 'rgba(0,0,0,0.3)',
+              textShadowColor: 'rgba(0,0,0,0.7)',
               textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 6,
+              textShadowRadius: 10,
             }}
           >
             {heroConfig?.subtitle ?? 'Plan your next adventure'}
@@ -651,7 +672,11 @@ export default function HomeScreen() {
               {visiblePills.map((s) => (
                 <Pressable
                   key={s.id}
-                  onPress={() => setTripQuery(s.short_label ?? s.label)}
+                  onPress={() => {
+                    const q = s.short_label ?? s.label;
+                    setTripQuery(q);
+                    launchTakeoff(q);
+                  }}
                   style={{
                     borderRadius: 20,
                     paddingHorizontal: 14,
@@ -806,7 +831,7 @@ export default function HomeScreen() {
               search bar above or tap the button below.
             </Text>
             <Pressable
-              onPress={() => router.push('/(tabs)/trips')}
+              onPress={focusSearchAtTop}
               style={{
                 backgroundColor: Blue[600],
                 borderRadius: 12,
@@ -828,7 +853,7 @@ export default function HomeScreen() {
 
       {/* ─── Scroll-animated Sections ─────────────────────────── */}
       <FadeInOnScroll scrollY={scrollY}>
-        <HowItWorks onCtaPress={() => router.push('/(tabs)/trips')} />
+        <HowItWorks onCtaPress={focusSearchAtTop} />
       </FadeInOnScroll>
 
       <TravelMosaic scrollY={scrollY} />

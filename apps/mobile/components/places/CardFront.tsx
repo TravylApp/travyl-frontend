@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -208,6 +209,20 @@ export default function CardFront({
         )}
       </View>
 
+      {/* ── Bottom scrim — guarantees text legibility on busy backgrounds ── */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.75)', 'rgba(0,0,0,0.95)']}
+        locations={[0, 0.55, 1]}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '60%',
+        }}
+      />
+
       {/* ── Text overlay — bottom ─────────────────────────────────────── */}
       <View
         pointerEvents="none"
@@ -328,10 +343,10 @@ export default function CardFront({
             numberOfLines={2}
             style={{
               ...TextStyles.bodyLg,
-              color: 'rgba(255,255,255,0.7)',
-              textShadowColor: 'rgba(0,0,0,0.75)',
+              color: 'rgba(255,255,255,0.95)',
+              textShadowColor: 'rgba(0,0,0,0.85)',
               textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 3,
+              textShadowRadius: 4,
             }}
           >
             {place.description}
