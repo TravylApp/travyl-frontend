@@ -57,7 +57,10 @@ export async function POST(req: NextRequest) {
   if (authErr || !user) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
   }
-  if (trip.user_id && trip.user_id !== user.id) {
+  // Reject if the trip has no owner (legacy anonymous trip) OR the owner
+  // is someone else. Previously the `trip.user_id &&` guard let any
+  // authenticated user overwrite anon-owned trips' trip_context.
+  if (!trip.user_id || trip.user_id !== user.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 

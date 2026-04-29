@@ -48,6 +48,11 @@ export async function middleware(request: NextRequest) {
     // Supabase auth error — continue without session
   }
 
+  // CRITICAL: any response that touches Supabase auth cookies MUST be marked
+  // private + no-store so an upstream CDN (CloudFront, etc.) doesn't cache
+  // the Set-Cookie header and serve one user's session to the next visitor.
+  res.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate')
+
   return res
 }
 
