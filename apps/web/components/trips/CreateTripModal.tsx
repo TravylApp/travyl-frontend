@@ -52,6 +52,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
   const [landmarks, setLandmarks] = useState<{ id: string; lat: number; lng: number; name: string; color: string; category: string }[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const destinationWrapperRef = useRef<HTMLDivElement>(null)
+  const startDateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -168,6 +169,10 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
     if (!endDate) errors.end_date = 'End date is required'
     else if (startDate && endDate < startDate) errors.end_date = 'End date cannot be before start date'
     setFieldErrors(errors)
+    // Auto-focus date input if there's a date error
+    if (!startDate && startDateInputRef.current) {
+      setTimeout(() => startDateInputRef.current?.focus(), 50)
+    }
     return Object.keys(errors).length === 0
   }
 
@@ -309,7 +314,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="trip-start-date" className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
-                <input id="trip-start-date" type="date" value={startDate}
+                <input id="trip-start-date" type="date" value={startDate} ref={startDateInputRef}
                   onChange={(e) => { setStartDate(e.target.value); setFieldErrors((prev) => ({ ...prev, start_date: undefined })) }}
                   disabled={submitting}
                   className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 disabled:opacity-50 transition-all"
