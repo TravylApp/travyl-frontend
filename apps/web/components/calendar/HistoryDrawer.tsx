@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
-import { Xmark, Undo, ClockRotateLeft } from 'iconoir-react'
+import { Xmark, Undo, ClockRotateRight } from 'iconoir-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useActivityHistory, type AuditEntry } from './hooks/useActivityHistory'
 import { formatDistanceToNow } from 'date-fns'
@@ -199,7 +199,7 @@ export function HistoryDrawer({
                       title="Restore itinerary to this point"
                       className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                     >
-                      <ClockRotateLeft className="w-3 h-3" />
+                      <ClockRotateRight className="w-3 h-3" />
                       Restore to here
                     </button>
                   )
