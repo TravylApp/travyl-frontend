@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useTrips, useAuthStore, useProfile } from '@travyl/shared'
 import type { Trip, TripCard as TripCardType } from '@travyl/shared'
 import { TripCard } from '@/components/trips/TripCard'
-import { Settings, LogOut, User, MapPin, Calendar, Heart } from 'lucide-react'
+import { Settings, LogOut, MapPin, Calendar, Heart } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Transform Trip to TripCard for the component
@@ -22,7 +22,6 @@ function tripToCard(trip: Trip): TripCardType {
 export default function ProfilePage() {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
-  const loading = useAuthStore((s) => s.loading)
   const signOut = useAuthStore((s) => s.signOut)
   const { data: profile } = useProfile()
   const { data: trips, isLoading: tripsLoading } = useTrips()
@@ -37,35 +36,6 @@ export default function ProfilePage() {
     } catch (error) {
       toast.error('Failed to sign out')
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
-          <p className="text-gray-600 mb-6">Please sign in to view your profile</p>
-          <Link
-            href="/login"
-            className="inline-block px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-      </div>
-    )
   }
 
   const displayName = profile?.display_name || user.email?.split('@')[0] || 'User'
