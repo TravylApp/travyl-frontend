@@ -239,10 +239,22 @@ export default function SettingsScreen() {
     );
   };
 
-  // Save / Discard handlers
-  const handleSave = () => {
-    // TODO: Wire to API
-    setDirty(false);
+  // Save / Discard handlers — persist preference state locally so the user
+  // gets real feedback and the chosen units/currency stick across launches.
+  // (Profile/documents/emergency/cards remain in-memory until a backend
+  // endpoint exists; surfacing an alert is more honest than a silent no-op.)
+  const handleSave = async () => {
+    try {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem(
+        `travyl-trip-prefs-${id}`,
+        JSON.stringify({ currency, dateFormat, language, timeFormat, distanceUnit, temperatureUnit, notifications }),
+      );
+      setDirty(false);
+      Alert.alert('Saved', 'Your trip settings have been saved.');
+    } catch (e) {
+      Alert.alert('Save failed', 'Could not save settings. Please try again.');
+    }
   };
 
   const handleDiscard = () => {
@@ -273,12 +285,13 @@ export default function SettingsScreen() {
   };
 
   const handleAddCard = () => {
-    const newId = String(Date.now());
-    setCards((prev) => [
-      ...prev,
-      { id: newId, brand: 'Visa', last4: String(Math.floor(1000 + Math.random() * 9000)), isDefault: false },
-    ]);
-    setDirty(true);
+    // Real card collection requires PCI-compliant tokenization (Stripe, etc.)
+    // — never generate fake card numbers in the UI. Surface a coming-soon
+    // notice instead of pretending the action worked.
+    Alert.alert(
+      'Coming soon',
+      'Adding payment cards requires secure billing setup. We\'ll wire this up before launch.',
+    );
   };
 
   if (isLoading) {
@@ -639,7 +652,20 @@ export default function SettingsScreen() {
             <Text style={{ ...TextStyles.body, color: colors.textTertiary, textAlign: 'center', marginBottom: 12 }}>
               Share this trip with friends and family to plan together.
             </Text>
-            <Pressable style={{ backgroundColor: colors.info, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={async () => {
+                const { Share } = await import('react-native');
+                const tripUrl = `https://gotravyl.com/trip/${id}`;
+                const dest = trip?.destination ? `to ${trip.destination}` : '';
+                try {
+                  await Share.share({
+                    message: `Join me planning my trip ${dest} on Travyl: ${tripUrl}`,
+                    url: tripUrl,
+                  });
+                } catch {}
+              }}
+              style={{ backgroundColor: colors.info, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
               <FontAwesome name="envelope" size={12} color="#fff" />
               <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Send Invite</Text>
             </Pressable>

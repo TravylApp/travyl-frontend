@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TabCtx, useTabAccent } from './_layout';
+import { TabCtx, useTabAccent, PageTransition } from './_layout';
 
 const INFO_COLOR = '#0ea5e9';
 
@@ -185,15 +185,18 @@ export default function InfoScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        {[1, 2, 3].map((i) => (
-          <View key={i} style={{ backgroundColor: colors.borderLight, borderRadius: 12, height: 120, marginBottom: 12 }} />
-        ))}
-      </ScrollView>
+      <PageTransition>
+        <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={{ backgroundColor: colors.borderLight, borderRadius: 12, height: 120, marginBottom: 12 }} />
+          ))}
+        </ScrollView>
+      </PageTransition>
     );
   }
 
   return (
+    <PageTransition>
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
       {/* Destination header */}
       <View style={{ backgroundColor: INFO_COLOR + '10', borderRadius: 12, padding: 14, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -215,5 +218,6 @@ export default function InfoScreen() {
       <InfoSectionCard section={buildEmergencySection(ctx)} />
       <QuickLinksCard city={cityName} country={countryName} />
     </ScrollView>
+    </PageTransition>
   );
 }

@@ -526,7 +526,7 @@ export default function BudgetScreen() {
           </View>
           {!isEditingTotal ? (
             <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
-              ${totalBudgeted.toLocaleString()}
+              {fx(totalBudgeted)}
             </Text>
           ) : (
             <TextInput
@@ -547,7 +547,7 @@ export default function BudgetScreen() {
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Total Spent</Text>
           <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
-            ${totalActual.toLocaleString()}
+            {fx(totalActual)}
           </Text>
         </View>
 
@@ -555,7 +555,7 @@ export default function BudgetScreen() {
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? colors.success + '30' : colors.error + '30' }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
           <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? colors.success : colors.error, marginTop: 2 }}>
-            ${Math.abs(remaining).toLocaleString()}
+            {fx(Math.abs(remaining))}
           </Text>
         </View>
       </View>

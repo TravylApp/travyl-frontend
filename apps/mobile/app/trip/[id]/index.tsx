@@ -319,10 +319,19 @@ export default function OverviewScreen() {
           >
             {events.map((item: any, i: number) => {
               const hasImage = !!item.image;
+              const hasLink = !!item.ticketUrl;
               return (
                 <View key={item.id || i} style={{ width: CONTENT_WIDTH, paddingHorizontal: 20 }}>
                 <Pressable
-                  onPress={() => item.ticketUrl && WebBrowser.openBrowserAsync(item.ticketUrl)}
+                  onPress={() => {
+                    if (hasLink) {
+                      WebBrowser.openBrowserAsync(item.ticketUrl);
+                    } else {
+                      // Fall back to a web search so the card never dead-ends.
+                      const q = encodeURIComponent(`${item.title ?? 'event'} ${item.location ?? ''} tickets`.trim());
+                      WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${q}`);
+                    }
+                  }}
                   style={{ width: CONTENT_WIDTH - 40, height: 240, borderRadius: 14, overflow: 'hidden' }}
                 >
                   {hasImage && (

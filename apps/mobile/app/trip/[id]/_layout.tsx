@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
   View, Text, Pressable, Share, Modal, ScrollView, TextInput,
-  Platform, PanResponder, Animated, useWindowDimensions,
+  Platform, PanResponder, Animated, useWindowDimensions, useColorScheme,
 } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -329,6 +329,10 @@ const WEB_API = getWebApiBase();
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
   const { theme, essentialsOpen, setEssentialsOpen, heroImageOverride } = useContext(TabCtx);
   const router = useRouter();
+  // Edit Trip modal styling reads `isDark` (lines 626+). Without this declaration
+  // it threw a ReferenceError that crashed the entire trip detail screen as soon
+  // as the user tapped the edit pencil on the hero.
+  const isDark = useColorScheme() === 'dark';
   const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
 
@@ -691,8 +695,17 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
                     });
                     refetch();
                     setEditingTrip(false);
-                  } catch {}
-                  setEditSaving(false);
+                  } catch (e: any) {
+                    // Surface the failure — silent catch left users thinking
+                    // their edit was saved when it wasn't.
+                    const { Alert } = await import('react-native');
+                    Alert.alert(
+                      'Save failed',
+                      e?.message ?? 'Could not save your changes. Please try again.',
+                    );
+                  } finally {
+                    setEditSaving(false);
+                  }
                 }}
                 disabled={editSaving}
                 style={({ pressed }) => ({
