@@ -256,3 +256,7 @@ export { computeGaps } from './gapCompute'
 export type { Gap } from './gapCompute'
 
 export * from './places'
+
+// Client-side search intent inference (Places page hint)
+export { inferSearchCategory, inferSearchHint } from './searchIntent'
+export type { InferredCategory } from './searchIntent'
