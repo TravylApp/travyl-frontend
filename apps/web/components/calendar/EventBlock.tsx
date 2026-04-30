@@ -248,10 +248,18 @@ export function EventBlock({
               <span
                 key={viewer.userId}
                 title={viewer.name}
-                className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white ring-1 ring-white/50"
+                className="inline-flex items-center justify-center w-4 h-4 overflow-hidden rounded-full text-[9px] font-bold text-white ring-1 ring-white/50"
                 style={{ backgroundColor: viewer.color }}
               >
-                {viewer.avatarInitial}
+                {viewer.avatarUrl ? (
+                  <img
+                    src={viewer.avatarUrl}
+                    alt={viewer.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  viewer.avatarInitial
+                )}
               </span>
             ))}
             {activeViewers.length > 5 && (

@@ -128,10 +128,6 @@ export function DayColumn({
     [activities],
   )
 
-  const dayCollaborators = viewers.filter(
-    (c) => (c.selectedDayIndex ?? 0) === dayIndex,
-  )
-
   const handleBackgroundClick = (e: React.MouseEvent) => {
     if (e.target !== e.currentTarget) return
     onDeselect()
@@ -201,7 +197,7 @@ export function DayColumn({
               }
             : undefined
         }
-      >
+        >
         <span className="inline-flex items-center gap-1">
           {label}
           {dayIntel?.weather && (
@@ -217,32 +213,6 @@ export function DayColumn({
             />
           )}
         </span>
-        {dayCollaborators.length > 0 && (
-          <div
-            className="flex items-center justify-center gap-0 mt-0.5"
-            aria-label={`Viewing: ${dayCollaborators.map((c) => c.name).join(', ')}`}
-          >
-            {dayCollaborators.slice(0, 3).map((c, i) => (
-              <div
-                key={c.userId}
-                title={c.name}
-                style={{
-                  backgroundColor: c.color,
-                  marginLeft: i === 0 ? 0 : '-4px',
-                  zIndex: 3 - i,
-                }}
-                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-cal-surface"
-              >
-                {c.avatarInitial}
-              </div>
-            ))}
-            {dayCollaborators.length > 3 && (
-              <span className="text-[9px] text-cal-text-tertiary ml-1">
-                +{dayCollaborators.length - 3}
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Droppable grid */}

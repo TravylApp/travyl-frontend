@@ -240,7 +240,8 @@ function SharedCalendarView({ trip, user, token, shareRole, joinError, setJoinEr
         <CalendarDashboard
           tripId={trip.id}
           userId={user?.id ?? 'anonymous'}
-          userName={user?.user_metadata?.display_name ?? ''}
+          userName={user?.user_metadata?.display_name ?? user?.user_metadata?.full_name ?? user?.email ?? ''}
+          userAvatarUrl={user?.user_metadata?.avatar_url ?? null}
           isSharedView={isReadOnly}
         />
       </YjsTripProvider>
