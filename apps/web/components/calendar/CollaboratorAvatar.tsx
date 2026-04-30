@@ -31,7 +31,7 @@ export function CollaboratorAvatar({ collaborator, index, totalCollaborators, da
       <div
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="group relative flex items-center justify-center h-7 w-7 rounded-full text-[11px] font-semibold text-white select-none ring-2 ring-white dark:ring-cal-bg cursor-pointer"
+        className="group relative flex items-center justify-center h-7 w-7 overflow-hidden rounded-full text-[11px] font-semibold text-white select-none ring-2 ring-white dark:ring-cal-bg cursor-pointer"
         style={{
           backgroundColor: collaborator.color,
           opacity: collaborator.isOnline ? 1 : 0.45,
@@ -39,7 +39,15 @@ export function CollaboratorAvatar({ collaborator, index, totalCollaborators, da
           zIndex: totalCollaborators - index,
         }}
       >
-        {collaborator.avatarInitial}
+        {collaborator.avatarUrl ? (
+          <img
+            src={collaborator.avatarUrl}
+            alt={collaborator.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          collaborator.avatarInitial
+        )}
         <span
           className={[
             'absolute bottom-0 right-0 h-2 w-2 rounded-full ring-1 ring-white dark:ring-cal-bg',

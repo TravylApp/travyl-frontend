@@ -604,6 +604,7 @@ export interface UserAwareness {
   userId: string;
   name: string;
   avatarInitial: string;
+  avatarUrl?: string | null;
   color: string;
   isOnline: boolean;
   selectedEventId: string | null;

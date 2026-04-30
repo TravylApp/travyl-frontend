@@ -38,7 +38,12 @@ export default function ProfilePage() {
     }
   }
 
-  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
+  const metadataDisplayName = [
+    user?.user_metadata?.display_name,
+    user?.user_metadata?.full_name,
+    [user?.user_metadata?.name, user?.user_metadata?.lastName].filter(Boolean).join(' ').trim(),
+  ].find((value) => typeof value === 'string' && value.trim().length > 0)
+  const displayName = profile?.display_name || metadataDisplayName || user?.email?.split('@')[0] || 'User'
   const initials = displayName
     .split(' ')
     .map((word) => word[0])

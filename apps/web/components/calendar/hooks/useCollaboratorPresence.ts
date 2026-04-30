@@ -14,6 +14,7 @@ interface UseCollaboratorPresenceOptions {
   tripId: string
   userId: string
   userName: string
+  userAvatarUrl?: string | null
   userColor?: string
   /** When true, skip the presence channel entirely (e.g. share page viewers) */
   disabled?: boolean
@@ -46,7 +47,7 @@ function pickColor(userId: string): string {
 export function useCollaboratorPresence(
   options: UseCollaboratorPresenceOptions,
 ): UseCollaboratorPresenceReturn {
-  const { tripId, userId, userName, userColor, disabled } = options
+  const { tripId, userId, userName, userAvatarUrl, userColor, disabled } = options
   const [collaborators, setCollaborators] = useState<UserAwareness[]>([])
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -78,6 +79,7 @@ export function useCollaboratorPresence(
       const state = channel.presenceState<{
         userId: string
         userName: string
+        userAvatarUrl?: string | null
         color: string
         selectedEventId: string | null
         currentView: ViewMode
@@ -94,6 +96,7 @@ export function useCollaboratorPresence(
           userId: entry.userId,
           name: entry.userName,
           avatarInitial: (entry.userName ?? '?').charAt(0).toUpperCase(),
+          avatarUrl: entry.userAvatarUrl ?? null,
           color: entry.color,
           isOnline: true,
           selectedEventId: entry.selectedEventId ?? null,
@@ -109,6 +112,7 @@ export function useCollaboratorPresence(
         await channel.track({
           userId,
           userName,
+          userAvatarUrl,
           color,
           selectedEventId: localStateRef.current.selectedEventId,
           currentView: localStateRef.current.currentView,
@@ -129,7 +133,7 @@ export function useCollaboratorPresence(
       setCollaborators([])
       channel.unsubscribe()
     }
-  }, [tripId, userId, userName, color, disabled])
+  }, [tripId, userId, userName, userAvatarUrl, color, disabled])
 
   const setSelectedEvent = useCallback(
     (eventId: string | null) => {
@@ -137,13 +141,14 @@ export function useCollaboratorPresence(
       channelRef.current?.track({
         userId,
         userName,
+        userAvatarUrl,
         color,
         selectedEventId: eventId,
         currentView: localStateRef.current.currentView,
         selectedDayIndex: localStateRef.current.selectedDayIndex,
       })
     },
-    [userId, userName, color],
+    [userId, userName, userAvatarUrl, color],
   )
 
   const setCurrentView = useCallback(
@@ -152,13 +157,14 @@ export function useCollaboratorPresence(
       channelRef.current?.track({
         userId,
         userName,
+        userAvatarUrl,
         color,
         selectedEventId: localStateRef.current.selectedEventId,
         currentView: view,
         selectedDayIndex: localStateRef.current.selectedDayIndex,
       })
     },
-    [userId, userName, color],
+    [userId, userName, userAvatarUrl, color],
   )
 
   const setSelectedDay = useCallback(
@@ -167,13 +173,14 @@ export function useCollaboratorPresence(
       channelRef.current?.track({
         userId,
         userName,
+        userAvatarUrl,
         color,
         selectedEventId: localStateRef.current.selectedEventId,
         currentView: localStateRef.current.currentView,
         selectedDayIndex: dayIndex,
       })
     },
-    [userId, userName, color],
+    [userId, userName, userAvatarUrl, color],
   )
 
   return { collaborators, setSelectedEvent, setCurrentView, setSelectedDay }

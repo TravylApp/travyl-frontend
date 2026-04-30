@@ -95,11 +95,12 @@ interface CalendarDashboardProps {
   tripId: string
   userId: string
   userName: string
+  userAvatarUrl?: string | null
   /** When true: read-only shared view */
   isSharedView?: boolean
 }
 
-export function CalendarDashboard({ tripId, userId, userName, isSharedView = false }: CalendarDashboardProps) {
+export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = null, isSharedView = false }: CalendarDashboardProps) {
   console.log('[CalendarDashboard] Initializing with isSharedView:', isSharedView, 'userId:', userId, 'tripId:', tripId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -130,7 +131,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     ...rawMutations,
     getActivity: (id) => activities.find((a) => a.id === id),
   })
-  const { collaborators, setSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, disabled: isSharedView })
+  const { collaborators, setSelectedEvent, setCurrentView, setSelectedDay } = useCollaboratorPresence({ tripId, userId, userName, userAvatarUrl, disabled: isSharedView })
   const isLoading = tripLoading || syncLoading
   const error = tripError || syncError
 
@@ -139,6 +140,24 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     queryFn: () => fetchCollaborators(tripId),
     enabled: !!tripId && !isSharedView,
   })
+
+  const collaboratorsWithProfiles = useMemo(
+    () =>
+      collaborators.map((collaborator) => {
+        const profileMatch = tripCollaborators.find(
+          (tripCollaborator) =>
+            tripCollaborator.user_id === collaborator.userId &&
+            tripCollaborator.invite_status === 'accepted',
+        )
+
+        return {
+          ...collaborator,
+          name: profileMatch?.display_name ?? collaborator.name,
+          avatarUrl: profileMatch?.avatar_url ?? collaborator.avatarUrl ?? null,
+        }
+      }),
+    [collaborators, tripCollaborators],
+  )
 
   // Poll hooks
   const { startPoll, vote, closePoll, restoreActivity } = usePollMutations()
@@ -744,7 +763,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           onViewModeChange={handleViewModeChange}
           onAddEvent={handleAddEvent}
           connectionStatus={connectionStatus}
-          collaborators={collaborators}
+          collaborators={collaboratorsWithProfiles}
           onShare={() => setIsShareModalOpen(true)}
           selectedActivity={selectedActivity}
           onDeselect={() => selectEvent(null)}
@@ -869,7 +888,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                       <WeekView
                         days={visibleWeekDays}
                         activities={scheduledActivities}
-                        viewers={collaborators}
+                        viewers={collaboratorsWithProfiles}
                         selectedEventId={selectedEventId}
                         timeRange={timeRange}
                         tripStartDate={parsedStartDate}
@@ -906,7 +925,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                         dayIndex={selectedDayIndex}
                         label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
                         activities={scheduledActivities}
-                        viewers={collaborators}
+                        viewers={collaboratorsWithProfiles}
                         selectedEventId={selectedEventId}
                         timeRange={timeRange}
                         tripStartDate={parsedStartDate}

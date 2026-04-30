@@ -53,6 +53,17 @@ interface ProfileData {
   temperatureUnit: string;
 }
 
+function splitDisplayName(displayName: string | null | undefined): { firstName: string; lastName: string } {
+  const trimmed = displayName?.trim() ?? ''
+  if (!trimmed) return { firstName: '', lastName: '' }
+
+  const parts = trimmed.split(/\s+/)
+  return {
+    firstName: parts[0] ?? '',
+    lastName: parts.slice(1).join(' '),
+  }
+}
+
 // ─── Constants ─────────────────────────────────────────
 const TABS: { id: TabId; icon: any; label: string }[] = [
   { id: 'profile', icon: User, label: 'Profile' },
@@ -327,11 +338,15 @@ export default function ProfileSettings() {
         const notificationPrefs = prefs.notifications || {};
         const accountPrefs = prefs.account || {};
 
+        const resolvedDisplayName = profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || ''
+        const nameParts = splitDisplayName(resolvedDisplayName)
+        const metadataLastName = user.user_metadata?.lastName || ''
+
         // Populate form data from profile and user
         setFormData({
           profilePhoto: profile?.avatar_url || null,
-          firstName: profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || '',
-          lastName: user.user_metadata?.lastName || '',
+          firstName: nameParts.firstName,
+          lastName: metadataLastName || nameParts.lastName,
           email: user.email || '',
           phone: user.user_metadata?.phone || user.phone || '',
           city: profile?.city || user.user_metadata?.city || '',
@@ -352,8 +367,8 @@ export default function ProfileSettings() {
 
         setOriginalFormData({
           profilePhoto: profile?.avatar_url || null,
-          firstName: profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || '',
-          lastName: user.user_metadata?.lastName || '',
+          firstName: nameParts.firstName,
+          lastName: metadataLastName || nameParts.lastName,
           email: user.email || '',
           phone: user.user_metadata?.phone || user.phone || '',
           city: profile?.city || user.user_metadata?.city || '',
@@ -485,9 +500,12 @@ export default function ProfileSettings() {
       // Update profile fields in profiles table
       const profileUpdates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'preferences'>> = {};
 
+      const fullDisplayName = [formData.firstName.trim(), formData.lastName.trim()].filter(Boolean).join(' ')
+      const originalFullDisplayName = [originalFormData.firstName.trim(), originalFormData.lastName.trim()].filter(Boolean).join(' ')
+
       // Only update profile fields that changed
-      if (formData.firstName !== originalFormData.firstName) {
-        profileUpdates.display_name = formData.firstName || null;
+      if (fullDisplayName !== originalFullDisplayName) {
+        profileUpdates.display_name = fullDisplayName || null;
       }
       if (finalAvatarUrl !== originalFormData.profilePhoto) {
         profileUpdates.avatar_url = finalAvatarUrl || null;
@@ -539,7 +557,7 @@ export default function ProfileSettings() {
         }
       };
 
-      addIfChanged('display_name', formData.firstName, originalFormData.firstName);
+      addIfChanged('display_name', fullDisplayName, originalFullDisplayName);
       if (finalAvatarUrl && !finalAvatarUrl.startsWith('data:')) {
         metadataUpdates['avatar_url'] = finalAvatarUrl;
       }
