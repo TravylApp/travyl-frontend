@@ -584,6 +584,8 @@ export default function HomeScreen() {
             <FontAwesome name="search" size={16} color={colors.textTertiary} />
             <TextInput
               ref={inputRef}
+              testID="home-trip-search-input"
+              accessibilityLabel="Trip search"
               value={tripQuery}
               onChangeText={(v) => { setTripQuery(v); if (plannerError) setPlannerError(null); }}
               onSubmitEditing={onSearch}
@@ -594,6 +596,8 @@ export default function HomeScreen() {
             />
             <Pressable
               ref={sendButtonRef}
+              testID="home-trip-search-submit"
+              accessibilityLabel="Plan trip"
               onPress={onSearch}
               onLayout={onButtonLayout}
               collapsable={false}
