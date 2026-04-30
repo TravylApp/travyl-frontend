@@ -129,9 +129,11 @@ export default function PlacesPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  // Favorites: server for authenticated users, localStorage for anonymous
-  const user = useAuthStore((s) => s.user);
-  const authToken = user ? (user as any).access_token ?? null : null;
+  // Favorites: server for authenticated users, localStorage for anonymous.
+  // Token lives on the Session, not the User — reading user.access_token
+  // returned undefined and silently downgraded everyone to anonymous favs.
+  const session = useAuthStore((s) => s.session);
+  const authToken = session?.access_token ?? null;
   const { data: serverFavs, addFavorite: serverAdd, removeFavorite: serverRemove } = useServerFavorites(authToken);
   const serverFavPlaceIds = useMemo(() => (serverFavs ?? []).map(f => f.place_id), [serverFavs]);
 
