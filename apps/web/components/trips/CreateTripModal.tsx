@@ -81,10 +81,12 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
     }
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
-          { headers: { 'Accept-Language': 'en' } }
-        )
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&limit=5`)
+        if (!res.ok) {
+          setSuggestions([])
+          setSuggestionsOpen(false)
+          return
+        }
         const data: NominatimResult[] = await res.json()
         setSuggestions(data)
         setSuggestionsOpen(data.length > 0)
@@ -140,9 +142,9 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
       POI_CATEGORIES.map(async ({ q, emoji, color, category }) => {
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=4&viewbox=${bbox}&bounded=1`,
-            { headers: { 'Accept-Language': 'en' } }
+            `/api/geocode?q=${encodeURIComponent(q)}&limit=4&bbox=${encodeURIComponent(bbox)}`
           )
+          if (!res.ok) return []
           const data: { place_id: number; display_name: string; lat: string; lon: string }[] = await res.json()
           return data.map((p) => {
             const name = p.display_name.split(',')[0]

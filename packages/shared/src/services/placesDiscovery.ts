@@ -155,11 +155,11 @@ async function enrichWithCoords(places: PlaceItem[]): Promise<PlaceItem[]> {
 }
 
 async function resolveCoords(query: string): Promise<{ lat: string; lng: string } | null> {
+  // Go through our /api/geocode proxy — Nominatim doesn't send CORS headers,
+  // so direct browser calls fail. Mobile hits the same proxy via getWebApiBase().
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'Travyl/1.0' } }
-    );
+    const res = await fetch(`${BASE()}/api/geocode?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return null;
     const data = await res.json() as any[];
     if (data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
   } catch {}
@@ -171,10 +171,8 @@ let _nearbyCityCache: string | null = null;
 async function getNearbyCityName(lat: number, lng: number): Promise<string | null> {
   if (_nearbyCityCache) return _nearbyCityCache;
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`,
-      { headers: { 'User-Agent': 'Travyl/1.0' } }
-    );
+    const res = await fetch(`${BASE()}/api/geocode?lat=${lat}&lng=${lng}&zoom=10`);
+    if (!res.ok) return null;
     const data = await res.json() as any;
     _nearbyCityCache = data.address?.city || data.address?.town || data.address?.county || null;
   } catch {}
