@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { formatDateRange, formatCurrency } from '@travyl/shared';
+import { deleteTrip, formatDateRange, formatCurrency } from '@travyl/shared';
 import type { TripCard as TripCardData } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
 import { ForkCountBadge } from '../trip/ForkAttribution';
@@ -42,11 +42,7 @@ export function TripCard({ trip, className, style }: TripCardProps) {
     setMenuOpen(false);
     if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
     try {
-      await fetch('/api/trips/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id }),
-      });
+      await deleteTrip(trip.id);
       try {
         const stored = localStorage.getItem('my-trip-ids');
         if (stored) {
@@ -54,8 +50,12 @@ export function TripCard({ trip, className, style }: TripCardProps) {
           localStorage.setItem('my-trip-ids', JSON.stringify(ids));
         }
       } catch {}
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-    } catch {}
+      await queryClient.invalidateQueries({ queryKey: ['trips'] });
+      toast.success('Trip deleted');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete trip';
+      toast.error(message);
+    }
   };
 
   const handleShare = (e: React.MouseEvent) => {

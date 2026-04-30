@@ -565,7 +565,7 @@ export async function updateTripDetails(
  * @throws PostgrestError if the delete fails
  */
 export async function deleteTrip(tripId: string): Promise<void> {
-  const { error } = await supabase.from('trips').delete().eq('id', tripId)
+  const { error } = await supabase.rpc('delete_trip_cascade', { p_trip_id: tripId })
   if (error) throw error
 }
 

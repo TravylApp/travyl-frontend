@@ -42,6 +42,7 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
 
   const user = useAuthStore((s) => s.user)
   const session = useAuthStore((s) => s.session)
+  const hasWarnedRef = useRef(false)
 
   const docRef = useRef<Y.Doc | null>(null)
   const docTripIdRef = useRef<string>('')
@@ -59,12 +60,10 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
   useEffect(() => {
     // Only connect when user is authenticated
     if (!user || !session) {
-      console.log('[YjsTripProvider] No user/session, skipping connection')
       setConnectionStatus('disconnected')
       return
     }
 
-    console.log('[YjsTripProvider] Initializing real-time sync for trip:', tripId, 'user:', user.id)
     let provider: SupabaseProvider | null = null
     let destroyed = false
 
@@ -81,32 +80,33 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
 
       provider.on('status', (status) => {
         if (destroyed) return
-        console.log('[YjsTripProvider] Connection status:', status, 'for trip:', tripId)
         if (status === 'connected') setConnectionStatus('connected')
         else if (status === 'connecting') setConnectionStatus('reconnecting')
         else if (status === 'disconnected') setConnectionStatus('disconnected')
       })
 
       provider.on('error', (err) => {
-        // Log once and destroy — prevents infinite reconnect loop when channel is unavailable
-        console.error('[YjsTripProvider] Sync error for trip', tripId, ':', err)
+        // Realtime sync is optional; fall back to non-realtime mode without surfacing
+        // a dev overlay for expected local/channel failures.
         if (!destroyed && provider) {
           provider.destroy()
           provider = null
           setConnectionStatus('disconnected')
         }
-        // Don't throw - allow app to function without real-time sync
+        if (!hasWarnedRef.current) {
+          hasWarnedRef.current = true
+          console.warn('[YjsTripProvider] Realtime sync unavailable; continuing without live sync for trip:', tripId)
+        }
       })
-
-      // Log successful initialization
-      console.log('[YjsTripProvider] Provider created successfully for trip:', tripId)
     } catch (err) {
-      console.error('[YjsTripProvider] Failed to initialise for trip', tripId, ':', err)
       setConnectionStatus('disconnected')
+      if (!hasWarnedRef.current) {
+        hasWarnedRef.current = true
+        console.warn('[YjsTripProvider] Failed to initialize realtime sync; continuing without live sync for trip:', tripId)
+      }
     }
 
     return () => {
-      console.log('[YjsTripProvider] Cleaning up provider for trip:', tripId)
       destroyed = true
       provider?.destroy()
     }
