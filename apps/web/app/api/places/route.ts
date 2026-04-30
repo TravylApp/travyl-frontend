@@ -80,32 +80,16 @@ export async function GET(req: NextRequest) {
             : null,
         }))
       }
-      // Fall back to nearby search if NLP returned nothing or failed
+      // Fall back to nearby search if NLP returned nothing or failed.
+      // The previous fallback ran a hand-curated regex over the query to
+      // re-classify it into a Foursquare category. That's exactly the kind
+      // of hardcoded lookup we want to avoid — every new query phrasing
+      // requires a code change. Now we just retry the nearby search with
+      // the original `category` param the client sent. If the client
+      // didn't pick a category, we fall through to the FOURSQUARE_CAT_MAP
+      // alias resolution that fetchNearby already does.
       if (!data || data.length === 0) {
-        // Extract a category hint from the NLP query text for better nearby
-        // results. Order matters: more specific phrasings are checked first
-        // so "rooftop bar" doesn't match "park" via the "ar" substring.
-        const qLower = q.toLowerCase()
-        let nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
-        if (/restaurant|food|dining|eat|meal|brunch|breakfast|lunch|dinner|cuisine|where to eat|places? to eat|food places?|grub|bites?/.test(qLower)) {
-          nearbyCategory = 'restaurant'
-        } else if (/nightlife|bars?\b|clubs?|lounges?|pubs?|cocktails?|drinks?|where to drink|places? to drink|brewery|breweries|wine bar|speakeasy/.test(qLower)) {
-          nearbyCategory = 'nightlife'
-        } else if (/shop|shopping|markets?|malls?|boutique|stores?|retail|outlet/.test(qLower)) {
-          nearbyCategory = 'shopping'
-        } else if (/beach|beaches|coast|coastal|seaside|outdoor|parks?\b|nature|hikes?|hiking|trails?|gardens?|botanical/.test(qLower)) {
-          nearbyCategory = 'park'
-        } else if (/museum|museums|culture|cultural|arts?|galleries|gallery|exhibits?|exhibitions?|landmarks?|historic/.test(qLower)) {
-          nearbyCategory = 'museum'
-        } else if (/hotels?|stay|stays|accommodation|lodging|resorts?|airbnb|b&b|inn|hostel/.test(qLower)) {
-          nearbyCategory = 'hotel'
-        } else if (/cafe|cafes|coffee|espresso|latte|tea house|bakery|bakeries|patisserie/.test(qLower)) {
-          nearbyCategory = 'cafe'
-        } else if (/entertainment|shows?|theaters?|theatre|concerts?|live music|performances?|comedy|sports? bar/.test(qLower)) {
-          nearbyCategory = 'attraction'
-        } else if (/things? to do|fun|activities|attractions?|sights?|sightseeing|tours?|experiences?/.test(qLower)) {
-          nearbyCategory = 'sightseeing'
-        }
+        const nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
         data = await fetchNearby(null, lat, lng, nearbyCategory, limit)
       }
     } else {
