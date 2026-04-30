@@ -199,12 +199,20 @@ export default function PlacesPage() {
     }
   };
 
-  // Responsive column count on mount
+  // Responsive column count — keep in sync with viewport on mount AND resize.
+  // Previously this only ran once, so rotating the device or resizing the
+  // browser left the masonry layout stuck at the initial column count.
   useEffect(() => {
-    const w = window.innerWidth;
-    if (w < 550) setColumnCount(1);
-    else if (w < 768) setColumnCount(2);
-    else if (w < 900) setColumnCount(3);
+    const computeColumns = () => {
+      const w = window.innerWidth;
+      if (w < 550) setColumnCount(1);
+      else if (w < 768) setColumnCount(2);
+      else if (w < 900) setColumnCount(3);
+      else setColumnCount(4);
+    };
+    computeColumns();
+    window.addEventListener('resize', computeColumns);
+    return () => window.removeEventListener('resize', computeColumns);
   }, []);
 
   // Filter by tab
