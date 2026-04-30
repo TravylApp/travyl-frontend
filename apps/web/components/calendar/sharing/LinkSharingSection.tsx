@@ -32,6 +32,8 @@ export function LinkSharingSection({
 
   const isLinkEnabled = visibility !== 'private'
 
+  console.log('[LinkSharingSection] Rendering:', { visibility, linkPermission, shareToken, isOwner, isLinkEnabled })
+
   // Reset confirm/revoked state if link sharing is turned off
   useEffect(() => {
     if (!isLinkEnabled) {
@@ -59,7 +61,7 @@ export function LinkSharingSection({
   }
 
   return (
-    <div className="border-t border-white/10 pt-4">
+    <div className="border-t border-white/10 pt-4 bg-red-500/20">
       {!isLinkEnabled ? (
         <button onClick={onToggleLinkSharing} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white">
           <Link className="h-4 w-4 text-white/60" />

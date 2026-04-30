@@ -56,7 +56,7 @@ export function useYjsSync(
   }, [tripId, tripStartDate, userId])
 
   // ── Debounced flush ──────────────────────────────────────
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (retryCount = 0) => {
     if (readOnly) return
     const ids = Array.from(dirtyRef.current)
     if (ids.length === 0) return
@@ -84,8 +84,26 @@ export function useYjsSync(
       .upsert(rows as any)
 
     if (upsertError) {
-      console.error('[useYjsSync] flush upsert error:', upsertError.message)
-      setError(upsertError.message)
+      const errorMessage = upsertError.message
+      const isRLSError = errorMessage.includes('row-level security policy')
+
+      if (isRLSError && retryCount < 3) {
+        // RLS errors might be due to session/caching timing issues - retry with exponential backoff
+        console.warn(`[useYjsSync] RLS error on flush, retrying (${retryCount + 1}/3)...`)
+        // Check collaborator status
+        supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('user_id', userId).maybeSingle().then(({ data }) => {
+          console.log('[useYjsSync] Current user collaborator status:', data)
+        })
+        // Mark ids as dirty again for retry
+        ids.forEach(id => dirtyRef.current.add(id))
+        setTimeout(() => flush(retryCount + 1), 1000 * (retryCount + 1)) // 1s, 2s, 3s delays
+        return
+      }
+
+      console.error('[useYjsSync] flush upsert error after retries:', errorMessage)
+      setError(errorMessage)
+      // Mark ids as dirty again for manual retry
+      ids.forEach(id => dirtyRef.current.add(id))
     } else {
       // Write audit rows for each flushed activity
       const isMoveFields = ['day', 'endDay', 'startHour']

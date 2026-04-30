@@ -28,21 +28,17 @@ export async function fetchTrips(userId: string): Promise<Trip[]> {
 
 /**
  * Fetches trips where the user is an accepted collaborator (not the owner).
- * Strips the join column `trip_collaborators` before returning.
+ * Uses a security definer function to avoid RLS issues with joins.
  * @param userId - Supabase auth user UUID
  * @returns Array of Trip objects the user collaborates on
  * @throws PostgrestError if the query fails
  */
 export async function fetchCollaboratorTrips(userId: string): Promise<Trip[]> {
+  // Use the security definer function to avoid RLS issues
   const { data, error } = await supabase
-    .from('trips')
-    .select('*, trip_collaborators!inner(*)')
-    .eq('trip_collaborators.user_id', userId)
-    .eq('trip_collaborators.invite_status', 'accepted')
-    .order('created_at', { ascending: false });
+    .rpc('get_collaborator_trips', { p_user_id: userId });
   if (error) throw error;
-  // Strip the join column before returning
-  return (data ?? []).map(({ trip_collaborators: _tc, ...trip }) => trip as Trip);
+  return data ?? [];
 }
 
 /**
@@ -761,8 +757,35 @@ export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId
  * @throws PostgrestError if the insert fails
  */
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
-  const { error } = await supabase.from('trip_collaborators').insert({ trip_id: tripId, user_id: userId, role_type: role, invite_status: 'accepted', invited_by: userId, accepted_at: new Date().toISOString() })
-  if (error) throw error
+  console.log('[joinTripViaLink] Adding collaborator:', { tripId, userId, role })
+  try {
+    // Use SECURITY DEFINER function to bypass RLS and avoid infinite recursion
+    const { error, data, status, statusText } = await supabase
+      .rpc('join_trip_via_link', {
+        p_trip_id: tripId,
+        p_user_id: userId,
+        p_role_type: role
+      })
+
+    if (error) {
+      const errorInfo = {
+        message: error.message || 'No error message',
+        details: error.details || 'No details',
+        hint: error.hint || 'No hint',
+        code: error.code || 'No code',
+        status,
+        statusText,
+        name: error.name,
+        timestamp: new Date().toISOString()
+      }
+      console.error('[joinTripViaLink] Failed to add collaborator:', JSON.stringify(errorInfo, null, 2))
+      throw new Error(error.message || 'Failed to join trip')
+    }
+    console.log('[joinTripViaLink] Successfully added collaborator:', data)
+  } catch (err) {
+    console.error('[joinTripViaLink] Exception caught:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2))
+    throw err
+  }
 }
 
 /**

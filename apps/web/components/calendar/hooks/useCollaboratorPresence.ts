@@ -60,9 +60,23 @@ export function useCollaboratorPresence(
 
   const color = userColor ?? pickColor(userId)
 
+  // Debug: Log authentication status
   useEffect(() => {
-    if (disabled) return
+    console.log('[useCollaboratorPresence] Auth check - userId:', userId, 'userName:', userName, 'disabled:', disabled)
+    if (typeof window !== 'undefined') {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('[useCollaboratorPresence] Supabase session:', session ? 'valid' : 'none', 'access_token:', session?.access_token ? 'present' : 'missing')
+      })
+    }
+  }, [userId, userName, disabled])
 
+  useEffect(() => {
+    if (disabled) {
+      console.log('[useCollaboratorPresence] Presence DISABLED for trip:', tripId, 'user:', userId)
+      return
+    }
+
+    console.log('[useCollaboratorPresence] Initializing presence for trip:', tripId, 'user:', userId)
     const tabId = tabIdRef.current
     const channel = supabase.channel(`presence:trip:${tripId}`, {
       config: { presence: { key: tabId } },
@@ -80,12 +94,15 @@ export function useCollaboratorPresence(
         selectedDayIndex?: number
       }>()
 
+      console.log('[useCollaboratorPresence] Presence sync for trip:', tripId, 'state:', state)
+
       const users: UserAwareness[] = []
       for (const key of Object.keys(state)) {
         const entries = state[key]
         if (!entries || entries.length === 0) continue
         const entry = entries[entries.length - 1]
         if (key === tabId) continue
+        console.log('[useCollaboratorPresence] Found collaborator:', entry.userName, 'userId:', entry.userId)
         users.push({
           userId: entry.userId,
           name: entry.userName,
@@ -97,10 +114,12 @@ export function useCollaboratorPresence(
           selectedDayIndex: entry.selectedDayIndex ?? 0,
         })
       }
+      console.log('[useCollaboratorPresence] Setting collaborators:', users.length, 'users')
       setCollaborators(users)
     })
 
     channel.subscribe(async (status) => {
+      console.log('[useCollaboratorPresence] Channel status:', status, 'for trip:', tripId, 'user:', userId)
       if (status === 'SUBSCRIBED') {
         await channel.track({
           userId,
@@ -110,6 +129,10 @@ export function useCollaboratorPresence(
           currentView: localStateRef.current.currentView,
           selectedDayIndex: localStateRef.current.selectedDayIndex,
         })
+        console.log('[useCollaboratorPresence] Tracked user presence for:', userId)
+      }
+      if (status === 'CHANNEL_ERROR') {
+        console.error('[useCollaboratorPresence] Channel error for trip:', tripId)
       }
     })
 

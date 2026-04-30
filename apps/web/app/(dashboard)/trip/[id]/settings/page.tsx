@@ -209,17 +209,21 @@ function TripSharingSection({
   isPublic,
   isShared,
   shareToken,
+  linkPermission,
   forkCount,
   onTogglePublic,
   onToggleShared,
+  onChangeLinkPermission,
 }: {
   tripId: string;
   isPublic: boolean;
   isShared: boolean;
   shareToken: string | null;
+  linkPermission: 'viewer' | 'editor';
   forkCount: number;
   onTogglePublic: () => void;
   onToggleShared: () => void;
+  onChangeLinkPermission: (permission: 'viewer' | 'editor') => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -275,6 +279,14 @@ function TripSharingSection({
               <div className="flex-1 rounded-lg bg-white dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.08] px-3 py-2 text-xs text-gray-600 dark:text-gray-300 font-mono truncate">
                 {shareUrl}
               </div>
+              <select
+                value={linkPermission}
+                onChange={(e) => onChangeLinkPermission(e.target.value as 'viewer' | 'editor')}
+                className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="viewer">Can view</option>
+                <option value="editor">Can edit</option>
+              </select>
               <button
                 onClick={copyShareLink}
                 className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg text-white transition"
@@ -283,6 +295,9 @@ function TripSharingSection({
                 {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Link recipients can {linkPermission === 'editor' ? 'edit and join the trip' : 'view only'}.
+            </p>
           </div>
         )}
 
@@ -652,6 +667,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   // ── Trip sharing state ──
   const [isPublic, setIsPublic] = useState(false);
   const [isShared, setIsShared] = useState(false);
+  const [linkPermission, setLinkPermission] = useState<'viewer' | 'editor'>('viewer');
 
   // Sync state from loaded trip
   useEffect(() => {
@@ -668,6 +684,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       });
       setIsPublic(trip.visibility === 'public');
       setIsShared(trip.visibility !== 'private');
+      setLinkPermission(trip.link_permission ?? 'viewer');
     }
   }, [trip]);
 
@@ -748,7 +765,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     try {
       if (!isShared) {
         await ensureShareLinkToken(trip.id);
-        await updateTripVisibility(trip.id, 'link');
+        await updateTripVisibility(trip.id, 'link', linkPermission);
         setIsShared(true);
       } else {
         await updateTripVisibility(trip.id, 'private');
@@ -758,6 +775,21 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       refetch();
     } catch {
       alert('Failed to update sharing settings');
+    }
+  };
+
+  const handleChangeLinkPermission = async (permission: 'viewer' | 'editor') => {
+    if (!trip || !isOwner) return;
+    console.log('[handleChangeLinkPermission] Updating permission to:', permission, 'for trip:', trip.id)
+    try {
+      await updateTripVisibility(trip.id, 'link', permission);
+      console.log('[handleChangeLinkPermission] Database updated successfully')
+      setLinkPermission(permission);
+      const result = await refetch();
+      console.log('[handleChangeLinkPermission] Refetch result:', result)
+    } catch (err) {
+      console.error('[handleChangeLinkPermission] Failed to update permission:', err)
+      alert('Failed to update link permission');
     }
   };
 
@@ -876,9 +908,11 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
             isPublic={isPublic}
             isShared={isShared}
             shareToken={trip?.share_link_token ?? null}
+            linkPermission={linkPermission}
             forkCount={trip?.fork_count ?? 0}
             onTogglePublic={handleTogglePublic}
             onToggleShared={handleToggleShared}
+            onChangeLinkPermission={handleChangeLinkPermission}
           />
         </section>
       )}
