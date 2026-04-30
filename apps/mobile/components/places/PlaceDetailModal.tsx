@@ -72,8 +72,13 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
 
   const sheetPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+      // Don't claim the responder on touch start — that swallowed taps on
+      // every Pressable inside the sheet ("Get Directions", flip button,
+      // tag pills, etc.). Only claim once the user has moved meaningfully
+      // downward AND vertically dominates over horizontal motion.
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy > 10 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.5,
       onPanResponderRelease: (_, gs) => {
         if (gs.dy > 100 || (gs.dy > 30 && gs.vy > 0.5)) {
           onCloseRef.current();
