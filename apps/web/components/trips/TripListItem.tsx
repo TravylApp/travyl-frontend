@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { formatDateRange, formatCurrency } from '@travyl/shared';
+import { deleteTrip, formatDateRange, formatCurrency } from '@travyl/shared';
 import type { TripCard } from '@travyl/shared';
 import { TripShareModal } from './TripShareModal';
 
@@ -35,11 +35,7 @@ export function TripListItem({ trip }: TripListItemProps) {
     e.stopPropagation();
     if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
     try {
-      await fetch('/api/trips/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id }),
-      });
+      await deleteTrip(trip.id);
       try {
         const stored = localStorage.getItem('my-trip-ids');
         if (stored) {
@@ -47,8 +43,12 @@ export function TripListItem({ trip }: TripListItemProps) {
           localStorage.setItem('my-trip-ids', JSON.stringify(ids));
         }
       } catch {}
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-    } catch {}
+      await queryClient.invalidateQueries({ queryKey: ['trips'] });
+      toast.success('Trip deleted');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete trip';
+      toast.error(message);
+    }
   };
 
   return (
