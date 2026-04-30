@@ -21,7 +21,6 @@ const GAP_DUR = 200;
 const PASS2_DUR = 1600;
 const FLIGHT_TOTAL = PASS1_DUR + GAP_DUR + PASS2_DUR; // 2400
 const LOADING_START = 2600;
-const ANIMATION_END = 4600;
 const TRAIL_COUNT = 8;
 
 // Normalized phase boundaries (0-1)
@@ -126,15 +125,20 @@ export function TakeoffTransition({
       );
     }, LOADING_START);
 
-    const t2 = setTimeout(() => {
-      overlayOpacity.value = withTiming(0, { duration: 200 });
-      setTimeout(() => stableOnComplete(), 200);
-    }, ANIMATION_END);
+    // Note: previously this auto-faded the overlay at ANIMATION_END (4.6s)
+    // and called onComplete. But trip generation can take 10–30s, so the
+    // overlay would disappear before the new trip page rendered, flashing
+    // the home screen. Now we let the loading dots loop indefinitely and
+    // rely on the parent toggling `visible=false` to dismiss us.
+    return () => { clearTimeout(t1); };
+  }, [visible]);
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+  // Fade out when parent flips visible → false
+  useEffect(() => {
+    if (visible) return;
+    overlayOpacity.value = withTiming(0, { duration: 200 });
+    const t = setTimeout(() => stableOnComplete(), 200);
+    return () => clearTimeout(t);
   }, [visible]);
 
   // ─── Plane style — ALL math runs on UI thread ─────────────────
