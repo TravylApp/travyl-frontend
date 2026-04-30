@@ -19,9 +19,11 @@ export function validateEnv() {
     if (!process.env[key]) missing.push(key)
   }
 
-  // Accept either SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY
-  if (!process.env.SUPABASE_SECRET_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    missing.push('SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)')
+  // SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is only required for production
+  // For local development, the public keys are sufficient
+  const isProduction = process.env.NODE_ENV === 'production'
+  if (isProduction && !process.env.SUPABASE_SECRET_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    missing.push('SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) - required for production')
   }
 
   if (missing.length > 0) {

@@ -135,24 +135,34 @@ export function HistoryDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-40 pointer-events-none">
-      <div
-        className={[
-          'absolute right-0 top-0 h-full w-80 bg-white dark:bg-cal-surface-elevated border-l border-gray-200 dark:border-cal-border shadow-xl pointer-events-auto flex flex-col transition-transform duration-300',
-          isVisible ? 'translate-x-0' : 'translate-x-full',
-        ].join(' ')}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-cal-border">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-cal-text">Change history</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close history"
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-cal-accent-bg"
-          >
-            <Xmark className="w-4 h-4 text-gray-500 dark:text-cal-text-secondary" />
-          </button>
-        </div>
+    <>
+      {/* Backdrop - click to close */}
+      {isVisible && (
+        <div
+          className="fixed inset-0 bg-black/20 z-40"
+          onClick={onClose}
+        />
+      )}
+
+      <div className="fixed inset-0 z-50 pointer-events-none">
+        <div
+          className={[
+            'absolute right-0 top-12 h-[calc(100vh-48px)] w-80 bg-white dark:bg-cal-surface-elevated border-l border-gray-200 dark:border-cal-border shadow-xl pointer-events-auto flex flex-col transition-transform duration-300',
+            isVisible ? 'translate-x-0' : 'translate-x-full',
+          ].join(' ')}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-cal-border flex-shrink-0">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-cal-text">Change history</h2>
+            <button
+              onClick={onClose}
+              aria-label="Close history"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-500 dark:text-cal-text-secondary hover:bg-gray-100 dark:hover:bg-cal-accent-bg transition-colors text-xs font-medium border border-gray-200 dark:border-cal-border"
+            >
+              Close
+              <Xmark className="w-4 h-4" />
+            </button>
+          </div>
 
         {/* Feed */}
         <div className="flex-1 overflow-y-auto">
@@ -238,5 +248,6 @@ export function HistoryDrawer({
         </div>
       </div>
     </div>
+    </>
   )
 }

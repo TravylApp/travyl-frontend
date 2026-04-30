@@ -100,6 +100,7 @@ interface CalendarDashboardProps {
 }
 
 export function CalendarDashboard({ tripId, userId, userName, isSharedView = false }: CalendarDashboardProps) {
+  console.log('[CalendarDashboard] Initializing with isSharedView:', isSharedView, 'userId:', userId, 'tripId:', tripId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
@@ -115,6 +116,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
   const [bookingInProgress, setBookingInProgress] = useState(false)
   const [failedToOpenIds, setFailedToOpenIds] = useState<string[]>([])
   const bookingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [weekOffset, setWeekOffset] = useState(0)
   const router = useRouter()
 
   // Hooks
@@ -318,6 +320,13 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     setGhostActivities([])
   }, [selectedDayIndex])
 
+  // Reset week offset when switching to week view or when trip changes
+  useEffect(() => {
+    if (viewMode === 'week') {
+      setWeekOffset(0)
+    }
+  }, [viewMode, trip?.id])
+
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
   const parsedEndDate = trip ? new Date(trip.end_date + 'T00:00:00Z') : new Date()
@@ -337,6 +346,16 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
       isoDate: date.toISOString().slice(0, 10),
     }
   }), [tripTotalDays, parsedStartMs])
+
+  // Calculate visible days for week view (max 7 days at a time)
+  const weekStartIndex = weekOffset * 7
+  const visibleWeekDays = useMemo(() => {
+    const endIndex = Math.min(weekStartIndex + 7, tripTotalDays)
+    return TRIP_DAYS.slice(weekStartIndex, endIndex)
+  }, [TRIP_DAYS, weekStartIndex, tripTotalDays])
+
+  const hasMoreWeeks = weekStartIndex + 7 < tripTotalDays
+  const hasPreviousWeeks = weekOffset > 0
 
   const {
     selectedIds: marqueeSelectedIds,
@@ -690,7 +709,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
     viewMode === 'day' ? TRIP_DAYS[selectedDayIndex]?.label ?? '' : ''
 
   // Days to show (for DayView we pass a single day)
-  const visibleDays = viewMode === 'week' ? TRIP_DAYS : [TRIP_DAYS[selectedDayIndex]]
+  const visibleDays = viewMode === 'week' ? visibleWeekDays : [TRIP_DAYS[selectedDayIndex]]
 
   const marqueeOverlayElement = (
     <MarqueeOverlay
@@ -755,6 +774,68 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
           onToggleEvents={() => setShowEvents(v => !v)}
         />
 
+        {/* Week navigation and overflow notification */}
+        {viewMode === 'week' && tripTotalDays > 7 && (
+          <div className="px-4 py-2 bg-[var(--cal-bg)] border-b border-[var(--cal-border)] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {hasMoreWeeks && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                    Trip extends beyond this week
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+                disabled={!hasPreviousWeeks}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+              >
+                ← Previous week
+              </button>
+              <span className="text-xs text-[var(--cal-text-tertiary)] px-2">
+                Week {weekOffset + 1} of {Math.ceil(tripTotalDays / 7)}
+              </span>
+              <button
+                onClick={() => setWeekOffset(weekOffset + 1)}
+                disabled={!hasMoreWeeks}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+              >
+                Next week →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Day navigation controls */}
+        {viewMode === 'day' && tripTotalDays > 1 && (
+          <div className="px-4 py-2 bg-[var(--cal-bg)] border-b border-[var(--cal-border)] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Empty div to match week navigation layout */}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => selectDay(Math.max(0, selectedDayIndex - 1))}
+                disabled={selectedDayIndex === 0}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+              >
+                ← Previous day
+              </button>
+              <span className="text-xs text-[var(--cal-text-tertiary)] px-2">
+                Day {selectedDayIndex + 1} of {tripTotalDays}
+              </span>
+              <button
+                onClick={() => selectDay(Math.min(tripTotalDays - 1, selectedDayIndex + 1))}
+                disabled={selectedDayIndex === tripTotalDays - 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+              >
+                Next day →
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Grid area */}
         <DndContext
           sensors={isSharedView ? [] : sensors}
@@ -786,7 +867,7 @@ export function CalendarDashboard({ tripId, userId, userName, isSharedView = fal
                       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                     >
                       <WeekView
-                        days={TRIP_DAYS}
+                        days={visibleWeekDays}
                         activities={scheduledActivities}
                         viewers={collaborators}
                         selectedEventId={selectedEventId}

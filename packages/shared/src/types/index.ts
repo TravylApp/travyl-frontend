@@ -918,7 +918,7 @@ export interface TripCollaborator {
   invited_email: string | null
   invite_token: string | null
   role_type: CollaboratorRole
-  invite_status: 'pending' | 'accepted' | 'declined'
+  invite_status: 'pending' | 'accepted' | 'cancelled'
   invited_by: string
   accepted_at: string | null
   created_at: string

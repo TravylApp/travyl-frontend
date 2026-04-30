@@ -8,6 +8,7 @@ import type { Command } from './types'
 import { useEffectivePermission } from './providers/TripPermissionContext'
 import { RescoperPopover } from './RescoperPopover'
 import { UnscheduledPopover } from './UnscheduledPopover'
+import { CollaboratorAvatar } from './CollaboratorAvatar'
 
 // ─── TripMenuBar (inlined from TripNavbar) ──────────────────────
 
@@ -392,34 +393,14 @@ export function CalendarToolbar({
             <div className="flex items-center shrink-0">
               {collaborators.map((collab, index) => {
                 const dayLabel = tripDays.find((d) => d.dayIndex === (collab.selectedDayIndex ?? 0))?.label ?? ''
-                const viewLabel = collab.currentView === 'day' ? 'Day view' : 'Week view'
                 return (
-                  <div
+                  <CollaboratorAvatar
                     key={collab.userId}
-                    className="group relative flex items-center justify-center h-7 w-7 rounded-full text-[11px] font-semibold text-white select-none ring-2 ring-white dark:ring-cal-bg"
-                    style={{
-                      backgroundColor: collab.color,
-                      opacity: collab.isOnline ? 1 : 0.45,
-                      marginLeft: index === 0 ? 0 : '-8px',
-                      zIndex: collaborators.length - index,
-                    }}
-                  >
-                    {collab.avatarInitial}
-                    <span
-                      className={[
-                        'absolute bottom-0 right-0 h-2 w-2 rounded-full ring-1 ring-white dark:ring-cal-bg',
-                        collab.isOnline ? 'bg-green-500' : 'bg-gray-500',
-                      ].join(' ')}
-                    />
-                    {/* Hover tooltip */}
-                    <div className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 hidden group-hover:flex flex-col gap-0.5 bg-white dark:bg-cal-surface-elevated border border-gray-200 dark:border-cal-border rounded-lg shadow-md px-2.5 py-2 min-w-[120px] whitespace-nowrap">
-                      <span className="text-xs font-semibold text-gray-800 dark:text-cal-text">{collab.name}</span>
-                      <span className="text-[10px] text-gray-400 dark:text-cal-text-secondary">
-                        {viewLabel}{dayLabel ? ` \u00b7 ${dayLabel}` : ''}
-                      </span>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-200 dark:border-t-cal-border" />
-                    </div>
-                  </div>
+                    collaborator={collab}
+                    index={index}
+                    totalCollaborators={collaborators.length}
+                    dayLabel={dayLabel}
+                  />
                 )
               })}
             </div>
