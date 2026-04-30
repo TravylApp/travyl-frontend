@@ -31,12 +31,16 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')
 
   if (!API_URL) {
-    return NextResponse.json([])
+    return NextResponse.json([], { status: 503 })
   }
 
-  // Must have either coordinates or a text query — never silently default to a location
+  // Must have either coordinates or a text query — never silently default to
+  // a location. Return a 400 instead of a bare 200 [] so the client can
+  // distinguish "you didn't pass enough params" from "we searched and found
+  // nothing." Body shape stays an array for backwards-compat with callers
+  // that already do `.map()` on the response.
   if (!lat && !lng && !q) {
-    return NextResponse.json([])
+    return NextResponse.json([], { status: 400 })
   }
 
   // Extract auth from Supabase cookies so backend Lambdas can validate the user
