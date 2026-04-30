@@ -38,12 +38,10 @@ import {
   FontFamily,
 } from '@travyl/shared';
 import { savePlanToSupabase } from '@travyl/shared';
-import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
 
 import { PaperPlane } from '@/components/icons/PaperPlane';
-import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import {
   HowItWorks,
   GetInspired,
@@ -273,12 +271,6 @@ export default function HomeScreen() {
     ? [heroConfig.background_image_url]
     : SHUFFLED_STOCK;
   const [heroSlide, setHeroSlide] = useState(0);
-  const [selectedPlaceIdx, setSelectedPlaceIdx] = useState(-1);
-  const setSelectedPlace = useCallback((place: PlaceItem | null) => {
-    if (!place) { setSelectedPlaceIdx(-1); return; }
-    const idx = ([] as PlaceItem[]).findIndex((p) => p.id === place.id);
-    setSelectedPlaceIdx(idx >= 0 ? idx : -1);
-  }, []);
   useEffect(() => {
     if (heroSlides.length <= 1) return;
     // Pause rotation while user is typing — context shifts are jarring mid-input
@@ -884,19 +876,6 @@ export default function HomeScreen() {
       }}
     />
 
-    {/* ─── Place Detail — Magazine Card ─────────────────────────────── */}
-    {selectedPlaceIdx >= 0 && (
-      <CardStackCarousel
-        places={([] as PlaceItem[])}
-        initialIndex={selectedPlaceIdx}
-        favorites={[]}
-        onToggleFav={() => {}}
-        onAddToTrip={addToTrip}
-        tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
-        overlay
-        onClose={() => setSelectedPlaceIdx(-1)}
-      />
-    )}
     </View>
   );
 }
