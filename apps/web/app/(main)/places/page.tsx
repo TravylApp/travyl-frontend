@@ -365,10 +365,12 @@ export default function PlacesPage() {
                     searchDebounceRef.current = setTimeout(() => {
                       setSearchCity(val.trim());
                       setSearchQuery('');
+                      setActiveSubcategory('');
                     }, 300);
                   } else if (!val.trim()) {
                     setSearchCity('');
                     setSearchQuery('');
+                    setActiveSubcategory('');
                   }
                 }}
                 onKeyDown={(e) => {
@@ -376,6 +378,7 @@ export default function PlacesPage() {
                     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                     setSearchCity(searchInput.trim());
                     setSearchQuery('');
+                    setActiveSubcategory('');
                   }
                 }}
                 className="w-full pl-7 pr-7 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
@@ -386,6 +389,7 @@ export default function PlacesPage() {
                     setSearchInput('');
                     setSearchQuery('');
                     setSearchCity('');
+                    setActiveSubcategory('');
                     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                   }}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -803,7 +807,7 @@ export default function PlacesPage() {
                     </div>
                     {searchCity && (
                       <button
-                        onClick={() => { setSearchInput(''); setSearchCity(''); setSearchQuery(''); }}
+                        onClick={() => { setSearchInput(''); setSearchCity(''); setSearchQuery(''); setActiveSubcategory(''); }}
                         className="text-xs text-[#1e3a5f] hover:underline"
                       >
                         Clear search
