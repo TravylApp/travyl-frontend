@@ -62,6 +62,10 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
+  const phase = planner.state.phase;
+  // Keep animation visible from the moment they tap submit until navigation completes
+  const isWorking = submitted || phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
+
   // Reset on open
   useEffect(() => {
     if (visible) {
@@ -177,9 +181,6 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     setAnswers({});
   }, [planner]);
 
-  const phase = planner.state.phase;
-  // Keep animation visible from the moment they tap submit until navigation completes
-  const isWorking = submitted || phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
   const isIdle = phase === 'idle' && !submitted && !saving;
   const isClarifying = phase === 'clarifying' && !saving;
   const isError = phase === 'error' && !saving;
