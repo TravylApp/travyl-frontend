@@ -421,12 +421,15 @@ export function CardStackCarousel({
     PanResponder.create({
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: (_, gs) => {
-        // Lower threshold for easier vertical dragging
-        if (Math.abs(gs.dy) > 6 && Math.abs(gs.dy) > Math.abs(gs.dx)) {
+        // Direction is decided by which axis dominates clearly. A bare `>`
+        // ratio let horizontal swipes get misclassified as vertical when the
+        // first few pixels of motion had a small dy component, which would
+        // dismiss the sheet instead of navigating between cards.
+        if (Math.abs(gs.dy) > 8 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.5) {
           gestureDirRef.current = 'v';
           return true;
         }
-        if (Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy)) {
+        if (Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5) {
           gestureDirRef.current = 'h';
           return true;
         }
