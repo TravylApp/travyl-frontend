@@ -62,9 +62,18 @@ export default function SwipeableDeck({
       onPanResponderMove: (_, gs) => {
         const idx = currentIndexRef.current;
         const len = placesLenRef.current;
-        // Forward-only deck: only allow swiping left (gs.dx < 0)
-        if (gs.dx > 0) return;
-        if (idx >= len - 1) return;
+        // Forward-only deck — but show rubber-band resistance on right swipes
+        // and at the last card so the user gets feedback that the gesture is
+        // recognised but blocked (otherwise the card sits frozen and feels
+        // like a broken touch target).
+        if (gs.dx > 0) {
+          translateX.value = gs.dx * 0.18;
+          return;
+        }
+        if (idx >= len - 1) {
+          translateX.value = gs.dx * 0.18;
+          return;
+        }
         translateX.value = gs.dx;
       },
       onPanResponderRelease: (_, gs) => {
