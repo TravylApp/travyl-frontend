@@ -281,7 +281,7 @@ export default function SettingsScreen() {
               ]);
             }}
             className="h-12 rounded-xl items-center justify-center active:opacity-80"
-            style={{ backgroundColor: colors.errorBackground ?? '#fef2f2' }}
+            style={{ backgroundColor: colors.errorBg ?? '#fef2f2' }}
           >
             <Text className="text-base font-medium" style={{ color: colors.error ?? '#dc2626' }}>Sign Out</Text>
           </Pressable>

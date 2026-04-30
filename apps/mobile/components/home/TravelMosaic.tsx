@@ -99,7 +99,6 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
       }));
       return { tiles, places };
     },
-    staleTime: 10 * 60 * 1000,
   });
   const fetchedTiles = fetchedData?.tiles;
   const fetchedPlaces = fetchedData?.places ?? [];
