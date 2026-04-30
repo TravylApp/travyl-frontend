@@ -63,13 +63,19 @@ interface UsePlacesBatchOptions {
 export function usePlacesBatch({ batchOffset = 0, limit = 8 }: UsePlacesBatchOptions = {}) {
   const [places, setPlaces] = useState<PlaceItem[]>([]);
   const [loading, setLoading] = useState(false);
+  // Use a ref for the in-flight guard — `loading` state isn't updated until
+  // the next render, so a rapid second call (e.g. another scroll event)
+  // can pass the `if (loading)` check before setLoading(true) takes effect,
+  // firing duplicate batches. The ref flips synchronously.
+  const inFlight = useRef(false);
   const batchIndex = useRef(batchOffset);
   const hasMore = useRef(true);
   const { data: trending } = useTrendingDestinations();
   const trendingCities = trending ? trending.map(d => d.name) : null;
 
   const fetchBatch = useCallback(async () => {
-    if (loading || !hasMore.current || trendingCities === null) return;
+    if (inFlight.current || !hasMore.current || trendingCities === null) return;
+    inFlight.current = true;
     setLoading(true);
 
     try {
@@ -87,12 +93,13 @@ export function usePlacesBatch({ batchOffset = 0, limit = 8 }: UsePlacesBatchOpt
       batchIndex.current++;
       setPlaces(prev => [...prev, ...fresh]);
     } catch {}
+    inFlight.current = false;
     setLoading(false);
-  }, [loading, trendingCities, limit]);
+  }, [trendingCities, limit]);
 
   // Fetch first batch once trending data is ready
   useEffect(() => {
-    if (trendingCities !== null && places.length === 0 && !loading) {
+    if (trendingCities !== null && places.length === 0 && !inFlight.current) {
       fetchBatch();
     }
   }, [trendingCities]);
