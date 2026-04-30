@@ -1,5 +1,6 @@
 import { View, Text, Pressable, Linking, Platform, Share } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { TextStyles } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
 // ---------------------------------------------------------------------------
@@ -123,8 +124,7 @@ export default function PlaceActions({
     >
       <Text
         style={{
-          fontSize: 13,
-          fontWeight: '700',
+          ...TextStyles.bodyLgEm,
           color: '#fff',
           marginBottom: 10,
         }}
@@ -161,8 +161,7 @@ export default function PlaceActions({
             />
             <Text
               style={{
-                fontSize: 11,
-                fontWeight: '600',
+                ...TextStyles.captionEm,
                 color: 'rgba(255,255,255,0.85)',
               }}
             >
@@ -188,7 +187,7 @@ export default function PlaceActions({
           <FontAwesome name="globe" size={12} color="#7dd3fc" />
           <Text
             style={{
-              fontSize: 10,
+              ...TextStyles.sm,
               color: 'rgba(255,255,255,0.5)',
             }}
           >
@@ -196,8 +195,7 @@ export default function PlaceActions({
           </Text>
           <Text
             style={{
-              fontSize: 12,
-              fontWeight: '600',
+              ...TextStyles.bodyEm,
               color: '#fff',
               marginLeft: 'auto',
             }}

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal, ScrollView,
-  Platform, PanResponder, Animated, useWindowDimensions,
+  View, Text, Pressable, Share, Modal, ScrollView, TextInput,
+  Platform, PanResponder, Animated, useWindowDimensions, useColorScheme,
 } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,7 +11,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, TextStyles, FontFamily } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, resolveTheme, getWebApiBase, TextStyles, FontFamily } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -21,7 +21,8 @@ const { Navigator } = createMaterialTopTabNavigator();
 const TopTabs = withLayoutContext(Navigator);
 
 // ─── Config (matches web trip-tabs.tsx) ──────────────────
-const SIDEBAR_W = 52;
+export const SIDEBAR_W = 52;
+export const SIDE_TAB_W = 30;
 const DRAG_THRESHOLD = 10;
 const BOTTOM_BAR_OFFSET = 34; // lift above iOS home indicator
 
@@ -30,6 +31,7 @@ const ALL_TABS = [
   { name: 'itinerary',   title: 'Itinerary',   icon: 'calendar'    },
   { name: 'hotels',      title: 'Hotels',      icon: 'building-o'  },
   { name: 'flights',     title: 'Flights',     icon: 'plane'       },
+  { name: 'restaurants', title: 'Restaurants', icon: 'cutlery'     },
   { name: 'activities',  title: 'Explore',     icon: 'compass'     },
   { name: 'packing',     title: 'Packing',     icon: 'suitcase'    },
   { name: 'budget',      title: 'Budget',      icon: 'pie-chart'   },
@@ -39,7 +41,7 @@ const ALL_TABS = [
 
 const PERMANENT_TAB_NAMES = new Set(['index', 'itinerary']);
 const ADDABLE_TABS = ALL_TABS.filter(t => !PERMANENT_TAB_NAMES.has(t.name));
-const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'activities', 'packing', 'budget', 'favorites', 'settings'];
+const DEFAULT_ENABLED_TABS = ['index', 'itinerary', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'favorites', 'settings'];
 
 // ─── Types ──────────────────────────────────────────────
 type SpinePosition = 'top' | 'bottom' | 'left' | 'right';
@@ -321,14 +323,26 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: s
     .filter(({ route }) => enabledTabs.includes(route.name));
 }
 
-const WEB_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
+const WEB_API = getWebApiBase();
 
 // ─── Trip Hero ───────────────────────────────────────────
 function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
   const { theme, essentialsOpen, setEssentialsOpen, heroImageOverride } = useContext(TabCtx);
   const router = useRouter();
+  // Edit Trip modal styling reads `isDark` (lines 626+). Without this declaration
+  // it threw a ReferenceError that crashed the entire trip detail screen as soon
+  // as the user tapped the edit pencil on the hero.
+  const isDark = useColorScheme() === 'dark';
   const destination = trip?.destination || 'Destination';
   const cityName = destination.split(',')[0].trim();
+
+  // Inline trip editing
+  const [editingTrip, setEditingTrip] = useState(false);
+  const [editDest, setEditDest] = useState(destination);
+  const [editStart, setEditStart] = useState(trip?.start_date || '');
+  const [editEnd, setEditEnd] = useState(trip?.end_date || '');
+  const [editTravelers, setEditTravelers] = useState(trip?.travelers || 2);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Dynamic hero image: trip_context → override → fetch from Unsplash/Pexels
   const staticHero = heroImageOverride
@@ -338,11 +352,16 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
   const [fetchedHero, setFetchedHero] = useState<string | null>(null);
   useEffect(() => {
     if (staticHero || fetchedHero || !cityName || cityName === 'Destination') return;
-    const webApi = process.env.EXPO_PUBLIC_WEB_API_URL;
-    if (!webApi) return;
-    fetch(`${webApi}/api/images?q=${encodeURIComponent(cityName)}`)
+    // Try destination-specific endpoint first, then general images
+    fetch(`${WEB_API}/api/destination-image?destination=${encodeURIComponent(cityName)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.url) setFetchedHero(data.url); })
+      .then(data => {
+        if (data?.url) { setFetchedHero(data.url); return; }
+        // Fallback to general image search
+        return fetch(`${WEB_API}/api/images?q=${encodeURIComponent(cityName + ' landmark')}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d?.url) setFetchedHero(d.url); });
+      })
       .catch(() => {});
   }, [cityName, staticHero, fetchedHero]);
   const coverImage = staticHero || fetchedHero;
@@ -369,7 +388,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       {/* Background image — fills entire hero, content determines height */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         {coverImage ? (
-          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" />
+          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" onError={() => {}} />
         ) : (
           <View style={{ flex: 1, backgroundColor: theme.base, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="picture-o" size={32} color="rgba(255,255,255,0.3)" />
@@ -387,7 +406,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
 
       {/* Back button */}
       <Pressable
-        onPress={() => router.back()}
+        onPress={() => router.canDismiss() ? router.dismiss() : router.back()}
         style={{
           position: 'absolute', top: 50, left: 14, zIndex: 10,
           width: 34, height: 34, borderRadius: 17,
@@ -419,7 +438,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
         <Text style={{ ...TextStyles.xs, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
           {countryName || 'Your Trip Guide'}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <Text style={{
             ...TextStyles.display, color: '#fff',
             textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12,
@@ -428,35 +447,96 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Text>
           <Pressable
             onPress={() => setEssentialsOpen(!essentialsOpen)}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 4,
-              backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+            hitSlop={8}
+            style={({ pressed }) => ({
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
               borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-            }}
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Text style={{ ...TextStyles.smEm, color: '#fff' }}>
-              {essentialsOpen ? 'Hide Info' : 'Trip Info'}
+            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={10} color="rgba(255,255,255,0.8)" />
+            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.5, color: '#fff' }}>
+              {essentialsOpen ? 'Hide' : 'Show'}
             </Text>
-            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={8} color="rgba(255,255,255,0.6)" />
           </Pressable>
         </View>
 
-        {/* Collapsible essentials */}
+        {/* Date + travelers + safety — always visible, tappable to edit */}
+        {trip && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            <Pressable
+              onPress={() => setEditingTrip(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <FontAwesome name="pencil" size={10} color="rgba(255,255,255,0.5)" />
+            </Pressable>
+            {[
+              formatDateRange(trip.start_date, trip.end_date),
+              `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
+              qf?.timezone ? (qf.timezone as string).split(' · ')[0] : null,
+            ].filter(Boolean).map((text, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)', marginRight: 6 }}>·</Text>}
+                <Text style={{
+                  ...TextStyles.bodyLg, fontWeight: '600', color: '#fff',
+                  textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+                }}>{text}</Text>
+              </View>
+            ))}
+            {(() => {
+              const safety = trip?.trip_context?.safety as { score: number; message: string } | undefined;
+              if (!safety || safety.score <= 0) return null;
+              const color = safety.score <= 2 ? '#4ade80' : safety.score <= 3 ? '#facc15' : '#f87171';
+              const bg = safety.score <= 2 ? 'rgba(34,197,94,0.25)' : safety.score <= 3 ? 'rgba(234,179,8,0.25)' : 'rgba(239,68,68,0.25)';
+              const border = safety.score <= 2 ? 'rgba(34,197,94,0.5)' : safety.score <= 3 ? 'rgba(234,179,8,0.5)' : 'rgba(239,68,68,0.5)';
+              const label = safety.score <= 2 ? 'Safe' : safety.score <= 3 ? 'Caution' : 'Danger';
+              return (
+                <Pressable
+                  onPress={() => {
+                    const msg = safety.message || '';
+                    const tips = (trip?.trip_context as any)?.safety_tips;
+                    const dest = trip?.destination?.split(',')[0] || '';
+                    const explanation = safety.score <= 2
+                      ? 'Generally Safe — Standard travel precautions apply. Stay aware of your surroundings and keep valuables secure.'
+                      : safety.score <= 3
+                      ? 'Moderate Caution — Some areas may require extra awareness. Research neighborhoods before visiting and avoid isolated areas at night.'
+                      : 'Exercise Caution — Research local conditions before traveling. Register with your embassy and keep emergency contacts handy.';
+                    const details = [explanation, msg, ...(Array.isArray(tips) ? tips : [])].filter(Boolean).join('\n\n');
+                    import('react-native').then(({ Alert, Linking: L }) => {
+                      Alert.alert(
+                        `Safety: ${label} (${safety.score}/5)`,
+                        details,
+                        [
+                          { text: 'View Travel Advisory', onPress: () => L.openURL(`https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/${encodeURIComponent(dest)}.html`).catch(() => {}) },
+                          { text: 'OK', style: 'cancel' },
+                        ],
+                      );
+                    });
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}
+                >
+                  <FontAwesome name="shield" size={9} color={color} />
+                  <Text style={{ fontSize: 10, fontWeight: '600', color }}>{label} ({safety.score})</Text>
+                </Pressable>
+              );
+            })()}
+          </View>
+        )}
+
+        {/* Collapsible essentials — extra details */}
         {essentialsOpen && trip && (
           <View>
-            {/* Date + travelers + currency + timezone */}
+            {/* Currency + timezone — expanded details */}
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {[
-                formatDateRange(trip.start_date, trip.end_date),
-                `${trip.travelers} ${trip.travelers === 1 ? 'traveler' : 'travelers'}`,
                 qf?.currency ? (qf.currency as string).split(' · ')[0] : null,
                 qf?.language ? (qf.language as string).split(' · ')[0] : null,
-                qf?.timezone ? (qf.timezone as string).split(' · ')[0] : null,
               ].filter(Boolean).map((text, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)', marginRight: 6 }}>·</Text>}
                   <Text style={{
-                    ...TextStyles.bodyLg, fontWeight: i >= 2 ? '700' : '600',
+                    ...TextStyles.bodyLg, fontWeight: '700',
                     color: '#fff',
                     textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
                   }}>{text}</Text>
@@ -519,21 +599,21 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               );
             })()}
 
-            {/* Wiki excerpt — scrollable, 3-line window */}
+            {/* Wiki excerpt */}
             {wikiText ? (
               <View style={{
-                marginTop: 10, borderRadius: 10,
+                marginTop: 8, borderRadius: 10,
                 backgroundColor: 'rgba(0,0,0,0.55)',
-                height: 19 * 3 + 18, // 3 lines × lineHeight + padding (tight clip)
+                height: 19 * 2 + 16, // 2 lines × lineHeight + padding
               }}>
                 <ScrollView
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
                   nestedScrollEnabled
                 >
                   <Text style={{
                     ...TextStyles.body, fontFamily: FontFamily.serif,
-                    color: '#fff', lineHeight: 19,
+                    ...TextStyles.bodyLg, color: '#fff',
                   }}>
                     {wikiText}
                   </Text>
@@ -543,6 +623,103 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </View>
         )}
       </View>
+
+      {/* ── Edit Trip Modal ── */}
+      {editingTrip && trip && (
+        <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditingTrip(false)}>
+          <View style={{ flex: 1, backgroundColor: isDark ? '#0c1117' : '#fff' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb' }}>
+              <Text style={{ ...TextStyles.title, color: isDark ? '#e5e7eb' : '#111827' }}>Edit Trip</Text>
+              <Pressable onPress={() => setEditingTrip(false)} hitSlop={12}>
+                <FontAwesome name="times" size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
+              {/* Destination */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Destination</Text>
+                <TextInput
+                  value={editDest}
+                  onChangeText={setEditDest}
+                  style={{ borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#e5e7eb', borderRadius: 10, padding: 14, fontSize: 16, color: isDark ? '#e5e7eb' : '#111827', backgroundColor: isDark ? '#151d28' : '#f9fafb' }}
+                  placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+                />
+              </View>
+              {/* Start Date */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Start Date</Text>
+                <TextInput
+                  value={editStart}
+                  onChangeText={setEditStart}
+                  placeholder="YYYY-MM-DD"
+                  style={{ borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#e5e7eb', borderRadius: 10, padding: 14, fontSize: 16, color: isDark ? '#e5e7eb' : '#111827', backgroundColor: isDark ? '#151d28' : '#f9fafb' }}
+                  placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+                />
+              </View>
+              {/* End Date */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>End Date</Text>
+                <TextInput
+                  value={editEnd}
+                  onChangeText={setEditEnd}
+                  placeholder="YYYY-MM-DD"
+                  style={{ borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#e5e7eb', borderRadius: 10, padding: 14, fontSize: 16, color: isDark ? '#e5e7eb' : '#111827', backgroundColor: isDark ? '#151d28' : '#f9fafb' }}
+                  placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+                />
+              </View>
+              {/* Travelers */}
+              <View>
+                <Text style={{ ...TextStyles.captionEm, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Travelers</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                  <Pressable onPress={() => setEditTravelers(Math.max(1, editTravelers - 1))} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1a2230' : '#f3f4f6', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+                    <FontAwesome name="minus" size={14} color={isDark ? '#e5e7eb' : '#374151'} />
+                  </Pressable>
+                  <Text style={{ ...TextStyles.title, color: isDark ? '#e5e7eb' : '#111827', minWidth: 30, textAlign: 'center' }}>{editTravelers}</Text>
+                  <Pressable onPress={() => setEditTravelers(editTravelers + 1)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#1a2230' : '#f3f4f6', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+                    <FontAwesome name="plus" size={14} color={isDark ? '#e5e7eb' : '#374151'} />
+                  </Pressable>
+                </View>
+              </View>
+              {/* Save Button */}
+              <Pressable
+                onPress={async () => {
+                  if (!trip?.id) return;
+                  setEditSaving(true);
+                  try {
+                    const { updateTripDetails } = await import('@travyl/shared');
+                    await updateTripDetails(trip.id, {
+                      destination: editDest.trim() || undefined,
+                      start_date: editStart || undefined,
+                      end_date: editEnd || undefined,
+                      travelers: editTravelers,
+                    });
+                    refetch();
+                    setEditingTrip(false);
+                  } catch (e: any) {
+                    // Surface the failure — silent catch left users thinking
+                    // their edit was saved when it wasn't.
+                    const { Alert } = await import('react-native');
+                    Alert.alert(
+                      'Save failed',
+                      e?.message ?? 'Could not save your changes. Please try again.',
+                    );
+                  } finally {
+                    setEditSaving(false);
+                  }
+                }}
+                disabled={editSaving}
+                style={({ pressed }) => ({
+                  backgroundColor: pressed ? '#2d4a6f' : '#1e3a5f',
+                  borderRadius: 12, paddingVertical: 16, alignItems: 'center',
+                  opacity: editSaving ? 0.6 : 1,
+                })}
+              >
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{editSaving ? 'Saving...' : 'Save Changes'}</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -599,8 +776,9 @@ function useTabScrub(
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(axis === 'x' ? dx : dy) > 2,
+      // Don't capture on tap — let Pressable.onPress handle single taps
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(axis === 'x' ? dx : dy) > 8,
       onPanResponderGrant: (e) => {
         if (scrubTimer.current) clearTimeout(scrubTimer.current);
         lastScrubIdx.current = -1;
@@ -622,7 +800,7 @@ function useTabScrub(
 
 // ─── Book-style Tab Sidebar (left / right) ───────────────
 const TAB_NOTCH_W = 38;
-const SIDE_TAB_W = 30;
+
 
 
 function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
@@ -723,86 +901,88 @@ function BookTabSidebar({ state, navigation }: MaterialTopTabBarProps) {
 function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const { theme, tabColorOverrides, enabledTabs, setShowTabPicker } = useContext(TabCtx);
   const visibleRoutes = getVisibleRoutes(state, enabledTabs);
-  const { containerRef, panResponder, registerTabLayout } = useTabScrub(visibleRoutes, state, navigation, 'x');
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Auto-scroll to active tab
+  const activeIdx = visibleRoutes.findIndex(({ index }) => state.index === index);
+  useEffect(() => {
+    if (scrollRef.current && activeIdx >= 0) {
+      scrollRef.current.scrollTo({ x: Math.max(0, activeIdx * 72 - 40), animated: true });
+    }
+  }, [activeIdx]);
 
   return (
     <View
-      ref={containerRef}
-      {...panResponder.panHandlers}
       style={{
         position: 'absolute',
         bottom: BOTTOM_BAR_OFFSET,
         left: 0,
         right: 0,
         zIndex: 10,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
       }}
     >
-      {/* Drag handle */}
-      <View style={{
-        height: TAB_NOTCH_W,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.base + '80',
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        marginHorizontal: 1,
-        paddingHorizontal: 4,
-      }}>
-        <DragHandle direction="horizontal" />
-      </View>
-
-      {visibleRoutes.map(({ route, index }, i) => {
-        const isFocused = state.index === index;
-        const tab = ALL_TABS.find((t) => t.name === route.name);
-        const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
-
-        return (
-          <Pressable
-            key={route.key}
-            onPress={() => navigation.navigate(route.name)}
-            onLayout={(e) => registerTabLayout(i, e)}
-            style={{
-              flex: 1,
-              height: TAB_NOTCH_W,
-              backgroundColor: isFocused ? color : color + 'B3',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginHorizontal: 1,
-              borderTopLeftRadius: 8,
-              borderTopRightRadius: 8,
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
-            }}
-          >
-            <FontAwesome
-              name={(tab?.icon ?? 'circle') as any}
-              size={16}
-              color={isFocused ? '#fff' : 'rgba(255,255,255,0.6)'}
-            />
-          </Pressable>
-        );
-      })}
-
-      {/* Manage tabs button */}
-      <Pressable
-        onPress={() => setShowTabPicker(true)}
-        style={{
-          height: TAB_NOTCH_W,
-          paddingHorizontal: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.base + '40',
-          borderTopLeftRadius: 8,
-          borderTopRightRadius: 8,
-          marginHorizontal: 1,
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          paddingHorizontal: 8,
+          gap: 2,
         }}
       >
-        <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-h'} size={14} color="rgba(255,255,255,0.6)" />
-      </Pressable>
+        {visibleRoutes.map(({ route, index }) => {
+          const isFocused = state.index === index;
+          const tab = ALL_TABS.find((t) => t.name === route.name);
+          const color = tabColorOverrides[route.name] ?? theme.tabColors[route.name] ?? theme.base;
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={() => navigation.navigate(route.name)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                height: 36,
+                paddingHorizontal: isFocused ? 14 : 10,
+                backgroundColor: isFocused ? color : color + '40',
+                borderRadius: 18,
+              }}
+            >
+              <FontAwesome
+                name={(tab?.icon ?? 'circle') as any}
+                size={13}
+                color={isFocused ? '#fff' : 'rgba(255,255,255,0.7)'}
+              />
+              {isFocused && (
+                <Text style={{
+                  ...TextStyles.bodyEm,
+                  color: '#fff',
+                }}>
+                  {tab?.title ?? route.name}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+
+        {/* Manage tabs button */}
+        <Pressable
+          onPress={() => setShowTabPicker(true)}
+          style={{
+            height: 36,
+            width: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.base + '30',
+            borderRadius: 18,
+          }}
+        >
+          <FontAwesome name={enabledTabs.length < ALL_TABS.length ? 'plus' : 'ellipsis-h'} size={12} color="rgba(255,255,255,0.5)" />
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
@@ -929,22 +1109,8 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
     colors: { ...parentTheme.colors, background: 'transparent', card: 'transparent' },
   }), [parentTheme]);
 
-  const coverImage = trip?.trip_context?.hero_image_url;
-
   return (
     <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
-      {/* Full-screen hero image behind everything */}
-      {coverImage && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '70%', zIndex: 0 }}>
-          <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" />
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.2)' }} />
-          <LinearGradient
-            colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']}
-            locations={[0, 0.4, 1]}
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-          />
-        </View>
-      )}
       <TripHero trip={trip} refetch={refetch} />
       <View style={{ flex: 1, position: 'relative', marginTop: -90 }}>
         <ThemeProvider value={transparentTheme}>
@@ -954,11 +1120,13 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
             pagerStyle={{ backgroundColor: 'transparent' }}
             screenOptions={{
               lazy: true,
+              lazyPreloadDistance: 1,
               lazyPlaceholder: () => (
                 <View style={{ flex: 1, backgroundColor: 'transparent' }} />
               ),
               swipeEnabled: true,
               animationEnabled: true,
+              detachInactiveScreens: false,
               sceneStyle: {
                 paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
                 paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,

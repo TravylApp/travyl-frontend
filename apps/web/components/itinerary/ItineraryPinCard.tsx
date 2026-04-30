@@ -101,8 +101,7 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
             <img
               src={images[imageIndex] || images[0]}
               alt={item.name}
-              referrerPolicy="no-referrer"
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800" />

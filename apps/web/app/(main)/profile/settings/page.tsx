@@ -3,14 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, AlertCircle, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap, ArrowLeft } from 'lucide-react';
+import { User, Compass, Bell, Settings, CheckCircle, Plane, Hotel, Loader2, Plus, Eye, Check, Shield, Smartphone, LogOut, Star, HelpCircle, MessageSquare, Trash2, X, ChevronDown, Pencil, ClipboardList, Activity, Zap, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { AvatarUpload } from '@/components/AvatarUpload';
 import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { LoadingBar } from '@/components/LoadingBar';
 import { useAuthStore, supabase } from '@travyl/shared';
-import { fetchProfile, updateProfile, updateUserMetadata, updateUserPassword, fetchTrips } from '@travyl/shared';
+import { fetchProfile, updateProfile, uploadAvatar, updateUserMetadata, updateUserPassword, fetchTrips } from '@travyl/shared';
 import type { Profile, Trip } from '@travyl/shared';
 
 // ─── Types ─────────────────────────────────────────────
@@ -65,10 +66,10 @@ const TABS: { id: TabId; icon: any; label: string }[] = [
 
 function SectionCard({ children, className = '', title }: { children: React.ReactNode; className?: string; title?: string }) {
   return (
-    <div className={`bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col ${className}`}>
+    <div className={`bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col ${className}`}>
       {title && (
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-          <span className="text-sm font-bold tracking-[1.5px] text-gray-400 uppercase">{title}</span>
+        <div className="px-6 py-4 border-b border-border bg-muted/50 flex items-center justify-between">
+          <span className="text-sm font-bold tracking-[1.5px] text-muted-foreground uppercase">{title}</span>
         </div>
       )}
       <div className="p-6 flex-1">{children}</div>
@@ -77,11 +78,11 @@ function SectionCard({ children, className = '', title }: { children: React.Reac
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-bold tracking-[1.2px] text-gray-400 uppercase mb-4">{children}</p>;
+  return <p className="text-sm font-bold tracking-[1.2px] text-muted-foreground uppercase mb-4">{children}</p>;
 }
 
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-500 mb-2 uppercase tracking-tight">{children}</label>;
+  return <label htmlFor={htmlFor} className="block text-sm font-semibold text-muted-foreground mb-2 uppercase tracking-tight">{children}</label>;
 }
 
 function SettingsInput({ id, label, value, onChange, placeholder, type = 'text', disabled, suffix }: {
@@ -95,7 +96,7 @@ function SettingsInput({ id, label, value, onChange, placeholder, type = 'text',
         <input
           id={id} type={type} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} disabled={disabled}
-          className="w-full h-12 px-4 text-lg text-gray-900 bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/20 disabled:opacity-50 transition-all"
+          className="w-full h-12 px-4 text-lg text-card-foreground bg-card border border-border rounded-xl hover:border-border/80 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 transition-all"
         />
         {suffix && <div className="absolute right-4 top-1/2 -translate-y-1/2">{suffix}</div>}
       </div>
@@ -107,7 +108,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   return (
     <button
       type="button" onClick={onChange} disabled={disabled}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 focus-visible:outline-none ${checked ? 'bg-blue-500' : 'bg-gray-200'} ${disabled ? 'opacity-50' : ''}`}
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 focus-visible:outline-none ${checked ? 'bg-primary' : 'bg-muted'} ${disabled ? 'opacity-50' : ''}`}
       role="switch" aria-checked={checked}
     >
       <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${checked ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
@@ -121,7 +122,7 @@ function Chip({ label, selected, onClick, color }: { label: string; selected: bo
     <button
       type="button" onClick={onClick}
       className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border transition-all ${
-        selected ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+        selected ? 'bg-primary/10 border-primary/20 text-primary font-semibold shadow-sm' : 'bg-card border-border text-muted-foreground hover:border-border/80'
       }`}
     >
       {color && (
@@ -130,7 +131,7 @@ function Chip({ label, selected, onClick, color }: { label: string; selected: bo
         </span>
       )}
       <span className="truncate max-w-[120px]">{label}</span>
-      {selected && <Check size={14} className="text-blue-500 shrink-0" />}
+      {selected && <Check size={14} className="text-primary shrink-0" />}
     </button>
   );
 }
@@ -140,7 +141,7 @@ function PillToggle({ label, selected, onClick }: { label: string; selected: boo
     <button
       type="button" onClick={onClick}
       className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-        selected ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+        selected ? 'bg-foreground text-background border-foreground shadow-md' : 'bg-card text-muted-foreground border-border hover:border-border/80'
       }`}
     >
       {label}
@@ -154,14 +155,14 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
   onChange: (id: T) => void;
 }): React.ReactNode {
   return (
-    <div className="flex gap-4 mb-6 border-b border-gray-100">
+    <div className="flex gap-4 mb-6 border-b border-border">
       {tabs.map(tab => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
           className={`flex items-center gap-2 px-2 py-3 text-sm font-bold transition-all border-b-2 -mb-px ${
-            active === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'
+            active === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
           {tab.label}
@@ -174,13 +175,13 @@ function SubTabs<T extends string>({ tabs, active, onChange }: {
 function CounterInline({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (v: number) => void; min?: number }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="text-base text-gray-600 font-medium">{label}</span>
+      <span className="text-base text-card-foreground font-medium">{label}</span>
       <div className="flex items-center gap-3">
         <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-900 text-lg font-bold transition-all">-</button>
-        <span className="w-6 text-center text-base font-bold text-gray-900">{value}</span>
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground text-lg font-bold transition-all">-</button>
+        <span className="w-6 text-center text-base font-bold text-card-foreground">{value}</span>
         <button type="button" onClick={() => onChange(value + 1)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-900 text-lg font-bold transition-all">+</button>
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground text-lg font-bold transition-all">+</button>
       </div>
     </div>
   );
@@ -188,6 +189,7 @@ function CounterInline({ label, value, onChange, min = 0 }: { label: string; val
 
 // ─── Main Component ────────────────────────────────────
 export default function ProfileSettings() {
+  const queryClient = useQueryClient();
   // Auth state
   const { user, session, loading: authLoading } = useAuthStore();
   const router = useRouter();
@@ -264,7 +266,10 @@ export default function ProfileSettings() {
 
   // ─── Change Detection ──────────────────────────────
   const isModified = useCallback(() => {
-    const formChanged = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+    // Exclude email from change detection since it's read-only
+    const { email: _, ...formDataNoEmail } = formData;
+    const { email: __, ...originalNoEmail } = originalFormData;
+    const formChanged = JSON.stringify(formDataNoEmail) !== JSON.stringify(originalNoEmail);
     const travelChanged = JSON.stringify({ homeAirport, typicalDuration, budget, travelPace, travelers, selectedAirlines, selectedHotels, selectedStayTypes, selectedInterests, selectedRegions }) !== JSON.stringify(originalTravelStyle);
     const notifChanged = JSON.stringify(notifications) !== JSON.stringify(originalNotifications);
     const accountChanged = JSON.stringify({ profileVisibility, privacyControls, twoFactorEnabled }) !== JSON.stringify(originalAccount);
@@ -294,21 +299,9 @@ export default function ProfileSettings() {
   // ─── Load Profile Data ───────────────────────────────
   useEffect(() => {
     async function loadProfile() {
-      // Wait for auth to finish loading
-      if (authLoading) {
-        return;
-      }
-
       try {
         setIsLoading(true);
         setError(null);
-
-        // Check if user is authenticated
-        if (!user || !session) {
-          setError('Sign In to View');
-          setIsLoading(false);
-          return;
-        }
 
         // Check if Supabase is configured
         if (!supabase) {
@@ -317,9 +310,22 @@ export default function ProfileSettings() {
           return;
         }
 
+        // AuthGuard wraps the page so user should exist by the time this
+        // effect runs, but TypeScript needs the explicit narrow.
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
         // Fetch profile data
         const profile = await fetchProfile(user.id);
         setProfileData(profile);
+
+        // Extract preferences from profile
+        const prefs = profile?.preferences as Record<string, any> || {};
+        const travelStyle = prefs.travelStyle || {};
+        const notificationPrefs = prefs.notifications || {};
+        const accountPrefs = prefs.account || {};
 
         // Populate form data from profile and user
         setFormData({
@@ -327,7 +333,7 @@ export default function ProfileSettings() {
           firstName: profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || '',
           lastName: user.user_metadata?.lastName || '',
           email: user.email || '',
-          phone: user.phone || '',
+          phone: user.user_metadata?.phone || user.phone || '',
           city: profile?.city || user.user_metadata?.city || '',
           country: profile?.country || user.user_metadata?.country || '',
           emergencyName: user.user_metadata?.emergencyName || '',
@@ -349,7 +355,7 @@ export default function ProfileSettings() {
           firstName: profile?.display_name || user.user_metadata?.display_name || user.user_metadata?.name || '',
           lastName: user.user_metadata?.lastName || '',
           email: user.email || '',
-          phone: user.phone || '',
+          phone: user.user_metadata?.phone || user.phone || '',
           city: profile?.city || user.user_metadata?.city || '',
           country: profile?.country || user.user_metadata?.country || '',
           emergencyName: user.user_metadata?.emergencyName || '',
@@ -366,17 +372,78 @@ export default function ProfileSettings() {
           temperatureUnit: user.user_metadata?.temperatureUnit || '°F',
         });
 
+        // Load travel style preferences
+        setHomeAirport(travelStyle.homeAirport || '');
+        setTypicalDuration(travelStyle.typicalDuration || 0);
+        setBudget(travelStyle.budget || '');
+        setTravelPace(travelStyle.travelPace || '');
+        setTravelers(travelStyle.travelers || { adults: 0, children: 0, infants: 0, pets: 0 });
+        setSelectedAirlines(travelStyle.selectedAirlines || []);
+        setSelectedHotels(travelStyle.selectedHotels || []);
+        setSelectedStayTypes(travelStyle.selectedStayTypes || []);
+        setSelectedInterests(travelStyle.selectedInterests || []);
+        setSelectedRegions(travelStyle.selectedRegions || []);
+
+        setOriginalTravelStyle({
+          homeAirport: travelStyle.homeAirport || '',
+          typicalDuration: travelStyle.typicalDuration || 0,
+          budget: travelStyle.budget || '',
+          travelPace: travelStyle.travelPace || '',
+          travelers: travelStyle.travelers || { adults: 0, children: 0, infants: 0, pets: 0 },
+          selectedAirlines: travelStyle.selectedAirlines || [],
+          selectedHotels: travelStyle.selectedHotels || [],
+          selectedStayTypes: travelStyle.selectedStayTypes || [],
+          selectedInterests: travelStyle.selectedInterests || [],
+          selectedRegions: travelStyle.selectedRegions || [],
+        });
+
+        // Load notification preferences
+        setNotifications({
+          email: notificationPrefs.email ?? true,
+          push: notificationPrefs.push ?? true,
+          sms: notificationPrefs.sms ?? false,
+          personalizedPicks: notificationPrefs.personalizedPicks ?? true,
+          travelNewsletter: notificationPrefs.travelNewsletter ?? false,
+          newFeatures: notificationPrefs.newFeatures ?? true,
+          socialActivity: notificationPrefs.socialActivity ?? true,
+          tripReminders: notificationPrefs.tripReminders ?? true,
+          priceDropAlerts: notificationPrefs.priceDropAlerts ?? true,
+          eventAlerts: notificationPrefs.eventAlerts ?? true,
+        });
+
+        setOriginalNotifications({
+          email: notificationPrefs.email ?? true,
+          push: notificationPrefs.push ?? true,
+          sms: notificationPrefs.sms ?? false,
+          personalizedPicks: notificationPrefs.personalizedPicks ?? true,
+          travelNewsletter: notificationPrefs.travelNewsletter ?? false,
+          newFeatures: notificationPrefs.newFeatures ?? true,
+          socialActivity: notificationPrefs.socialActivity ?? true,
+          tripReminders: notificationPrefs.tripReminders ?? true,
+          priceDropAlerts: notificationPrefs.priceDropAlerts ?? true,
+          eventAlerts: notificationPrefs.eventAlerts ?? true,
+        });
+
+        // Load account preferences
+        setProfileVisibility(accountPrefs.profileVisibility || 'Private');
+        setPrivacyControls(accountPrefs.privacyControls || { showEmail: false, showActivity: false, sharePartners: false, analytics: false });
+        setTwoFactorEnabled(accountPrefs.twoFactorEnabled || false);
+
+        setOriginalAccount({
+          profileVisibility: accountPrefs.profileVisibility || 'Private',
+          privacyControls: accountPrefs.privacyControls || { showEmail: false, showActivity: false, sharePartners: false, analytics: false },
+          twoFactorEnabled: accountPrefs.twoFactorEnabled || false,
+        });
+
         // Fetch user's trips for stats
         try {
           const userTrips = await fetchTrips(user.id);
           setTrips(userTrips);
         } catch (tripErr) {
-          console.error('Error loading trips:', tripErr);
           // Continue without trips - stats will show 0
         }
 
       } catch (err) {
-        console.error('Error loading profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load profile');
       } finally {
         setIsLoading(false);
@@ -402,39 +469,98 @@ export default function ProfileSettings() {
 
     setIsSaving(true);
     try {
-      // Update profile fields in profiles table
-      if (formData.firstName || formData.city || formData.country || formData.profilePhoto) {
-        await updateProfile(user.id, {
-          display_name: formData.firstName || null,
-          avatar_url: formData.profilePhoto || null,
-          city: formData.city || null,
-          country: formData.country || null,
-        });
+      let finalAvatarUrl = formData.profilePhoto;
+
+      // If the avatar is a base64 string (newly uploaded), upload it to storage
+      if (formData.profilePhoto && formData.profilePhoto.startsWith('data:image/')) {
+        try {
+          finalAvatarUrl = await uploadAvatar(user.id, formData.profilePhoto);
+        } catch (uploadErr) {
+          toast.error('Failed to upload image. Please try again.');
+          setIsSaving(false);
+          return false;
+        }
       }
 
-      // Update user metadata in auth
-      const metadataUpdates: Record<string, unknown> = {
-        lastName: formData.lastName || null,
-        phone: formData.phone || null,
-        emergencyName: formData.emergencyName || null,
-        emergencyPhone: formData.emergencyPhone || null,
-        emergencyRelation: formData.emergencyRelation || null,
-        dietaryRequirements: formData.dietaryRequirements || null,
-        currency: formData.currency || null,
-        language: formData.language || null,
-        timezone: formData.timezone || null,
-        distanceUnit: formData.distanceUnit || null,
-        temperatureUnit: formData.temperatureUnit || null,
+      // Update profile fields in profiles table
+      const profileUpdates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'preferences'>> = {};
+
+      // Only update profile fields that changed
+      if (formData.firstName !== originalFormData.firstName) {
+        profileUpdates.display_name = formData.firstName || null;
+      }
+      if (finalAvatarUrl !== originalFormData.profilePhoto) {
+        profileUpdates.avatar_url = finalAvatarUrl || null;
+      }
+      if (formData.city !== originalFormData.city) {
+        profileUpdates.city = formData.city || null;
+      }
+      if (formData.country !== originalFormData.country) {
+        profileUpdates.country = formData.country || null;
+      }
+
+      // Build preferences object
+      const preferences: Record<string, any> = {
+        travelStyle: {
+          homeAirport,
+          typicalDuration,
+          budget,
+          travelPace,
+          travelers,
+          selectedAirlines,
+          selectedHotels,
+          selectedStayTypes,
+          selectedInterests,
+          selectedRegions,
+        },
+        notifications,
+        account: {
+          profileVisibility,
+          privacyControls,
+          twoFactorEnabled,
+        },
       };
 
-      // Only include non-null values
-      const cleanMetadataUpdates = Object.fromEntries(
-        Object.entries(metadataUpdates).filter(([_, v]) => v !== null)
-      );
+      profileUpdates.preferences = preferences;
 
-      if (Object.keys(cleanMetadataUpdates).length > 0) {
-        await updateUserMetadata(cleanMetadataUpdates);
+      // Only call updateProfile if there are actual changes
+      if (Object.keys(profileUpdates).length > 0) {
+        await updateProfile(user.id, profileUpdates);
       }
+
+      // Update user metadata in auth (for fields that need to be in user_metadata)
+      // Only include fields that have changed from original to avoid clearing unchanged empty fields
+      const metadataUpdates: Record<string, unknown> = {};
+
+      // Helper to add field if it changed
+      const addIfChanged = (key: string, currentValue: string, originalValue: string) => {
+        if (currentValue !== originalValue) {
+          metadataUpdates[key] = currentValue || null; // Use null for empty strings to clear the field
+        }
+      };
+
+      addIfChanged('display_name', formData.firstName, originalFormData.firstName);
+      if (finalAvatarUrl && !finalAvatarUrl.startsWith('data:')) {
+        metadataUpdates['avatar_url'] = finalAvatarUrl;
+      }
+      addIfChanged('phone', formData.phone, originalFormData.phone);
+      addIfChanged('lastName', formData.lastName, originalFormData.lastName);
+      addIfChanged('emergencyName', formData.emergencyName, originalFormData.emergencyName);
+      addIfChanged('emergencyPhone', formData.emergencyPhone, originalFormData.emergencyPhone);
+      addIfChanged('emergencyRelation', formData.emergencyRelation, originalFormData.emergencyRelation);
+      addIfChanged('dietaryRequirements', formData.dietaryRequirements, originalFormData.dietaryRequirements);
+      addIfChanged('currency', formData.currency, originalFormData.currency);
+      addIfChanged('language', formData.language, originalFormData.language);
+      addIfChanged('timezone', formData.timezone, originalFormData.timezone);
+      addIfChanged('distanceUnit', formData.distanceUnit, originalFormData.distanceUnit);
+      addIfChanged('temperatureUnit', formData.temperatureUnit, originalFormData.temperatureUnit);
+
+      if (Object.keys(metadataUpdates).length > 0) {
+        await updateUserMetadata(metadataUpdates);
+      }
+
+      // Invalidate profile query to update navbar and other components
+      await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
 
       // Update password if provided
       if (formData.newPassword && formData.currentPassword) {
@@ -463,7 +589,6 @@ export default function ProfileSettings() {
       snapshotAll();
       return true;
     } catch (err) {
-      console.error('Error saving settings:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to save settings. Please try again.');
       return false;
     } finally {
@@ -519,7 +644,7 @@ export default function ProfileSettings() {
   // ─── Render ───────────────────────────────────────────
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe]">
+      <div className="min-h-screen bg-[#f8fafc]">
         <div className="flex items-center justify-center p-6 pt-24">
           <div className="text-center">
             {/* Travyl Logo */}
@@ -546,59 +671,26 @@ export default function ProfileSettings() {
     );
   }
 
-  if (error && !user) {
+  if (error && supabase) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe]">
         <div className="flex items-center justify-center p-6 pt-24">
-          <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
-          {/* Travyl Logo */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="text-3xl font-black text-[#1e3a5f] tracking-wider">TRAVYL</span>
-            <svg
-              viewBox="0 0 64 64"
-              className="w-10 h-10"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          <div className="max-w-md w-full text-center bg-white rounded-[32px] shadow-2xl p-10 border-2 border-dashed border-red-100">
+            <div className="w-28 h-28 bg-red-50 rounded-full flex items-center justify-center mb-10 relative shadow-inner mx-auto">
+              <X size={56} className="text-red-200" />
+            </div>
+            <h3 className="text-[#314158] text-3xl font-bold mb-4">Unable to Load Profile</h3>
+            <p className="text-gray-400 max-w-md mx-auto mb-12 text-lg leading-relaxed">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-10 py-4 bg-[#1e3a5f] hover:bg-[#2a4a6f] text-white rounded-2xl transition-all shadow-xl hover:shadow-2xl font-bold flex items-center gap-3 mx-auto active:scale-95"
             >
-              <path d="M60 10 L20 36 L6 34 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
-              <path d="M48 48 L30 40 L26 38 L60 10 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
-              <path d="M52 16 L26 38 L24 50 L20 36 Z" fill="#ffffff" stroke="#1e3a5f" strokeWidth="2"/>
-            </svg>
+              <Loader2 size={20} />
+              Try Again
+            </button>
           </div>
-
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={40} className="text-red-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-1">Access Denied</h2>
-          <h3 className="text-2xl font-bold text-[#1e3a5f] mb-6">{error}</h3>
-          <a
-            href="/login"
-            className="inline-flex items-center gap-2 px-8 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
-          >
-            Sign In
-          </a>
-        </div>
-      </div>
-    </div>
-    );
-  }
-
-  if (error && supabase) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center bg-white rounded-3xl shadow-2xl p-10">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={40} className="text-orange-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-[#1e3a5f] mb-3">Unable to Load Profile</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2a4a6f] transition-all font-bold shadow-lg"
-          >
-            <Loader2 size={18} className="animate-spin" />
-            Try Again
-          </button>
         </div>
       </div>
     );
@@ -675,14 +767,14 @@ export default function ProfileSettings() {
 
   // ─── Render ────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <LoadingBar isLoading={isLoading || isTabLoading || isSaving} />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-12">
         {/* Back Button */}
         <button
           onClick={() => router.push('/profile')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 group"
         >
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
           <span className="font-medium">Back to Profile</span>
@@ -690,12 +782,12 @@ export default function ProfileSettings() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-5xl text-gray-950 tracking-tight font-bold">Settings</h1>
-          <p className="text-xl text-gray-500 mt-2">Manage your profile, preferences and security</p>
+          <h1 className="text-5xl text-foreground tracking-tight font-bold">Settings</h1>
+          <p className="text-xl text-muted-foreground mt-2">Manage your profile, preferences and security</p>
         </div>
 
         {/* Tabs — Matches Main Layout Style */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide border-b border-gray-100">
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide border-b border-border">
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -703,8 +795,8 @@ export default function ProfileSettings() {
               disabled={isTabLoading}
               className={`flex items-center gap-2.5 px-6 py-3 rounded-2xl text-lg whitespace-nowrap transition-all touch-manipulation font-semibold ${
                 activeTab === tab.id
-                  ? 'bg-gray-900 text-white shadow-lg'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'bg-foreground text-background shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               } ${isTabLoading ? 'opacity-50' : ''}`}
             >
               <tab.icon size={20} />
@@ -718,43 +810,43 @@ export default function ProfileSettings() {
 
         {/* Content Area — Condensing Philosophy Applied */}
         {isLoading || isTabLoading ? (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"><Skeleton /></div>
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden"><Skeleton /></div>
         ) : (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden divide-y divide-gray-100">
+          <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden divide-y divide-border">
 
             {/* ═══════ PROFILE ═══════ */}
             {activeTab === 'profile' && (
               <div className="p-6 sm:p-10 space-y-8">
                 <div className="flex flex-col lg:flex-row gap-10">
                   {/* Left: Bio/Avatar Info */}
-                  <div className="lg:w-[320px] flex flex-col items-center text-center p-8 rounded-[32px] bg-gray-50/50 border border-gray-100 shadow-inner shrink-0">
+                  <div className="lg:w-[320px] flex flex-col items-center text-center p-8 rounded-[32px] bg-muted/50 border border-border shadow-inner shrink-0">
                     <AvatarUpload currentImage={formData.profilePhoto || undefined} onImageChange={url => updateForm('profilePhoto', url)} hideButtons />
                     <div className="mt-6 w-full">
                        {isEditingName ? (
                          <div className="flex flex-col gap-3">
                             <SettingsInput id="f" label="FIRST NAME" value={formData.firstName} onChange={v => updateForm('firstName', v)} />
                             <SettingsInput id="l" label="LAST NAME" value={formData.lastName} onChange={v => updateForm('lastName', v)} />
-                            <button onClick={() => setIsEditingName(false)} className="h-10 bg-blue-600 text-white rounded-xl text-sm font-bold w-full mt-2 shadow-md hover:bg-blue-700 transition-colors">Save Name</button>
+                            <button onClick={() => setIsEditingName(false)} className="h-10 bg-primary text-primary-foreground rounded-xl text-sm font-bold w-full mt-2 shadow-md hover:bg-primary/90 transition-colors">Save Name</button>
                          </div>
                        ) : (
                          <div className="group cursor-pointer flex items-center justify-center gap-2" onClick={() => setIsEditingName(true)}>
-                            <h2 className="text-2xl font-black text-gray-900 group-hover:text-blue-600 transition-colors tracking-tight">{formData.firstName} {formData.lastName}</h2>
-                            <Pencil size={16} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                            <h2 className="text-2xl font-black text-card-foreground group-hover:text-primary transition-colors tracking-tight">{formData.firstName} {formData.lastName}</h2>
+                            <Pencil size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                          </div>
                        )}
                        <div className="mt-6 space-y-2">
                           <div className="flex items-center justify-between px-1">
-                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</span>
-                             <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{userStats.xpCurrent}/{userStats.xpMax} XP</span>
+                             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Progress</span>
+                             <span className="text-[10px] font-black text-primary uppercase tracking-widest">{userStats.xpCurrent}/{userStats.xpMax} XP</span>
                           </div>
-                          <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                             <div className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${userStats.xpProgress}%` }} />
+                          <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden shadow-inner">
+                             <div className="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${userStats.xpProgress}%` }} />
                           </div>
                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-6 mt-10 pt-8 border-t border-gray-200 w-full">
-                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Trips</p><p className="text-2xl font-black text-gray-900 leading-none">{userStats.tripsCount}</p></div>
-                       <div className="text-left"><p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] leading-none mb-2">Cities</p><p className="text-2xl font-black text-gray-900 leading-none">{userStats.citiesCount}</p></div>
+                    <div className="grid grid-cols-2 gap-6 mt-10 pt-8 border-t border-border w-full">
+                       <div className="text-left"><p className="text-[10px] font-black text-muted-foreground uppercase tracking-[2px] leading-none mb-2">Trips</p><p className="text-2xl font-black text-card-foreground leading-none">{userStats.tripsCount}</p></div>
+                       <div className="text-left"><p className="text-[10px] font-black text-muted-foreground uppercase tracking-[2px] leading-none mb-2">Cities</p><p className="text-2xl font-black text-card-foreground leading-none">{userStats.citiesCount}</p></div>
                     </div>
                   </div>
 
@@ -762,7 +854,8 @@ export default function ProfileSettings() {
                   <div className="flex-1 space-y-8">
                     <SectionCard title="Contact & Location">
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                          <SettingsInput id="em" label="EMAIL ADDRESS" value={formData.email} onChange={v => updateForm('email', v)} type="email" />
+                          <SettingsInput id="em" label="EMAIL ADDRESS" value={formData.email} onChange={v => updateForm('email', v)} type="email" disabled />
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 ml-1">Email changes require verification. Contact support to update your email.</p>
                           <SettingsInput id="ph" label="PHONE NUMBER" value={formData.phone} onChange={v => updateForm('phone', v)} type="tel" />
                           <SettingsInput id="ct" label="HOME CITY" value={formData.city} onChange={v => updateForm('city', v)} />
                           <SettingsInput id="cn" label="COUNTRY" value={formData.country} onChange={v => updateForm('country', v)} />
@@ -816,20 +909,20 @@ export default function ProfileSettings() {
                              <SettingsInput id="ha" label="HOME AIRPORT" value={homeAirport} onChange={setHomeAirport} />
                              <div>
                                 <FieldLabel>TYPICAL DURATION</FieldLabel>
-                                <div className="flex items-center h-12 bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-400/20 transition-all">
-                                   <button onClick={() => setTypicalDuration(Math.max(1, typicalDuration-1))} className="w-12 h-full bg-gray-50 text-gray-400 hover:text-gray-900 font-black text-xl transition-colors border-r border-gray-100">-</button>
-                                   <span className="flex-1 text-center text-sm font-bold text-gray-900 tracking-tight">{typicalDuration} Days</span>
-                                   <button onClick={() => setTypicalDuration(typicalDuration+1)} className="w-12 h-full bg-gray-50 text-gray-400 hover:text-gray-900 font-black text-xl transition-colors border-l border-gray-100">+</button>
+                                <div className="flex items-center h-12 bg-card border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                   <button onClick={() => setTypicalDuration(Math.max(1, typicalDuration-1))} className="w-12 h-full bg-muted text-muted-foreground hover:text-foreground font-black text-xl transition-colors border-r border-border">-</button>
+                                   <span className="flex-1 text-center text-sm font-bold text-card-foreground tracking-tight">{typicalDuration} Days</span>
+                                   <button onClick={() => setTypicalDuration(typicalDuration+1)} className="w-12 h-full bg-muted text-muted-foreground hover:text-foreground font-black text-xl transition-colors border-l border-border">+</button>
                                 </div>
                              </div>
                              <SettingsInput id="bdg" label="AVG BUDGET" value={budget} onChange={setBudget} />
                              <div>
                                 <FieldLabel>TRAVEL PACE</FieldLabel>
                                 <div className="relative">
-                                  <select value={travelPace} onChange={e => setTravelPace(e.target.value)} className="w-full h-12 px-4 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400/20 transition-all font-bold appearance-none cursor-pointer">
+                                  <select value={travelPace} onChange={e => setTravelPace(e.target.value)} className="w-full h-12 px-4 text-sm bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-bold appearance-none cursor-pointer">
                                      {['Relaxed', 'Balanced', 'Fast-Paced'].map(p => <option key={p} value={p}>{p}</option>)}
                                   </select>
-                                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                                 </div>
                              </div>
                           </div>
@@ -848,25 +941,129 @@ export default function ProfileSettings() {
                     <div className="xl:col-span-8 space-y-8">
                        <SectionCard title="Interests & Environment">
                           <div className="space-y-8">
-                             {/* Mock data removed - EXPLORATION INTERESTS, STAY TYPES, REGIONS will be populated from API */}
-                             <div><SectionLabel>EXPLORATION INTERESTS</SectionLabel><div className="text-sm text-gray-400 italic">Data will be loaded from API</div></div>
+                             {/* Exploration Interests */}
+                             <div>
+                                <SectionLabel>EXPLORATION INTERESTS</SectionLabel>
+                                <div className="flex flex-wrap gap-2">
+                                   {['Adventure', 'Culture', 'Food & Drink', 'Nature', 'Nightlife', 'Relaxation', 'Shopping', 'History'].map(interest => (
+                                      <Chip
+                                         key={interest}
+                                         label={interest}
+                                         selected={selectedInterests.includes(interest)}
+                                         onClick={() => setSelectedInterests(prev => toggleArray(prev, interest))}
+                                      />
+                                   ))}
+                                </div>
+                             </div>
+
+                             {/* Stay Types & Regions */}
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                <div><SectionLabel>STAY TYPES</SectionLabel><div className="text-sm text-gray-400 italic">Data will be loaded from API</div></div>
-                                <div><SectionLabel>REGIONS</SectionLabel><div className="text-sm text-gray-400 italic">Data will be loaded from API</div></div>
+                                <div>
+                                   <SectionLabel>STAY TYPES</SectionLabel>
+                                   <div className="space-y-2">
+                                      {[
+                                         { id: 'hotel', label: 'Hotels & Resorts', icon: '🏨' },
+                                         { id: 'hostel', label: 'Hostels', icon: '🛏️' },
+                                         { id: 'airbnb', label: 'Vacation Rentals', icon: '🏠' },
+                                         { id: 'boutique', label: 'Boutique Hotels', icon: '✨' },
+                                      ].map(type => (
+                                         <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => setSelectedStayTypes(prev => toggleArray(prev, type.id))}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                                               selectedStayTypes.includes(type.id)
+                                                  ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                                                  : 'bg-card border-border text-card-foreground hover:border-border/80'
+                                            }`}
+                                         >
+                                            <span className="text-xl">{type.icon}</span>
+                                            <span className="text-sm font-medium">{type.label}</span>
+                                            {selectedStayTypes.includes(type.id) && <Check size={14} className="ml-auto text-primary" />}
+                                         </button>
+                                      ))}
+                                   </div>
+                                </div>
+                                <div>
+                                   <SectionLabel>REGIONS</SectionLabel>
+                                   <div className="flex flex-wrap gap-2">
+                                      {['Europe', 'Asia', 'North America', 'South America', 'Africa', 'Oceania', 'Middle East', 'Caribbean'].map(region => (
+                                         <Chip
+                                            key={region}
+                                            label={region}
+                                            selected={selectedRegions.includes(region)}
+                                            onClick={() => setSelectedRegions(prev => toggleArray(prev, region))}
+                                         />
+                                      ))}
+                                   </div>
+                                </div>
                              </div>
                           </div>
                        </SectionCard>
 
-                       {/* Mock data removed - BRAND LOYALTY section will be populated from API */}
+                       {/* Brand Loyalty */}
                        <SectionCard title="Brand Loyalty">
                           <div className="space-y-8">
+                             {/* Favorite Airlines */}
                              <div>
                                 <SectionLabel>FAVORITE AIRLINES</SectionLabel>
-                                <div className="text-sm text-gray-400 italic">Data will be loaded from API</div>
+                                <div className="space-y-2">
+                                   {[
+                                     { id: 'delta', name: 'Delta', color: '#E31837' },
+                                     { id: 'united', name: 'United', color: '#005DAA' },
+                                     { id: 'american', name: 'American', color: '#0078D2' },
+                                     { id: 'southwest', name: 'Southwest', color: '#F9A01B' },
+                                     { id: 'jetblue', name: 'JetBlue', color: '#003876' },
+                                   ].map(airline => (
+                                      <button
+                                         key={airline.id}
+                                         type="button"
+                                         onClick={() => setSelectedAirlines(prev => toggleArray(prev, airline.id))}
+                                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                                            selectedAirlines.includes(airline.id)
+                                               ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                                               : 'bg-card border-border text-card-foreground hover:border-border/80'
+                                         }`}
+                                      >
+                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: airline.color }}>
+                                            {airline.name[0]}
+                                         </div>
+                                         <span className="text-sm font-medium">{airline.name}</span>
+                                         {selectedAirlines.includes(airline.id) && <Check size={14} className="ml-auto text-primary" />}
+                                      </button>
+                                   ))}
+                                </div>
                              </div>
+
+                             {/* Preferred Hotels */}
                              <div>
                                 <SectionLabel>PREFERRED HOTELS</SectionLabel>
-                                <div className="text-sm text-gray-400 italic">Data will be loaded from API</div>
+                                <div className="space-y-2">
+                                   {[
+                                     { id: 'marriott', name: 'Marriott', color: '#1C1C1C' },
+                                     { id: 'hilton', name: 'Hilton', color: '#1A3B8C' },
+                                     { id: 'hyatt', name: 'Hyatt', color: '#B32317' },
+                                     { id: 'ihg', name: 'IHG', color: '#BD3D26' },
+                                     { id: 'accor', name: 'Accor', color: '#DA291C' },
+                                   ].map(hotel => (
+                                      <button
+                                         key={hotel.id}
+                                         type="button"
+                                         onClick={() => setSelectedHotels(prev => toggleArray(prev, hotel.id))}
+                                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                                            selectedHotels.includes(hotel.id)
+                                               ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                                               : 'bg-card border-border text-card-foreground hover:border-border/80'
+                                         }`}
+                                      >
+                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: hotel.color }}>
+                                            {hotel.name[0]}
+                                         </div>
+                                         <span className="text-sm font-medium">{hotel.name}</span>
+                                         {selectedHotels.includes(hotel.id) && <Check size={14} className="ml-auto text-primary" />}
+                                      </button>
+                                   ))}
+                                </div>
                              </div>
                           </div>
                        </SectionCard>
@@ -886,8 +1083,8 @@ export default function ProfileSettings() {
                             { key: 'push' as const, title: 'Push Alerts', desc: 'Real-time flight and booking notifications' },
                             { key: 'sms' as const, title: 'SMS Messaging', desc: 'Critical flight updates and travel alerts' },
                           ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                               <div className="pr-6"><p className="text-base font-bold text-gray-900 leading-tight">{item.title}</p><p className="text-sm text-gray-400 mt-1">{item.desc}</p></div>
+                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-card hover:bg-muted transition-colors border border-transparent hover:border-border">
+                               <div className="pr-6"><p className="text-base font-bold text-card-foreground leading-tight">{item.title}</p><p className="text-sm text-muted-foreground mt-1">{item.desc}</p></div>
                                <Toggle checked={notifications[item.key]} onChange={() => setNotifications(p => ({ ...p, [item.key]: !p[item.key] }))} />
                             </div>
                           ))}
@@ -900,8 +1097,8 @@ export default function ProfileSettings() {
                             { key: 'priceDropAlerts' as const, title: 'Price Watches', desc: 'Notifications for saved destination fare changes' },
                             { key: 'eventAlerts' as const, title: 'Local Events', desc: 'Festivals and happenings in your current location' },
                           ].map(item => (
-                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                               <div className="pr-6"><p className="text-base font-bold text-gray-900 leading-tight">{item.title}</p><p className="text-sm text-gray-400 mt-1">{item.desc}</p></div>
+                            <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-card hover:bg-muted transition-colors border border-transparent hover:border-border">
+                               <div className="pr-6"><p className="text-base font-bold text-card-foreground leading-tight">{item.title}</p><p className="text-sm text-muted-foreground mt-1">{item.desc}</p></div>
                                <Toggle checked={notifications[item.key]} onChange={() => setNotifications(p => ({ ...p, [item.key]: !p[item.key] }))} />
                             </div>
                           ))}
@@ -919,21 +1116,21 @@ export default function ProfileSettings() {
                     <div className="space-y-8">
                        <SectionCard title="Security Credentials">
                           <div className="space-y-6">
-                             <SettingsInput id="cpw" label="CURRENT PASSWORD" value={formData.currentPassword} onChange={v => updateForm('currentPassword', v)} type={showCurrentPassword ? 'text' : 'password'} suffix={<button onClick={() => setShowCurrentPassword(!showCurrentPassword)}><Eye size={18} className="text-gray-300 hover:text-gray-500 transition-colors" /></button>} />
-                             <SettingsInput id="npw" label="NEW PASSWORD" value={formData.newPassword} onChange={v => updateForm('newPassword', v)} type={showNewPassword ? 'text' : 'password'} placeholder="min. 8 characters" suffix={<button onClick={() => setShowNewPassword(!showNewPassword)}><Eye size={18} className="text-gray-300 hover:text-gray-500 transition-colors" /></button>} />
+                             <SettingsInput id="cpw" label="CURRENT PASSWORD" value={formData.currentPassword} onChange={v => updateForm('currentPassword', v)} type={showCurrentPassword ? 'text' : 'password'} suffix={<button onClick={() => setShowCurrentPassword(!showCurrentPassword)}><Eye size={18} className="text-muted-foreground hover:text-foreground transition-colors" /></button>} />
+                             <SettingsInput id="npw" label="NEW PASSWORD" value={formData.newPassword} onChange={v => updateForm('newPassword', v)} type={showNewPassword ? 'text' : 'password'} placeholder="min. 8 characters" suffix={<button onClick={() => setShowNewPassword(!showNewPassword)}><Eye size={18} className="text-muted-foreground hover:text-foreground transition-colors" /></button>} />
                              {formData.newPassword && <PasswordStrengthMeter password={formData.newPassword} />}
 
-                             <div className="pt-8 mt-8 border-t border-gray-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3"><Shield size={20} className="text-blue-500" /><span className="text-base font-bold text-gray-900 uppercase tracking-tight">2FA Protection</span></div>
+                             <div className="pt-8 mt-8 border-t border-border flex items-center justify-between">
+                                <div className="flex items-center gap-3"><Shield size={20} className="text-primary" /><span className="text-base font-bold text-card-foreground uppercase tracking-tight">2FA Protection</span></div>
                                 <Toggle checked={twoFactorEnabled} onChange={() => setTwoFactorEnabled(!twoFactorEnabled)} />
                              </div>
 
                              {/* Linked Accounts & Devices Dropdown - Dependent on 2FA */}
                              {twoFactorEnabled && (
-                                <div className="mt-4 border border-gray-100 rounded-2xl overflow-hidden transition-all shadow-sm">
+                                <div className="mt-4 border border-border rounded-2xl overflow-hidden transition-all shadow-sm">
                                    <button
                                       onClick={() => setShowLinkedAccountsDropdown(!showLinkedAccountsDropdown)}
-                                      className="w-full flex items-center justify-between p-5 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+                                      className="w-full flex items-center justify-between p-5 bg-muted/50 hover:bg-muted transition-colors"
                                    >
                                       <div className="flex items-center gap-3">
                                          <Activity size={18} className="text-gray-400" />
@@ -949,7 +1146,7 @@ export default function ProfileSettings() {
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
                                             transition={{ duration: 0.3, ease: 'easeOut' }}
-                                            className="overflow-hidden bg-white border-t border-gray-100"
+                                            className="overflow-hidden bg-card border-t border-border"
                                          >
                                             <div className="p-6 space-y-6">
                                                <SubTabs tabs={[{ id: 'password', label: 'OAuth Profiles' }, { id: 'sessions', label: 'Active Sessions' }]} active={accountSecurityTab} onChange={setAccountSecurityTab} />
@@ -961,12 +1158,12 @@ export default function ProfileSettings() {
                                                        { name: 'Apple', detail: 'Authorized with FaceID', linked: true, color: '#000' },
                                                        { name: 'Meta', detail: 'Not connected', linked: false, color: '#1877f2' }
                                                      ].map(acc => (
-                                                       <div key={acc.name} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/30 border border-gray-100 transition-all hover:shadow-sm">
+                                                       <div key={acc.name} className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border transition-all hover:shadow-sm">
                                                           <div className="flex items-center gap-4">
                                                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black shadow-inner" style={{ backgroundColor: acc.color }}>{acc.name[0]}</div>
-                                                             <div className="min-w-0"><p className="text-sm font-black text-gray-900 leading-none mb-1">{acc.name}</p><p className="text-xs text-gray-400 truncate">{acc.detail}</p></div>
+                                                             <div className="min-w-0"><p className="text-sm font-black text-card-foreground leading-none mb-1">{acc.name}</p><p className="text-xs text-muted-foreground truncate">{acc.detail}</p></div>
                                                           </div>
-                                                          <button className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg border transition-all ${acc.linked ? 'text-gray-400 border-gray-200 hover:bg-gray-100' : 'text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100'}`}>{acc.linked ? 'Revoke' : 'Link'}</button>
+                                                          <button className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg border transition-all ${acc.linked ? 'text-muted-foreground border-border hover:bg-muted' : 'text-primary border-primary/20 bg-primary/10 hover:bg-primary/20'}`}>{acc.linked ? 'Revoke' : 'Link'}</button>
                                                        </div>
                                                      ))}
                                                   </div>
@@ -976,10 +1173,10 @@ export default function ProfileSettings() {
                                                        { device: 'iPhone 15 Pro', loc: 'San Francisco, CA', time: 'Active now', main: true },
                                                        { device: 'MacBook Pro 16"', loc: 'San Francisco, CA', time: 'Yesterday', main: false },
                                                      ].map((s, i) => (
-                                                       <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 border border-gray-100 transition-all hover:shadow-sm">
+                                                       <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border transition-all hover:shadow-sm">
                                                           <div className="flex items-center gap-4">
-                                                             <div className="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center shadow-sm"><Smartphone size={18} className="text-gray-400" /></div>
-                                                             <div><p className="text-sm font-black text-gray-900 leading-none mb-1">{s.device}</p><p className="text-xs text-gray-400">{s.loc} · {s.time}</p></div>
+                                                             <div className="w-10 h-10 bg-card border border-border rounded-xl flex items-center justify-center shadow-sm"><Smartphone size={18} className="text-muted-foreground" /></div>
+                                                             <div><p className="text-sm font-black text-card-foreground leading-none mb-1">{s.device}</p><p className="text-xs text-muted-foreground">{s.loc} · {s.time}</p></div>
                                                           </div>
                                                           {s.main ? <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">Primary Device</span> : <button className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline">Log out</button>}
                                                        </div>
@@ -1001,12 +1198,12 @@ export default function ProfileSettings() {
                        <SectionCard title="Visibility Control">
                           <div className="grid grid-cols-3 gap-2 mb-8">
                              {['Public', 'Friends', 'Private'].map(v => (
-                               <button key={v} onClick={() => setProfileVisibility(v)} className={`py-3 text-sm font-black rounded-xl border transition-all ${profileVisibility === v ? 'bg-gray-900 text-white border-gray-900 shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>{v}</button>
+                               <button key={v} onClick={() => setProfileVisibility(v)} className={`py-3 text-sm font-black rounded-xl border transition-all ${profileVisibility === v ? 'bg-foreground text-background border-foreground shadow-lg scale-105' : 'bg-card text-muted-foreground border-border hover:bg-muted'}`}>{v}</button>
                              ))}
                           </div>
                           <div className="space-y-4">
                              {[{ key: 'showEmail', label: 'Display email on profile' }, { key: 'showActivity', label: 'Show live travel activity' }, { key: 'analytics', label: 'Allow anonymous telemetry' }].map(p => (
-                               <div key={p.key} className="flex items-center justify-between p-2"><span className="text-sm font-bold text-gray-600">{p.label}</span><Toggle checked={(privacyControls as any)[p.key]} onChange={() => setPrivacyControls(prev => ({ ...prev, [p.key]: !(prev as any)[p.key] }))} /></div>
+                               <div key={p.key} className="flex items-center justify-between p-2"><span className="text-sm font-bold text-card-foreground">{p.label}</span><Toggle checked={(privacyControls as any)[p.key]} onChange={() => setPrivacyControls(prev => ({ ...prev, [p.key]: !(prev as any)[p.key] }))} /></div>
                              ))}
                           </div>
                        </SectionCard>
@@ -1018,7 +1215,7 @@ export default function ProfileSettings() {
                             { label: 'Sign Out', icon: LogOut, red: true },
                             { label: 'Delete Account', icon: Trash2, red: true },
                           ].map(b => (
-                            <button key={b.label} className={`flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl border text-sm font-black uppercase tracking-widest transition-all ${b.red ? 'text-red-500 border-red-100 hover:bg-red-50' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
+                            <button key={b.label} className={`flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl border text-sm font-black uppercase tracking-widest transition-all ${b.red ? 'text-red-500 border-red-100 hover:bg-red-50' : 'text-muted-foreground border-border hover:bg-muted'}`}>
                               <b.icon size={18} /> {b.label}
                             </button>
                           ))}
@@ -1029,14 +1226,14 @@ export default function ProfileSettings() {
             )}
 
             {/* ═══════ SAVE BAR ═══════ */}
-            <div ref={inlineSaveRef} className="p-8 sm:p-12 bg-gray-50/30">
+            <div ref={inlineSaveRef} className="p-8 sm:p-12 bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="min-h-[32px]">
                   {hasChanges && !isSaving && (
                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
                        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                        <span className="text-sm font-black text-amber-600 uppercase tracking-[2px]">Unsaved Modifications</span>
-                       <button onClick={handleDiscardChanges} className="text-sm font-black text-gray-400 hover:text-red-500 underline underline-offset-4 uppercase tracking-[2px] ml-4 transition-all">Discard</button>
+                       <button onClick={handleDiscardChanges} className="text-sm font-black text-muted-foreground hover:text-red-500 underline underline-offset-4 uppercase tracking-[2px] ml-4 transition-all">Discard</button>
                     </div>
                   )}
                 </div>
@@ -1044,7 +1241,7 @@ export default function ProfileSettings() {
                   onClick={handleSave}
                   disabled={!hasChanges || isSaving}
                   className={`flex items-center gap-3 px-10 py-4 rounded-2xl text-base font-black uppercase tracking-widest transition-all ${
-                    !hasChanges || isSaving ? 'bg-gray-100 text-gray-300' : 'bg-gray-900 text-white hover:bg-gray-800 shadow-2xl scale-105 active:scale-95'
+                    !hasChanges || isSaving ? 'bg-muted text-muted-foreground' : 'bg-foreground text-background hover:bg-foreground/90 shadow-2xl scale-105 active:scale-95'
                   }`}
                 >
                   {isSaving && <Loader2 size={18} className="animate-spin" />}
@@ -1065,7 +1262,7 @@ export default function ProfileSettings() {
       <div className={`fixed bottom-10 right-10 z-40 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${
         !inlineSaveVisible && hasChanges ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-16 opacity-0 scale-90 pointer-events-none'
       }`}>
-        <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-3 px-8 py-5 bg-gray-900 text-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-gray-800 active:scale-95 transition-all border border-white/10 group">
+        <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-3 px-8 py-5 bg-foreground text-background rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-foreground/90 active:scale-95 transition-all border border-white/10 group">
            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} className="group-hover:scale-110 transition-transform" />}
            <span className="text-base font-black uppercase tracking-widest">Apply Updates</span>
         </button>

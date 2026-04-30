@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Travyl",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "travyl",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ze-ee.mobile"
+      "bundleIdentifier": "com.ze-ee.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -44,6 +47,12 @@
         "projectId": "108df6bb-8e38-4f20-bb4b-4b0bd5282899"
       }
     },
-    "owner": "travyl"
+    "owner": "travyl",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/108df6bb-8e38-4f20-bb4b-4b0bd5282899"
+    }
   }
 }

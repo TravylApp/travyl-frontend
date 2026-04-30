@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import { TextStyles } from '@travyl/shared';
 import type { MosaicTile as MosaicTileType } from '@travyl/shared';
 
 interface MosaicTileProps {
@@ -131,7 +132,7 @@ export function MosaicTile({
                 marginRight: 5,
               }}
             />
-            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>
+            <Text style={{ ...TextStyles.sm, color: 'rgba(255,255,255,0.7)' }}>
               {color.label}
             </Text>
           </View>

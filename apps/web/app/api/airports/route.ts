@@ -1,8 +1,11 @@
+import { rateLimit } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 const DUFFEL_TOKEN = process.env.DUFFEL_API_TOKEN
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'airports', 60, 60000)
+  if (rl) return rl
   const q = req.nextUrl.searchParams.get('q')
   if (!q || q.length < 2) return NextResponse.json([])
 

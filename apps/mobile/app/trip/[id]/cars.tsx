@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { TextStyles } from '@travyl/shared';
 import { PageTransition, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -18,10 +19,10 @@ export default function CarsScreen() {
         }}>
           <FontAwesome name="car" size={28} color={ACCENT} />
         </View>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
+        <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 6 }}>
           Coming Soon
         </Text>
-        <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+        <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary, textAlign: 'center' }}>
           Car rental search and booking is on the way. Stay tuned!
         </Text>
       </View>

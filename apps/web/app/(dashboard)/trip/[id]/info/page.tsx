@@ -141,7 +141,8 @@ function useInfoData(tripId: string) {
     queryFn: async () => {
       if (!lat || !lng) {
         // Geocode destination
-        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trip?.destination ?? '')}&format=json&limit=1`);
+        const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(trip?.destination ?? '')}`);
+        if (!geoRes.ok) return [];
         const geo = await geoRes.json();
         if (!geo[0]) return [];
         const res = await fetch(`/api/foursquare?lat=${geo[0].lat}&lng=${geo[0].lon}&category=restaurant&limit=4`);
@@ -241,7 +242,7 @@ export default function InfoPage({ params }: { params: Promise<{ id: string }> }
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <MapPin size={20} />
-              <h4 className="text-lg font-bold">{trip.destination}</h4>
+              <h4 className="text-lg font-normal font-serif tracking-wide">{trip.destination}</h4>
             </div>
             <div className="flex items-center gap-2 text-white/90 text-sm">
               <Calendar size={16} />

@@ -17,7 +17,6 @@ export interface GapSuggestion {
   description?: string
 }
 
-
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 
 interface CacheEntry {
@@ -137,6 +136,34 @@ export async function setCachedGaps(
         pk: `gaps:${tripId}:${date}`,
         sk: 'gaps',
         gaps,
+        expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,
+      },
+    }),
+  )
+}
+
+// Generic cache functions for simple key-value storage
+export async function getCache(key: string): Promise<string | null> {
+  const result = await client.send(
+    new GetCommand({
+      TableName: Resource.RecommendationCache.name,
+      Key: { pk: `cache:${key}`, sk: 'value' },
+    }),
+  )
+  if (!result.Item) return null
+  const entry = result.Item as { value: string; expiresAt: number }
+  if (entry.expiresAt < Math.floor(Date.now() / 1000)) return null
+  return entry.value
+}
+
+export async function setCache(key: string, value: string, ttlSeconds: number): Promise<void> {
+  await client.send(
+    new PutCommand({
+      TableName: Resource.RecommendationCache.name,
+      Item: {
+        pk: `cache:${key}`,
+        sk: 'value',
+        value,
         expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,
       },
     }),

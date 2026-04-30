@@ -1,17 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, Modal, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator,
+  Platform, ScrollView, ActivityIndicator, Keyboard,
 } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn, SlideInDown,
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+} from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   TextStyles, FontSize, FontFamily, Navy,
   useTripPlanner, savePlanToSupabase,
+  useAuthStore,
 } from '@travyl/shared';
-import { saveAnonTripId } from '@travyl/shared/src/hooks/useTrips';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlane } from '@/components/icons/PaperPlane';
 
@@ -46,7 +49,15 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const planner = useTripPlanner();
 
   const [prompt, setPrompt] = useState('');
+  const inputRef = useRef<TextInput>(null);
+
+  // Spinning plane animation
+  const spinValue = useSharedValue(0);
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${spinValue.value}deg` }],
+  }));
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [progressMsg, setProgressMsg] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -56,12 +67,34 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     if (visible) {
       setPrompt(prefillPrompt || '');
       setSaving(false);
+      setSubmitted(false);
       setProgressMsg(0);
       setCurrentQuestionIdx(0);
       setAnswers({});
       planner.reset();
     }
   }, [visible]);
+
+  // Dismiss keyboard and clear submitted flag when phase changes
+  useEffect(() => {
+    if (planner.state.phase !== 'idle') {
+      setSubmitted(false);
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+    }
+  }, [planner.state.phase]);
+
+  // Start/stop spinning plane
+  useEffect(() => {
+    if (isWorking) {
+      spinValue.value = withRepeat(
+        withTiming(360, { duration: 2000, easing: Easing.linear }),
+        -1, // infinite
+      );
+    } else {
+      spinValue.value = withTiming(0, { duration: 300 });
+    }
+  }, [isWorking]);
 
   // Cycle progress messages during planning
   useEffect(() => {
@@ -72,21 +105,42 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     return () => clearInterval(timer);
   }, [planner.state.phase]);
 
+  const user = useAuthStore((s) => s.user);
+
   // Auto-save when plan completes
   useEffect(() => {
     if (planner.state.phase !== 'complete' || saving) return;
     const plan = planner.state.plan;
     (async () => {
+      // Check if user is logged in before saving
+      if (!user) {
+        planner.reset();
+        setSaving(false);
+        setSubmitted(false);
+        onClose();
+        router.push('/login' as never);
+        return;
+      }
+
       setSaving(true);
       try {
         const tripId = await savePlanToSupabase(plan as any, () => {});
-        await saveAnonTripId(tripId);
         await queryClient.invalidateQueries({ queryKey: ['trips'] });
-        onClose();
         router.push(`/trip/${tripId}` as never);
-      } catch (err) {
-        console.error('Save failed:', err);
-        setSaving(false);
+        setTimeout(() => onClose(), 1500);
+      } catch (err: any) {
+        const msg = err?.message || '';
+        if (msg.includes('row-level security') || msg.includes('Unauthorized') || msg.includes('user_id')) {
+          // RLS error = not logged in
+          planner.reset();
+          setSaving(false);
+          setSubmitted(false);
+          onClose();
+          router.push('/login' as never);
+        } else {
+          // Real error — show it
+          setSaving(false);
+        }
       }
     })();
   }, [planner.state.phase]);
@@ -94,7 +148,11 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const handleSubmit = useCallback(() => {
     const text = prompt.trim();
     if (!text) return;
-    planner.submitPrompt(text);
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    setSubmitted(true);
+    // Short delay so keyboard fully dismisses before phase transition
+    setTimeout(() => planner.submitPrompt(text), 250);
   }, [prompt, planner]);
 
   const handleSelectAnswer = useCallback((questionId: string, value: string) => {
@@ -120,10 +178,11 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   }, [planner]);
 
   const phase = planner.state.phase;
-  const isWorking = phase === 'extracting' || phase === 'planning' || saving;
-  const isIdle = phase === 'idle';
-  const isClarifying = phase === 'clarifying';
-  const isError = phase === 'error';
+  // Keep animation visible from the moment they tap submit until navigation completes
+  const isWorking = submitted || phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
+  const isIdle = phase === 'idle' && !submitted && !saving;
+  const isClarifying = phase === 'clarifying' && !saving;
+  const isError = phase === 'error' && !saving;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -156,19 +215,21 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
               </Text>
 
               <TextInput
+                ref={inputRef}
                 value={prompt}
                 onChangeText={setPrompt}
                 placeholder="7 days in Paris with my partner..."
                 placeholderTextColor="#9ca3af"
                 multiline
                 autoFocus
+                blurOnSubmit={true}
+                onSubmitEditing={handleSubmit}
                 style={{
                   minHeight: 80, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16,
                   borderWidth: 1.5, borderColor: prompt.trim() ? Navy.DEFAULT : '#e5e7eb',
                   fontSize: FontSize.bodyLg, color: '#111827', fontFamily: FontFamily.sans,
                   textAlignVertical: 'top', backgroundColor: '#f9fafb',
                 }}
-                onSubmitEditing={handleSubmit}
               />
 
               {/* Suggestion chips */}
@@ -205,14 +266,12 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
           {/* ─── Working: Progress animation ─── */}
           {isWorking && (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-              <Animated.View entering={FadeIn.duration(300)}>
-                <View style={{
+              <Animated.View entering={FadeIn.duration(300)} style={[{
                   width: 64, height: 64, borderRadius: 32,
                   backgroundColor: `${Navy.DEFAULT}15`, alignItems: 'center', justifyContent: 'center',
                   marginBottom: 20,
-                }}>
-                  <PaperPlane size={28} color={Navy.DEFAULT} style={{ transform: [{ rotate: '-12deg' }] }} />
-                </View>
+                }, spinStyle]}>
+                <PaperPlane size={28} color={Navy.DEFAULT} />
               </Animated.View>
               <ActivityIndicator size="small" color={Navy.DEFAULT} style={{ marginBottom: 16 }} />
               <Text style={{ ...TextStyles.bodyLgEm, color: Navy.DEFAULT, textAlign: 'center', marginBottom: 6 }}>

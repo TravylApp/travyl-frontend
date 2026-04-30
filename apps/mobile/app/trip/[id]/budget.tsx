@@ -1,12 +1,29 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, supabase, Navy } from '@travyl/shared';
 import type { BudgetItem, BudgetExpense } from '@travyl/shared';
-import { PageTransition, useTabAccent } from './_layout';
+import { useQuery } from '@tanstack/react-query';
+import { PageTransition, TabCtx, useTabAccent } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
+
+/* ================================================================
+   Currency conversion
+   ================================================================ */
+
+// Popular currencies shown first, then all others from the API
+const POPULAR_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'MXN', 'BRL', 'KRW', 'INR', 'CHF', 'CNY'];
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP', 'ISK', 'HUF']);
+
+function fmtCurrency(amount: number, code: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code, maximumFractionDigits: ZERO_DECIMAL.has(code) ? 0 : 2 }).format(amount);
+  } catch {
+    return `${code} ${amount.toFixed(2)}`;
+  }
+}
 
 /* ================================================================
    Icon + colour mapping (matches web CATEGORY_COLORS / CATEGORY_ICONS)
@@ -15,7 +32,7 @@ import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 const CATEGORY_CONFIG: Record<string, { icon: string; bg: string; color: string; bar: string }> = {
   'Flights':            { icon: 'plane',        bg: '#dbeafe', color: '#2563eb', bar: '#3b82f6' },
   'Hotels':             { icon: 'building',     bg: '#ffedd5', color: '#ea580c', bar: '#f97316' },
-  'Food & Dining':      { icon: 'cutlery',      bg: '#e0f2fe', color: '#1e3a5f', bar: '#1e3a5f' },
+  'Food & Dining':      { icon: 'cutlery',      bg: '#e0f2fe', color: Navy.DEFAULT, bar: Navy.DEFAULT },
   'Activities & Tours': { icon: 'camera',        bg: '#ccfbf1', color: '#0d9488', bar: '#14b8a6' },
   'Transportation':     { icon: 'bus',           bg: '#ede9fe', color: '#7c3aed', bar: '#8b5cf6' },
   'Shopping':           { icon: 'shopping-bag',  bg: '#dcfce7', color: '#16a34a', bar: '#22c55e' },
@@ -29,18 +46,18 @@ const DAY_ABBREVS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
    Helpers — health-based backgrounds (matches web healthBg / categoryHealthBg)
    ================================================================ */
 
-function healthColors(pct: number): { bg: string; border: string } {
-  if (pct >= 100) return { bg: '#fef2f2', border: '#fecaca' };
-  if (pct >= 90)  return { bg: '#fffbeb', border: '#fde68a' };
-  if (pct >= 75)  return { bg: '#eff6ff', border: '#bfdbfe' };
-  return { bg: '#ffffff', border: '#e5e7eb' };
+function healthColors(pct: number, c: any): { bg: string; border: string } {
+  if (pct >= 100) return { bg: c.errorBg, border: c.error };
+  if (pct >= 90)  return { bg: c.warningBg, border: c.warning };
+  if (pct >= 75)  return { bg: c.infoBg, border: c.info };
+  return { bg: c.cardBackground, border: c.border };
 }
 
-function categoryHealthColors(pct: number): { bg: string; border: string } {
-  if (pct >= 100) return { bg: '#fef2f2', border: '#fecaca' };
-  if (pct >= 90)  return { bg: '#fffbeb', border: '#fde68a' };
-  if (pct >= 75)  return { bg: '#eff6ff', border: '#bfdbfe' };
-  return { bg: '#ecfdf5', border: '#a7f3d0' };
+function categoryHealthColors(pct: number, c: any): { bg: string; border: string } {
+  if (pct >= 100) return { bg: c.errorBg, border: c.error };
+  if (pct >= 90)  return { bg: c.warningBg, border: c.warning };
+  if (pct >= 75)  return { bg: c.infoBg, border: c.info };
+  return { bg: c.successBg, border: c.success };
 }
 
 /* ================================================================
@@ -60,7 +77,7 @@ function BudgetSkeleton() {
         ))}
       </View>
       <View style={{ backgroundColor: colors.borderLight, borderRadius: 6, height: 10, marginBottom: 20, overflow: 'hidden' }}>
-        <View style={{ width: '65%', height: '100%', backgroundColor: '#10b981', borderRadius: 6 }} />
+        <View style={{ width: '65%', height: '100%', backgroundColor: colors.success, borderRadius: 6 }} />
       </View>
       <View style={{ gap: 10 }}>
         {[1, 2, 3, 4].map((i) => (
@@ -90,8 +107,28 @@ function BudgetSkeleton() {
 export default function BudgetScreen() {
   const ACCENT = useTabAccent('budget');
   const colors = useThemeColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip, isLoading } = useItineraryScreen(id);
+
+  // Currency conversion
+  const [displayCurrency, setDisplayCurrency] = useState('USD');
+  const { data: rates } = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: async () => {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.rates as Record<string, number>;
+    },
+    staleTime: 60 * 60 * 1000,
+  });
+  const cx = useCallback((usd: number) => {
+    if (displayCurrency === 'USD' || !rates) return usd;
+    return usd * (rates[displayCurrency] || 1);
+  }, [displayCurrency, rates]);
+  const fx = useCallback((usd: number) => fmtCurrency(cx(usd), displayCurrency), [cx, displayCurrency]);
 
   // Build budget items from trip_context (cost_of_living + hotels + trip.budget)
   const initialBudget = useMemo((): BudgetItem[] => {
@@ -205,9 +242,9 @@ export default function BudgetScreen() {
   const pctUsed       = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
 
   const progressColor =
-    pctUsed >= 100 ? '#ef4444' : pctUsed >= 80 ? '#f59e0b' : '#10b981';
+    pctUsed >= 100 ? colors.error : pctUsed >= 80 ? colors.warning : colors.success;
 
-  const overallHealth = healthColors(pctUsed);
+  const overallHealth = healthColors(pctUsed, colors);
 
   /* Daily budget chart — derived from real trip dates and total budget */
   const tripDays = trip?.start_date && trip?.end_date
@@ -260,9 +297,9 @@ export default function BudgetScreen() {
   }
 
   const alertStyles = {
-    danger:  { bg: '#fef2f2', border: '#fecaca', icon: '#dc2626', text: '#991b1b' },
-    warning: { bg: '#fffbeb', border: '#fde68a', icon: '#d97706', text: '#92400e' },
-    info:    { bg: '#eff6ff', border: '#bfdbfe', icon: '#2563eb', text: '#1e40af' },
+    danger:  { bg: colors.errorBg, border: colors.error, icon: colors.error, text: colors.error },
+    warning: { bg: colors.warningBg, border: colors.warning, icon: colors.warning, text: colors.warning },
+    info:    { bg: colors.infoBg, border: colors.info, icon: colors.info, text: colors.info },
   };
 
   /* ── Handlers (mirror web logic) ── */
@@ -387,7 +424,7 @@ export default function BudgetScreen() {
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
           <FontAwesome name="pie-chart" size={24} color={ACCENT} />
         </View>
-        <Text style={{ ...TextStyles.title, fontSize: 17, color: colors.text, marginBottom: 6 }}>No expenses yet</Text>
+        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 6 }}>No expenses yet</Text>
         <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
           Your budget breakdown will appear as you add flights, hotels, and activities to your trip.
         </Text>
@@ -438,6 +475,30 @@ export default function BudgetScreen() {
         </View>
       )}
 
+      {/* ===== Currency Selector ===== */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 12 }}>
+        {(() => {
+          // Show popular currencies first, then all others from the API response
+          const allCodes = rates ? Object.keys(rates) : POPULAR_CURRENCIES;
+          const ordered = [...POPULAR_CURRENCIES.filter(c => allCodes.includes(c)), ...allCodes.filter(c => !POPULAR_CURRENCIES.includes(c)).sort()];
+          return ordered.map(c => (
+            <Pressable
+              key={c}
+              onPress={() => setDisplayCurrency(c)}
+              style={{
+                paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16,
+                backgroundColor: displayCurrency === c ? ACCENT : colors.surface,
+                borderWidth: 1, borderColor: displayCurrency === c ? ACCENT : colors.border,
+              }}
+            >
+              <Text style={{ ...TextStyles.captionEm, color: displayCurrency === c ? '#fff' : colors.textSecondary }}>
+                {c}
+              </Text>
+            </Pressable>
+          ));
+        })()}
+      </ScrollView>
+
       {/* ===== Summary Cards (3 columns) ===== */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
 
@@ -450,7 +511,7 @@ export default function BudgetScreen() {
                 onPress={() => { setIsEditingTotal(true); setTempTotal(totalBudgeted.toString()); }}
                 hitSlop={8}
               >
-                <FontAwesome name="pencil" size={10} color="#9ca3af" />
+                <FontAwesome name="pencil" size={10} color={colors.textTertiary} />
               </Pressable>
             ) : (
               <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -458,14 +519,14 @@ export default function BudgetScreen() {
                   <FontAwesome name="check" size={10} color="#10b981" />
                 </Pressable>
                 <Pressable onPress={() => setIsEditingTotal(false)} hitSlop={8}>
-                  <FontAwesome name="times" size={10} color="#9ca3af" />
+                  <FontAwesome name="times" size={10} color={colors.textTertiary} />
                 </Pressable>
               </View>
             )}
           </View>
           {!isEditingTotal ? (
-            <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text, marginTop: 2 }}>
-              ${totalBudgeted.toLocaleString()}
+            <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
+              {fx(totalBudgeted)}
             </Text>
           ) : (
             <TextInput
@@ -485,16 +546,16 @@ export default function BudgetScreen() {
         {/* Total Spent */}
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Total Spent</Text>
-          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text, marginTop: 2 }}>
-            ${totalActual.toLocaleString()}
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
+            {fx(totalActual)}
           </Text>
         </View>
 
         {/* Remaining */}
-        <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? '#10b98130' : '#ef444430' }}>
+        <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? colors.success + '30' : colors.error + '30' }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
-          <Text style={{ ...TextStyles.title, fontSize: 18, color: remaining >= 0 ? '#10b981' : '#ef4444', marginTop: 2 }}>
-            ${Math.abs(remaining).toLocaleString()}
+          <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? colors.success : colors.error, marginTop: 2 }}>
+            {fx(Math.abs(remaining))}
           </Text>
         </View>
       </View>
@@ -535,7 +596,7 @@ export default function BudgetScreen() {
             return (
               <View key={idx} style={{ alignItems: 'center', flex: 1, gap: 4 }}>
                 {/* Amount label */}
-                <Text style={{ ...TextStyles.xs, fontWeight: '500', color: isHighest ? '#ef4444' : colors.textSecondary }}>
+                <Text style={{ ...TextStyles.xs, fontWeight: '500', color: isHighest ? colors.error : colors.textSecondary }}>
                   ${d.amount}
                 </Text>
                 {/* Bar */}
@@ -543,7 +604,7 @@ export default function BudgetScreen() {
                   style={{
                     width: 20,
                     height: Math.max(barHeight, 4),
-                    backgroundColor: isHighest ? '#ef4444' : ACCENT,
+                    backgroundColor: isHighest ? colors.error : ACCENT,
                     borderRadius: 4,
                     opacity: isHighest ? 1 : 0.7,
                   }}
@@ -559,7 +620,7 @@ export default function BudgetScreen() {
 
         {/* Average line indicator */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-          <View style={{ width: 12, height: 2, backgroundColor: '#f59e0b', borderRadius: 1, marginRight: 6 }} />
+          <View style={{ width: 12, height: 2, backgroundColor: colors.warning, borderRadius: 1, marginRight: 6 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
             Daily budget: ${avgDailySpend}/day
           </Text>
@@ -584,8 +645,8 @@ export default function BudgetScreen() {
           const itemPct = item.budgeted > 0 ? (item.actual / item.budgeted) * 100 : 0;
           const itemDiff = item.budgeted - item.actual;
           const itemBarColor =
-            itemPct > 100 ? '#ef4444' : itemPct > 80 ? '#f59e0b' : cfg.bar;
-          const catHealth = categoryHealthColors(itemPct);
+            itemPct > 100 ? colors.error : itemPct > 80 ? colors.warning : cfg.bar;
+          const catHealth = categoryHealthColors(itemPct, colors);
 
           return (
             <View
@@ -621,8 +682,8 @@ export default function BudgetScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   {!isExpanded && (
-                    <View style={{ backgroundColor: itemPct >= 100 ? '#fef2f2' : itemPct >= 80 ? '#fffbeb' : '#f0fdf4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ ...TextStyles.smEm, color: itemPct >= 100 ? '#dc2626' : itemPct >= 80 ? '#d97706' : '#16a34a' }}>
+                    <View style={{ backgroundColor: itemPct >= 100 ? colors.errorBg : itemPct >= 80 ? colors.warningBg : colors.successBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ ...TextStyles.smEm, color: itemPct >= 100 ? colors.error : itemPct >= 80 ? colors.warning : colors.success }}>
                         {itemPct.toFixed(0)}%
                       </Text>
                     </View>
@@ -633,14 +694,14 @@ export default function BudgetScreen() {
                       hitSlop={8}
                       style={{ padding: 4 }}
                     >
-                      <FontAwesome name="pencil" size={12} color="#9ca3af" />
+                      <FontAwesome name="pencil" size={12} color={colors.textTertiary} />
                     </Pressable>
                   )}
                   {!isEditing && (
                     <FontAwesome
                       name={isExpanded ? 'chevron-up' : 'chevron-down'}
                       size={12}
-                      color="#9ca3af"
+                      color={colors.textTertiary}
                     />
                   )}
                 </View>
@@ -655,7 +716,7 @@ export default function BudgetScreen() {
                       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
                         <View style={{ flex: 1 }}>
                           <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 4 }}>Budgeted</Text>
-                          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text }}>
+                          <Text style={{ ...TextStyles.subhead, color: colors.text }}>
                             ${item.budgeted.toLocaleString()}
                           </Text>
                         </View>
@@ -664,16 +725,16 @@ export default function BudgetScreen() {
                             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Actual</Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
                               <Pressable onPress={() => handleStartEdit(item)} hitSlop={8}>
-                                <FontAwesome name="pencil" size={12} color="#9ca3af" />
+                                <FontAwesome name="pencil" size={12} color={colors.textTertiary} />
                               </Pressable>
                               {!item.fixed && (
                                 <Pressable onPress={() => handleDeleteCategory(item.id)} hitSlop={8}>
-                                  <FontAwesome name="trash" size={12} color="#9ca3af" />
+                                  <FontAwesome name="trash" size={12} color={colors.textTertiary} />
                                 </Pressable>
                               )}
                             </View>
                           </View>
-                          <Text style={{ ...TextStyles.title, fontSize: 18, color: colors.text }}>
+                          <Text style={{ ...TextStyles.subhead, color: colors.text }}>
                             ${item.actual.toLocaleString()}
                           </Text>
                         </View>
@@ -695,11 +756,11 @@ export default function BudgetScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                         <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{itemPct.toFixed(0)}% used</Text>
                         {itemDiff > 0 ? (
-                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: '#10b981' }}>
+                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.success }}>
                             ${itemDiff.toLocaleString()} under
                           </Text>
                         ) : itemDiff < 0 ? (
-                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: '#ef4444' }}>
+                          <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.error }}>
                             ${Math.abs(itemDiff).toLocaleString()} over
                           </Text>
                         ) : (
@@ -729,7 +790,7 @@ export default function BudgetScreen() {
                               <FontAwesome
                                 name={expandedExpenses.has(item.id) ? 'chevron-up' : 'chevron-down'}
                                 size={10}
-                                color="#6b7280"
+                                color={colors.textSecondary}
                               />
                             </Pressable>
 
@@ -762,7 +823,7 @@ export default function BudgetScreen() {
                                         hitSlop={8}
                                         style={{ padding: 4 }}
                                       >
-                                        <FontAwesome name="trash" size={11} color="#9ca3af" />
+                                        <FontAwesome name="trash" size={11} color={colors.textTertiary} />
                                       </Pressable>
                                     </View>
                                   </View>
@@ -780,7 +841,7 @@ export default function BudgetScreen() {
                               value={newExpenseDesc}
                               onChangeText={setNewExpenseDesc}
                               placeholder="e.g., Round trip tickets"
-                              placeholderTextColor="#9ca3af"
+                              placeholderTextColor={colors.textTertiary}
                               autoFocus
                               style={{
                                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -794,7 +855,7 @@ export default function BudgetScreen() {
                               value={newExpenseAmount}
                               onChangeText={setNewExpenseAmount}
                               placeholder="0.00"
-                              placeholderTextColor="#9ca3af"
+                              placeholderTextColor={colors.textTertiary}
                               keyboardType="numeric"
                               style={{
                                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -807,7 +868,7 @@ export default function BudgetScreen() {
                               <Pressable
                                 onPress={() => handleAddExpense(item.id)}
                                 style={{
-                                  flex: 1, backgroundColor: '#10b981', borderRadius: 8,
+                                  flex: 1, backgroundColor: colors.success, borderRadius: 8,
                                   paddingVertical: 10, alignItems: 'center',
                                 }}
                               >
@@ -839,7 +900,7 @@ export default function BudgetScreen() {
                               backgroundColor: colors.cardBackground,
                             }}
                           >
-                            <FontAwesome name="plus" size={12} color="#374151" />
+                            <FontAwesome name="plus" size={12} color={colors.text} />
                             <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.text }}>Add Expense</Text>
                           </Pressable>
                         )}
@@ -854,7 +915,7 @@ export default function BudgetScreen() {
                         onChangeText={setTempBudgeted}
                         keyboardType="numeric"
                         placeholder="0.00"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.textTertiary}
                         autoFocus
                         style={{
                           borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -867,7 +928,7 @@ export default function BudgetScreen() {
                         <Pressable
                           onPress={handleSaveEdit}
                           style={{
-                            flex: 1, backgroundColor: '#10b981', borderRadius: 8,
+                            flex: 1, backgroundColor: colors.success, borderRadius: 8,
                             paddingVertical: 10, alignItems: 'center',
                           }}
                         >
@@ -906,17 +967,17 @@ export default function BudgetScreen() {
               gap: 8,
             }}
           >
-            <FontAwesome name="plus" size={22} color="#9ca3af" />
+            <FontAwesome name="plus" size={22} color={colors.textTertiary} />
             <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: colors.textSecondary }}>Add Category</Text>
           </Pressable>
         ) : (
-          <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, borderWidth: 2, borderColor: '#6ee7b7', padding: 16 }}>
+          <View style={{ backgroundColor: colors.successBg, borderRadius: 10, borderWidth: 2, borderColor: colors.success, padding: 16 }}>
             <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.text, marginBottom: 6 }}>Category Name</Text>
             <TextInput
               value={newCategory}
               onChangeText={setNewCategory}
               placeholder="e.g., Insurance"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               autoFocus
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -930,7 +991,7 @@ export default function BudgetScreen() {
               value={newBudgeted}
               onChangeText={setNewBudgeted}
               placeholder="0.00"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               keyboardType="numeric"
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -944,7 +1005,7 @@ export default function BudgetScreen() {
               value={newActual}
               onChangeText={setNewActual}
               placeholder="0.00"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               keyboardType="numeric"
               style={{
                 borderWidth: 1, borderColor: colors.border, borderRadius: 8,
@@ -957,7 +1018,7 @@ export default function BudgetScreen() {
               <Pressable
                 onPress={handleAddCategory}
                 style={{
-                  flex: 1, backgroundColor: '#10b981', borderRadius: 8,
+                  flex: 1, backgroundColor: colors.success, borderRadius: 8,
                   paddingVertical: 10, alignItems: 'center',
                 }}
               >

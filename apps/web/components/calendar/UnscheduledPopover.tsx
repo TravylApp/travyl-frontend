@@ -46,18 +46,18 @@ export function UnscheduledPopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full mt-1 z-40 bg-white dark:bg-[#0f1a28] border border-gray-200 dark:border-[#1e3a5f]/40 rounded-xl shadow-xl w-72 p-3"
+      className="absolute top-full mt-1 z-40 bg-white dark:bg-cal-surface-elevated border border-gray-200 dark:border-cal-border rounded-xl shadow-xl w-72 p-3"
     >
-      <p className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-[#4a7ab5] mb-2">
+      <p className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-cal-text-secondary mb-2">
         Unscheduled activities
       </p>
       <ul className="space-y-2 max-h-60 overflow-y-auto">
         {activities.map((a) => (
           <li
             key={a.id}
-            className="flex items-center gap-2 rounded-lg bg-gray-50 dark:bg-[#1e3a5f]/10 px-2 py-1.5"
+            className="flex items-center gap-2 rounded-lg bg-gray-50 dark:bg-cal-accent-bg/30 px-2 py-1.5"
           >
-            <span className="flex-1 text-[12px] text-gray-700 dark:text-[#cdd9e5] truncate min-w-0">
+            <span className="flex-1 text-[12px] text-gray-700 dark:text-cal-text truncate min-w-0">
               {a.title || 'Untitled'}
             </span>
             <input
@@ -66,12 +66,12 @@ export function UnscheduledPopover({
               max={maxDate}
               onChange={(e) => handleDateChange(a.id, e.target.value)}
               title="Assign to day"
-              className="w-32 text-[11px] rounded border border-gray-200 dark:border-[#1e3a5f]/40 bg-transparent px-1.5 py-0.5 text-gray-600 dark:text-[#cdd9e5] focus:outline-none focus:ring-1 focus:ring-[#003594]"
+              className="w-32 text-[11px] rounded border border-gray-200 dark:border-cal-border bg-transparent px-1.5 py-0.5 text-gray-600 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
               onClick={() => onDelete(a.id)}
               aria-label="Delete activity"
-              className="text-gray-400 dark:text-[#4a7ab5] hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"
+              className="text-gray-400 dark:text-cal-text-secondary hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"
             >
               <Trash width={14} height={14} />
             </button>

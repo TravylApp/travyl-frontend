@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabase, checkOrigin, rateLimit } from '@/lib/api-utils'
+import { createClient } from '@supabase/supabase-js'
+import { getSupabase, supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
 
-const CITY_AIRPORTS: Record<string, string> = {
-  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-  'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
-  'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
-  'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
-  'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
-  'Milan': 'MXP', 'Vienna': 'VIE', 'Zurich': 'ZRH', 'Dublin': 'DUB',
-  'Cancun': 'CUN', 'Lima': 'LIM', 'Buenos Aires': 'EZE', 'Reykjavik': 'KEF',
-  'Oslo': 'OSL', 'Stockholm': 'ARN', 'Copenhagen': 'CPH', 'Helsinki': 'HEL',
-  'Kuala Lumpur': 'KUL', 'Jakarta': 'CGK', 'Manila': 'MNL',
-  'Taipei': 'TPE', 'Osaka': 'KIX', 'Beijing': 'PEK', 'Shanghai': 'PVG',
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,8 +9,24 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked
 
     const supabase = getSupabase()
-    const body = await req.json()
-    const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+    let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
+    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+
+    // Derive user_id from verified session — never trust body.user_id
+    let user_id: string | null = null
+    const authHeader = req.headers.get('authorization')
+    if (authHeader) {
+      try {
+        const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
+          { global: { headers: { Authorization: authHeader } } }
+        ).auth.getUser()
+        user_id = user?.id ?? null
+      } catch {}
+    }
+
+    if (!user_id) {
+      return NextResponse.json({ error: 'Sign in to plan a trip', code: 'AUTH_REQUIRED' }, { status: 401 })
+    }
 
     if (!destination || typeof destination !== 'string' || destination.length > 200) {
       return NextResponse.json({ error: 'Missing or invalid destination' }, { status: 400 })
@@ -41,20 +44,19 @@ export async function POST(req: NextRequest) {
         start_date: start_date || null,
         end_date: end_date || null,
         status: 'planning',
-        user_id: user_id || null,
+        user_id,
         travelers: safeTravelers,
         budget: safeBudget,
         currency: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'MXN', 'BRL'].includes(currency) ? currency : 'USD',
         trip_context: trip_context || {},
-        visibility: user_id ? 'private' : 'public',
+        visibility: 'private',
         is_generated: true,
       })
       .select()
       .single()
 
     if (error) {
-      console.error('[Trip Create] Supabase error:', error.message, error.code)
-      return NextResponse.json({ error: error.message, code: error.code }, { status: 500 })
+      return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
     }
 
   const tripId = data.id
@@ -83,7 +85,6 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       // Non-blocking — trip still works without hero image
-      console.error('Failed to fetch hero image:', e)
     }
   }
 
@@ -111,20 +112,18 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-    if (hotelErr) console.error('Failed to save hotels:', hotelErr.message, hotelErr.code, hotelErr.details)
   }
 
   // Save flights to flights table (best effort)
   if (flights?.length) {
-    const destIata = CITY_AIRPORTS[city] || ''
     const flightRows = flights.map((f: any) => ({
       trip_id: tripId,
       data: {
         airline: f.airline,
         flight_number: null,
-        origin_iata: '',
-        origin_name: null,
-        dest_iata: destIata,
+        origin_iata: f.origin_iata || '',
+        origin_name: f.origin_name || null,
+        dest_iata: f.dest_iata || '',
         dest_name: city,
         departure_at: f.departure_time,
         arrival_at: f.arrival_time,
@@ -136,14 +135,15 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-    if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 
   // Itinerary is stored in trip_context — no separate tables needed
 
   return NextResponse.json(data)
   } catch (e) {
-    console.error('[Trip Create] Unhandled error:', e)
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500 })
+    // Don't leak raw error messages (DB constraint names, Postgres internals,
+    // network errors) to anonymous callers. Log server-side and return generic.
+    console.error('[trips/create] internal error:', e)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

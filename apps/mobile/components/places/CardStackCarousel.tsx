@@ -5,8 +5,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
-  FadeIn,
-  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -15,10 +13,21 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import MapView, { Marker } from 'react-native-maps';
+import Constants from 'expo-constants';
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+let MapView: any = View;
+let Marker: any = View;
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch {}
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PlaceItem } from '@travyl/shared';
 import { MagazineCurtain } from './MagazineCurtain';
+import { AddToTripSheet } from '@/components/AddToTripSheet';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -38,11 +47,23 @@ export interface CardStackCarouselProps {
   initialIndex?: number;
   favorites: string[];
   onToggleFav: (id: string) => void;
+  onAddToTrip?: (place: PlaceItem) => void;
+  /** Pass the full sheet state + actions to render inside the modal */
+  tripSheet?: {
+    state: any;
+    selectTrip: (id: string) => void;
+    selectDay: (label: string, index: number) => void;
+    dismiss: () => void;
+    createTrip: () => void;
+  };
+  onIndexChange?: (index: number) => void;
   cardWidth?: number;
   cardHeight?: number;
   overlay?: boolean;
   onClose?: () => void;
   navColor?: string;
+  hideArrows?: boolean;
+  showMapBg?: boolean;
 }
 
 /* ═══════════════ Component ═══════════════ */
@@ -52,20 +73,25 @@ export function CardStackCarousel({
   initialIndex = 0,
   favorites,
   onToggleFav,
+  onAddToTrip,
+  tripSheet,
+  onIndexChange,
   cardWidth,
   cardHeight,
   overlay = false,
   onClose,
   navColor,
+  hideArrows = false,
+  showMapBg = false,
 }: CardStackCarouselProps) {
   const insets = useSafeAreaInsets();
-  const CARD_W = cardWidth ?? SCREEN_WIDTH - 48;
-  const CARD_H = cardHeight ?? CARD_W * 1.3;
+  const CARD_W = cardWidth ?? SCREEN_WIDTH - 24;
+  const CARD_H = cardHeight ?? CARD_W * 1.25;
 
   const [currentIdx, setCurrentIdx] = useState(initialIndex);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(showMapBg);
   const [selfOverlay, setSelfOverlay] = useState(false); // promote to overlay for map
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const isAnimating = useRef(false);
   const clearAnimating = useCallback(() => { isAnimating.current = false; }, []);
   const showMapRef = useRef(showMap);
@@ -120,19 +146,24 @@ export function CardStackCarousel({
   // Center map on current place when card changes or map opens
   useEffect(() => {
     const p = places[currentIdx];
-    const shouldCenter = showMap
-      ? p?.latitude != null && p?.longitude != null
-      : showMapRef.current && p?.latitude != null && p?.longitude != null;
+    const hasCoords = p?.latitude != null && p?.longitude != null;
+    if (!hasCoords) return;
+    // In overlay mode, map is always visible; in inline mode, only when showMap is true
+    const shouldCenter = overlay || showMap || showMapRef.current;
     if (!shouldCenter) return;
     const delay = showMap ? 400 : 200;
     const id = setTimeout(() => {
-      mapRef.current?.animateToRegion({
-        latitude: p!.latitude!, longitude: p!.longitude!,
-        latitudeDelta: 0.02, longitudeDelta: 0.02,
-      }, 400);
+      // Offset center south so pin appears in top 25% (above the card)
+      const latDelta = 0.025;
+      if (typeof mapRef.current?.animateToRegion === 'function') {
+        mapRef.current.animateToRegion({
+          latitude: p!.latitude! - latDelta * 0.35, longitude: p!.longitude!,
+          latitudeDelta: latDelta, longitudeDelta: latDelta,
+        }, 400);
+      }
     }, delay);
     return () => clearTimeout(id);
-  }, [currentIdx, showMap]);
+  }, [currentIdx, showMap, overlay]);
 
   // Prefetch images
   useEffect(() => {
@@ -184,17 +215,31 @@ export function CardStackCarousel({
   const isFav = place ? favorites.includes(place.id) : false;
 
   const goNext = useCallback(() => {
-    animateTransition(1, () => setCurrentIdx((i) => (i + 1) % places.length));
-  }, [places.length, animateTransition]);
+    animateTransition(1, () => {
+      setCurrentIdx((i) => {
+        const next = (i + 1) % places.length;
+        setTimeout(() => onIndexChange?.(next), 0);
+        return next;
+      });
+    });
+  }, [places.length, animateTransition, onIndexChange]);
 
   const goPrev = useCallback(() => {
-    animateTransition(-1, () => setCurrentIdx((i) => (i === 0 ? places.length - 1 : i - 1)));
-  }, [places.length, animateTransition]);
+    animateTransition(-1, () => {
+      setCurrentIdx((i) => {
+        const next = i === 0 ? places.length - 1 : i - 1;
+        setTimeout(() => onIndexChange?.(next), 0);
+        return next;
+      });
+    });
+  }, [places.length, animateTransition, onIndexChange]);
 
   const goNextRef = useRef(goNext);
   goNextRef.current = goNext;
   const goPrevRef = useRef(goPrev);
   goPrevRef.current = goPrev;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Combined pan: horizontal swipe (navigate) + vertical drag (resize map)
   const gestureDir = useRef<'h' | 'v' | null>(null);
@@ -260,7 +305,7 @@ export function CardStackCarousel({
   const navRow = (
     <View style={{
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: 14, marginTop: 12, paddingBottom: 4,
+      gap: 14, marginTop: 8, paddingBottom: 0,
     }}>
       {/* Map toggle — only in overlay mode */}
       {overlay && hasCoords && (
@@ -274,32 +319,36 @@ export function CardStackCarousel({
         </Pressable>
       )}
 
-      <Pressable onPress={goPrev} style={{
-        width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
-        borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
-      }}>
-        <FontAwesome name="chevron-left" size={14} color={navIconColor} />
-      </Pressable>
+      {!hideArrows && (
+        <Pressable onPress={goPrev} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
+          borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+        }}>
+          <FontAwesome name="chevron-left" size={14} color={navIconColor} />
+        </Pressable>
+      )}
       <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
         {currentIdx + 1} / {places.length}
       </Text>
-      <Pressable onPress={goNext} style={{
-        width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
-        borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
-      }}>
-        <FontAwesome name="chevron-right" size={14} color={navIconColor} />
-      </Pressable>
-
-      {/* Close */}
-      {overlay && (
-        <Pressable onPress={onClose} style={{
-          width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)',
+      {!hideArrows && (
+        <Pressable onPress={goNext} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
+          borderWidth: overlay ? 0 : 1, borderColor: navBtnBorder,
           alignItems: 'center', justifyContent: 'center',
           shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+        }}>
+          <FontAwesome name="chevron-right" size={14} color={navIconColor} />
+        </Pressable>
+      )}
+
+      {/* Close */}
+      {overlay && onClose && (
+        <Pressable onPress={onClose} hitSlop={12} style={{
+          width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)',
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 4,
         }}>
           <FontAwesome name="times" size={16} color="#fff" />
         </Pressable>
@@ -319,6 +368,7 @@ export function CardStackCarousel({
         place={place}
         isFav={isFav}
         onToggleFav={() => onToggleFav(place.id)}
+        onAddToTrip={onAddToTrip}
         onMapPress={!showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
         width={magW}
         height={magH}
@@ -326,123 +376,192 @@ export function CardStackCarousel({
     </Animated.View>
   );
 
-  const mapSection = showMap && hasCoords && (
-    <>
-      <RNAnimated.View style={{
-        height: mapHeight,
-        marginHorizontal: 0,
-        borderRadius: 0, overflow: 'hidden',
-      }}>
-        <MapView
-          ref={mapRef}
-          style={{ flex: 1 }}
-          initialRegion={{
-            latitude: place.latitude!, longitude: place.longitude!,
-            latitudeDelta: 0.02, longitudeDelta: 0.02,
-          }}
-          scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
-        >
-          <Marker coordinate={{ latitude: place.latitude!, longitude: place.longitude! }} title={place.name} />
-        </MapView>
-
-        {/* Place info pill */}
-        <View style={{
-          position: 'absolute', bottom: 10, left: 10, right: 10,
-          backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12,
-          paddingHorizontal: 12, paddingVertical: 10,
-          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4,
-        }}>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#333' }}>{place.name}</Text>
-          {place.tagline ? <Text style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{place.tagline}</Text> : null}
-          {/* Rating + reviews */}
-          {place.rating > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-              <FontAwesome name="star" size={10} color="#fbbf24" />
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#333' }}>{place.rating.toFixed(1)}</Text>
-              {place.reviewCount ? <Text style={{ fontSize: 10, color: '#999' }}>({place.reviewCount.toLocaleString()})</Text> : null}
-              {place.hours ? <Text style={{ fontSize: 10, color: '#10b981', marginLeft: 6 }}>{place.hours}</Text> : null}
-            </View>
-          )}
-          {/* Address */}
-          {place.address ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-              <FontAwesome name="map-marker" size={10} color="#999" />
-              <Text style={{ fontSize: 10, color: '#666', flex: 1 }} numberOfLines={1}>{place.address}</Text>
-            </View>
-          ) : null}
-          {/* Tags */}
-          {place.tags && place.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
-              {place.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#555' }}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </RNAnimated.View>
-
-    </>
-  );
+  // Old mapSection removed — map is now full-screen background in overlay mode
 
   /* ── Non-overlay: inline ── */
   if (!overlay) {
     return (
       <>
-        <View style={{ alignItems: 'center', paddingTop: 12 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'flex-end', flex: 1 }}>
           {magazineCard}
           {navRow}
         </View>
-        {/* When map is requested from inline, open full-screen overlay */}
-        <Modal visible={selfOverlay} transparent animationType="fade" statusBarTranslucent>
+        {/* When map is requested from inline, open full-screen overlay.
+            No outer Modal needed — the overlay CardStackCarousel renders its own. */}
+        {selfOverlay && (
           <CardStackCarousel
             places={places}
             initialIndex={currentIdx}
             favorites={favorites}
             onToggleFav={onToggleFav}
+            onAddToTrip={onAddToTrip}
+            tripSheet={tripSheet}
+            onIndexChange={onIndexChange}
             overlay
             onClose={() => setSelfOverlay(false)}
           />
-        </Modal>
+        )}
       </>
     );
   }
 
-  /* ── Overlay: full screen, card flush at bottom ── */
-  return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent>
-    <Animated.View
-      entering={FadeIn.duration(300)}
-      exiting={FadeOut.duration(200)}
-      style={{
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-      }}
-    >
-      {/* Tap dark area to close */}
-      <Pressable onPress={onClose} style={{ height: insets.top + 20 }} />
+  /* ── Overlay: Apple Maps-style — map behind, card as bottom sheet ── */
 
-      {/* Content — map flush at top, card below */}
-      <View style={{
-        flex: 1,
-        paddingBottom: insets.bottom,
-        overflow: 'hidden',
-      }}>
-        {showMap ? (
-          <>
-            {mapSection}
-            {magazineCard}
-            {navRow}
-          </>
+  // Sheet position — lower Y = card shorter (more map), higher Y = card taller (more content)
+  const SHEET_TOP = insets.top + 50;           // card almost full screen
+  const SHEET_MID = SCREEN_H * 0.25;         // mid — large card
+  const SHEET_BOTTOM = SCREEN_H * 0.40;      // default start — card fills bottom 60%
+  const sheetY = useRef(new RNAnimated.Value(SHEET_BOTTOM)).current;
+  const sheetYRef = useRef(SHEET_BOTTOM);
+
+  // Combined gesture: vertical drags on the handle/header resize the sheet,
+  // horizontal swipes on the card navigate between places
+  const gestureDirRef = useRef<'v' | 'h' | null>(null);
+  const combinedPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_, gs) => {
+        // Direction is decided by which axis dominates clearly. A bare `>`
+        // ratio let horizontal swipes get misclassified as vertical when the
+        // first few pixels of motion had a small dy component, which would
+        // dismiss the sheet instead of navigating between cards.
+        if (Math.abs(gs.dy) > 8 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.5) {
+          gestureDirRef.current = 'v';
+          return true;
+        }
+        if (Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5) {
+          gestureDirRef.current = 'h';
+          return true;
+        }
+        return false;
+      },
+      onPanResponderMove: (_, gs) => {
+        if (gestureDirRef.current === 'v') {
+          // Allow dragging from SHEET_TOP all the way to off-screen (SCREEN_H)
+          const newY = Math.max(SHEET_TOP, sheetYRef.current + gs.dy);
+          sheetY.setValue(newY);
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gestureDirRef.current === 'v') {
+          const newY = Math.max(SHEET_TOP, sheetYRef.current + gs.dy);
+
+          // Dismiss: dragged past 60% of screen or moderate flick down
+          if (newY > SCREEN_H * 0.6 || (gs.vy > 0.8 && newY > SHEET_BOTTOM)) {
+            RNAnimated.timing(sheetY, {
+              toValue: SCREEN_H, duration: 200, useNativeDriver: false,
+            }).start(() => onCloseRef.current?.());
+            return;
+          }
+
+          // Snap to nearest position
+          let snapTo = SHEET_MID;
+          if (gs.vy < -0.5 || newY < (SHEET_TOP + SHEET_MID) / 2) snapTo = SHEET_TOP;
+          else if (gs.vy > 0.5 || newY > (SHEET_MID + SHEET_BOTTOM) / 2) snapTo = SHEET_BOTTOM;
+
+          RNAnimated.spring(sheetY, {
+            toValue: snapTo, tension: 65, friction: 11, useNativeDriver: false,
+          }).start();
+          sheetYRef.current = snapTo;
+        } else if (gestureDirRef.current === 'h') {
+          if (gs.dx < -SWIPE_THRESHOLD) goNextRef.current();
+          else if (gs.dx > SWIPE_THRESHOLD) goPrevRef.current();
+        }
+        gestureDirRef.current = null;
+      },
+    })
+  ).current;
+
+  return (
+    <Modal visible transparent animationType="slide" statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+
+        {/* ── Map background (fills entire screen) ── */}
+        {hasCoords && Platform.OS !== 'web' ? (
+          <MapView
+            ref={mapRef}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            initialRegion={{
+              latitude: place.latitude! - 0.018, longitude: place.longitude!,
+              latitudeDelta: 0.03, longitudeDelta: 0.03,
+            }}
+            scrollEnabled zoomEnabled rotateEnabled={false} pitchEnabled={false}
+          >
+            <Marker coordinate={{ latitude: place.latitude!, longitude: place.longitude! }} title={place.name} />
+          </MapView>
         ) : (
-          <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-            {magazineCard}
-            {navRow}
+          <View style={{ flex: 1, backgroundColor: '#1a1a2e' }} />
+        )}
+
+        {/* Close button floating on map */}
+        {onClose && (
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={{
+              position: 'absolute', top: insets.top + 10, left: 16, zIndex: 20,
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4,
+            }}
+          >
+            <FontAwesome name="arrow-left" size={16} color="#fff" />
+          </Pressable>
+        )}
+
+        {/* ── Bottom sheet — drags up/down to show/hide map ── */}
+        <RNAnimated.View
+          {...combinedPan.panHandlers}
+          style={{
+            position: 'absolute',
+            top: sheetY,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent',
+          }}
+        >
+          {/* Drag handle — large touch area for easy grabbing */}
+          <View style={{
+            alignItems: 'center', paddingTop: 12, paddingBottom: 10,
+          }}>
+            <View style={{ width: 48, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.7)' }} />
           </View>
+
+          {/* Card fills remaining space below handle */}
+          <View style={{ flex: 1, alignItems: 'center', paddingTop: 2 }}>
+            <Animated.View style={[
+              { width: SCREEN_WIDTH - 8, flex: 1 },
+              animatedCardStyle,
+            ]}>
+              <View style={{ flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' }}>
+                <MagazineCurtain
+                  place={place}
+                  isFav={isFav}
+                  onToggleFav={() => onToggleFav(place.id)}
+                  onAddToTrip={onAddToTrip}
+                  onClose={onClose}
+                  onMapPress={hasCoords ? toggleMap : undefined}
+                  width={SCREEN_WIDTH - 8}
+                  height={SCREEN_H - sheetYRef.current - insets.bottom - 20}
+                />
+              </View>
+            </Animated.View>
+          </View>
+        </RNAnimated.View>
+
+        {/* AddToTrip sheet — rendered inside modal so it appears on top */}
+        {tripSheet && (
+          <AddToTripSheet
+            state={tripSheet.state}
+            onSelectTrip={tripSheet.selectTrip}
+            onSelectDay={tripSheet.selectDay}
+            onDismiss={tripSheet.dismiss}
+            onCreateTrip={tripSheet.createTrip}
+          />
         )}
       </View>
-    </Animated.View>
     </Modal>
   );
 }

@@ -1,3 +1,12 @@
+/**
+ * @module useExploreRows
+ * Builds the view-ready row data for the Explore section by combining place data
+ * from `useExploreData` with gradient assignments and per-row expand/collapse state.
+ * Exposes `toggleRow`, `collapseAll`, and `expandAll` helpers so UI components
+ * do not need to manage row state themselves.
+ * Used by the web ExplorePage and mobile ExploreTab.
+ */
+
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
@@ -7,6 +16,28 @@ import type { PlaceItem } from '../types';
 
 const FALLBACK_ROWS: { title: string; items: PlaceItem[] }[] = [];
 
+/**
+ * Provides view-ready rows for the Explore section with expand/collapse state.
+ * Falls back to an empty row list while data is loading or unavailable.
+ * Each row is decorated with:
+ * - `gradient`: a cyclic gradient token from `getCyclicGradient`
+ * - `isExpanded`: current expanded state for this row index
+ *
+ * @returns Object containing:
+ *   - `rows` — decorated rows ready for rendering
+ *   - `toggleRow(index)` — toggles the expanded state of a single row
+ *   - `collapseAll()` — collapses every row
+ *   - `expandAll()` — expands every row
+ *   - `allExpanded` — `true` when every row is currently expanded
+ *   - `isLoading` — `true` while the underlying data fetch is in progress
+ * @example
+ * ```tsx
+ * const { rows, toggleRow, allExpanded } = useExploreRows();
+ * return rows.map((row, i) => (
+ *   <ExploreRow key={i} row={row} onToggle={() => toggleRow(i)} />
+ * ));
+ * ```
+ */
 export function useExploreRows() {
   const { data: rawRows, isLoading } = useExploreData();
   const hasApiData = (rawRows ?? []).length > 0;

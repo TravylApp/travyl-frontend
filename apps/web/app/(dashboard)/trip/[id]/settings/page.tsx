@@ -482,7 +482,6 @@ function TravelersSection({
         .eq('id', tripId);
       if (updateError) throw updateError;
     } catch (err) {
-      console.error('Failed to save traveler metadata:', err);
     } finally {
       setSaving(false);
     }
@@ -618,7 +617,13 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const { trip, isLoading: tripLoading, refetch } = useItineraryScreen(id);
   const user = useAuthStore((s) => s.user);
-  const isOwner = trip ? isTripOwner(trip, user?.id ?? null) : false;
+  // Trip owner = authenticated user match OR anonymous user who created the trip
+  const isOwner = trip ? (
+    isTripOwner(trip, user?.id ?? null) ||
+    (!user && typeof window !== 'undefined' && (() => {
+      try { const ids = JSON.parse(localStorage.getItem('my-trip-ids') || '[]'); return ids.includes(id); } catch { return false; }
+    })())
+  ) : false;
 
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -702,7 +707,6 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       setDirty(false);
       refetch();
     } catch (err) {
-      console.error('Failed to save settings:', err);
       alert('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-04-16" type="device">
+  <diagram name="System Flows 1-3" id="flows-top">
+    <mxGraphModel dx="1400" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Main Title -->
+        <mxCell id="mainTitle" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;Travyl System Flows&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="450" y="5" width="500" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- FLOW 1: Semantic Trip Search            -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="f1title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;1. Semantic Trip Search (Context Search)&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="45" width="400" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f1a" value="&lt;b&gt;User types query&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&lt;i&gt;&quot;beach trip with hiking&quot;&lt;/i&gt;&lt;br&gt;(300ms debounce)&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="80" width="145" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="f1ar1" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#666&quot;&gt;fetch&lt;/font&gt;" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f1a" target="f1b">
+          <mxGeometry x="0.1" y="5" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="f1b" value="&lt;b&gt;Next.js API route&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;forwards request&lt;br&gt;with auth token&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="200" y="80" width="140" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="f1ar2" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f1b" target="f1c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f1c" value="&lt;b&gt;Lambda validates JWT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Runs TWO searches in parallel:&lt;br&gt;&amp;bull; Vector similarity&lt;br&gt;&amp;bull; Text keyword fallback&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="380" y="75" width="185" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- Vector Path (top branch) -->
+        <mxCell id="f1ar3a" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.25;" edge="1" parent="1" source="f1c" target="f1d1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f1d1" value="&lt;font color=&quot;#FFC72C&quot;&gt;&lt;b&gt;Vector Path:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Query &amp;rarr; Bedrock embedding&lt;br&gt;&amp;rarr; pgvector similarity search&lt;br&gt;on trip_embeddings table&lt;br&gt;(match_count: 5)&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#003594;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="610" y="45" width="195" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Text Fallback (bottom branch) -->
+        <mxCell id="f1ar3b" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.75;" edge="1" parent="1" source="f1c" target="f1d2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f1d2" value="&lt;font color=&quot;#FFC72C&quot;&gt;&lt;b&gt;Text Fallback:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;ILIKE search on&lt;br&gt;text_content column&lt;br&gt;(covers: title, destination,&lt;br&gt;activity names)&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="610" y="140" width="195" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Merge Results -->
+        <mxCell id="f1ar4a" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f1d1" target="f1e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f1ar4b" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f1d2" target="f1e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f1e" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Merge Results:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;bull; Deduplicate by trip_id&lt;br&gt;&amp;bull; Vector results prioritized&lt;br&gt;&amp;bull; Text results fill gaps&lt;br&gt;&amp;bull; Max 5 results&lt;br&gt;Map to: tripId, title,&lt;br&gt;destination, dates, image&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="850" y="65" width="175" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- React Query cache -->
+        <mxCell id="f1ar5" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f1e" target="f1f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f1f" value="&lt;b&gt;React Query caches&lt;br&gt;results for 30s&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;UI displays:&lt;br&gt;cards with trip image,&lt;br&gt;title, destination,&lt;br&gt;activity count&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="70" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- FLOW 2: Trip Indexing                   -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="f2title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;2. Trip Indexing (When Activities Change)&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="245" width="420" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f2a" value="&lt;b&gt;User adds/removes&lt;br&gt;an activity&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; 5s debounce timer&lt;br&gt;started per trip&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="280" width="155" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f2ar1" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f2a" target="f2b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f2b" value="&lt;b&gt;Lambda Fetches:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;bull; Trip (title, destination,&lt;br&gt;   dates, status)&lt;br&gt;&amp;bull; All activities (names,&lt;br&gt;   types, locations, dates)&lt;br&gt;&amp;bull; Verifies user owns trip&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="225" y="272" width="190" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="f2ar2" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f2b" target="f2c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f2c" value="&lt;b&gt;Builds searchable text:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&lt;i&gt;&quot;Paris Trip | Paris |&lt;br&gt;planning | Jun 1-5 |&lt;br&gt;Louvre (museum) at&lt;br&gt;Central Paris on Jun 2...&quot;&lt;/i&gt;&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="465" y="272" width="185" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="f2ar3" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f2c" target="f2d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f2d" value="&lt;font color=&quot;#FFC72C&quot;&gt;&lt;b&gt;Generate embedding:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;Text &amp;rarr; AWS Bedrock&lt;br&gt;(Titan model)&lt;br&gt;&amp;rarr; 768-dim vector&lt;br&gt;&lt;br&gt;[Parallel] Fetch hero&lt;br&gt;image from Pexels if&lt;br&gt;none exists&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#003594;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="700" y="262" width="170" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="f2ar4" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f2d" target="f2e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f2e" value="&lt;b&gt;Upsert to trip_embeddings:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;bull; trip_id (PK)&lt;br&gt;&amp;bull; embedding (vector)&lt;br&gt;&amp;bull; text_content (full text)&lt;br&gt;&amp;bull; metadata JSON:&lt;br&gt;   title, dest, activityNames,&lt;br&gt;   locations, types, count, image&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="920" y="262" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- FLOW 3: Real-time Calendar Sync         -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="f3title" value="&lt;font style=&quot;font-size:12px;&quot; color=&quot;#003594&quot;&gt;&lt;b&gt;&lt;i&gt;3. Real-time Calendar Sync (Yjs + CRDTs)&lt;/i&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;fontFamily=Calibri;" vertex="1" parent="1">
+          <mxGeometry x="20" y="410" width="420" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Load trip page -->
+        <mxCell id="f3a" value="&lt;b&gt;Load trip page:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Create Y.Doc&lt;br&gt;&amp;rarr; Connect to&lt;br&gt;   SupabaseProvider&lt;br&gt;&amp;rarr; Load persisted state from&lt;br&gt;   yjs_documents table&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#003594;strokeColor=#003594;strokeWidth=2;fontColor=#ffffff;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="20" y="445" width="165" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="f3ar1" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f3a" target="f3b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- User edits -->
+        <mxCell id="f3b" value="&lt;b&gt;User drags/edits activity:&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Update Y.Map&lt;br&gt;&amp;rarr; Observer fires&lt;br&gt;&amp;rarr; Mark dirty in Set&lt;br&gt;&amp;rarr; Capture before-state&lt;br&gt;&amp;rarr; Schedule 1s debounce&lt;br&gt;   flush to Supabase&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#FFC72C;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="235" y="440" width="185" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Flush to Supabase (top) -->
+        <mxCell id="f3ar2a" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.25;" edge="1" parent="1" source="f3b" target="f3c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f3c" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Flush to Supabase:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Convert Y.Map &amp;rarr; DB row&lt;br&gt;&amp;rarr; UPSERT activity table&lt;br&gt;&amp;rarr; INSERT itinerary_edits&lt;br&gt;   (audit log: move/edit/&lt;br&gt;   create with before/after)&lt;br&gt;&amp;rarr; Clear dirty Set&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="480" y="420" width="195" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="f3ar3" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f3c" target="f3e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Tab becomes visible -->
+        <mxCell id="f3e" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Tab becomes visible:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Fetch ALL activities&lt;br&gt;   from Supabase&lt;br&gt;&amp;rarr; Compare with Y.Map&lt;br&gt;&amp;rarr; Add missing, update&lt;br&gt;   changed, remove deleted&lt;br&gt;&amp;rarr; Skip entries in dirty&lt;br&gt;   Set (preserve local edits)&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="730" y="415" width="195" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Another user edits (bottom branch) -->
+        <mxCell id="f3ar2b" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;exitX=1;exitY=0.85;" edge="1" parent="1" source="f3b" target="f3d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f3d" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Another user edits:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Their Yjs &amp;rarr; Supabase&lt;br&gt;&amp;rarr; Postgres real-time&lt;br&gt;   broadcasts change&lt;br&gt;&amp;rarr; Our client receives&lt;br&gt;&amp;rarr; Merge into Y.Map&lt;br&gt;   (origin: &quot;remote&quot;)&lt;br&gt;&amp;rarr; UI updates instantly&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="480" y="555" width="195" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Collab indicator -->
+        <mxCell id="f3ar4" style="fontFamily=Calibri;endArrow=classic;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1" source="f3d" target="f3f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f3f" value="&lt;font color=color=&quot;#000000&quot;quot;#000000color=&quot;#000000&quot;quot;&gt;&lt;b&gt;Track interaction:&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;&quot;&gt;&amp;rarr; Presence indicators&lt;br&gt;&amp;rarr; Cursor positions sync&lt;br&gt;&amp;rarr; Conflict-free merging&lt;br&gt;   via CRDT guarantees&lt;/font&gt;" style="fontFamily=Calibri;rounded=1;whiteSpace=wrap;html=1;fillColor=#FFC72C;strokeColor=#003594;strokeWidth=2;fontColor=#000000;fontSize=12;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="730" y="565" width="175" height="95" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

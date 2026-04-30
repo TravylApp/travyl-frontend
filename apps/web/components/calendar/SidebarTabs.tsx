@@ -31,7 +31,7 @@ export default function SidebarTabs({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b border-[var(--cal-border)]">
+      <div className="flex border-b border-cal-border">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -39,8 +39,8 @@ export default function SidebarTabs({
             className={[
               'px-4 py-2 text-sm font-medium transition-colors',
               activeTab === tab.id
-                ? 'text-[#003594] border-b-2 border-[#003594]'
-                : 'text-[var(--cal-text-secondary)] hover:text-[var(--cal-text)]',
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-cal-text-secondary hover:text-cal-text',
             ].join(' ')}
           >
             {tab.label}

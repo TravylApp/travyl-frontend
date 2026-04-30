@@ -107,19 +107,19 @@ function CardFrontInternal({
         images.length > 1 ? (
           <>
             <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, animStyleA]}>
-              <Image source={{ uri: imgA ?? undefined }} style={{ width, height }} resizeMode="cover" />
+              <Image source={{ uri: imgA ?? undefined, headers: { Referer: '' } }} style={{ width, height }} resizeMode="cover" />
             </Animated.View>
             <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, animStyleB]}>
-              <Image source={{ uri: imgB ?? undefined }} style={{ width, height }} resizeMode="cover" />
+              <Image source={{ uri: imgB ?? undefined, headers: { Referer: '' } }} style={{ width, height }} resizeMode="cover" />
             </Animated.View>
           </>
         ) : (
-          <Image source={{ uri: images[0] ?? undefined }} style={{ position: 'absolute', width, height }} resizeMode="cover" />
+          <Image source={{ uri: images[0] ?? undefined, headers: { Referer: '' } }} style={{ position: 'absolute', width, height }} resizeMode="cover" />
         )
       ) : (
         /* Placeholder gradient when no image is available */
         <LinearGradient
-          colors={['#1e3a5f', '#2d5a8e', '#1e3a5f']}
+          colors={[Navy.DEFAULT, '#2d5a8e', Navy.DEFAULT]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ position: 'absolute', width, height, alignItems: 'center', justifyContent: 'center' }}

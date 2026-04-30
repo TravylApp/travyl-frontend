@@ -2,7 +2,8 @@ name: Expo Preview
 on:
   push:
     branches:
-      - RB24-7
+      - develop
+  workflow_dispatch:
 
 jobs:
   update:
@@ -22,6 +23,7 @@ jobs:
         uses: expo/expo-github-action@v8
         with:
           expo-version: latest
+          eas-version: latest
           eas-cache: true
           token: ${{ secrets.EXPO_TOKEN }}
 
@@ -29,5 +31,5 @@ jobs:
         run: npm install
 
       - name: Publish Update
-        run: npx eas update --branch preview --message "Auto-update from GitHub RB24-7"
+        run: npx eas update --branch preview --message "Auto-update from develop @ ${{ github.sha }}"
         working-directory: apps/mobile

@@ -64,7 +64,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
   const markersJs = markers?.length
     ? `window._markers=[];` + markers.map((m, i) => {
         const num = m.number ?? i + 1;
-        const escapedLabel = m.label.replace(/'/g, "\\'");
+        const escapedLabel = JSON.stringify(m.label);
         if (m.muted) {
           return `
     (function() {
@@ -74,7 +74,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
         iconSize: [18, 18],
         iconAnchor: [9, 9],
       });
-      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup('${escapedLabel}');
+      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup(${escapedLabel});
       window._markers.push(mk);
     })();`;
         }
@@ -86,7 +86,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       });
-      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup('${escapedLabel}');
+      var mk = L.marker([${m.lat}, ${m.lng}], { icon: icon }).addTo(map).bindPopup(${escapedLabel});
       window._markers.push(mk);
     })();`;
       }).join('\n')
@@ -97,7 +97,7 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
       iconSize: [28, 28],
       iconAnchor: [14, 14],
     });
-    L.marker([${lat}, ${lng}], { icon: icon }).addTo(map)${label ? `.bindPopup('${label.replace(/'/g, "\\'")}')` : ''};`;
+    L.marker([${lat}, ${lng}], { icon: icon }).addTo(map)${label ? `.bindPopup(${JSON.stringify(label)})` : ''};`;
 
   // Route line connecting non-muted markers (itinerary items) in order
   const routeMarkers = markers?.filter(m => !m.muted) ?? [];
@@ -118,8 +118,8 @@ export const MapPreview = forwardRef<MapPreviewHandle, MapPreviewProps>(function
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
   <style>
     * { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }

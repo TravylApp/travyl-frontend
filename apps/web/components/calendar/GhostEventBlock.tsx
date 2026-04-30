@@ -31,7 +31,7 @@ export function GhostEventBlock({
           background: 'color-mix(in srgb, var(--cal-accent) 10%, transparent)',
         }}
       >
-        <span className="text-[11px] font-medium text-[var(--cal-text)] truncate leading-tight">
+        <span className="text-[11px] font-medium text-cal-text truncate leading-tight">
           {activity.title}
         </span>
         <div className="flex gap-1 justify-end mt-1">

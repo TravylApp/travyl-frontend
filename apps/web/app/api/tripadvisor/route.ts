@@ -5,7 +5,8 @@ import {
   getOptionalParam,
   errorResponse,
   CACHE_1H,
-} from '@/lib/api-utils'
+rateLimit } from '@/lib/api-utils'
+import { upscaleGoogleImage } from '@travyl/shared'
 
 interface BackendPlace {
   id: string
@@ -28,6 +29,8 @@ interface BackendPlace {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'tripadvisor', 20, 60000)
+  if (rl) return rl
   const lat = req.nextUrl.searchParams.get('lat')
   const lng = req.nextUrl.searchParams.get('lng')
   const category = getOptionalParam(req, 'category', 'restaurants')
@@ -56,9 +59,9 @@ export async function GET(req: NextRequest) {
     const results = data.map((place) => {
       const placeLat = place.latitude ?? place.lat ?? 0
       const placeLng = place.longitude ?? place.lng ?? 0
-      const mainPhoto = place.photo_url || null
+      const mainPhoto = upscaleGoogleImage(place.photo_url) ?? place.photo_url ?? null
       const images = place.photos?.length
-        ? place.photos
+        ? place.photos.map((p: string) => upscaleGoogleImage(p) ?? p)
         : mainPhoto
           ? [mainPhoto]
           : []

@@ -146,7 +146,7 @@ export function CardPopover({
             zIndex: 100,
             transformOrigin: pos.side === 'left' ? 'right center' : 'left center',
           }}
-          className="rounded-xl border border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] shadow-xl overflow-hidden"
+          className="rounded-xl border border-cal-border bg-cal-surface-elevated shadow-xl overflow-hidden"
         >
           {/* Arrow */}
           <div
@@ -181,7 +181,7 @@ export function CardPopover({
 
           {/* Content */}
           <div className="px-3 pt-2.5 pb-3">
-            <h3 className="text-sm font-bold text-[var(--cal-text)] leading-tight">
+            <h3 className="text-sm font-bold text-cal-text leading-tight">
               {title}
             </h3>
 
@@ -197,8 +197,8 @@ export function CardPopover({
               </span>
               {duration && (
                 <>
-                  <span className="text-[10px] text-[var(--cal-text-tertiary)]">·</span>
-                  <span className="text-[10px] text-[var(--cal-text-secondary)]">{duration}</span>
+                  <span className="text-[10px] text-cal-text-tertiary">·</span>
+                  <span className="text-[10px] text-cal-text-secondary">{duration}</span>
                 </>
               )}
             </div>
@@ -211,20 +211,20 @@ export function CardPopover({
                   </span>
                 )}
                 {price && (
-                  <span className="text-[var(--cal-text-secondary)] font-medium">{price}</span>
+                  <span className="text-cal-text-secondary font-medium">{price}</span>
                 )}
               </div>
             )}
 
             {description && (
-              <p className="text-[11px] text-[var(--cal-text-secondary)] mt-2 line-clamp-3 leading-relaxed">
+              <p className="text-[11px] text-cal-text-secondary mt-2 line-clamp-3 leading-relaxed">
                 {description}
               </p>
             )}
 
             {actions.length > 0 && (
               <>
-                <div className="border-t border-[var(--cal-border-light)] mt-2.5 mb-2" />
+                <div className="border-t border-cal-border-light mt-2.5 mb-2" />
                 <div className="flex justify-end gap-1.5">
                   {actions.map((action) => (
                     <button
@@ -238,10 +238,10 @@ export function CardPopover({
                       className={[
                         'text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors',
                         action.variant === 'primary'
-                          ? 'bg-[#003594] text-white hover:bg-[#002a7a] disabled:opacity-50 disabled:cursor-not-allowed'
+                          ? 'bg-primary text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed'
                           : action.variant === 'danger'
-                            ? 'text-[var(--cal-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
-                            : 'text-[var(--cal-text-secondary)] hover:text-[var(--cal-text)] hover:bg-[var(--cal-border-light)]',
+                            ? 'text-cal-text-secondary hover:text-red-500 hover:bg-red-500/10'
+                            : 'text-cal-text-secondary hover:text-cal-text hover:bg-cal-border-light',
                       ].join(' ')}
                     >
                       {action.label}

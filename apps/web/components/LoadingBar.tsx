@@ -1,45 +1,16 @@
-import { useEffect, useState } from 'react';
+'use client'
 
 interface LoadingBarProps {
-  isLoading: boolean;
+  isLoading: boolean
 }
 
 export function LoadingBar({ isLoading }: LoadingBarProps) {
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    if (!isLoading) {
-      setProgress(0);
-      return;
-    }
-
-    setProgress(10);
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) return prev;
-        return prev + Math.random() * 10;
-      });
-    }, 300);
-
-    return () => clearInterval(interval);
-  }, [isLoading]);
-
-  useEffect(() => {
-    if (!isLoading && progress > 0) {
-      setProgress(100);
-      const timeout = setTimeout(() => setProgress(0), 300);
-      return () => clearTimeout(timeout);
-    }
-  }, [isLoading, progress]);
-
-  if (progress === 0) return null;
+  if (!isLoading) return null
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50">
-      <div 
-        className="h-1 bg-blue-600 transition-all duration-300 ease-out"
-        style={{ width: `${progress}%` }}
-      />
+    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200 dark:bg-gray-800 overflow-hidden">
+      <div className="h-full bg-[#1e3a5f] animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '30%' }} />
+      <style>{`@keyframes loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
     </div>
-  );
+  )
 }

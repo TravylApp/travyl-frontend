@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { TextStyles } from '@travyl/shared';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 import { TimeGroupSection } from './TimeGroupSection';
 
@@ -19,7 +20,7 @@ export function DayView({ day }: DayViewProps) {
           paddingHorizontal: 4,
         }}>
           <FontAwesome name="flag" size={13} color="#6b7280" />
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#1f2937' }}>
+          <Text style={{ ...TextStyles.subhead, color: '#1f2937' }}>
             {day.theme}
           </Text>
         </View>
@@ -37,7 +38,7 @@ export function DayView({ day }: DayViewProps) {
           borderWidth: 1,
           borderColor: '#f3f4f6',
         }}>
-          <Text style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic', lineHeight: 18 }}>
+          <Text style={{ ...TextStyles.body, color: '#6b7280', fontStyle: 'italic' }}>
             {day.notes}
           </Text>
         </View>

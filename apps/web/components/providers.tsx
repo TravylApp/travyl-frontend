@@ -4,9 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
+
+// Configure supabase at module load — before any component renders or auth initializes
+configureSupabase(getSupabaseBrowser());
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
 import { Toaster } from './ui/sonner';
+import { OnboardingOverlay } from './onboarding';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -22,10 +26,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
 
   const initialize = useAuthStore((s) => s.initialize);
-
-  // Configure synchronously during render so child component effects see the
-  // cookie-based client. useEffect fires after child effects, which is too late.
-  configureSupabase(getSupabaseBrowser());
 
   useEffect(() => {
     const unsubscribe = initialize();
@@ -57,6 +57,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <GlobalNavbar />
       {children}
       <SpotlightSearch />
+      <OnboardingOverlay />
       <Toaster />
     </QueryClientProvider>
   );

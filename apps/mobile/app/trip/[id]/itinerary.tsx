@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
-import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions } from 'react-native';
+import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,12 +23,25 @@ import {
   TextStyles,
   FontSize,
   FontFamily,
+  supabase,
 } from '@travyl/shared';
-import type { MockFlightDetail, MockHotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
-import MapView, { Marker } from 'react-native-maps';
+import type { FlightDetail, HotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
+import Constants from 'expo-constants';
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+let MapView: any = View;
+let Marker: any = View;
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch {}
+}
 import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
 import { PageTransition, TabCtx, useTabAccent } from './_layout';
@@ -37,13 +50,19 @@ import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
 function parseHour(timeStr: string | null): number | null {
   if (!timeStr) return null;
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return null;
-  let hour = parseInt(match[1], 10);
-  const period = match[3].toUpperCase();
-  if (period === 'PM' && hour !== 12) hour += 12;
-  if (period === 'AM' && hour === 12) hour = 0;
-  return hour;
+  // Try "9:00 AM" / "9:00 PM" format
+  const ampm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (ampm) {
+    let hour = parseInt(ampm[1], 10);
+    const period = ampm[3].toUpperCase();
+    if (period === 'PM' && hour !== 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return hour;
+  }
+  // Try "09:00" / "14:30" (24h format)
+  const h24 = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (h24) return parseInt(h24[1], 10);
+  return null;
 }
 
 // ─── Match itinerary activity → DiscoverItem by keyword overlap ──────
@@ -85,28 +104,31 @@ function buildDiscoverItems(trip: any): any[] {
 
 // ─── DayMap — activity markers + explore mode at bottom of itinerary ─
 
-// Generate mock coordinates spread around destination center for each activity
-function mockActivityCoords(index: number, total: number, centerLat: number, centerLng: number): { lat: number; lng: number } {
-  const spread = 0.018; // ~1.8km radius
-  const angle = (index / Math.max(total, 1)) * 2 * Math.PI;
-  const r = spread * (0.4 + (index % 3) * 0.3);
-  return {
-    lat: centerLat + r * Math.sin(angle),
-    lng: centerLng + r * Math.cos(angle),
-  };
+// Return real coordinates for an activity, or null if unavailable
+function realActivityCoords(activity: ActivityViewModel): { lat: number; lng: number } | null {
+  const lat = (activity as any).latitude ?? (activity as any).lat;
+  const lng = (activity as any).longitude ?? (activity as any).lng ?? (activity as any).lon;
+  if (typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0) {
+    return { lat, lng };
+  }
+  return null;
 }
 
-function buildMarkers(activities: ActivityViewModel[], accent: string, centerLat: number, centerLng: number): MapMarker[] {
-  return activities.map((a, i) => {
-    const coords = mockActivityCoords(i, activities.length, centerLat, centerLng);
-    return {
-      lat: coords.lat,
-      lng: coords.lng,
-      label: a.name,
-      color: accent,
-      number: i + 1,
-    };
+function buildMarkers(activities: ActivityViewModel[], accent: string, _centerLat: number, _centerLng: number): MapMarker[] {
+  const markers: MapMarker[] = [];
+  activities.forEach((a, i) => {
+    const coords = realActivityCoords(a);
+    if (coords) {
+      markers.push({
+        lat: coords.lat,
+        lng: coords.lng,
+        label: a.name,
+        color: accent,
+        number: i + 1,
+      });
+    }
   });
+  return markers;
 }
 
 function CollapsibleSection({ title, icon, accent, count, defaultOpen = false, children }: {
@@ -265,7 +287,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
   const focusStop = useCallback((index: number) => {
     setSelectedStop((prev) => {
       if (prev === index) {
-        mapRef.current?.animateToRegion({
+        typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
           latitude: centerLat,
           longitude: centerLng,
           latitudeDelta: 0.05,
@@ -275,7 +297,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
       }
       const m = markers[index];
       if (m) {
-        mapRef.current?.animateToRegion({
+        typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
           latitude: m.lat,
           longitude: m.lng,
           latitudeDelta: 0.01,
@@ -307,7 +329,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
             lat: i.lat!,
             lng: i.lng!,
             label: i.name,
-            color: '#94a3b8',
+            color: colors.textTertiary,
             muted: true,
           }))
       : [],
@@ -370,12 +392,14 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
           </Pressable>
           {/* Recenter button */}
           <Pressable
-            onPress={() => mapRef.current?.animateToRegion({
-              latitude: centerLat,
-              longitude: centerLng,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }, 400)}
+            onPress={() => {
+              if (typeof mapRef.current?.animateToRegion === 'function') {
+                mapRef.current.animateToRegion({
+                  latitude: centerLat, longitude: centerLng,
+                  latitudeDelta: 0.05, longitudeDelta: 0.05,
+                }, 400);
+              }
+            }}
             style={{
               position: 'absolute', top: 52, left: 16,
               width: 32, height: 32, borderRadius: 16,
@@ -561,7 +585,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
                       )}
                     </View>
                     {item.price && (
-                      <Text style={{ ...TextStyles.captionEm, color: '#6366f1', marginTop: 3 }}>
+                      <Text style={{ ...TextStyles.captionEm, color: colors.tint, marginTop: 3 }}>
                         {item.dealPrice ?? item.price}
                       </Text>
                     )}
@@ -639,64 +663,267 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
 
 // ─── MobileCalendarView ─────────────────────────────────────
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 12 AM to 11 PM (full 24h)
+const HOUR_HEIGHT = 64;
 
-function MobileCalendarView({ days, selectedDayIndex }: { days: any[]; selectedDayIndex: number }) {
-  const colors = useThemeColors();
-  const selectedDay = days[selectedDayIndex];
-  if (!selectedDay) return null;
+/** Parse duration between two time strings in hours */
+function parseDuration(start: string, end?: string): number {
+  if (!end) return 1;
+  const s = parseHour(start) ?? 0;
+  const e = parseHour(end) ?? 0;
+  const diff = e - s;
+  return diff > 0 ? Math.min(diff, 4) : 1;
+}
 
-  // Collect all activities from all time groups
-  const allActivities = selectedDay.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
+/** Activity block for the calendar grid — tap to view, long-press to select for moving */
+function CalendarBlock({ activity, startH, duration, bgColor, isSelected, onTap, onLongPress }: {
+  activity: any; startH: number; duration: number; bgColor: string;
+  isSelected: boolean;
+  onTap: () => void;
+  onLongPress: () => void;
+}) {
+  const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.6);
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
-      {HOURS.map((hour) => {
-        const timeLabel = hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
-        const activities = allActivities.filter((a: any) => {
-          if (!a.startTime) return false;
-          const actHour = parseHour(a.startTime);
-          return actHour === hour;
-        });
+    <Pressable
+      onPress={onTap}
+      onLongPress={onLongPress}
+      delayLongPress={250}
+      style={({ pressed }) => ({
+        position: 'absolute',
+        top: startH * HOUR_HEIGHT + 2,
+        left: 2, right: 2, height,
+        backgroundColor: bgColor,
+        borderRadius: 6,
+        borderLeftWidth: 3,
+        borderLeftColor: adjustBrightness(bgColor, -40),
+        paddingHorizontal: 4, paddingVertical: 3,
+        overflow: 'hidden',
+        opacity: pressed ? 0.8 : 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: isSelected ? 4 : 1 },
+        shadowOpacity: isSelected ? 0.3 : 0.1,
+        shadowRadius: isSelected ? 6 : 2,
+        elevation: isSelected ? 8 : 2,
+        borderWidth: isSelected ? 2 : 0,
+        borderColor: '#fff',
+        transform: [{ scale: isSelected ? 1.03 : 1 }],
+        zIndex: isSelected ? 100 : 1,
+      })}
+    >
+      <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }} numberOfLines={1}>{activity.name}</Text>
+      {height > 35 && (
+        <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)' }} numberOfLines={1}>
+          {activity.startTime}
+        </Text>
+      )}
+      {height > 55 && activity.locationName && (
+        <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)' }} numberOfLines={1}>
+          {activity.locationName}
+        </Text>
+      )}
+      {isSelected && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 6, borderStyle: 'dashed' }} />
+      )}
+    </Pressable>
+  );
+}
 
-        return (
-          <View key={hour} style={{ flexDirection: 'row', minHeight: 52, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
-            {/* Hour label */}
-            <View style={{ width: 48, paddingRight: 8, paddingTop: 4, alignItems: 'flex-end' }}>
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{timeLabel}</Text>
-            </View>
-            {/* Activities in this hour */}
-            <View style={{ flex: 1, paddingVertical: 2, paddingHorizontal: 4, gap: 2 }}>
+function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSelectActivity, onMoveActivity, onSelectDay }: {
+  days: any[];
+  selectedDayIndex: number;
+  visibleDayCount?: 1 | 3 | 7;
+  onSelectActivity?: (activity: any) => void;
+  onMoveActivity?: (activityId: string, newHour: number, newDayIndex: number) => void;
+  onSelectDay?: (index: number) => void;
+}) {
+  const colors = useThemeColors();
+  const { width: SCREEN_W } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+  const [editActivity, setEditActivity] = useState<any | null>(null);
+
+  const VISIBLE_DAYS = Math.min(visibleDayCount, days.length);
+  const GUTTER_W = 44;
+  const DAY_COL_W = (SCREEN_W - GUTTER_W - 8) / VISIBLE_DAYS;
+
+  // Day range start — syncs with parent selectedDayIndex
+  const [rangeStart, setRangeStart] = useState(Math.max(0, selectedDayIndex - Math.floor(VISIBLE_DAYS / 2)));
+
+  // Sync when parent day selector changes
+  useEffect(() => {
+    const newStart = visibleDayCount === 1 ? selectedDayIndex : Math.max(0, Math.min(days.length - VISIBLE_DAYS, selectedDayIndex - Math.floor(VISIBLE_DAYS / 2)));
+    setRangeStart(newStart);
+  }, [selectedDayIndex, visibleDayCount]);
+  const visibleDays = days.slice(rangeStart, rangeStart + VISIBLE_DAYS);
+
+  // Tap-to-move: long-press selects an activity, then tap an empty time slot to move it
+  const [movingActivityId, setMovingActivityId] = useState<string | null>(null);
+
+  // Scroll to 8 AM on mount
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollTo({ y: 8 * HOUR_HEIGHT, animated: false }), 100);
+  }, [rangeStart]);
+
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+
+  // Navigate day range
+  const canGoLeft = rangeStart > 0;
+  const canGoRight = rangeStart + VISIBLE_DAYS < days.length;
+
+  return (
+    <>
+    {/* ── Day column headers ── */}
+    <View style={{ flexDirection: 'row', paddingLeft: GUTTER_W, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+      {visibleDays.map((day, i) => (
+        <View key={day.id} style={{ width: DAY_COL_W, paddingVertical: 6, alignItems: 'center', borderLeftWidth: i > 0 ? 1 : 0, borderLeftColor: colors.borderLight }}>
+          <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{day.dateLabel || day.dayLabel}</Text>
+          <Text style={{ ...TextStyles.captionEm, color: colors.text }}>Day {day.dayNumber}</Text>
+        </View>
+      ))}
+    </View>
+
+    {/* ── Time grid with multi-day columns ── */}
+    <ScrollView
+      ref={scrollRef}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ flexDirection: 'row' }}>
+        {/* ── Hour gutter ── */}
+        <View style={{ width: GUTTER_W }}>
+          {HOURS.map((hour) => {
+            const label = hour === 0 ? '12a' : hour === 12 ? '12p' : hour < 12 ? `${hour}a` : `${hour - 12}p`;
+            return (
+              <View key={hour} style={{ height: HOUR_HEIGHT, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 4 }}>
+                <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── Day columns ── */}
+        {visibleDays.map((day, colIdx) => {
+          const dayIdx = rangeStart + colIdx;
+          const activities = day.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
+
+          return (
+            <View key={day.id} style={{ width: DAY_COL_W, position: 'relative', borderLeftWidth: 1, borderLeftColor: colors.borderLight }}>
+              {/* Grid lines */}
+              {HOURS.map((hour) => (
+                <View key={hour} style={{ position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: 1, backgroundColor: colors.borderLight }} />
+              ))}
+
+              {/* Current time line */}
+              {currentHour >= 0 && currentHour <= 24 && (
+                <View style={{ position: 'absolute', top: currentHour * HOUR_HEIGHT, left: 0, right: 0, height: 2, backgroundColor: colors.error, zIndex: 10 }}>
+                  {colIdx === 0 && <View style={{ position: 'absolute', left: -3, top: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error }} />}
+                </View>
+              )}
+
+              {/* Tap empty slot to place moving activity */}
+              {movingActivityId && HOURS.map((hour) => (
+                <Pressable
+                  key={`slot-${hour}`}
+                  onPress={() => {
+                    onMoveActivity?.(movingActivityId, hour, dayIdx);
+                    setMovingActivityId(null);
+                  }}
+                  style={{
+                    position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: HOUR_HEIGHT,
+                    backgroundColor: 'transparent', zIndex: 0,
+                  }}
+                />
+              ))}
+
+              {/* Activity blocks */}
               {activities.map((activity: any) => {
+                const startH = parseHour(activity.startTime) ?? 0;
+                const duration = parseDuration(activity.startTime, activity.endTime);
+                if (startH < 0 || startH > 23) return null;
                 const bgColor = getActivityTypeColor(activity.category).primary;
+
                 return (
-                  <View
+                  <CalendarBlock
                     key={activity.id}
-                    style={{
-                      backgroundColor: bgColor,
-                      paddingHorizontal: 8,
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      borderLeftWidth: 3,
-                      borderLeftColor: adjustBrightness(bgColor, -30),
+                    activity={activity}
+                    startH={startH}
+                    duration={duration}
+                    bgColor={bgColor}
+                    isSelected={movingActivityId === activity.id}
+                    onTap={() => {
+                      if (movingActivityId === activity.id) {
+                        setMovingActivityId(null); // deselect
+                      } else if (movingActivityId) {
+                        setMovingActivityId(null); // cancel move, select new
+                      } else {
+                        onSelectActivity?.(activity); // view details
+                      }
                     }}
-                  >
-                    <Text style={{ ...TextStyles.captionEm, color: '#fff' }} numberOfLines={1}>
-                      {activity.name}
-                    </Text>
-                    {activity.startTime && (
-                      <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.7)' }}>
-                        {activity.startTime}{activity.endTime ? ` - ${activity.endTime}` : ''}
-                      </Text>
-                    )}
-                  </View>
+                    onLongPress={() => setMovingActivityId(activity.id)}
+                  />
                 );
               })}
+
+              {/* Moving indicator banner */}
+              {movingActivityId && (
+                <View style={{
+                  position: 'absolute', top: 0, left: 0, right: 0,
+                  backgroundColor: colors.info, paddingVertical: 3,
+                  alignItems: 'center', zIndex: 200,
+                }}>
+                  <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }}>Tap a time slot to move</Text>
+                </View>
+              )}
+
+              {/* Spacer */}
+              <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
             </View>
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
     </ScrollView>
+
+    {/* ── Edit Activity Sheet ── */}
+    {editActivity && (
+      <Modal visible transparent animationType="slide" onRequestClose={() => setEditActivity(null)}>
+        <Pressable onPress={() => setEditActivity(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} />
+        <View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          backgroundColor: colors.cardBackground,
+          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          paddingBottom: 40, paddingHorizontal: 20, paddingTop: 16,
+        }}>
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+          <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }}>{editActivity.name}</Text>
+          <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 12 }}>
+            {editActivity.timeDisplay || editActivity.startTime} · {editActivity.category}
+          </Text>
+          {editActivity.locationName && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{editActivity.locationName}</Text>
+            </View>
+          )}
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+            <Pressable onPress={() => { onSelectActivity?.(editActivity); setEditActivity(null); }}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: getActivityTypeColor(editActivity.category).primary }}>
+              <FontAwesome name="info-circle" size={14} color="#fff" />
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>View Details</Text>
+            </Pressable>
+            <Pressable onPress={() => setEditActivity(null)}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+              <FontAwesome name="times" size={14} color={colors.textSecondary} />
+              <Text style={{ ...TextStyles.bodyLgEm, color: colors.textSecondary }}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -793,7 +1020,7 @@ function ItinerarySkeleton() {
 
 // ─── FlightSection (inline) ─────────────────────────────────
 
-function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collapsed?: boolean }) {
+function FlightSection({ flight, collapsed }: { flight: FlightDetail; collapsed?: boolean }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const [expanded, setExpanded] = useState(false);
@@ -830,7 +1057,7 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{label}</Text>
                 {flight.isBooked && (
-                  <View style={{ backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                  <View style={{ backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
                     <Text style={{ ...TextStyles.smEm, color: '#fff' }}>Booked</Text>
                   </View>
                 )}
@@ -855,7 +1082,7 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
           backgroundColor: colors.cardBackground,
           borderRadius: 12,
           borderWidth: 1,
-          borderColor: '#bfdbfe',
+          borderColor: colors.info,
           overflow: 'hidden',
           shadowColor: colors.shadow,
           shadowOffset: { width: 0, height: 1 },
@@ -894,7 +1121,7 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
                   </View>
                 </View>
                 <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginTop: 12 }}>{flight.duration}</Text>
-                <Text style={{ ...TextStyles.smEm, color: '#10b981' }}>Direct</Text>
+                <Text style={{ ...TextStyles.smEm, color: colors.success }}>Direct</Text>
               </View>
 
               {/* Arrival */}
@@ -992,7 +1219,7 @@ function FlightSection({ flight, collapsed }: { flight: MockFlightDetail; collap
 
 // ─── HotelSection (inline) ──────────────────────────────────
 
-function HotelSection({ hotel, label, collapsed }: { hotel: MockHotelDetail; label: string; collapsed?: boolean }) {
+function HotelSection({ hotel, label, collapsed }: { hotel: HotelDetail; label: string; collapsed?: boolean }) {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const [expanded, setExpanded] = useState(false);
@@ -1603,13 +1830,13 @@ function AddActivityPanel({ dayIndex, timeOfDay, days, onAddActivity, discoverPo
 
   const handleQuickFill = useCallback((filter: string | null) => {
     const allIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
-    const item = pickRandomActivity(filter, allIds);
+    const item = pickRandomActivity(filter, allIds, discoverPool);
     if (item) {
       onAddActivity(dayIndex, timeOfDay, item.name, item.category || 'activity');
     }
     setOpen(false);
     setQuery('');
-  }, [days, dayIndex, timeOfDay, onAddActivity]);
+  }, [days, dayIndex, timeOfDay, onAddActivity, discoverPool]);
 
   if (!open) {
     return (
@@ -2004,6 +2231,7 @@ export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const { tripId: id } = useContext(TabCtx);
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
   const { trip, days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
   const centerLat = trip?.trip_context?.lat ?? 0;
@@ -2016,7 +2244,7 @@ export default function ItineraryScreen() {
     if (!h) return { name: 'Hotel', address: '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: '', stars: 3, rating: 0 };
     return { name: h.name, address: h.address || '', checkInTime: '3:00 PM', checkOutTime: '11:00 AM', image: h.image || h.photo_url || '', stars: h.stars || 3, rating: h.rating || 0 };
   }, [trip]);
-  const { calendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
+  const { calendarOpen, setCalendarOpen, mapOpen, setMapOpen, theme, itineraryColorOverrides, setHeroImageOverride } = useContext(TabCtx);
   const isFocused = useIsFocused();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [allCollapsedOverride, setAllCollapsedOverride] = useState<boolean | null>(null);
@@ -2027,6 +2255,7 @@ export default function ItineraryScreen() {
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [openPlace, setOpenPlace] = useState<import('@travyl/shared').PlaceItem | null>(null);
   const [viewMode, setViewMode] = useState<'glance' | 'detailed'>('glance');
+  const [calDayCount, setCalDayCount] = useState<1 | 3 | 7>(3);
 
   // ─── Local mutable copy of days for glance add/remove/regenerate ───
   const [glanceDays, setGlanceDays] = useState<ItineraryDayViewModel[]>([]);
@@ -2060,7 +2289,7 @@ export default function ItineraryScreen() {
       const allIds = prev.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
       const current = prev[dayIndex]?.timeGroups.flatMap((g) => g.activities).find((a) => a.id === activityId);
       if (!current) return prev;
-      const replacement = pickRandomActivity(current.category, allIds);
+      const replacement = pickRandomActivity(current.category, allIds, discoverPool);
       if (!replacement) return prev;
       return prev.map((day, di) => {
         if (di !== dayIndex) return day;
@@ -2076,7 +2305,7 @@ export default function ItineraryScreen() {
         };
       });
     });
-  }, []);
+  }, [discoverPool]);
 
   const addGlanceActivity = useCallback((dayIndex: number, timeOfDay: string, name: string, category: string) => {
     const newAct: ActivityViewModel = {
@@ -2084,6 +2313,8 @@ export default function ItineraryScreen() {
       name,
       image: '',
       category,
+      cost: null,
+      costCurrency: null,
       locationName: null,
       startTime: TOD_START_TIMES[timeOfDay] ?? '12:00 PM',
       endTime: formatHourToTime((TOD_START_HOURS[timeOfDay] ?? 12) + 1.5),
@@ -2106,6 +2337,38 @@ export default function ItineraryScreen() {
       };
     }));
   }, []);
+
+  // Persist reordered day to Supabase (fire-and-forget)
+  const persistReorderedDay = useCallback(async (dayIndex: number, activities: ActivityViewModel[]) => {
+    if (!trip || !id) return;
+    try {
+      const startDate = trip.start_date || new Date().toISOString().split('T')[0];
+      const dayDate = new Date(startDate);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      const dayDateStr = dayDate.toISOString().split('T')[0];
+
+      const { data: tripData } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      if (!tripData?.trip_context) return;
+
+      const itinerary = tripData.trip_context.itinerary || [];
+      const dayIdx = itinerary.findIndex((d: any) => d.date === dayDateStr);
+      if (dayIdx < 0) return;
+
+      // Preserve existing POI data (lat/lng/photo), just reorder slots
+      const existingPois = new Map<string, any>();
+      for (const slot of itinerary[dayIdx].slots || []) {
+        if (slot.poi?.name) existingPois.set(slot.poi.name, slot.poi);
+      }
+      itinerary[dayIdx].slots = activities.map((a) => ({
+        start_time: a.startTime?.replace(/\s?(AM|PM)/i, '') || '09:00',
+        end_time: a.endTime?.replace(/\s?(AM|PM)/i, '') || '10:00',
+        poi: existingPois.get(a.name) || { id: a.id, name: a.name, category: a.category },
+      }));
+
+      await supabase.from('trips').update({ trip_context: { ...tripData.trip_context, itinerary } }).eq('id', id);
+    } catch (e) {
+    }
+  }, [trip, id]);
 
   const reorderGlanceDay = useCallback((dayIndex: number, reorderedActivities: ActivityViewModel[]) => {
     setGlanceDays((prev) => {
@@ -2189,9 +2452,13 @@ export default function ItineraryScreen() {
             };
           }),
       };
+      // Persist reordered day async
+      const allActivities = next[dayIndex].timeGroups.flatMap(g => g.activities);
+      persistReorderedDay(dayIndex, allActivities);
+
       return next;
     });
-  }, []);
+  }, [persistReorderedDay]);
 
   const updateActivityTime = useCallback((dayIndex: number, activityId: string, newTime: string) => {
     setGlanceDays((prev) => {
@@ -2207,9 +2474,12 @@ export default function ItineraryScreen() {
           ),
         })),
       };
+      // Persist to Supabase — collect all activities from updated day
+      const allActivities = next[dayIndex].timeGroups.flatMap((g) => g.activities);
+      persistReorderedDay(dayIndex, allActivities);
       return next;
     });
-  }, []);
+  }, [persistReorderedDay]);
 
   // (Map is now a modal overlay — no need to collapse sections)
 
@@ -2365,19 +2635,18 @@ export default function ItineraryScreen() {
     const discoverMatch = discoverMatchMap.get(activity.id);
     if (discoverMatch) { setOpenPlace(discoverItemToPlaceItem(discoverMatch)); return; }
 
-    const idx = allActivities.indexOf(activity);
-    const coords = mockActivityCoords(idx, allActivities.length, centerLat, centerLng);
+    const coords = realActivityCoords(activity);
     setOpenPlace({
       id: activity.id,
       name: activity.name,
       image: '',
       type: 'attraction' as const,
-      rating: 4.5,
+      rating: 0,
       tagline: activity.locationName ?? '',
       category: activity.category ?? 'Activity',
       description: activity.notes ?? undefined,
-      latitude: coords.lat,
-      longitude: coords.lng,
+      latitude: coords?.lat,
+      longitude: coords?.lng,
       duration: activity.timeDisplay ?? undefined,
       admissionFee: activity.costDisplay ?? undefined,
       website: activity.bookingUrl ?? undefined,
@@ -2468,14 +2737,51 @@ export default function ItineraryScreen() {
             />
           </Pressable>
         )}
-        {/* View Toggle — inline next to collapse button */}
-        {!calendarOpen && (
-          <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
-        )}
+        {/* View Toggle + Calendar button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {!calendarOpen && (
+            <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
+          )}
+          <Pressable
+            onPress={() => setCalendarOpen(!calendarOpen)}
+            style={{
+              width: 32, height: 32, borderRadius: 8,
+              backgroundColor: calendarOpen ? ACCENT : colors.cardBackground,
+              borderWidth: 1, borderColor: calendarOpen ? ACCENT : colors.border,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <FontAwesome name="calendar" size={14} color={calendarOpen ? '#fff' : colors.textSecondary} />
+          </Pressable>
+          {calendarOpen && (
+            <Pressable
+              onPress={() => setCalDayCount(calDayCount === 1 ? 3 : calDayCount === 3 ? 7 : 1)}
+              style={{
+                height: 32, paddingHorizontal: 10, borderRadius: 8,
+                backgroundColor: colors.cardBackground,
+                borderWidth: 1, borderColor: colors.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Text style={{ ...TextStyles.xs, color: colors.text, fontWeight: '700' }}>
+                {calDayCount === 1 ? '1D' : calDayCount === 3 ? '3D' : '7D'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {calendarOpen ? (
-        <MobileCalendarView days={days} selectedDayIndex={selectedDayIndex} />
+        <MobileCalendarView
+          days={effectiveDays}
+          selectedDayIndex={selectedDayIndex}
+          visibleDayCount={calDayCount}
+          onSelectActivity={(a) => setSelectedActivityId(a.id)}
+          onSelectDay={setSelectedDayIndex}
+          onMoveActivity={(activityId, newHour, newDayIdx) => {
+            // TODO: persist move to Supabase — update activity starting_time and starting_date
+          }}
+        />
       ) : viewMode === 'glance' ? (
         <GlancePager
           days={effectiveDays}
@@ -2615,6 +2921,8 @@ export default function ItineraryScreen() {
           initialIndex={Math.max(0, allPlacesFromDiscover.findIndex((p) => p.id === openPlace.id))}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setSelectedActivityId(null)}
         />

@@ -1,0 +1,34 @@
+appId: host.exp.Exponent
+---
+
+# ── Places (current) ──
+- takeScreenshot: audit-mobile-01-places
+
+# ── Trips tab (3rd icon from left at ~50%) ──
+- tapOn:
+    point: "220,920"
+- waitForAnimationToEnd
+- takeScreenshot: audit-mobile-02-trips
+
+# ── Profile tab (4th icon, rightmost ~85%) ──
+- tapOn:
+    point: "380,920"
+- waitForAnimationToEnd
+- takeScreenshot: audit-mobile-03-profile
+
+# ── Discover tab (1st icon, leftmost ~12%) ──
+- tapOn:
+    point: "55,920"
+- waitForAnimationToEnd
+
+# Scroll to top
+- swipe:
+    direction: DOWN
+    duration: 300
+- swipe:
+    direction: DOWN
+    duration: 300
+- swipe:
+    direction: DOWN
+    duration: 300
+- takeScreenshot: audit-mobile-04-home

@@ -123,9 +123,27 @@ export function formatHourToTime(hour: number): string {
   return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-export function pickRandomActivity(_category: string | null, _excludeIds: string[]): DiscoverItem | null {
-  // TODO: Replace with real activity data source
-  return null;
+export function pickRandomActivity(
+  category: string | null,
+  excludeIds: string[],
+  pool?: DiscoverItem[]
+): DiscoverItem | null {
+  // Filter pool by category if specified
+  let candidates = pool ?? [];
+  if (category && candidates.length > 0) {
+    const catLower = category.toLowerCase();
+    candidates = candidates.filter(
+      (item) =>
+        item.category?.toLowerCase().includes(catLower) ||
+        item.tags?.some((t) => t.toLowerCase().includes(catLower))
+    );
+  }
+  // Exclude already-used items
+  const excludeSet = new Set(excludeIds);
+  candidates = candidates.filter((item) => !excludeSet.has(item.id));
+  // Return random candidate or null if empty
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 // ─── Glance Hero Images ────────────────────────────────────

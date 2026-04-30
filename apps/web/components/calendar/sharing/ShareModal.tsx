@@ -4,13 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Trip, CollaboratorRole, LinkPermission } from '@travyl/shared'
-import { useCollaborators, useAuthStore, updateTripVisibility, ensureShareLinkToken, rotateShareLinkToken, supabase } from '@travyl/shared'
+import { useCollaborators, useAuthStore, useProfile, updateTripVisibility, ensureShareLinkToken, rotateShareLinkToken, supabase } from '@travyl/shared'
 import { InviteBar } from './InviteBar'
 import { CollaboratorList } from './CollaboratorList'
 import { LinkSharingSection } from './LinkSharingSection'
 import { PublicSharingSection } from './PublicSharingSection'
-
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
 interface ShareModalProps {
   trip: Trip
@@ -21,6 +19,7 @@ interface ShareModalProps {
 
 export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareModalProps) {
   const user = useAuthStore((s) => s.user)
+  const { data: profile } = useProfile()
   const { collaborators, updateRole, removeCollaborator } = useCollaborators(isOpen ? trip.id : undefined)
   const queryClient = useQueryClient()
   const [isInviting, setIsInviting] = useState(false)
@@ -49,12 +48,10 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
     setInviteError(null)
     setInviteLink(null)
     try {
-      if (!API_URL) throw new Error('Invite service not configured (missing NEXT_PUBLIC_RECOMMENDATION_API_URL)')
-
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      const res = await fetch(`${API_URL}/invite`, {
+      const res = await fetch('/api/calendar/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +119,7 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
     <AnimatePresence>
       {isOpen && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={handleBackdropClick}>
-          <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-md rounded-xl border border-white/10 bg-[#1a1a2e] p-5 shadow-2xl">
+          <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-md rounded-xl border border-white/10 bg-gray-900 p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Share &ldquo;{trip.title}&rdquo;</h2>
               <button onClick={onClose} className="text-white/40 transition-colors hover:text-white">&times;</button>
@@ -151,8 +148,12 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
             )}
             <div className="mb-5">
               <CollaboratorList
+                tripId={trip.id}
+                currentUserId={user?.id ?? null}
+                ownerUserId={trip.user_id ?? null}
                 ownerName={user?.user_metadata?.display_name ?? user?.email ?? 'You'}
                 ownerEmail={user?.email ?? ''}
+                ownerAvatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || null}
                 collaborators={collaborators}
                 onChangeRole={(id, role) => updateRole({ collaboratorId: id, role })}
                 onRemove={removeCollaborator}

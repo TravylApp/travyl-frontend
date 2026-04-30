@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { TextStyles } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
 // ---------------------------------------------------------------------------
@@ -31,8 +32,7 @@ export default function QuickFacts({ place }: QuickFactsProps) {
       <Text
         key={i}
         style={{
-          fontSize: 12,
-          fontWeight: '600',
+          ...TextStyles.bodyEm,
           color: i < place.priceLevel! ? '#fff' : 'rgba(255,255,255,0.2)',
         }}
       >
@@ -95,8 +95,7 @@ export default function QuickFacts({ place }: QuickFactsProps) {
     >
       <Text
         style={{
-          fontSize: 13,
-          fontWeight: '700',
+          ...TextStyles.bodyLgEm,
           color: '#fff',
           marginBottom: 10,
         }}
@@ -117,7 +116,7 @@ export default function QuickFacts({ place }: QuickFactsProps) {
               />
               <Text
                 style={{
-                  fontSize: 10,
+                  ...TextStyles.sm,
                   color: 'rgba(255,255,255,0.5)',
                 }}
               >
@@ -127,8 +126,7 @@ export default function QuickFacts({ place }: QuickFactsProps) {
             {typeof fact.value === 'string' ? (
               <Text
                 style={{
-                  fontSize: 12,
-                  fontWeight: '600',
+                  ...TextStyles.bodyEm,
                   color: '#fff',
                   marginTop: 2,
                 }}

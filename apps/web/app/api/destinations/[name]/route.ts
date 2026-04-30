@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import type { DestinationDetail } from '@travyl/shared'
-import { jsonResponse } from '@/lib/api-utils'
+import { jsonResponse, rateLimit } from '@/lib/api-utils'
 
 // ─── Hardcoded destination metadata ──────────────────────────────────────────
 
@@ -12,7 +12,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'April \u2013 June, September \u2013 October', budgetLevel: 3,
     tags: ['Art & Culture', 'Romance', 'Cuisine', 'Fashion', 'Museums', 'History'],
     latitude: 48.8566, longitude: 2.3522,
-    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80',
+    image: '',
   },
   'london': {
     name: 'London', country: 'United Kingdom',
@@ -21,7 +21,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'June \u2013 August, September \u2013 October', budgetLevel: 4,
     tags: ['History', 'Theatre', 'Museums', 'Parks', 'Shopping', 'Pubs'],
     latitude: 51.5074, longitude: -0.1278,
-    image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=1200&q=80',
+    image: '',
   },
   'tokyo': {
     name: 'Tokyo', country: 'Japan',
@@ -30,7 +30,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'March \u2013 May, October \u2013 November', budgetLevel: 3,
     tags: ['Technology', 'Anime', 'Cuisine', 'Temples', 'Shopping', 'Cherry Blossoms'],
     latitude: 35.6762, longitude: 139.6503,
-    image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&q=80',
+    image: '',
   },
   'new york': {
     name: 'New York', country: 'United States',
@@ -39,7 +39,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'April \u2013 June, September \u2013 November', budgetLevel: 4,
     tags: ['City Life', 'Museums', 'Broadway', 'Skyline', 'Food', 'Fashion'],
     latitude: 40.7128, longitude: -74.006,
-    image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=1200&q=80',
+    image: '',
   },
   'rome': {
     name: 'Rome', country: 'Italy',
@@ -48,7 +48,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'April \u2013 June, September \u2013 October', budgetLevel: 3,
     tags: ['History', 'Archaeology', 'Art', 'Cuisine', 'Architecture', 'Vatican'],
     latitude: 41.9028, longitude: 12.4964,
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&q=80',
+    image: '',
   },
   'barcelona': {
     name: 'Barcelona', country: 'Spain',
@@ -57,7 +57,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'May \u2013 June, September \u2013 October', budgetLevel: 3,
     tags: ['Architecture', 'Beach', 'Nightlife', 'Tapas', 'Gaud\u00ed', 'Football'],
     latitude: 41.3874, longitude: 2.1686,
-    image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=1200&q=80',
+    image: '',
   },
   'dubai': {
     name: 'Dubai', country: 'United Arab Emirates',
@@ -66,7 +66,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'November \u2013 March', budgetLevel: 4,
     tags: ['Luxury', 'Shopping', 'Desert', 'Architecture', 'Modern', 'Beaches'],
     latitude: 25.2048, longitude: 55.2708,
-    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80',
+    image: '',
   },
   'sydney': {
     name: 'Sydney', country: 'Australia',
@@ -75,7 +75,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'September \u2013 November, March \u2013 May', budgetLevel: 3,
     tags: ['Harbour', 'Beaches', 'Outdoors', 'Wildlife', 'Surfing', 'Culture'],
     latitude: -33.8688, longitude: 151.2093,
-    image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=1200&q=80',
+    image: '',
   },
   'bangkok': {
     name: 'Bangkok', country: 'Thailand',
@@ -84,7 +84,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'November \u2013 February', budgetLevel: 1,
     tags: ['Temples', 'Street Food', 'Nightlife', 'Floating Markets', 'Shopping', 'Culture'],
     latitude: 13.7563, longitude: 100.5018,
-    image: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=1200&q=80',
+    image: '',
   },
   'amsterdam': {
     name: 'Amsterdam', country: 'Netherlands',
@@ -93,7 +93,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'April \u2013 May, September \u2013 October', budgetLevel: 3,
     tags: ['Canals', 'Cycling', 'Museums', 'Tulips', 'History', 'Nightlife'],
     latitude: 52.3676, longitude: 4.9041,
-    image: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=1200&q=80',
+    image: '',
   },
   'istanbul': {
     name: 'Istanbul', country: 'Turkey',
@@ -102,7 +102,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'April \u2013 May, September \u2013 November', budgetLevel: 2,
     tags: ['History', 'Architecture', 'Bazaars', 'Bosphorus', 'Culture', 'Cuisine'],
     latitude: 41.0082, longitude: 28.9784,
-    image: 'https://images.unsplash.com/photo-1527838832700-5059252407fa?w=1200&q=80',
+    image: '',
   },
   'singapore': {
     name: 'Singapore', country: 'Singapore',
@@ -111,7 +111,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'February \u2013 April, November \u2013 December', budgetLevel: 4,
     tags: ['Gardens', 'Food', 'Modern Architecture', 'Culture', 'Clean', 'Shopping'],
     latitude: 1.3521, longitude: 103.8198,
-    image: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=1200&q=80',
+    image: '',
   },
   'lisbon': {
     name: 'Lisbon', country: 'Portugal',
@@ -120,7 +120,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'March \u2013 May, September \u2013 October', budgetLevel: 2,
     tags: ['Trams', 'Fado', 'Seafood', 'Architecture', 'Hills', 'Tiles'],
     latitude: 38.7223, longitude: -9.1393,
-    image: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1200&q=80',
+    image: '',
   },
   'prague': {
     name: 'Prague', country: 'Czech Republic',
@@ -129,7 +129,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'May \u2013 June, September \u2013 October', budgetLevel: 2,
     tags: ['Medieval', 'Architecture', 'Beer', 'History', 'Romance', 'Christmas Markets'],
     latitude: 50.0755, longitude: 14.4378,
-    image: 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=1200&q=80',
+    image: '',
   },
   'berlin': {
     name: 'Berlin', country: 'Germany',
@@ -138,7 +138,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'May \u2013 September', budgetLevel: 2,
     tags: ['History', 'Nightlife', 'Art', 'Wall', 'Music', 'Culture'],
     latitude: 52.52, longitude: 13.405,
-    image: 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=1200&q=80',
+    image: '',
   },
   'bali': {
     name: 'Bali', country: 'Indonesia',
@@ -147,7 +147,7 @@ const DESTINATIONS: Record<string, DestinationDetail> = {
     bestTimeToVisit: 'April \u2013 October', budgetLevel: 1,
     tags: ['Beach', 'Temples', 'Rice Terraces', 'Surf', 'Wellness', 'Spirituality'],
     latitude: -8.4095, longitude: 115.1889,
-    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&q=80',
+    image: '',
   },
 }
 
@@ -163,9 +163,11 @@ interface NominatimResult {
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ name: string }> }
 ) {
+  const rl = rateLimit(req, 'destinations-[name]', 60, 60000)
+  if (rl) return rl
   const { name } = await params
   const slug = decodeURIComponent(name).toLowerCase().replace(/-/g, ' ').trim()
 

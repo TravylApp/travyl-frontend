@@ -7,6 +7,7 @@ import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore, LOGIN_DESTINATIONS } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
+import { safeNextPath } from '@/lib/safe-redirect';
 
 export default function LoginPage() {
   return (
@@ -44,7 +45,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace(searchParams.get('next') || '/');
+      router.replace(safeNextPath(searchParams.get('next')));
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {
@@ -113,7 +114,7 @@ function LoginPageInner() {
               <PaperPlane size={16} className="-rotate-12 text-white" />
             </div>
           </div>
-          <p className="text-white/40 text-[10px] tracking-[2px] uppercase">March 2026 &bull; Issue 024</p>
+          <p className="text-white/40 text-[10px] tracking-[2px] uppercase">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} &bull; Issue {String(Math.floor((Date.now() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))).padStart(3, '0')}</p>
         </div>
 
         {/* Text Content */}

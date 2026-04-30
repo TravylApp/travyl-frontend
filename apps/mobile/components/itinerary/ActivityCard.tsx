@@ -1,6 +1,6 @@
 import { View, Text, Pressable, Image } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { getActivityTypeColor } from '@travyl/shared';
+import { getActivityTypeColor, TextStyles } from '@travyl/shared';
 import type { ActivityViewModel } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -24,7 +24,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
         {/* Image area */}
         <View style={{ height: 140, position: 'relative' }}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
+            <Image source={{ uri: imageUrl, headers: { Referer: '' } }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: typeColor.bg }}>
               <FontAwesome name="picture-o" size={24} color={typeColor.primary + '30'} />
@@ -37,7 +37,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
             backgroundColor: 'rgba(255,255,255,0.85)',
             paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10,
           }}>
-            <Text style={{ fontSize: 9, fontWeight: '600', color: typeColor.primary }}>{activity.category}</Text>
+            <Text style={{ ...TextStyles.xs, color: typeColor.primary }}>{activity.category}</Text>
           </View>
 
           {/* Time badge — bottom-left */}
@@ -49,7 +49,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
               paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10,
             }}>
               <FontAwesome name="clock-o" size={9} color="#fff" />
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff', marginLeft: 3 }}>{activity.timeDisplay}</Text>
+              <Text style={{ ...TextStyles.smEm, color: '#fff', marginLeft: 3 }}>{activity.timeDisplay}</Text>
             </View>
           )}
 
@@ -60,7 +60,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
               backgroundColor: 'rgba(0,0,0,0.5)',
               paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10,
             }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{activity.costDisplay}</Text>
+              <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{activity.costDisplay}</Text>
             </View>
           )}
         </View>
@@ -70,12 +70,12 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
           {activity.locationName && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
               <FontAwesome name="map-marker" size={9} color={colors.textTertiary} style={{ marginRight: 4 }} />
-              <Text style={{ fontSize: 10, color: colors.textTertiary }} numberOfLines={1}>{activity.locationName}</Text>
+              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }} numberOfLines={1}>{activity.locationName}</Text>
             </View>
           )}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }} numberOfLines={1}>{activity.name}</Text>
+          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }} numberOfLines={1}>{activity.name}</Text>
           {activity.notes && (
-            <Text style={{ fontSize: 10, color: colors.textSecondary, lineHeight: 14, marginTop: 2 }} numberOfLines={2}>{activity.notes}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginTop: 2 }} numberOfLines={2}>{activity.notes}</Text>
           )}
         </View>
       </View>

@@ -1,8 +1,9 @@
 import { useState, useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, deleteTrip } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -31,26 +32,26 @@ const SHARING_SETTINGS: SettingToggle[] = [
   { key: 'sharePhotos', label: 'Auto-Share Photos', description: 'Share trip photos with group', icon: 'camera', defaultValue: false },
 ];
 
-// ─── Initial mock data ────────────────────────────────────────
+// ─── Empty initial state — populated from real user data when available ──
 
 const INITIAL_PROFILE = {
-  firstName: 'Alex',
-  lastName: 'Rivera',
-  email: 'alex.rivera@email.com',
-  phone: '+1 (555) 123-4567',
-  dob: '1992-06-15',
-  nationality: 'United States',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dob: '',
+  nationality: '',
 };
 
 const INITIAL_DOCUMENTS = {
-  passportNumber: 'X12345678',
-  passportExpiry: '2029-03-20',
+  passportNumber: '',
+  passportExpiry: '',
 };
 
 const INITIAL_EMERGENCY = {
-  name: 'Jordan Rivera',
-  phone: '+1 (555) 987-6543',
-  relationship: 'Sibling',
+  name: '',
+  phone: '',
+  relationship: '',
 };
 
 interface SavedCard {
@@ -60,11 +61,7 @@ interface SavedCard {
   isDefault: boolean;
 }
 
-const INITIAL_CARDS: SavedCard[] = [
-  { id: '1', brand: 'Visa', last4: '4242', isDefault: true },
-  { id: '2', brand: 'Mastercard', last4: '8888', isDefault: false },
-  { id: '3', brand: 'Amex', last4: '1234', isDefault: false },
-];
+const INITIAL_CARDS: SavedCard[] = [];
 
 // ─── Reusable components ──────────────────────────────────────
 
@@ -126,7 +123,7 @@ function ToggleRow({
         value={value}
         onValueChange={onToggle}
         trackColor={{ false: colors.border, true: accentColor + '60' }}
-        thumbColor={value ? accentColor : '#f4f3f4'}
+        thumbColor={value ? accentColor : colors.border}
         ios_backgroundColor="#e5e7eb"
       />
     </View>
@@ -175,8 +172,11 @@ function SettingsInput({
 // ─── Main screen ──────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { trip, isLoading } = useItineraryScreen(id);
   const { theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors } = useContext(TabCtx);
   const colors = useThemeColors();
@@ -225,19 +225,36 @@ export default function SettingsScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Wire to API
-            router.back();
+          onPress: async () => {
+            try {
+              await deleteTrip(id);
+              queryClient.invalidateQueries({ queryKey: ['trips'] });
+              router.replace('/(tabs)/trips');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to delete trip. Please try again.');
+            }
           },
         },
       ]
     );
   };
 
-  // Save / Discard handlers
-  const handleSave = () => {
-    // TODO: Wire to API
-    setDirty(false);
+  // Save / Discard handlers — persist preference state locally so the user
+  // gets real feedback and the chosen units/currency stick across launches.
+  // (Profile/documents/emergency/cards remain in-memory until a backend
+  // endpoint exists; surfacing an alert is more honest than a silent no-op.)
+  const handleSave = async () => {
+    try {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem(
+        `travyl-trip-prefs-${id}`,
+        JSON.stringify({ currency, dateFormat, language, timeFormat, distanceUnit, temperatureUnit, notifications }),
+      );
+      setDirty(false);
+      Alert.alert('Saved', 'Your trip settings have been saved.');
+    } catch (e) {
+      Alert.alert('Save failed', 'Could not save settings. Please try again.');
+    }
   };
 
   const handleDiscard = () => {
@@ -268,12 +285,13 @@ export default function SettingsScreen() {
   };
 
   const handleAddCard = () => {
-    const newId = String(Date.now());
-    setCards((prev) => [
-      ...prev,
-      { id: newId, brand: 'Visa', last4: String(Math.floor(1000 + Math.random() * 9000)), isDefault: false },
-    ]);
-    setDirty(true);
+    // Real card collection requires PCI-compliant tokenization (Stripe, etc.)
+    // — never generate fake card numbers in the UI. Surface a coming-soon
+    // notice instead of pretending the action worked.
+    Alert.alert(
+      'Coming soon',
+      'Adding payment cards requires secure billing setup. We\'ll wire this up before launch.',
+    );
   };
 
   if (isLoading) {
@@ -634,7 +652,20 @@ export default function SettingsScreen() {
             <Text style={{ ...TextStyles.body, color: colors.textTertiary, textAlign: 'center', marginBottom: 12 }}>
               Share this trip with friends and family to plan together.
             </Text>
-            <Pressable style={{ backgroundColor: '#3b82f6', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={async () => {
+                const { Share } = await import('react-native');
+                const tripUrl = `https://gotravyl.com/trip/${id}`;
+                const dest = trip?.destination ? `to ${trip.destination}` : '';
+                try {
+                  await Share.share({
+                    message: `Join me planning my trip ${dest} on Travyl: ${tripUrl}`,
+                    url: tripUrl,
+                  });
+                } catch {}
+              }}
+              style={{ backgroundColor: colors.info, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
               <FontAwesome name="envelope" size={12} color="#fff" />
               <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Send Invite</Text>
             </Pressable>
@@ -642,15 +673,15 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* Danger zone */}
-        <View style={{ backgroundColor: colors.errorBg, borderRadius: 12, borderWidth: 1, borderColor: '#fecaca', padding: 14, marginBottom: 12 }}>
+        <View style={{ backgroundColor: colors.errorBg, borderRadius: 12, borderWidth: 1, borderColor: colors.error, padding: 14, marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <FontAwesome name="exclamation-triangle" size={14} color="#ef4444" />
-            <Text style={{ ...TextStyles.bodyXlEm, color: '#ef4444' }}>Danger Zone</Text>
+            <Text style={{ ...TextStyles.bodyXlEm, color: colors.error }}>Danger Zone</Text>
           </View>
           <Pressable
             onPress={handleDeleteTrip}
             style={{
-              backgroundColor: '#ef4444',
+              backgroundColor: colors.error,
               paddingVertical: 12,
               borderRadius: 10,
               alignItems: 'center',

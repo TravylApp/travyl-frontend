@@ -7,7 +7,7 @@ export function getSupabaseBrowser(): SupabaseClient {
   if (client) return client
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!url || !key || url.includes('your-project') || url === '') {
     // During static prerendering (build time), env vars may not be available.

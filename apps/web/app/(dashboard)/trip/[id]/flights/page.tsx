@@ -30,7 +30,7 @@ import { useItineraryScreen, useFlights } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 
 /* ================================================================
-   MOCK DATA — Paris trip: JFK <-> CDG
+   TYPES & HELPERS
    ================================================================ */
 
 const POPULAR_AIRPORTS: { code: string; name: string; city: string }[] = [];
@@ -65,7 +65,7 @@ function dbFlightsToBooked(flights: any[], destination?: string): BookedFlight[]
     }
 
     const originCode = d.origin_iata || '';
-    const destCode = d.dest_iata || (destination ? CITY_AIRPORTS[destination] : '') || '';
+    const destCode = d.dest_iata || '';
     const airlineCode = (d.airline || '??').slice(0, 2).toUpperCase();
     const price = d.price ? Math.round(d.price) : 0;
 
@@ -111,20 +111,6 @@ function formatDuration(iso: string): string {
   return `${h}h ${m}m`;
 }
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-}
-
-const CITY_AIRPORTS: Record<string, string> = {
-  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-  'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
-  'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
-  'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
-  'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
-};
 
 interface FlightSearchParams {
   origin: string;
@@ -132,53 +118,96 @@ interface FlightSearchParams {
   date: string;
   passengers: number;
   cabinClass: string;
+  originCity?: string;
+  originCountry?: string;
+  destCity?: string;
+  destCountry?: string;
 }
 
 function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   const { trip } = useItineraryScreen(tripId);
-  const destination = trip?.destination?.split(',')[0]?.trim();
+  const destParts = (trip?.destination || '').split(',');
+  const destination = destParts[0]?.trim();
+  const destCountry = destParts.slice(1).join(',').trim() || '';
 
-  const cityName = destination?.split(',')[0]?.trim();
-  const destAirport = searchParams?.destination || (cityName ? CITY_AIRPORTS[cityName] : undefined);
-  const originAirport = searchParams?.origin || 'JFK';
+  const destAirport = searchParams?.destination || undefined;
+  const originAirport = searchParams?.origin || '';
   const departDate = searchParams?.date || trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
   const passengers = searchParams?.passengers || trip?.travelers || 1;
+  const cabinClass = searchParams?.cabinClass || '';
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['flights-search', originAirport, destAirport, departDate, passengers],
+    queryKey: ['flights-search', originAirport, destAirport, departDate, passengers, cabinClass],
     queryFn: async (): Promise<ComparisonFlight[]> => {
-      if (!destAirport) return [];
-      const res = await fetch(`/api/flights/search?origin=${originAirport}&destination=${destAirport}&date=${departDate}&passengers=${passengers}`);
+      if (!originAirport || (!destAirport && !destination)) return [];
+      // Backend resolves airports from city names, not IATA codes
+      const originCity = searchParams?.originCity || originAirport;
+      const destCity = searchParams?.destCity || destAirport || destination || '';
+      const originCtry = searchParams?.originCountry || 'US';
+      const destCtry = searchParams?.destCountry || destCountry || '';
+      const params = new URLSearchParams({
+        origin: originCity,
+        destination: destCity,
+        date: departDate,
+        passengers: String(passengers),
+      });
+      if (originCtry) params.set('origin_country', originCtry);
+      if (destCtry) params.set('destination_country', destCtry);
+      if (cabinClass) params.set('cabin', cabinClass);
+
+      const res = await fetch(`/api/flights/search?${params}`);
       if (!res.ok) return [];
       const json = await res.json();
-      return (json.flights ?? []).map((f: any, i: number): ComparisonFlight | null => {
-        const ob = f.outbound;
-        if (!ob) return null;
-        const depTime = ob.departureTime ? formatTime(ob.departureTime) : '?';
-        const arrTime = ob.arrivalTime ? formatTime(ob.arrivalTime) : '?';
-        const depDate = ob.departureTime ? new Date(ob.departureTime).getDate() : 0;
-        const arrDate = ob.arrivalTime ? new Date(ob.arrivalTime).getDate() : 0;
+
+      // API returns { flights: [...], priceInsights, total }
+      const flights = Array.isArray(json) ? json : (json.flights ?? json.results ?? []);
+      return flights.map((f: any, i: number): ComparisonFlight => {
+        const legs = f.legs ?? [];
+        const firstLeg = legs[0] ?? {};
+        const lastLeg = legs[legs.length - 1] ?? {};
+        // SerpAPI time format: "2026-05-01 10:28" — extract HH:MM
+        const extractTime = (t: string) => { const m = t?.match(/(\d{1,2}:\d{2})/); return m ? m[1] : '?'; };
+        const depTime = extractTime(firstLeg.departure?.time ?? '');
+        const arrTime = extractTime(lastLeg.arrival?.time ?? '');
+        const depDay = firstLeg.departure?.time ? new Date(firstLeg.departure.time.replace(' ', 'T')).getDate() : 0;
+        const arrDay = lastLeg.arrival?.time ? new Date(lastLeg.arrival.time.replace(' ', 'T')).getDate() : 0;
+        const totalMin = f.totalDuration ?? 0;
+        const durationH = Math.floor(totalMin / 60);
+        const durationM = totalMin % 60;
+        const airline = firstLeg.airline ?? f.airline ?? 'Unknown';
+        const extensions = legs.flatMap((l: any) => l.extensions ?? []);
+        const hasWifi = extensions.some((e: string) => /wi-?fi/i.test(e));
+        const hasPower = extensions.some((e: string) => /power|usb|outlet/i.test(e));
+        const hasMeals = extensions.some((e: string) => /meal|food|dining/i.test(e));
+        const hasEntertainment = extensions.some((e: string) => /stream|video|entertainment/i.test(e));
+        const co2kg = f.carbonEmissions?.this_flight ? Math.round(f.carbonEmissions.this_flight / 1000) : 0;
+        const layoverStr = (f.layovers ?? []).map((l: any) => {
+          const h = Math.floor(l.duration / 60);
+          const m = l.duration % 60;
+          return `${h}h${m > 0 ? ` ${m}m` : ''} ${l.id}`;
+        }).join(', ');
+
         return {
-          id: f.id,
-          airline: ob.airline ?? 'Unknown',
-          airlineLogo: ob.airlineCode ?? '??',
-          flightNumber: ob.flightNumber ?? '',
-          departure: { time: depTime, airport: ob.origin ?? originAirport },
-          arrival: { time: arrTime, airport: ob.destination ?? destAirport, nextDay: arrDate !== depDate },
-          duration: formatDuration(ob.duration ?? ''),
-          stops: ob.stops ?? 0,
-          layover: ob.stops > 0 ? `${ob.segments?.[0]?.destination ?? '?'} layover` : null,
-          price: Math.round(f.price),
-          fareClass: f.cabinClass ?? 'Economy',
-          amenities: { wifi: true, power: true, meals: ob.stops === 0, entertainment: true },
-          onTime: 80 + (i % 15),
-          co2: 250 + ob.stops * 80,
-          badge: i === 0 ? 'Lowest Price' : ob.stops === 0 && i < 3 ? 'Direct' : null,
+          id: f.id ?? firstLeg.flightNumber ?? `flight-${i}`,
+          airline,
+          airlineLogo: f.airlineLogo ?? firstLeg.airlineLogo ?? '',
+          flightNumber: firstLeg.flightNumber ?? '',
+          departure: { time: depTime, airport: firstLeg.departure?.id ?? originAirport },
+          arrival: { time: arrTime, airport: lastLeg.arrival?.id ?? destAirport ?? '', nextDay: arrDay !== depDay },
+          duration: `${durationH}h ${durationM}m`,
+          stops: f.stops ?? 0,
+          layover: layoverStr || null,
+          price: Math.round(f.price ?? 0),
+          fareClass: firstLeg.travelClass ?? (cabinClass || 'Economy'),
+          amenities: { wifi: hasWifi, power: hasPower, meals: hasMeals, entertainment: hasEntertainment },
+          onTime: 0,
+          co2: co2kg,
+          badge: f.tier === 'best' && i === 0 ? 'Best' : f.stops === 0 ? 'Direct' : null,
         };
-      }).filter((f: ComparisonFlight | null): f is ComparisonFlight => f !== null);
+      });
     },
     staleTime: 10 * 60 * 1000,
-    enabled: !!destAirport,
+    enabled: !!(destAirport || destination),
   });
 
   return { flights: data ?? [], isLoading, destAirport, destination, refetch };
@@ -200,18 +229,27 @@ const collapseVariants = {
    AIRPORT AUTOCOMPLETE INPUT
    ================================================================ */
 
-function AirportInput({ label, value, onChange }: { label: string; value: string; onChange: (code: string) => void }) {
-  const [query, setQuery] = useState('');
+interface AirportInfo { iata: string; city: string; country: string }
+
+function AirportInput({ label, value, onChange, onSelect }: { label: string; value: string; onChange: (code: string) => void; onSelect?: (info: AirportInfo) => void }) {
+  const [query, setQuery] = useState(value || '');
+  const [editing, setEditing] = useState(false);
   const [results, setResults] = useState<{ iata: string; name: string; city: string; country: string }[]>([]);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const selectingRef = useRef(false);
+  const prevValueRef = useRef(value);
 
-  const cityName = POPULAR_AIRPORTS.find(a => a.code === value)?.city
-    || CITY_AIRPORTS_REVERSE[value]
-    || '';
+  // Sync external value changes (e.g. async geolocation result) — only when not editing
+  useEffect(() => {
+    if (!editing && value !== prevValueRef.current) {
+      setQuery(value || '');
+      prevValueRef.current = value;
+    }
+  }, [value, editing]);
 
   useEffect(() => {
-    if (query.length < 2) { setResults([]); return; }
+    if (!editing || query.length < 2) { setResults([]); setOpen(false); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -223,28 +261,89 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
         }
       } catch {}
     }, 250);
-  }, [query]);
+  }, [query, editing]);
+
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Reset highlight when results change
+  useEffect(() => { setHighlightIdx(results.length > 0 ? 0 : -1); }, [results]);
+
+  // Position dropdown relative to viewport (escapes overflow:hidden parents)
+  useEffect(() => {
+    if (open && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 300) });
+    }
+  }, [open]);
+
+  const selectResult = (r: { iata: string; city?: string; country?: string }) => {
+    onChange(r.iata);
+    setQuery(r.iata);
+    setOpen(false);
+    setEditing(false);
+    selectingRef.current = false;
+    prevValueRef.current = r.iata;
+    if (onSelect && r.city) onSelect({ iata: r.iata, city: r.city, country: r.country || '' });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || results.length === 0) {
+      // Enter with no dropdown → treat typed text as IATA code directly
+      if (e.key === 'Enter' && query.trim()) {
+        onChange(query.trim().toUpperCase());
+        setEditing(false);
+        setOpen(false);
+        (e.target as HTMLInputElement).blur();
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx(i => Math.min(i + 1, results.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = highlightIdx >= 0 ? highlightIdx : 0;
+      selectResult(results[idx]);
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setEditing(false);
+    }
+  };
 
   return (
     <div className="flex-1 min-w-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors relative">
       <p className="text-[9px] uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
       <input
+        ref={inputRef}
         type="text"
-        value={query || value}
-        onChange={(e) => { setQuery(e.target.value); }}
-        onFocus={() => { setQuery(''); }}
-        onBlur={() => setTimeout(() => setOpen(false), 200)}
-        placeholder={value || 'Search airport...'}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setEditing(true); }}
+        onFocus={() => { setEditing(true); setQuery(query || ''); }}
+        onBlur={() => {
+          if (selectingRef.current) return;
+          setOpen(false);
+          setEditing(false);
+          if (!query.trim()) setQuery(value || '');
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder="Search airport..."
         className="text-sm font-semibold text-[#2563eb] bg-transparent border-none p-0 w-full focus:outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
       />
-      {cityName && !query && <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{cityName}</p>}
-      {open && results.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg shadow-lg z-50 max-h-48 overflow-auto">
-          {results.map((r) => (
+      {open && results.length > 0 && dropdownPos && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/[0.08] rounded-lg shadow-xl max-h-48 overflow-auto"
+          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}>
+          {results.map((r, i) => (
             <button
-              key={r.iata}
-              onMouseDown={(e) => { e.preventDefault(); onChange(r.iata); setQuery(''); setOpen(false); }}
-              className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+              key={`${r.iata}-${i}`}
+              onMouseDown={(e) => { e.preventDefault(); selectingRef.current = true; }}
+              onClick={() => selectResult(r)}
+              className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2 ${i === highlightIdx ? 'bg-blue-50 dark:bg-white/[0.08]' : 'hover:bg-blue-50 dark:hover:bg-white/[0.06]'}`}
             >
               <span className="text-xs font-bold text-[#2563eb] w-8">{r.iata}</span>
               <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{r.name}</span>
@@ -257,10 +356,6 @@ function AirportInput({ label, value, onChange }: { label: string; value: string
   );
 }
 
-// Reverse lookup for city names from IATA codes
-const CITY_AIRPORTS_REVERSE: Record<string, string> = Object.fromEntries(
-  Object.entries(CITY_AIRPORTS).map(([city, code]) => [code, city])
-);
 
 /* ================================================================
    FLIGHT SEARCH SECTION
@@ -268,15 +363,21 @@ const CITY_AIRPORTS_REVERSE: Record<string, string> = Object.fromEntries(
 
 function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearch, defaultOpen }: {
   defaultFrom?: string; defaultTo?: string; defaultTravelers?: number;
-  onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => void;
+  onSearch?: (params: { origin: string; destination: string; passengers: number; cabinClass: string; originCity?: string; originCountry?: string; destCity?: string; destCountry?: string }) => void;
   defaultOpen?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(!defaultOpen);
   const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState(defaultFrom || 'JFK');
-  const [to, setTo] = useState(defaultTo || 'CDG');
+  const [from, setFrom] = useState(defaultFrom || '');
+  const [to, setTo] = useState(defaultTo || '');
+  const [fromInfo, setFromInfo] = useState<AirportInfo | null>(null);
+  const [toInfo, setToInfo] = useState<AirportInfo | null>(null);
   const [travelers, setTravelers] = useState(defaultTravelers || 2);
   const [cabinClass, setCabinClass] = useState('economy');
+
+  // Sync when async airport lookups resolve
+  useEffect(() => { if (defaultTo) setTo(defaultTo); }, [defaultTo]);
+  useEffect(() => { if (defaultFrom && !from) setFrom(defaultFrom); }, [defaultFrom]);
   const [nonstopOnly, setNonstopOnly] = useState(false);
   const [maxLayover, setMaxLayover] = useState(12);
   const [maxPrice, setMaxPrice] = useState(3000);
@@ -332,7 +433,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
               {/* Search strip */}
               <div className="flex flex-col sm:flex-row items-stretch border border-gray-200 dark:border-white/[0.08] rounded-xl overflow-visible bg-white dark:bg-white/[0.03] divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-white/[0.08]">
                 {/* From */}
-                <AirportInput label="From" value={from} onChange={setFrom} />
+                <AirportInput label="From" value={from} onChange={setFrom} onSelect={setFromInfo} />
 
                 {/* Swap */}
                 <div className="hidden sm:flex items-center -mx-3 z-10">
@@ -342,7 +443,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
                 </div>
 
                 {/* To */}
-                <AirportInput label="To" value={to} onChange={setTo} />
+                <AirportInput label="To" value={to} onChange={setTo} onSelect={setToInfo} />
 
                 {/* Travelers */}
                 <div className="shrink-0 px-4 py-2.5 hover:bg-blue-50/30 dark:hover:bg-white/[0.04] transition-colors">
@@ -369,7 +470,7 @@ function FlightSearchSection({ defaultFrom, defaultTo, defaultTravelers, onSearc
 
                 {/* Search button */}
                 <button
-                  onClick={(e) => { e.stopPropagation(); onSearch?.({ origin: from, destination: to, passengers: travelers, cabinClass }); }}
+                  onClick={(e) => { e.stopPropagation(); onSearch?.({ origin: from, destination: to, passengers: travelers, cabinClass, originCity: fromInfo?.city, originCountry: fromInfo?.country, destCity: toInfo?.city, destCountry: toInfo?.country }); }}
                   className="px-5 py-2.5 text-xs text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors shrink-0 flex items-center gap-1.5 justify-center sm:rounded-r-xl font-medium"
                 >
                   <Search size={13} />
@@ -595,7 +696,7 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
       const toMin = (d: string) => { const p = d.match(/(\d+)h\s*(\d+)m/); return p ? Number(p[1]) * 60 + Number(p[2]) : 0; };
       return toMin(a.duration) - toMin(b.duration);
     }
-    return (a.price / a.onTime) - (b.price / b.onTime);
+    return a.price - b.price;
   });
 
   return (
@@ -708,6 +809,7 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
                           <Monitor size={11} className={flight.amenities.entertainment ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'} />
                         </div>
                         <span className="text-[11px] text-gray-400 dark:text-gray-500">{flight.airline}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.06] text-gray-400 dark:text-gray-500">via Google Flights</span>
                         {'businessAvailable' in flight && flight.businessAvailable && (
                           <span className="text-[10px] bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700/30 px-1.5 py-0.5 rounded-full">Business avail.</span>
                         )}
@@ -724,18 +826,20 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
                               <span>·</span><span>{flight.flightNumber}</span>
                               {flight.layover && (<><span>·</span><span className="text-amber-600 dark:text-amber-400">Stop: {flight.layover}</span></>)}
                             </div>
-                            {/* Stats bar */}
+                            {/* Stats bar — only show when data is available */}
+                            {(flight.onTime > 0 || flight.co2 > 0) && (
                             <div className="flex items-center justify-between bg-white dark:bg-white/[0.03] rounded-lg p-2.5 border border-gray-100 dark:border-white/[0.06] shadow-sm mb-2">
-                              <div className="flex items-center gap-1 text-[10px]">
+                              {flight.onTime > 0 && <div className="flex items-center gap-1 text-[10px]">
                                 <div className={`w-1.5 h-1.5 rounded-full ${flight.onTime >= 85 ? 'bg-green-500' : flight.onTime >= 78 ? 'bg-amber-400' : 'bg-red-400'}`} />
                                 <span className="text-gray-600 dark:text-gray-400">{flight.onTime}% on-time</span>
-                              </div>
-                              <div className="h-3 w-px bg-gray-200 dark:bg-white/[0.08]" />
-                              <div className="flex items-center gap-0.5 text-[10px]">
+                              </div>}
+                              {flight.onTime > 0 && flight.co2 > 0 && <div className="h-3 w-px bg-gray-200 dark:bg-white/[0.08]" />}
+                              {flight.co2 > 0 && <div className="flex items-center gap-0.5 text-[10px]">
                                 <Leaf size={10} className={flight.co2 <= 280 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'} />
                                 <span className="text-gray-600 dark:text-gray-400">{flight.co2}kg CO2</span>
-                              </div>
+                              </div>}
                             </div>
+                            )}
                             <button className="w-full py-2 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white text-xs font-medium rounded-lg hover:from-[#1d4ed8] hover:to-[#2563eb] transition-all shadow-sm">
                               Select This Flight
                             </button>
@@ -766,17 +870,61 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   const [searchParams, setSearchParams] = useState<FlightSearchParams | undefined>(undefined);
   const { flights: searchedFlights, isLoading: searchingFlights } = useFlightSearch(id, searchParams);
 
-  const destination = trip?.destination?.split(',')[0]?.trim();
-  const defaultTo = destination ? CITY_AIRPORTS[destination] : undefined;
+  const destParts = (trip?.destination || '').split(',');
+  const destination = destParts[0]?.trim();
+  const tripDestCountry = destParts.slice(1).join(',').trim() || '';
+  const [defaultTo, setDefaultTo] = useState<string | undefined>(undefined);
+  const [defaultFrom, setDefaultFrom] = useState<string>('');
   const defaultTravelers = trip?.travelers || 1;
 
-  const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string }) => {
+  // Dynamically look up the destination airport IATA code from the city name
+  useEffect(() => {
+    if (!destination) return;
+    let cancelled = false;
+    fetch(`/api/airports?q=${encodeURIComponent(destination)}`)
+      .then(res => res.ok ? res.json() : [])
+      .then((data: { iata: string }[]) => {
+        if (!cancelled && data.length > 0) {
+          setDefaultTo(data[0].iata);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [destination]);
+
+  // Auto-detect origin airport from user's geolocation
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        fetch(`/api/airports/nearest?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`)
+          .then(res => res.ok ? res.json() : null)
+          .then((data: { iata: string; name: string } | null) => {
+            if (!cancelled && data?.iata) {
+              setDefaultFrom(data.iata);
+            }
+          })
+          .catch(() => {});
+      },
+      () => {}, // silently ignore denial
+      { timeout: 8000, maximumAge: 5 * 60 * 1000 }
+    );
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSearch = (params: { origin: string; destination: string; passengers: number; cabinClass: string; originCity?: string; originCountry?: string; destCity?: string; destCountry?: string }) => {
     setSearchParams({
       origin: params.origin,
       destination: params.destination,
       date: trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
       passengers: params.passengers,
       cabinClass: params.cabinClass,
+      originCity: params.originCity,
+      originCountry: params.originCountry,
+      destCity: params.destCity || destination,
+      destCountry: params.destCountry || tripDestCountry,
     });
   };
 
@@ -802,7 +950,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
         durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
       }
       const originCode = f.origin ?? '';
-      const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+      const destCode = f.dest_iata ?? f.destination ?? '';
       const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
       return {
         id: `ctx-flight-${i}`,
@@ -867,7 +1015,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
 
       {/* 2. Flight Search Section — open by default when no flights yet */}
       <FlightSearchSection
-        defaultFrom="JFK"
+        defaultFrom={defaultFrom}
         defaultTo={defaultTo}
         defaultTravelers={defaultTravelers}
         onSearch={handleSearch}

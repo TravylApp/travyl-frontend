@@ -1,9 +1,10 @@
+import { useContext } from 'react';
 import { View, ScrollView, Text, Pressable, Linking, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { useTabAccent } from './_layout';
+import { TabCtx, useTabAccent, PageTransition } from './_layout';
 
 const INFO_COLOR = '#0ea5e9';
 
@@ -103,7 +104,7 @@ function WeatherForecastCard({ forecast }: {
 
   return (
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
-      <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ backgroundColor: colors.warning, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FontAwesome name="sun-o" size={14} color="#fff" />
         <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>Weather Forecast</Text>
       </View>
@@ -166,7 +167,9 @@ function QuickLinksCard({ city = 'Destination', country = '' }: { city?: string;
 }
 
 export default function InfoScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip, isLoading } = useItineraryScreen(id);
   const colors = useThemeColors();
   const ACCENT = useTabAccent('index');
@@ -182,15 +185,18 @@ export default function InfoScreen() {
 
   if (isLoading) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        {[1, 2, 3].map((i) => (
-          <View key={i} style={{ backgroundColor: colors.borderLight, borderRadius: 12, height: 120, marginBottom: 12 }} />
-        ))}
-      </ScrollView>
+      <PageTransition>
+        <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={{ backgroundColor: colors.borderLight, borderRadius: 12, height: 120, marginBottom: 12 }} />
+          ))}
+        </ScrollView>
+      </PageTransition>
     );
   }
 
   return (
+    <PageTransition>
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
       {/* Destination header */}
       <View style={{ backgroundColor: INFO_COLOR + '10', borderRadius: 12, padding: 14, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -212,5 +218,6 @@ export default function InfoScreen() {
       <InfoSectionCard section={buildEmergencySection(ctx)} />
       <QuickLinksCard city={cityName} country={countryName} />
     </ScrollView>
+    </PageTransition>
   );
 }

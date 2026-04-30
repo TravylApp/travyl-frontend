@@ -59,7 +59,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistMono.variable} ${sora.variable} ${lustria.variable} antialiased`}
-        style={{ fontFamily: "'Satoshi', sans-serif" }}
+        style={{ fontFamily: "'Satoshi', system-ui, sans-serif" }}
       >
         <Providers>
           {children}

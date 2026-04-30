@@ -61,7 +61,7 @@ export function ResizeDivider({ width, onDragStart, onDrag, onDragEnd }: ResizeD
       style={{ touchAction: 'none' }}
     >
       {/* Visible handle line */}
-      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-[var(--cal-border)] group-hover:w-[3px] group-hover:bg-[var(--cal-accent)] transition-all rounded-full" />
+      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-cal-border group-hover:w-[3px] group-hover:bg-cal-accent transition-all rounded-full" />
       {/* Wider hit target */}
       <div className="absolute inset-y-0 -left-1 -right-1" />
     </div>

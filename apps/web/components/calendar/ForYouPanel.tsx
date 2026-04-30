@@ -92,20 +92,20 @@ export function ForYouPanel({
   return (
     <aside
       style={{ width: width ?? FOR_YOU_PANEL_DEFAULT_WIDTH }}
-      className="relative flex flex-col shrink-0 self-stretch border-l border-[var(--cal-border)] bg-[var(--cal-surface-elevated)] overflow-hidden"
+      className="relative flex flex-col shrink-0 self-stretch border-l border-cal-border bg-cal-surface-elevated overflow-hidden"
       aria-label="Activity suggestions"
     >
       {/* Header */}
-      <div className="p-3.5 pb-3 border-b border-[var(--cal-border-light)]">
-        <h2 className="text-sm font-semibold text-[var(--cal-text)] mb-2.5">
+      <div className="p-3.5 pb-3 border-b border-cal-border-light">
+        <h2 className="text-sm font-semibold text-cal-text mb-2.5">
           For You
         </h2>
-        <div className="flex items-center gap-2 bg-[var(--cal-border-light)] border border-[var(--cal-border)] rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 bg-cal-border-light border border-cal-border rounded-lg px-3 py-2">
           <Search
             width={14}
             height={14}
             strokeWidth={1.5}
-            className="shrink-0 text-[var(--cal-text-tertiary)] opacity-50"
+            className="shrink-0 text-cal-text-tertiary opacity-50"
             aria-hidden="true"
           />
           <input
@@ -114,7 +114,7 @@ export function ForYouPanel({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
             placeholder="Search activities..."
-            className="flex-1 bg-transparent text-sm text-[var(--cal-text)] placeholder-[var(--cal-text-tertiary)] outline-none"
+            className="flex-1 bg-transparent text-sm text-cal-text placeholder-cal-text-tertiary outline-none"
           />
         </div>
       </div>
@@ -128,8 +128,8 @@ export function ForYouPanel({
             className={[
               'text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap transition-all border',
               activeFilter === cat
-                ? 'bg-[#003594] border-[#003594] text-white'
-                : 'border-[var(--cal-border)] text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)]',
+                ? 'bg-primary border-primary text-white'
+                : 'border-cal-border text-cal-text-secondary hover:bg-cal-border-light hover:text-cal-text',
             ].join(' ')}
           >
             {cat}
@@ -138,7 +138,7 @@ export function ForYouPanel({
       </div>
 
       {/* Section label */}
-      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--cal-text-secondary)] px-3.5 pt-3 pb-1.5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-cal-text-secondary px-3.5 pt-3 pb-1.5">
         {searchQuery.trim()
           ? `Results for '${searchQuery}'`
           : `Recommended for ${destination}`}
@@ -147,40 +147,40 @@ export function ForYouPanel({
       {/* Content area */}
       <div className="h-0 grow overflow-y-auto px-2 pb-3 scrollbar-thin">
         {isLoading ? (
-          <div className="columns-2 gap-2">
+          <div className="masonry-grid">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="break-inside-avoid mb-2 rounded-[10px] bg-[var(--cal-border)] animate-pulse"
+                className="masonry-item mb-2 rounded-[10px] bg-cal-border animate-pulse"
                 style={{ height: 120 + i * 20 }}
               />
             ))}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <p className="text-sm text-[var(--cal-text-secondary)]">
+            <p className="text-sm text-cal-text-secondary">
               Couldn&apos;t load suggestions
             </p>
-            <button onClick={() => refetch()} className="text-xs text-[var(--cal-accent)] hover:underline">
+            <button onClick={() => refetch()} className="text-xs text-cal-accent hover:underline">
               Tap to retry
             </button>
           </div>
         ) : suggestions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-1">
-            <p className="text-sm text-[var(--cal-text-secondary)]">
+            <p className="text-sm text-cal-text-secondary">
               {searchQuery.trim()
                 ? `No results for '${searchQuery}'`
                 : 'No suggestions available'}
             </p>
             {searchQuery.trim() && (
-              <p className="text-xs text-[var(--cal-text-tertiary)]">
+              <p className="text-xs text-cal-text-tertiary">
                 Try broader terms
               </p>
             )}
           </div>
         ) : (
           <>
-            <div className="columns-2 gap-2">
+            <div className="masonry-grid">
               {enrichedSuggestions.map((suggestion) => (
                 <SuggestionCard
                   key={suggestion.id}
@@ -194,13 +194,13 @@ export function ForYouPanel({
             {/* Load more / loading spinner */}
             {isLoadingMore ? (
               <div className="flex justify-center py-4">
-                <div className="h-5 w-5 rounded-full border-2 border-[var(--cal-border)] border-t-[#003594] animate-spin" />
+                <div className="h-5 w-5 rounded-full border-2 border-cal-border border-t-primary animate-spin" />
               </div>
             ) : hasMore ? (
               <button
                 type="button"
                 onClick={loadMore}
-                className="w-full py-3 mt-2 text-xs font-medium text-[var(--cal-accent)] border border-[var(--cal-border)] hover:bg-[var(--cal-border-light)] rounded-lg transition-colors"
+                className="w-full py-3 mt-2 text-xs font-medium text-cal-accent border border-cal-border hover:bg-cal-border-light rounded-lg transition-colors"
               >
                 Load more suggestions
               </button>
@@ -211,7 +211,7 @@ export function ForYouPanel({
 
       {/* Footer hint */}
       {enrichedSuggestions.length > 0 && (
-        <div className="text-center text-[11px] text-[var(--cal-text-tertiary)] py-2.5 border-t border-[var(--cal-border-light)]">
+        <div className="text-center text-[11px] text-cal-text-tertiary py-2.5 border-t border-cal-border-light">
           Drag any card onto the calendar to schedule it
         </div>
       )}

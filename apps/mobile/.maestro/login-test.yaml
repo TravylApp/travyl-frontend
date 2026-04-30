@@ -1,0 +1,20 @@
+appId: com.travyl.mobile
+---
+# Login flow test
+# Run: maestro test apps/mobile/.maestro/login-test.yaml
+
+# Navigate to Profile > Sign In
+- tapOn:
+    point: "85%,96%"
+- waitForAnimationToEnd
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# Enter credentials
+- tapOn: "Email address"
+- inputText: "test@example.com"
+- tapOn: "Password"
+- inputText: "testpassword"
+- tapOn: "Sign In ✈"
+- waitForAnimationToEnd
+- takeScreenshot: login-result

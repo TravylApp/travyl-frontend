@@ -17,11 +17,11 @@ export function DashboardNavBar() {
       <Link href="/trips" className="flex items-center gap-1.5 group shrink-0">
         <PaperPlane
           size={18}
-          className="text-[#1e3a5f] group-hover:text-[#F59E0B] transition-colors"
+          className="text-[var(--trip-base)] group-hover:text-[#F59E0B] transition-colors"
           style={{ transform: 'rotate(-20deg)' }}
         />
         <span
-          className="text-[#1e3a5f] group-hover:text-[#F59E0B] transition-colors hidden sm:inline"
+          className="text-[var(--trip-base)] group-hover:text-[#F59E0B] transition-colors hidden sm:inline"
           style={{ fontFamily: 'var(--font-brand)', fontWeight: 800, fontSize: 15 }}
         >
           TRAVYL
@@ -42,7 +42,7 @@ export function DashboardNavBar() {
               className={[
                 'flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors',
                 isActive
-                  ? 'bg-[#1e3a5f]/10 text-[#1e3a5f] dark:bg-white/10 dark:text-white'
+                  ? 'bg-[var(--trip-base)]/10 text-[var(--trip-base)] dark:bg-white/10 dark:text-white'
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-gray-200',
               ].join(' ')}
             >
@@ -56,7 +56,7 @@ export function DashboardNavBar() {
       {/* User avatar */}
       <Link
         href="/profile"
-        className="flex items-center justify-center w-7 h-7 rounded-full bg-[#1e3a5f] text-white text-[11px] font-medium shrink-0 hover:ring-2 hover:ring-[#1e3a5f]/30 transition-all"
+        className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--trip-base)] text-white text-[11px] font-medium shrink-0 hover:ring-2 hover:ring-[var(--trip-base)]/30 transition-all"
       >
         {initials}
       </Link>

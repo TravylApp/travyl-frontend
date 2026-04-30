@@ -107,11 +107,15 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
               {/* Inline add button */}
               <button
                 onClick={() => onAddActivity?.(group.timeOfDay)}
-                className="shrink-0 w-[200px] h-full min-h-[200px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors bg-white/85 dark:bg-white/[0.03]"
-                style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)', color: 'var(--trip-base)' }}
+                className="shrink-0 w-[200px] h-full min-h-[200px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed hover:border-solid hover:shadow-md transition-all cursor-pointer group bg-white/85 dark:bg-white/[0.03]"
+                style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.4)', color: 'var(--trip-base)' }}
               >
-                <Plus size={20} style={{ opacity: 0.5 }} />
-                <span className="text-[11px] font-medium" style={{ opacity: 0.7 }}>Add {config.label} Activity</span>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+                  style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
+                  <Plus size={20} />
+                </div>
+                <span className="text-[12px] font-semibold">Add Activity</span>
+                <span className="text-[10px] opacity-50">{config.label}</span>
               </button>
             </div>
           </div>
@@ -130,11 +134,15 @@ export function TimeGroupSection({ group, onActivityClick, onAddActivity, cardSt
             ))}
             <button
               onClick={() => onAddActivity?.(group.timeOfDay)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-trip-base/40 transition-colors backdrop-blur-md bg-white/85 dark:bg-white/[0.03]"
-              style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.3)', color: 'var(--trip-base)' }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed hover:border-solid hover:shadow-md transition-all cursor-pointer group backdrop-blur-md bg-white/85 dark:bg-white/[0.03]"
+              style={{ borderColor: 'rgb(var(--trip-base-rgb) / 0.4)', color: 'var(--trip-base)' }}
             >
-              <Plus size={14} />
-              <span className="text-[12px] font-medium">Add {config.label} Activity</span>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+                style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' }}>
+                <Plus size={14} />
+              </div>
+              <span className="text-[12px] font-semibold">Add Activity</span>
+              <span className="text-[10px] opacity-50">· {config.label}</span>
             </button>
           </div>
         )}

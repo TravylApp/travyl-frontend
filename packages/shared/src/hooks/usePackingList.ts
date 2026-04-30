@@ -1,3 +1,19 @@
+/**
+ * @module usePackingList
+ * Manages a collaborative packing list for a trip. Supports real-time sync via
+ * Supabase Postgres changes, optimistic UI updates for all mutations, and
+ * collaborative ownership semantics (claim/release/transfer items).
+ *
+ * Handles two packing patterns:
+ * - Single quantity items (`quantity === 1`): full toggle between packed/unpacked
+ * - Multi-quantity items (`quantity > 1`): incremental `packed_count` cycling
+ *
+ * Items are grouped by category in canonical order (from `PACKING_CATEGORIES`),
+ * and can be filtered by ownership (`mine`, `shared`, `kids`, `adults`).
+ *
+ * Used by the web PackingTab and the mobile PackingScreen.
+ */
+
 'use client';
 
 import { useEffect, useMemo, useCallback } from 'react'
@@ -8,6 +24,38 @@ import type { DbPackingItem, PackingCategory } from '../types'
 import { PACKING_CATEGORIES } from '../types'
 import { computePackingProgress } from '../utils/packingUtils'
 
+/**
+ * Loads and manages the packing list for a trip with real-time collaboration support.
+ *
+ * Subscribes to Postgres changes on `packing_items` filtered by `tripId`, ignoring
+ * updates caused by the current user to avoid redundant re-renders. All mutations
+ * use optimistic updates and roll back on error.
+ *
+ * @param tripId - UUID of the trip, or undefined while loading
+ * @param userId - UUID of the current user (used for ownership attribution and real-time filtering)
+ * @param filterBy - Optional display filter: `'all'` | `'mine'` | `'shared'` | `'kids'` | `'adults'`
+ * @returns Object with:
+ *   - `items` — all packing items for the trip
+ *   - `itemsByCategory` — items grouped by category string
+ *   - `orderedCategories` — category keys in canonical display order
+ *   - `filteredItems` — items after applying the `filterBy` filter
+ *   - `auditLog` — array of audit log entries (who packed/added/removed what)
+ *   - `progress` — `{ packed, total, percentage }` packing progress
+ *   - `isLoading` / `error` — query state
+ *   - `addItem` — add a new item by name and category
+ *   - `togglePacked` — toggle packed state (dispatches to the right mutation based on quantity)
+ *   - `incrementPacked` — increment `packed_count` for multi-quantity items
+ *   - `updateQuantity` — change the quantity of an item
+ *   - `removeItem` — delete an item from the list
+ *   - `claimItem` — assign ownership of a shared item to the current user
+ *   - `releaseItem` — release ownership back to the group
+ *   - `transferItem` — reassign an item's ownership to another collaborator
+ *
+ * @example
+ * ```tsx
+ * const { items, progress, addItem, togglePacked } = usePackingList(tripId, userId);
+ * ```
+ */
 export function usePackingList(tripId: string | undefined, userId: string | undefined, filterBy?: string) {
   const queryClient = useQueryClient()
 
@@ -69,10 +117,12 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
   const progress = useMemo(() => computePackingProgress(items), [items])
 
   const addItemMutation = useMutation({
-    mutationFn: async ({ name, category }: { name: string; category: PackingCategory }) => {
+    mutationFn: async ({ name, category, personal }: { name: string; category: PackingCategory; personal?: boolean }) => {
       const catItems = items.filter((i) => i.category === category)
       const maxSort = catItems.length > 0 ? Math.max(...catItems.map((i) => i.sort_order)) : -1
-      const newItem = await insertPackingItem(tripId!, userId || null as any, name, category, maxSort + 1)
+      // If personal=true, set owner_id to current user so it shows under "mine"
+      const ownerId = personal && userId ? userId : undefined
+      const newItem = await insertPackingItem(tripId!, userId || null as any, name, category, maxSort + 1, ownerId)
       await insertAuditEntry(tripId!, userId || null as any, newItem.id, 'added', name).catch(() => {})
       return newItem
     },
@@ -199,7 +249,7 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     },
   })
 
-  const addItem = useCallback((name: string, category: PackingCategory) => addItemMutation.mutate({ name, category }), [addItemMutation])
+  const addItem = useCallback((name: string, category: PackingCategory, personal?: boolean) => addItemMutation.mutate({ name, category, personal }), [addItemMutation])
 
   const togglePacked = useCallback((itemId: string) => {
     const item = items.find((i) => i.id === itemId)

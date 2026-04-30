@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard as TripCardType } from '@travyl/shared';
 import { Plus } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { Footer, OceanWave } from '@/components/home';
@@ -14,7 +14,8 @@ import { useIndexTrip } from '@/hooks/useIndexTrip';
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&fm=webp&q=75'
+// No fallback photo — trips without images show a gradient
+const FALLBACK_IMAGE = ''
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -23,7 +24,7 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'past', label: 'Past' },
 ];
 
-function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past' {
+function getTripStatusFilter(trip: TripCardType): 'active' | 'upcoming' | 'past' {
   const now = new Date();
   const startDate = new Date(trip.start_date + 'T00:00:00');
   const endDate = new Date(trip.end_date + 'T00:00:00');
@@ -45,12 +46,12 @@ function getTripStatusFilter(trip: MockTripCard): 'active' | 'upcoming' | 'past'
   return 'upcoming';
 }
 
-function filterTripsByStatus(trips: MockTripCard[], status: StatusFilter): MockTripCard[] {
+function filterTripsByStatus(trips: TripCardType[], status: StatusFilter): TripCardType[] {
   if (status === 'all') return trips;
   return trips.filter((trip) => getTripStatusFilter(trip) === status);
 }
 
-function filterTripsBySearch(trips: MockTripCard[], search: string): MockTripCard[] {
+function filterTripsBySearch(trips: TripCardType[], search: string): TripCardType[] {
   if (!search.trim()) return trips;
   const query = search.toLowerCase().trim();
   return trips.filter(
@@ -78,7 +79,7 @@ export default function MyTripsPage() {
     <Suspense fallback={
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
+          <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <SkeletonCard />
@@ -117,7 +118,7 @@ function getRowHeight(maxDays: number): number {
 }
 
 // Pack trips into rows: always 2–3 cards per row, never 1
-function buildRows(trips: { trip: MockTripCard; duration: number; weight: number }[]) {
+function buildRows(trips: { trip: TripCardType; duration: number; weight: number }[]) {
   const rows: typeof trips[] = [];
   let i = 0;
 
@@ -145,7 +146,7 @@ function buildRows(trips: { trip: MockTripCard; duration: number; weight: number
   return rows;
 }
 
-function TripMasonryGrid({ trips }: { trips: MockTripCard[] }) {
+function TripMasonryGrid({ trips }: { trips: TripCardType[] }) {
   const items = trips.map((trip) => {
     const duration = getTripDuration(trip.start_date, trip.end_date);
     return { trip, duration, weight: getTripWeight(duration) };
@@ -217,7 +218,7 @@ function TripsContent() {
     if (trips?.length) fetchMissingImages(trips);
   }, [trips]);
 
-  const allTrips: MockTripCard[] = (trips ?? []).map((t: any) => ({
+  const allTrips: TripCardType[] = (trips ?? []).map((t: any) => ({
     ...t,
     image: t.cover_image_url
       ?? t.trip_context?.hero_image_url
@@ -235,7 +236,7 @@ function TripsContent() {
       <div className="flex flex-col min-h-screen">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
+            <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <SkeletonCard />
@@ -254,7 +255,7 @@ function TripsContent() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-serif font-normal text-gray-900 tracking-wide">My Trips</h1>
+          <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
 
           <div className="flex items-center gap-3 flex-wrap">
             {/* View Toggle */}

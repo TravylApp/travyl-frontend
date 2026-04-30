@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { formatDateRange, formatCurrency } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import type { TripCard as TripCardData } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
 import { ForkCountBadge } from '../trip/ForkAttribution';
+import { TripShareModal } from './TripShareModal';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -20,7 +22,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripCardProps {
-  trip: MockTripCard;
+  trip: TripCardData;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -31,6 +33,7 @@ export function TripCard({ trip, className, style }: TripCardProps) {
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -59,8 +62,7 @@ export function TripCard({ trip, className, style }: TripCardProps) {
     e.preventDefault();
     e.stopPropagation();
     setMenuOpen(false);
-    const url = `${window.location.origin}/trip/${trip.id}`;
-    navigator.clipboard.writeText(url);
+    setShareModalOpen(true);
   };
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +187,13 @@ export function TripCard({ trip, className, style }: TripCardProps) {
           />
         </div>
       )}
+
+      {/* Share Modal */}
+      <TripShareModal
+        trip={trip}
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+      />
     </div>
   );
 }

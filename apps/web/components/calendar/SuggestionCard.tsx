@@ -105,7 +105,7 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
       className={[
-        'group break-inside-avoid mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
+        'group masonry-item mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
         'relative transition-all duration-200',
         isDragging ? '' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
       ].join(' ')}

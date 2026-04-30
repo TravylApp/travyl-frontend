@@ -153,7 +153,15 @@ export async function proxyToBackend(
   }
 
   try {
-    const res = await fetch(url.toString(), { headers })
+    const isPost = req.method === 'POST'
+    const fetchOpts: RequestInit = { headers }
+    if (isPost) {
+      fetchOpts.method = 'POST'
+      headers['Content-Type'] = 'application/json'
+      fetchOpts.body = await req.text()
+    }
+
+    const res = await fetch(url.toString(), fetchOpts)
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')
@@ -180,6 +188,30 @@ export async function proxyToBackend(
 const IS_DEV = process.env.NODE_ENV === 'development'
 
 /**
+ * Returns true when `hostname` exactly matches `allowed` or is a subdomain
+ * of it. Avoids the substring-match footgun where `evilgotravyl.com` or
+ * `gotravyl.com.attacker.test` would slip through `.includes()`.
+ */
+function hostnameMatches(hostname: string, allowed: string): boolean {
+  if (!hostname || !allowed) return false
+  if (hostname === allowed) return true
+  // Subdomain match: hostname must end with `.${allowed}` (note the leading dot)
+  return hostname.endsWith(`.${allowed}`)
+}
+
+/**
+ * Parse origin/referer header and return the hostname, or null if invalid.
+ */
+function parseSourceHostname(source: string): string | null {
+  if (!source) return null
+  try {
+    return new URL(source).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/**
  * Verify the request comes from our own domain.
  * Returns null if OK, or a 403 NextResponse if blocked.
  */
@@ -190,15 +222,37 @@ export function checkOrigin(req: NextRequest): NextResponse | null {
   const referer = req.headers.get('referer') || ''
   const host = req.headers.get('host') || ''
 
-  // No origin header = same-origin or server-to-server (OK)
-  if (!origin && !referer) return null
+  // No origin/referer on mutation methods = likely CSRF (block unless auth present)
+  const method = req.method.toUpperCase()
+  if (!origin && !referer && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Allow if a valid Supabase session token is present (API calls from mobile SDK, etc.)
+    const auth = req.headers.get('authorization')
+    if (!auth) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } else if (!origin && !referer) {
+    return null // GET/HEAD from server-to-server (OK)
+  }
 
   const source = origin || referer
-  if (host && source.includes(host)) return null
+  const sourceHost = parseSourceHostname(source)
+  if (!sourceHost) {
+    // Unparseable source URL — reject
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  // Allow known domains
+  // Allow localhost (Expo dev, mobile simulators)
+  if (sourceHost === 'localhost' || sourceHost === '127.0.0.1') return null
+
+  // host header is just a hostname (or hostname:port) — strip the port.
+  const hostName = host.split(':')[0].toLowerCase()
+  if (hostName && hostnameMatches(sourceHost, hostName)) return null
+
+  // Allow known domains and their subdomains. Exact-match prevents
+  // attacker domains like `evilgotravyl.com` or `x.amplifyapp.com.evil.test`
+  // from passing.
   const allowed = ['gotravyl.com', 'deeviaje.com', 'amplifyapp.com']
-  if (allowed.some(d => source.includes(d))) return null
+  if (allowed.some(d => hostnameMatches(sourceHost, d))) return null
 
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 }

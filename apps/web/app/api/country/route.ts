@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequiredParams, errorResponse, CACHE_1H, CACHE_24H } from '@/lib/api-utils'
+import { getRequiredParams, errorResponse, CACHE_1H, CACHE_24H, rateLimit } from '@/lib/api-utils'
 
 interface CountryResponse {
   name: string
@@ -16,6 +16,8 @@ interface CountryResponse {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'country', 60, 60000)
+  if (rl) return rl
   const params = getRequiredParams(req, 'name')
   if (params instanceof NextResponse) return params
 

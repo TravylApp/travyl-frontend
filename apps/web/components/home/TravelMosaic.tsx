@@ -167,8 +167,7 @@ export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => vo
                     src={tile.image_url}
                     alt={tile.name}
                     loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                 )}

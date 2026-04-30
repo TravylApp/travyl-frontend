@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import { useItineraryScreen, TextStyles, FontSize } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
 import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, TabCtx, useTabAccent } from './_layout';
 
 /* ------------------------------------------------------------------ */
 /*  Animated Progress Bar                                              */
@@ -112,14 +112,64 @@ function buildPackingList(trip: any): PackingList {
 }
 
 export default function PackingScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
 
-  const defaultList = buildPackingList(trip);
-  const [packingList, setPackingList] = useState<PackingList>(defaultList);
+  // Start empty so the user doesn't see a list built from default trip
+  // duration / weather. The effect below populates from trip_context once
+  // `trip` loads, or builds defaults from the real trip data.
+  const [packingList, setPackingList] = useState<PackingList>({});
+  const seeded = useRef(false);
+
+  // Load saved packing list from trip_context if available — otherwise
+  // generate defaults from the actual trip (duration + weather).
+  useEffect(() => {
+    if (trip && !seeded.current) {
+      const saved = (trip.trip_context as any)?.packing_data;
+      if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
+        setPackingList(saved);
+      } else {
+        setPackingList(buildPackingList(trip));
+      }
+      seeded.current = true;
+    }
+  }, [trip]);
+
+  // Debounce-save packing list to trip_context
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistPacking = useCallback((data: PackingList) => {
+    if (!seeded.current || !id) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      supabase.from('trips').select('trip_context').eq('id', id).single().then(({ data: row }) => {
+        if (row) {
+          const ctx = (row.trip_context || {}) as Record<string, unknown>;
+          ctx.packing_data = data;
+          supabase.from('trips').update({ trip_context: ctx }).eq('id', id).then(() => {});
+        }
+      });
+    }, 1500);
+  }, [id]);
+
+  const updatePacking = useCallback((updater: PackingList | ((prev: PackingList) => PackingList)) => {
+    setPackingList((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistPacking(next);
+      return next;
+    });
+  }, [persistPacking]);
+
+  // Categories expand to whichever list is currently displayed; recomputed
+  // by the effect below once `packingList` populates.
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(Object.keys(defaultList)),
+    new Set(),
   );
+
+  useEffect(() => {
+    setExpandedCategories(new Set(Object.keys(packingList)));
+  }, [packingList]);
   const [newItemInputs, setNewItemInputs] = useState<Record<string, string>>({});
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -145,7 +195,7 @@ export default function PackingScreen() {
   };
 
   const toggleItem = (category: string, index: number) => {
-    setPackingList((prev) => {
+    updatePacking((prev) => {
       const updated = { ...prev };
       updated[category] = [...updated[category]];
       updated[category][index] = {
@@ -157,7 +207,7 @@ export default function PackingScreen() {
   };
 
   const removeItem = (category: string, index: number) => {
-    setPackingList((prev) => {
+    updatePacking((prev) => {
       const updated = { ...prev };
       updated[category] = updated[category].filter((_, i) => i !== index);
       return updated;
@@ -167,7 +217,7 @@ export default function PackingScreen() {
   const addItem = (category: string) => {
     const text = newItemInputs[category]?.trim();
     if (text) {
-      setPackingList((prev) => ({
+      updatePacking((prev) => ({
         ...prev,
         [category]: [...prev[category], { item: text, packed: false }],
       }));
@@ -182,7 +232,7 @@ export default function PackingScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          setPackingList((prev) => {
+          updatePacking((prev) => {
             const updated = { ...prev };
             delete updated[category];
             return updated;
@@ -199,7 +249,7 @@ export default function PackingScreen() {
 
   const createList = () => {
     if (newListName.trim()) {
-      setPackingList((prev) => ({ ...prev, [newListName.trim()]: [] }));
+      updatePacking((prev) => ({ ...prev, [newListName.trim()]: [] }));
       setExpandedCategories((prev) => {
         const next = new Set(prev);
         next.add(newListName.trim());
@@ -283,7 +333,7 @@ export default function PackingScreen() {
               <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: 4 }}>
                 Weather
               </Text>
-              <Text style={{ ...TextStyles.headline, fontSize: 22, color: colors.text, marginBottom: 2 }}>
+              <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 2 }}>
                 {currentWeather.high}°
               </Text>
               <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
@@ -305,9 +355,9 @@ export default function PackingScreen() {
             borderRadius: 14,
             padding: 16,
             width: 200,
-            backgroundColor: '#fffbeb',
+            backgroundColor: colors.warningBg,
             borderWidth: 1,
-            borderColor: '#fde68a',
+            borderColor: colors.warning,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -317,7 +367,7 @@ export default function PackingScreen() {
             </Text>
           </View>
           {['Roll clothes to save space', 'Pack versatile layers', 'Keep essentials in carry-on'].map((tip, i) => (
-            <Text key={i} style={{ ...TextStyles.caption, color: '#78350f', marginTop: 4 }}>- {tip}</Text>
+            <Text key={i} style={{ ...TextStyles.caption, color: colors.warning, marginTop: 4 }}>- {tip}</Text>
           ))}
         </View>
       </ScrollView>
@@ -357,7 +407,7 @@ export default function PackingScreen() {
                   onPress={() => toggleCategory(category)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
                 >
-                  <Text style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT }}>
+                  <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>
                     {category}
                   </Text>
                   <FontAwesome
@@ -392,7 +442,7 @@ export default function PackingScreen() {
                   percent={catPercent}
                   height={5}
                   trackColor={colors.border}
-                  fillColor={catPercent === 100 ? '#22c55e' : ACCENT}
+                  fillColor={catPercent === 100 ? colors.success : ACCENT}
                 />
               </View>
 
@@ -505,7 +555,7 @@ export default function PackingScreen() {
             }}
           >
             <Text
-              style={{ ...TextStyles.subhead, fontSize: 15, color: ACCENT, marginBottom: 12 }}
+              style={{ ...TextStyles.bodyXlEm, color: ACCENT, marginBottom: 12 }}
             >
               Create New List
             </Text>

@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Heart, MapPin, Star, ExternalLink, Phone, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { PlaceItem } from '@travyl/shared';
+import { usePlaceEnrich } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
 
@@ -15,6 +17,15 @@ interface PlaceDetailModalProps {
 }
 
 export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite, onClose }: PlaceDetailModalProps) {
+  // Enrich with cross-source data (extra photos, reviews, etc.)
+  const { data: enrichData } = usePlaceEnrich(place.id, place.name);
+  const enrichedPlace = { ...place };
+  if (enrichData?.photos?.length) {
+    enrichedPlace.images = [...(enrichedPlace.images ?? []), ...enrichData.photos];
+  }
+  if (enrichData?.website && !enrichedPlace.website) enrichedPlace.website = enrichData.website;
+  if (enrichData?.phone && !enrichedPlace.phone) enrichedPlace.phone = enrichData.phone;
+
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -28,9 +39,9 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const hasCoords = place.latitude && place.longitude && (place.latitude !== 0 || place.longitude !== 0);
+  const hasCoords = enrichedPlace.latitude && enrichedPlace.longitude && (enrichedPlace.latitude !== 0 || enrichedPlace.longitude !== 0);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -47,10 +58,11 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
 
         {/* Left: Image */}
         <div className="relative sm:w-[55%] shrink-0 min-h-[250px] sm:min-h-0">
-          {place.image ? (
+          {enrichedPlace.image ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={place.image} alt={place.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" style={{ minHeight: 250 }} />
+              <img src={enrichedPlace.image} alt={enrichedPlace.name} className="w-full h-full object-cover" style={{ minHeight: 250 }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </>
           ) : (
@@ -120,13 +132,13 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
               {place.hours && (
                 <p className="text-[12px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-700 dark:text-gray-300">Hours:</span> {place.hours}</p>
               )}
-              {place.phone && (
-                <a href={`tel:${place.phone}`} className="flex items-center gap-1.5 text-[12px] text-blue-600 hover:underline">
-                  <Phone size={11} /> {place.phone}
+              {enrichedPlace.phone && (
+                <a href={`tel:${enrichedPlace.phone}`} className="flex items-center gap-1.5 text-[12px] text-blue-600 hover:underline">
+                  <Phone size={11} /> {enrichedPlace.phone}
                 </a>
               )}
-              {place.website && (
-                <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[12px] text-blue-600 hover:underline">
+              {enrichedPlace.website && (
+                <a href={enrichedPlace.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[12px] text-blue-600 hover:underline">
                   <Globe size={11} /> Visit website
                 </a>
               )}
@@ -166,6 +178,7 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -13,18 +13,19 @@ import {
   Platform,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Constants from 'expo-constants';
 
-// Conditionally import react-native-maps (crashes on web)
+// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
     Marker = maps.Marker;
   } catch {}
 }
-import { Navy, type PlaceItem, useSimilarPlaces } from '@travyl/shared';
+import { Navy, TextStyles, type PlaceItem, useSimilarPlaces } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import FlipCard from './FlipCard';
@@ -71,8 +72,13 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
 
   const sheetPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+      // Don't claim the responder on touch start — that swallowed taps on
+      // every Pressable inside the sheet ("Get Directions", flip button,
+      // tag pills, etc.). Only claim once the user has moved meaningfully
+      // downward AND vertically dominates over horizontal motion.
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy > 10 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.5,
       onPanResponderRelease: (_, gs) => {
         if (gs.dy > 100 || (gs.dy > 30 && gs.vy > 0.5)) {
           onCloseRef.current();
@@ -111,7 +117,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
   const mapRef = useRef<any>(null);
   useEffect(() => {
     if (currentPlace?.latitude != null && currentPlace?.longitude != null) {
-      mapRef.current?.animateToRegion({
+      typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
         latitude: currentPlace.latitude,
         longitude: currentPlace.longitude,
         latitudeDelta: 0.02,
@@ -161,10 +167,10 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
     ]).start(() => onClose());
   }, [onClose]);
 
-  if (!place) return null;
-
-  const hasLocation = currentPlace?.latitude != null && currentPlace?.longitude != null;
-  const cardW = SCREEN_WIDTH - 32;
+  // Hooks must come before any early return to keep the call order stable
+  // across renders. When `place` flips to null on close, React would otherwise
+  // see a different number of hooks and throw "Rendered more hooks than during
+  // the previous render."
   const [showMap, setShowMap] = useState(false);
   const mapPanelSlide = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
@@ -177,7 +183,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
     }).start();
     if (opening && currentPlace?.latitude != null && currentPlace?.longitude != null) {
       setTimeout(() => {
-        mapRef.current?.animateToRegion({
+        typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
           latitude: currentPlace.latitude!,
           longitude: currentPlace.longitude!,
           latitudeDelta: 0.02,
@@ -185,7 +191,12 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
         }, 400);
       }, 300);
     }
-  }, [showMap, currentPlace]);
+  }, [showMap, currentPlace, mapPanelSlide]);
+
+  if (!place) return null;
+
+  const hasLocation = currentPlace?.latitude != null && currentPlace?.longitude != null;
+  const cardW = SCREEN_WIDTH - 32;
 
   // Reset map panel when place changes
   useEffect(() => {
@@ -242,7 +253,7 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
             <Pressable
               onPress={() => {
                 if (currentPlace?.latitude != null && currentPlace?.longitude != null) {
-                  mapRef.current?.animateToRegion({
+                  typeof mapRef.current?.animateToRegion === 'function' && mapRef.current.animateToRegion({
                     latitude: currentPlace.latitude,
                     longitude: currentPlace.longitude,
                     latitudeDelta: 0.02,
@@ -267,8 +278,8 @@ const PlaceDetailModal = memo(function PlaceDetailModal({
               paddingHorizontal: 16, paddingVertical: 12,
               shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
             }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#333' }}>{currentPlace.name}</Text>
-              {currentPlace.tagline ? <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{currentPlace.tagline}</Text> : null}
+              <Text style={{ ...TextStyles.bodyXlEm, color: '#333' }}>{currentPlace.name}</Text>
+              {currentPlace.tagline ? <Text style={{ ...TextStyles.body, color: '#666', marginTop: 2 }}>{currentPlace.tagline}</Text> : null}
             </View>
           </Animated.View>
         )}
