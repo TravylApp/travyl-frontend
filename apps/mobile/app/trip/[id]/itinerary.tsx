@@ -205,7 +205,7 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
   const [stopOrder, setStopOrder] = useState<number[]>([]);
   const [showExploreOnMap, setShowExploreOnMap] = useState(true);
   const [selectedStop, setSelectedStop] = useState<number | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<typeof MapView>(null);
 
   // Sheet drag state (like PlaceDetailModal)
   const [sheetTop, setSheetTop] = useState(0);

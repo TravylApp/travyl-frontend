@@ -61,6 +61,12 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
   const [progressMsg, setProgressMsg] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const phase = planner.state.phase;
+  // Keep animation visible from the moment they tap submit until navigation completes
+  const isWorking = submitted || phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
+  const isIdle = phase === 'idle' && !submitted && !saving;
+  const isClarifying = phase === 'clarifying' && !saving;
+  const isError = phase === 'error' && !saving;
 
   // Reset on open
   useEffect(() => {
@@ -176,13 +182,6 @@ export function CreateTripModal({ visible, onClose, prefillPrompt }: CreateTripM
     setCurrentQuestionIdx(0);
     setAnswers({});
   }, [planner]);
-
-  const phase = planner.state.phase;
-  // Keep animation visible from the moment they tap submit until navigation completes
-  const isWorking = submitted || phase === 'extracting' || phase === 'planning' || phase === 'complete' || saving;
-  const isIdle = phase === 'idle' && !submitted && !saving;
-  const isClarifying = phase === 'clarifying' && !saving;
-  const isError = phase === 'error' && !saving;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>

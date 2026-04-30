@@ -612,8 +612,10 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
                   nestedScrollEnabled
                 >
                   <Text style={{
-                    ...TextStyles.body, fontFamily: FontFamily.serif,
-                    ...TextStyles.bodyLg, color: '#fff',
+                    ...(TextStyles.body as any),
+                    fontFamily: FontFamily.serif,
+                    ...(TextStyles.bodyLg as any),
+                    color: '#fff',
                   }}>
                     {wikiText}
                   </Text>
@@ -1126,7 +1128,7 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
               ),
               swipeEnabled: true,
               animationEnabled: true,
-              detachInactiveScreens: false,
+
               sceneStyle: {
                 paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
                 paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
