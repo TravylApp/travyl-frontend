@@ -551,9 +551,17 @@ export default function PlacesPage() {
                       style={{ maxWidth: 900, height: 480 }}
                     >
                       {(() => {
-                        const prevP = filtered[gridShowcaseIdx === 0 ? filtered.length - 1 : gridShowcaseIdx - 1];
-                        const nextP = filtered[(gridShowcaseIdx + 1) % filtered.length];
-                        const nextNextP = filtered[(gridShowcaseIdx + 2) % filtered.length];
+                        // Defensive: showcase is gated on filtered[gridShowcaseIdx]
+                        // existing, but if filtered shrinks via search/filter while
+                        // showcase is open, peek-card lookups can resolve to
+                        // undefined and crash on .image / .name.
+                        const activeP = filtered[gridShowcaseIdx];
+                        if (!activeP || filtered.length === 0) return null;
+                        const prevP =
+                          filtered[gridShowcaseIdx === 0 ? filtered.length - 1 : gridShowcaseIdx - 1] ??
+                          activeP;
+                        const nextP = filtered[(gridShowcaseIdx + 1) % filtered.length] ?? activeP;
+                        const nextNextP = filtered[(gridShowcaseIdx + 2) % filtered.length] ?? activeP;
                         // Deck-of-cards animation: exit pulls card toward viewer, enter reveals from behind
                         const shuffleVariants = {
                           enter: (d: number) => ({ scale: 0.85, y: 30, opacity: 0, rotate: d > 0 ? 2 : -2 }),
