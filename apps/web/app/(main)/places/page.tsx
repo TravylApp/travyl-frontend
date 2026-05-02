@@ -243,17 +243,20 @@ export default function PlacesPage() {
       items = items.filter((p) => p.category === activeSubcategory);
     }
 
-    // Only apply local text filter when NOT in API search mode
-    if (searchQuery && !searchCity) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.tagline.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q) ||
-          p.tags?.some((t) => t.toLowerCase().includes(q)),
-      );
+    // Local text filter — applies in BOTH browse mode (filter local cards)
+    // AND search mode (the multi-source search merges results from /api/places,
+    // tripadvisor, maps, events, etc.; some sources don't honor the query, so
+    // we post-filter to keep only items that actually match what the user typed).
+    const textQ = (searchCity || searchQuery || '').trim().toLowerCase();
+    if (textQ) {
+      const matches = (p: typeof items[number]) =>
+        p.name?.toLowerCase().includes(textQ) ||
+        p.tagline?.toLowerCase().includes(textQ) ||
+        p.category?.toLowerCase().includes(textQ) ||
+        p.description?.toLowerCase().includes(textQ) ||
+        (p as any).address?.toLowerCase().includes(textQ) ||
+        p.tags?.some((t: string) => t.toLowerCase().includes(textQ));
+      items = items.filter(matches);
     }
 
     // Sort
