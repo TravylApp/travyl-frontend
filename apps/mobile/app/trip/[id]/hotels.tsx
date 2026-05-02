@@ -1075,7 +1075,7 @@ export default function HotelsScreen() {
   const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
   const [selectedRoom, setSelectedRoom] = useState(0);
-  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('cards');
+  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('list');
   const [cardIdx, setCardIdx] = useState(-1); // -1 = hidden
   const [selectedHotelIdx, setSelectedHotelIdx] = useState(0);
   const [detailExpanded, setDetailExpanded] = useState(true);

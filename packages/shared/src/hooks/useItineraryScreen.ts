@@ -19,6 +19,7 @@ import { useItineraryDays } from './useItineraryDays';
 import { useFlights } from './useFlights';
 import { useHotels } from './useHotels';
 import { useExchangeRates } from './useExchangeRates';
+import { useTripActivities, type TripActivityRow } from './useTripActivities';
 import {
   buildItineraryDayViewModel,
   buildFlightViewModel,
@@ -199,6 +200,92 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
   });
 }
 
+/** Merge user-added activity rows (from `activity` table) into the day view models.
+ *  Rows are matched to days by `starting_date`; if a day has no date, we fall back
+ *  to its index relative to trip.start_date. */
+function mergeUserActivities(
+  days: ItineraryDayViewModel[],
+  trip: any,
+  rows: TripActivityRow[],
+): ItineraryDayViewModel[] {
+  if (!rows.length || !days.length) return days;
+
+  const startDate = trip?.start_date ? new Date(trip.start_date + 'T00:00:00') : null;
+  const dayDateByIndex = days.map((_, i) =>
+    startDate ? new Date(startDate.getTime() + i * 86400000).toISOString().slice(0, 10) : null,
+  );
+
+  type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
+  const getToD = (t: string | null): TimeOfDay => {
+    if (!t) return 'morning';
+    const h = parseInt(t.split(':')[0], 10);
+    if (isNaN(h)) return 'morning';
+    if (h < 12) return 'morning';
+    if (h < 17) return 'afternoon';
+    if (h < 21) return 'evening';
+    return 'latenight';
+  };
+  const fmt12 = (t: string | null) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    const p = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`;
+  };
+
+  const rowsByDay: TripActivityRow[][] = days.map(() => []);
+  for (const r of rows) {
+    let dayIdx = dayDateByIndex.findIndex((d) => d === r.starting_date);
+    if (dayIdx < 0) dayIdx = 0;
+    rowsByDay[dayIdx].push(r);
+  }
+
+  return days.map((day, i) => {
+    const adds = rowsByDay[i];
+    if (!adds.length) return day;
+
+    const timeGroups = day.timeGroups.map((g) => ({ timeOfDay: g.timeOfDay, activities: [...g.activities] }));
+    const groupMap = new Map<TimeOfDay, any[]>();
+    for (const g of timeGroups) groupMap.set(g.timeOfDay as TimeOfDay, g.activities);
+
+    for (const r of adds) {
+      const tod = getToD(r.starting_time);
+      const list = groupMap.get(tod) ?? [];
+      const data = r.activity_data ?? {};
+      list.push({
+        id: r.id,
+        name: r.activity_name,
+        category: data.category || r.activity_type || 'other',
+        locationName: data.location_name ?? r.activity_name,
+        startTime: fmt12(r.starting_time),
+        endTime: fmt12(r.ending_time),
+        timeDisplay: r.starting_time && r.ending_time ? `${fmt12(r.starting_time)} – ${fmt12(r.ending_time)}` : fmt12(r.starting_time),
+        costDisplay: null,
+        cost: null,
+        costCurrency: null,
+        bookingUrl: null,
+        notes: r.notes ?? null,
+        image: upscaleGoogleImage(data.image_url) ?? null,
+        source: 'user-added' as any,
+        timeOfDay: tod,
+        latitude: r.latitude ?? null,
+        longitude: r.longitude ?? null,
+        userAdded: true,
+      });
+      groupMap.set(tod, list);
+    }
+
+    const order: TimeOfDay[] = ['morning', 'afternoon', 'evening', 'latenight'];
+    const merged = order.filter((tod) => groupMap.has(tod) && groupMap.get(tod)!.length > 0)
+      .map((tod) => ({ timeOfDay: tod, activities: groupMap.get(tod)! }));
+
+    return {
+      ...day,
+      timeGroups: merged,
+      activityCount: merged.reduce((sum, g) => sum + g.activities.length, 0),
+    };
+  });
+}
+
 /**
  * Provides all data and state needed by the itinerary screen.
  *
@@ -229,6 +316,7 @@ export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
+  const activitiesQuery = useTripActivities(tripId);
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
   const homeCurrency = useSettingsStore((s) => s.currency);
@@ -246,7 +334,12 @@ export function useItineraryScreen(tripId: string | undefined) {
     () => dbDays.length > 0 || !tripCtx ? [] : buildDaysFromContext(tripCtx, tripData),
     [dbDays.length, tripCtx, tripData],
   );
-  const days = dbDays.length > 0 ? dbDays : contextDays;
+  const baseDays = dbDays.length > 0 ? dbDays : contextDays;
+  // Merge user-added activities (from `activity` table, written by useAddToTrip)
+  const days = useMemo(
+    () => mergeUserActivities(baseDays, tripData, activitiesQuery.data ?? []),
+    [baseDays, tripData, activitiesQuery.data],
+  );
 
   const flights = useMemo(
     () => (flightsQuery.data ?? []).map(buildFlightViewModel),
@@ -300,9 +393,10 @@ export function useItineraryScreen(tripId: string | undefined) {
   const refetch = useCallback(() => {
     tripQuery.refetch();
     daysQuery.refetch();
+    activitiesQuery.refetch();
     flightsQuery.refetch();
     hotelsQuery.refetch();
-  }, [tripQuery, daysQuery, flightsQuery, hotelsQuery]);
+  }, [tripQuery, daysQuery, activitiesQuery, flightsQuery, hotelsQuery]);
 
   return {
     trip,

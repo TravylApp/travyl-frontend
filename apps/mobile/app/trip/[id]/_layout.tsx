@@ -75,6 +75,8 @@ const TabCtx = createContext<{
   setEssentialsOpen: (open: boolean) => void;
   heroImageOverride: string | null;
   setHeroImageOverride: (url: string | null) => void;
+  tabBarProps: MaterialTopTabBarProps | null;
+  setTabBarProps: (p: MaterialTopTabBarProps | null) => void;
 }>({
   tripId: '',
   spinePosition: 'top',
@@ -103,6 +105,8 @@ const TabCtx = createContext<{
   setEssentialsOpen: () => {},
   heroImageOverride: null,
   setHeroImageOverride: () => {},
+  tabBarProps: null,
+  setTabBarProps: () => {},
 });
 
 export { TabCtx };
@@ -927,11 +931,23 @@ function BottomTabBar({ state, navigation }: MaterialTopTabBarProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
           flexDirection: 'row',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           paddingHorizontal: 8,
           gap: 2,
         }}
       >
+        {/* Drag handle — lets user move the spine back to left/right/top */}
+        <View style={{
+          width: 28,
+          height: 36,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.base + '40',
+          borderRadius: 18,
+          marginRight: 4,
+        }}>
+          <DragHandle direction="horizontal" />
+        </View>
         {visibleRoutes.map(({ route, index }) => {
           const isFocused = state.index === index;
           const tab = ALL_TABS.find((t) => t.name === route.name);
@@ -997,11 +1013,13 @@ const prevTabIndexRef = { current: 0 };
 const activeTabNameRef = { current: 'index' };
 let setActiveTabFn: (name: string) => void = () => {};
 
+// Captures Material Top Tabs props and exposes them via setTabBarProps so the
+// real sidebar can render as a sibling of TopTabs (outside the constrained
+// tabBar slot, which clips its children's hit-test area to ~48pt).
 function CustomTabBar(props: MaterialTopTabBarProps) {
-  const { spinePosition } = useContext(TabCtx);
+  const { setTabBarProps } = useContext(TabCtx);
   tabNavRef.current = props.navigation;
 
-  // Track direction and active tab name
   const idx = props.state.index;
   if (idx !== prevTabIndexRef.current) {
     navDirectionRef.current = idx > prevTabIndexRef.current ? 1 : -1;
@@ -1010,17 +1028,32 @@ function CustomTabBar(props: MaterialTopTabBarProps) {
   const tabName = props.state.routes[idx]?.name ?? 'index';
   activeTabNameRef.current = tabName;
 
-  // Sync active tab into layout state (for conditional TripHero rendering)
   useEffect(() => {
     setActiveTabFn(tabName);
   }, [tabName]);
 
-  // "top" is unreachable on mobile — treat it as bottom
-  if (spinePosition === 'top' || spinePosition === 'bottom') {
-    return <BottomTabBar {...props} />;
-  }
+  // Latest props live in a ref so ExternalTabBar always reads fresh state
+  // without the parent re-rendering on every render of CustomTabBar (which
+  // would create an update loop — props object identity changes each render).
+  const propsRef = useRef(props);
+  propsRef.current = props;
 
-  return <BookTabSidebar {...props} />;
+  useEffect(() => {
+    setTabBarProps?.(propsRef.current);
+  }, [props.state.index, props.state.routes.length]);
+
+  return <View style={{ height: 0 }} />;
+}
+
+// Sibling-rendered sidebar/bottom-bar — receives full screen bounds so taps
+// hit the actual tab Pressables instead of falling through to content below.
+function ExternalTabBar() {
+  const { spinePosition, tabBarProps } = useContext(TabCtx);
+  if (!tabBarProps) return null;
+  if (spinePosition === 'top' || spinePosition === 'bottom') {
+    return <BottomTabBar {...tabBarProps} />;
+  }
+  return <BookTabSidebar {...tabBarProps} />;
 }
 
 // ─── Tab Picker Modal ────────────────────────────────────
@@ -1108,6 +1141,7 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
     ...parentTheme,
     colors: { ...parentTheme.colors, background: 'transparent', card: 'transparent' },
   }), [parentTheme]);
+  const { calendarOpen } = useContext(TabCtx);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
@@ -1124,7 +1158,7 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
               lazyPlaceholder: () => (
                 <View style={{ flex: 1, backgroundColor: 'transparent' }} />
               ),
-              swipeEnabled: true,
+              swipeEnabled: !calendarOpen,
               animationEnabled: true,
               
               sceneStyle: {
@@ -1147,6 +1181,7 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
             <TopTabs.Screen name="settings" options={{ title: 'Settings' }} />
           </TopTabs>
         </ThemeProvider>
+        <ExternalTabBar />
       </View>
     </View>
   );
@@ -1212,6 +1247,7 @@ export default function TripLayout() {
   const [mapOpen, setMapOpen] = useState(false);
   const [essentialsOpen, setEssentialsOpen] = useState(true);
   const [heroImageOverride, setHeroImageOverride] = useState<string | null>(null);
+  const [tabBarProps, setTabBarProps] = useState<MaterialTopTabBarProps | null>(null);
 
   // Load persisted theme state from AsyncStorage
   useEffect(() => {
@@ -1255,7 +1291,7 @@ export default function TripLayout() {
 
   return (
     <TabCtx.Provider
-      value={{ tripId: id, spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker, essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride }}
+      value={{ tripId: id, spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker, essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride, tabBarProps, setTabBarProps }}
     >
       <TripTabsWithTransparentTheme trip={trip} refetch={refetch} spinePosition={spinePosition} />
       <TabPickerModal />

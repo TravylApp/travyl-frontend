@@ -46,14 +46,36 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(url.toString())
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Flight search failed' }, { status: res.status })
+    const rawText = await res.text()
+    let data: any = {}
+    try { data = JSON.parse(rawText) } catch {}
+
+    // Surface SerpAPI errors instead of silently returning empty
+    if (!res.ok || data.error) {
+      console.error('[flights/search] SerpAPI error', {
+        status: res.status,
+        error: data.error || rawText.slice(0, 300),
+      })
+      return NextResponse.json({
+        error: data.error || 'Flight search failed',
+        upstream_status: res.status,
+        flights: [],
+        total: 0,
+      }, { status: res.ok ? 200 : res.status })
     }
 
-    const data = await res.json()
     const bestFlights = data.best_flights ?? []
     const otherFlights = data.other_flights ?? []
     const priceInsights = data.price_insights ?? {}
+
+    // Log when SerpAPI returns 200 but no flights — helps diagnose key/region issues
+    if (bestFlights.length === 0 && otherFlights.length === 0) {
+      console.warn('[flights/search] No flights returned', {
+        origin, destination, date,
+        flights_state: data.search_information?.flights_results_state,
+        keys: Object.keys(data).slice(0, 12),
+      })
+    }
 
     // Normalize flights into a consistent shape
     const normalize = (flights: any[], tier: string) =>
@@ -108,8 +130,10 @@ export async function GET(req: NextRequest) {
       flights: results,
       priceInsights,
       total: results.length,
+      flights_state: data.search_information?.flights_results_state,
     })
   } catch (err) {
-    return NextResponse.json({ error: 'Flight search failed' }, { status: 500 })
+    console.error('[flights/search] fetch threw', err)
+    return NextResponse.json({ error: 'Flight search failed', detail: String(err) }, { status: 500 })
   }
 }

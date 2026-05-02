@@ -114,6 +114,10 @@ export default function BudgetScreen() {
 
   // Currency conversion
   const [displayCurrency, setDisplayCurrency] = useState('USD');
+  // Quick converter widget state
+  const [convFrom, setConvFrom] = useState('USD');
+  const [convTo, setConvTo] = useState('EUR');
+  const [convAmount, setConvAmount] = useState('100');
   const { data: rates } = useQuery({
     queryKey: ['exchange-rates'],
     queryFn: async () => {
@@ -498,6 +502,47 @@ export default function BudgetScreen() {
           ));
         })()}
       </ScrollView>
+
+      {/* ===== Currency Converter ===== */}
+      {(() => {
+        const amt = parseFloat(convAmount) || 0;
+        const fromRate = rates?.[convFrom] ?? 1;
+        const toRate = rates?.[convTo] ?? 1;
+        const result = (amt / fromRate) * toRate;
+        const allCodes: string[] = rates ? Object.keys(rates) : POPULAR_CURRENCIES;
+        const ordered = [...POPULAR_CURRENCIES.filter(c => allCodes.includes(c)), ...allCodes.filter(c => !POPULAR_CURRENCIES.includes(c)).sort()];
+        const cycleNext = (current: string) => ordered[(ordered.indexOf(current) + 1) % ordered.length] || current;
+        return (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: colors.surface, borderRadius: 10,
+            paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12,
+            borderWidth: 1, borderColor: colors.border,
+          }}>
+            <FontAwesome name="exchange" size={12} color={ACCENT} />
+            <TextInput
+              value={convAmount}
+              onChangeText={setConvAmount}
+              keyboardType="decimal-pad"
+              placeholder="100"
+              placeholderTextColor={colors.textTertiary}
+              style={{ ...TextStyles.bodyEm, color: colors.text, width: 60, paddingVertical: 0 }}
+            />
+            <Pressable onPress={() => setConvFrom(cycleNext(convFrom))} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.cardBackground }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{convFrom}</Text>
+            </Pressable>
+            <Pressable onPress={() => { const f = convFrom; setConvFrom(convTo); setConvTo(f); }} hitSlop={8}>
+              <FontAwesome name="arrows-h" size={12} color={colors.textSecondary} />
+            </Pressable>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text, flex: 1, textAlign: 'right' }} numberOfLines={1}>
+              {fmtCurrency(result, convTo)}
+            </Text>
+            <Pressable onPress={() => setConvTo(cycleNext(convTo))} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.cardBackground }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{convTo}</Text>
+            </Pressable>
+          </View>
+        );
+      })()}
 
       {/* ===== Summary Cards (3 columns) ===== */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>

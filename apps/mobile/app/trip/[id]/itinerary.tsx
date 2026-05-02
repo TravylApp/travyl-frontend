@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'r
 import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -63,6 +64,24 @@ function parseHour(timeStr: string | null): number | null {
   const h24 = timeStr.match(/(\d{1,2}):(\d{2})/);
   if (h24) return parseInt(h24[1], 10);
   return null;
+}
+
+// When an activity has no explicit start_time, fall back to a sensible hour
+// based on its time-of-day bucket so the calendar doesn't stack everything at
+// midnight (which is offscreen — the calendar auto-scrolls to 8 AM on mount).
+const TIME_OF_DAY_HOUR: Record<string, number> = {
+  morning: 9,
+  afternoon: 14,
+  evening: 19,
+  latenight: 22,
+};
+
+function formatHourLabel(hour: number): string {
+  const h = Math.floor(hour);
+  const minutes = Math.round((hour - h) * 60);
+  const display = h % 12 === 0 ? 12 : h % 12;
+  const period = h < 12 || h === 24 ? 'AM' : 'PM';
+  return `${display}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
 // ─── Match itinerary activity → DiscoverItem by keyword overlap ──────
@@ -676,56 +695,132 @@ function parseDuration(start: string, end?: string): number {
 }
 
 /** Activity block for the calendar grid — tap to view, long-press to select for moving */
-function CalendarBlock({ activity, startH, duration, bgColor, isSelected, onTap, onLongPress }: {
+function CalendarBlock({ activity, startH, duration, bgColor, isSelected, onTap, onDrop, onDragStateChange, dayColW, colIdx, totalCols, lane = 0, lanes = 1 }: {
   activity: any; startH: number; duration: number; bgColor: string;
   isSelected: boolean;
   onTap: () => void;
-  onLongPress: () => void;
+  onDrop: (activityId: string, newHour: number, newColOffset: number) => void;
+  onDragStateChange?: (dragging: boolean) => void;
+  dayColW: number;
+  colIdx: number;
+  totalCols: number;
+  lane?: number;
+  lanes?: number;
 }) {
   const height = Math.max(duration * HOUR_HEIGHT - 4, HOUR_HEIGHT * 0.6);
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const [dragging, setDragging] = useState(false);
+  const tappedRef = useRef(true);
+
+  // Snap the visual offset back to 0 whenever the activity's actual position
+  // changes (i.e., the drop landed in the data layer and the prop refreshed).
+  // This keeps the block sitting where the user dropped it without a snap-back.
+  useEffect(() => {
+    Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, friction: 8 }).start();
+  }, [startH, colIdx]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      // Refuse to give up the responder once granted — keeps the parent
+      // ScrollView (vertical) and the pager (horizontal) from stealing the drag.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({ x: 0, y: 0 });
+        pan.setValue({ x: 0, y: 0 });
+        tappedRef.current = true;
+        onDragStateChange?.(true);
+      },
+      onPanResponderMove: (_, gs) => {
+        if (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4) {
+          tappedRef.current = false;
+          setDragging(true);
+        }
+        pan.setValue({ x: gs.dx, y: gs.dy });
+      },
+      onPanResponderRelease: (_, { dx, dy }) => {
+        if (tappedRef.current && Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+          // Treat as tap — snap back instantly and fire onTap
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, friction: 7 }).start();
+          setDragging(false);
+          onDragStateChange?.(false);
+          onTap();
+          return;
+        }
+        const colOffset = Math.round(dx / dayColW);
+        const targetCol = Math.max(0, Math.min(totalCols - 1, colIdx + colOffset));
+        // Snap to 30-min increments so small drags register
+        const halfHourOffset = Math.round((dy / HOUR_HEIGHT) * 2) / 2;
+        const newHour = Math.max(0, Math.min(23.5, startH + halfHourOffset));
+        // Don't reset pan here — let the parent prop change re-anchor the block.
+        // If the drop didn't move it (no startH/colIdx change), the useEffect won't
+        // fire, so add a 600ms safety timer that snaps back if nothing happens.
+        setTimeout(() => {
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, friction: 7 }).start();
+        }, 600);
+        onDrop(activity.id, newHour, targetCol);
+        setDragging(false);
+        onDragStateChange?.(false);
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, friction: 7 }).start();
+        setDragging(false);
+        onDragStateChange?.(false);
+      },
+    })
+  ).current;
 
   return (
-    <Pressable
-      onPress={onTap}
-      onLongPress={onLongPress}
-      delayLongPress={250}
-      style={({ pressed }) => ({
-        position: 'absolute',
-        top: startH * HOUR_HEIGHT + 2,
-        left: 2, right: 2, height,
-        backgroundColor: bgColor,
-        borderRadius: 6,
-        borderLeftWidth: 3,
-        borderLeftColor: adjustBrightness(bgColor, -40),
-        paddingHorizontal: 4, paddingVertical: 3,
-        overflow: 'hidden',
-        opacity: pressed ? 0.8 : 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: isSelected ? 4 : 1 },
-        shadowOpacity: isSelected ? 0.3 : 0.1,
-        shadowRadius: isSelected ? 6 : 2,
-        elevation: isSelected ? 8 : 2,
-        borderWidth: isSelected ? 2 : 0,
-        borderColor: '#fff',
-        transform: [{ scale: isSelected ? 1.03 : 1 }],
-        zIndex: isSelected ? 100 : 1,
-      })}
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        {
+          position: 'absolute',
+          top: startH * HOUR_HEIGHT + 2,
+          // Side-by-side lanes for overlapping blocks
+          left: 2 + (lane * (dayColW - 4)) / lanes,
+          width: (dayColW - 4) / lanes - 1,
+          height,
+          backgroundColor: bgColor,
+          borderRadius: 3,
+          borderLeftWidth: 3,
+          borderLeftColor: adjustBrightness(bgColor, -40),
+          paddingHorizontal: 4, paddingVertical: 3,
+          overflow: 'hidden',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: dragging ? 6 : isSelected ? 4 : 0 },
+          shadowOpacity: dragging ? 0.4 : isSelected ? 0.25 : 0,
+          shadowRadius: dragging ? 10 : isSelected ? 6 : 0,
+          elevation: dragging ? 12 : isSelected ? 8 : 0,
+          borderWidth: isSelected ? 2 : 0,
+          borderColor: '#fff',
+          zIndex: dragging ? 1000 : isSelected ? 100 : 1,
+          opacity: dragging ? 0.9 : 1,
+        },
+        { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale: dragging ? 1.05 : isSelected ? 1.03 : 1 }] },
+      ]}
     >
-      <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }} numberOfLines={1}>{activity.name}</Text>
-      {height > 35 && (
-        <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)' }} numberOfLines={1}>
-          {activity.startTime}
-        </Text>
-      )}
-      {height > 55 && activity.locationName && (
-        <Text style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)' }} numberOfLines={1}>
-          {activity.locationName}
-        </Text>
-      )}
-      {isSelected && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 6, borderStyle: 'dashed' }} />
-      )}
-    </Pressable>
+      <View style={{ flex: 1 }} pointerEvents="box-none">
+        <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }} numberOfLines={1}>{activity.name}</Text>
+        {height > 35 && (
+          <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.92)', fontWeight: '600' }} numberOfLines={1}>
+            {activity.startTime}
+          </Text>
+        )}
+        {height > 60 && activity.locationName && (
+          <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }} numberOfLines={1}>
+            {activity.locationName}
+          </Text>
+        )}
+        {isSelected && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: '#fff', borderRadius: 6, borderStyle: 'dashed' }} />
+        )}
+      </View>
+    </Animated.View>
   );
 }
 
@@ -741,6 +836,7 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
   const { width: SCREEN_W } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [editActivity, setEditActivity] = useState<any | null>(null);
+  const [blockDragging, setBlockDragging] = useState(false);
 
   const VISIBLE_DAYS = Math.min(visibleDayCount, days.length);
   const GUTTER_W = 44;
@@ -755,9 +851,6 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
     setRangeStart(newStart);
   }, [selectedDayIndex, visibleDayCount]);
   const visibleDays = days.slice(rangeStart, rangeStart + VISIBLE_DAYS);
-
-  // Tap-to-move: long-press selects an activity, then tap an empty time slot to move it
-  const [movingActivityId, setMovingActivityId] = useState<string | null>(null);
 
   // Scroll to 8 AM on mount
   useEffect(() => {
@@ -789,6 +882,8 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
+      scrollEnabled={!blockDragging}
+      {...({ delaysContentTouches: false, canCancelContentTouches: false } as any)}
     >
       <View style={{ flexDirection: 'row' }}>
         {/* ── Hour gutter ── */}
@@ -806,13 +901,31 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
         {/* ── Day columns ── */}
         {visibleDays.map((day, colIdx) => {
           const dayIdx = rangeStart + colIdx;
-          const activities = day.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
+          const rawActivities = day.timeGroups?.flatMap((g: any) => g.activities ?? []) ?? [];
+
+          // Pre-compute each activity's startH so we can cap heights to the next
+          // activity's start (prevents overlapping blocks when raw duration is long).
+          const activityPositions = rawActivities.map((activity: any) => {
+            const parsed = parseHour(activity.startTime);
+            let startH: number;
+            let displayTime = activity.startTime;
+            if (parsed !== null) {
+              startH = parsed;
+            } else {
+              const baseHour = TIME_OF_DAY_HOUR[activity.timeOfDay] ?? 9;
+              const todGroup = day.timeGroups?.find((g: any) => g.timeOfDay === activity.timeOfDay);
+              const groupIdx = Math.max(0, todGroup?.activities?.findIndex((a: any) => a.id === activity.id) ?? 0);
+              startH = baseHour + Math.min(groupIdx * 1.5, 4);
+              displayTime = formatHourLabel(startH);
+            }
+            return { activity, startH, displayTime };
+          }).sort((a: any, b: any) => a.startH - b.startH);
 
           return (
-            <View key={day.id} style={{ width: DAY_COL_W, position: 'relative', borderLeftWidth: 1, borderLeftColor: colors.borderLight }}>
-              {/* Grid lines */}
-              {HOURS.map((hour) => (
-                <View key={hour} style={{ position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: 1, backgroundColor: colors.borderLight }} />
+            <View key={day.id} style={{ width: DAY_COL_W, position: 'relative', borderLeftWidth: 1, borderLeftColor: colors.borderLight + '40' }}>
+              {/* Grid lines — every 3rd hour, subtle */}
+              {HOURS.filter((h) => h % 3 === 0).map((hour) => (
+                <View key={hour} style={{ position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: 1, backgroundColor: colors.borderLight + '60' }} />
               ))}
 
               {/* Current time line */}
@@ -822,60 +935,59 @@ function MobileCalendarView({ days, selectedDayIndex, visibleDayCount = 3, onSel
                 </View>
               )}
 
-              {/* Tap empty slot to place moving activity */}
-              {movingActivityId && HOURS.map((hour) => (
-                <Pressable
-                  key={`slot-${hour}`}
-                  onPress={() => {
-                    onMoveActivity?.(movingActivityId, hour, dayIdx);
-                    setMovingActivityId(null);
-                  }}
-                  style={{
-                    position: 'absolute', top: hour * HOUR_HEIGHT, left: 0, right: 0, height: HOUR_HEIGHT,
-                    backgroundColor: 'transparent', zIndex: 0,
-                  }}
-                />
-              ))}
-
               {/* Activity blocks */}
-              {activities.map((activity: any) => {
-                const startH = parseHour(activity.startTime) ?? 0;
-                const duration = parseDuration(activity.startTime, activity.endTime);
-                if (startH < 0 || startH > 23) return null;
-                const bgColor = getActivityTypeColor(activity.category).primary;
-
-                return (
-                  <CalendarBlock
-                    key={activity.id}
-                    activity={activity}
-                    startH={startH}
-                    duration={duration}
-                    bgColor={bgColor}
-                    isSelected={movingActivityId === activity.id}
-                    onTap={() => {
-                      if (movingActivityId === activity.id) {
-                        setMovingActivityId(null); // deselect
-                      } else if (movingActivityId) {
-                        setMovingActivityId(null); // cancel move, select new
-                      } else {
-                        onSelectActivity?.(activity); // view details
-                      }
-                    }}
-                    onLongPress={() => setMovingActivityId(activity.id)}
-                  />
-                );
-              })}
-
-              {/* Moving indicator banner */}
-              {movingActivityId && (
-                <View style={{
-                  position: 'absolute', top: 0, left: 0, right: 0,
-                  backgroundColor: colors.info, paddingVertical: 3,
-                  alignItems: 'center', zIndex: 200,
-                }}>
-                  <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700' }}>Tap a time slot to move</Text>
-                </View>
-              )}
+              {(() => {
+                // Compute side-by-side lanes for overlapping blocks
+                type Pos = { activity: any; startH: number; displayTime: string; duration: number; lane: number; lanes: number };
+                const placed: Pos[] = [];
+                activityPositions.forEach(({ activity, startH, displayTime }: any, idx: number) => {
+                  const rawDuration = parseDuration(activity.startTime, activity.endTime);
+                  const next = activityPositions[idx + 1];
+                  const maxDuration = next ? Math.max(0.4, next.startH - startH) : rawDuration;
+                  const duration = Math.min(rawDuration, maxDuration);
+                  if (startH < 0 || startH > 23) return;
+                  // Find lowest free lane (lane is occupied if any prior block overlaps this time range)
+                  const overlapping = placed.filter((p) => p.startH < startH + duration && p.startH + p.duration > startH);
+                  const usedLanes = new Set(overlapping.map((p) => p.lane));
+                  let lane = 0;
+                  while (usedLanes.has(lane)) lane++;
+                  placed.push({ activity, startH, displayTime, duration, lane, lanes: 1 });
+                });
+                // Second pass: for each block, lanes = max lane count among its overlap cluster
+                placed.forEach((p) => {
+                  const cluster = placed.filter((q) => q.startH < p.startH + p.duration && q.startH + q.duration > p.startH);
+                  p.lanes = Math.max(...cluster.map((c) => c.lane + 1));
+                });
+                return placed.map(({ activity, startH, displayTime, duration, lane, lanes }) => {
+                  const bgColor = activity.category === 'flight'
+                    ? '#0891b2' // teal — flights stand out from activities
+                    : getActivityTypeColor(activity.category).primary;
+                  const blockActivity = displayTime !== activity.startTime
+                    ? { ...activity, startTime: displayTime }
+                    : activity;
+                  return (
+                    <CalendarBlock
+                      key={activity.id}
+                      activity={blockActivity}
+                      startH={startH}
+                      duration={duration}
+                      bgColor={bgColor}
+                      isSelected={false}
+                      dayColW={DAY_COL_W}
+                      colIdx={colIdx}
+                      totalCols={visibleDays.length}
+                      lane={lane}
+                      lanes={lanes}
+                      onTap={() => onSelectActivity?.(activity)}
+                      onDrop={(activityId, newHour, targetCol) => {
+                        const targetDayIdx = rangeStart + targetCol;
+                        onMoveActivity?.(activityId, newHour, targetDayIdx);
+                      }}
+                      onDragStateChange={setBlockDragging}
+                    />
+                  );
+                });
+              })()}
 
               {/* Spacer */}
               <View style={{ height: HOURS.length * HOUR_HEIGHT }} />
@@ -2231,6 +2343,7 @@ export default function ItineraryScreen() {
   const colors = useThemeColors();
   const ACCENT = useTabAccent('itinerary');
   const { tripId: id } = useContext(TabCtx);
+  const queryClient = useQueryClient();
   const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip(id);
   const { trip, days, selectedDayIndex, setSelectedDayIndex, selectedDay, flights, isLoading, isEmpty } =
     useItineraryScreen(id);
@@ -2254,6 +2367,7 @@ export default function ItineraryScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [openPlace, setOpenPlace] = useState<import('@travyl/shared').PlaceItem | null>(null);
+  const [cardReady, setCardReady] = useState(false);
   const [viewMode, setViewMode] = useState<'glance' | 'detailed'>('glance');
   const [calDayCount, setCalDayCount] = useState<1 | 3 | 7>(3);
 
@@ -2622,9 +2736,32 @@ export default function ItineraryScreen() {
     return () => setHeroImageOverride(null);
   }, [selectedDayIndex, dayHeroImages, isFocused, viewMode, tripHeroImages]);
 
-  // Build PlaceItem for tapped activity — try matching DiscoverItem first, fall back to ActivityViewModel
-  // Capture place data once when activity is selected — stable reference for the modal
+  // Block the activity-card overlay from rendering for 800ms after focus gain,
+  // and clear any stale selection / map state. This prevents phantom taps from
+  // the sidebar tab tap bleeding through to the activity row underneath when
+  // the pager swipes Itinerary into place. Also force-closes the map overlay
+  // on focus so a stale TabCtx mapOpen=true never leaks into a fresh visit.
   useEffect(() => {
+    setSelectedActivityId(null);
+    setOpenPlace(null);
+    setCardReady(false);
+    setMapOpen(false);
+    if (!isFocused) return;
+    const t = setTimeout(() => setCardReady(true), 800);
+    return () => clearTimeout(t);
+  }, [isFocused]);
+
+  const handleActivityPress = useCallback((id: string) => {
+    if (!cardReady) return;
+    setSelectedActivityId(id);
+  }, [cardReady]);
+
+  // Build PlaceItem for tapped activity — try matching DiscoverItem first, fall back to ActivityViewModel
+  // Capture place data once when activity is selected — stable reference for the modal.
+  // Also gated on cardReady so any phantom selection during the focus settling
+  // window can never paint the carousel overlay.
+  useEffect(() => {
+    if (!cardReady) { setOpenPlace(null); return; }
     if (!selectedActivityId) { setOpenPlace(null); return; }
     const currentDay = effectiveDays[selectedDayIndex] ?? selectedDay;
     if (!currentDay) { setOpenPlace(null); return; }
@@ -2651,7 +2788,7 @@ export default function ItineraryScreen() {
       admissionFee: activity.costDisplay ?? undefined,
       website: activity.bookingUrl ?? undefined,
     });
-  }, [selectedActivityId]); // Only run when selection changes, not on every data mutation
+  }, [selectedActivityId, cardReady]); // Run when selection or readiness changes
 
   const allPlacesFromDiscover = useMemo(
     () => discoverPool.map(discoverItemToPlaceItem),
@@ -2776,10 +2913,123 @@ export default function ItineraryScreen() {
           days={effectiveDays}
           selectedDayIndex={selectedDayIndex}
           visibleDayCount={calDayCount}
-          onSelectActivity={(a) => setSelectedActivityId(a.id)}
+          onSelectActivity={(a) => handleActivityPress(a.id)}
           onSelectDay={setSelectedDayIndex}
           onMoveActivity={(activityId, newHour, newDayIdx) => {
-            // TODO: persist move to Supabase — update activity starting_time and starting_date
+            const startDateStr = (trip as any)?.start_date;
+            if (!startDateStr) return;
+            const newDate = new Date(startDateStr + 'T12:00:00');
+            newDate.setDate(newDate.getDate() + newDayIdx);
+            const dateStr = newDate.toISOString().split('T')[0];
+            const hourInt = Math.floor(newHour);
+            const minuteInt = (newHour - hourInt) >= 0.5 ? 30 : 0;
+            const endHourFloat = Math.min(23.5, newHour + 2);
+            const endHourInt = Math.floor(endHourFloat);
+            const endMinuteInt = (endHourFloat - endHourInt) >= 0.5 ? 30 : 0;
+            const startTime = `${String(hourInt).padStart(2, '0')}:${String(minuteInt).padStart(2, '0')}`;
+            const endTime = `${String(endHourInt).padStart(2, '0')}:${String(endMinuteInt).padStart(2, '0')}`;
+            const newTod: 'morning' | 'afternoon' | 'evening' | 'latenight' =
+              hourInt < 12 ? 'morning' : hourInt < 17 ? 'afternoon' : hourInt < 21 ? 'evening' : 'latenight';
+
+            // Optimistic local move — update glanceDays so the block stays where dropped
+            // even if the row isn't a real activity-table UUID (e.g. AI-generated trip
+            // activities that live in trip_context.itinerary).
+            setGlanceDays((prev) => {
+              if (prev.length === 0) return prev;
+              let movedActivity: any = null;
+              const removed = prev.map((day) => {
+                const newGroups = day.timeGroups
+                  .map((g) => {
+                    const idx = g.activities.findIndex((a) => a.id === activityId);
+                    if (idx < 0) return g;
+                    movedActivity = g.activities[idx];
+                    return { ...g, activities: g.activities.filter((_, i) => i !== idx) };
+                  })
+                  .filter((g) => g.activities.length > 0);
+                return { ...day, timeGroups: newGroups };
+              });
+              if (!movedActivity) return prev;
+              const updated = { ...movedActivity, startTime, endTime, timeOfDay: newTod };
+              return removed.map((day, di) => {
+                if (di !== newDayIdx) return day;
+                const existingGroup = day.timeGroups.find((g) => g.timeOfDay === newTod);
+                let groups;
+                if (existingGroup) {
+                  groups = day.timeGroups.map((g) =>
+                    g.timeOfDay === newTod
+                      ? { ...g, activities: [...g.activities, updated].sort((a, b) => (a.startTime || '').localeCompare(b.startTime || '')) }
+                      : g
+                  );
+                } else {
+                  groups = [...day.timeGroups, { timeOfDay: newTod, activities: [updated] }];
+                }
+                return { ...day, timeGroups: groups };
+              });
+            });
+
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activityId);
+            if (isUuid) {
+              // Real DB row — update activity table
+              supabase
+                .from('activity')
+                .update({
+                  starting_date: dateStr,
+                  ending_date: dateStr,
+                  starting_time: startTime,
+                  ending_time: endTime,
+                })
+                .eq('id', activityId)
+                .then(({ error }) => {
+                  if (error) {
+                    console.warn('[calendar move] update failed:', error.message);
+                    return;
+                  }
+                  queryClient.invalidateQueries({ queryKey: ['trip-activities', id] });
+                });
+            } else {
+              // AI-generated activity — persist via trip_context.itinerary JSON
+              const ctx: any = (trip as any)?.trip_context;
+              const itinerary: any[] = Array.isArray(ctx?.itinerary) ? ctx.itinerary : [];
+              if (!itinerary.length || !id) return;
+
+              // Locate the slot by poi.id across all days
+              let foundDayIdx = -1;
+              let foundSlotIdx = -1;
+              let foundSlot: any = null;
+              for (let di = 0; di < itinerary.length; di++) {
+                const slots = itinerary[di]?.slots ?? [];
+                const si = slots.findIndex((s: any) => s?.poi?.id === activityId);
+                if (si >= 0) {
+                  foundDayIdx = di;
+                  foundSlotIdx = si;
+                  foundSlot = slots[si];
+                  break;
+                }
+              }
+              if (!foundSlot) return;
+
+              const updatedSlot = { ...foundSlot, start_time: startTime, end_time: endTime };
+              const nextItinerary = itinerary.map((day, di) => {
+                const slots = (day?.slots ?? []).filter((_: any, si: number) => !(di === foundDayIdx && si === foundSlotIdx));
+                if (di === newDayIdx) {
+                  return { ...day, slots: [...slots, updatedSlot].sort((a: any, b: any) => (a.start_time || '').localeCompare(b.start_time || '')) };
+                }
+                return { ...day, slots };
+              });
+
+              const nextContext = { ...ctx, itinerary: nextItinerary };
+              supabase
+                .from('trips')
+                .update({ trip_context: nextContext })
+                .eq('id', id)
+                .then(({ error }) => {
+                  if (error) {
+                    console.warn('[calendar move] trip_context update failed:', error.message);
+                    return;
+                  }
+                  queryClient.invalidateQueries({ queryKey: ['trip', id] });
+                });
+            }
           }}
         />
       ) : viewMode === 'glance' ? (
@@ -2794,7 +3044,7 @@ export default function ItineraryScreen() {
           onAddActivity={addGlanceActivity}
           onReorderDay={reorderGlanceDay}
           onUpdateTime={updateActivityTime}
-          onActivityPress={setSelectedActivityId}
+          onActivityPress={handleActivityPress}
           discoverPool={discoverPool}
         />
       ) : (
@@ -2832,7 +3082,7 @@ export default function ItineraryScreen() {
                     collapsed={collapsedSections[group.timeOfDay]}
                     onToggleCollapse={toggleSectionCollapse}
                     onAddActivity={handleAddActivity}
-                    onActivityPress={setSelectedActivityId}
+                    onActivityPress={handleActivityPress}
                     activityImages={activityImages}
                     colorOverride={itineraryColorOverrides[group.timeOfDay] ?? theme.itineraryColors[group.timeOfDay as keyof typeof theme.itineraryColors]}
                   />
@@ -2915,7 +3165,7 @@ export default function ItineraryScreen() {
       )}
 
       {/* Activity detail — magazine card overlay */}
-      {openPlace && (
+      {openPlace && cardReady && (
         <CardStackCarousel
           places={allPlacesFromDiscover}
           initialIndex={Math.max(0, allPlacesFromDiscover.findIndex((p) => p.id === openPlace.id))}

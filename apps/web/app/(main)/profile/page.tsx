@@ -46,7 +46,7 @@ export default function ProfilePage() {
   const displayName = profile?.display_name || metadataDisplayName || user?.email?.split('@')[0] || 'User'
   const initials = displayName
     .split(' ')
-    .map((word) => word[0])
+    .map((word: string) => word[0])
     .join('')
     .toUpperCase()
     .slice(0, 2)
