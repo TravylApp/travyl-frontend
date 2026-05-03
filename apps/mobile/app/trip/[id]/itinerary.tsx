@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
-import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions, Platform } from 'react-native';
+import { View, ScrollView, Text, Pressable, TextInput, Image, Animated, PanResponder, Dimensions, Modal, FlatList, useWindowDimensions, Platform, Keyboard, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,26 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Time format preference, persisted globally so the same toggle applies
+// everywhere times are shown.
+type TimeFormat = '12h' | '24h';
+const TIME_FORMAT_KEY = 'time_format';
+function formatClockTime(iso: string | undefined, format: TimeFormat): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: format === '12h',
+    });
+  } catch {
+    return '';
+  }
+}
 import {
   useItineraryScreen,
   ITINERARY_COLORS,
@@ -25,6 +45,8 @@ import {
   FontSize,
   FontFamily,
   supabase,
+  getWebApiBase,
+  upscaleGoogleImage,
 } from '@travyl/shared';
 import type { FlightDetail, HotelDetail, DiscoverItem, ActivityViewModel, ItineraryDayViewModel } from '@travyl/shared';
 import Constants from 'expo-constants';
@@ -42,6 +64,7 @@ import { DaySelector, TimeGroupSection } from '@/components/itinerary';
 import type { MapMarker } from '@/components/itinerary/MapPreview';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
+import { TripHistoryToggle } from '@/components/trip/TripHistoryPanel';
 
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import { discoverItemToPlaceItem } from '@/utils/discoverToPlace';
@@ -2126,6 +2149,7 @@ function GlanceActivityRow({ activity, dayIndex, timeOfDay, drag, isActive, onRe
 function GlancePager({
   days, selectedDayIndex, onSelectDay, arrivalFlightNumber, returnFlightNumber,
   onRemoveActivity, onRegenerateActivity, onAddActivity, onReorderDay, onUpdateTime, onActivityPress, discoverPool = [],
+  sunrise,
 }: {
   days: ItineraryDayViewModel[];
   selectedDayIndex: number;
@@ -2139,22 +2163,48 @@ function GlancePager({
   onUpdateTime: (dayIndex: number, activityId: string, newTime: string) => void;
   onActivityPress: (activityId: string) => void;
   discoverPool?: any[];
+  sunrise?: { sunrise?: string; sunset?: string; golden_hour?: string } | null;
 }) {
   const colors = useThemeColors();
   const { width: screenW } = useWindowDimensions();
   const flatListRef = useRef<FlatList>(null);
   const isScrolling = useRef(false);
 
-  // Scroll to selected day when tapped from DaySelector
+  // Time format preference — tapping any time in the strip toggles 12h/24h
+  // and persists across sessions.
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
   useEffect(() => {
-    if (!isScrolling.current) {
-      flatListRef.current?.scrollToIndex({ index: selectedDayIndex, animated: true });
-    }
+    AsyncStorage.getItem(TIME_FORMAT_KEY).then((v) => {
+      if (v === '12h' || v === '24h') setTimeFormat(v);
+    }).catch(() => {});
+  }, []);
+  const toggleTimeFormat = useCallback(() => {
+    setTimeFormat((prev) => {
+      const next: TimeFormat = prev === '12h' ? '24h' : '12h';
+      AsyncStorage.setItem(TIME_FORMAT_KEY, next).catch(() => {});
+      return next;
+    });
+  }, []);
+  // Tracks the last day the FlatList settled on, so the effect below can
+  // distinguish "user swiped" (no scroll needed) from "user tapped DaySelector"
+  // (scroll required). Without this we re-snap to the already-visible page
+  // every swipe, which reads as a janky/sluggish animation.
+  const visibleDayIndex = useRef(selectedDayIndex);
+
+  // Only scroll on EXTERNAL day changes (e.g. DaySelector tap), not when the
+  // change came from a swipe that already landed us on the right page.
+  useEffect(() => {
+    if (isScrolling.current) return;
+    if (visibleDayIndex.current === selectedDayIndex) return;
+    flatListRef.current?.scrollToIndex({ index: selectedDayIndex, animated: true });
+    visibleDayIndex.current = selectedDayIndex;
   }, [selectedDayIndex]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
-      onSelectDay(viewableItems[0].index);
+      const idx = viewableItems[0].index;
+      visibleDayIndex.current = idx;
+      onSelectDay(idx);
     }
   }).current;
 
@@ -2190,6 +2240,15 @@ function GlancePager({
       }
     }
 
+    const sunriseTime = formatClockTime(sunrise?.sunrise, timeFormat);
+    const sunsetTime = formatClockTime(sunrise?.sunset, timeFormat);
+    // Returns the sun-time inline suffix for a given time-of-day section.
+    const sunSuffixFor = (tod: string): { emoji: string; time: string } | null => {
+      if (tod === 'morning' && sunriseTime) return { emoji: '🌅', time: sunriseTime };
+      if (tod === 'evening' && sunsetTime) return { emoji: '🌇', time: sunsetTime };
+      return null;
+    };
+
     const listHeader = (
       <View>
         <View style={{ paddingHorizontal: 20, paddingTop: 14, marginBottom: 10 }}>
@@ -2207,6 +2266,7 @@ function GlancePager({
             </Text>
           </View>
         </View>
+        {/* Daylight times render inline with each TOD label below */}
         {isFirstDay && arrivalFlightNumber && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingBottom: 8, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
             <FontAwesome name="plane" size={11} color="#4ade80" />
@@ -2214,14 +2274,22 @@ function GlancePager({
           </View>
         )}
         {/* Empty groups before first populated group */}
-        {emptyTodsBefore.map((tod) => (
-          <View key={tod} style={{ paddingHorizontal: 20, marginBottom: 8 }}>
-            <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
-              {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
-            </Text>
-            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
-          </View>
-        ))}
+        {emptyTodsBefore.map((tod) => {
+          const sun = sunSuffixFor(tod);
+          return (
+            <View key={tod} style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+              <Pressable onPress={sun ? toggleTimeFormat : undefined} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4, opacity: 0.4 }}>
+                <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a' }}>
+                  {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
+                </Text>
+                {sun && (
+                  <Text style={{ ...TextStyles.micro, color: '#c8a96a' }}>· {sun.emoji} {sun.time}</Text>
+                )}
+              </Pressable>
+              <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
+            </View>
+          );
+        })}
       </View>
     );
 
@@ -2234,14 +2302,22 @@ function GlancePager({
           </View>
         )}
         {/* Empty groups after last populated group */}
-        {emptyTodsAfter.map((tod) => (
-          <View key={tod} style={{ paddingHorizontal: 20, marginTop: 8 }}>
-            <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
-              {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
-            </Text>
-            <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
-          </View>
-        ))}
+        {emptyTodsAfter.map((tod) => {
+          const sun = sunSuffixFor(tod);
+          return (
+            <View key={tod} style={{ paddingHorizontal: 20, marginTop: 8 }}>
+              <Pressable onPress={sun ? toggleTimeFormat : undefined} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4, opacity: 0.4 }}>
+                <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a' }}>
+                  {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
+                </Text>
+                {sun && (
+                  <Text style={{ ...TextStyles.micro, color: '#c8a96a' }}>· {sun.emoji} {sun.time}</Text>
+                )}
+              </Pressable>
+              <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
+            </View>
+          );
+        })}
       </View>
     );
 
@@ -2273,16 +2349,28 @@ function GlancePager({
               return allTods.slice(todIdx + 1, nextTodIdx).filter((t) => !activeTods.has(t));
             })() : [];
 
+            const headerSun = sunSuffixFor(currentTod);
             return (
               <View style={{ paddingHorizontal: 20 }}>
                 {showHeader && !isActive && (
-                  <Text style={{
-                    ...TextStyles.micro, letterSpacing: 2,
-                    textTransform: 'uppercase', color: '#c8a96a',
-                    marginBottom: 4, marginTop: currentIdx > 0 ? 10 : 0, opacity: 0.7,
-                  }}>
-                    {config.label}
-                  </Text>
+                  <Pressable
+                    onPress={headerSun ? toggleTimeFormat : undefined}
+                    hitSlop={6}
+                    style={{
+                      flexDirection: 'row', alignItems: 'baseline', gap: 6,
+                      marginBottom: 4, marginTop: currentIdx > 0 ? 10 : 0, opacity: 0.7,
+                    }}
+                  >
+                    <Text style={{
+                      ...TextStyles.micro, letterSpacing: 2,
+                      textTransform: 'uppercase', color: '#c8a96a',
+                    }}>
+                      {config.label}
+                    </Text>
+                    {headerSun && (
+                      <Text style={{ ...TextStyles.micro, color: '#c8a96a' }}>· {headerSun.emoji} {headerSun.time}</Text>
+                    )}
+                  </Pressable>
                 )}
                 <GlanceActivityRow
                   activity={activity}
@@ -2298,21 +2386,29 @@ function GlancePager({
                 {isLastInGroup && (
                   <AddActivityPanel dayIndex={i} timeOfDay={currentTod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
                 )}
-                {emptyGapTods.map((tod) => (
-                  <View key={tod} style={{ marginTop: 10 }}>
-                    <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4, opacity: 0.4 }}>
-                      {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
-                    </Text>
-                    <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
-                  </View>
-                ))}
+                {emptyGapTods.map((tod) => {
+                  const gapSun = sunSuffixFor(tod);
+                  return (
+                    <View key={tod} style={{ marginTop: 10 }}>
+                      <Pressable onPress={gapSun ? toggleTimeFormat : undefined} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4, opacity: 0.4 }}>
+                        <Text style={{ ...TextStyles.micro, letterSpacing: 2, textTransform: 'uppercase', color: '#c8a96a' }}>
+                          {TIME_OF_DAY_CONFIG[tod as keyof typeof TIME_OF_DAY_CONFIG].label}
+                        </Text>
+                        {gapSun && (
+                          <Text style={{ ...TextStyles.micro, color: '#c8a96a' }}>· {gapSun.emoji} {gapSun.time}</Text>
+                        )}
+                      </Pressable>
+                      <AddActivityPanel dayIndex={i} timeOfDay={tod} days={days} onAddActivity={onAddActivity} discoverPool={discoverPool} />
+                    </View>
+                  );
+                })}
               </View>
             );
           }}
         />
       </GestureHandlerRootView>
     );
-  }, [days, colors, screenW, arrivalFlightNumber, returnFlightNumber, onRemoveActivity, onRegenerateActivity, onReorderDay, onAddActivity, onUpdateTime, onActivityPress]);
+  }, [days, colors, screenW, arrivalFlightNumber, returnFlightNumber, onRemoveActivity, onRegenerateActivity, onReorderDay, onAddActivity, onUpdateTime, onActivityPress, sunrise, timeFormat, toggleTimeFormat]);
 
   return (
     <FlatList
@@ -2370,6 +2466,69 @@ export default function ItineraryScreen() {
   const [cardReady, setCardReady] = useState(false);
   const [viewMode, setViewMode] = useState<'glance' | 'detailed'>('glance');
   const [calDayCount, setCalDayCount] = useState<1 | 3 | 7>(3);
+
+  // Calendar-only "search & add" sheet — toggle next to the calendar button.
+  const [showCalSearch, setShowCalSearch] = useState(false);
+  const [calSearch, setCalSearch] = useState('');
+  const [calSearchResults, setCalSearchResults] = useState<any[]>([]);
+  const [calSearching, setCalSearching] = useState(false);
+  const calSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ─── Debounced place search for the calendar-only quick-add sheet ───
+  const tripCtx = trip?.trip_context as any;
+  const calSearchLat = tripCtx?.lat;
+  const calSearchLng = tripCtx?.lng;
+  const calSearchCity = trip?.destination?.split(',')[0]?.trim() || '';
+  useEffect(() => {
+    const q = calSearch.trim();
+    if (!showCalSearch || !q) {
+      setCalSearchResults([]);
+      return;
+    }
+    if (calSearchTimer.current) clearTimeout(calSearchTimer.current);
+    calSearchTimer.current = setTimeout(() => {
+      setCalSearching(true);
+      const base = getWebApiBase();
+      const fullQuery = `${q} ${calSearchCity}`.trim();
+      // Fan out: Maps gives reliable category/cuisine matches ("sushi"),
+      // TripAdvisor adds rated venues, /api/places adds NLP-tagged places.
+      const fetches: Promise<any[]>[] = [
+        fetch(`${base}/api/search/maps?q=${encodeURIComponent(fullQuery)}`)
+          .then((r) => r.ok ? r.json() : []).catch(() => []),
+        fetch(`${base}/api/search/tripadvisor?q=${encodeURIComponent(fullQuery)}`)
+          .then((r) => r.ok ? r.json() : []).catch(() => []),
+      ];
+      const placesUrl = calSearchLat && calSearchLng
+        ? `${base}/api/places?q=${encodeURIComponent(fullQuery)}&lat=${calSearchLat}&lng=${calSearchLng}&limit=10`
+        : `${base}/api/places?q=${encodeURIComponent(fullQuery)}&limit=10`;
+      fetches.push(fetch(placesUrl).then((r) => r.ok ? r.json() : []).catch(() => []));
+
+      Promise.all(fetches).then((results) => {
+        const merged = results.flat().filter((p: any) => p && p.name);
+        // Dedupe by lowercased name; first occurrence wins (Maps results lead).
+        const seen = new Set<string>();
+        const deduped = merged.filter((p: any) => {
+          const k = (p.name || '').toLowerCase();
+          if (!k || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        // Light relevance filter — keep entries whose name OR category mentions
+        // any token of the query, so "sushi" doesn't get drowned in generic Tokyo POIs.
+        const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+        const ranked = deduped
+          .map((p: any) => {
+            const hay = [p.name, p.category, ...(p.tags ?? [])].filter(Boolean).join(' ').toLowerCase();
+            const hits = tokens.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
+            return { p, hits };
+          })
+          .sort((a, b) => b.hits - a.hits)
+          .map((x) => x.p);
+        setCalSearchResults(ranked.slice(0, 12));
+      }).finally(() => setCalSearching(false));
+    }, 300);
+    return () => { if (calSearchTimer.current) clearTimeout(calSearchTimer.current); };
+  }, [calSearch, showCalSearch, calSearchLat, calSearchLng, calSearchCity]);
 
   // ─── Local mutable copy of days for glance add/remove/regenerate ───
   const [glanceDays, setGlanceDays] = useState<ItineraryDayViewModel[]>([]);
@@ -2829,6 +2988,16 @@ export default function ItineraryScreen() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <DaySelector days={days} selectedIndex={selectedDayIndex} onSelect={setSelectedDayIndex} accentColor={ACCENT} />
         </View>
+        {/* History button — to the LEFT of the plus, same gold accent */}
+        {id && (
+          <View style={{ marginLeft: 4 }}>
+            <TripHistoryToggle
+              tripId={id}
+              variant="toolbar"
+              color="#c8a96a"
+            />
+          </View>
+        )}
         {/* Quick-add button */}
         {!calendarOpen && (
           <Pressable
@@ -2905,8 +3074,133 @@ export default function ItineraryScreen() {
               </Text>
             </Pressable>
           )}
+          {calendarOpen && (
+            <Pressable
+              onPress={() => setShowCalSearch(true)}
+              hitSlop={6}
+              style={{
+                width: 32, height: 32, borderRadius: 8,
+                backgroundColor: showCalSearch ? ACCENT : colors.cardBackground,
+                borderWidth: 1, borderColor: showCalSearch ? ACCENT : colors.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <FontAwesome name="search" size={13} color={showCalSearch ? '#fff' : colors.textSecondary} />
+            </Pressable>
+          )}
         </View>
       </View>
+
+      {/* Inline calendar quick-add — search + Add buttons rendered above the grid */}
+      {calendarOpen && showCalSearch && (
+        <View style={{ borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.surface, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, height: 36, marginBottom: 8 }}>
+            <FontAwesome name="search" size={12} color={colors.textTertiary} />
+            <TextInput
+              value={calSearch}
+              onChangeText={setCalSearch}
+              placeholder={`Add a place in ${calSearchCity || 'this trip'}...`}
+              placeholderTextColor={colors.textTertiary}
+              returnKeyType="search"
+              autoFocus
+              style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 6, paddingVertical: 0 }}
+            />
+            {calSearch.length > 0 ? (
+              <Pressable onPress={() => setCalSearch('')} hitSlop={8} style={{ marginRight: 6 }}>
+                <FontAwesome name="times-circle" size={13} color={colors.textTertiary} />
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => { setShowCalSearch(false); Keyboard.dismiss(); }} hitSlop={8}>
+              <Text style={{ ...TextStyles.caption, color: ACCENT, fontWeight: '700' }}>Done</Text>
+            </Pressable>
+          </View>
+          {calSearch.trim().length > 0 && (
+            <ScrollView
+              horizontal
+              keyboardShouldPersistTaps="handled"
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingRight: 12 }}
+              style={{ maxHeight: 116 }}
+            >
+              {calSearching && calSearchResults.length === 0 && (
+                <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }}>
+                  <ActivityIndicator color={ACCENT} />
+                </View>
+              )}
+              {!calSearching && calSearchResults.length === 0 && (
+                <Text style={{ ...TextStyles.caption, color: colors.textSecondary, alignSelf: 'center', paddingHorizontal: 8 }}>
+                  No matches for "{calSearch.trim()}"
+                </Text>
+              )}
+              {calSearchResults.map((p: any) => {
+                const photo = upscaleGoogleImage(p.image) || p.image || '';
+                const neighborhood = (p.address || '').split(',')[0]?.trim() || '';
+                const rating = typeof p.rating === 'number' && p.rating > 0 ? p.rating : null;
+                return (
+                  <View
+                    key={p.id || p.name}
+                    style={{
+                      flexDirection: 'row', gap: 10,
+                      backgroundColor: colors.cardBackground,
+                      borderRadius: 10, borderWidth: 1, borderColor: colors.border,
+                      padding: 8, width: 280, height: 100,
+                    }}
+                  >
+                    {photo ? (
+                      <Image
+                        source={{ uri: photo }}
+                        style={{ width: 64, height: 84, borderRadius: 8, backgroundColor: colors.surface }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{ width: 64, height: 84, borderRadius: 8, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center' }}>
+                        <FontAwesome name="map-marker" size={18} color={ACCENT} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 2 }}>
+                      <View>
+                        <Text style={{ ...TextStyles.bodyEm, color: colors.text }} numberOfLines={1}>{p.name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          {rating && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                              <FontAwesome name="star" size={9} color="#f59e0b" />
+                              <Text style={{ ...TextStyles.caption, color: colors.text, fontWeight: '600' }}>{rating.toFixed(1)}</Text>
+                            </View>
+                          )}
+                          {rating && p.category ? <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>·</Text> : null}
+                          {!!p.category && (
+                            <Text style={{ ...TextStyles.caption, color: colors.textSecondary }} numberOfLines={1}>{p.category}</Text>
+                          )}
+                        </View>
+                        {!!neighborhood && (
+                          <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }} numberOfLines={1}>
+                            {neighborhood}
+                          </Text>
+                        )}
+                      </View>
+                      <Pressable
+                        onPress={() => {
+                          addGlanceActivity(selectedDayIndex, 'morning', p.name, p.category || 'Activity');
+                          setCalSearch('');
+                        }}
+                        hitSlop={6}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+                          backgroundColor: ACCENT, borderRadius: 8,
+                          paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start',
+                        }}
+                      >
+                        <FontAwesome name="plus" size={9} color="#fff" />
+                        <Text style={{ ...TextStyles.caption, color: '#fff', fontWeight: '700' }}>Add to calendar</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      )}
 
       {calendarOpen ? (
         <MobileCalendarView
@@ -3046,6 +3340,7 @@ export default function ItineraryScreen() {
           onUpdateTime={updateActivityTime}
           onActivityPress={handleActivityPress}
           discoverPool={discoverPool}
+          sunrise={(trip?.trip_context as any)?.sunrise ?? null}
         />
       ) : (
       <View style={{ flex: 1 }}>
@@ -3177,6 +3472,7 @@ export default function ItineraryScreen() {
           onClose={() => setSelectedActivityId(null)}
         />
       )}
+
     </PageTransition>
   );
 }

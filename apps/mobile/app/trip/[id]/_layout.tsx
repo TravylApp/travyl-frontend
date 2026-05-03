@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo, memo } from 'react';
 import {
   View, Text, Pressable, Share, Modal, ScrollView, TextInput,
   Platform, PanResponder, Animated, useWindowDimensions, useColorScheme,
@@ -14,6 +14,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useItineraryScreen, formatDateRange, resolveTheme, getWebApiBase, TextStyles, FontFamily } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
+import { TripHistoryToggle } from '../../../components/trip/TripHistoryPanel';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
@@ -75,8 +76,6 @@ const TabCtx = createContext<{
   setEssentialsOpen: (open: boolean) => void;
   heroImageOverride: string | null;
   setHeroImageOverride: (url: string | null) => void;
-  tabBarProps: MaterialTopTabBarProps | null;
-  setTabBarProps: (p: MaterialTopTabBarProps | null) => void;
 }>({
   tripId: '',
   spinePosition: 'top',
@@ -105,6 +104,15 @@ const TabCtx = createContext<{
   setEssentialsOpen: () => {},
   heroImageOverride: null,
   setHeroImageOverride: () => {},
+});
+
+// Separate context for the volatile tab-bar props so swipes don't bust
+// every TabCtx consumer (which previously included TripHero, useTabAccent,
+// every screen). Only ExternalTabBar subscribes here.
+const TabBarPropsCtx = createContext<{
+  tabBarProps: MaterialTopTabBarProps | null;
+  setTabBarProps: (p: MaterialTopTabBarProps | null) => void;
+}>({
   tabBarProps: null,
   setTabBarProps: () => {},
 });
@@ -309,7 +317,7 @@ function DragHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
 
 // ─── Helpers ─────────────────────────────────────────────
 
-function weatherEmoji(icon: string): string {
+export function weatherEmoji(icon: string): string {
   const c = icon.toLowerCase();
   if (c.includes('clear') && c.includes('night')) return '🌙';
   if (c.includes('clear') || c.includes('sun')) return '☀️';
@@ -330,7 +338,10 @@ function getVisibleRoutes(state: MaterialTopTabBarProps['state'], enabledTabs: s
 const WEB_API = getWebApiBase();
 
 // ─── Trip Hero ───────────────────────────────────────────
-function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
+// Memoized — `trip` and `refetch` rarely change, so a re-render of the
+// parent (which happens on every tab swipe due to TabCtx state updates)
+// no longer drags the heavy hero+modal subtree along with it.
+const TripHero = memo(function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void }) {
   const { theme, essentialsOpen, setEssentialsOpen, heroImageOverride } = useContext(TabCtx);
   const router = useRouter();
   // Edit Trip modal styling reads `isDark` (lines 626+). Without this declaration
@@ -370,8 +381,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
   }, [cityName, staticHero, fetchedHero]);
   const coverImage = staticHero || fetchedHero;
   const countryName = destination.split(',').slice(1).join(',').trim();
-  const weather = trip?.trip_context?.weather?.current;
-  const forecast = trip?.trip_context?.weather?.forecast ?? [];
+  // weather + forecast moved to Packing tab
   const qf = trip?.trip_context?.quick_facts;
 
   // Fetch wiki if not in trip_context
@@ -392,7 +402,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       {/* Background image — fills entire hero, content determines height */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         {coverImage ? (
-          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={600} cachePolicy="memory-disk" onError={() => {}} />
+          <Image source={{ uri: coverImage, headers: { Referer: '' } }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={0} cachePolicy="memory-disk" onError={() => {}} />
         ) : (
           <View style={{ flex: 1, backgroundColor: theme.base, alignItems: 'center', justifyContent: 'center' }}>
             <FontAwesome name="picture-o" size={32} color="rgba(255,255,255,0.3)" />
@@ -420,21 +430,23 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
         <FontAwesome name="chevron-left" size={14} color="#fff" />
       </Pressable>
 
-      {/* Share button */}
-      <Pressable
-        onPress={async () => {
-          if (!trip) return;
-          try { await Share.share({ message: `Check out my trip to ${trip.destination}!`, title: trip.title ?? `Trip to ${trip.destination}` }); } catch {}
-        }}
-        style={{
-          position: 'absolute', top: 50, right: 14, zIndex: 10,
-          width: 34, height: 34, borderRadius: 17,
-          backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-          alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <FontAwesome name="share" size={13} color="#fff" />
-      </Pressable>
+      {/* History + Share buttons */}
+      <View style={{ position: 'absolute', top: 50, right: 14, zIndex: 10, flexDirection: 'row', gap: 8 }}>
+        {trip?.id ? <TripHistoryToggle tripId={trip.id} /> : null}
+        <Pressable
+          onPress={async () => {
+            if (!trip) return;
+            try { await Share.share({ message: `Check out my trip to ${trip.destination}!`, title: trip.title ?? `Trip to ${trip.destination}` }); } catch {}
+          }}
+          style={{
+            width: 34, height: 34, borderRadius: 17,
+            backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <FontAwesome name="share" size={13} color="#fff" />
+        </Pressable>
+      </View>
 
       {/* Hero text — content-driven height, extra bottom padding for tab bleed */}
       <View style={{ paddingTop: 90, paddingBottom: 100, paddingHorizontal: 16 }}>
@@ -442,7 +454,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
         <Text style={{ ...TextStyles.xs, fontWeight: '700', letterSpacing: 3, textTransform: 'uppercase', color: '#c8a96a', marginBottom: 4 }}>
           {countryName || 'Your Trip Guide'}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <Text style={{
             ...TextStyles.display, color: '#fff',
             textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12,
@@ -451,29 +463,28 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
           </Text>
           <Pressable
             onPress={() => setEssentialsOpen(!essentialsOpen)}
-            hitSlop={8}
+            hitSlop={10}
             style={({ pressed }) => ({
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+              width: 28, height: 28, borderRadius: 14,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: 'rgba(255,255,255,0.12)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={10} color="rgba(255,255,255,0.8)" />
-            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.5, color: '#fff' }}>
-              {essentialsOpen ? 'Hide' : 'Show'}
-            </Text>
+            <FontAwesome name={essentialsOpen ? 'chevron-up' : 'chevron-down'} size={11} color="rgba(255,255,255,0.85)" />
           </Pressable>
         </View>
 
-        {/* Date + travelers + safety — always visible, tappable to edit */}
+        {/* Date + travelers + timezone — always visible, tappable to edit */}
         {trip && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
             <Pressable
               onPress={() => setEditingTrip(true)}
+              hitSlop={6}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
-              <FontAwesome name="pencil" size={10} color="rgba(255,255,255,0.5)" />
+              <FontAwesome name="pencil" size={10} color="rgba(255,255,255,0.55)" />
             </Pressable>
             {[
               formatDateRange(trip.start_date, trip.end_date),
@@ -481,9 +492,9 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               qf?.timezone ? (qf.timezone as string).split(' · ')[0] : null,
             ].filter(Boolean).map((text, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)', marginRight: 6 }}>·</Text>}
+                {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.32)', marginRight: 8 }}>·</Text>}
                 <Text style={{
-                  ...TextStyles.bodyLg, fontWeight: '600', color: '#fff',
+                  ...TextStyles.body, fontWeight: '500', color: 'rgba(255,255,255,0.95)',
                   textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
                 }}>{text}</Text>
               </View>
@@ -548,65 +559,14 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
               ))}
             </View>
 
-            {/* Weather + forecast */}
-            {weather && (() => {
-              const ts = { textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;
-              return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 14 }}>{weatherEmoji((weather as any).icon || weather.conditions || '')}</Text>
-                    <Text style={{ ...TextStyles.bodyEm, fontWeight: '700', color: '#c8a96a', ...ts }}>{(weather as any).temp ?? weather.high ?? ''}°</Text>
-                    <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Now</Text>
-                  </View>
-                  {forecast.length > 0 && <Text style={{ color: 'rgba(255,255,255,0.35)' }}>|</Text>}
-                  {forecast.slice(0, 4).map((d: any, idx: number) => {
-                    const dayName = d.day || (d.date ? new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '');
-                    const icon = weatherEmoji(d.icon || d.conditions || '');
-                    return (
-                      <View key={d.date || idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                        <Text style={{ ...TextStyles.smEm, color: 'rgba(255,255,255,0.9)', ...ts }}>{dayName}</Text>
-                        <Text style={{ fontSize: 14 }}>{icon}</Text>
-                        <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff', ...ts }}>{d.high}°</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              );
-            })()}
+            {/* Weather + forecast moved to Packing tab to declutter header */}
 
-            {/* Sunrise / Sunset */}
-            {(() => {
-              const sr = trip?.trip_context?.sunrise as { sunrise?: string; sunset?: string; golden_hour?: string } | undefined;
-              if (!sr?.sunrise || !sr?.sunset) return null;
-              const fmt = (iso: string) => { try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); } catch { return ''; } };
-              const ts = { textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 } as const;
-              return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 12 }}>☀️</Text>
-                    <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Sunrise</Text>
-                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff', ...ts }}>{fmt(sr.sunrise)}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 12 }}>🌅</Text>
-                    <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Sunset</Text>
-                    <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#fff', ...ts }}>{fmt(sr.sunset)}</Text>
-                  </View>
-                  {sr.golden_hour && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Text style={{ fontSize: 12 }}>📸</Text>
-                      <Text style={{ ...TextStyles.xs, color: '#fff', ...ts }}>Golden Hour</Text>
-                      <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: '#c8a96a', ...ts }}>{fmt(sr.golden_hour)}</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })()}
+            {/* Sunrise / sunset moved to Itinerary day strip */}
 
             {/* Wiki excerpt */}
             {wikiText ? (
               <View style={{
-                marginTop: 8, borderRadius: 10,
+                marginTop: 0, borderRadius: 10,
                 backgroundColor: 'rgba(0,0,0,0.55)',
                 height: 19 * 2 + 16, // 2 lines × lineHeight + padding
               }}>
@@ -726,7 +686,7 @@ function TripHero({ trip, refetch }: { trip: Trip | null; refetch: () => void })
       )}
     </View>
   );
-}
+});
 
 // ─── Swipeable tab helper — scrub finger across tabs ─────
 // Tracks each tab's actual layout position so scrubbing maps 1:1 to the tab under the finger.
@@ -1017,7 +977,7 @@ let setActiveTabFn: (name: string) => void = () => {};
 // real sidebar can render as a sibling of TopTabs (outside the constrained
 // tabBar slot, which clips its children's hit-test area to ~48pt).
 function CustomTabBar(props: MaterialTopTabBarProps) {
-  const { setTabBarProps } = useContext(TabCtx);
+  const { setTabBarProps } = useContext(TabBarPropsCtx);
   tabNavRef.current = props.navigation;
 
   const idx = props.state.index;
@@ -1048,7 +1008,8 @@ function CustomTabBar(props: MaterialTopTabBarProps) {
 // Sibling-rendered sidebar/bottom-bar — receives full screen bounds so taps
 // hit the actual tab Pressables instead of falling through to content below.
 function ExternalTabBar() {
-  const { spinePosition, tabBarProps } = useContext(TabCtx);
+  const { spinePosition } = useContext(TabCtx);
+  const { tabBarProps } = useContext(TabBarPropsCtx);
   if (!tabBarProps) return null;
   if (spinePosition === 'top' || spinePosition === 'bottom') {
     return <BottomTabBar {...tabBarProps} />;
@@ -1143,31 +1104,41 @@ function TripTabsWithTransparentTheme({ trip, refetch, spinePosition }: {
   }), [parentTheme]);
   const { calendarOpen } = useContext(TabCtx);
 
+  // Stable references — without these, every parent re-render hands MaterialTopTabs
+  // a fresh tabBar function and screenOptions object, which forces it to rebuild
+  // its internal state and re-evaluate scene styles on each tab swap.
+  const renderTabBar = useCallback(
+    (props: MaterialTopTabBarProps) => <CustomTabBar {...props} />,
+    [],
+  );
+  const screenOptions = useMemo(() => ({
+    lazy: true,
+    // 0 = neighbor tabs don't pre-mount during the swipe. Their fetches
+    // still run on first focus, just not concurrent with the animation.
+    lazyPreloadDistance: 0,
+    lazyPlaceholder: () => (
+      <View style={{ flex: 1, backgroundColor: 'transparent' }} />
+    ),
+    swipeEnabled: !calendarOpen,
+    animationEnabled: true,
+    sceneStyle: {
+      paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
+      paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
+      paddingBottom: (spinePosition === 'bottom' || spinePosition === 'top') ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
+      backgroundColor: 'transparent',
+    },
+  }), [calendarOpen, spinePosition]);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
       <TripHero trip={trip} refetch={refetch} />
       <View style={{ flex: 1, position: 'relative', marginTop: -90 }}>
         <ThemeProvider value={transparentTheme}>
           <TopTabs
-            tabBar={(props) => <CustomTabBar {...props} />}
+            tabBar={renderTabBar}
             style={{ backgroundColor: 'transparent' }}
             pagerStyle={{ backgroundColor: 'transparent' }}
-            screenOptions={{
-              lazy: true,
-              lazyPreloadDistance: 1,
-              lazyPlaceholder: () => (
-                <View style={{ flex: 1, backgroundColor: 'transparent' }} />
-              ),
-              swipeEnabled: !calendarOpen,
-              animationEnabled: true,
-              
-              sceneStyle: {
-                paddingLeft: spinePosition === 'left' ? SIDE_TAB_W : 0,
-                paddingRight: spinePosition === 'right' ? SIDE_TAB_W : 0,
-                paddingBottom: (spinePosition === 'bottom' || spinePosition === 'top') ? TAB_NOTCH_W + BOTTOM_BAR_OFFSET : 0,
-                backgroundColor: 'transparent',
-              },
-            }}
+            screenOptions={screenOptions}
           >
             <TopTabs.Screen name="index" options={{ title: 'Overview' }} />
             <TopTabs.Screen name="itinerary" options={{ title: 'Itinerary' }} />
@@ -1193,8 +1164,11 @@ export default function TripLayout() {
   const { trip, refetch } = useItineraryScreen(id);
   const [spinePosition, setSpinePosition] = useState<SpinePosition>('left');
   const [scrubbing, setScrubbing] = useState(false);
-  const [activeTab, setActiveTab] = useState('index');
-  setActiveTabFn = setActiveTab;
+  // activeTab state was never read but setting it each swipe triggered a
+  // pointless TripLayout re-render. Use a ref so the value is still
+  // available imperatively (e.g. via setActiveTabFn) without rendering.
+  const activeTabRef = useRef('index');
+  setActiveTabFn = (name: string) => { activeTabRef.current = name; };
 
   const [enabledTabs, setEnabledTabs] = useState<string[]>(DEFAULT_ENABLED_TABS);
   const [showTabPicker, setShowTabPicker] = useState(false);
@@ -1289,12 +1263,37 @@ export default function TripLayout() {
     if (trip?.custom_theme_color !== undefined) setTripCustomColor(trip.custom_theme_color);
   }, [trip?.theme, trip?.custom_theme_color]);
 
+  // Memoized so unrelated parent re-renders don't bust every TabCtx consumer.
+  // Critical: tabBarProps is NOT here — it lives in TabBarPropsCtx so its
+  // per-swipe churn doesn't cascade to TripHero / useTabAccent / every screen.
+  const tabCtxValue = useMemo(() => ({
+    tripId: id, spinePosition, setSpinePosition, scrubbing, setScrubbing,
+    navDirection: navDirectionRef.current, theme, setTripTheme,
+    tabColorOverrides, setTabColor, resetTabColors,
+    itineraryColorOverrides, setItineraryColor, resetItineraryColors,
+    calendarOpen, setCalendarOpen, mapOpen, setMapOpen,
+    enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker,
+    essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride,
+  }), [
+    id, spinePosition, scrubbing, theme, tabColorOverrides,
+    itineraryColorOverrides, calendarOpen, mapOpen, enabledTabs,
+    addTab, removeTab, showTabPicker, essentialsOpen,
+    heroImageOverride, setTripTheme, setTabColor,
+    resetTabColors, setItineraryColor, resetItineraryColors,
+  ]);
+
+  // Volatile bar-props context — only ExternalTabBar subscribes here.
+  const tabBarPropsValue = useMemo(
+    () => ({ tabBarProps, setTabBarProps }),
+    [tabBarProps],
+  );
+
   return (
-    <TabCtx.Provider
-      value={{ tripId: id, spinePosition, setSpinePosition, scrubbing, setScrubbing, navDirection: navDirectionRef.current, theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors, calendarOpen, setCalendarOpen, mapOpen, setMapOpen, enabledTabs, addTab, removeTab, showTabPicker, setShowTabPicker, essentialsOpen, setEssentialsOpen, heroImageOverride, setHeroImageOverride, tabBarProps, setTabBarProps }}
-    >
-      <TripTabsWithTransparentTheme trip={trip} refetch={refetch} spinePosition={spinePosition} />
-      <TabPickerModal />
+    <TabCtx.Provider value={tabCtxValue}>
+      <TabBarPropsCtx.Provider value={tabBarPropsValue}>
+        <TripTabsWithTransparentTheme trip={trip} refetch={refetch} spinePosition={spinePosition} />
+        <TabPickerModal />
+      </TabBarPropsCtx.Provider>
     </TabCtx.Provider>
   );
 }
