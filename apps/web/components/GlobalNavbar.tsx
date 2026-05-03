@@ -346,6 +346,8 @@ export default function GlobalNavbar() {
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
               className={`p-1.5 rounded-full transition-colors duration-300 ${
                 useLightNav ? "text-white hover:bg-white/10" : "text-[#1e3a5f] dark:text-[#f5efe8] hover:bg-black/5 dark:hover:bg-white/5"
               }`}

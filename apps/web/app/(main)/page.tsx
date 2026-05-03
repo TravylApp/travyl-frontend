@@ -731,6 +731,7 @@ export default function Home() {
                     ref={sendButtonRef}
                     onClick={onSearch}
                     disabled={isExtracting || isPlanning}
+                    aria-label="Generate trip"
                     className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
                   >
                     <PaperPlane size={16} />

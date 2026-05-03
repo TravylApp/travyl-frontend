@@ -1198,48 +1198,7 @@ export default function FlightsScreen() {
     }));
   }, [autoEnabled, autoSearch, city, destIata]);
 
-  // Final fallback — synthesize plausible outbound + return flights from trip
-  // data when neither trip_context nor the live SerpAPI search has anything.
-  // Keeps the Flights tab informative instead of an empty state.
-  const fallbackBooked = useMemo(() => {
-    if (contextBooked.length > 0 || autoBooked.length > 0) return [];
-    if (!trip?.start_date) return [];
-    const dest = destIata || (city || '').slice(0, 3).toUpperCase();
-    const startDate = new Date(trip.start_date + 'T09:00:00');
-    const endDate = trip.end_date ? new Date(trip.end_date + 'T14:00:00') : new Date(startDate.getTime() + 5 * 86400000);
-    const arriveStart = new Date(startDate.getTime() + 12 * 3600 * 1000);
-    const arriveEnd = new Date(endDate.getTime() + 8 * 3600 * 1000);
-    const synthetic = [
-      {
-        airline: 'United Airlines',
-        departure_time: startDate.toISOString(),
-        arrival_time: arriveStart.toISOString(),
-        origin: 'JFK',
-        dest_iata: dest,
-        duration: 720,
-        stops: 0,
-        price: 850,
-      },
-      {
-        airline: 'United Airlines',
-        departure_time: endDate.toISOString(),
-        arrival_time: arriveEnd.toISOString(),
-        origin: dest,
-        dest_iata: 'JFK',
-        duration: 720,
-        stops: 0,
-        price: 850,
-      },
-    ];
-    return contextFlightsToBooked(synthetic, city).map((b: any, i: number) => ({
-      ...b,
-      type: i === 0 ? 'outbound' : 'return',
-    }));
-  }, [contextBooked.length, autoBooked.length, trip, destIata, city]);
-
-  const bookedFlights = contextBooked.length > 0
-    ? contextBooked
-    : autoBooked.length > 0 ? autoBooked : fallbackBooked;
+  const bookedFlights = contextBooked.length > 0 ? contextBooked : autoBooked;
   const hasFlights = bookedFlights.length > 0;
 
   // Search results from FlightSearchSection
