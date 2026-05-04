@@ -49,7 +49,19 @@ const FAVORITES_KEY = 'travyl-favorites';
 // Visual customization (accent, card, text, quote, cover_url) is persisted
 // to AsyncStorage instead of Supabase so it survives app restarts even for
 // anonymous users and avoids a round-trip on every save.
-const PROFILE_PREFS_KEY = 'travyl-profile-prefs';
+//
+// IMPORTANT: scoped per user. A single shared key bled prefs (and the
+// uploaded avatar/cover URLs) between accounts on shared devices —
+// signing in as a different user would inherit the previous user's
+// avatar because `localPrefs` overrides `profile.preferences` in the
+// merge below. The `:anon` bucket is for users who haven't signed in;
+// it gets read once on sign-in and never written back for them.
+const PROFILE_PREFS_KEY_BASE = 'travyl-profile-prefs';
+const RECENT_COLORS_KEY_BASE = 'travyl-profile-recent-colors';
+const prefsKeyFor = (userId: string | null | undefined) =>
+  `${PROFILE_PREFS_KEY_BASE}:${userId || 'anon'}`;
+const recentColorsKeyFor = (userId: string | null | undefined) =>
+  `${RECENT_COLORS_KEY_BASE}:${userId || 'anon'}`;
 
 const ACCENT_PALETTE: string[] = [
   '#000000', // Black — wheel can't reach it (fixed L=0.5)
@@ -1452,13 +1464,19 @@ export default function ProfileScreen() {
   // (and `localPrefs` updates) the drafts pick up the saved colors —
   // no extra `prefsLoaded` flag needed.
   const [localPrefs, setLocalPrefs] = useState<Record<string, any>>({});
+  // Reload local prefs whenever the signed-in user changes. Without this,
+  // a new sign-in would inherit the previous account's local cache, and
+  // since localPrefs takes priority over server `profile.preferences` in
+  // the merge below, the new user would see the previous user's avatar
+  // and customizations until they edit their own.
   useEffect(() => {
-    AsyncStorage.getItem(PROFILE_PREFS_KEY)
+    setLocalPrefs({});
+    AsyncStorage.getItem(prefsKeyFor(user?.id))
       .then((val) => {
         if (val) try { setLocalPrefs(JSON.parse(val)); } catch {}
       })
       .catch(() => {});
-  }, []);
+  }, [user?.id]);
   const [favSort, setFavSort] = useState<'recent' | 'name' | 'category'>('recent');
 
   const removeFavorite = useCallback((placeId: string) => {
@@ -1587,7 +1605,8 @@ export default function ProfileScreen() {
   // popup stays compact.
   const [recentColors, setRecentColors] = useState<string[]>([]);
   useEffect(() => {
-    AsyncStorage.getItem('travyl-profile-recent-colors')
+    setRecentColors([]);
+    AsyncStorage.getItem(recentColorsKeyFor(user?.id))
       .then((val) => {
         if (val) try {
           const arr = JSON.parse(val);
@@ -1595,17 +1614,17 @@ export default function ProfileScreen() {
         } catch {}
       })
       .catch(() => {});
-  }, []);
+  }, [user?.id]);
   const pushRecent = useCallback((hex: string) => {
     if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
     setRecentColors((prev) => {
       const lower = hex.toLowerCase();
       const filtered = prev.filter((c) => c.toLowerCase() !== lower);
       const next = [hex, ...filtered].slice(0, 12);
-      AsyncStorage.setItem('travyl-profile-recent-colors', JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(recentColorsKeyFor(user?.id), JSON.stringify(next)).catch(() => {});
       return next;
     });
-  }, []);
+  }, [user?.id]);
   const [hexInput, setHexInput] = useState<string>('');
   // pickerOpen + pickerTarget split: open controls the popup, target the
   // active tab inside it. Switching tabs no longer closes the popup.
@@ -1621,10 +1640,10 @@ export default function ProfileScreen() {
   const persistPrefChange = useCallback((key: string, value: any) => {
     setLocalPrefs((prev) => {
       const next = { ...prev, [key]: value };
-      AsyncStorage.setItem(PROFILE_PREFS_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(prefsKeyFor(user?.id), JSON.stringify(next)).catch(() => {});
       return next;
     });
-  }, []);
+  }, [user?.id]);
   const targetToPrefKey: Record<ColorTarget, string> = useMemo(() => ({
     accent: 'accent_color',
     text: 'text_color',
@@ -1849,7 +1868,7 @@ export default function ProfileScreen() {
     // the disk-saved values with default drafts.
     let currentLocal: Record<string, any> = localPrefs;
     try {
-      const stored = await AsyncStorage.getItem(PROFILE_PREFS_KEY);
+      const stored = await AsyncStorage.getItem(prefsKeyFor(user?.id));
       if (stored) currentLocal = { ...(JSON.parse(stored) || {}), ...localPrefs };
     } catch {}
     const nextLocalPrefs: Record<string, any> = {
@@ -1866,7 +1885,7 @@ export default function ProfileScreen() {
       ...(draftQuote.trim() ? { custom_quote: draftQuote.trim() } : { custom_quote: null }),
     };
     try {
-      await AsyncStorage.setItem(PROFILE_PREFS_KEY, JSON.stringify(nextLocalPrefs));
+      await AsyncStorage.setItem(prefsKeyFor(user?.id), JSON.stringify(nextLocalPrefs));
       setLocalPrefs(nextLocalPrefs);
     } catch (e: any) {
       setSaving(false);
@@ -1907,7 +1926,7 @@ export default function ProfileScreen() {
     if (editSnapshotRef.current) {
       const snapshot = editSnapshotRef.current;
       setLocalPrefs(snapshot);
-      AsyncStorage.setItem(PROFILE_PREFS_KEY, JSON.stringify(snapshot)).catch(() => {});
+      AsyncStorage.setItem(prefsKeyFor(user?.id), JSON.stringify(snapshot)).catch(() => {});
     }
     setEditing(false);
     setPendingAvatar(null);
