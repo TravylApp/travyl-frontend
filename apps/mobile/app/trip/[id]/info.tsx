@@ -1,8 +1,8 @@
-import { useContext } from 'react';
-import { View, ScrollView, Text, Pressable, Linking, Platform } from 'react-native';
+import { useCallback, useContext } from 'react';
+import { View, ScrollView, Text, Pressable, Linking, Platform, Share, Alert, Clipboard as RNClipboard } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { TabCtx, useTabAccent, PageTransition } from './_layout';
 
@@ -213,11 +213,91 @@ export default function InfoScreen() {
         </View>
       </View>
 
+      <ShareTripCard trip={trip} accent={ACCENT} />
+
       {forecast.length > 0 && <WeatherForecastCard forecast={forecast} />}
       <InfoSectionCard section={buildDestinationTips(ctx)} />
       <InfoSectionCard section={buildEmergencySection(ctx)} />
       <QuickLinksCard city={cityName} country={countryName} />
     </ScrollView>
     </PageTransition>
+  );
+}
+
+// ─── Share Trip card ───────────────────────────────────────────
+//
+// Generates the same `/trip/<id>/share/<token>` link the trips-page
+// share button does, then opens the OS share sheet (or copies on web /
+// when the share sheet fails). Sits at the top of the Info tab so a
+// person inside the trip can share without scrolling back to the hero.
+function ShareTripCard({ trip, accent }: { trip: any; accent: string }) {
+  const colors = useThemeColors();
+  const handleShare = useCallback(async () => {
+    if (!trip?.id) return;
+    let token: string | null = null;
+    try {
+      token = await ensureShareLinkToken(trip.id);
+      if (trip.visibility === 'private') {
+        try { await updateTripVisibility(trip.id, 'link'); } catch {}
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Could not create a share link.';
+      if (Platform.OS === 'web') (globalThis as any).alert?.(`Share failed: ${msg}`);
+      else Alert.alert('Share failed', msg);
+      return;
+    }
+    const url = `https://gotravyl.com/trip/${trip.id}/share/${token}`;
+    const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
+    const title = trip.title ?? `Trip to ${trip.destination}`;
+
+    if (Platform.OS === 'web') {
+      const nav = (globalThis as any).navigator;
+      try {
+        if (nav?.share) { await nav.share({ title, text: message, url }); return; }
+      } catch {}
+      try {
+        await nav?.clipboard?.writeText?.(url);
+        (globalThis as any).alert?.(`Link copied to clipboard:\n${url}`);
+      } catch {
+        (globalThis as any).alert?.(`Share link:\n${url}`);
+      }
+      return;
+    }
+
+    try {
+      await Share.share({ message, url, title });
+    } catch {
+      try { RNClipboard.setString(url); } catch {}
+      Alert.alert('Link copied', `Couldn't open the share sheet, but the link is in your clipboard:\n${url}`);
+    }
+  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility]);
+
+  return (
+    <Pressable
+      onPress={handleShare}
+      style={({ pressed }) => ({
+        backgroundColor: colors.cardBackground,
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: accent, alignItems: 'center', justifyContent: 'center' }}>
+        <FontAwesome name="share-alt" size={18} color="#fff" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Share This Trip</Text>
+        <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 2 }}>
+          Send a link so friends can view (and follow along)
+        </Text>
+      </View>
+      <FontAwesome name="chevron-right" size={14} color={colors.textTertiary} />
+    </Pressable>
   );
 }
