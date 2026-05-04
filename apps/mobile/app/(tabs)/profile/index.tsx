@@ -37,6 +37,7 @@ import {
   dedupPlaces,
   updateProfile,
   favoritesKeyFor,
+  favoritePlacesKeyFor,
   type Trip,
   type PlaceItem,
   type DiscoverPageResult,
@@ -299,10 +300,15 @@ function getImagePicker(): any | null {
 }
 
 // Pick an image and upload it to the Supabase `avatars` bucket so the
-// image works on web + every other device. Falls back to the raw local
-// URI for anon users (no userId) so they still see their selection
-// locally — that URI gets replaced with the public URL the next time
-// the user signs in and saves.
+// image works on web + every other device.
+//
+// Failure handling: if the Supabase upload fails (bucket missing, RLS
+// rejection, network), we surface the error to the user and DO NOT
+// silently save the local `file://` URI. Local URIs look like they
+// "stick" until the next launch — iOS may evict the cache directory,
+// the user reinstalls, etc., and the cover/avatar then disappears,
+// indistinguishable from a persistence bug. Better to fail loud now
+// than silently corrupt the saved profile state.
 async function pickAndUploadImage(field: 'avatar' | 'cover', userId?: string): Promise<string | null> {
   const ImagePicker = getImagePicker();
   if (!ImagePicker) {
@@ -323,9 +329,10 @@ async function pickAndUploadImage(field: 'avatar' | 'cover', userId?: string): P
   const localUri = result.canceled ? null : result.assets?.[0]?.uri ?? null;
   if (!localUri) return null;
 
-  // Anon users get the local URI back — it works on this device and gets
-  // replaced with a real public URL the next time they save while signed in.
-  if (!userId) return localUri;
+  if (!userId) {
+    Alert.alert('Sign in to save', 'Profile picture changes only persist when signed in. Create an account to save your photos across devices.');
+    return null;
+  }
 
   try {
     // Convert the local file:// URI to an ArrayBuffer the storage client
@@ -344,12 +351,22 @@ async function pickAndUploadImage(field: 'avatar' | 'cover', userId?: string): P
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
     return publicUrl;
   } catch (e: any) {
-    // Upload failed (bucket missing, RLS, network). Keep the local URI so
-    // the user at least sees their pick on this device; surfacing the
-    // error here would be too aggressive for a profile-polish flow.
-    console.warn('[profile] cover/avatar upload failed, using local URI:', e?.message);
-    return localUri;
+    console.warn('[profile] cover/avatar upload failed:', e?.message, e);
+    Alert.alert(
+      'Upload failed',
+      `Couldn't save your ${field} to the cloud. Reason: ${e?.message ?? 'unknown error'}\n\nThis usually means the storage bucket isn't configured. Your photo wasn't saved.`,
+    );
+    return null;
   }
+}
+
+// Returns true when a URL is something Supabase / a CDN actually serves,
+// not an on-device-only `file://` or `assets-library://` URI. Used to
+// avoid painting stale broken images that look like the avatar/cover
+// "didn't persist" when really it was a `file://` from a failed upload.
+function isPersistedImageUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://');
 }
 
 
@@ -481,14 +498,19 @@ function ColorWheel({ value, onChange, onDragChange, size = 150 }: { value: stri
 
 // All map-pinnable items aggregated from a country's trips. Pulls coords
 // from itinerary slot pois and explore items.
+//
+// `lat`/`lng` are nullable: older trips (Japan, Spain, etc.) sometimes
+// stored POIs in trip_context without coords. Those still show in the
+// list — only the map view skips them. Previously the missing coords
+// caused the place to be silently dropped from the LIST entirely.
 interface VisitedPlace {
   id: string;
   name: string;
   category?: string;
   image?: string;
   images?: string[];
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   city?: string;
   tripId?: string;
   rating?: number;
@@ -578,8 +600,13 @@ function placesForCountry(trips: Trip[], country: string): VisitedPlace[] {
       return out;
     };
     const pushPlace = (src: any, name?: string, lat?: number, lng?: number, category?: string, id?: string) => {
-      if (!name || typeof lat !== 'number' || typeof lng !== 'number') return;
-      const key = `${name}|${lat.toFixed(4)},${lng.toFixed(4)}`;
+      if (!name) return;
+      const safeLat = typeof lat === 'number' && isFinite(lat) ? lat : null;
+      const safeLng = typeof lng === 'number' && isFinite(lng) ? lng : null;
+      const coordKey = safeLat != null && safeLng != null
+        ? `${safeLat.toFixed(4)},${safeLng.toFixed(4)}`
+        : 'no-coords';
+      const key = `${name}|${coordKey}`;
       if (seenInTrip.has(key)) return;
       seenInTrip.add(key);
       const imgs = pickImages(src);
@@ -592,8 +619,8 @@ function placesForCountry(trips: Trip[], country: string): VisitedPlace[] {
         category,
         image: primary,
         images: imgs,
-        lat,
-        lng,
+        lat: safeLat,
+        lng: safeLng,
         city,
         tripId: trip.id,
         rating: pickRating(src),
@@ -608,6 +635,43 @@ function placesForCountry(trips: Trip[], country: string): VisitedPlace[] {
           : undefined,
       });
     };
+    // Place records come from at least three backends with different
+    // field names — itinerary slots use `lat/lng`, explore_items
+    // typically use `latitude/longitude`, and Foursquare venues nest
+    // coords under `geocodes.main.latitude`. The previous version only
+    // looked at `lat/lng`, so explore_items + Foursquare data were
+    // silently dropped → "no visited places" for trips that mostly
+    // saved that data.
+    const pickLat = (o: any): number | undefined => {
+      if (!o) return undefined;
+      const cands = [
+        o.lat, o.latitude,
+        o.coords?.lat, o.coords?.latitude,
+        o.coordinates?.lat, o.coordinates?.latitude,
+        o.location?.lat, o.location?.latitude,
+        o.geocodes?.main?.latitude, o.geocodes?.main?.lat,
+      ];
+      for (const v of cands) {
+        const n = typeof v === 'string' ? parseFloat(v) : v;
+        if (typeof n === 'number' && isFinite(n)) return n;
+      }
+      return undefined;
+    };
+    const pickLng = (o: any): number | undefined => {
+      if (!o) return undefined;
+      const cands = [
+        o.lng, o.lon, o.longitude,
+        o.coords?.lng, o.coords?.lon, o.coords?.longitude,
+        o.coordinates?.lng, o.coordinates?.lon, o.coordinates?.longitude,
+        o.location?.lng, o.location?.lon, o.location?.longitude,
+        o.geocodes?.main?.longitude, o.geocodes?.main?.lng,
+      ];
+      for (const v of cands) {
+        const n = typeof v === 'string' ? parseFloat(v) : v;
+        if (typeof n === 'number' && isFinite(n)) return n;
+      }
+      return undefined;
+    };
     for (const day of (ctx?.itinerary ?? [])) {
       for (const slot of (day?.slots ?? [])) {
         const poi = slot?.poi ?? {};
@@ -615,18 +679,18 @@ function placesForCountry(trips: Trip[], country: string): VisitedPlace[] {
         pushPlace(
           merged,
           poi.name ?? slot?.title,
-          poi.lat ?? poi.latitude ?? slot?.lat,
-          poi.lng ?? poi.longitude ?? slot?.lng,
+          pickLat(poi) ?? pickLat(slot),
+          pickLng(poi) ?? pickLng(slot),
           poi.category ?? slot?.category,
           poi.id ?? slot?.id,
         );
       }
     }
     for (const item of (ctx?.explore_items ?? [])) {
-      pushPlace(item, item?.name ?? item?.title, item?.lat, item?.lng, item?.category, item?.id);
+      pushPlace(item, item?.name ?? item?.title, pickLat(item), pickLng(item), item?.category, item?.id);
     }
     for (const venue of (ctx?.foursquare_venues ?? [])) {
-      pushPlace(venue, venue?.name ?? venue?.title, venue?.lat, venue?.lng, venue?.category, venue?.id);
+      pushPlace(venue, venue?.name ?? venue?.title, pickLat(venue), pickLng(venue), venue?.category, venue?.id);
     }
   }
   return out;
@@ -662,9 +726,12 @@ function PassportCountryModal({
     const targetLower = group.country.toLowerCase();
     const cityLower = group.cities.map((c) => c.toLowerCase());
     let visBounds: { minLat: number; maxLat: number; minLng: number; maxLng: number } | null = null;
-    if (visited.length > 0) {
-      const lats = visited.map((v) => v.lat);
-      const lngs = visited.map((v) => v.lng);
+    const visitedWithCoords = visited.filter(
+      (v): v is VisitedPlace & { lat: number; lng: number } => v.lat != null && v.lng != null,
+    );
+    if (visitedWithCoords.length > 0) {
+      const lats = visitedWithCoords.map((v) => v.lat);
+      const lngs = visitedWithCoords.map((v) => v.lng);
       visBounds = {
         minLat: Math.min(...lats) - 0.5, maxLat: Math.max(...lats) + 0.5,
         minLng: Math.min(...lngs) - 0.5, maxLng: Math.max(...lngs) + 0.5,
@@ -688,11 +755,10 @@ function PassportCountryModal({
         name: p.name,
         category: p.category,
         image: p.image,
-        lat: p.latitude ?? 0,
-        lng: p.longitude ?? 0,
+        lat: p.latitude ?? null,
+        lng: p.longitude ?? null,
         city: undefined,
-      }))
-      .filter((p) => p.lat !== 0 && p.lng !== 0);
+      }));
   }, [group, favoriteIds, favoritePool, visited]);
 
   // Distinct trips for this country (visited mode only). Each trip gets a
@@ -748,14 +814,168 @@ function PassportCountryModal({
   const placesAll = mode === 'visited' ? visited : favorites;
   // Trip filter only applies to visited mode (favorites don't have tripId).
   const places = useMemo(() => {
-    if (mode !== 'visited' || !selectedTripId) return placesAll;
-    return placesAll.filter((p) => p.tripId === selectedTripId);
+    const filtered = (mode !== 'visited' || !selectedTripId)
+      ? placesAll
+      : placesAll.filter((p) => p.tripId === selectedTripId);
+    // Dedup by id — same SerpAPI place can land in `favorites` twice
+    // (different cached query lists deduped only within their own cache),
+    // and visited places that share a name across explore_items +
+    // foursquare_venues + itinerary slots can produce the same id even
+    // after the per-trip suffixing. Without this, the .map() below emits
+    // duplicate React keys.
+    const seen = new Set<string>();
+    const out: VisitedPlace[] = [];
+    for (const p of filtered) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      out.push(p);
+    }
+    return out;
   }, [placesAll, mode, selectedTripId]);
 
+  // savePlanToSupabase trims POI photos out of trip_context to stay under
+  // the WAF 8KB limit, so visited POIs from older trips have no per-place
+  // image. Resolve each place's image via SerpAPI google_local through our
+  // /api/places?q= proxy — that path returns photos for both restaurants
+  // and landmarks. Sequential (not concurrent) because the route is rate
+  // limited at 30 req/min, and 32 places fired in parallel would 429.
+  const placeKeys = useMemo(
+    () => places.map((p) => {
+      const coordKey = p.lat != null && p.lng != null ? `${p.lat.toFixed(3)},${p.lng.toFixed(3)}` : 'no-coords';
+      return `${p.name}|${coordKey}`;
+    }).join('||'),
+    [places],
+  );
+  // SerpAPI google_maps results include coordinates alongside photos —
+  // for older trips that stored places without lat/lng (Japan, Spain,
+  // etc.), we pull both image AND coords from the same call so the map
+  // can populate. Keyed by VisitedPlace.id.
+  type PlaceEnrichment = { image?: string; lat?: number; lng?: number };
+
+  const { data: imageMapData, isLoading: imagesLoading, isError: imagesError, error: imagesErrorObj } = useQuery<Record<string, PlaceEnrichment>>({
+    // Bumping the version string in the queryKey invalidates anything
+    // cached from earlier (broken) attempts at this fetch.
+    queryKey: ['passport-place-enrichment-v4', group?.country, placeKeys],
+    queryFn: async () => {
+      if (!places.length) return {};
+      const base = getWebApiBase();
+      console.log(`[passport] fetching enrichment, base=${base || '(empty)'}, places=${places.length}`);
+      if (!base) return {};
+
+      const pickCoord = (it: any, axis: 'lat' | 'lng'): number | undefined => {
+        const cands = axis === 'lat' ? [
+          it?.lat, it?.latitude,
+          it?.gps_coordinates?.latitude, it?.gps_coordinates?.lat,
+          it?.coords?.latitude, it?.coords?.lat,
+          it?.coordinates?.latitude, it?.coordinates?.lat,
+          it?.location?.latitude, it?.location?.lat,
+        ] : [
+          it?.lng, it?.lon, it?.longitude,
+          it?.gps_coordinates?.longitude, it?.gps_coordinates?.lng, it?.gps_coordinates?.lon,
+          it?.coords?.longitude, it?.coords?.lng, it?.coords?.lon,
+          it?.coordinates?.longitude, it?.coordinates?.lng, it?.coordinates?.lon,
+          it?.location?.longitude, it?.location?.lng, it?.location?.lon,
+        ];
+        for (const v of cands) {
+          const n = typeof v === 'string' ? parseFloat(v) : v;
+          if (typeof n === 'number' && isFinite(n)) return n;
+        }
+        return undefined;
+      };
+
+      // /api/search/maps?q= goes to SerpAPI google_maps and returns a
+      // single `place_results` for exact-name queries. Use it first; fall
+      // back to /api/places only if maps returns nothing.
+      const tryPlace = async (p: VisitedPlace): Promise<PlaceEnrichment | undefined> => {
+        const q = `${p.name}${p.city ? ' ' + p.city : ''}`;
+        const coordParams = p.lat != null && p.lng != null ? `&lat=${p.lat}&lng=${p.lng}` : '';
+        const tryUrls = [
+          `${base}/api/search/maps?q=${encodeURIComponent(q)}`,
+          `${base}/api/places?q=${encodeURIComponent(q)}${coordParams}&limit=3`,
+        ];
+        for (const url of tryUrls) {
+          try {
+            const r = await fetch(url);
+            if (!r.ok) continue;
+            const data = await r.json();
+            if (!Array.isArray(data)) continue;
+            const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const target = norm(p.name);
+            // First pass: exact-ish name match.
+            for (const it of data) {
+              const candidateName = norm(String(it?.name || ''));
+              if (!target || !candidateName) continue;
+              if (target.includes(candidateName) || candidateName.includes(target)) {
+                const img = pickAnyImage(it);
+                const lat = pickCoord(it, 'lat');
+                const lng = pickCoord(it, 'lng');
+                if (img || (lat != null && lng != null)) return { image: img, lat, lng };
+              }
+            }
+            // Fallback: first result with an image OR coords, even if name doesn't overlap.
+            for (const it of data) {
+              const img = pickAnyImage(it);
+              const lat = pickCoord(it, 'lat');
+              const lng = pickCoord(it, 'lng');
+              if (img || (lat != null && lng != null)) return { image: img, lat, lng };
+            }
+          } catch {}
+        }
+        return undefined;
+      };
+
+      const out: Record<string, PlaceEnrichment> = {};
+      let imgOk = 0;
+      let coordOk = 0;
+      const queue = [...places];
+      const worker = async () => {
+        while (queue.length) {
+          const next = queue.shift();
+          if (!next) break;
+          const enrichment = await tryPlace(next);
+          if (enrichment) {
+            out[next.id] = enrichment;
+            if (enrichment.image) imgOk += 1;
+            if (enrichment.lat != null && enrichment.lng != null) coordOk += 1;
+          }
+        }
+      };
+      await Promise.all([worker(), worker()]);
+      console.log(`[passport] enrichment resolved: images=${imgOk}/${places.length}, coords=${coordOk}/${places.length}`);
+      return out;
+    },
+    enabled: !!group && places.length > 0,
+    staleTime: 60 * 60 * 1000,
+    refetchOnMount: 'always',
+    retry: 1,
+  });
+
+  const lookupImage = useCallback((id: string): string | undefined => {
+    return imageMapData?.[id]?.image;
+  }, [imageMapData]);
+
+  // Resolve coords by stacking the place's own coords (if any) with the
+  // SerpAPI enrichment fallback. Older trips (Japan, Spain) saved
+  // places without lat/lng — without this fallback the map never has
+  // anything to render even when the API knows where each place is.
+  const placesResolved = useMemo(() => {
+    return places.map((p) => {
+      if (p.lat != null && p.lng != null) return p;
+      const looked = imageMapData?.[p.id];
+      if (looked?.lat != null && looked?.lng != null) {
+        return { ...p, lat: looked.lat, lng: looked.lng };
+      }
+      return p;
+    });
+  }, [places, imageMapData]);
+  const placesWithCoords = useMemo(
+    () => placesResolved.filter((p): p is VisitedPlace & { lat: number; lng: number } => p.lat != null && p.lng != null),
+    [placesResolved],
+  );
   const region = useMemo(() => {
-    if (places.length === 0) return null;
-    const lats = places.map((p) => p.lat);
-    const lngs = places.map((p) => p.lng);
+    if (placesWithCoords.length === 0) return null;
+    const lats = placesWithCoords.map((p) => p.lat);
+    const lngs = placesWithCoords.map((p) => p.lng);
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
     const minLng = Math.min(...lngs);
@@ -766,99 +986,7 @@ function PassportCountryModal({
       latitudeDelta: Math.max(0.05, (maxLat - minLat) * 1.6),
       longitudeDelta: Math.max(0.05, (maxLng - minLng) * 1.6),
     };
-  }, [places]);
-
-  // savePlanToSupabase trims POI photos out of trip_context to stay under
-  // the WAF 8KB limit, so visited POIs from older trips have no per-place
-  // image. Resolve each place's image via SerpAPI google_local through our
-  // /api/places?q= proxy — that path returns photos for both restaurants
-  // and landmarks. Sequential (not concurrent) because the route is rate
-  // limited at 30 req/min, and 32 places fired in parallel would 429.
-  const placeKeys = useMemo(
-    () => places.map((p) => `${p.name}|${p.lat.toFixed(3)},${p.lng.toFixed(3)}`).join('||'),
-    [places],
-  );
-  const { data: imageMapData, isLoading: imagesLoading, isError: imagesError, error: imagesErrorObj } = useQuery<Record<string, string>>({
-    // Bumping the version string in the queryKey invalidates anything
-    // cached from earlier (broken) attempts at this fetch — without that,
-    // a previously-cached `{}` would keep being returned.
-    queryKey: ['passport-place-images-v3', group?.country, placeKeys],
-    queryFn: async () => {
-      if (!places.length) return {};
-      const base = getWebApiBase();
-      console.log(`[passport] fetching images, base=${base || '(empty)'}, places=${places.length}`);
-      if (!base) return {};
-
-      // /api/search/maps?q= goes to SerpAPI google_maps and returns a
-      // single `place_results` for exact-name queries (e.g. "Shinjuku Gyoen
-      // National Garden Tokyo" → that exact place with its photo). Use it
-      // first. Fall back to /api/places only if maps returns nothing —
-      // /api/places uses google_local NLP search and tends to return
-      // top-tourist results regardless of the query, which is why we were
-      // seeing the same Ueno Park photo on every card before.
-      const tryPlace = async (p: VisitedPlace): Promise<string | undefined> => {
-        const q = `${p.name}${p.city ? ' ' + p.city : ''}`;
-        const tryUrls = [
-          `${base}/api/search/maps?q=${encodeURIComponent(q)}`,
-          `${base}/api/places?q=${encodeURIComponent(q)}&lat=${p.lat}&lng=${p.lng}&limit=3`,
-        ];
-        for (const url of tryUrls) {
-          try {
-            const r = await fetch(url);
-            if (!r.ok) continue;
-            const data = await r.json();
-            if (!Array.isArray(data)) continue;
-            // Pick the first result whose name actually overlaps with the
-            // visited place's name — guards against the API returning a
-            // generic top-result when the exact place isn't found.
-            const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const target = norm(p.name);
-            for (const it of data) {
-              const candidateName = norm(String(it?.name || ''));
-              if (!target || !candidateName) continue;
-              if (target.includes(candidateName) || candidateName.includes(target)) {
-                const img = pickAnyImage(it);
-                if (img) return img;
-              }
-            }
-            // Fallback within this endpoint: take the first result with an
-            // image even if the name doesn't overlap. Better a relevant
-            // nearby photo than nothing.
-            for (const it of data) {
-              const img = pickAnyImage(it);
-              if (img) return img;
-            }
-          } catch {}
-        }
-        return undefined;
-      };
-
-      // Concurrency=2 keeps us under the 30 req/min rate limit while still
-      // halving wall time vs full sequential.
-      const out: Record<string, string> = {};
-      let okCount = 0;
-      const queue = [...places];
-      const worker = async () => {
-        while (queue.length) {
-          const next = queue.shift();
-          if (!next) break;
-          const img = await tryPlace(next);
-          if (img) { out[next.id] = img; okCount += 1; }
-        }
-      };
-      await Promise.all([worker(), worker()]);
-      console.log(`[passport] images resolved: ${okCount}/${places.length}`);
-      return out;
-    },
-    enabled: !!group && places.length > 0,
-    staleTime: 60 * 60 * 1000,
-    refetchOnMount: 'always',
-    retry: 1,
-  });
-
-  const lookupImage = useCallback((id: string): string | undefined => {
-    return imageMapData?.[id];
-  }, [imageMapData]);
+  }, [placesWithCoords]);
 
   // Reset selection when toggling mode
   useEffect(() => { setSelectedIdx(null); }, [mode]);
@@ -869,7 +997,7 @@ function PassportCountryModal({
     const p = places[idx];
     if (!p) return;
     setSelectedIdx(idx);
-    if (mapRef.current?.animateToRegion) {
+    if (p.lat != null && p.lng != null && mapRef.current?.animateToRegion) {
       mapRef.current.animateToRegion(
         { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 },
         450,
@@ -881,7 +1009,7 @@ function PassportCountryModal({
   useEffect(() => {
     if (selectedIdx == null) return;
     const p = places[selectedIdx];
-    if (!p || !mapRef.current?.animateToRegion) return;
+    if (!p || p.lat == null || p.lng == null || !mapRef.current?.animateToRegion) return;
     mapRef.current.animateToRegion(
       { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 },
       400,
@@ -943,8 +1071,8 @@ function PassportCountryModal({
       website: p.website ?? enriched?.website,
       hours: p.hours ?? enriched?.hours,
       priceLevel: p.priceLevel ?? enriched?.priceLevel,
-      latitude: p.lat,
-      longitude: p.lng,
+      latitude: p.lat ?? undefined,
+      longitude: p.lng ?? undefined,
     } as PlaceItem;
   }), [places, lookupImage, enrichedByName]);
 
@@ -966,7 +1094,8 @@ function PassportCountryModal({
             zoomEnabled
             rotateEnabled={false}
           >
-            {places.map((p, i) => {
+            {placesResolved.map((p, i) => {
+              if (p.lat == null || p.lng == null) return null;
               // Visited markers carry the trip's palette color so multiple
               // trips to the same country are visually distinguishable on
               // the map. Selected pin always overrides to red so it stands
@@ -1473,13 +1602,36 @@ export default function ProfileScreen() {
   // since localPrefs takes priority over server `profile.preferences` in
   // the merge below, the new user would see the previous user's avatar
   // and customizations until they edit their own.
+  //
+  // One-time migration: prior versions stored everything at the global
+  // `travyl-profile-prefs` key. On first load after the per-user
+  // scoping change, that data was orphaned. If the new key is empty
+  // and the legacy key has data, copy it over so existing users don't
+  // see their saved colors / quote disappear after the update.
   useEffect(() => {
     setLocalPrefs({});
-    AsyncStorage.getItem(prefsKeyFor(user?.id))
-      .then((val) => {
-        if (val) try { setLocalPrefs(JSON.parse(val)); } catch {}
-      })
-      .catch(() => {});
+    (async () => {
+      try {
+        const userKey = prefsKeyFor(user?.id);
+        let raw = await AsyncStorage.getItem(userKey);
+        // Only migrate from the legacy global key when we have a real
+        // user id. If we ran during the brief auth-resolving window
+        // (user?.id === undefined → key ends in `:anon`), the legacy
+        // data would land at `:anon` and be stranded there once the
+        // real uuid resolves.
+        if (!raw && user?.id) {
+          const legacy = await AsyncStorage.getItem('travyl-profile-prefs');
+          if (legacy) {
+            await AsyncStorage.setItem(userKey, legacy);
+            await AsyncStorage.removeItem('travyl-profile-prefs');
+            raw = legacy;
+          }
+        }
+        if (raw) {
+          try { setLocalPrefs(JSON.parse(raw)); } catch {}
+        }
+      } catch {}
+    })();
   }, [user?.id]);
   const [favSort, setFavSort] = useState<'recent' | 'name' | 'category'>('recent');
 
@@ -1559,7 +1711,29 @@ export default function ProfileScreen() {
     return dedupPlaces(all);
   }, [discoverData, queryClient]);
 
+  // Snapshot map of full PlaceItem records, written when the user
+  // hearts a place from /favorites. Lets the profile render its
+  // saved places without depending on the local discover query
+  // happening to contain them — favoritism from a different city
+  // would otherwise never show up here.
+  const [favoritePlacesMap, setFavoritePlacesMap] = useState<Record<string, PlaceItem>>({});
+  useEffect(() => {
+    setFavoritePlacesMap({});
+    AsyncStorage.getItem(favoritePlacesKeyFor(user?.id))
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') setFavoritePlacesMap(parsed);
+        } catch {}
+      })
+      .catch(() => {});
+  }, [user?.id, favoriteIds]);
+
   // Auto-load more pages until we've matched all favorites or hit the cap.
+  // Less critical now that favoritePlacesMap can fill in the rest, but
+  // still helpful when a snapshot is missing (older saves from before
+  // the snapshot path landed).
   useEffect(() => {
     if (favoriteIds.length === 0) return;
     if (!hasDiscoverNext || isFetchingDiscoverNext) return;
@@ -1571,9 +1745,26 @@ export default function ProfileScreen() {
   }, [favoriteIds, discoveredPlaces, hasDiscoverNext, isFetchingDiscoverNext, fetchDiscoverNext]);
 
   const favoritedPlaces = useMemo<PlaceItem[]>(() => {
-    if (favoriteIds.length === 0 || discoveredPlaces.length === 0) return [];
+    if (favoriteIds.length === 0) return [];
     const set = new Set(favoriteIds);
-    const matched = discoveredPlaces.filter((p) => set.has(p.id));
+    // Stack the discover query results with the snapshot map: prefer
+    // the snapshot when present (it was the exact record the user
+    // hearted, with full image/address/rating), else fall back to
+    // whatever the discover query happens to have.
+    const seen = new Set<string>();
+    const matched: PlaceItem[] = [];
+    for (const id of favoriteIds) {
+      if (seen.has(id)) continue;
+      const fromSnapshot = favoritePlacesMap[id];
+      const fromCache = discoveredPlaces.find((p) => p.id === id);
+      const place = fromSnapshot ?? fromCache;
+      if (place) {
+        matched.push(place);
+        seen.add(id);
+      }
+    }
+    if (matched.length === 0) return [];
+    if (!set.size) return matched;
     if (favSort === 'name') {
       return [...matched].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
@@ -1583,7 +1774,7 @@ export default function ProfileScreen() {
     // 'recent' — preserve favoriteIds order (newest appended last → reverse)
     const rank = new Map(favoriteIds.map((id, i) => [id, i]));
     return [...matched].sort((a, b) => (rank.get(b.id) ?? 0) - (rank.get(a.id) ?? 0));
-  }, [favoriteIds, discoveredPlaces, favSort]);
+  }, [favoriteIds, discoveredPlaces, favoritePlacesMap, favSort]);
   const [apiQuote, setApiQuote] = useState<QuoteData | null>(null);
 
   // Edit mode + drafts. Drafts initialise from the current profile and only
@@ -1610,14 +1801,27 @@ export default function ProfileScreen() {
   const [recentColors, setRecentColors] = useState<string[]>([]);
   useEffect(() => {
     setRecentColors([]);
-    AsyncStorage.getItem(recentColorsKeyFor(user?.id))
-      .then((val) => {
-        if (val) try {
-          const arr = JSON.parse(val);
-          if (Array.isArray(arr)) setRecentColors(arr.filter((c) => typeof c === 'string').slice(0, 12));
-        } catch {}
-      })
-      .catch(() => {});
+    (async () => {
+      try {
+        const userKey = recentColorsKeyFor(user?.id);
+        let raw = await AsyncStorage.getItem(userKey);
+        // Only migrate when we have a real user id (see prefs migration above).
+        if (!raw && user?.id) {
+          const legacy = await AsyncStorage.getItem('travyl-profile-recent-colors');
+          if (legacy) {
+            await AsyncStorage.setItem(userKey, legacy);
+            await AsyncStorage.removeItem('travyl-profile-recent-colors');
+            raw = legacy;
+          }
+        }
+        if (raw) {
+          try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) setRecentColors(arr.filter((c) => typeof c === 'string').slice(0, 12));
+          } catch {}
+        }
+      } catch {}
+    })();
   }, [user?.id]);
   const pushRecent = useCallback((hex: string) => {
     if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
@@ -1718,9 +1922,16 @@ export default function ProfileScreen() {
   // stick across restarts even when there's no Supabase write.
   const prefs = { ...((profile?.preferences ?? {}) as Record<string, any>), ...localPrefs };
   const customQuote: string | undefined = prefs.custom_quote;
-  const coverUrl: string | undefined = pendingCover ?? prefs.cover_url;
-  const avatarUrl: string | undefined =
-    pendingAvatar ?? prefs.avatar_url ?? profile?.avatar_url ?? user?.user_metadata?.avatar_url ?? undefined;
+  // Reject `file://` and other on-device-only URIs for the cover/avatar.
+  // A previous version of the upload helper returned `file://` URIs when
+  // Supabase uploads failed, which got persisted to localPrefs and then
+  // disappeared on the next launch (iOS evicts the cache dir, user
+  // reinstalls, etc.) — looking exactly like "didn't persist".
+  const rawCover = pendingCover ?? prefs.cover_url;
+  const coverUrl: string | undefined = isPersistedImageUrl(rawCover) ? rawCover : undefined;
+  const rawAvatar =
+    pendingAvatar ?? prefs.avatar_url ?? profile?.avatar_url ?? user?.user_metadata?.avatar_url;
+  const avatarUrl: string | undefined = isPersistedImageUrl(rawAvatar) ? rawAvatar : undefined;
   // While editing, preview the draft swatches live so the user can see
   // each color's effect across the profile. Fall back to saved values
   // when not editing.
@@ -1776,18 +1987,32 @@ export default function ProfileScreen() {
   // Load favorites for the signed-in user. Re-runs on user.id change so
   // a sign-out → sign-in switches lists rather than carrying the previous
   // user's saves over.
+  //
+  // One-time migration: legacy `travyl-favorites` global key gets
+  // adopted into the current user's namespace on first load — but only
+  // once user.id is known, otherwise we'd strand it at `:anon`.
   useEffect(() => {
     setFavoriteIds([]);
-    AsyncStorage.getItem(favoritesKeyFor(user?.id))
-      .then((val) => {
-        if (val) {
+    (async () => {
+      try {
+        const userKey = favoritesKeyFor(user?.id);
+        let raw = await AsyncStorage.getItem(userKey);
+        if (!raw && user?.id) {
+          const legacy = await AsyncStorage.getItem('travyl-favorites');
+          if (legacy) {
+            await AsyncStorage.setItem(userKey, legacy);
+            await AsyncStorage.removeItem('travyl-favorites');
+            raw = legacy;
+          }
+        }
+        if (raw) {
           try {
-            const ids = JSON.parse(val);
+            const ids = JSON.parse(raw);
             if (Array.isArray(ids)) setFavoriteIds(ids);
           } catch {}
         }
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, [user?.id]);
 
   // Travel quote — the user's custom quote takes precedence; otherwise we

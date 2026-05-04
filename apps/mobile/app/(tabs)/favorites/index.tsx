@@ -20,6 +20,7 @@ import {
   haversineKm as distanceKm, fetchDiscoverPage, fetchNearbyPlaces, searchPlaces, dedupPlaces, distanceLabel,
   inferSearchHint,
   favoritesKeyFor,
+  favoritePlacesKeyFor,
   useAuthStore,
   type PlaceItem, type DiscoverPageResult,
 } from '@travyl/shared';
@@ -217,9 +218,32 @@ export default function FavoritesScreen() {
       const next = wasFavorited ? prev.filter((f) => f !== id) : [...prev, id];
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
         AsyncStorage.setItem(favoritesKeyFor(userId), JSON.stringify(next)).catch(() => {});
+        // Persist a snapshot of the full PlaceItem alongside the id list
+        // so the profile (and any other screen that doesn't have a fresh
+        // discover query for this place) can render the favorite without
+        // needing to re-fetch. On unfavorite, drop it from the snapshot.
+        AsyncStorage.getItem(favoritePlacesKeyFor(userId)).then((raw) => {
+          let map: Record<string, PlaceItem> = {};
+          if (raw) {
+            try { map = JSON.parse(raw) || {}; } catch {}
+          }
+          if (wasFavorited) {
+            delete map[id];
+          } else {
+            // Look across every list this screen knows about — search
+            // results, the discover feed, and the strict-radius nearby
+            // query — so wherever the user heart-tapped from, we
+            // capture the full record.
+            const hit =
+              (PLACES.find((p) => p.id === id)) ||
+              (searchResults.find((p) => p.id === id)) ||
+              (discoveredPlaces.find((p) => p.id === id)) ||
+              (nearbyPlaces.find((p) => p.id === id));
+            if (hit) map[id] = hit;
+          }
+          AsyncStorage.setItem(favoritePlacesKeyFor(userId), JSON.stringify(map)).catch(() => {});
+        }).catch(() => {});
       }).catch(() => {});
-      // Surface a toast so the user gets concrete feedback that the save
-      // succeeded — silent state flips made the heart feel decorative.
       setToastMessage(
         wasFavorited
           ? `Removed (${next.length} saved)`
@@ -227,7 +251,7 @@ export default function FavoritesScreen() {
       );
       return next;
     });
-  }, [userId]);
+  }, [userId, PLACES, searchResults, discoveredPlaces, nearbyPlaces]);
 
   // Toast lifecycle — fade in on message, fade out after 1.5s.
   const [toastMessage, setToastMessage] = useState<string | null>(null);

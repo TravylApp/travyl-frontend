@@ -311,10 +311,29 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
     ]).start(() => onClose());
   }, [onClose]);
 
-  // Initialize stop order when activities change
+  // Dedup activities by id (or by name+time if id is missing). The same
+  // POI can be in both `trip_context.itinerary[].slots[].poi` AND the
+  // `activity` table, which makes `selectedDay.timeGroups.flatMap(...)`
+  // emit it twice — once for each source. Without this, the Stops list
+  // and the map sidebar show "Bishop Museum / Bishop Museum / ..."
+  // pairs even though there's only one entry on the calendar.
+  const dedupedTodayActivities = useMemo(() => {
+    const seen = new Set<string>();
+    const out: ActivityViewModel[] = [];
+    for (const a of todayActivities) {
+      const key = a.id ? String(a.id) : `${a.name ?? ''}|${a.startTime ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+    return out;
+  }, [todayActivities]);
+
+  // Initialize stop order when activities change. Uses the deduped list
+  // so the indices match what the Stops + map render.
   useEffect(() => {
-    setStopOrder(todayActivities.map((_, i) => i));
-  }, [todayActivities.length]);
+    setStopOrder(dedupedTodayActivities.map((_, i) => i));
+  }, [dedupedTodayActivities.length]);
 
   // Reorder helpers
   const moveStop = useCallback((fromIdx: number, direction: 'up' | 'down') => {
@@ -329,10 +348,10 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
 
   // Build ordered activities
   const orderedActivities = useMemo(() =>
-    stopOrder.length === todayActivities.length
-      ? stopOrder.map((i) => todayActivities[i])
-      : todayActivities,
-    [stopOrder, todayActivities],
+    stopOrder.length === dedupedTodayActivities.length
+      ? stopOrder.map((i) => dedupedTodayActivities[i])
+      : dedupedTodayActivities,
+    [stopOrder, dedupedTodayActivities],
   );
 
   const markers = useMemo(() => buildMarkers(orderedActivities, ACCENT, centerLat, centerLng, discoverPool), [orderedActivities, ACCENT, centerLat, centerLng, discoverPool]);
@@ -525,9 +544,13 @@ function DayMap({ todayActivities, allActivities, onClose, centerLat, centerLng,
           <View style={{ paddingVertical: 4 }}>
             {orderedActivities.map((activity, i) => {
               const isSelected = selectedStop === i;
+              // Stable, always-unique key — even if two activities share
+              // the same `activity.id` (e.g. same SerpAPI POI in two
+              // sources), suffixing with the index keeps React happy.
+              const stopKey = `${activity.id ?? 'noid'}-${i}`;
               return (
                 <Pressable
-                  key={activity.id ?? `stop-${i}`}
+                  key={stopKey}
                   onPress={() => focusStop(i)}
                   style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,

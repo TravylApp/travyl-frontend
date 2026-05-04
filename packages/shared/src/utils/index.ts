@@ -254,6 +254,25 @@ export function favoritesKeyFor(userId: string | null | undefined): string {
   return `travyl-favorites:${userId || 'anon'}`;
 }
 
+/**
+ * AsyncStorage key for the favorite-place snapshot map (id → PlaceItem).
+ *
+ * Why: storing only the favorite id list (`favoritesKeyFor`) means
+ * any screen that wants to *render* a favorite has to find it inside
+ * a freshly-fetched discover/search/nearby query. That works on
+ * `/favorites` (which IS the discover query) but breaks on the
+ * profile screen, where the discover query only knows about places
+ * near the user's current location — so a favorite from a different
+ * city can never match. Persisting the full PlaceItem here lets the
+ * profile render immediately, no cache scan required.
+ *
+ * @param userId - The current Supabase auth user id, or null/undefined
+ * @returns The per-user AsyncStorage key (e.g. `travyl-favorite-places:abc-123`)
+ */
+export function favoritePlacesKeyFor(userId: string | null | undefined): string {
+  return `travyl-favorite-places:${userId || 'anon'}`;
+}
+
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)
