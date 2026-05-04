@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { View, ScrollView, Text, Pressable, Linking, Modal, TextInput, FlatList } from 'react-native';
+import { View, ScrollView, Text, Pressable, Linking, Modal, TextInput, FlatList, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase, useSettingsStore } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 // Airport cache — populated dynamically from API search results
 const airportCache: { code: string; name: string; city: string }[] = [];
@@ -77,10 +77,22 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
 }) {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
+  // Pre-fill `from` with the user's saved preferred airport so they
+  // don't have to set it every trip. Falls back to empty when unset.
+  const preferredAirport = useSettingsStore((s) => s.preferredAirport);
   const [collapsed, setCollapsed] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState(destination || '');
+  const [from, setFrom] = useState(preferredAirport || '');
+  // Only seed `to` from the trip destination if it actually IS an IATA
+  // code (3 uppercase letters). The trip's `destination` field is the
+  // city name (e.g. "Honolulu") which the SerpAPI flights endpoint
+  // rejects with a 400 because it expects a code like "HNL". When the
+  // value is a city name we leave `to` empty so the user is forced to
+  // pick an airport via the picker — and we pre-fill the picker query
+  // with the city name so the lookup is one tap away.
+  const IATA_RE = /^[A-Z]{3}$/;
+  const initialTo = destination && IATA_RE.test(destination.trim()) ? destination.trim() : '';
+  const [to, setTo] = useState(initialTo);
   const [travelers, setTravelers] = useState(2);
   const [cabinClass, setCabinClass] = useState<'economy' | 'premium' | 'business' | 'first'>('economy');
   const [nonstopOnly, setNonstopOnly] = useState(false);
@@ -106,11 +118,15 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
       fetch(`${WEB_API}/api/airports?q=${encodeURIComponent(airportQuery)}`)
         .then(r => r.ok ? r.json() : [])
         .then((data: any[]) => {
-          setAirportResults(data.map((a: any) => ({
+          const mapped = data.map((a: any) => ({
             code: a.iata || a.iata_code || a.code || '',
             name: a.name || '',
             city: a.city || a.city_name || '',
-          })).filter((a: any) => a.code));
+          })).filter((a: any) => a.code);
+          // Dedupe by IATA code — backend can return multiple records per airport
+          const seen = new Set<string>();
+          const deduped = mapped.filter((a) => seen.has(a.code) ? false : (seen.add(a.code), true));
+          setAirportResults(deduped);
           setAirportLoading(false);
         })
         .catch(() => { setAirportResults([]); setAirportLoading(false); });
@@ -119,7 +135,7 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
   }, [airportQuery]);
 
   // Flight search via shared hook
-  const { data: searchResults, isLoading: searching } = useFlightSearch({
+  const { data: searchResults, isLoading: searching, error: searchError } = useFlightSearch({
     origin: searchTriggered ? from : undefined,
     destination: searchTriggered ? to : undefined,
     departDate: searchTriggered ? departDate : undefined,
@@ -134,6 +150,17 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
       onResults(flights);
     }
   }, [searchResults]);
+
+  // Decode the upstream error so we can show it inline. The hook now
+  // returns `{ flights: [], error, status }` on non-2xx responses
+  // instead of throwing, so empty results have a reason attached.
+  const upstreamError: string | null =
+    (searchResults as any)?.error
+      ?? (searchError instanceof Error ? searchError.message : null);
+  const resultCount = Array.isArray(searchResults)
+    ? searchResults.length
+    : (searchResults as any)?.flights?.length ?? 0;
+  const showEmptyState = searchTriggered && !searching && resultCount === 0;
 
   const cabinLabel: Record<string, string> = {
     economy: 'Economy',
@@ -254,8 +281,15 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
               </Pressable>
             </View>
 
-            {/* To */}
-            <Pressable onPress={() => { setAirportPickerField('to'); setAirportQuery(''); setAirportResults(airportCache); }}
+            {/* To — pre-fills the picker query with the trip's destination
+                city name (e.g. "Honolulu") when no IATA is set yet, so
+                the airport list is one tap away. */}
+            <Pressable onPress={() => {
+              setAirportPickerField('to');
+              const seed = !to && destination && !IATA_RE.test(destination.trim()) ? destination.trim() : '';
+              setAirportQuery(seed);
+              setAirportResults(airportCache);
+            }}
               style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ ...TextStyles.micro, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>To</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
@@ -292,14 +326,57 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
               </Pressable>
             </View>
 
-            {/* Search button */}
-            <Pressable
-              onPress={() => setSearchTriggered(true)}
-              style={{ backgroundColor: ACCENT, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: searching ? 0.6 : 1 }}
-            >
-              <FontAwesome name={searching ? 'spinner' : 'search'} size={12} color="#fff" />
-              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{searching ? 'Searching...' : 'Search'}</Text>
-            </Pressable>
+            {/* Search button — disabled until from / to / departDate are
+                all filled in. Pressing with a missing field used to
+                silently do nothing because the underlying useFlightSearch
+                hook stays disabled when any of those are empty. */}
+            {(() => {
+              const missingFrom = !from;
+              const missingTo = !to;
+              const missingDate = !departDate;
+              const canSearch = !missingFrom && !missingTo && !missingDate;
+              const label = !canSearch
+                ? (missingFrom ? 'Select departure airport'
+                  : missingTo ? 'Select arrival airport'
+                  : 'Pick a depart date')
+                : (searching ? 'Searching…' : 'Search flights');
+              return (
+                <Pressable
+                  onPress={() => canSearch && setSearchTriggered(true)}
+                  disabled={!canSearch}
+                  style={{
+                    backgroundColor: canSearch ? ACCENT : colors.border,
+                    paddingVertical: 12,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: searching ? 0.6 : 1,
+                  }}
+                >
+                  <FontAwesome name={searching ? 'spinner' : 'search'} size={12} color="#fff" />
+                  <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{label}</Text>
+                </Pressable>
+              );
+            })()}
+
+            {/* Inline status — surfaces upstream errors and "no results"
+                so the user knows the search ran instead of staring at
+                an empty list. */}
+            {upstreamError && (
+              <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' }}>
+                <Text style={{ ...TextStyles.caption, color: '#ef4444', fontWeight: '600' }}>
+                  Flight search error
+                </Text>
+                <Text style={{ ...TextStyles.xs, color: '#ef4444', marginTop: 2 }}>
+                  {upstreamError}
+                </Text>
+              </View>
+            )}
+            {!upstreamError && showEmptyState && (
+              <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ ...TextStyles.caption, color: colors.textSecondary, textAlign: 'center' }}>
+                  No flights found for {from} → {to} on {departDate}.
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Advanced filters */}
@@ -462,7 +539,7 @@ function FlightSearchSection({ destination, departDate, returnDate, onResults }:
             </View>
             <FlatList
               data={airportResults}
-              keyExtractor={(item) => item.code}
+              keyExtractor={(item, index) => `${item.code}-${index}`}
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
                 <Pressable
@@ -1135,10 +1212,66 @@ export default function FlightsScreen() {
   const destAirport = city; // Backend resolves city names directly
 
   // Convert trip_context flights to display format
-  const bookedFlights = useMemo(
+  const contextBooked = useMemo(
     () => contextFlightsToBooked((trip?.trip_context as any)?.flights, city),
     [trip, city],
   );
+
+  // Resolve destination city → IATA code (SerpAPI Google Flights requires
+  // an airport code, not a city name like "Tokyo").
+  const [destIata, setDestIata] = useState<string | null>(null);
+  useEffect(() => {
+    if (!city) { setDestIata(null); return; }
+    const base = getWebApiBase();
+    fetch(`${base}/api/airports?q=${encodeURIComponent(city)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => {
+        const first = (data ?? []).find((a: any) => a.iata || a.iata_code || a.code);
+        setDestIata(first ? (first.iata || first.iata_code || first.code) : null);
+      })
+      .catch(() => setDestIata(null));
+  }, [city]);
+
+  // Auto-fetch flights when the trip has no saved flights — uses a sensible
+  // default origin (JFK) so the user always sees outbound + return suggestions
+  // without having to fill in the search form first.
+  const autoEnabled = contextBooked.length === 0 && !!destIata && !!trip?.start_date;
+  const { data: autoSearch } = useFlightSearch({
+    origin: autoEnabled ? 'JFK' : undefined,
+    destination: autoEnabled ? destIata ?? undefined : undefined,
+    departDate: autoEnabled ? trip?.start_date ?? undefined : undefined,
+    returnDate: autoEnabled ? trip?.end_date ?? undefined : undefined,
+    passengers: 1,
+  });
+
+  const autoBooked = useMemo(() => {
+    if (!autoEnabled || !autoSearch) return [];
+    const list: any[] = Array.isArray(autoSearch) ? autoSearch : (autoSearch as any)?.flights ?? [];
+    if (list.length === 0) return [];
+    // Convert SerpAPI shape (legs[]/layovers[]) to the trip_context flight shape
+    // expected by contextFlightsToBooked.
+    const synthetic = list.slice(0, 2).map((f: any) => {
+      const legs = f.legs ?? [];
+      const firstLeg = legs[0] ?? {};
+      const lastLeg = legs[legs.length - 1] ?? firstLeg;
+      return {
+        airline: firstLeg.airline ?? f.airline ?? 'Airline',
+        departure_time: firstLeg.departure?.time ?? null,
+        arrival_time: lastLeg.arrival?.time ?? null,
+        origin: firstLeg.departure?.id ?? 'JFK',
+        dest_iata: lastLeg.arrival?.id ?? destIata ?? '',
+        duration: f.totalDuration ?? 0,
+        stops: f.stops ?? 0,
+        price: f.price ?? 0,
+      };
+    });
+    return contextFlightsToBooked(synthetic, city).map((b: any, i: number) => ({
+      ...b,
+      type: i === 0 ? 'outbound' : 'return',
+    }));
+  }, [autoEnabled, autoSearch, city, destIata]);
+
+  const bookedFlights = contextBooked.length > 0 ? contextBooked : autoBooked;
   const hasFlights = bookedFlights.length > 0;
 
   // Search results from FlightSearchSection
@@ -1198,18 +1331,50 @@ export default function FlightsScreen() {
             </View>
           </View>
           {searchFlights.map((f: any, i: number) => {
-            const depTime = f.departure_time ? new Date(f.departure_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-            const arrTime = f.arrival_time ? new Date(f.arrival_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            // The backend normalizes flights as:
+            //   { price, totalDuration, stops, legs: [{ airline, flightNumber,
+            //     departure: { airport, id, time }, arrival: { airport, id, time } }],
+            //     layovers: [...] }
+            // Earlier this card was reading top-level `f.airline / f.origin /
+            // f.destination / f.departure_time` (none of which exist on the
+            // upstream shape) and rendered every row as "Airline → ...".
+            const legs: any[] = Array.isArray(f.legs) ? f.legs : [];
+            const firstLeg = legs[0] ?? {};
+            const lastLeg = legs[legs.length - 1] ?? firstLeg;
+            const airline = firstLeg.airline || f.airline || 'Airline';
+            const originCode = firstLeg.departure?.id || f.origin || '';
+            const destinationCode = lastLeg.arrival?.id || f.destination || '';
+            const formatClock = (t?: string) => {
+              if (!t) return '';
+              // SerpAPI returns "2026-06-15 17:30" or ISO — both parse.
+              const d = new Date(t.replace(' ', 'T'));
+              if (isNaN(d.getTime())) return t;
+              return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            };
+            const depTime = formatClock(firstLeg.departure?.time);
+            const arrTime = formatClock(lastLeg.arrival?.time);
+            const totalMin = f.totalDuration ?? 0;
+            const durationLabel = totalMin > 0
+              ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`
+              : '';
+            const stops = typeof f.stops === 'number' ? f.stops : Math.max(0, legs.length - 1);
             return (
               <View key={f.id || i} style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
-                      <FontAwesome name="plane" size={14} color="#fff" />
-                    </View>
-                    <View>
-                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{f.airline || 'Airline'}</Text>
-                      <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{f.origin} → {f.destination}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
+                    {f.airlineLogo ? (
+                      <Image source={{ uri: f.airlineLogo }} style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#fff' }} resizeMode="contain" />
+                    ) : (
+                      <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+                        <FontAwesome name="plane" size={14} color="#fff" />
+                      </View>
+                    )}
+                    <View style={{ flexShrink: 1 }}>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }} numberOfLines={1}>{airline}</Text>
+                      <Text style={{ ...TextStyles.caption, color: colors.textTertiary }} numberOfLines={1}>
+                        {originCode || '?'} → {destinationCode || '?'}
+                        {firstLeg.flightNumber ? ` · ${firstLeg.flightNumber}` : ''}
+                      </Text>
                     </View>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -1218,9 +1383,9 @@ export default function FlightsScreen() {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-                  <Text style={{ ...TextStyles.body, color: colors.text }}>{depTime} → {arrTime}</Text>
-                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{f.duration || ''}</Text>
-                  <Text style={{ ...TextStyles.smEm, color: f.stops === 0 ? colors.success : colors.warning }}>{f.stops === 0 ? 'Direct' : `${f.stops} stop`}</Text>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>{depTime || '—'} → {arrTime || '—'}</Text>
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{durationLabel}</Text>
+                  <Text style={{ ...TextStyles.smEm, color: stops === 0 ? colors.success : colors.warning }}>{stops === 0 ? 'Direct' : `${stops} stop${stops === 1 ? '' : 's'}`}</Text>
                 </View>
                 {f.link && (
                   <Pressable onPress={() => Linking.openURL(f.link)} style={{ marginTop: 10, backgroundColor: ACCENT, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}>

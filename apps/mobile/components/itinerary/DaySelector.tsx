@@ -64,7 +64,7 @@ export function DaySelector({ days, selectedIndex, onSelect, accentColor }: DayS
                   ...TextStyles.micro,
                   color: selected ? 'rgba(255,255,255,0.8)' : colors.textTertiary,
                 }}>
-                  D{day.dayNumber}
+                  Day {day.dayNumber}
                 </Text>
                 <Text numberOfLines={1} style={{
                   ...TextStyles.xs, marginTop: 1,

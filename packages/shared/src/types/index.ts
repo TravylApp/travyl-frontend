@@ -1039,6 +1039,7 @@ export interface HotelDetail {
 export interface PackingItem {
   item: string;
   packed: boolean;
+  quantity?: number;
 }
 
 export type PackingList = Record<string, PackingItem[]>;

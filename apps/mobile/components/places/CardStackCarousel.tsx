@@ -13,11 +13,13 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import Constants from 'expo-constants';
-// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+// Conditional react-native-maps — try the require, fall back to View if
+// the native module isn't bundled. Don't gate on Constants.appOwnership:
+// it's deprecated and returns null in custom dev clients on newer SDKs,
+// which would skip the require even when the module IS available.
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+if (Platform.OS !== 'web') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -63,7 +65,9 @@ export interface CardStackCarouselProps {
   onClose?: () => void;
   navColor?: string;
   hideArrows?: boolean;
+  hideCounter?: boolean;
   showMapBg?: boolean;
+  disableMap?: boolean;
 }
 
 /* ═══════════════ Component ═══════════════ */
@@ -82,7 +86,9 @@ export function CardStackCarousel({
   onClose,
   navColor,
   hideArrows = false,
+  hideCounter = false,
   showMapBg = false,
+  disableMap = false,
 }: CardStackCarouselProps) {
   const insets = useSafeAreaInsets();
   const CARD_W = cardWidth ?? SCREEN_WIDTH - 24;
@@ -97,8 +103,10 @@ export function CardStackCarousel({
   const showMapRef = useRef(showMap);
   showMapRef.current = showMap;
 
-  // Magazine dimensions
-  const magW = Math.min(SCREEN_WIDTH - 32, CARD_W * 1.15);
+  // Magazine dimensions. When the caller passes an explicit `cardWidth`
+  // we honor it directly so the card can fill an embedded slide-up
+  // wrapper without a forced 32px side gutter.
+  const magW = cardWidth != null ? CARD_W : Math.min(SCREEN_WIDTH - 32, CARD_W * 1.15);
   const magH = CARD_H;
 
   // ── Map height animation ──
@@ -329,9 +337,11 @@ export function CardStackCarousel({
           <FontAwesome name="chevron-left" size={14} color={navIconColor} />
         </Pressable>
       )}
-      <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
-        {currentIdx + 1} / {places.length}
-      </Text>
+      {!hideCounter && (
+        <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
+          {currentIdx + 1} / {places.length}
+        </Text>
+      )}
       {!hideArrows && (
         <Pressable onPress={goNext} style={{
           width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
@@ -369,7 +379,8 @@ export function CardStackCarousel({
         isFav={isFav}
         onToggleFav={() => onToggleFav(place.id)}
         onAddToTrip={onAddToTrip}
-        onMapPress={!showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
+        onClose={!overlay ? onClose : undefined}
+        onMapPress={!disableMap && !showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
         width={magW}
         height={magH}
       />
@@ -476,8 +487,11 @@ export function CardStackCarousel({
     <Modal visible transparent animationType="slide" statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-        {/* ── Map background (fills entire screen) ── */}
-        {hasCoords && Platform.OS !== 'web' ? (
+        {/* ── Map background (fills entire screen). `disableMap` lets the
+            caller suppress this layer when the surrounding screen already
+            shows a map (e.g. profile country modal already has its own
+            map at the top). */}
+        {!disableMap && hasCoords && Platform.OS !== 'web' ? (
           <MapView
             ref={mapRef}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}

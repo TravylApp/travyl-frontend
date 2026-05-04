@@ -114,6 +114,10 @@ export default function BudgetScreen() {
 
   // Currency conversion
   const [displayCurrency, setDisplayCurrency] = useState('USD');
+  // Quick converter widget state
+  const [convFrom, setConvFrom] = useState('USD');
+  const [convTo, setConvTo] = useState('EUR');
+  const [convAmount, setConvAmount] = useState('100');
   const { data: rates } = useQuery({
     queryKey: ['exchange-rates'],
     queryFn: async () => {
@@ -272,13 +276,13 @@ export default function BudgetScreen() {
       alerts.push({
         type: 'danger',
         icon: 'exclamation-circle',
-        message: `${item.category} is over budget by $${Math.abs(item.budgeted - item.actual).toLocaleString()}`,
+        message: `${item.category} is over budget by ${fx(Math.abs(item.budgeted - item.actual))}`,
       });
     } else if (itemPct >= 90) {
       alerts.push({
         type: 'warning',
         icon: 'warning',
-        message: `${item.category} is at ${itemPct.toFixed(0)}% — only $${(item.budgeted - item.actual).toLocaleString()} left`,
+        message: `${item.category} is at ${itemPct.toFixed(0)}% — only ${fx(item.budgeted - item.actual)} left`,
       });
     }
   });
@@ -286,13 +290,13 @@ export default function BudgetScreen() {
     alerts.unshift({
       type: 'warning',
       icon: 'warning',
-      message: `Overall budget is at ${pctUsed.toFixed(0)}% — $${remaining.toLocaleString()} remaining`,
+      message: `Overall budget is at ${pctUsed.toFixed(0)}% — ${fx(remaining)} remaining`,
     });
   } else if (pctUsed >= 100) {
     alerts.unshift({
       type: 'danger',
       icon: 'exclamation-circle',
-      message: `Over budget by $${Math.abs(remaining).toLocaleString()}!`,
+      message: `Over budget by ${fx(Math.abs(remaining))}!`,
     });
   }
 
@@ -499,6 +503,47 @@ export default function BudgetScreen() {
         })()}
       </ScrollView>
 
+      {/* ===== Currency Converter ===== */}
+      {(() => {
+        const amt = parseFloat(convAmount) || 0;
+        const fromRate = rates?.[convFrom] ?? 1;
+        const toRate = rates?.[convTo] ?? 1;
+        const result = (amt / fromRate) * toRate;
+        const allCodes: string[] = rates ? Object.keys(rates) : POPULAR_CURRENCIES;
+        const ordered = [...POPULAR_CURRENCIES.filter(c => allCodes.includes(c)), ...allCodes.filter(c => !POPULAR_CURRENCIES.includes(c)).sort()];
+        const cycleNext = (current: string) => ordered[(ordered.indexOf(current) + 1) % ordered.length] || current;
+        return (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: colors.surface, borderRadius: 10,
+            paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12,
+            borderWidth: 1, borderColor: colors.border,
+          }}>
+            <FontAwesome name="exchange" size={12} color={ACCENT} />
+            <TextInput
+              value={convAmount}
+              onChangeText={setConvAmount}
+              keyboardType="decimal-pad"
+              placeholder="100"
+              placeholderTextColor={colors.textTertiary}
+              style={{ ...TextStyles.bodyEm, color: colors.text, width: 60, paddingVertical: 0 }}
+            />
+            <Pressable onPress={() => setConvFrom(cycleNext(convFrom))} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.cardBackground }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{convFrom}</Text>
+            </Pressable>
+            <Pressable onPress={() => { const f = convFrom; setConvFrom(convTo); setConvTo(f); }} hitSlop={8}>
+              <FontAwesome name="arrows-h" size={12} color={colors.textSecondary} />
+            </Pressable>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text, flex: 1, textAlign: 'right' }} numberOfLines={1}>
+              {fmtCurrency(result, convTo)}
+            </Text>
+            <Pressable onPress={() => setConvTo(cycleNext(convTo))} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.cardBackground }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{convTo}</Text>
+            </Pressable>
+          </View>
+        );
+      })()}
+
       {/* ===== Summary Cards (3 columns) ===== */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
 
@@ -584,7 +629,7 @@ export default function BudgetScreen() {
           <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Daily Budget</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Avg:</Text>
-            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>${avgDailySpend}</Text>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>{fx(avgDailySpend)}</Text>
           </View>
         </View>
 
@@ -622,11 +667,11 @@ export default function BudgetScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
           <View style={{ width: 12, height: 2, backgroundColor: colors.warning, borderRadius: 1, marginRight: 6 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
-            Daily budget: ${avgDailySpend}/day
+            Daily budget: {fx(avgDailySpend)}/day
           </Text>
           <View style={{ flex: 1 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
-            Budget: ${totalBudgeted.toLocaleString()}
+            Budget: {fx(totalBudgeted)}
           </Text>
         </View>
       </View>
@@ -676,7 +721,7 @@ export default function BudgetScreen() {
                   <View>
                     <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>{item.category}</Text>
                     {!isExpanded && (
-                      <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>${item.actual.toLocaleString()}</Text>
+                      <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{fx(item.actual)}</Text>
                     )}
                   </View>
                 </View>
@@ -717,7 +762,7 @@ export default function BudgetScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 4 }}>Budgeted</Text>
                           <Text style={{ ...TextStyles.subhead, color: colors.text }}>
-                            ${item.budgeted.toLocaleString()}
+                            {fx(item.budgeted)}
                           </Text>
                         </View>
                         <View style={{ flex: 1 }}>
@@ -735,7 +780,7 @@ export default function BudgetScreen() {
                             </View>
                           </View>
                           <Text style={{ ...TextStyles.subhead, color: colors.text }}>
-                            ${item.actual.toLocaleString()}
+                            {fx(item.actual)}
                           </Text>
                         </View>
                       </View>
@@ -757,11 +802,11 @@ export default function BudgetScreen() {
                         <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{itemPct.toFixed(0)}% used</Text>
                         {itemDiff > 0 ? (
                           <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.success }}>
-                            ${itemDiff.toLocaleString()} under
+                            {fx(itemDiff)} under
                           </Text>
                         ) : itemDiff < 0 ? (
                           <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.error }}>
-                            ${Math.abs(itemDiff).toLocaleString()} over
+                            {fx(Math.abs(itemDiff))} over
                           </Text>
                         ) : (
                           <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>On track</Text>
@@ -816,7 +861,7 @@ export default function BudgetScreen() {
                                     </Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                       <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
-                                        ${expense.amount.toLocaleString()}
+                                        {fx(expense.amount)}
                                       </Text>
                                       <Pressable
                                         onPress={() => handleDeleteExpense(item.id, expense.id)}

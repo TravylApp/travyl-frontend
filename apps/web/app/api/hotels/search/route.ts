@@ -40,13 +40,30 @@ export async function GET(req: NextRequest) {
     const res = await fetch(`https://serpapi.com/search.json?${params}`, {
       headers: { Accept: 'application/json' },
     })
+    const rawText = await res.text()
+    let data: any = {}
+    try { data = JSON.parse(rawText) } catch {}
 
-    if (!res.ok) {
-      return NextResponse.json({ total: 0, hotels: [] })
+    if (!res.ok || data.error) {
+      console.error('[hotels/search] SerpAPI error', {
+        status: res.status,
+        error: data.error || rawText.slice(0, 300),
+      })
+      return NextResponse.json({
+        error: data.error || 'Hotel search failed',
+        upstream_status: res.status,
+        total: 0,
+        hotels: [],
+      })
     }
 
-    const data = await res.json()
     const properties = data.properties ?? []
+    if (properties.length === 0) {
+      console.warn('[hotels/search] No properties returned', {
+        destination, check_in: checkIn, check_out: checkOut,
+        keys: Object.keys(data).slice(0, 12),
+      })
+    }
 
     const hotels = properties.slice(0, 20).map((p: any, i: number) => ({
       id: `serp-hotel-${i}`,

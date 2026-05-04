@@ -13,6 +13,7 @@ interface TimeGroupSectionProps {
   onActivityPress?: (activityId: string) => void;
   activityImages?: Record<string, string>;
   colorOverride?: string;
+  timeFormat?: '12h' | '24h';
 }
 
 const ICON_MAP: Record<string, string> = {
@@ -21,7 +22,7 @@ const ICON_MAP: Record<string, string> = {
   moon: 'moon-o',
 };
 
-export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActivity, onActivityPress, activityImages, colorOverride }: TimeGroupSectionProps) {
+export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActivity, onActivityPress, activityImages, colorOverride, timeFormat }: TimeGroupSectionProps) {
   const [expanded, setExpanded] = useState(true);
   const config = TIME_OF_DAY_CONFIG[group.timeOfDay];
   const color = colorOverride ?? config.iconColor;
@@ -87,7 +88,7 @@ export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActi
       {isExpanded && (
         <View style={{ marginTop: 10, gap: 10 }}>
           {group.activities.map((activity) => (
-            <ActivityCard key={activity.id} activity={activity} onPress={onActivityPress ? () => onActivityPress(activity.id) : undefined} imageUrl={activityImages?.[activity.id]} />
+            <ActivityCard key={activity.id} activity={activity} onPress={onActivityPress ? () => onActivityPress(activity.id) : undefined} imageUrl={activityImages?.[activity.id]} timeFormat={timeFormat} />
           ))}
 
           {onAddActivity && (

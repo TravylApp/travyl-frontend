@@ -928,6 +928,27 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
     });
   };
 
+  // Auto-trigger a flight search once we have both origin (geolocated) and
+  // destination (looked up from trip city) and the user hasn't already kicked
+  // off a search. Skips if there are already booked flights from trip_context
+  // or the activity table — only shows when the tab would otherwise be empty.
+  useEffect(() => {
+    if (searchParams) return;
+    if (!defaultFrom || !defaultTo) return;
+    const ctxFlights = (trip?.trip_context as any)?.flights as any[] | undefined;
+    if (dbFlights.length > 0 || (ctxFlights?.length ?? 0) > 0) return;
+    setSearchParams({
+      origin: defaultFrom,
+      destination: defaultTo,
+      date: trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+      passengers: trip?.travelers || 1,
+      cabinClass: 'economy',
+      originCountry: 'US',
+      destCity: destination,
+      destCountry: tripDestCountry,
+    });
+  }, [defaultFrom, defaultTo, dbFlights.length, trip, searchParams, destination, tripDestCountry]);
+
   // Convert DB flights OR trip_context flights into BookedFlightCard format
   const contextFlights = (trip?.trip_context as any)?.flights as any[] | undefined;
   const bookedFlights = useMemo(() => {

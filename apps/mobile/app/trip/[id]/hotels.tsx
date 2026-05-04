@@ -4,12 +4,14 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+// Conditional react-native-maps — try the require, fall back to View if
+// the native module isn't bundled (e.g. Expo Go). Don't gate on
+// Constants.appOwnership: it's deprecated and returns null in custom dev
+// clients on newer SDKs, which would skip the require entirely.
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+if (Platform.OS !== 'web') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -1075,7 +1077,7 @@ export default function HotelsScreen() {
   const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
   const [selectedRoom, setSelectedRoom] = useState(0);
-  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('cards');
+  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('list');
   const [cardIdx, setCardIdx] = useState(-1); // -1 = hidden
   const [selectedHotelIdx, setSelectedHotelIdx] = useState(0);
   const [detailExpanded, setDetailExpanded] = useState(true);
@@ -1298,6 +1300,18 @@ export default function HotelsScreen() {
 
   const filteredHotels = useMemo(() => {
     let result = [...realHotels];
+    // Narrow by query — typing should filter the visible list, not just
+    // refresh the API call.
+    const q = userSearch.trim().toLowerCase();
+    if (q) {
+      result = result.filter((h) => {
+        const hay = [
+          h.name, h.brand, h.address, h.neighborhood,
+          ...(h.amenities ?? []),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
     if (starFilter.length > 0) {
       result = result.filter((h) => starFilter.includes(h.stars));
     }
@@ -1315,7 +1329,7 @@ export default function HotelsScreen() {
       default: break;
     }
     return result;
-  }, [realHotels, starFilter, amenityFilter, brandFilter, sortBy]);
+  }, [realHotels, starFilter, amenityFilter, brandFilter, sortBy, userSearch]);
 
   // Build detail from the selected hotel in the browse list
   const hotel = useMemo<HotelData | null>(() => {
@@ -1414,6 +1428,27 @@ export default function HotelsScreen() {
       onScroll={handleHotelScroll}
       scrollEventThrottle={16}
     >
+      {/* ── Search bar (top so it's discoverable) ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(userSearch, 0, false); } }}
+            returnKeyType="search"
+            placeholder="Search hotels — Marriott, boutique, spa..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(`hotels in ${destination}`, 0, false); } }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Selected Hotel Detail (top, like Figma) ── */}
       {hotel && (() => {
         const nights = (trip?.start_date && trip?.end_date)
@@ -1560,27 +1595,6 @@ export default function HotelsScreen() {
         );
       })()}
 
-      {/* ── Search bar ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
-          <FontAwesome name="search" size={13} color={colors.textTertiary} />
-          <TextInput
-            value={userSearch}
-            onChangeText={setUserSearch}
-            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(userSearch, 0, false); } }}
-            returnKeyType="search"
-            placeholder="Search hotels — Marriott, boutique, spa..."
-            placeholderTextColor={colors.textTertiary}
-            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
-          />
-          {userSearch.length > 0 && (
-            <Pressable onPress={() => { setUserSearch(''); if (destination) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(`hotels in ${destination}`, 0, false); } }}>
-              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
       {/* ── Browse Hotels — toggle + list/card views ── */}
       {realHotels.length > 0 && (
         <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -1619,7 +1633,7 @@ export default function HotelsScreen() {
                 setSelectedHotelIdx(Math.max(0, realHotels.findIndex((rh: any) => rh.id === h.id)));
                 setSelectedRoom(0);
                 setBooked(false);
-                setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+                // Don't scroll to top — keep the user where they are.
               }}
             />
           ))}
@@ -1637,7 +1651,6 @@ export default function HotelsScreen() {
                   setSelectedHotelIdx(idx);
                   setSelectedRoom(0);
                   setBrowseMode('list');
-                  setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
                 }
               }}
               onClose={() => setBrowseMode('list')}

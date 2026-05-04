@@ -917,6 +917,17 @@ export default function ActivitiesScreen() {
   // Filtered + sorted list
   const filteredActivities = useMemo(() => {
     let result = [...realActivities];
+    // Narrow by query — see restaurants tab for rationale.
+    const q = userSearch.trim().toLowerCase();
+    if (q) {
+      result = result.filter((a) => {
+        const hay = [
+          a.name, a.activityType, a.address, a.neighborhood,
+          ...(a.tags ?? []),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
     if (typeFilter.length > 0) {
       result = result.filter((a) => {
         const aType = (a?.activityType || '').toLowerCase();
@@ -931,7 +942,7 @@ export default function ActivitiesScreen() {
       default: break;
     }
     return result;
-  }, [realActivities, typeFilter, sortBy]);
+  }, [realActivities, typeFilter, sortBy, userSearch]);
 
   // Build detail for selected activity
   const activity = useMemo<ActivityData | null>(() => {
@@ -981,6 +992,27 @@ export default function ActivitiesScreen() {
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
+      {/* ── Search bar (top so it's discoverable) ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) runSearch(userSearch.trim()); }}
+            returnKeyType="search"
+            placeholder="Search activities — hiking, museums, tours..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) runSearch(`things to do in ${destination}`); }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Selected Activity Detail (top, like hotels/restaurants pattern) ── */}
       {activity && (() => {
         return (
@@ -1100,27 +1132,6 @@ export default function ActivitiesScreen() {
         );
       })()}
 
-      {/* ── Search bar ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
-          <FontAwesome name="search" size={13} color={colors.textTertiary} />
-          <TextInput
-            value={userSearch}
-            onChangeText={setUserSearch}
-            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) runSearch(userSearch.trim()); }}
-            returnKeyType="search"
-            placeholder="Search activities — hiking, museums, tours..."
-            placeholderTextColor={colors.textTertiary}
-            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
-          />
-          {userSearch.length > 0 && (
-            <Pressable onPress={() => { setUserSearch(''); if (destination) runSearch(`things to do in ${destination}`); }}>
-              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
       {/* ── Browse Activities — toggle + list/card views ── */}
       {realActivities.length > 0 && (
         <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -1173,10 +1184,8 @@ export default function ActivitiesScreen() {
                     activity={a}
                     onPress={() => {
                       const idx = realActivities.findIndex((ra: any) => ra.id === a.id);
-                      if (idx >= 0) {
-                        setSelectedIdx(idx);
-                        setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
-                      }
+                      if (idx >= 0) setSelectedIdx(idx);
+                      // Don't scroll to top — keep the user where they are.
                     }}
                   />
                 ))
@@ -1204,7 +1213,6 @@ export default function ActivitiesScreen() {
                 if (idx >= 0) {
                   setSelectedIdx(idx);
                   setBrowseMode('list');
-                  setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
                 }
               }}
               onClose={() => setBrowseMode('list')}

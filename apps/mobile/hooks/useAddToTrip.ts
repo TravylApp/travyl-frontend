@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTrips, useTrip, supabase, mapToDbType } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
@@ -19,6 +20,7 @@ export interface AddToTripState {
  */
 export function useAddToTrip(tripId?: string) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: trips } = useTrips();
   const resolvedTripId = typeof tripId === 'string' && tripId.length > 0 ? tripId : undefined;
 
@@ -172,7 +174,12 @@ export function useAddToTrip(tripId?: string) {
           tags: place.tags,
         },
       }).then(({ error }) => {
-        if (error) console.warn('[addToTrip] insert failed:', error.message);
+        if (error) {
+          console.warn('[addToTrip] insert failed:', error.message);
+          return;
+        }
+        // Refetch the activities so it shows up on the calendar / tabs immediately
+        queryClient.invalidateQueries({ queryKey: ['trip-activities', tid] });
       });
     });
 
