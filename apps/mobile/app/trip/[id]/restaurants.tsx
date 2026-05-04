@@ -10,9 +10,7 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
-import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase, shuffle } from '@travyl/shared';
-
-const FAVORITES_KEY = 'travyl-favorites';
+import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase, shuffle, favoritesKeyFor, useAuthStore } from '@travyl/shared';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -664,22 +662,24 @@ export default function RestaurantsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
-  // Favorites — same AsyncStorage key the rest of the app uses.
+  // Favorites — per-user AsyncStorage key (matches profile + favorites tab).
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => {
-    AsyncStorage.getItem(FAVORITES_KEY).then((val) => {
+    setFavorites([]);
+    AsyncStorage.getItem(favoritesKeyFor(userId)).then((val) => {
       if (val) try { setFavorites(JSON.parse(val)); } catch {}
     }).catch(() => {});
-  }, []);
+  }, [userId]);
   const toggleFavorite = useCallback((placeId: string) => {
     setFavorites((prev) => {
       const next = prev.includes(placeId)
         ? prev.filter((id) => id !== placeId)
         : [...prev, placeId];
-      AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(favoritesKeyFor(userId), JSON.stringify(next)).catch(() => {});
       return next;
     });
-  }, []);
+  }, [userId]);
 
   // Add-to-trip — wires the bottom sheet that the home/places tabs use.
   const { addToTrip } = useAddToTrip(id);

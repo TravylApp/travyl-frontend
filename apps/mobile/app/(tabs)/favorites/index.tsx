@@ -19,6 +19,8 @@ import {
   Navy, TextStyles, FontSize, FontFamily,
   haversineKm as distanceKm, fetchDiscoverPage, fetchNearbyPlaces, searchPlaces, dedupPlaces, distanceLabel,
   inferSearchHint,
+  favoritesKeyFor,
+  useAuthStore,
   type PlaceItem, type DiscoverPageResult,
 } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -106,14 +108,18 @@ export default function FavoritesScreen() {
   });
   const [searchCity, setSearchCity] = useState('');
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Per-user favorites — read with the user-scoped key so a sign-out →
+  // sign-in switches lists rather than carrying the previous user's saves.
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => {
+    setFavorites([]);
     import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-      AsyncStorage.getItem('travyl-favorites').then(val => {
+      AsyncStorage.getItem(favoritesKeyFor(userId)).then(val => {
         if (val) try { setFavorites(JSON.parse(val)); } catch {}
       });
     }).catch(() => {});
-  }, []);
+  }, [userId]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -210,7 +216,7 @@ export default function FavoritesScreen() {
       const wasFavorited = prev.includes(id);
       const next = wasFavorited ? prev.filter((f) => f !== id) : [...prev, id];
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-        AsyncStorage.setItem('travyl-favorites', JSON.stringify(next)).catch(() => {});
+        AsyncStorage.setItem(favoritesKeyFor(userId), JSON.stringify(next)).catch(() => {});
       }).catch(() => {});
       // Surface a toast so the user gets concrete feedback that the save
       // succeeded — silent state flips made the heart feel decorative.
@@ -221,7 +227,7 @@ export default function FavoritesScreen() {
       );
       return next;
     });
-  }, []);
+  }, [userId]);
 
   // Toast lifecycle — fade in on message, fade out after 1.5s.
   const [toastMessage, setToastMessage] = useState<string | null>(null);

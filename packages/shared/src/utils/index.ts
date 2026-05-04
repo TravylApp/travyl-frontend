@@ -238,6 +238,22 @@ export type { TimeGap } from './gaps'
  * @returns Distance in kilometres
  * @example haversineKm(48.8566, 2.3522, 51.5074, -0.1278) // → ~341 km (Paris → London)
  */
+/**
+ * AsyncStorage key for the favorited-place IDs list, scoped to the current
+ * signed-in user. The legacy global key (`travyl-favorites`) leaked saved
+ * favorites between accounts on shared devices — every consumer now reads
+ * and writes through this helper so each user has their own list.
+ *
+ * `:anon` is used while the user object hasn't resolved yet (cold start)
+ * and for genuinely anonymous sessions.
+ *
+ * @param userId - The current Supabase auth user id, or null/undefined
+ * @returns The per-user AsyncStorage key (e.g. `travyl-favorites:abc-123`)
+ */
+export function favoritesKeyFor(userId: string | null | undefined): string {
+  return `travyl-favorites:${userId || 'anon'}`;
+}
+
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)

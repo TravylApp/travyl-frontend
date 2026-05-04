@@ -42,7 +42,10 @@ if (Platform.OS === 'android') {
 
 const PAD = 16;
 const GAP = 10;
-const FAV_TRIPS_KEY = 'travyl-favorite-trips';
+// Trip-level favorite key — scoped per user so a sign-out → sign-in
+// switches lists rather than carrying the previous user's saves.
+const favTripsKeyFor = (userId: string | null | undefined) =>
+  `travyl-favorite-trips:${userId || 'anon'}`;
 
 // ─── Status helpers (matches web) ─────────────────────────────
 
@@ -551,22 +554,23 @@ export default function TripsScreen() {
   // Trip favorites — persisted in AsyncStorage
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   useEffect(() => {
+    setFavIds(new Set());
     import('@react-native-async-storage/async-storage').then(({ default: AS }) => {
-      AS.getItem(FAV_TRIPS_KEY).then(raw => {
+      AS.getItem(favTripsKeyFor(currentUserId)).then(raw => {
         if (raw) try { setFavIds(new Set(JSON.parse(raw))); } catch {}
       });
     }).catch(() => {});
-  }, []);
+  }, [currentUserId]);
   const toggleFav = useCallback((id: string) => {
     setFavIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       import('@react-native-async-storage/async-storage').then(({ default: AS }) => {
-        AS.setItem(FAV_TRIPS_KEY, JSON.stringify([...next]));
+        AS.setItem(favTripsKeyFor(currentUserId), JSON.stringify([...next]));
       }).catch(() => {});
       return next;
     });
-  }, []);
+  }, [currentUserId]);
 
   const handleDeleteTrip = useCallback(async (tripId: string) => {
     try {

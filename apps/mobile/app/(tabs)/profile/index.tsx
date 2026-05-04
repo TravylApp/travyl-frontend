@@ -36,6 +36,7 @@ import {
   fetchDiscoverPage,
   dedupPlaces,
   updateProfile,
+  favoritesKeyFor,
   type Trip,
   type PlaceItem,
   type DiscoverPageResult,
@@ -45,7 +46,10 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { GridPlaceCard } from '@/components/places/GridPlaceCard';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 
-const FAVORITES_KEY = 'travyl-favorites';
+// Favorites storage key is now per-user via favoritesKeyFor(user.id)
+// (imported from @travyl/shared). The legacy `travyl-favorites` global
+// key bled saved places between accounts on shared devices.
+//
 // Visual customization (accent, card, text, quote, cover_url) is persisted
 // to AsyncStorage instead of Supabase so it survives app restarts even for
 // anonymous users and avoids a round-trip on every save.
@@ -1482,10 +1486,10 @@ export default function ProfileScreen() {
   const removeFavorite = useCallback((placeId: string) => {
     setFavoriteIds((prev) => {
       const next = prev.filter((id) => id !== placeId);
-      AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(favoritesKeyFor(user?.id), JSON.stringify(next)).catch(() => {});
       return next;
     });
-  }, []);
+  }, [user?.id]);
 
   // Geolocation — fired on mount so the cache key matches the
   // /(tabs)/favorites screen and we share its already-loaded data.
@@ -1769,9 +1773,12 @@ export default function ProfileScreen() {
     }
   }, [hexInput, applyColor]);
 
-  // Load favorites count from AsyncStorage (same key the app uses everywhere).
+  // Load favorites for the signed-in user. Re-runs on user.id change so
+  // a sign-out → sign-in switches lists rather than carrying the previous
+  // user's saves over.
   useEffect(() => {
-    AsyncStorage.getItem(FAVORITES_KEY)
+    setFavoriteIds([]);
+    AsyncStorage.getItem(favoritesKeyFor(user?.id))
       .then((val) => {
         if (val) {
           try {
@@ -1781,7 +1788,7 @@ export default function ProfileScreen() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [user?.id]);
 
   // Travel quote — the user's custom quote takes precedence; otherwise we
   // pull a random one from /api/quote so the header is never empty.
@@ -1882,7 +1889,13 @@ export default function ProfileScreen() {
       ...(draftInner ? { card_inner_color: draftInner } : {}),
       ...(draftCardStyle ? { card_border_style: draftCardStyle } : {}),
       ...(draftOuterStyle ? { card_outer_border_style: draftOuterStyle } : {}),
-      ...(draftQuote.trim() ? { custom_quote: draftQuote.trim() } : { custom_quote: null }),
+      // Only write the quote when there's something to save. Previously
+      // an empty draft explicitly nulled `custom_quote`, which clobbered
+      // the saved quote whenever the user opened edit mode before
+      // localPrefs hydrated (drafts default to '' until the sync effect
+      // runs). Empty draft now means "leave alone"; clearing requires a
+      // dedicated action.
+      ...(draftQuote.trim() ? { custom_quote: draftQuote.trim() } : {}),
     };
     try {
       await AsyncStorage.setItem(prefsKeyFor(user?.id), JSON.stringify(nextLocalPrefs));
