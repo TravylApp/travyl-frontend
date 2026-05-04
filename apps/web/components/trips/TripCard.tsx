@@ -148,9 +148,9 @@ export function TripCard({ trip, className, style }: TripCardProps) {
             {trip.fork_count > 0 && (
               <div className="mb-2"><ForkCountBadge count={trip.fork_count} /></div>
             )}
-            <h2 className="text-lg font-extrabold text-white leading-tight mb-1 line-clamp-1 drop-shadow-md">
+            <h3 className="text-lg font-sans font-semibold text-white leading-tight mb-1 line-clamp-1 drop-shadow-md">
               {trip.title}
-            </h2>
+            </h3>
             <div className="flex items-center gap-1.5 mb-2">
               <MapPin size={11} className="text-white/50 shrink-0" />
               <span className="text-[12px] text-white/70">{trip.destination}</span>
