@@ -57,6 +57,67 @@ function resolveShareRole(
   return role
 }
 
+// ─── "Open in App" banner ───────────────────────────────────────
+// Shown on iOS / Android browsers when someone taps a shared link.
+// Until the mobile app has Universal Links / App Links wired (which
+// requires a new native build with associatedDomains entitlements),
+// this banner is the bridge: tapping fires the `travyl://trip/<id>`
+// custom-scheme URL — if Travyl is installed on the device, the OS
+// hands the link off to the app; otherwise the page stays open.
+function OpenInAppBanner({ tripId }: { tripId: string }) {
+  const [isMobile, setIsMobile] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || ''
+    const mobile = /iPhone|iPad|iPod|Android/i.test(ua)
+    setIsMobile(mobile)
+    // Remember dismissal for the rest of the session.
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('travyl-open-in-app-dismissed') === '1') {
+      setDismissed(true)
+    }
+  }, [])
+
+  if (!isMobile || dismissed) return null
+
+  const handleOpen = () => {
+    // Try the deep link. iOS will prompt "Open in Travyl?"; Android
+    // routes to the app if installed, falls back to staying on the
+    // page otherwise. We don't auto-redirect to the App Store because
+    // the user might prefer the web view.
+    window.location.href = `travyl://trip/${tripId}`
+  }
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    try { sessionStorage.setItem('travyl-open-in-app-dismissed', '1') } catch {}
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-[#142846] text-white text-sm shrink-0 relative z-[101] border-b border-white/10">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold">Open in Travyl app</span>
+        <span className="opacity-70 hidden sm:inline">— better experience</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleOpen}
+          className="px-4 py-1.5 rounded-lg bg-white text-[#142846] text-xs font-bold hover:bg-gray-100 transition-colors"
+        >
+          Open
+        </button>
+        <button
+          onClick={handleDismiss}
+          aria-label="Dismiss"
+          className="px-2 py-1.5 rounded-lg text-white/70 hover:text-white text-lg leading-none"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Inner view (only rendered once trip + role are resolved) ──
 interface SharedCalendarViewProps {
   trip: Trip
@@ -172,6 +233,11 @@ function SharedCalendarView({ trip, user, token, shareRole, joinError, setJoinEr
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      {/* Open in app — only renders on iOS/Android browsers when the
+          Travyl app is plausibly installed. Tapping fires the
+          `travyl://trip/<id>` scheme; if the app handles it the OS
+          switches; otherwise the page stays open. */}
+      <OpenInAppBanner tripId={trip.id} />
       {/* Top banner — contextual based on role */}
       <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#1e3a5f] text-white text-sm shrink-0 relative z-[100]">
         <div className="flex items-center gap-2 opacity-80">

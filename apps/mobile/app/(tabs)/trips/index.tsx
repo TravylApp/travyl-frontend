@@ -21,6 +21,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useTrips,
+  useAuthStore,
   Navy,
   formatDateRange,
   upscaleGoogleImage,
@@ -46,6 +47,12 @@ const FAV_TRIPS_KEY = 'travyl-favorite-trips';
 // ─── Status helpers (matches web) ─────────────────────────────
 
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
+type OwnershipFilter = 'all' | 'mine' | 'shared';
+const OWNERSHIP_TABS: Array<{ key: OwnershipFilter; label: string; icon: 'users' | 'user' | 'share-alt' }> = [
+  { key: 'all', label: 'All', icon: 'users' },
+  { key: 'mine', label: 'Mine', icon: 'user' },
+  { key: 'shared', label: 'Shared with me', icon: 'share-alt' },
+];
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -140,7 +147,7 @@ function buildRows(items: TripItem[]): TripItem[][] {
 
 // ─── Trip Card ────────────────────────────────────────────────
 
-function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; height: number; width: number; onDelete?: (id: string) => void }) {
+function TripCardView({ trip, height, width, onDelete, isShared }: { trip: TripCard; height: number; width: number; onDelete?: (id: string) => void; isShared?: boolean }) {
   const router = useRouter();
   const colors = useThemeColors();
   const duration = getTripDuration(trip.start_date, trip.end_date);
@@ -294,6 +301,22 @@ function TripCardView({ trip, height, width, onDelete }: { trip: TripCard; heigh
               paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginBottom: 6,
             }}>
               <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{badge.label}</Text>
+            </View>
+          )}
+          {/* Shared-with-me badge — surfaces collaborator trips so the
+              user can tell at a glance whose trip they're viewing. */}
+          {isShared && (
+            <View style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8,
+              backgroundColor: 'rgba(59,130,246,0.85)',
+              marginBottom: 4,
+            }}>
+              <FontAwesome name="share-alt" size={9} color="#fff" />
+              <Text style={{ ...TextStyles.xs, color: '#fff', fontWeight: '700', letterSpacing: 0.4 }}>
+                SHARED
+              </Text>
             </View>
           )}
           <Text style={{
@@ -475,7 +498,7 @@ function EmptyState({ onPlan }: { onPlan: () => void }) {
 
 // ─── Masonry Grid ─────────────────────────────────────────────
 
-function TripMasonryGrid({ trips, screenWidth, onDelete }: { trips: TripCard[]; screenWidth: number; onDelete?: (id: string) => void }) {
+function TripMasonryGrid({ trips, screenWidth, onDelete, currentUserId }: { trips: TripCard[]; screenWidth: number; onDelete?: (id: string) => void; currentUserId?: string | null }) {
   const contentWidth = screenWidth - PAD * 2;
   const halfWidth = (contentWidth - GAP) / 2;
   const items = trips.map((trip) => {
@@ -499,6 +522,7 @@ function TripMasonryGrid({ trips, screenWidth, onDelete }: { trips: TripCard[]; 
                 height={height}
                 width={isFeatureRow ? contentWidth : halfWidth}
                 onDelete={onDelete}
+                isShared={!!currentUserId && item.trip.user_id !== currentUserId}
               />
             ))}
             {row.length === 1 ? null : row.length < 2 ? <View style={{ width: halfWidth }} /> : null}
@@ -521,6 +545,8 @@ export default function TripsScreen() {
   const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const currentUserId = useAuthStore((s) => s.user?.id ?? null);
 
   // Trip favorites — persisted in AsyncStorage
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
@@ -576,6 +602,18 @@ export default function TripsScreen() {
       result = result.filter((t) => getTripStatusFilter(t) === statusFilter);
     }
 
+    // Ownership filter — splits the list into owned vs shared-with-me.
+    // Anything where `user_id` doesn't match the signed-in user is a
+    // collaborator-shared trip (since `useTrips` merges owned +
+    // collaborator results into one array).
+    if (ownershipFilter !== 'all' && currentUserId) {
+      result = result.filter((t) =>
+        ownershipFilter === 'mine'
+          ? t.user_id === currentUserId
+          : t.user_id !== currentUserId,
+      );
+    }
+
     // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -587,7 +625,19 @@ export default function TripsScreen() {
     }
 
     return result;
-  }, [displayTrips, searchQuery, statusFilter]);
+  }, [displayTrips, searchQuery, statusFilter, ownershipFilter, currentUserId]);
+
+  // Pre-compute owned vs shared counts so the pills can show numbers
+  // without re-walking the array on every render.
+  const ownershipCounts = useMemo(() => {
+    if (!currentUserId) return { mine: 0, shared: 0 };
+    let mine = 0, shared = 0;
+    for (const t of displayTrips) {
+      if (t.user_id === currentUserId) mine += 1;
+      else shared += 1;
+    }
+    return { mine, shared };
+  }, [displayTrips, currentUserId]);
 
   // Separate current from past (when viewing "all")
   const currentTrips = useMemo(() => {
@@ -631,6 +681,52 @@ export default function TripsScreen() {
         <Text style={{ ...TextStyles.xs, color: colors.textSecondary, marginTop: 2 }}>Plan a Trip</Text>
       </Pressable>
     </View>
+  );
+
+  /* ── Ownership Tabs ── (Mine / Shared with me) */
+  const ownershipTabs = (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 6, paddingBottom: 10 }}
+    >
+      {OWNERSHIP_TABS.map(({ key, label, icon }) => {
+        const isActive = ownershipFilter === key;
+        const count = key === 'mine' ? ownershipCounts.mine
+          : key === 'shared' ? ownershipCounts.shared
+          : displayTrips.length;
+        return (
+          <Pressable
+            key={key}
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setOwnershipFilter(key);
+            }}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18,
+              backgroundColor: isActive ? Navy.DEFAULT : colors.surfaceElevated,
+              borderWidth: isActive ? 0 : 1,
+              borderColor: colors.borderLight,
+            }}
+          >
+            <FontAwesome name={icon} size={11} color={isActive ? '#fff' : colors.textSecondary} />
+            <Text style={{ ...TextStyles.body, color: isActive ? '#fff' : colors.text, fontWeight: '600' }}>
+              {label}
+            </Text>
+            <View style={{
+              minWidth: 18, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 9,
+              backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.surface,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Text style={{ ...TextStyles.xs, color: isActive ? '#fff' : colors.textTertiary, fontWeight: '700' }}>
+                {count}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 
   /* ── Status Tabs ── */
@@ -710,6 +806,7 @@ export default function TripsScreen() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ paddingHorizontal: PAD }}>
           {titleRow}
+          {ownershipTabs}
           {statusTabs}
         </View>
         <EmptyState onPlan={handlePlan} />
@@ -724,6 +821,7 @@ export default function TripsScreen() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 32 }}>
           {titleRow}
+          {ownershipTabs}
           {statusTabs}
           {searchBar}
 
@@ -752,7 +850,7 @@ export default function TripsScreen() {
 
           {/* Current / Active / Upcoming */}
           {!isLoading && currentTrips.length > 0 && (
-            <TripMasonryGrid trips={currentTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} />
+            <TripMasonryGrid trips={currentTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} currentUserId={currentUserId} />
           )}
 
           {/* Past trips section */}
@@ -763,7 +861,7 @@ export default function TripsScreen() {
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
               </View>
               <View style={{ opacity: 0.7 }}>
-                <TripMasonryGrid trips={pastTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} />
+                <TripMasonryGrid trips={pastTrips} screenWidth={screenWidth} onDelete={handleDeleteTrip} currentUserId={currentUserId} />
               </View>
             </View>
           )}
@@ -789,7 +887,7 @@ export default function TripsScreen() {
         data={filteredTrips}
         keyExtractor={(it) => it.id}
         contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 32 }}
-        ListHeaderComponent={<>{titleRow}{statusTabs}{searchBar}</>}
+        ListHeaderComponent={<>{titleRow}{ownershipTabs}{statusTabs}{searchBar}</>}
         renderItem={({ item }) => (
           <FeedCard item={item} onPress={() => router.push(`/trip/${item.id}`)} onDelete={handleDeleteTrip} isFav={favIds.has(item.id)} onToggleFav={toggleFav} />
         )}

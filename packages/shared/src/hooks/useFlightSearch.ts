@@ -56,11 +56,25 @@ export function useFlightSearch(params: FlightSearchParams) {
       });
       if (returnDate) qs.set('return', returnDate);
       if (passengers) qs.set('passengers', String(passengers));
-      const res = await fetch(`${base}/api/flights/search?${qs}`);
-      if (!res.ok) throw new Error('Flight search failed');
-      return res.json();
+      const url = `${base}/api/flights/search?${qs}`;
+      // eslint-disable-next-line no-console
+      (globalThis as any).console?.log?.('[useFlightSearch] GET', url);
+      const res = await (globalThis as any).fetch(url);
+      const text = await res.text();
+      let body: any = {};
+      try { body = JSON.parse(text); } catch {}
+      // Don't throw on !ok — surface the error message + empty flights so
+      // the caller can render a useful empty state instead of a silent
+      // "no results" with no explanation.
+      if (!res.ok) {
+        // eslint-disable-next-line no-console
+        (globalThis as any).console?.warn?.('[useFlightSearch] non-OK', res.status, body?.error || text.slice(0, 200));
+        return { flights: [], error: body?.error || `HTTP ${res.status}`, status: res.status };
+      }
+      return body;
     },
     enabled,
     staleTime: 15 * 60 * 1000,
+    retry: false,
   });
 }

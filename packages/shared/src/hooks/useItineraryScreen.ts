@@ -13,7 +13,8 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
 import { useFlights } from './useFlights';
@@ -29,6 +30,7 @@ import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
 import { useSettingsStore } from '../stores/settingsStore';
+import { supabase } from '../services/supabase';
 
 /**
  * Synthesizes a basic day-by-day itinerary from `trip_context.explore_items`
@@ -245,9 +247,31 @@ function mergeUserActivities(
 
     const timeGroups = day.timeGroups.map((g) => ({ timeOfDay: g.timeOfDay, activities: [...g.activities] }));
     const groupMap = new Map<TimeOfDay, any[]>();
-    for (const g of timeGroups) groupMap.set(g.timeOfDay as TimeOfDay, g.activities);
+    // Dedupe across BOTH trip_context.itinerary slots and the activity
+    // table — when the same POI is saved into both sources (common for
+    // SerpAPI place ids that appear in the AI itinerary AND get
+    // mirrored into the activity row), the merge would otherwise
+    // produce duplicate React keys and make deletes "stick" because
+    // the second copy survives any single-source removal.
+    const existingIds = new Set<string>();
+    const existingNameTime = new Set<string>();
+    for (const g of timeGroups) {
+      groupMap.set(g.timeOfDay as TimeOfDay, g.activities);
+      for (const a of g.activities) {
+        if (a?.id) existingIds.add(String(a.id));
+        const norm = (s: any) => (typeof s === 'string' ? s.trim().toLowerCase() : '');
+        const key = `${norm(a?.name)}|${norm(a?.startTime)}`;
+        if (key !== '|') existingNameTime.add(key);
+      }
+    }
 
     for (const r of adds) {
+      // Skip rows that are already represented in trip_context.itinerary.
+      // Match by id first (fast), then by (name + start_time) so
+      // SerpAPI ids that happen to differ across sources still dedupe.
+      if (existingIds.has(String(r.id))) continue;
+      const dupKey = `${(r.activity_name || '').trim().toLowerCase()}|${(fmt12(r.starting_time) || '').trim().toLowerCase()}`;
+      if (existingNameTime.has(dupKey)) continue;
       const tod = getToD(r.starting_time);
       const list = groupMap.get(tod) ?? [];
       const data = r.activity_data ?? {};
@@ -314,12 +338,59 @@ function mergeUserActivities(
  */
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const queryClient = useQueryClient();
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
   const activitiesQuery = useTripActivities(tripId);
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
   const homeCurrency = useSettingsStore((s) => s.currency);
+
+  // Realtime sync — listen for postgres_changes on the trip row + every
+  // related table and invalidate the matching react-query cache so any
+  // collaborator (web or mobile) sees edits propagate within ~1 second.
+  // No Yjs, no extra deps — purely Supabase Realtime + react-query.
+  // Anonymous users can't reach this code path (app gates on session
+  // before mounting trip screens) so we don't worry about that case.
+  useEffect(() => {
+    if (!tripId) return;
+    const channel = supabase
+      .channel(`trip:${tripId}`)
+      // Trip row itself (title, dates, trip_context, settings, theme).
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] }),
+      )
+      // User-added activities (the rows that mergeUserActivities pulls in).
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'activity', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['trip-activities', tripId] }),
+      )
+      // Itinerary day rows (when the DB-backed itinerary is in use).
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'itinerary_days', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['itinerary-days', tripId] }),
+      )
+      // Flight rows.
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'flights', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['flights', tripId] }),
+      )
+      // Hotel rows.
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'hotels', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['hotels', tripId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tripId, queryClient]);
   const { rates } = useExchangeRates(homeCurrency);
 
   // Build days from DB, or fall back to trip_context.itinerary

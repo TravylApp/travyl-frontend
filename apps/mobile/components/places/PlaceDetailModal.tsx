@@ -13,12 +13,12 @@ import {
   Platform,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import Constants from 'expo-constants';
-
-// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+// Conditional react-native-maps — try the require, fall back to View if
+// the native module isn't bundled. Don't gate on Constants.appOwnership:
+// it's deprecated and returns null in custom dev clients on newer SDKs.
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+if (Platform.OS !== 'web') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;

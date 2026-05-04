@@ -8,11 +8,46 @@ interface ActivityCardProps {
   activity: ActivityViewModel;
   onPress?: () => void;
   imageUrl?: string;
+  timeFormat?: '12h' | '24h';
 }
 
-export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps) {
+// Reformat a time string ("9:00 AM", "21:00", "9:00 AM – 10:30 AM") into
+// the requested format. Splits ranges on en-dash, em-dash, hyphen, or "to".
+function reformatTime(input: string | null | undefined, format: '12h' | '24h'): string | null {
+  if (!input) return null;
+  const splitRe = /\s*[–—-]\s*|\s+to\s+/i;
+  const parts = input.split(splitRe);
+  const fmtOne = (s: string): string => {
+    if (!s) return s;
+    const ampm = s.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    let h: number;
+    let m: number;
+    if (ampm) {
+      h = parseInt(ampm[1], 10);
+      m = parseInt(ampm[2], 10);
+      const period = ampm[3].toUpperCase();
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+    } else {
+      const h24 = s.match(/(\d{1,2}):(\d{2})/);
+      if (!h24) return s;
+      h = parseInt(h24[1], 10);
+      m = parseInt(h24[2], 10);
+    }
+    if (format === '24h') {
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  };
+  return parts.map(fmtOne).join(' – ');
+}
+
+export function ActivityCard({ activity, onPress, imageUrl, timeFormat = '12h' }: ActivityCardProps) {
   const colors = useThemeColors();
   const typeColor = getActivityTypeColor(activity.category);
+  const timeDisplay = reformatTime(activity.timeDisplay, timeFormat);
 
   return (
     <Pressable onPress={onPress}>
@@ -41,7 +76,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
           </View>
 
           {/* Time badge — bottom-left */}
-          {activity.timeDisplay && (
+          {timeDisplay && (
             <View pointerEvents="none" style={{
               position: 'absolute', bottom: 8, left: 8,
               flexDirection: 'row', alignItems: 'center',
@@ -49,7 +84,7 @@ export function ActivityCard({ activity, onPress, imageUrl }: ActivityCardProps)
               paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10,
             }}>
               <FontAwesome name="clock-o" size={9} color="#fff" />
-              <Text style={{ ...TextStyles.smEm, color: '#fff', marginLeft: 3 }}>{activity.timeDisplay}</Text>
+              <Text style={{ ...TextStyles.smEm, color: '#fff', marginLeft: 3 }}>{timeDisplay}</Text>
             </View>
           )}
 

@@ -22,9 +22,18 @@ async function fetchTripsForUser(userId: string): Promise<Trip[]> {
   let collaborated: Trip[] = [];
   try {
     collaborated = await fetchCollaboratorTrips(userId);
-  } catch {
-    // RLS or join error on trip_collaborators — non-fatal. Swallowed silently
-    // so the previous `useEffect`-on-`result` debug log doesn't spam Metro.
+    // eslint-disable-next-line no-console
+    (globalThis as any).console?.log?.(
+      `[useTrips] owned=${owned.length} collaborated=${collaborated.length}`,
+    );
+  } catch (e: any) {
+    // Surface the error so we can diagnose missing-shared-trip cases
+    // (RLS, missing RPC, etc.) instead of silently empty.
+    // eslint-disable-next-line no-console
+    (globalThis as any).console?.warn?.(
+      '[useTrips] fetchCollaboratorTrips failed —',
+      e?.message ?? e,
+    );
   }
 
   const seen = new Set<string>();

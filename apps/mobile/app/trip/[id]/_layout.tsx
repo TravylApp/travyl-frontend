@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo, memo } from 'react';
 import {
-  View, Text, Pressable, Share, Modal, ScrollView, TextInput,
+  View, Text, Pressable, Share, Modal, ScrollView, TextInput, Alert, Clipboard as RNClipboard,
   Platform, PanResponder, Animated, useWindowDimensions, useColorScheme,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -11,10 +11,9 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, formatDateRange, resolveTheme, getWebApiBase, TextStyles, FontFamily } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange, resolveTheme, getWebApiBase, TextStyles, FontFamily, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip, TripTheme } from '@travyl/shared';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
-import { TripHistoryToggle } from '../../../components/trip/TripHistoryPanel';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { SkeletonBlock } from '@/components/ui/SkeletonBlock';
 
@@ -430,13 +429,65 @@ const TripHero = memo(function TripHero({ trip, refetch }: { trip: Trip | null; 
         <FontAwesome name="chevron-left" size={14} color="#fff" />
       </Pressable>
 
-      {/* History + Share buttons */}
+      {/* Share button — emits the SAME `/trip/:id/share/:token` URL the
+          web settings tab uses, so links shared from mobile open the
+          collaborator-share page (with anonymous-read auth) instead of
+          the standard auth-gated trip page. Bumps visibility to 'link'
+          so the recipient can actually read the trip. */}
       <View style={{ position: 'absolute', top: 50, right: 14, zIndex: 10, flexDirection: 'row', gap: 8 }}>
-        {trip?.id ? <TripHistoryToggle tripId={trip.id} /> : null}
         <Pressable
           onPress={async () => {
-            if (!trip) return;
-            try { await Share.share({ message: `Check out my trip to ${trip.destination}!`, title: trip.title ?? `Trip to ${trip.destination}` }); } catch {}
+            if (!trip?.id) return;
+            // 1. Get (or create) a share token. Surface the error if it
+            //    fails so we know whether RLS/network is the blocker.
+            let token: string | null = null;
+            try {
+              token = await ensureShareLinkToken(trip.id);
+              if (trip.visibility === 'private') {
+                try { await updateTripVisibility(trip.id, 'link'); } catch {}
+              }
+            } catch (e: any) {
+              const msg = e?.message ?? 'Could not create a share link.';
+              if (Platform.OS === 'web') {
+                (globalThis as any).alert?.(`Share failed: ${msg}`);
+              } else {
+                Alert.alert('Share failed', msg);
+              }
+              return;
+            }
+            const url = `https://gotravyl.com/trip/${trip.id}/share/${token}`;
+            const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
+            const title = trip.title ?? `Trip to ${trip.destination}`;
+
+            // 2. On web (Expo web preview), RN's Share API no-ops. Use
+            //    the browser's navigator.share when available, otherwise
+            //    copy the URL to the clipboard and alert the user.
+            if (Platform.OS === 'web') {
+              const nav = (globalThis as any).navigator;
+              try {
+                if (nav?.share) {
+                  await nav.share({ title, text: message, url });
+                  return;
+                }
+              } catch {}
+              try {
+                await nav?.clipboard?.writeText?.(url);
+                (globalThis as any).alert?.(`Link copied to clipboard:\n${url}`);
+              } catch {
+                (globalThis as any).alert?.(`Share link:\n${url}`);
+              }
+              return;
+            }
+
+            // 3. Native — use the OS share sheet.
+            try {
+              await Share.share({ message, url, title });
+            } catch (e: any) {
+              // Last-resort fallback: copy to clipboard so the user
+              // still has the link.
+              try { RNClipboard.setString(url); } catch {}
+              Alert.alert('Link copied', `Couldn't open the share sheet, but the link is in your clipboard:\n${url}`);
+            }
           }}
           style={{
             width: 34, height: 34, borderRadius: 17,

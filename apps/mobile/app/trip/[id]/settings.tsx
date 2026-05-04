@@ -3,7 +3,7 @@ import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'rea
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize, deleteTrip } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, deleteTrip, useSettingsStore } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -136,12 +136,18 @@ function SettingsInput({
   onChangeText,
   icon,
   keyboardType,
+  placeholder,
+  autoCapitalize,
+  maxLength,
 }: {
   label: string;
   value: string;
   onChangeText: (t: string) => void;
   icon: React.ComponentProps<typeof FontAwesome>['name'];
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
+  placeholder?: string;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  maxLength?: number;
 }) {
   const colors = useThemeColors();
   return (
@@ -154,6 +160,10 @@ function SettingsInput({
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType ?? 'default'}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textTertiary}
+        autoCapitalize={autoCapitalize}
+        maxLength={maxLength}
         style={{
           borderWidth: 1,
           borderColor: colors.border,
@@ -180,6 +190,10 @@ export default function SettingsScreen() {
   const { trip, isLoading } = useItineraryScreen(id);
   const { theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors } = useContext(TabCtx);
   const colors = useThemeColors();
+  // Global travel preferences (shared across trips, persisted to
+  // profiles.preferences via the settings store).
+  const preferredAirport = useSettingsStore((s) => s.preferredAirport);
+  const setPreferredAirport = useSettingsStore((s) => s.setPreferredAirport);
 
   // Existing state
   const [notifications, setNotifications] = useState<Record<string, boolean>>(
@@ -360,6 +374,22 @@ export default function SettingsScreen() {
           <SettingsInput label="Phone" value={profile.phone} icon="phone" keyboardType="phone-pad" onChangeText={(t) => { setProfile((p) => ({ ...p, phone: t })); setDirty(true); }} />
           <SettingsInput label="Date of Birth" value={profile.dob} icon="calendar" onChangeText={(t) => { setProfile((p) => ({ ...p, dob: t })); setDirty(true); }} />
           <SettingsInput label="Nationality" value={profile.nationality} icon="globe" onChangeText={(t) => { setProfile((p) => ({ ...p, nationality: t })); setDirty(true); }} />
+        </SettingsSection>
+
+        {/* Travel Preferences — global, shared across all trips */}
+        <SettingsSection title="Travel Preferences" icon="cog" color="#0ea5e9">
+          <SettingsInput
+            label="Preferred Airport (IATA)"
+            value={preferredAirport}
+            icon="plane"
+            placeholder="e.g. SFO"
+            autoCapitalize="characters"
+            maxLength={3}
+            onChangeText={(t) => { setPreferredAirport(t); }}
+          />
+          <Text style={{ ...TextStyles.xs, color: colors.textTertiary, marginTop: -6, marginBottom: 6, paddingHorizontal: 14 }}>
+            Auto-fills the departure airport on every flight search.
+          </Text>
         </SettingsSection>
 
         {/* Travel Documents */}
