@@ -89,7 +89,7 @@ function CardFrontInternal({
 
         {/* Name + Rating */}
         <div className="flex items-center gap-2" style={{ marginBottom: isCompact ? 0 : 4 }}>
-          <h3 className="font-extrabold text-white truncate drop-shadow-md" style={{ fontSize: isCompact ? 13 : isFull ? 20 : 16 }}>
+          <h3 className="font-sans font-semibold text-white truncate drop-shadow-md" style={{ fontSize: isCompact ? 13 : isFull ? 20 : 16 }}>
             {place.name}
           </h3>
           {!isCompact && place.rating != null && (
@@ -158,7 +158,7 @@ function CardBackWeb({ place, onFlip, width, height }: { place: PlaceItem; onFli
     >
       <div className="h-full overflow-y-auto p-4">
         {/* Header */}
-        <h3 className="text-lg font-bold mb-1">{place.name}</h3>
+        <h3 className="text-lg font-sans font-semibold mb-1">{place.name}</h3>
         <p className="text-xs text-white/60 uppercase tracking-wider mb-4">{place.category} · {place.type}</p>
 
         <div className="border-t border-white/10 pt-3 space-y-3">
