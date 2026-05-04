@@ -50,10 +50,12 @@ export * from './placeCollections';
 
 export * from './packingCatalog';
 
+export { CURRENCIES, type CurrencyInfo } from './currencies';
+
 export * from './typography';
 
 // UI content data (login, profile, travel boards)
-export * from './mockLoginData';
-export * from './mockProfileData';
-export * from './mockTravelBoardsData';
+export * from './loginData';
+export * from './profileData';
+export * from './travelBoardsData';
 

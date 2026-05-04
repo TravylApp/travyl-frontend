@@ -135,10 +135,10 @@ export function PostcardDetail({ data, onClose }: PostcardDetailProps) {
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,220,150,0.08) 0%, transparent 40%, rgba(0,0,0,0.06) 100%)' }} />
                       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(58,40,16,0.6) 0%, transparent 100%)' }} />
                       <div style={{ position: 'absolute', bottom: 8, left: 10, right: 10, zIndex: 2 }}>
-                        <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '9px', color: 'rgba(255,255,255,0.7)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '1px' }}>
+                        <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '9px', color: 'rgba(255,255,255,0.7)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '1px' }}>
                           Greetings from
                         </p>
-                        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1.1, textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>
+                        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1.1, textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>
                           {data.name}
                         </h2>
                       </div>
@@ -228,18 +228,18 @@ export function PostcardDetail({ data, onClose }: PostcardDetailProps) {
                     {/* Left — message */}
                     <div style={{ width: '52%', position: 'relative', zIndex: 1 }}>
                       <div style={{ marginBottom: 16 }}>
-                        <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 10, color: '#A0896A', marginBottom: 6, letterSpacing: '0.5px' }}>Dear fellow traveler,</p>
+                        <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 10, color: '#A0896A', marginBottom: 6, letterSpacing: '0.5px' }}>Dear fellow traveler,</p>
                         {data.note && (
-                          <p style={{ fontFamily: 'Georgia, serif', fontSize: 13, color: '#4A3520', lineHeight: 1.7, marginBottom: 12, fontStyle: 'italic', backgroundImage: 'repeating-linear-gradient(transparent, transparent 22px, #D4C4A0 22px, #D4C4A0 23px)', paddingBottom: 4 }}>
+                          <p style={{ fontFamily: 'var(--font-serif)', fontSize: 13, color: '#4A3520', lineHeight: 1.7, marginBottom: 12, fontStyle: 'italic', backgroundImage: 'repeating-linear-gradient(transparent, transparent 22px, #D4C4A0 22px, #D4C4A0 23px)', paddingBottom: 4 }}>
                             &ldquo;{data.note}&rdquo;
                           </p>
                         )}
                         {data.description && (
-                          <p style={{ fontFamily: 'Georgia, serif', fontSize: 12, color: '#6B5B47', lineHeight: 1.6, marginBottom: 12, backgroundImage: 'repeating-linear-gradient(transparent, transparent 22px, #D4C4A0 22px, #D4C4A0 23px)' }}>
+                          <p style={{ fontFamily: 'var(--font-serif)', fontSize: 12, color: '#6B5B47', lineHeight: 1.6, marginBottom: 12, backgroundImage: 'repeating-linear-gradient(transparent, transparent 22px, #D4C4A0 22px, #D4C4A0 23px)' }}>
                             {data.description}
                           </p>
                         )}
-                        <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 11, color: '#A0896A', marginTop: 16 }}>
+                        <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 11, color: '#A0896A', marginTop: 16 }}>
                           Wish you were here!
                         </p>
                       </div>
@@ -288,13 +288,13 @@ export function PostcardDetail({ data, onClose }: PostcardDetailProps) {
                       <div style={{ paddingLeft: 4 }}>
                         <p style={{ fontSize: 8, fontWeight: 700, color: '#A0896A', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 }}>TO:</p>
                         <div style={{ borderBottom: '1px solid #C4A870', marginBottom: 10, paddingBottom: 4 }}>
-                          <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 12, color: '#4A3520' }}>Fellow Traveler</span>
+                          <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 12, color: '#4A3520' }}>Fellow Traveler</span>
                         </div>
                         <div style={{ borderBottom: '1px solid #C4A870', marginBottom: 10, paddingBottom: 4 }}>
-                          <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 11, color: '#7A6B52' }}>{data.location}</span>
+                          <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 11, color: '#7A6B52' }}>{data.location}</span>
                         </div>
                         <div style={{ borderBottom: '1px solid #C4A870', paddingBottom: 4 }}>
-                          <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 11, color: '#7A6B52' }}>{data.category} Trip</span>
+                          <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 11, color: '#7A6B52' }}>{data.category} Trip</span>
                         </div>
                       </div>
 

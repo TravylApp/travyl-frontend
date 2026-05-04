@@ -20,6 +20,11 @@ export interface DayViewProps {
   polls?: Map<string, Poll>
   pollUserId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  bookingStatuses?: Map<string, 'matched' | 'opened'>
+  ghostActivities?: CalendarActivity[]
+  onConfirmGhost?: (activity: CalendarActivity) => void
+  onDismissGhost?: (id: string) => void
+  tripId?: string
 }
 
 export function DayView({
@@ -38,6 +43,11 @@ export function DayView({
   polls,
   pollUserId,
   onVotePoll,
+  bookingStatuses,
+  ghostActivities,
+  onConfirmGhost,
+  onDismissGhost,
+  tripId,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -62,6 +72,12 @@ export function DayView({
           polls={polls}
           pollUserId={pollUserId}
           onVotePoll={onVotePoll}
+          bookingStatuses={bookingStatuses}
+          ghostActivities={ghostActivities}
+          onConfirmGhost={onConfirmGhost}
+          onDismissGhost={onDismissGhost}
+          tripId={tripId}
+          isDayView={true}
         />
       </div>
     </div>

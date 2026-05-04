@@ -3,11 +3,11 @@
 import { useMemo } from 'react';
 import { MapPin, Building2 } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
-import type { MockTripCard, RouteLocation } from '@travyl/shared';
+import type { TripCard, RouteLocation } from '@travyl/shared';
 import { RouteMap } from './RouteMap';
 
 interface TripRouteHoverProps {
-  trip: MockTripCard;
+  trip: TripCard;
 }
 
 // Continent colors for visual distinction (dark theme)

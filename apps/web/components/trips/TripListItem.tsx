@@ -5,8 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, ChevronRight, Share2, Trash2, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatDateRange, formatCurrency } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import { toast } from 'sonner';
+import { deleteTrip, formatDateRange, formatCurrency } from '@travyl/shared';
+import type { TripCard } from '@travyl/shared';
+import { TripShareModal } from './TripShareModal';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -18,13 +20,14 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripListItemProps {
-  trip: MockTripCard;
+  trip: TripCard;
 }
 
 export function TripListItem({ trip }: TripListItemProps) {
   const badge = STATUS_BADGE[trip.status] || STATUS_BADGE.planning;
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -32,11 +35,7 @@ export function TripListItem({ trip }: TripListItemProps) {
     e.stopPropagation();
     if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
     try {
-      await fetch('/api/trips/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id }),
-      });
+      await deleteTrip(trip.id);
       try {
         const stored = localStorage.getItem('my-trip-ids');
         if (stored) {
@@ -44,8 +43,12 @@ export function TripListItem({ trip }: TripListItemProps) {
           localStorage.setItem('my-trip-ids', JSON.stringify(ids));
         }
       } catch {}
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-    } catch {}
+      await queryClient.invalidateQueries({ queryKey: ['trips'] });
+      toast.success('Trip deleted');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete trip';
+      toast.error(message);
+    }
   };
 
   return (
@@ -118,10 +121,7 @@ export function TripListItem({ trip }: TripListItemProps) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            const url = `${window.location.origin}/trip/${trip.id}`;
-            navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            setShareModalOpen(true);
           }}
           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
           title="Share trip"
@@ -137,6 +137,13 @@ export function TripListItem({ trip }: TripListItemProps) {
         </button>
         <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
       </div>
+
+      {/* Share Modal */}
+      <TripShareModal
+        trip={trip}
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+      />
     </Link>
   );
 }

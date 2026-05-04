@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H } from '../lib/response'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H, rateLimit } from '@/lib/api-utils'
 
 // ─── Response types ──────────────────────────────────────────────────────────
 
@@ -22,6 +22,8 @@ interface NagerHoliday {
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'holidays', 60, 60000)
+  if (rl) return rl
   try {
     const sp = req.nextUrl.searchParams
     const country = requireParam(sp, 'country')

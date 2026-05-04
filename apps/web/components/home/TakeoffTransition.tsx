@@ -38,8 +38,8 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
       setMsgIndex(0);
       setProgress(0);
       setShowContent(false);
-      // Show loading content after the initial flight
-      const t = setTimeout(() => setShowContent(true), 1800);
+      // Show loading content shortly after flight starts
+      const t = setTimeout(() => setShowContent(true), 900);
       return () => clearTimeout(t);
     }
   }, [visible]);
@@ -49,7 +49,7 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
     if (!visible || !showContent) return;
     const interval = setInterval(() => {
       setMsgIndex((i) => (i + 1) % MESSAGES.length);
-    }, 3500);
+    }, 2200);
     return () => clearInterval(interval);
   }, [visible, showContent]);
 
@@ -59,10 +59,10 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
     const interval = setInterval(() => {
       setProgress((p) => {
         if (p >= 90) return p;
-        const increment = Math.max(0.3, (90 - p) * 0.04);
+        const increment = Math.max(0.5, (90 - p) * 0.06);
         return Math.min(90, p + increment);
       });
-    }, 200);
+    }, 150);
     return () => clearInterval(interval);
   }, [visible, showContent, completed]);
 

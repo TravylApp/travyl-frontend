@@ -22,22 +22,26 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useHomeScreen,
   useHeroConfig,
   useTripPlanner,
+  useTrendingDestinations,
+  getWebApiBase,
+  shuffle,
   Blue,
   hexToRgba,
   TextStyles,
   FontSize,
   FontFamily,
 } from '@travyl/shared';
-import { savePlanToSupabase, saveAnonTripId } from '@travyl/shared';
-import type { PlaceItem } from '@travyl/shared';
+import { savePlanToSupabase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import { PaperPlane } from '@/components/icons/PaperPlane';
-import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import {
   HowItWorks,
   GetInspired,
@@ -50,57 +54,43 @@ import {
 } from '@/components/home';
 import { TakeoffTransition } from '@/components/home/TakeoffTransition';
 
-const FALLBACK_SLIDES = [
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&fit=crop',
-  'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1200&fit=crop',
-  'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200&fit=crop',
+// Stock hero images — high-res Unsplash direct links, always available
+// Includes the same images used on the web app + additional variety
+const STOCK_HERO_SLIDES = [
+  // ── All web images included ──
+  'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1200&q=80', // tropical beach (web hero fallback)
+  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=80', // mountain lake (web parallax)
+  'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80', // hot air balloons (web parallax)
+  'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1200&q=80', // misty mountains (web parallax)
+  'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80', // road trip (web parallax)
+  'https://images.unsplash.com/photo-1533104816931-20fa691ff6ca?w=1200&q=80', // travel planning map (web HowItWorks)
+  'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&q=80', // Rome Colosseum (web HowItWorks)
+  'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&q=80', // Bali temple (web HowItWorks)
+  // ── Mobile extra variety ──
+  'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80', // Paris Eiffel Tower
+  'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&q=80', // Tokyo skyline
+  'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=1200&q=80', // Santorini blue domes
+  'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80', // Dubai skyline
+  'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=1200&q=80', // Sydney Opera House
 ];
+const SHUFFLED_STOCK = shuffle(STOCK_HERO_SLIDES).slice(0, 5);
 
-const SUBTITLE_PHRASES = [
-  'Type your dream trip and let us plan it for you',
-  'Discover hidden gems around the world',
-  'Your next adventure starts with a single search',
-  'From idea to itinerary in seconds',
-  'Tell us where you want to go',
-];
-
-const ALL_SUGGESTIONS = [
-  { id: 'ps-1', label: 'Beach getaway', short_label: null },
-  { id: 'ps-2', label: 'City explorer', short_label: null },
-  { id: 'ps-3', label: 'Mountain trek', short_label: null },
-  { id: 'ps-4', label: 'Cultural immersion', short_label: null },
-  { id: 'ps-5', label: 'Island hopping', short_label: null },
-  { id: 'ps-6', label: 'Food & wine', short_label: null },
-  { id: 'ps-7', label: 'Road trip', short_label: null },
-  { id: 'ps-8', label: 'Backpacking', short_label: null },
-];
-
-const QUOTE_SLIDES = [
-  { image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&fit=crop', quote: 'The journey of a thousand miles begins with a single step.' },
-  { image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&fit=crop', quote: 'Travel makes one modest. You see what a tiny place you occupy in the world.' },
-  { image: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=1200&fit=crop', quote: 'Not all those who wander are lost.' },
-  { image: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1200&fit=crop', quote: 'Life is short and the world is wide.' },
-  { image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1200&fit=crop', quote: 'Adventure is worthwhile in itself.' },
-];
+// Dynamic hero images — fetched from trending destinations each session
 
 const PILLS_VISIBLE = 3;
-
-const STATS = [
-  { numericValue: 500, suffix: 'K+', decimals: 0, label: 'DESTINATIONS', desc: 'Discover unexpected gems, even in your own backyard.' },
-  { numericValue: 95, suffix: 'M+', decimals: 0, label: 'FELLOW TRAVELERS', desc: 'Share your adventures and learn from our global community.' },
-  { numericValue: 2.0, suffix: 'B+', decimals: 1, label: 'TRIPS PLANNED', desc: 'Navigate your way and keep a record of all your travels.' },
-];
 
 function AnimatedCounter({
   value,
   suffix,
   decimals = 0,
   trigger,
+  textColor,
 }: {
   value: number;
   suffix: string;
   decimals?: number;
   trigger: boolean;
+  textColor?: string;
 }) {
   const [display, setDisplay] = useState(`0${suffix}`);
 
@@ -133,7 +123,7 @@ function AnimatedCounter({
   }, [trigger, value, suffix, decimals]);
 
   return (
-    <Text style={{ ...TextStyles.display, color: '#2a1f17', marginBottom: 2 }}>
+    <Text style={{ ...TextStyles.display, color: textColor || '#2a1f17', marginBottom: 2 }}>
       {display}
     </Text>
   );
@@ -141,10 +131,13 @@ function AnimatedCounter({
 
 function HeroSlideImage({ uri, isActive }: { uri: string; isActive: boolean }) {
   const opacity = useSharedValue(isActive ? 1 : 0);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Don't animate until the image has loaded — prevents flash
+    if (!loaded) return;
     opacity.value = withTiming(isActive ? 1 : 0, { duration: 1500 });
-  }, [isActive]);
+  }, [isActive, loaded]);
 
   const style = useAnimatedStyle(() => ({
     position: 'absolute' as const,
@@ -158,6 +151,10 @@ function HeroSlideImage({ uri, isActive }: { uri: string; isActive: boolean }) {
   return (
     <Animated.Image
       source={{ uri }}
+      onLoad={() => {
+        setLoaded(true);
+        if (isActive) opacity.value = withTiming(1, { duration: 800 });
+      }}
       style={style}
       resizeMode="cover"
     />
@@ -165,9 +162,30 @@ function HeroSlideImage({ uri, isActive }: { uri: string; isActive: boolean }) {
 }
 
 function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; screenHeight: number }) {
+  const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const sectionY = useSharedValue(0);
   const triggered = useSharedValue(false);
+  const [liveStats, setLiveStats] = useState([
+    { numericValue: 0, suffix: '+', decimals: 0, label: 'DESTINATIONS', desc: 'Real places our community has explored.' },
+    { numericValue: 0, suffix: '', decimals: 0, label: 'TRAVELERS', desc: 'People planning their next adventure.' },
+    { numericValue: 0, suffix: '+', decimals: 0, label: 'TRIPS PLANNED', desc: 'AI-powered itineraries created and counting.' },
+  ]);
+
+  // Fetch real stats from API
+  useEffect(() => {
+    const API = getWebApiBase();
+    try { new URL(`${API}/api/stats`); } catch { return; }
+    fetch(`${API}/api/stats`).then(r => r.ok ? r.json() : null).then(data => {
+      if (data) {
+        setLiveStats([
+          { numericValue: data.destinations ?? 0, suffix: '+', decimals: 0, label: 'DESTINATIONS', desc: 'Real places our community has explored.' },
+          { numericValue: data.travelers ?? 0, suffix: '', decimals: 0, label: 'TRAVELERS', desc: 'People planning their next adventure.' },
+          { numericValue: data.trips ?? 0, suffix: '+', decimals: 0, label: 'TRIPS PLANNED', desc: 'AI-powered itineraries created and counting.' },
+        ]);
+      }
+    }).catch(() => {});
+  }, []);
 
   useAnimatedReaction(
     () => scrollY.value,
@@ -182,19 +200,19 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
   return (
     <View
       style={{
-        backgroundColor: '#e8d5c0',
+        backgroundColor: colors.sandBackground,
         paddingVertical: 40,
         paddingHorizontal: 16,
         borderTopWidth: 1,
         borderBottomWidth: 1,
-        borderColor: '#5c4a3a',
+        borderColor: colors.sandBorder,
       }}
       onLayout={(e) => {
         sectionY.value = e.nativeEvent.layout.y;
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-        {STATS.map((item, i) => (
+        {liveStats.map((item, i) => (
           <Animated.View
             key={item.label}
             entering={FadeInUp.duration(500).delay(i * 150)}
@@ -205,18 +223,19 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
               suffix={item.suffix}
               decimals={item.decimals}
               trigger={visible}
+              textColor={colors.sandText}
             />
             <Text
               style={{
                 ...TextStyles.micro,
-                color: '#5c4a3a',
+                color: colors.sandTextSecondary,
                 letterSpacing: 1.5,
                 marginBottom: 6,
               }}
             >
               {item.label}
             </Text>
-            <Text style={{ ...TextStyles.caption, color: '#3d2f23', textAlign: 'center' }}>
+            <Text style={{ ...TextStyles.caption, color: colors.sandText, textAlign: 'center' }}>
               {item.desc}
             </Text>
           </Animated.View>
@@ -226,59 +245,11 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
   );
 }
 
-// ─── Conversational follow-up questions ─────────────────────
-const TRIP_QUESTIONS = [
-  { key: 'destination', placeholder: 'Where do you want to go?' },
-  { key: 'duration', placeholder: 'How many days?' },
-  { key: 'companions', placeholder: "Who's coming along?" },
-  { key: 'vibe', placeholder: 'What\'s the vibe? (foodie, adventure, relaxing...)' },
-  { key: 'budget', placeholder: 'Any budget range? (budget, mid-range, luxury)' },
-] as const;
-
-type TripAnswers = Record<string, string>;
-
-function buildChainSentence(answers: TripAnswers): string {
-  const parts: string[] = [];
-  if (answers.duration) parts.push(answers.duration);
-  if (answers.destination) parts.push(`in ${answers.destination}`);
-  if (answers.companions) parts.push(`with ${answers.companions}`);
-  if (answers.vibe) parts.push(answers.vibe);
-  if (answers.budget) parts.push(answers.budget.toLowerCase().includes('budget') ? answers.budget : `${answers.budget} budget`);
-  return parts.join(' · ') || '';
-}
-
-function parseInitialInput(val: string): TripAnswers {
-  const parsed: TripAnswers = {};
-  const lower = val.toLowerCase();
-  const destMatch = val.match(/(?:in|to)\s+([a-zA-Z][a-zA-Z\s]+)/i);
-  if (destMatch) {
-    parsed.destination = destMatch[1].trim().replace(/\b\w/g, (c) => c.toUpperCase());
-  } else {
-    const cleaned = val.replace(/^(?:trip|travel|going|visiting|explore)\s*/i, '').trim();
-    parsed.destination = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-  const durMatch = lower.match(/(\d+)\s*(?:day|night|week)s?/);
-  if (durMatch) {
-    const num = parseInt(durMatch[1]);
-    const unit = durMatch[0].match(/day|night|week/)![0];
-    parsed.duration = `${num} ${unit}${num !== 1 ? 's' : ''}`;
-  } else if (lower.includes('weekend')) parsed.duration = 'weekend';
-  if (lower.match(/family|kids|children/)) parsed.companions = 'family';
-  else if (lower.match(/partner|couple|wife|husband/)) parsed.companions = 'partner';
-  else if (lower.match(/friends|group|squad/)) parsed.companions = 'friends';
-  else if (lower.match(/solo|alone|myself/)) parsed.companions = 'solo';
-  if (lower.match(/food|foodie|culinary/)) parsed.vibe = 'foodie';
-  else if (lower.match(/adventure|hiking|trek/)) parsed.vibe = 'adventure';
-  else if (lower.match(/relax|chill|spa|beach/)) parsed.vibe = 'relaxing';
-  else if (lower.match(/culture|museum|art|history/)) parsed.vibe = 'culture';
-  if (lower.match(/budget|cheap|backpack/)) parsed.budget = 'budget';
-  else if (lower.match(/luxury|premium|high.end/)) parsed.budget = 'luxury';
-  return parsed;
-}
-
 export default function HomeScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const colors = useThemeColors();
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const { height: screenHeight } = useWindowDimensions();
   const {
     tripQuery,
@@ -292,39 +263,32 @@ export default function HomeScreen() {
   const { data: heroConfig } = useHeroConfig();
   const planner = useTripPlanner();
 
-  // Cycling hero slideshow
+  // Trending destinations — used for suggestion pills, NOT for hero images
+  const { data: trending } = useTrendingDestinations();
+
+  // Hero slideshow — always high-res: admin config or Unsplash stock
   const heroSlides = heroConfig?.background_image_url
     ? [heroConfig.background_image_url]
-    : FALLBACK_SLIDES;
+    : SHUFFLED_STOCK;
   const [heroSlide, setHeroSlide] = useState(0);
-  const [selectedPlaceIdx, setSelectedPlaceIdx] = useState(-1);
-  const setSelectedPlace = useCallback((place: PlaceItem | null) => {
-    if (!place) { setSelectedPlaceIdx(-1); return; }
-    const idx = ([] as PlaceItem[]).findIndex((p) => p.id === place.id);
-    setSelectedPlaceIdx(idx >= 0 ? idx : -1);
-  }, []);
   useEffect(() => {
     if (heroSlides.length <= 1) return;
+    // Pause rotation while user is typing — context shifts are jarring mid-input
+    if (tripQuery.length > 0) return;
     const interval = setInterval(() => {
       setHeroSlide((prev) => (prev + 1) % heroSlides.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [heroSlides.length]);
+  }, [heroSlides.length, tripQuery.length === 0]);
 
-  // Cycling subtitle
-  const [subtitleIndex, setSubtitleIndex] = useState(0);
-  useEffect(() => {
-    if (heroConfig?.subtitle) return;
-    const interval = setInterval(() => {
-      setSubtitleIndex((prev) => (prev + 1) % SUBTITLE_PHRASES.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [heroConfig?.subtitle]);
+  // Subtitle from API config only
 
-  // Cycling suggestion pills
-  const allSuggestions = heroConfig?.suggestions?.length
-    ? heroConfig.suggestions
-    : ALL_SUGGESTIONS;
+  // Suggestion pills — trending (from shared hook) or heroConfig
+  const allSuggestions = trending?.length
+    ? trending.map((d, i) => ({ id: `td-${i}`, label: d.name, short_label: null }))
+    : heroConfig?.suggestions?.length
+      ? heroConfig.suggestions
+      : [];
   const [pillGroup, setPillGroup] = useState(0);
   const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
   useEffect(() => {
@@ -339,24 +303,44 @@ export default function HomeScreen() {
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE,
   );
 
-  // Cycling quote divider
-  const [quoteIndex, setQuoteIndex] = useState(0);
+  // Quote divider removed — no hardcoded content
+
+  // Error state
+  const [plannerError, setPlannerError] = useState<string | null>(null);
+
+  // Destination autocomplete
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<{ name: string; country: string; fullName: string }[]>([]);
+  const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setQuoteIndex((prev) => (prev + 1) % QUOTE_SLIDES.length);
-    }, 6000);
-    return () => clearInterval(interval);
+    if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
+    const q = tripQuery.trim();
+    if (q.length < 2) { setAutocompleteSuggestions([]); return; }
+    autocompleteTimer.current = setTimeout(async () => {
+      try {
+        const API = process.env.EXPO_PUBLIC_WEB_API_URL || '';
+        const res = await fetch(`${API}/api/autocomplete?q=${encodeURIComponent(q)}&mode=destination&limit=4`);
+        if (!res.ok) { setAutocompleteSuggestions([]); return; }
+        const data = await res.json();
+        setAutocompleteSuggestions(Array.isArray(data) ? data.slice(0, 4) : []);
+      } catch { setAutocompleteSuggestions([]); }
+    }, 250);
+    return () => { if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current); };
+  }, [tripQuery]);
+
+  // Conversational flow removed — direct AI planner
+  const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  // Bring the user back to the search field — used by empty-state and
+  // HowItWorks CTAs that previously dead-ended on the empty Trips tab.
+  const focusSearchAtTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    // Small delay so the scroll lands before the keyboard pops up
+    setTimeout(() => inputRef.current?.focus(), 350);
   }, []);
 
-  // Conversational flow state
-  const [convStep, setConvStep] = useState(-1);
-  const [answers, setAnswers] = useState<TripAnswers>({});
-  const isConversing = convStep >= 0 && convStep < TRIP_QUESTIONS.length;
-  const isComplete = convStep >= TRIP_QUESTIONS.length;
-  const chainSentence = buildChainSentence(answers);
-  const inputRef = useRef<TextInput>(null);
-
   const sendButtonRef = useRef<View>(null);
+  const clarifyRetries = useRef(0);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const buttonLayoutRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const [buttonLayout, setButtonLayout] = useState<{
@@ -368,28 +352,81 @@ export default function HomeScreen() {
 
   // When planner completes, save trip and navigate
   useEffect(() => {
+    if (__DEV__) console.log('[HOME] planner phase:', planner.state.phase, 'showTakeoff:', showTakeoff);
     if (!showTakeoff) return;
     const s = planner.state;
+    // Auto-answer clarifying questions during takeoff — pick first option for each (max 1 retry)
+    if (s.phase === 'clarifying' && s.questions?.length) {
+      if (clarifyRetries.current >= 3) {
+        if (__DEV__) console.log('[HOME] Max clarify retries — forcing plan');
+        // Instead of giving up, force plan with whatever we have
+        const autoAnswers: Record<string, string> = {};
+        for (const q of s.questions) {
+          autoAnswers[q.id] = q.options?.[0] ?? 'flexible';
+        }
+        planner.submitAnswers(autoAnswers);
+        return;
+      }
+      clarifyRetries.current += 1;
+      if (__DEV__) console.log('[HOME] Auto-answering clarifying questions (attempt', clarifyRetries.current, ')');
+      const autoAnswers: Record<string, string> = {};
+      for (const q of s.questions) {
+        autoAnswers[q.id] = q.options?.[0] ?? '';
+      }
+      planner.submitAnswers(autoAnswers);
+      return;
+    }
     if (s.phase === 'complete' && s.plan) {
+      if (__DEV__) console.log('[HOME] Plan complete, saving...');
       (async () => {
         try {
           const tripId = await savePlanToSupabase(s.plan as any);
-          await saveAnonTripId(tripId);
-          planner.reset();
-          setShowTakeoff(false);
+          if (!tripId || typeof tripId !== 'string') {
+            throw new Error('savePlanToSupabase returned no tripId');
+          }
+          // Refresh the trips list so the new trip shows on Trips tab + home recents
+          queryClient.invalidateQueries({ queryKey: ['trips'] });
+          // Navigate FIRST while takeoff animation is still covering the screen
           router.push(`/trip/${tripId}` as any);
-        } catch (err) {
-          console.error('Failed to save trip:', err);
-          planner.reset();
-          setShowTakeoff(false);
-          router.push('/(tabs)/trips');
+          setTimeout(() => {
+            planner.reset();
+            setShowTakeoff(false);
+          }, 800);
+        } catch (err: any) {
+          if (__DEV__) console.error('Failed to save trip:', err?.message || err);
+          // Navigate anyway — trip was likely created, only activities may have failed
+          const partialId = (err as any)?.tripId;
+          if (partialId && typeof partialId === 'string') {
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            router.push(`/trip/${partialId}` as any);
+            setTimeout(() => {
+              planner.reset();
+              setShowTakeoff(false);
+            }, 800);
+          } else {
+            // Trip may still have been created — refresh trips list and surface a friendly error
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            setPlannerError("Couldn't open your new trip — check the Trips tab.");
+            setTimeout(() => {
+              planner.reset();
+              setShowTakeoff(false);
+            }, 2500);
+          }
         }
       })();
     } else if (s.phase === 'error') {
-      console.error('Trip planning failed:', s.message);
-      planner.reset();
-      setShowTakeoff(false);
-      router.push('/(tabs)/trips');
+      if (__DEV__) console.error('Trip planning failed:', s.message);
+      const msg = s.message.includes('400')
+        ? "Couldn't find that destination — try being more specific."
+        : s.message.includes('403')
+          ? 'Connection issue — please try again.'
+          : `Something went wrong: ${s.message}`;
+      setPlannerError(msg);
+      // Show error for 2 seconds before dismissing animation
+      setTimeout(() => {
+        planner.reset();
+        setShowTakeoff(false);
+      }, 2000);
     }
   }, [planner.state.phase, showTakeoff]);
 
@@ -410,86 +447,23 @@ export default function HomeScreen() {
     setTripQuery(query);
     setButtonLayout(buttonLayoutRef.current);
     setShowTakeoff(true);
-    // Start planning in background
+    clarifyRetries.current = 0;
     planner.submitPrompt(query);
   }, [setTripQuery, planner]);
-
-  const handleConvReset = useCallback(() => {
-    setConvStep(-1);
-    setAnswers({});
-    setTripQuery('');
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }, [setTripQuery]);
-
-  const handleSkipToLaunch = useCallback(() => {
-    const fullQuery = buildChainSentence(answers);
-    if (!fullQuery.trim()) return;
-    setConvStep(TRIP_QUESTIONS.length);
-    setTripQuery(fullQuery);
-    setTimeout(() => launchTakeoff(fullQuery), 1500);
-  }, [answers, setTripQuery, launchTakeoff]);
 
   const onSearch = () => {
     const val = tripQuery.trim();
     if (!val) return;
-
-    // Not conversing yet — parse input and start flow
-    if (convStep === -1) {
-      const parsed = parseInitialInput(val);
-      setAnswers(parsed);
-      const firstUnanswered = TRIP_QUESTIONS.findIndex((q) => !parsed[q.key]);
-      if (firstUnanswered === -1) {
-        const fullQuery = buildChainSentence(parsed);
-        setConvStep(TRIP_QUESTIONS.length);
-        setTripQuery(fullQuery);
-        setTimeout(() => launchTakeoff(fullQuery), 1500);
-      } else {
-        setConvStep(firstUnanswered);
-        setTripQuery('');
-        setTimeout(() => inputRef.current?.focus(), 50);
-      }
-      return;
-    }
-
-    // In conversation — save answer and advance
-    if (isConversing) {
-      const currentQ = TRIP_QUESTIONS[convStep];
-      let normalized = val;
-      if (currentQ.key === 'duration') {
-        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} days`;
-        else if (!/day|night|week/i.test(val)) normalized = `${val.trim()} days`;
-      } else if (currentQ.key === 'companions') {
-        if (/^\d+$/.test(val.trim())) normalized = `${val.trim()} people`;
-      } else if (currentQ.key === 'destination') {
-        normalized = val.trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-      const newAnswers = { ...answers, [currentQ.key]: normalized };
-      setAnswers(newAnswers);
-      setTripQuery('');
-      const nextUnanswered = TRIP_QUESTIONS.findIndex((q, i) => i > convStep && !newAnswers[q.key]);
-      if (nextUnanswered === -1) {
-        setConvStep(TRIP_QUESTIONS.length);
-        const fullQuery = buildChainSentence(newAnswers);
-        setTripQuery(fullQuery);
-        setTimeout(() => launchTakeoff(fullQuery), 1500);
-      } else {
-        setConvStep(nextUnanswered);
-        setTimeout(() => inputRef.current?.focus(), 50);
-      }
-      return;
-    }
-
-    // Fallback
-    if (handleSearch()) {
-      setButtonLayout(buttonLayoutRef.current);
-      setShowTakeoff(true);
-    }
+    // Send directly to AI planner — no conversational flow
+    setAutocompleteSuggestions([]);
+    launchTakeoff(val);
   };
 
   return (
     <View style={{ flex: 1 }}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <Animated.ScrollView
+      ref={scrollRef}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -502,7 +476,7 @@ export default function HomeScreen() {
       {/* ─── Hero Section ──────────────────────────────────────── */}
       <View
         style={{
-          backgroundColor: '#e8d5c0',
+          backgroundColor: colors.sandBackground,
           minHeight: screenHeight,
           paddingHorizontal: 24,
           paddingTop: 64,
@@ -520,7 +494,7 @@ export default function HomeScreen() {
           />
         ))}
         <LinearGradient
-          colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.45)']}
+          colors={['rgba(0,0,0,0.40)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.55)']}
           locations={[0, 0.5, 1]}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
@@ -543,9 +517,9 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Cycling subtitle */}
-        <View style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', marginBottom: isConversing || isComplete ? 16 : 32, width: '100%' }}>
+        <View style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', marginBottom: 32, width: '100%' }}>
           <Animated.Text
-            key={heroConfig?.subtitle ? 'static' : `sub-${subtitleIndex}`}
+            key="subtitle"
             entering={FadeIn.duration(500)}
             exiting={FadeOut.duration(300)}
             style={{
@@ -553,82 +527,35 @@ export default function HomeScreen() {
               left: 0,
               right: 0,
               ...TextStyles.subhead,
-              color: 'rgba(255,255,255,0.85)',
+              color: '#fff',
               textAlign: 'center',
               paddingHorizontal: 16,
-              textShadowColor: 'rgba(0,0,0,0.3)',
+              textShadowColor: 'rgba(0,0,0,0.7)',
               textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 6,
+              textShadowRadius: 10,
             }}
           >
-            {heroConfig?.subtitle ?? SUBTITLE_PHRASES[subtitleIndex]}
+            {heroConfig?.subtitle ?? 'Plan your next adventure'}
           </Animated.Text>
         </View>
 
-        {/* Chain pill — shows trip so far during conversation */}
-        {isConversing && chainSentence ? (
+        {/* Error banner */}
+        {plannerError && (
           <Animated.View
-            entering={FadeInUp.duration(300)}
-            exiting={FadeOut.duration(200)}
+            entering={FadeIn.duration(300)}
             style={{
-              width: '100%',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: 24,
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              marginBottom: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.15)',
+              width: '100%', backgroundColor: 'rgba(239,68,68,0.15)',
+              borderRadius: 12, padding: 12, marginBottom: 12,
+              flexDirection: 'row', alignItems: 'center', gap: 10,
             }}
           >
-            <Text style={{ ...TextStyles.bodyLgEm, flex: 1, color: '#fff', marginRight: 8 }} numberOfLines={1}>
-              {chainSentence}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-              {TRIP_QUESTIONS.map((_, i) => (
-                <View
-                  key={i}
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: i < convStep ? 'rgba(255,255,255,0.4)' : i === convStep ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.12)',
-                  }}
-                />
-              ))}
-              <Pressable onPress={handleConvReset} style={{ marginLeft: 4, padding: 4 }}>
-                <FontAwesome name="refresh" size={10} color="rgba(255,255,255,0.5)" />
-              </Pressable>
-            </View>
+            <FontAwesome name="exclamation-circle" size={16} color="#ef4444" />
+            <Text style={{ ...TextStyles.body, color: '#fff', flex: 1 }}>{plannerError}</Text>
+            <Pressable onPress={() => setPlannerError(null)} hitSlop={8}>
+              <FontAwesome name="times" size={14} color="rgba(255,255,255,0.6)" />
+            </Pressable>
           </Animated.View>
-        ) : null}
-
-        {/* Final summary pill before takeoff */}
-        {isComplete && !showTakeoff && chainSentence ? (
-          <Animated.View
-            entering={FadeInUp.duration(400)}
-            style={{
-              width: '100%',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: 24,
-              paddingHorizontal: 20,
-              paddingVertical: 12,
-              marginBottom: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.15)',
-            }}
-          >
-            <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>{chainSentence}</Text>
-            <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
-          </Animated.View>
-        ) : null}
+        )}
 
         {/* Search Bar */}
         <Animated.View
@@ -645,21 +572,6 @@ export default function HomeScreen() {
             elevation: 8,
           }}
         >
-          {/* Question label when conversing */}
-          {isConversing && (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 0, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
-              <FontAwesome name="magic" size={10} color={colors.tint} />
-              <Text style={{ ...TextStyles.captionEm, color: colors.tint, flex: 1 }}>
-                {TRIP_QUESTIONS[convStep].placeholder}
-              </Text>
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
-                {convStep + 1}/{TRIP_QUESTIONS.length}
-              </Text>
-            </Animated.View>
-          )}
           <View
             style={{
               flexDirection: 'row',
@@ -672,16 +584,20 @@ export default function HomeScreen() {
             <FontAwesome name="search" size={16} color={colors.textTertiary} />
             <TextInput
               ref={inputRef}
+              testID="home-trip-search-input"
+              accessibilityLabel="Trip search"
               value={tripQuery}
-              onChangeText={setTripQuery}
+              onChangeText={(v) => { setTripQuery(v); if (plannerError) setPlannerError(null); }}
               onSubmitEditing={onSearch}
-              placeholder={isConversing ? TRIP_QUESTIONS[convStep].placeholder : (heroConfig?.search_placeholder ?? '7 days in Paris with my partner...')}
+              placeholder={heroConfig?.search_placeholder ?? '7 days in Paris with my partner...'}
               placeholderTextColor={colors.textTertiary}
               returnKeyType="search"
               style={{ flex: 1, fontSize: FontSize.bodyXl, color: colors.text, paddingVertical: 8 }}
             />
             <Pressable
               ref={sendButtonRef}
+              testID="home-trip-search-submit"
+              accessibilityLabel="Plan trip"
               onPress={onSearch}
               onLayout={onButtonLayout}
               collapsable={false}
@@ -698,10 +614,42 @@ export default function HomeScreen() {
               <PaperPlane size={22} color="#fff" />
             </Pressable>
           </View>
+
+          {/* Autocomplete dropdown */}
+          {autocompleteSuggestions.length > 0 && (
+            <View style={{
+              marginHorizontal: 4, marginTop: -4,
+              backgroundColor: colors.cardBackground, borderRadius: 12,
+              overflow: 'hidden', borderWidth: 1, borderColor: colors.border,
+            }}>
+              {autocompleteSuggestions.map((s, i) => (
+                <Pressable
+                  key={`${s.name}-${i}`}
+                  onPress={() => {
+                    setTripQuery(`trip to ${s.name}, ${s.country}`);
+                    setAutocompleteSuggestions([]);
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row', alignItems: 'center', gap: 10,
+                    paddingHorizontal: 14, paddingVertical: 11,
+                    backgroundColor: pressed ? colors.surface : 'transparent',
+                    borderBottomWidth: i < autocompleteSuggestions.length - 1 ? 1 : 0,
+                    borderBottomColor: colors.borderLight,
+                  })}
+                >
+                  <FontAwesome name="map-marker" size={12} color={colors.textTertiary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ ...TextStyles.bodyLg, color: colors.text }}>{s.name}</Text>
+                    <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{s.country}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </Animated.View>
 
         {/* Cycling Suggestion Pills — only before conversation */}
-        {!isComplete && (
+        {(
           <View style={{ height: 40, justifyContent: 'center', alignItems: 'center', marginTop: 16, width: '100%' }}>
             <Animated.View
               key={pillGroup}
@@ -720,17 +668,19 @@ export default function HomeScreen() {
               {visiblePills.map((s) => (
                 <Pressable
                   key={s.id}
-                  onPress={() => setTripQuery(s.short_label ?? s.label)}
+                  onPress={() => {
+                    const q = s.short_label ?? s.label;
+                    setTripQuery(q);
+                    launchTakeoff(q);
+                  }}
                   style={{
                     borderRadius: 20,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.4)',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                    backgroundColor: 'rgba(0,0,0,0.45)',
                   }}
                 >
-                  <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)' }}>
+                  <Text style={{ ...TextStyles.body, color: '#fff', fontWeight: '600' }}>
                     {s.short_label ?? s.label}
                   </Text>
                 </Pressable>
@@ -877,7 +827,7 @@ export default function HomeScreen() {
               search bar above or tap the button below.
             </Text>
             <Pressable
-              onPress={() => router.push('/(tabs)/trips')}
+              onPress={focusSearchAtTop}
               style={{
                 backgroundColor: Blue[600],
                 borderRadius: 12,
@@ -899,40 +849,12 @@ export default function HomeScreen() {
 
       {/* ─── Scroll-animated Sections ─────────────────────────── */}
       <FadeInOnScroll scrollY={scrollY}>
-        <HowItWorks onCtaPress={() => router.push('/(tabs)/trips')} />
+        <HowItWorks onCtaPress={focusSearchAtTop} />
       </FadeInOnScroll>
 
       <TravelMosaic scrollY={scrollY} />
 
-      {/* ─── Quote Divider ────────────────────────────────────── */}
-      <View style={{ height: 250, overflow: 'hidden' }}>
-        {QUOTE_SLIDES.map((slide, i) => (
-          <HeroSlideImage
-            key={slide.image}
-            uri={slide.image}
-            isActive={quoteIndex === i}
-          />
-        ))}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(30,58,95,0.3)' }} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-          <Animated.Text
-            key={quoteIndex}
-            entering={FadeIn.duration(800)}
-            exiting={FadeOut.duration(500)}
-            style={{
-              ...TextStyles.title,
-              color: '#fff',
-              fontStyle: 'italic',
-              textAlign: 'center',
-              textShadowColor: 'rgba(0,0,0,0.3)',
-              textShadowOffset: { width: 0, height: 2 },
-              textShadowRadius: 8,
-            }}
-          >
-            &ldquo;{QUOTE_SLIDES[quoteIndex].quote}&rdquo;
-          </Animated.Text>
-        </View>
-      </View>
+      {/* Quote divider removed — no hardcoded content */}
 
       <GetInspired />
 
@@ -958,17 +880,6 @@ export default function HomeScreen() {
       }}
     />
 
-    {/* ─── Place Detail — Magazine Card ─────────────────────────────── */}
-    {selectedPlaceIdx >= 0 && (
-      <CardStackCarousel
-        places={([] as PlaceItem[])}
-        initialIndex={selectedPlaceIdx}
-        favorites={[]}
-        onToggleFav={() => {}}
-        overlay
-        onClose={() => setSelectedPlaceIdx(-1)}
-      />
-    )}
     </View>
   );
 }

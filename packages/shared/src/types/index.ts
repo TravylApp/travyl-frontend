@@ -6,10 +6,13 @@ export type CollaboratorRole = 'viewer' | 'editor'
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  city: string | null;
+  country: string | null;
   onboarding_completed: boolean;
+  preferences: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +73,9 @@ export interface TripContextData {
   country?: any;
   holidays?: any[];
   restaurants?: any[];
+  flights?: any[];
+  itinerary?: any[];
+  all_hotels?: any[];
 }
 
 export interface Trip {
@@ -95,8 +101,6 @@ export interface Trip {
   tab_color_overrides?: Record<string, string>;
   itinerary_color_overrides?: Record<string, string>;
   hidden_tabs?: Record<string, boolean>;
-  is_public?: boolean;
-  is_shared?: boolean;
   cover_image_url?: string | null;
   created_at: string;
   updated_at: string;
@@ -425,7 +429,7 @@ export interface PlaceItem {
   name: string;
   image: string;
   images?: string[];
-  type: 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event';
+  type: 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' | 'hotel';
   rating: number;
   tagline: string;
   category: string;
@@ -600,6 +604,7 @@ export interface UserAwareness {
   userId: string;
   name: string;
   avatarInitial: string;
+  avatarUrl?: string | null;
   color: string;
   isOnline: boolean;
   selectedEventId: string | null;
@@ -715,6 +720,105 @@ export interface FlightDetailsType {
   checkInOpens: string;
 }
 
+// ─── Weather ────────────────────────────────────────────────
+
+export interface WeatherCurrent {
+  temp: number;
+  feelslike: number;
+  conditions: string;
+  icon: string;
+  humidity: number;
+  windspeed: number;
+}
+
+export interface WeatherDay {
+  date: string;
+  high: number;
+  low: number;
+  conditions: string;
+  icon: string;
+  precipprob: number;
+  sunrise: string;
+  sunset: string;
+}
+
+export interface WeatherForecastResponse {
+  location: string;
+  timezone: string;
+  current: WeatherCurrent;
+  forecast: WeatherDay[];
+}
+
+// ─── Events ─────────────────────────────────────────────────
+
+export interface TravylEvent {
+  id: string;
+  name: string;
+  date: string;
+  time: string | null;
+  venue: string | null;
+  lat: number | null;
+  lng: number | null;
+  description: string | null;
+  price: string | null;
+  category: string | null;
+  photo_url: string | null;
+  link: string | null;
+}
+
+// ─── Place Detail (from /api/places/{id}) ───────────────────
+
+export interface PlaceDetailResponse {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  rating: number | null;
+  phone: string | null;
+  website: string | null;
+  description: string | null;
+  images: string[];
+  image_url: string | null;
+  categories: string[];
+  hours: string | null;
+  price: number | null;
+  reviewCount: number | null;
+}
+
+// ─── Menu ───────────────────────────────────────────────────
+
+export interface MenuItem {
+  name: string;
+  price: string | null;
+  description: string | null;
+}
+
+export interface MenuResponse {
+  restaurant_name: string;
+  menu_url: string | null;
+  items: MenuItem[];
+  source: string;
+}
+
+// ─── Suggest ────────────────────────────────────────────────
+
+export interface SuggestResponse {
+  suggestions: PlaceItem[];
+  hasMore: boolean;
+  nextPage: number | null;
+}
+
+// ─── Server Favorites ───────────────────────────────────────
+
+export interface ServerFavorite {
+  id: string;
+  place_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface PopularAirport {
   code: string;
   name: string;
@@ -815,10 +919,12 @@ export interface TripCollaborator {
   invited_email: string | null
   invite_token: string | null
   role_type: CollaboratorRole
-  invite_status: 'pending' | 'accepted' | 'declined'
+  invite_status: 'pending' | 'accepted' | 'cancelled'
   invited_by: string
   accepted_at: string | null
   created_at: string
+  display_name?: string | null
+  avatar_url?: string | null
 }
 
 export interface EffectivePermission {
@@ -838,7 +944,7 @@ export interface TripMember {
   role: 'owner' | 'editor' | 'viewer';
 }
 
-export interface MockTripCard extends Trip {
+export interface TripCard extends Trip {
   image: string;
   images?: string[];
   route?: TripRoute;
@@ -847,7 +953,7 @@ export interface MockTripCard extends Trip {
 
 // ─── Flight / Hotel Detail Types ────────────────────────────
 
-export interface MockFlightDetail {
+export interface FlightDetail {
   id: string;
   type: 'arrival' | 'return';
   airline: string;
@@ -877,7 +983,7 @@ export interface MockFlightDetail {
   isBooked: boolean;
 }
 
-export interface MockHotelRoom {
+export interface HotelRoom {
   id: string;
   name: string;
   image: string;
@@ -890,7 +996,7 @@ export interface MockHotelRoom {
   isSelected: boolean;
 }
 
-export interface MockHotelGuestRatings {
+export interface HotelGuestRatings {
   overall: number;
   label: string;
   cleanliness: number;
@@ -901,7 +1007,7 @@ export interface MockHotelGuestRatings {
   totalRatings: number;
 }
 
-export interface MockHotelDetail {
+export interface HotelDetail {
   id: string;
   name: string;
   address: string;
@@ -915,11 +1021,11 @@ export interface MockHotelDetail {
   checkOutDate: string;
   amenities: string[];
   images: string[];
-  rooms: MockHotelRoom[];
+  rooms: HotelRoom[];
   isBooked: boolean;
   totalPrice: number;
   currency: string;
-  guestRatings: MockHotelGuestRatings;
+  guestRatings: HotelGuestRatings;
   taxesAndFees: { cityTax: number; serviceFee: number; vat: number };
   phone: string;
   email: string;
@@ -952,4 +1058,30 @@ export interface BudgetItem {
   actual: number;
   fixed: boolean;
   expenses: BudgetExpense[];
+}
+
+// ─── History / Audit ───────────────────────────────────────
+
+export interface ItineraryEditRow {
+  id: string
+  trip_id: string
+  activity_id: string
+  edit_type: 'create' | 'delete' | 'move' | 'edit' | 'revert'
+  original_data: Record<string, unknown> | null
+  new_data: Record<string, unknown> | null
+  user_id: string | null
+  created_at: string
+}
+
+export interface EnrichedAuditEntry extends ItineraryEditRow {
+  displayName: string
+  activityName: string
+}
+
+export interface TimelineGroup {
+  id: string
+  entries: EnrichedAuditEntry[]
+  label: string
+  timestamp: string
+  earliestId: string
 }

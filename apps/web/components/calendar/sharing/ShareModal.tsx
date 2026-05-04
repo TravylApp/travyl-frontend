@@ -4,12 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Trip, CollaboratorRole, LinkPermission } from '@travyl/shared'
-import { useCollaborators, useAuthStore, updateTripVisibility, ensureShareLinkToken, rotateShareLinkToken, supabase } from '@travyl/shared'
+import { useCollaborators, useAuthStore, useProfile, updateTripVisibility, ensureShareLinkToken, rotateShareLinkToken, supabase } from '@travyl/shared'
 import { InviteBar } from './InviteBar'
 import { CollaboratorList } from './CollaboratorList'
 import { LinkSharingSection } from './LinkSharingSection'
-
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+import { PublicSharingSection } from './PublicSharingSection'
 
 interface ShareModalProps {
   trip: Trip
@@ -20,6 +19,7 @@ interface ShareModalProps {
 
 export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareModalProps) {
   const user = useAuthStore((s) => s.user)
+  const { data: profile } = useProfile()
   const { collaborators, updateRole, removeCollaborator } = useCollaborators(isOpen ? trip.id : undefined)
   const queryClient = useQueryClient()
   const [isInviting, setIsInviting] = useState(false)
@@ -48,12 +48,10 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
     setInviteError(null)
     setInviteLink(null)
     try {
-      if (!API_URL) throw new Error('Invite service not configured (missing NEXT_PUBLIC_RECOMMENDATION_API_URL)')
-
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      const res = await fetch(`${API_URL}/invite`, {
+      const res = await fetch('/api/calendar/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,7 +119,7 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
     <AnimatePresence>
       {isOpen && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={handleBackdropClick}>
-          <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-md rounded-xl border border-white/10 bg-[#1a1a2e] p-5 shadow-2xl">
+          <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-md rounded-xl border border-white/10 bg-gray-900 p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Share &ldquo;{trip.title}&rdquo;</h2>
               <button onClick={onClose} className="text-white/40 transition-colors hover:text-white">&times;</button>
@@ -150,13 +148,50 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
             )}
             <div className="mb-5">
               <CollaboratorList
+                tripId={trip.id}
+                currentUserId={user?.id ?? null}
+                ownerUserId={trip.user_id ?? null}
                 ownerName={user?.user_metadata?.display_name ?? user?.email ?? 'You'}
                 ownerEmail={user?.email ?? ''}
+                ownerAvatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || null}
                 collaborators={collaborators}
                 onChangeRole={(id, role) => updateRole({ collaboratorId: id, role })}
                 onRemove={removeCollaborator}
               />
             </div>
+            <PublicSharingSection
+              tripId={trip.id}
+              currentVisibility={trip.visibility}
+              currentLinkPermission={trip.link_permission}
+              isOwner={isOwner}
+              onSettingsChange={onSettingsChange ?? (() => Promise.resolve())}
+            />
+
+            {/* Inline Link Sharing Section */}
+            <div className="border-t border-white/10 pt-4 bg-red-500/20">
+              <div className="text-white text-sm mb-2">Link Sharing (DEBUG)</div>
+              <div className="text-xs text-white/60 mb-2">
+                Visibility: {trip.visibility} | Link Permission: {trip.link_permission}
+              </div>
+              {trip.visibility === 'private' ? (
+                <button onClick={handleToggleLinkSharing} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white">
+                  <span>Enable link sharing</span>
+                </button>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-white">Anyone with the link can {trip.link_permission === 'editor' ? 'edit' : 'view'}</div>
+                  <select
+                    value={trip.link_permission}
+                    onChange={(e) => handleChangeLinkPermission(e.target.value as 'viewer' | 'editor')}
+                    className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80"
+                  >
+                    <option value="viewer">Can view</option>
+                    <option value="editor">Can edit</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
             <LinkSharingSection
               visibility={trip.visibility}
               linkPermission={trip.link_permission}
@@ -167,6 +202,7 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
               onCopyLink={handleCopyLink}
               onRevokeLink={handleRevokeLink}
             />
+            {console.log('[ShareModal] trip data:', { visibility: trip.visibility, link_permission: trip.link_permission, share_link_token: trip.share_link_token })}
           </motion.div>
         </motion.div>
       )}

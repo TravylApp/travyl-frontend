@@ -12,6 +12,7 @@ import {
 import * as Y from 'yjs'
 import { SupabaseProvider } from '@supabase-labs/y-supabase'
 import { supabase } from '@travyl/shared'
+import { useAuthStore } from '@travyl/shared'
 
 interface YjsTripContextValue {
   doc: Y.Doc
@@ -39,6 +40,10 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
     'connected' | 'reconnecting' | 'disconnected'
   >('disconnected')
 
+  const user = useAuthStore((s) => s.user)
+  const session = useAuthStore((s) => s.session)
+  const hasWarnedRef = useRef(false)
+
   const docRef = useRef<Y.Doc | null>(null)
   const docTripIdRef = useRef<string>('')
   if (docTripIdRef.current !== tripId) {
@@ -53,30 +58,59 @@ export function YjsTripProvider({ tripId, children }: YjsTripProviderProps) {
   }, [])
 
   useEffect(() => {
-    const provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase, {
-      awareness: true,
-      persistence: {
-        table: 'yjs_documents',
-        roomColumn: 'room',
-        stateColumn: 'state',
-        storeTimeout: 1000,
-      },
-    })
+    // Only connect when user is authenticated
+    if (!user || !session) {
+      setConnectionStatus('disconnected')
+      return
+    }
 
-    provider.on('status', (status) => {
-      if (status === 'connected') setConnectionStatus('connected')
-      else if (status === 'connecting') setConnectionStatus('reconnecting')
-      else if (status === 'disconnected') setConnectionStatus('disconnected')
-    })
+    let provider: SupabaseProvider | null = null
+    let destroyed = false
 
-    provider.on('error', (err) => {
-      console.error('[YjsTripProvider]', err.message)
-    })
+    try {
+      provider = new SupabaseProvider(`trip:${tripId}`, doc, supabase, {
+        awareness: true,
+        persistence: {
+          table: 'yjs_documents',
+          roomColumn: 'room',
+          stateColumn: 'state',
+          storeTimeout: 1000,
+        },
+      })
+
+      provider.on('status', (status) => {
+        if (destroyed) return
+        if (status === 'connected') setConnectionStatus('connected')
+        else if (status === 'connecting') setConnectionStatus('reconnecting')
+        else if (status === 'disconnected') setConnectionStatus('disconnected')
+      })
+
+      provider.on('error', (err) => {
+        // Realtime sync is optional; fall back to non-realtime mode without surfacing
+        // a dev overlay for expected local/channel failures.
+        if (!destroyed && provider) {
+          provider.destroy()
+          provider = null
+          setConnectionStatus('disconnected')
+        }
+        if (!hasWarnedRef.current) {
+          hasWarnedRef.current = true
+          console.warn('[YjsTripProvider] Realtime sync unavailable; continuing without live sync for trip:', tripId)
+        }
+      })
+    } catch (err) {
+      setConnectionStatus('disconnected')
+      if (!hasWarnedRef.current) {
+        hasWarnedRef.current = true
+        console.warn('[YjsTripProvider] Failed to initialize realtime sync; continuing without live sync for trip:', tripId)
+      }
+    }
 
     return () => {
-      provider.destroy()
+      destroyed = true
+      provider?.destroy()
     }
-  }, [tripId, doc])
+  }, [tripId, doc, user, session])
 
   const value = useMemo(
     () => ({

@@ -43,7 +43,7 @@ export function PackingCategoryList({
       return (
         <div className="flex flex-col gap-3 py-6 px-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 rounded-lg bg-[var(--cal-surface)] animate-pulse" />
+            <div key={i} className="h-10 rounded-lg bg-gray-100 dark:bg-white/[0.06] animate-pulse" />
           ))}
         </div>
       )
@@ -51,7 +51,7 @@ export function PackingCategoryList({
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-2">
         <span className="text-3xl">🧳</span>
-        <p className="text-sm text-[var(--cal-text-muted)]">No items yet — search above to add</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">No items yet — search above to add</p>
       </div>
     )
   }

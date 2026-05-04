@@ -1,7 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import { useState, useEffect } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { TIME_OF_DAY_CONFIG } from '@travyl/shared';
+import { TIME_OF_DAY_CONFIG, TextStyles } from '@travyl/shared';
 import type { TimeGroup } from '@travyl/shared';
 import { ActivityCard } from './ActivityCard';
 
@@ -67,10 +67,10 @@ export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActi
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <FontAwesome name={iconName as any} size={18} color="#fff" />
               <View>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                <Text style={{ ...TextStyles.bodyXlEm, color: '#fff' }}>
                   {config.label}
                 </Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
+                <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.85)' }}>
                   {count} {count === 1 ? 'activity' : 'activities'}
                 </Text>
               </View>
@@ -106,7 +106,7 @@ export function TimeGroupSection({ group, collapsed, onToggleCollapse, onAddActi
               }}
             >
               <FontAwesome name="plus" size={13} color={color} />
-              <Text style={{ fontSize: 12, fontWeight: '500', color: color }}>
+              <Text style={{ ...TextStyles.body, color: color }}>
                 Add {config.label} Activity
               </Text>
             </Pressable>

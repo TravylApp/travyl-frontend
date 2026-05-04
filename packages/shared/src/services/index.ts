@@ -1,8 +1,20 @@
+/**
+ * @module services
+ * Barrel export for all shared service modules.
+ * Re-exports the Supabase client, all data-fetching functions, budget CRUD,
+ * packing CRUD, and the packing suggestion generator.
+ */
+
 export { supabase, configureSupabase } from './supabase';
 export {
   fetchTrips,
+  fetchCollaboratorTrips,
   fetchSavedItems,
   fetchProfile,
+  updateProfile,
+  uploadAvatar,
+  updateUserMetadata,
+  updateUserPassword,
   fetchMosaicTiles,
   fetchInspirationCards,
   fetchExploreRows,
@@ -55,3 +67,24 @@ export {
   updateSuggestionStatus,
   dismissAllSuggestions,
 } from './packingService';
+
+export {
+  generatePackingSuggestions,
+} from './packingSuggestions';
+
+export {
+  fetchDiscoverPage,
+  fetchNearbyPlaces,
+  fetchNearbyPage,
+  searchPlaces,
+  dedupPlaces,
+  distanceLabel,
+  mapApiPlace,
+} from './placesDiscovery';
+export type { DiscoverPageResult } from './placesDiscovery';
+
+export {
+  fetchAuditEntries,
+  groupAuditEntries,
+  buildRestorePlan,
+} from './historyService';

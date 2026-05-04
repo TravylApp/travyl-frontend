@@ -7,6 +7,7 @@ import { Sparkles, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useTripPlanner, useAuthStore } from '@travyl/shared'
 import type { FollowUpQuestion, PlanResponse } from '@travyl/shared'
 import { savePlanToSupabase } from '@travyl/shared/src/services/api'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface Props {
   prefillDestination: string
@@ -20,6 +21,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 export function SpotlightTripCreator({ prefillDestination, query, onClose, onBack, onPhaseChange }: Props) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const planner = useTripPlanner()
   const [currentQIdx, setCurrentQIdx] = useState(0)
@@ -29,7 +31,16 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
 
   const phase = planner.state.phase
   const isClarifying = phase === 'clarifying'
-  const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : []
+  // Inject accommodation type question into the backend's question flow
+  const backendQuestions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : []
+  const accommodationQuestion: FollowUpQuestion = {
+    id: 'accommodation_type',
+    question: 'Where will you be staying?',
+    options: ['Hotel', 'Airbnb / Rental', 'Hostel', 'Staying with someone', 'Own place', 'Not sure yet'],
+  }
+  const questions = backendQuestions.length > 0
+    ? [...backendQuestions, accommodationQuestion]
+    : backendQuestions
   const currentQuestion = questions[currentQIdx] ?? null
 
   // Notify parent of phase changes
@@ -98,6 +109,7 @@ export function SpotlightTripCreator({ prefillDestination, query, onClose, onBac
 
       try {
         const tripId = await savePlanToSupabase(plan as any)
+        queryClient.invalidateQueries({ queryKey: ['trips'] })
         onClose()
         router.push(`/trip/${tripId}`)
       } catch {

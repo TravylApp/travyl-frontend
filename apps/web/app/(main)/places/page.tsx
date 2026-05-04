@@ -7,278 +7,22 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   Search, Globe, Landmark, UtensilsCrossed, Compass, CalendarDays, Heart,
   MapPin, ArrowUpDown, Star, X, ChevronLeft, ChevronRight,
-  LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2,
+  LayoutGrid, Layers, Clock, Lightbulb, Maximize2, Minimize2, AlignJustify, Navigation,
 } from 'lucide-react';
 import type { PanInfo } from 'motion/react';
-import { useSimilarPlaces } from '@travyl/shared';
-import type { PlaceItem as PlaceItemType, PlaceItem } from '@travyl/shared';
+import {
+  useSimilarPlaces, useWeather, useDestinationImage, useServerFavorites, useAuthStore,
+  fetchDiscoverPage, fetchNearbyPlaces, fetchNearbyPage, searchPlaces as searchPlacesFn,
+  dedupPlaces, distanceLabel,
+  haversineKm as distanceKm,
+} from '@travyl/shared';
+import type { PlaceItem as PlaceItemType, PlaceItem, DiscoverPageResult } from '@travyl/shared';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
-const BROWSE_CITIES = [
-  // Europe
-  { name: 'Paris', lat: '48.8566', lng: '2.3522' },
-  { name: 'London', lat: '51.5074', lng: '-0.1278' },
-  { name: 'Rome', lat: '41.9028', lng: '12.4964' },
-  { name: 'Barcelona', lat: '41.3874', lng: '2.1686' },
-  { name: 'Amsterdam', lat: '52.3676', lng: '4.9041' },
-  { name: 'Prague', lat: '50.0755', lng: '14.4378' },
-  { name: 'Lisbon', lat: '38.7223', lng: '-9.1393' },
-  { name: 'Istanbul', lat: '41.0082', lng: '28.9784' },
-  { name: 'Vienna', lat: '48.2082', lng: '16.3738' },
-  { name: 'Berlin', lat: '52.5200', lng: '13.4050' },
-  { name: 'Athens', lat: '37.9838', lng: '23.7275' },
-  { name: 'Budapest', lat: '47.4979', lng: '19.0402' },
-  { name: 'Dublin', lat: '53.3498', lng: '-6.2603' },
-  { name: 'Edinburgh', lat: '55.9533', lng: '-3.1883' },
-  { name: 'Florence', lat: '43.7696', lng: '11.2558' },
-  { name: 'Santorini', lat: '36.3932', lng: '25.4615' },
-  { name: 'Dubrovnik', lat: '42.6507', lng: '18.0944' },
-  { name: 'Copenhagen', lat: '55.6761', lng: '12.5683' },
-  { name: 'Stockholm', lat: '59.3293', lng: '18.0686' },
-  { name: 'Reykjavik', lat: '64.1466', lng: '-21.9426' },
-  // Asia
-  { name: 'Tokyo', lat: '35.6762', lng: '139.6503' },
-  { name: 'Bangkok', lat: '13.7563', lng: '100.5018' },
-  { name: 'Bali', lat: '-8.4095', lng: '115.1889' },
-  { name: 'Singapore', lat: '1.3521', lng: '103.8198' },
-  { name: 'Seoul', lat: '37.5665', lng: '126.9780' },
-  { name: 'Kyoto', lat: '35.0116', lng: '135.7681' },
-  { name: 'Hong Kong', lat: '22.3193', lng: '114.1694' },
-  { name: 'Hanoi', lat: '21.0278', lng: '105.8342' },
-  { name: 'Dubai', lat: '25.2048', lng: '55.2708' },
-  { name: 'Jaipur', lat: '26.9124', lng: '75.7873' },
-  { name: 'Petra', lat: '30.3285', lng: '35.4444' },
-  { name: 'Kuala Lumpur', lat: '3.1390', lng: '101.6869' },
-  { name: 'Taipei', lat: '25.0330', lng: '121.5654' },
-  { name: 'Siem Reap', lat: '13.3633', lng: '103.8564' },
-  // Americas
-  { name: 'New York', lat: '40.7128', lng: '-74.0060' },
-  { name: 'Rio de Janeiro', lat: '-22.9068', lng: '-43.1729' },
-  { name: 'Mexico City', lat: '19.4326', lng: '-99.1332' },
-  { name: 'Buenos Aires', lat: '-34.6037', lng: '-58.3816' },
-  { name: 'Havana', lat: '23.1136', lng: '-82.3666' },
-  { name: 'San Francisco', lat: '37.7749', lng: '-122.4194' },
-  { name: 'Cartagena', lat: '10.3910', lng: '-75.5364' },
-  { name: 'Cusco', lat: '-13.5319', lng: '-71.9675' },
-  { name: 'Los Angeles', lat: '34.0522', lng: '-118.2437' },
-  { name: 'Miami', lat: '25.7617', lng: '-80.1918' },
-  { name: 'Nashville', lat: '36.1627', lng: '-86.7816' },
-  { name: 'Tulum', lat: '20.2114', lng: '-87.4654' },
-  // Africa & Middle East
-  { name: 'Cape Town', lat: '-33.9249', lng: '18.4241' },
-  { name: 'Marrakech', lat: '31.6295', lng: '-7.9811' },
-  { name: 'Cairo', lat: '30.0444', lng: '31.2357' },
-  { name: 'Zanzibar', lat: '-6.1659', lng: '39.1989' },
-  { name: 'Nairobi', lat: '-1.2921', lng: '36.8219' },
-  // Oceania
-  { name: 'Sydney', lat: '-33.8688', lng: '151.2093' },
-  { name: 'Melbourne', lat: '-37.8136', lng: '144.9631' },
-  { name: 'Queenstown', lat: '-45.0312', lng: '168.6626' },
-  { name: 'Auckland', lat: '-36.8485', lng: '174.7633' },
-]
+// Data fetching (discover, nearby, search) uses shared functions from @travyl/shared
 
-const BROWSE_CATEGORIES = [
-  'sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar',
-  'shopping', 'nightlife', 'beach', 'landmark', 'garden', 'market',
-]
+// fetchSearchPlaces, mapFoursquareType, toTitleCase — replaced by shared searchPlaces
 
-async function fetchBrowsePage(pageParam: number): Promise<PlaceItemType[]> {
-  // 2 cities × 3 categories = 6 API calls per page (was 15)
-  // Reduced to cut load time from ~4s to ~1.5s per page
-  const citiesPerPage = 2
-  const catsPerPage = 3
-  const startCity = (pageParam * citiesPerPage) % BROWSE_CITIES.length
-  const startCat = (pageParam * catsPerPage) % BROWSE_CATEGORIES.length
-
-  const cities: typeof BROWSE_CITIES = []
-  for (let i = 0; i < citiesPerPage; i++) {
-    cities.push(BROWSE_CITIES[(startCity + i) % BROWSE_CITIES.length])
-  }
-  const cats: string[] = []
-  for (let i = 0; i < catsPerPage; i++) {
-    cats.push(BROWSE_CATEGORIES[(startCat + i) % BROWSE_CATEGORIES.length])
-  }
-
-  const results = await Promise.all(
-    cities.flatMap((city) =>
-      cats.map(async (cat) => {
-        const res = await fetch(`/api/places?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
-        if (!res.ok) return []
-        return res.json() as Promise<PlaceItemType[]>
-      })
-    )
-  )
-  return results.flat()
-}
-
-async function fetchSearchPlaces(query: string): Promise<PlaceItemType[]> {
-  // Step 1: geocode ONCE via a single API call (the route handles geocoding)
-  const geoProbe = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=sightseeing&limit=1`)
-  if (!geoProbe.ok) return []
-  const probeData = await geoProbe.json() as PlaceItemType[]
-  const lat = probeData[0]?.latitude
-  const lng = probeData[0]?.longitude
-  if (lat == null || lng == null) {
-    // Fallback: use q param for all
-    const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'beach', 'landmark']
-    const results = await Promise.all(
-      categories.map(async (cat) => {
-        const res = await fetch(`/api/places?q=${encodeURIComponent(query)}&category=${cat}&limit=20`)
-        if (!res.ok) return []
-        return res.json() as Promise<PlaceItemType[]>
-      })
-    )
-    const seen = new Set<string>()
-    return results.flat().filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
-  }
-
-  // Step 2: fetch key categories from center + one offset neighborhood
-  // Reduced from 43 API calls to ~14 for much faster search (~2s vs ~8s)
-  const categories = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'bar', 'shopping', 'landmark']
-
-  const fetches: Promise<PlaceItemType[]>[] = []
-
-  // Center: key categories, limit 15
-  for (const cat of categories) {
-    fetches.push(
-      fetch(`/api/places?lat=${lat}&lng=${lng}&category=${cat}&limit=15`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-        .catch(() => [])
-    )
-  }
-  // One offset neighborhood for variety (northeast, +2km)
-  const offsetCats = ['sightseeing', 'restaurant', 'park']
-  for (const cat of offsetCats) {
-    fetches.push(
-      fetch(`/api/places?lat=${lat + 0.02}&lng=${lng + 0.015}&category=${cat}&limit=10`)
-        .then(r => r.ok ? r.json() as Promise<PlaceItemType[]> : [])
-        .catch(() => [])
-    )
-  }
-
-  // Foursquare: only restaurants and attractions (best photo quality)
-  const fsCats = ['restaurant', 'attraction']
-  for (const cat of fsCats) {
-    fetches.push(
-      fetch(`/api/foursquare?lat=${lat}&lng=${lng}&category=${cat}&limit=8`)
-        .then(async r => {
-          if (!r.ok) return []
-          const venues = await r.json()
-          if (venues.error) return []
-          // Map Foursquare venues to PlaceItem shape
-          return (venues as any[])
-            // Filter out venues that only have generic category icons (not real photos)
-            .filter((v: any) => v.image && !v.image.includes('categories_v2') && !v.image.includes('_bg_'))
-            .map((v: any) => {
-              // Filter out icon URLs from images array too
-              const realImages = (v.images || []).filter((img: string) => !img.includes('categories_v2') && !img.includes('_bg_'))
-              return {
-                id: `fs_${v.id}`,
-                name: v.name,
-                image: realImages[0] || v.image,
-                images: realImages.length > 1 ? realImages : undefined,
-                type: mapFoursquareType(cat),
-                rating: v.rating ? v.rating / 2 : 0,
-                tagline: v.address || v.category || cat,
-                category: v.category || toTitleCase(cat),
-                description: v.tip || '',
-                latitude: v.lat,
-                longitude: v.lng,
-                address: v.address,
-                website: v.url,
-                priceLevel: v.price && v.price >= 1 && v.price <= 4 ? v.price : undefined,
-                hours: v.hours,
-                reviewCount: v.ratingCount,
-                tags: [toTitleCase(cat)],
-              }
-            }) as PlaceItemType[]
-        })
-        .catch(() => [])
-    )
-  }
-
-  // Events — single call (was 5 OpenTripMap + 1 events = 6 slow calls)
-  fetches.push(
-    fetch(`/api/events?lat=${lat}&lng=${lng}&limit=8`)
-      .then(async r => {
-        if (!r.ok) return []
-        const events = await r.json()
-        if (events.error || !Array.isArray(events)) return []
-        return events.filter((e: any) => e.title).map((e: any) => ({
-          id: `ev_${e.id}`,
-          name: e.title,
-          image: e.image || getEventFallbackImage(e.category),
-          type: 'event' as const,
-          rating: 0,
-          tagline: [e.venue, e.date].filter(Boolean).join(' · ') || e.category || 'Event',
-          category: e.category || 'Event',
-          description: e.description || '',
-          latitude: parseFloat(lat as any),
-          longitude: parseFloat(lng as any),
-          tags: ['Event', e.category].filter(Boolean),
-          website: e.url,
-        })) as PlaceItemType[]
-      })
-      .catch(() => [])
-  )
-
-  const results = await Promise.all(fetches)
-
-  // Deduplicate by id, then by name (cross-source dedup)
-  // Also ensure every place has an image (fallback to Unsplash)
-  const seen = new Set<string>()
-  const seenNames = new Set<string>()
-  const FALLBACKS = [
-    'photo-1488646953014-85cb44e25828', 'photo-1507525428034-b723cf961d3e',
-    'photo-1476514525535-07fb3b4ae5f1', 'photo-1469854523086-cc02fe5d8800',
-    'photo-1530789253388-582c481c54b0', 'photo-1502602898657-3e91760cbb34',
-    'photo-1493976040374-85c8e12f0c0e', 'photo-1504150558240-0b4fd8946624',
-  ]
-  let fallbackIdx = 0
-  return results.flat().filter((p) => {
-    if (!p.name) return false
-    if (seen.has(p.id)) return false
-    const normName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
-    if (seenNames.has(normName)) return false
-    seen.add(p.id)
-    seenNames.add(normName)
-    return true
-  }).map(p => {
-    // Ensure every place has an image
-    if (!p.image || p.image === '') {
-      p = { ...p, image: `https://images.unsplash.com/${FALLBACKS[fallbackIdx++ % FALLBACKS.length]}?w=500&fit=crop&q=75&fm=webp` }
-    }
-    return p
-  })
-}
-
-function mapFoursquareType(cat: string): 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' {
-  if (['restaurant', 'cafe', 'nightlife'].includes(cat)) return 'restaurant'
-  if (['museum', 'attraction'].includes(cat)) return 'attraction'
-  if (['park'].includes(cat)) return 'experience'
-  return 'destination'
-}
-
-function toTitleCase(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
-}
-
-const EVENT_FALLBACK_IMAGES: Record<string, string> = {
-  'Concert': 'photo-1470229722913-7c0e2dbbafd3',
-  'Music': 'photo-1470229722913-7c0e2dbbafd3',
-  'Festival': 'photo-1533174072545-7a4b6ad7a6c3',
-  'Performance': 'photo-1507676184212-d03ab07a01bf',
-  'Sports': 'photo-1461896836934-bd45ba2a0907',
-  'Food & Drink': 'photo-1555939594-58d7cb561ad1',
-  'Exhibition': 'photo-1531058020387-3be344556be6',
-  'Community': 'photo-1511795409834-ef04bbd61622',
-  'Conference': 'photo-1540575467063-178a50c2df87',
-}
-
-function getEventFallbackImage(category?: string): string {
-  const id = EVENT_FALLBACK_IMAGES[category || ''] || 'photo-1492684223f0-e3b763ece0e4'
-  return `https://images.unsplash.com/${id}?w=500&fit=crop&q=75&fm=webp`
-}
 import { PinCard } from '@/components/PinCard';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 
@@ -306,13 +50,34 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
+// distanceKm, fetchNearbyPlaces — now imported from @travyl/shared
+
 export default function PlacesPage() {
   const [searchCity, setSearchCity] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Browse mode: infinite scroll through cities × categories
+  // Geolocation for "Near You"
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},  // silently ignore denial
+      { timeout: 8000, maximumAge: 5 * 60 * 1000 }
+    );
+  }, []);
+
+  const { data: nearbyPlaces = [], isLoading: nearbyLoading } = useQuery({
+    queryKey: ['places-nearby', userLocation?.lat, userLocation?.lng],
+    queryFn: () => fetchNearbyPlaces(userLocation!.lat, userLocation!.lng),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    enabled: !!userLocation,
+  });
+
+  // Browse mode: shared discover feed (same logic as mobile)
   const {
     data: browseData,
     fetchNextPage,
@@ -320,62 +85,68 @@ export default function PlacesPage() {
     isFetchingNextPage,
     isLoading: browseLoading,
   } = useInfiniteQuery({
-    queryKey: ['places-browse'],
-    queryFn: ({ pageParam }) => fetchBrowsePage(pageParam),
+    queryKey: ['places-browse', userLocation?.lat, userLocation?.lng],
+    queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
-    getNextPageParam: (_lastPage, _allPages, lastPageParam) =>
-      lastPageParam < 99 ? lastPageParam + 1 : undefined, // endless scrolling — cycles through all cities
-    staleTime: 30 * 60 * 1000,  // Data stays fresh for 30 min
-    gcTime: 60 * 60 * 1000,     // Keep in cache for 1 hour
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     enabled: !searchCity,
   });
 
-  // Search mode: single query across categories
-  const { data: searchData = [], isLoading: searchLoading } = useQuery({
+  // Search mode: infinite scroll, same as discover feed
+  const {
+    data: searchData,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
+    isLoading: searchLoading,
+  } = useInfiniteQuery({
     queryKey: ['places-search', searchCity],
-    queryFn: () => fetchSearchPlaces(searchCity),
-    staleTime: 15 * 60 * 1000,
+    queryFn: ({ pageParam }) => searchPlacesFn(searchCity, pageParam, userLocation),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     enabled: !!searchCity,
   });
 
-  // Merge browse pages, deduplicate
+  // Merge pages, deduplicate
   const places = useMemo(() => {
-    if (searchCity) return searchData;
-    if (!browseData?.pages) return [];
-    const seen = new Set<string>();
-    return browseData.pages.flat().filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
+    const data = searchCity ? searchData : browseData;
+    if (!data?.pages) return [];
+    return dedupPlaces(data.pages.flatMap((p) => p.items));
   }, [searchCity, searchData, browseData]);
 
   const placesLoading = searchCity ? searchLoading : browseLoading;
 
-  // Intersection observer for infinite scroll
-  useEffect(() => {
-    if (searchCity || !hasNextPage) return;
-    const el = loadMoreRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { rootMargin: '800px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [searchCity, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  // Active pagination — works for both search and browse
+  const activeHasNext = searchCity ? hasNextSearchPage : hasNextPage;
+  const activeIsFetching = searchCity ? isFetchingNextSearchPage : isFetchingNextPage;
+  const activeLoadMore = searchCity ? fetchNextSearchPage : fetchNextPage;
+
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [favorites, setFavorites] = useState<string[]>([]);
+  // Favorites: server for authenticated users, localStorage for anonymous.
+  // Token lives on the Session, not the User — reading user.access_token
+  // returned undefined and silently downgraded everyone to anonymous favs.
+  const session = useAuthStore((s) => s.session);
+  const authToken = session?.access_token ?? null;
+  const { data: serverFavs, addFavorite: serverAdd, removeFavorite: serverRemove } = useServerFavorites(authToken);
+  const serverFavPlaceIds = useMemo(() => (serverFavs ?? []).map(f => f.place_id), [serverFavs]);
+
+  const [localFavorites, setLocalFavorites] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem('places-favorites') || '[]'); } catch { return []; }
+  });
+  const favorites = authToken ? serverFavPlaceIds : localFavorites;
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [selectedPlace, _setSelectedPlace] = useState<PlaceItem | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'stack'>('grid');
+  const [flushGrid, setFlushGrid] = useState(false);
   const [columnCount, setColumnCount] = useState(4);
   const [showFilters, setShowFilters] = useState(false);
   const [showPostcard, setShowPostcard] = useState(false);
@@ -387,16 +158,63 @@ export default function PlacesPage() {
   const gridPhaseRef = useRef<NodeJS.Timeout | null>(null);
   const setSelectedPlace = (p: PlaceItem | null) => { _setSelectedPlace(p); };
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]);
+  // ── Tier 1 hooks: weather + destination hero image ──
+  const { data: weatherData } = useWeather(searchCity);
+  const { data: destImageData } = useDestinationImage(searchCity);
+  const heroImageUrl = destImageData?.url;
+  // TODO: useEvents needs country which the places page doesn't have.
+  // Once we add geocoding or city→country lookup, wire useEvents here.
+
+  // Intersection observer for infinite scroll — works for both browse and search
+  useEffect(() => {
+    if (!activeHasNext || gridShowcase) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !activeIsFetching) {
+          activeLoadMore();
+        }
+      },
+      { rootMargin: '800px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeHasNext, activeIsFetching, activeLoadMore, gridShowcase]);
+
+  const toggleFavorite = (itemId: string) => {
+    if (authToken) {
+      // Server favorites for authenticated users
+      const existing = serverFavs?.find(f => f.place_id === itemId);
+      if (existing) {
+        serverRemove(existing.id);
+      } else {
+        serverAdd(itemId);
+      }
+    } else {
+      // localStorage for anonymous users
+      setLocalFavorites((prev) => {
+        const next = prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId];
+        try { localStorage.setItem('places-favorites', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
   };
 
-  // Responsive column count on mount
+  // Responsive column count — keep in sync with viewport on mount AND resize.
+  // Previously this only ran once, so rotating the device or resizing the
+  // browser left the masonry layout stuck at the initial column count.
   useEffect(() => {
-    const w = window.innerWidth;
-    if (w < 550) setColumnCount(1);
-    else if (w < 768) setColumnCount(2);
-    else if (w < 900) setColumnCount(3);
+    const computeColumns = () => {
+      const w = window.innerWidth;
+      if (w < 550) setColumnCount(1);
+      else if (w < 768) setColumnCount(2);
+      else if (w < 900) setColumnCount(3);
+      else setColumnCount(4);
+    };
+    computeColumns();
+    window.addEventListener('resize', computeColumns);
+    return () => window.removeEventListener('resize', computeColumns);
   }, []);
 
   // Filter by tab
@@ -445,6 +263,21 @@ export default function PlacesPage() {
     return items;
   }, [tabFiltered, activeSubcategory, searchQuery, searchCity, sortBy]);
 
+  // Group filtered items by category for section headers
+  const groupedByCategory = useMemo(() => {
+    const groups: { category: string; items: typeof filtered }[] = [];
+    const catMap = new Map<string, typeof filtered>();
+    for (const item of filtered) {
+      const cat = item.category || 'Other';
+      if (!catMap.has(cat)) {
+        catMap.set(cat, []);
+        groups.push({ category: cat, items: catMap.get(cat)! });
+      }
+      catMap.get(cat)!.push(item);
+    }
+    return groups;
+  }, [filtered]);
+
   // Reset showcase when filters/view change
   useEffect(() => {
     setGridShowcase(false);
@@ -469,11 +302,14 @@ export default function PlacesPage() {
     gridPhaseRef.current = setTimeout(() => setGridPhase('magazine'), 5000);
   }, [filtered.length]);
 
+  const savedScrollRef = useRef(0);
+
   const openGridShowcase = useCallback((placeId: string) => {
     const idx = filtered.findIndex((p) => p.id === placeId);
     if (idx === -1) return;
     if (gridPhaseRef.current) clearTimeout(gridPhaseRef.current);
     if (gridTimerRef.current) clearTimeout(gridTimerRef.current);
+    savedScrollRef.current = window.scrollY;
     setGridShowcaseIdx(idx);
     setGridDirection(0);
     setGridPhase('card');
@@ -483,70 +319,79 @@ export default function PlacesPage() {
   }, [filtered]);
 
   const dismissGridShowcase = useCallback(() => {
-    setGridShowcase(false);
     if (gridPhaseRef.current) clearTimeout(gridPhaseRef.current);
     if (gridTimerRef.current) clearTimeout(gridTimerRef.current);
+    // Restore scroll position instantly BEFORE showing grid to prevent visible reflow
+    window.scrollTo({ top: savedScrollRef.current, behavior: 'instant' as ScrollBehavior });
+    // Show grid after scroll position is restored
+    requestAnimationFrame(() => {
+      setGridShowcase(false);
+    });
   }, []);
 
 
 
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="flex flex-col min-h-screen">
       <div className="flex-1">
-      {/* Sticky Header */}
-      <div className="sticky top-11 z-40 bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-md">
-        {/* Row 1: Tabs + Search */}
-        <div className="max-w-7xl mx-auto px-4 pt-2 pb-0">
+      {/* Sticky Header — single compact bar, sits at top and behind the floating navbar */}
+      <div className="sticky top-0 z-30 bg-white dark:bg-[var(--background)] border-b border-gray-200/50 dark:border-white/5 py-1">
+        <div className="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-10 py-1">
+          {/* Single row: Tabs | Search | Controls */}
           <div className="flex items-center gap-2">
+            {/* Tabs — compact */}
             <div className="shrink-0 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-0 -mb-px">
+              <div className="flex gap-0">
                 {TABS.map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
                     onClick={() => { setActiveTab(key); setActiveSubcategory(''); }}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-[12px] whitespace-nowrap border-b-2 transition-all shrink-0 ${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] whitespace-nowrap rounded-full transition-all shrink-0 ${
                       activeTab === key
-                        ? 'border-[#1e3a5f] text-[#1e3a5f] dark:border-[#60a5fa] dark:text-[#60a5fa] font-semibold'
-                        : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                        ? 'bg-[#1e3a5f] text-white font-semibold shadow-sm'
+                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 hover:bg-gray-50 dark:hover:text-gray-300'
                     }`}
                   >
-                    <Icon size={13} />
+                    <Icon size={12} />
                     <span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
               </div>
             </div>
-            <div className="relative flex-1 min-w-0">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+            {/* Search — grows to fill */}
+            <div className="relative flex-1 min-w-0 max-w-sm">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search a city or destination..."
+                placeholder="Search anything — Nobu, rooftop bars, big library..."
                 value={searchInput}
                 onChange={(e) => {
                   const val = e.target.value;
                   setSearchInput(val);
-                  // Debounce API search — triggers after 300ms of no typing
                   if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                   if (val.trim().length >= 2) {
                     searchDebounceRef.current = setTimeout(() => {
                       setSearchCity(val.trim());
                       setSearchQuery('');
+                      setActiveSubcategory('');
                     }, 300);
                   } else if (!val.trim()) {
                     setSearchCity('');
                     setSearchQuery('');
+                    setActiveSubcategory('');
                   }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && searchInput.trim()) {
-                    // Instant search on Enter
                     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                     setSearchCity(searchInput.trim());
                     setSearchQuery('');
+                    setActiveSubcategory('');
                   }
                 }}
-                className="w-full pl-8 pr-8 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
+                className="w-full pl-7 pr-7 py-1.5 bg-gray-50 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-full text-[11px] text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/30"
               />
               {searchInput && (
                 <button
@@ -554,222 +399,113 @@ export default function PlacesPage() {
                     setSearchInput('');
                     setSearchQuery('');
                     setSearchCity('');
+                    setActiveSubcategory('');
                     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="h-px bg-gray-100 dark:bg-white/10" />
-
-        {/* Row 2: Controls */}
-        <div className="max-w-7xl mx-auto px-4 py-1.5">
-          <div className="flex items-center gap-2">
-            {/* Filter toggle + inline pills */}
-            <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">
-              {subcategories.length > 1 && (
-                <button
-                  onClick={() => setShowFilters((v) => !v)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all shrink-0 ${
-                    showFilters || activeSubcategory
-                      ? 'bg-[#1e3a5f] text-white'
-                      : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/15'
-                  }`}
-                >
-                  <span>Filters</span>
-                  {activeSubcategory && !showFilters && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                  )}
-                  <motion.div
-                    animate={{ rotate: showFilters ? 90 : 0 }}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <ChevronRight size={11} />
-                  </motion.div>
-                </button>
-              )}
-
-              {/* Inline filter pills — pop out to the right */}
-              <AnimatePresence>
-                {showFilters && subcategories.length > 1 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0 flex-1"
-                  >
-                    <motion.button
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ delay: 0.05, duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                      onClick={() => setActiveSubcategory('')}
-                      className={`px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap transition-colors shrink-0 ${
-                        !activeSubcategory
-                          ? 'bg-[#1e3a5f] text-white font-medium'
-                          : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
-                      }`}
-                    >
-                      All
-                    </motion.button>
-                    {subcategories.map(({ label }, i) => (
-                      <motion.button
-                        key={label}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ delay: 0.05 + (i + 1) * 0.03, duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                        onClick={() => setActiveSubcategory(label === activeSubcategory ? '' : label)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap transition-colors shrink-0 ${
-                          activeSubcategory === label
-                            ? 'bg-[#1e3a5f] text-white font-medium'
-                            : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/15'
-                        }`}
-                      >
-                        {label}
-                      </motion.button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Active filter badge — quick clear (when pills hidden) */}
-              {activeSubcategory && !showFilters && (
-                <motion.button
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  onClick={() => setActiveSubcategory('')}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f] text-[10px] font-medium shrink-0"
-                >
-                  {activeSubcategory}
                   <X size={10} />
-                </motion.button>
+                </button>
               )}
             </div>
 
-            {/* Sort — grid mode only */}
-            <AnimatePresence>
+            {/* Right controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Sort */}
               {viewMode === 'grid' && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 'auto', opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="relative shrink-0 overflow-hidden"
-                >
-                  <ArrowUpDown size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <div className="relative shrink-0">
+                  <ArrowUpDown size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortKey)}
-                    className="appearance-none pl-6 pr-5 py-1.5 bg-gray-100 dark:bg-white/10 rounded-full text-[10px] text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
+                    className="appearance-none pl-5 pr-4 py-1 bg-gray-100 dark:bg-white/10 rounded-full text-[10px] text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer hover:bg-gray-200 dark:hover:bg-white/15 transition-colors"
                   >
                     {SORT_OPTIONS.map((o) => (
                       <option key={o.key} value={o.key}>{o.label}</option>
                     ))}
                   </select>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
 
-            {/* Expand toggle — stack mode only */}
-            <AnimatePresence>
+              {/* Expand toggle — stack mode only */}
               {viewMode === 'stack' && (
-                <motion.button
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 'auto', opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
+                <button
                   onClick={() => setShowPostcard((v) => !v)}
-                  className={`shrink-0 p-1.5 rounded-full transition-colors overflow-hidden ${
+                  className={`shrink-0 p-1.5 rounded-full transition-colors ${
                     showPostcard
                       ? 'bg-[#1e3a5f]/10 text-[#1e3a5f]'
-                      : 'bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-white/15'
+                      : 'bg-gray-100 dark:bg-white/10 text-gray-400 hover:bg-gray-200'
                   }`}
                   title={showPostcard ? 'Card view' : 'Expanded view'}
                 >
-                  {showPostcard ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                </motion.button>
+                  {showPostcard ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
               )}
-            </AnimatePresence>
 
-            {/* Column count — grid mode only, md+ */}
-            <AnimatePresence>
+              {/* Column count — md+ */}
               {viewMode === 'grid' && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 'auto', opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="hidden md:flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-0.5 shrink-0 overflow-hidden"
-                >
-                  {[2, 3, 4].map((n) => (
+                <div className="hidden md:flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-0.5 shrink-0">
+                  {[2, 3, 4, 5].map((n) => (
                     <button
                       key={n}
                       onClick={() => setColumnCount(n)}
-                      className="relative w-7 h-7 rounded-full flex items-center justify-center"
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold transition-colors ${
+                        columnCount === n ? 'bg-white dark:bg-white/20 text-[#1e3a5f] shadow-sm' : 'text-gray-400'
+                      }`}
                     >
-                      {columnCount === n && (
-                        <motion.div
-                          layoutId="colToggle"
-                          className="absolute inset-0 bg-white dark:bg-white/20 rounded-full shadow-sm"
-                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        />
-                      )}
-                      <span className={`relative z-10 text-[11px] font-semibold transition-colors ${
-                        columnCount === n ? 'text-[#1e3a5f]' : 'text-gray-400'
-                      }`}>{n}</span>
+                      {n}
                     </button>
                   ))}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
 
-            {/* View mode toggle */}
-            <div className="flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-0.5 shrink-0">
-              {(['grid', 'stack'] as const).map((mode) => (
+              {/* Flush grid toggle */}
+              {viewMode === 'grid' && (
                 <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className="relative p-1.5 rounded-full"
-                  title={mode === 'grid' ? 'Grid view' : 'Stack view'}
+                  onClick={() => setFlushGrid((f) => !f)}
+                  className={`p-1.5 rounded-full transition-colors shrink-0 ${
+                    flushGrid
+                      ? 'bg-[#1e3a5f] text-white'
+                      : 'bg-gray-100 dark:bg-white/10 text-gray-400 hover:text-gray-600'
+                  }`}
+                  title={flushGrid ? 'Masonry layout' : 'Flush grid'}
                 >
-                  {viewMode === mode && (
-                    <motion.div
-                      layoutId="viewToggle"
-                      className="absolute inset-0 bg-white dark:bg-white/20 rounded-full shadow-sm"
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10 block">
-                    {mode === 'grid'
-                      ? <LayoutGrid size={13} className={`transition-colors ${viewMode === mode ? 'text-[#1e3a5f]' : 'text-gray-400'}`} />
-                      : <Layers size={13} className={`transition-colors ${viewMode === mode ? 'text-[#1e3a5f]' : 'text-gray-400'}`} />
-                    }
-                  </span>
+                  <AlignJustify size={12} />
                 </button>
-              ))}
+              )}
+
+              {/* View mode toggle */}
+              <div className="flex items-center bg-gray-100 dark:bg-white/10 rounded-full p-0.5 shrink-0">
+                {(['grid', 'stack'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`relative p-1.5 rounded-full transition-colors ${
+                      viewMode === mode ? 'bg-white dark:bg-white/20 shadow-sm' : ''
+                    }`}
+                    title={mode === 'grid' ? 'Grid view' : 'Stack view'}
+                  >
+                    {mode === 'grid'
+                      ? <LayoutGrid size={12} className={viewMode === mode ? 'text-[#1e3a5f]' : 'text-gray-400'} />
+                      : <Layers size={12} className={viewMode === mode ? 'text-[#1e3a5f]' : 'text-gray-400'} />
+                    }
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Content: Grid or Stack */}
       {placesLoading && places.length === 0 ? (
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 xl:px-14 py-6">
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+        <div className="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-10 py-6">
+          <div style={{ columnCount: Math.min(columnCount, 4), columnGap: '1rem' }}>
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="mb-4 break-inside-avoid">
                 <div
-                  className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-200 to-gray-100 dark:from-white/10 dark:to-white/5 animate-pulse"
-                  style={{ height: 320 + (i % 4) * 30 }}
+                  className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/10 dark:to-white/5 shimmer-skeleton"
+                  style={{ height: 280 + (i % 3) * 60 }}
                 >
                   <div className="h-full flex flex-col justify-end p-4">
                     <div className="h-3 bg-white/20 rounded w-16 mb-3" />
@@ -787,12 +523,18 @@ export default function PlacesPage() {
         </div>
       ) : viewMode === 'grid' ? (
         <div
-          className={`mx-auto px-6 lg:px-10 xl:px-14 py-4 transition-all duration-300 ${
-            columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-6xl' : 'max-w-7xl'
+          className={`relative mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-4 transition-all duration-300 ${
+            columnCount === 2 ? 'max-w-5xl' : columnCount === 3 ? 'max-w-7xl' : 'max-w-[85rem]'
           }`}
-          style={{}}
-          // Removed crosshatch SVG background pattern — causes visual noise during scroll
         >
+          {/* Destination hero image — subtle background when searching a city */}
+          {searchCity && heroImageUrl && (
+            <div className="absolute inset-x-0 top-0 h-[320px] -z-10 overflow-hidden pointer-events-none">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroImageUrl} alt="" className="w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/90 to-white dark:from-[var(--background)]/70 dark:via-[var(--background)]/90 dark:to-[var(--background)]" />
+            </div>
+          )}
           {/* Grid idle showcase curtain */}
           <AnimatePresence>
             {gridShowcase && filtered[gridShowcaseIdx] && (
@@ -823,9 +565,17 @@ export default function PlacesPage() {
                       style={{ maxWidth: 900, height: 480 }}
                     >
                       {(() => {
-                        const prevP = filtered[gridShowcaseIdx === 0 ? filtered.length - 1 : gridShowcaseIdx - 1];
-                        const nextP = filtered[(gridShowcaseIdx + 1) % filtered.length];
-                        const nextNextP = filtered[(gridShowcaseIdx + 2) % filtered.length];
+                        // Defensive: showcase is gated on filtered[gridShowcaseIdx]
+                        // existing, but if filtered shrinks via search/filter while
+                        // showcase is open, peek-card lookups can resolve to
+                        // undefined and crash on .image / .name.
+                        const activeP = filtered[gridShowcaseIdx];
+                        if (!activeP || filtered.length === 0) return null;
+                        const prevP =
+                          filtered[gridShowcaseIdx === 0 ? filtered.length - 1 : gridShowcaseIdx - 1] ??
+                          activeP;
+                        const nextP = filtered[(gridShowcaseIdx + 1) % filtered.length] ?? activeP;
+                        const nextNextP = filtered[(gridShowcaseIdx + 2) % filtered.length] ?? activeP;
                         // Deck-of-cards animation: exit pulls card toward viewer, enter reveals from behind
                         const shuffleVariants = {
                           enter: (d: number) => ({ scale: 0.85, y: 30, opacity: 0, rotate: d > 0 ? 2 : -2 }),
@@ -842,7 +592,7 @@ export default function PlacesPage() {
                             >
                               <div className="relative w-full h-full">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={prevP.image} alt={prevP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={prevP.image} alt={prevP.name} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{prevP.type}</p>
@@ -873,7 +623,7 @@ export default function PlacesPage() {
                                 style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={nextNextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={nextNextP.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Back card 1 */}
                               <div
@@ -881,7 +631,7 @@ export default function PlacesPage() {
                                 style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={nextP.image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={nextP.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                               </div>
                               {/* Active card — shuffle animation */}
                               <AnimatePresence mode="popLayout" custom={gridDirection}>
@@ -898,7 +648,7 @@ export default function PlacesPage() {
                                 >
                                   <div className="relative w-full h-full bg-black">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                    <img src={filtered[gridShowcaseIdx].image} alt={filtered[gridShowcaseIdx].name} className="absolute inset-0 w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                                     {/* Favorite button */}
@@ -945,7 +695,7 @@ export default function PlacesPage() {
                             >
                               <div className="relative w-full h-full">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={nextP.image} alt={nextP.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src={nextP.image} alt={nextP.name} className="absolute inset-0 w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-4">
                                   <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{nextP.type}</p>
@@ -1008,22 +758,74 @@ export default function PlacesPage() {
           </AnimatePresence>
 
 
-            {!gridShowcase && (
-            <div>
+            <div style={{ display: gridShowcase ? 'none' : undefined }}>
+              {/* Near You section */}
+              {nearbyPlaces.length > 0 && !searchCity && (
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Navigation size={14} className="text-[#1e3a5f]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]/60 dark:text-white/50">Near You</h3>
+                    <div className="flex-1 h-px bg-gray-100 dark:bg-white/10" />
+                    <span className="text-[10px] text-gray-400">{nearbyPlaces.length}</span>
+                  </div>
+                  <div className={`grid gap-3 grid-cols-2 sm:grid-cols-${Math.min(columnCount, 4)}`}>
+                    {nearbyPlaces.slice(0, 12).map((place, i) => (
+                      <div key={place.id}>
+                        <PinCard
+                          item={place}
+                          index={i}
+                          isFavorited={favorites.includes(place.id)}
+                          onFavorite={toggleFavorite}
+                          onClick={() => setSelectedPlace(place)}
+                          onAddToTrip={(p) => {
+                            if (!favorites.includes(p.id)) toggleFavorite(p.id);
+                          }}
+                          flush
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {nearbyLoading && !searchCity && userLocation && (
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Navigation size={14} className="text-gray-300 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-300">Finding places near you...</span>
+                  </div>
+                  <div style={{ columnCount, columnGap: '1rem' }}>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="mb-4 break-inside-avoid">
+                        <div className="rounded-2xl shimmer-skeleton" style={{ height: flushGrid ? 360 : 300 + (i % 3) * 60 }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {filtered.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">
-                        {searchCity ? `Results for "${searchCity}"` : 'Explore'}
-                      </h2>
-                      <p className="text-xs text-gray-400">
-                        {filtered.length} places {searchCity ? 'found' : 'from around the world'}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h2 className="text-lg font-extrabold text-[#1e3a5f] dark:text-white">
+                          {searchCity ? `Results for "${searchCity}"` : 'Explore'}
+                        </h2>
+                        <p className="text-xs text-gray-400">
+                          {filtered.length} places {searchCity ? 'found' : 'from around the world'}
+                        </p>
+                      </div>
+                      {/* Weather pill — shown when browsing a specific city */}
+                      {searchCity && weatherData?.current && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e3a5f]/5 dark:bg-white/10 border border-[#1e3a5f]/10 dark:border-white/10">
+                          <span className="text-sm font-bold text-[#1e3a5f] dark:text-white">{Math.round(weatherData.current.temp)}°</span>
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400">{weatherData.current.conditions}</span>
+                        </div>
+                      )}
                     </div>
                     {searchCity && (
                       <button
-                        onClick={() => { setSearchInput(''); setSearchCity(''); setSearchQuery(''); }}
+                        onClick={() => { setSearchInput(''); setSearchCity(''); setSearchQuery(''); setActiveSubcategory(''); }}
                         className="text-xs text-[#1e3a5f] hover:underline"
                       >
                         Clear search
@@ -1043,31 +845,35 @@ export default function PlacesPage() {
 
                   {!searchLoading && (
                     <div
-                      className="gap-4"
                       style={{
-                        columnCount,
-                        columnGap: '1rem',
+                        columnCount: Math.min(columnCount, filtered.length),
+                        columnGap: '0.75rem',
                       }}
                     >
                       {filtered.map((item, i) => (
-                        <div
-                          key={item.id}
-                          className="mb-4"
-                          style={{
-                            breakInside: 'avoid',
-                            contentVisibility: 'auto',
-                            containIntrinsicBlockSize: '380px',
-                          }}
-                        >
-                          <PinCard
-                            item={item}
-                            index={i}
-                            isFavorited={favorites.includes(item.id)}
-                            onFavorite={toggleFavorite}
-                            onClick={(id) => openGridShowcase(id)}
-                          />
-                        </div>
-                      ))}
+                            <div key={item.id}>
+                              <div
+                                className="mb-3"
+                                style={{ breakInside: 'avoid' }}
+                              >
+                                <PinCard
+                                  item={item}
+                                  index={i}
+                                  isFavorited={favorites.includes(item.id)}
+                                  onFavorite={toggleFavorite}
+                                  onClick={(id) => {
+                                    const place = filtered.find(p => p.id === id);
+                                    if (place) setSelectedPlace(place);
+                                  }}
+                                  onAddToTrip={(place) => {
+                                    if (!favorites.includes(place.id)) toggleFavorite(place.id);
+                                  }}
+                                  flush={flushGrid}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
                     </div>
                   )}
                 </>
@@ -1084,7 +890,6 @@ export default function PlacesPage() {
                 </div>
               )}
             </div>
-            )}
         </div>
       ) : (
         <CardStack
@@ -1097,9 +902,9 @@ export default function PlacesPage() {
         />
       )}
       {/* Infinite scroll sentinel */}
-      {!searchCity && hasNextPage && (
+      {activeHasNext && (
         <div ref={loadMoreRef} className="flex justify-center py-10">
-          {isFetchingNextPage && (
+          {activeIsFetching && (
             <div className="flex flex-col items-center gap-3">
               <div className="flex gap-1.5">
                 <div className="w-2 h-2 bg-[#1e3a5f] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -1187,7 +992,7 @@ function MagazineCurtain({
             className="absolute inset-0"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={images[imgIdx]} alt={place.name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={images[imgIdx]} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
           </motion.div>
         </AnimatePresence>
 
@@ -1509,7 +1314,7 @@ function CardStack({
               >
                 <div className="relative w-full h-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[prevIdx].image} alt={items[prevIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[prevIdx].image} alt={items[prevIdx].name} className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[prevIdx].type}</p>
@@ -1543,7 +1348,7 @@ function CardStack({
               >
                 <div className="relative w-full h-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[nextIdx].image} alt={items[nextIdx].name} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[nextIdx].image} alt={items[nextIdx].name} className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <p className="font-bold uppercase tracking-wider text-[#7dd3fc] text-[8px] mb-1">{items[nextIdx].type}</p>
@@ -1577,7 +1382,7 @@ function CardStack({
                   style={{ transform: 'scale(0.88) translateY(24px)', opacity: 0.3 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[nextNextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[nextNextIdx].image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Back card 1 */}
@@ -1586,7 +1391,7 @@ function CardStack({
                   style={{ transform: 'scale(0.94) translateY(12px)', opacity: 0.6 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={items[nextIdx].image} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={items[nextIdx].image} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Active card */}
@@ -1619,8 +1424,7 @@ function CardStack({
                         <img
                           src={images[imgIdx]}
                           alt={place.name}
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 w-full h-full object-cover"
+                                                    className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
@@ -1697,7 +1501,7 @@ function CardStack({
                       {/* ── Back ── */}
                       <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={images[0]} alt="" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <div className="relative h-full flex flex-col p-5 text-white overflow-y-auto">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300 mb-1 block">
@@ -1841,8 +1645,7 @@ function CardStack({
                     <img
                       src={sp.images?.[0] || sp.image}
                       alt={sp.name}
-                      referrerPolicy="no-referrer"
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     {sp.rating != null && (

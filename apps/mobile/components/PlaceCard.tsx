@@ -98,20 +98,34 @@ function CardFrontInternal({
   const animStyleA = useAnimatedStyle(() => ({ opacity: opacityA.value }));
   const animStyleB = useAnimatedStyle(() => ({ opacity: opacityB.value }));
 
+  const hasImages = images.some(Boolean);
+
   return (
     <Pressable onPress={onPress} style={{ width, height, borderRadius: 16, overflow: 'hidden', backgroundColor: '#000' }}>
       {/* Background images */}
-      {images.length > 1 ? (
-        <>
-          <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, animStyleA]}>
-            <Image source={{ uri: imgA }} style={{ width, height }} resizeMode="cover" />
-          </Animated.View>
-          <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, animStyleB]}>
-            <Image source={{ uri: imgB }} style={{ width, height }} resizeMode="cover" />
-          </Animated.View>
-        </>
+      {hasImages ? (
+        images.length > 1 ? (
+          <>
+            <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, animStyleA]}>
+              <Image source={{ uri: imgA ?? undefined, headers: { Referer: '' } }} style={{ width, height }} resizeMode="cover" />
+            </Animated.View>
+            <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, animStyleB]}>
+              <Image source={{ uri: imgB ?? undefined, headers: { Referer: '' } }} style={{ width, height }} resizeMode="cover" />
+            </Animated.View>
+          </>
+        ) : (
+          <Image source={{ uri: images[0] ?? undefined, headers: { Referer: '' } }} style={{ position: 'absolute', width, height }} resizeMode="cover" />
+        )
       ) : (
-        <Image source={{ uri: images[0] }} style={{ position: 'absolute', width, height }} resizeMode="cover" />
+        /* Placeholder gradient when no image is available */
+        <LinearGradient
+          colors={[Navy.DEFAULT, '#2d5a8e', Navy.DEFAULT]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: 'absolute', width, height, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <FontAwesome name="map-marker" size={isCompact ? 20 : 32} color="rgba(255,255,255,0.4)" />
+        </LinearGradient>
       )}
 
       {/* Gradient overlay */}

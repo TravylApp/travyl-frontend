@@ -10,7 +10,8 @@
     "mobile": "npm -w @travyl/mobile run start",
     "web": "npm -w @travyl/web run dev",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -29,7 +30,6 @@
     "@aws-sdk/client-location": "^3.1011.0",
     "@aws-sdk/client-sesv2": "^3.1014.0",
     "@aws-sdk/lib-dynamodb": "^3.1011.0",
-    "@nextui-org/react": "^2.6.11",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
     "motion": "^12.34.3"

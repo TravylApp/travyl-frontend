@@ -19,7 +19,13 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
+        tabBarStyle: {
+          backgroundColor: Colors[colorScheme ?? 'light'].background,
+          borderTopColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+        },
         headerShown: false,
+        freezeOnBlur: false,
       }}>
       <Tabs.Screen
         name="(home)"

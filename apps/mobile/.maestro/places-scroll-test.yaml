@@ -1,0 +1,54 @@
+appId: com.ze-ee.mobile
+---
+- launchApp
+- waitForAnimationToEnd
+
+# Tap Places tab
+- tapOn:
+    point: "25%,97%"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/places-01-initial
+
+# Wait for content to load
+- extendedWaitUntil:
+    visible: "Near You"
+    timeout: 15000
+
+- takeScreenshot: screenshots/places-02-loaded
+
+# Scroll down
+- swipe:
+    direction: UP
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/places-03-scroll1
+
+# Scroll more
+- swipe:
+    direction: UP
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/places-04-scroll2
+
+# Scroll more
+- swipe:
+    direction: UP
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/places-05-scroll3
+
+# Scroll more to check if new content loads
+- swipe:
+    direction: UP
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/places-06-scroll4
+
+# Try the sort toggle
+- scrollUntilVisible:
+    element: "Default"
+    direction: UP
+    timeout: 5000
+- tapOn: "Default"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/places-07-sort-toggled

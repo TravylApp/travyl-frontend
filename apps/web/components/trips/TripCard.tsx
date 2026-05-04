@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Users, PieChart, MapPin, Users2, Trash2, Share2, MoreVertical, Plane } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatDateRange, formatCurrency } from '@travyl/shared';
-import type { MockTripCard } from '@travyl/shared';
+import { toast } from 'sonner';
+import { deleteTrip, formatDateRange, formatCurrency } from '@travyl/shared';
+import type { TripCard as TripCardData } from '@travyl/shared';
 import { TripRouteHover } from './TripRouteHover';
 import { ForkCountBadge } from '../trip/ForkAttribution';
+import { TripShareModal } from './TripShareModal';
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
   planning: { label: 'Planning', bg: 'bg-blue-500/90', text: 'text-white' },
@@ -20,7 +22,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> 
 
 
 interface TripCardProps {
-  trip: MockTripCard;
+  trip: TripCardData;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -31,6 +33,7 @@ export function TripCard({ trip, className, style }: TripCardProps) {
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<'left' | 'right'>('right');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -39,11 +42,7 @@ export function TripCard({ trip, className, style }: TripCardProps) {
     setMenuOpen(false);
     if (!confirm(`Delete "${trip.title}"? This cannot be undone.`)) return;
     try {
-      await fetch('/api/trips/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id }),
-      });
+      await deleteTrip(trip.id);
       try {
         const stored = localStorage.getItem('my-trip-ids');
         if (stored) {
@@ -51,16 +50,19 @@ export function TripCard({ trip, className, style }: TripCardProps) {
           localStorage.setItem('my-trip-ids', JSON.stringify(ids));
         }
       } catch {}
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-    } catch {}
+      await queryClient.invalidateQueries({ queryKey: ['trips'] });
+      toast.success('Trip deleted');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete trip';
+      toast.error(message);
+    }
   };
 
   const handleShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setMenuOpen(false);
-    const url = `${window.location.origin}/trip/${trip.id}`;
-    navigator.clipboard.writeText(url);
+    setShareModalOpen(true);
   };
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +187,13 @@ export function TripCard({ trip, className, style }: TripCardProps) {
           />
         </div>
       )}
+
+      {/* Share Modal */}
+      <TripShareModal
+        trip={trip}
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+      />
     </div>
   );
 }

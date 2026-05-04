@@ -1,8 +1,24 @@
+/**
+ * @module useItineraryScreen
+ * Orchestrates all data needed to render the Itinerary tab on both web and mobile.
+ * Fetches the trip, itinerary days, flights, and hotels; transforms raw DB rows
+ * into view-model objects; computes a budget summary; and exposes day-selection state.
+ *
+ * Falls back to trip_context.itinerary when no DB itinerary rows exist (e.g. for
+ * newly-created trips that haven't been enriched yet), and further falls back to
+ * distributing explore_items across days if there is no itinerary at all.
+ *
+ * Used by the web ItineraryTab and the mobile ItineraryScreen.
+ */
+
+'use client';
+
 import { useState, useMemo, useCallback } from 'react';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
 import { useFlights } from './useFlights';
 import { useHotels } from './useHotels';
+import { useExchangeRates } from './useExchangeRates';
 import {
   buildItineraryDayViewModel,
   buildFlightViewModel,
@@ -11,7 +27,17 @@ import {
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
+import { useSettingsStore } from '../stores/settingsStore';
 
+/**
+ * Synthesizes a basic day-by-day itinerary from `trip_context.explore_items`
+ * for trips that have no stored itinerary in the database.
+ * Interleaves restaurants (evening) and attractions (morning/afternoon) across
+ * the number of days derived from the trip's start/end dates.
+ * @param tripContext - The raw `trip_context` JSON blob from the trip row
+ * @param trip - The parent trip row (used to compute dates and number of days)
+ * @returns Array of `ItineraryDayViewModel` objects ready for rendering
+ */
 /** Build basic itinerary days from explore_items for trips that have no stored itinerary */
 function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayViewModel[] {
   const explore = tripContext?.explore_items ?? [];
@@ -65,6 +91,8 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
           endTime: null,
           timeDisplay: fmt12(time),
           costDisplay: null,
+          cost: null,
+          costCurrency: null,
           bookingUrl: null,
           notes: item.description || null,
           image: upscaleGoogleImage(item.image) ?? null,
@@ -90,6 +118,14 @@ function buildDaysFromExploreItems(tripContext: any, trip?: any): ItineraryDayVi
   return days;
 }
 
+/**
+ * Converts `trip_context.itinerary` (the AI-generated slot array) into
+ * `ItineraryDayViewModel[]` when no enriched DB itinerary rows are present.
+ * Falls back to `buildDaysFromExploreItems` if the context itinerary is also empty.
+ * @param tripContext - The raw `trip_context` JSON blob from the trip row
+ * @param trip - The parent trip row (used for date labels in the explore fallback)
+ * @returns Array of `ItineraryDayViewModel` objects ready for rendering
+ */
 /** Build ItineraryDayViewModels from trip_context.itinerary when DB tables don't exist.
  *  Falls back to distributing explore_items across days if no itinerary exists. */
 function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewModel[] {
@@ -126,11 +162,15 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
       endTime: fmt12(slot.end_time),
       timeDisplay: slot.start_time && slot.end_time ? `${fmt12(slot.start_time)} – ${fmt12(slot.end_time)}` : null,
       costDisplay: null,
+      cost: null,
+      costCurrency: null,
       bookingUrl: null,
       notes: slot.poi?.description ?? null,
       image: upscaleGoogleImage(slot.poi?.photo_url) ?? null,
       source: undefined,
       timeOfDay: getToD(slot.start_time),
+      lat: slot.poi?.lat ?? null,
+      lng: slot.poi?.lng ?? null,
     }));
 
     const groupMap = new Map<TimeOfDay, typeof activityVMs>();
@@ -159,12 +199,40 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
   });
 }
 
+/**
+ * Provides all data and state needed by the itinerary screen.
+ *
+ * Resolves days from DB rows first, falls back to `trip_context.itinerary`,
+ * and finally synthesizes days from `explore_items` for very early trips.
+ * Budget is also computed with a context fallback when no DB cost data exists.
+ *
+ * @param tripId - UUID of the trip, or undefined while routing/loading
+ * @returns Object with:
+ *   - `trip` — full trip record
+ *   - `days` — resolved `ItineraryDayViewModel[]`
+ *   - `selectedDayIndex` / `setSelectedDayIndex` — active day tab state
+ *   - `selectedDay` — the currently selected day view model
+ *   - `flights` / `hotels` — flight/hotel view models
+ *   - `budget` — computed budget summary
+ *   - `isLoading` — true while trip or itinerary data is pending
+ *   - `refetch` — force refresh all queries
+ *   - `error` — first encountered error
+ *   - `isEmpty` — true when there is genuinely nothing to show
+ *
+ * @example
+ * ```tsx
+ * const { days, selectedDayIndex, setSelectedDayIndex, budget, isLoading } =
+ *   useItineraryScreen(tripId);
+ * ```
+ */
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
+  const homeCurrency = useSettingsStore((s) => s.currency);
+  const { rates } = useExchangeRates(homeCurrency);
 
   // Build days from DB, or fall back to trip_context.itinerary
   const dbDays = useMemo(
@@ -196,12 +264,12 @@ export function useItineraryScreen(tripId: string | undefined) {
       daysQuery.data ?? [],
       flightsQuery.data ?? [],
       hotelsQuery.data ?? [],
-      tripQuery.data?.currency ?? 'USD',
+      homeCurrency,
+      rates,
     );
     // If DB budget is empty, compute from trip_context hotels
     if (dbBudget.total === 0 && tripQuery.data?.trip_context) {
       const ctx = tripQuery.data.trip_context as any;
-      const currency = tripQuery.data.currency ?? 'USD';
       const ctxHotels = ctx.hotels ?? [];
       const firstHotel = ctxHotels[0];
       let hotelsCost = 0;
@@ -210,17 +278,17 @@ export function useItineraryScreen(tripId: string | undefined) {
       }
       const categories: { label: string; amount: number; formatted: string }[] = [];
       if (hotelsCost > 0) {
-        const sym = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : `${currency} `;
-        categories.push({ label: 'Hotels', amount: hotelsCost, formatted: `${sym}${Math.round(hotelsCost).toLocaleString()}` });
+        const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: homeCurrency, maximumFractionDigits: 0 }).format(Math.round(hotelsCost));
+        categories.push({ label: 'Hotels', amount: hotelsCost, formatted });
       }
       const total = hotelsCost;
       if (total > 0) {
-        const sym = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : `${currency} `;
-        return { total, totalFormatted: `${sym}${Math.round(total).toLocaleString()}`, categories, currency };
+        const totalFormatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: homeCurrency, maximumFractionDigits: 0 }).format(Math.round(total));
+        return { total, totalFormatted, categories, currency: homeCurrency };
       }
     }
     return dbBudget;
-  }, [daysQuery.data, flightsQuery.data, hotelsQuery.data, tripQuery.data?.currency, tripQuery.data?.trip_context]);
+  }, [daysQuery.data, flightsQuery.data, hotelsQuery.data, homeCurrency, rates, tripQuery.data?.trip_context]);
 
   // Block on trip loading — also treat "not yet started" as loading
   const isLoading = (tripQuery.isLoading || (!tripQuery.data && !tripQuery.error)) && !!tripId;

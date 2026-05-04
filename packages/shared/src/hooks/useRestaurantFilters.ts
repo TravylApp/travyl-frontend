@@ -1,3 +1,18 @@
+/**
+ * @module useRestaurantFilters
+ * Manages filter, sort, and view-mode state for the Restaurants tab on trip detail pages.
+ * Mirrors the pattern of `useActivityFilters` but is scoped to dining items.
+ * Supports 'booked' (items already in the itinerary) and 'discover' (recommended
+ * dining from trip_context) view modes, plus category, cuisine sub-filter, search,
+ * and sort options.
+ *
+ * Also exports constants and sort configuration used by both web and mobile
+ * restaurant filter UIs.
+ * Used by the web RestaurantsTab and the mobile RestaurantsScreen.
+ */
+
+'use client';
+
 import { useState, useMemo, useEffect } from 'react';
 import type { DiscoverItem } from '../types';
 
@@ -35,6 +50,35 @@ export const RESTAURANT_SORT_OPTIONS: { key: RestaurantSortOption; label: string
 ];
 
 // ─── Hook ─────────────────────────────────────────────────────
+
+/**
+ * Manages all filter/sort/search state for the restaurants tab.
+ *
+ * Splits the provided `externalItems` into `bookedItems` (those with `isBooked: true`)
+ * and `discoverItems`. Automatically switches to 'booked' view once booked items appear.
+ * Filters support text search across name, cuisine, tags, and description; category
+ * and cuisine sub-filter matching; and four sort modes (rating, price, distance, reviews).
+ *
+ * @param externalItems - Combined array of restaurant `DiscoverItem` objects from the parent
+ *   (typically assembled by the screen from `trip_context.restaurants` and itinerary dining activities)
+ * @returns Object with:
+ *   - `viewMode` / `setViewMode` — `'booked'` or `'discover'`
+ *   - `searchQuery` / `setSearchQuery` — text search input state
+ *   - `categoryFilter` / `handleCategoryChange` — active category + change handler (resets cuisine sub-filter)
+ *   - `cuisineSubFilter` / `setCuisineSubFilter` — active cuisine sub-filter string
+ *   - `sortBy` / `setSortBy` — active sort option (`'rating'` | `'price'` | `'distance'` | `'reviews'`)
+ *   - `favorites` / `toggleFavorite` — client-side favorites set
+ *   - `sourceItems` — full list for the current view mode (before filtering)
+ *   - `filteredItems` — items after all filters and sort are applied
+ *   - `bookedCount` / `discoverCount` — counts for badge display
+ *   - `clearFilters` — reset all filters to defaults
+ *
+ * @example
+ * ```tsx
+ * const { filteredItems, categoryFilter, handleCategoryChange, sortBy, setSortBy } =
+ *   useRestaurantFilters(restaurantItems);
+ * ```
+ */
 export function useRestaurantFilters(externalItems?: DiscoverItem[]) {
   const allDining: DiscoverItem[] = externalItems ?? [];
   const bookedItems = allDining.filter((d) => d.isBooked);
@@ -52,6 +96,11 @@ export function useRestaurantFilters(externalItems?: DiscoverItem[]) {
   const [sortBy, setSortBy] = useState<RestaurantSortOption>('rating');
   const [favorites, setFavorites] = useState<string[]>([]);
 
+  /**
+   * Changes the active restaurant category filter and clears the cuisine sub-filter
+   * to prevent stale sub-filter values from a different category appearing.
+   * @param f - The new restaurant category to filter by
+   */
   const handleCategoryChange = (f: RestaurantCategory) => {
     setCategoryFilter(f);
     setCuisineSubFilter('');
@@ -107,10 +156,17 @@ export function useRestaurantFilters(externalItems?: DiscoverItem[]) {
     return items;
   }, [sourceItems, searchQuery, categoryFilter, cuisineSubFilter, sortBy]);
 
+  /**
+   * Toggles the favorite state for a restaurant item (client-side only, not persisted).
+   * @param itemId - ID of the `DiscoverItem` to toggle
+   */
   const toggleFavorite = (itemId: string) => {
     setFavorites((prev) => (prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId]));
   };
 
+  /**
+   * Resets all filters (category, cuisine sub-filter, search query, sort order) back to defaults.
+   */
   const clearFilters = () => {
     setSearchQuery('');
     setCategoryFilter('All');

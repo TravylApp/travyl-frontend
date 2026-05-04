@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_24H } from '../lib/response'
+import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_24H, rateLimit } from '@/lib/api-utils'
 
 // ─── Language resolution ─────────────────────────────────────────────────────
 
@@ -126,6 +126,8 @@ async function translatePhrase(phrase: string, targetLang: string): Promise<stri
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'translate', 60, 60000)
+  if (rl) return rl
   try {
     const lang = requireParam(req.nextUrl.searchParams, 'lang', 'e.g. ?lang=ja')
     const langCode = resolveLanguageCode(lang)

@@ -11,11 +11,9 @@ export const foursquareClientSecret = new sst.Secret('FoursquareClientSecret')
 export const foursquareApiKey = new sst.Secret('FoursquareApiKey')
 export const tripadvisorApiKey = new sst.Secret('TripadvisorApiKey')
 export const geonamesUsername = new sst.Secret('GeonamesUsername')
-export const opentripmapApiKey = new sst.Secret('OpentripmapApiKey')
 
 // ─── Images ─────────────────────────────────────────────────
 export const pexels = new sst.Secret('Pexels')
-export const unsplashAccessKey = new sst.Secret('UnsplashAccessKey')
 
 // ─── Travel & Flights ───────────────────────────────────────
 export const duffelApiToken = new sst.Secret('DuffelApiToken')
@@ -28,7 +26,11 @@ export const timezonedbApiKey = new sst.Secret('TimezonedbApiKey')
 // ─── Events ─────────────────────────────────────────────────
 export const eventbriteApiKey = new sst.Secret('EventbriteApiKey')
 export const predicthqApiKey = new sst.Secret('PredicthqApiKey')
+export const ticketmasterApiKey = new sst.Secret('TicketmasterApiKey')
 
 // ─── Misc ───────────────────────────────────────────────────
 export const openExchangeRatesAppId = new sst.Secret('OpenExchangeRatesAppId')
 export const openchargeApiKey = new sst.Secret('OpenchargeApiKey')
+
+// ─── Booking / Affiliate ────────────────────────────────────
+export const openTableAffiliateKey = new sst.Secret('OpenTableAffiliateKey')

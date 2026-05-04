@@ -1,20 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, Text, Pressable, Linking } from 'react-native';
+import { useState, useEffect, useMemo, useContext } from 'react';
+import { View, ScrollView, Text, Pressable, Linking, Modal, TextInput, FlatList } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PageTransition, useTabAccent } from './_layout';
-import { adjustBrightness, TextStyles, FontSize, FontFamily, useItineraryScreen } from '@travyl/shared';
+import { PageTransition, useTabAccent, TabCtx } from './_layout';
+import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-const POPULAR_AIRPORTS = [
-  { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York' },
-  { code: 'LAX', name: 'Los Angeles Intl', city: 'Los Angeles' },
-  { code: 'ORD', name: "O'Hare Intl", city: 'Chicago' },
-  { code: 'LHR', name: 'Heathrow', city: 'London' },
-  { code: 'CDG', name: 'Charles de Gaulle', city: 'Paris' },
-];
+// Airport cache — populated dynamically from API search results
+const airportCache: { code: string; name: string; city: string }[] = [];
 
-// Empty stubs — comparison and booking details are not wired to real data yet
+// Stubs — flight comparison and booking details not wired to live data yet
 const COMPARISON_FLIGHTS: any[] = [];
 const BOOKING_DETAILS = {
   confirmationNumber: '', pnr: '', ticketNumbers: [] as string[],
@@ -42,7 +37,7 @@ function contextFlightsToBooked(flights: any[], destination?: string): any[] {
       durationStr = `${Math.floor(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
     }
     const originCode = f.origin ?? '';
-    const destCode = f.dest_iata ?? f.destination ?? (destination ? CITY_AIRPORTS[destination] : '') ?? '';
+    const destCode = f.dest_iata ?? f.destination ?? destination ?? '';
     const airlineCode = (f.airline || '??').slice(0, 2).toUpperCase();
     return {
       id: `ctx-flight-${i}`,
@@ -74,13 +69,18 @@ function toggleInArray(arr: string[], val: string, setter: (v: string[]) => void
    FLIGHT SEARCH SECTION
    ================================================================ */
 
-function FlightSearchSection() {
+function FlightSearchSection({ destination, departDate, returnDate, onResults }: {
+  destination?: string;
+  departDate?: string;
+  returnDate?: string;
+  onResults?: (results: any[]) => void;
+}) {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const [collapsed, setCollapsed] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [from, setFrom] = useState('JFK');
-  const [to, setTo] = useState('CDG');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState(destination || '');
   const [travelers, setTravelers] = useState(2);
   const [cabinClass, setCabinClass] = useState<'economy' | 'premium' | 'business' | 'first'>('economy');
   const [nonstopOnly, setNonstopOnly] = useState(false);
@@ -88,6 +88,52 @@ function FlightSearchSection() {
   const [depTimes, setDepTimes] = useState<string[]>([]);
   const [arrTimes, setArrTimes] = useState<string[]>([]);
   const [airlines, setAirlines] = useState<string[]>([]);
+  const [searchTriggered, setSearchTriggered] = useState(false);
+  const [airportPickerField, setAirportPickerField] = useState<'from' | 'to' | null>(null);
+  const [airportQuery, setAirportQuery] = useState('');
+  const [airportResults, setAirportResults] = useState<{ code: string; name: string; city: string }[]>([]);
+  const [airportLoading, setAirportLoading] = useState(false);
+
+  // Search airports via API
+  useEffect(() => {
+    if (!airportQuery || airportQuery.length < 2) {
+      setAirportResults(airportCache);
+      return;
+    }
+    setAirportLoading(true);
+    const WEB_API = getWebApiBase();
+    const timer = setTimeout(() => {
+      fetch(`${WEB_API}/api/airports?q=${encodeURIComponent(airportQuery)}`)
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => {
+          setAirportResults(data.map((a: any) => ({
+            code: a.iata || a.iata_code || a.code || '',
+            name: a.name || '',
+            city: a.city || a.city_name || '',
+          })).filter((a: any) => a.code));
+          setAirportLoading(false);
+        })
+        .catch(() => { setAirportResults([]); setAirportLoading(false); });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [airportQuery]);
+
+  // Flight search via shared hook
+  const { data: searchResults, isLoading: searching } = useFlightSearch({
+    origin: searchTriggered ? from : undefined,
+    destination: searchTriggered ? to : undefined,
+    departDate: searchTriggered ? departDate : undefined,
+    returnDate,
+    passengers: travelers,
+  });
+
+  // Forward results to parent
+  useEffect(() => {
+    if (searchResults && onResults) {
+      const flights = Array.isArray(searchResults) ? searchResults : (searchResults as any)?.flights ?? [];
+      onResults(flights);
+    }
+  }, [searchResults]);
 
   const cabinLabel: Record<string, string> = {
     economy: 'Economy',
@@ -150,7 +196,7 @@ function FlightSearchSection() {
           <View>
             <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>Search Flights</Text>
             <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
-              {from} → {to} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}
+              {from || '?'} → {to || '?'} · {travelers} traveler{travelers !== 1 ? 's' : ''} · {cabinLabel[cabinClass]}
             </Text>
           </View>
         </View>
@@ -189,13 +235,14 @@ function FlightSearchSection() {
           {/* Search strip */}
           <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' }}>
             {/* From */}
-            <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Pressable onPress={() => { setAirportPickerField('from'); setAirportQuery(''); setAirportResults(airportCache); }}
+              style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ ...TextStyles.micro, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>From</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>{from}</Text>
-                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{POPULAR_AIRPORTS.find((a) => a.code === from)?.city}</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: from ? ACCENT : colors.textTertiary }}>{from || 'Select'}</Text>
+                {!!from && <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{airportCache.find((a) => a.code === from)?.city || ''}</Text>}
               </View>
-            </View>
+            </Pressable>
 
             {/* Swap button */}
             <View style={{ position: 'absolute', right: 16, top: 30, zIndex: 10 }}>
@@ -208,13 +255,14 @@ function FlightSearchSection() {
             </View>
 
             {/* To */}
-            <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Pressable onPress={() => { setAirportPickerField('to'); setAirportQuery(''); setAirportResults(airportCache); }}
+              style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ ...TextStyles.micro, letterSpacing: 1.5, color: colors.textTertiary, textTransform: 'uppercase' }}>To</Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>{to}</Text>
-                <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{POPULAR_AIRPORTS.find((a) => a.code === to)?.city}</Text>
+                <Text style={{ ...TextStyles.bodyXlEm, color: to ? ACCENT : colors.textTertiary }}>{to || 'Select'}</Text>
+                {!!to && <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{airportCache.find((a) => a.code === to)?.city || ''}</Text>}
               </View>
-            </View>
+            </Pressable>
 
             {/* Travelers + Class row */}
             <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border }}>
@@ -245,9 +293,12 @@ function FlightSearchSection() {
             </View>
 
             {/* Search button */}
-            <Pressable style={{ backgroundColor: ACCENT, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <FontAwesome name="search" size={12} color="#fff" />
-              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Search</Text>
+            <Pressable
+              onPress={() => setSearchTriggered(true)}
+              style={{ backgroundColor: ACCENT, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: searching ? 0.6 : 1 }}
+            >
+              <FontAwesome name={searching ? 'spinner' : 'search'} size={12} color="#fff" />
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>{searching ? 'Searching...' : 'Search'}</Text>
             </Pressable>
           </View>
 
@@ -382,6 +433,70 @@ function FlightSearchSection() {
           )}
         </View>
       )}
+      {/* Airport Picker Modal */}
+      <Modal visible={airportPickerField !== null} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.cardBackground, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 34 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ ...TextStyles.title, color: colors.text }}>
+                {airportPickerField === 'from' ? 'Departure Airport' : 'Arrival Airport'}
+              </Text>
+              <Pressable onPress={() => setAirportPickerField(null)}>
+                <FontAwesome name="times" size={18} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+              <TextInput
+                placeholder="Search airports..."
+                placeholderTextColor={colors.textTertiary}
+                value={airportQuery}
+                onChangeText={setAirportQuery}
+                autoFocus
+                style={{
+                  ...TextStyles.body, color: colors.text,
+                  backgroundColor: colors.background, borderRadius: 10,
+                  paddingHorizontal: 14, paddingVertical: 10,
+                  borderWidth: 1, borderColor: colors.border,
+                }}
+              />
+            </View>
+            <FlatList
+              data={airportResults}
+              keyExtractor={(item) => item.code}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => {
+                    if (airportPickerField === 'from') setFrom(item.code);
+                    else setTo(item.code);
+                    // Update airportCache cache so name shows
+                    if (!airportCache.find(a => a.code === item.code)) {
+                      airportCache.push(item);
+                    }
+                    setAirportPickerField(null);
+                  }}
+                  style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: ACCENT, width: 40 }}>{item.code}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...TextStyles.body, color: colors.text }} numberOfLines={1}>{item.name}</Text>
+                      <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{item.city}</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+                    {airportLoading ? 'Searching...' : 'No airports found'}
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -413,7 +528,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
             <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.7)' }}>{flight.date}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ backgroundColor: '#10b981', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+            <View style={{ backgroundColor: colors.success, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
               <Text style={{ ...TextStyles.smEm, color: '#fff' }}>{flight.status}</Text>
             </View>
             <FontAwesome name={expanded ? 'chevron-up' : 'chevron-down'} size={11} color="#fff" />
@@ -441,7 +556,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
               </View>
               <View style={{ flex: 1, height: 1, borderStyle: 'dashed', borderTopWidth: 1, borderColor: colors.border }} />
             </View>
-            <Text style={{ ...TextStyles.smEm, color: '#059669', marginTop: 4 }}>{flight.stops}</Text>
+            <Text style={{ ...TextStyles.smEm, color: colors.success, marginTop: 4 }}>{flight.stops}</Text>
           </View>
 
           {/* Arrival */}
@@ -449,7 +564,7 @@ function BookedFlightCard({ flight }: { flight: any }) {
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
               <Text style={{ ...TextStyles.title, color: colors.text }}>{flight.arrival.time}</Text>
               {flight.arrival.nextDay && (
-                <Text style={{ ...TextStyles.xs, color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
+                <Text style={{ ...TextStyles.xs, color: colors.warning, marginLeft: 2, marginTop: -2 }}>+1</Text>
               )}
             </View>
             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{flight.arrival.code}</Text>
@@ -457,24 +572,39 @@ function BookedFlightCard({ flight }: { flight: any }) {
           </View>
         </View>
 
-        {/* Airline + price bar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <LinearGradient
-            colors={[ACCENT, adjustBrightness(ACCENT, -30)]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ ...TextStyles.xs, color: '#fff' }}>{flight.airlineLogo}</Text>
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={{ ...TextStyles.body, color: colors.text }}>{flight.airline}</Text>
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.cabinClass}</Text>
+        {/* Airline + status bar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <LinearGradient
+              colors={[ACCENT, adjustBrightness(ACCENT, -30)]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>{flight.airlineLogo}</Text>
+            </LinearGradient>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>{flight.airline}</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>${flight.price.total}</Text>
-            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per person</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{flight.cabinClass}</Text>
+            <View style={{ backgroundColor: colors.tint + '15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: colors.tint }}>On Time</Text>
+            </View>
           </View>
+        </View>
+
+        {/* Price + Book */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+          <View>
+            <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>Per traveler</Text>
+            <Text style={{ ...TextStyles.title, color: colors.tint }}>${flight.price.total}</Text>
+          </View>
+          <Pressable style={({ pressed }) => ({
+            backgroundColor: colors.tint, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
+            flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.85 : 1,
+          })}>
+            <FontAwesome name="plane" size={12} color="#fff" />
+            <Text style={{ ...TextStyles.captionEm, color: '#fff' }}>Book Flight</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -606,10 +736,10 @@ function ComparisonAlternatives() {
                 paddingHorizontal: 10,
                 paddingVertical: 6,
                 borderRadius: 8,
-                backgroundColor: altAirports ? '#dbeafe' : colors.borderLight,
+                backgroundColor: altAirports ? colors.infoBg : colors.borderLight,
               }}
             >
-              <Text style={{ ...TextStyles.caption, color: altAirports ? '#1d4ed8' : colors.textSecondary }}>Alt Airports</Text>
+              <Text style={{ ...TextStyles.caption, color: altAirports ? colors.info : colors.textSecondary }}>Alt Airports</Text>
             </Pressable>
           </View>
 
@@ -647,21 +777,24 @@ function ComparisonAlternatives() {
                   style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}
                 >
                   <Text style={{ ...TextStyles.bodyEm, color: colors.text }}>{ap.code}</Text>
-                  <Text style={{ ...TextStyles.captionEm, color: '#059669' }}>-${ap.savings}</Text>
+                  <Text style={{ ...TextStyles.captionEm, color: colors.success }}>-${ap.savings}</Text>
                 </Pressable>
               ))}
             </View>
           )}
 
-          {/* Price range info */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
-            <FontAwesome name="info-circle" size={10} color={colors.textTertiary} />
-            <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>
-              Prices from{' '}
-              <Text style={{ fontWeight: '700', color: colors.text }}>${Math.min(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> to{' '}
-              <Text style={{ fontWeight: '700', color: colors.text }}>${Math.max(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> per person incl. taxes
-            </Text>
-          </View>
+          {/* Price range info — only show when we have comparison data.
+              Empty array would render $Infinity to $-Infinity. */}
+          {COMPARISON_FLIGHTS.length > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
+              <FontAwesome name="info-circle" size={10} color={colors.textTertiary} />
+              <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>
+                Prices from{' '}
+                <Text style={{ fontWeight: '700', color: colors.text }}>${Math.min(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> to{' '}
+                <Text style={{ fontWeight: '700', color: colors.text }}>${Math.max(...COMPARISON_FLIGHTS.map((f) => f.price))}</Text> per person incl. taxes
+              </Text>
+            </View>
+          )}
 
           {/* Flight option cards */}
           {sorted.map((flight) => {
@@ -718,7 +851,7 @@ function ComparisonAlternatives() {
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                           <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{flight.arrival.time}</Text>
                           {flight.arrival.nextDay && (
-                            <Text style={{ ...TextStyles.micro, color: '#f59e0b', marginLeft: 2, marginTop: -2 }}>+1</Text>
+                            <Text style={{ ...TextStyles.micro, color: colors.warning, marginLeft: 2, marginTop: -2 }}>+1</Text>
                           )}
                         </View>
                         <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.arrival.airport}</Text>
@@ -731,9 +864,9 @@ function ComparisonAlternatives() {
                     <View style={{ alignItems: 'flex-end', marginRight: 4 }}>
                       <Text style={{ ...TextStyles.body, color: colors.text }}>{flight.duration}</Text>
                       {flight.stops === 0 ? (
-                        <Text style={{ ...TextStyles.smEm, color: '#059669' }}>Direct</Text>
+                        <Text style={{ ...TextStyles.smEm, color: colors.success }}>Direct</Text>
                       ) : (
-                        <Text style={{ ...TextStyles.smEm, color: '#d97706' }}>{flight.stops} stop</Text>
+                        <Text style={{ ...TextStyles.smEm, color: colors.warning }}>{flight.stops} stop</Text>
                       )}
                     </View>
 
@@ -757,8 +890,8 @@ function ComparisonAlternatives() {
                     </View>
                     <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>{flight.airline}</Text>
                     {flight.businessAvailable && (
-                      <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
-                        <Text style={{ ...TextStyles.xs, color: '#b45309' }}>Business avail.</Text>
+                      <View style={{ backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                        <Text style={{ ...TextStyles.xs, color: colors.warning }}>Business avail.</Text>
                       </View>
                     )}
                   </View>
@@ -775,7 +908,7 @@ function ComparisonAlternatives() {
                       {flight.layover && (
                         <>
                           <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>·</Text>
-                          <Text style={{ ...TextStyles.sm, color: '#d97706' }}>Stop: {flight.layover}</Text>
+                          <Text style={{ ...TextStyles.sm, color: colors.warning }}>Stop: {flight.layover}</Text>
                         </>
                       )}
                     </View>
@@ -788,14 +921,14 @@ function ComparisonAlternatives() {
                             width: 6,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: flight.onTime >= 85 ? '#22c55e' : flight.onTime >= 78 ? '#fbbf24' : '#f87171',
+                            backgroundColor: flight.onTime >= 85 ? colors.success : flight.onTime >= 78 ? colors.warning : colors.error,
                           }}
                         />
                         <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{flight.onTime}% on-time</Text>
                       </View>
                       <View style={{ width: 1, height: 12, backgroundColor: colors.border }} />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? '#16a34a' : colors.textTertiary} />
+                        <FontAwesome name="leaf" size={10} color={flight.co2 <= 280 ? colors.success : colors.textTertiary} />
                         <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{flight.co2}kg CO2</Text>
                       </View>
                     </View>
@@ -831,6 +964,14 @@ function BookingDetailsSection() {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const d = BOOKING_DETAILS;
+
+  // Hide the entire section until there's at least one real value.
+  // Booking reference / fare class / baggage are not yet wired to live
+  // data, and a card full of blank rows looks broken to demo viewers.
+  const hasAnyData =
+    d.confirmationNumber || d.pnr || d.fareClass ||
+    d.baggageAllowance.carryOn || d.cancellationPolicy || d.checkInUrl;
+  if (!hasAnyData) return null;
 
   return (
     <View style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
@@ -890,7 +1031,7 @@ function BookingDetailsSection() {
             </View>
             <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Baggage Fees</Text>
-              <Text style={{ ...TextStyles.captionEm, color: '#059669' }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.success }}>
                 {d.baggageAllowance.fees === 0 ? 'Included' : `$${d.baggageAllowance.fees}/person`}
               </Text>
             </View>
@@ -933,7 +1074,7 @@ function BookingDetailsSection() {
             </View>
             <Pressable
               onPress={() => Linking.openURL(d.checkInUrl)}
-              style={{ alignSelf: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+              style={{ alignSelf: 'flex-start', backgroundColor: colors.cardBackground, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
             >
               <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Check-in Online →</Text>
             </Pressable>
@@ -974,19 +1115,15 @@ function FlightSkeleton() {
    MAIN PAGE
    ================================================================ */
 
-const CITY_AIRPORTS: Record<string, string> = {
-  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-  'Prague': 'PRG', 'Amsterdam': 'AMS', 'Berlin': 'BER', 'Madrid': 'MAD',
-  'Athens': 'ATH', 'Seoul': 'ICN', 'Singapore': 'SIN', 'Milan': 'MXP',
-};
+// CITY_AIRPORTS removed — backend resolves city names to airport codes directly
 
 export default function FlightsScreen() {
   const ACCENT = useTabAccent('flights');
   const colors = useThemeColors();
   const { id: _id } = useLocalSearchParams<{ id: string }>();
-  const { trip, isLoading: tripLoading } = useItineraryScreen(_id);
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
+  const { trip, isLoading: tripLoading } = useItineraryScreen(id);
 
   const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
@@ -995,7 +1132,7 @@ export default function FlightsScreen() {
 
   // Get destination airport from trip
   const city = trip?.destination?.split(',')[0]?.trim() ?? '';
-  const destAirport = CITY_AIRPORTS[city] || '';
+  const destAirport = city; // Backend resolves city names directly
 
   // Convert trip_context flights to display format
   const bookedFlights = useMemo(
@@ -1004,13 +1141,21 @@ export default function FlightsScreen() {
   );
   const hasFlights = bookedFlights.length > 0;
 
+  // Search results from FlightSearchSection
+  const [searchFlights, setSearchFlights] = useState<any[]>([]);
+
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
   return (
     <PageTransition>
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       {/* 1. Flight Search Section */}
-      <FlightSearchSection />
+      <FlightSearchSection
+        destination={destAirport || city}
+        departDate={trip?.start_date ?? undefined}
+        returnDate={trip?.end_date ?? undefined}
+        onResults={setSearchFlights}
+      />
 
       {/* Flight prompt when no flights booked */}
       {!hasFlights && destAirport && (
@@ -1042,6 +1187,51 @@ export default function FlightsScreen() {
       {bookedFlights.filter((f: any) => f.type === 'return').map((f: any) => (
         <BookedFlightCard key={f.id} flight={f} />
       ))}
+
+      {/* Search Results */}
+      {searchFlights.length > 0 && (
+        <View style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ ...TextStyles.subhead, color: colors.text }}>Search Results</Text>
+            <View style={{ backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ ...TextStyles.smEm, color: ACCENT }}>{searchFlights.length} flights</Text>
+            </View>
+          </View>
+          {searchFlights.map((f: any, i: number) => {
+            const depTime = f.departure_time ? new Date(f.departure_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            const arrTime = f.arrival_time ? new Date(f.arrival_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+            return (
+              <View key={f.id || i} style={{ backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+                      <FontAwesome name="plane" size={14} color="#fff" />
+                    </View>
+                    <View>
+                      <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>{f.airline || 'Airline'}</Text>
+                      <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>{f.origin} → {f.destination}</Text>
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ ...TextStyles.subhead, color: ACCENT }}>${f.price ?? '—'}</Text>
+                    <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per person</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+                  <Text style={{ ...TextStyles.body, color: colors.text }}>{depTime} → {arrTime}</Text>
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{f.duration || ''}</Text>
+                  <Text style={{ ...TextStyles.smEm, color: f.stops === 0 ? colors.success : colors.warning }}>{f.stops === 0 ? 'Direct' : `${f.stops} stop`}</Text>
+                </View>
+                {f.link && (
+                  <Pressable onPress={() => Linking.openURL(f.link)} style={{ marginTop: 10, backgroundColor: ACCENT, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}>
+                    <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Book Flight</Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Add Flight button */}
       <Pressable

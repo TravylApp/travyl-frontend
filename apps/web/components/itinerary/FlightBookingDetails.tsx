@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-const MOCK_FLIGHT_BOOKING_DETAILS: FlightDetailsType = {
+// Placeholder — populated when user adds real booking details
+const EMPTY_FLIGHT_BOOKING: FlightDetailsType = {
   confirmationNumber: '',
   pnr: '',
   ticketNumbers: [],
@@ -40,7 +41,7 @@ export function FlightBookingDetails({ isVisible }: FlightBookingDetailsProps) {
 
   if (!isVisible) return null;
 
-  const details: FlightDetailsType = MOCK_FLIGHT_BOOKING_DETAILS;
+  const details: FlightDetailsType = EMPTY_FLIGHT_BOOKING;
 
   const copyToClipboard = (value: string, field: string) => {
     navigator.clipboard.writeText(value).then(() => {

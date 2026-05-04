@@ -1,3 +1,17 @@
+/**
+ * @module useActivityFilters
+ * Manages filter, sort, and view-mode state for the Activities tab on trip detail pages.
+ * Supports two view modes: 'booked' (itinerary activities already planned) and
+ * 'discover' (explore items sourced from trip_context). Provides category filters,
+ * sub-filters, a search query, sort options, and a favorites list.
+ *
+ * Also exports pure helper functions and constants used by both web and mobile
+ * to map categories, build booked-activity lists, and drive filter UI.
+ * Used by the web ActivitiesTab and the mobile ActivitiesScreen.
+ */
+
+'use client';
+
 import { useState, useMemo, useEffect } from 'react';
 import type { DiscoverItem } from '../types';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
@@ -37,6 +51,14 @@ export const ACTIVITY_SORT_OPTIONS: { key: ActivitySortOption; label: string }[]
 ];
 
 // ─── Helper functions ─────────────────────────────────────────
+
+/**
+ * Maps a raw category string (from the DB or trip_context) to one of the
+ * canonical `ACTIVITY_CATEGORIES` values used in the filter UI.
+ * Defaults to `'Sightseeing'` for unrecognized categories.
+ * @param category - Raw category label (e.g. `'museum'`, `'tour'`, `'outdoor'`)
+ * @returns One of the `ActivityFilterCategory` string literals
+ */
 export function mapActivityCategory(category: string): string {
   const c = category.toLowerCase();
   if (c.includes('tour')) return 'Tours';
@@ -47,17 +69,37 @@ export function mapActivityCategory(category: string): string {
   return 'Sightseeing';
 }
 
+/**
+ * Parses a price display string (e.g. `'$25'`, `'Free'`) into a numeric value
+ * for sort comparisons. Returns 0 for free or unparseable values.
+ * @param price - Price string from a `DiscoverItem`
+ * @returns Numeric price value
+ */
 const priceToNumber = (price?: string): number => {
   if (!price || price === 'Free') return 0;
   const num = parseFloat(price.replace(/[^0-9.]/g, ''));
   return isNaN(num) ? 0 : num;
 };
 
+/**
+ * Parses a distance display string (e.g. `'1.2 km'`) into a numeric value
+ * for sort comparisons. Returns 999 for missing or unparseable values so they
+ * sort to the bottom when sorting by distance.
+ * @param distance - Distance string from a `DiscoverItem`
+ * @returns Numeric distance value
+ */
 const distanceToNumber = (distance?: string): number => {
   if (!distance) return 999;
   return parseFloat(distance.replace(/[^0-9.]/g, '')) || 999;
 };
 
+/**
+ * Flattens itinerary day view models into a flat array of `DiscoverItem` objects
+ * representing already-booked (itinerary) activities. Excludes dining activities
+ * (those are handled by the restaurant tab). Used to populate the 'booked' view mode.
+ * @param days - Array of `ItineraryDayViewModel` from `useItineraryScreen`
+ * @returns Flat array of `DiscoverItem` with `isBooked: true`
+ */
 export function buildBookedActivities(days: ItineraryDayViewModel[]): DiscoverItem[] {
   return days.flatMap((day) =>
     day.timeGroups.flatMap((group) =>
@@ -83,6 +125,34 @@ export function buildBookedActivities(days: ItineraryDayViewModel[]): DiscoverIt
 }
 
 // ─── Hook ─────────────────────────────────────────────────────
+
+/**
+ * Manages all filter/sort/search state for the activities tab.
+ *
+ * Automatically switches from 'discover' to 'booked' view once the itinerary
+ * loads with activities. Merges items from `explore_items`, `foursquare_venues`,
+ * and `restaurants` in trip_context into the discover pool (deduped by name).
+ *
+ * @param days - Itinerary day view models (for building the booked-activities list)
+ * @param tripContext - Raw `trip_context` JSON blob from the trip row (for discover items)
+ * @returns Object with:
+ *   - `viewMode` / `setViewMode` — `'booked'` or `'discover'`
+ *   - `searchQuery` / `setSearchQuery` — text search input state
+ *   - `categoryFilter` / `handleCategoryChange` — active category + change handler (resets sub-filter)
+ *   - `activitySubFilter` / `setActivitySubFilter` — active sub-filter string
+ *   - `sortBy` / `setSortBy` — active sort option
+ *   - `favorites` / `toggleFavorite` — client-side favorites set
+ *   - `sourceItems` — the full list for the current view mode (before filtering)
+ *   - `filteredItems` — items after search, category, sub-filter, and sort are applied
+ *   - `bookedItems` / `discoverItems` — raw lists before filtering
+ *   - `clearFilters` — reset all filters to defaults
+ *
+ * @example
+ * ```tsx
+ * const { filteredItems, categoryFilter, handleCategoryChange } =
+ *   useActivityFilters(days, trip.trip_context);
+ * ```
+ */
 export function useActivityFilters(days: ItineraryDayViewModel[], tripContext?: any) {
   const bookedItems = useMemo(() => buildBookedActivities(days), [days]);
 
@@ -128,6 +198,11 @@ export function useActivityFilters(days: ItineraryDayViewModel[], tripContext?: 
   const [sortBy, setSortBy] = useState<ActivitySortOption>('rating');
   const [favorites, setFavorites] = useState<string[]>([]);
 
+  /**
+   * Changes the active category filter and clears any sub-filter to avoid
+   * stale sub-filter values that don't belong to the new category.
+   * @param f - The new category to filter by
+   */
   const handleCategoryChange = (f: ActivityFilterCategory) => {
     setCategoryFilter(f);
     setActivitySubFilter('');
@@ -174,10 +249,17 @@ export function useActivityFilters(days: ItineraryDayViewModel[], tripContext?: 
     return items;
   }, [sourceItems, searchQuery, categoryFilter, activitySubFilter, sortBy]);
 
+  /**
+   * Toggles the favorite state for an activity item (client-side only, not persisted).
+   * @param itemId - ID of the `DiscoverItem` to toggle
+   */
   const toggleFavorite = (itemId: string) => {
     setFavorites((prev) => prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId]);
   };
 
+  /**
+   * Resets all filters (category, sub-filter, search query, sort order) back to defaults.
+   */
   const clearFilters = () => {
     setCategoryFilter('All');
     setActivitySubFilter('');

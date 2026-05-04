@@ -1,4 +1,5 @@
 'use client'
+import { useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
@@ -7,6 +8,11 @@ import type { CalendarActivity, UserAwareness, TimeRange } from './types'
 import type { TripNote, Poll } from '@travyl/shared'
 import { computeOverlapLayout } from '@travyl/shared'
 import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
+import { useDayIntelligence } from './hooks/useDayIntelligence'
+import { getWmoWeather } from './utils/wmoWeatherCode'
+import DayHealthIndicator from './DayHealthIndicator'
+import TravelTimeBadge from './TravelTimeBadge'
+import { GhostEventBlock } from './GhostEventBlock'
 
 interface DayColumnProps {
   dayIndex: number
@@ -33,6 +39,12 @@ interface DayColumnProps {
   polls?: Map<string, Poll>
   pollUserId?: string
   onVotePoll?: (activityId: string, vote: 'yes' | 'no') => void
+  bookingStatuses?: Map<string, 'matched' | 'opened'>
+  tripId?: string
+  isDayView?: boolean
+  ghostActivities?: CalendarActivity[]
+  onConfirmGhost?: (activity: CalendarActivity) => void
+  onDismissGhost?: (id: string) => void
 }
 
 function CurrentTimeIndicator({
@@ -97,9 +109,23 @@ export function DayColumn({
   polls,
   pollUserId,
   onVotePoll,
+  bookingStatuses,
+  tripId,
+  isDayView = false,
+  ghostActivities = [],
+  onConfirmGhost,
+  onDismissGhost,
 }: DayColumnProps) {
-  const dayCollaborators = viewers.filter(
-    (c) => (c.selectedDayIndex ?? 0) === dayIndex,
+  const date = useMemo(() => {
+    const d = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
+    return d.toISOString().slice(0, 10)
+  }, [tripStartDate, dayIndex])
+
+  const { data: dayIntel } = useDayIntelligence(tripId ?? null, date)
+
+  const sortedActivities = useMemo(
+    () => [...activities].sort((a, b) => a.startHour - b.startHour),
+    [activities],
   )
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -153,9 +179,9 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-[var(--cal-border)] text-[var(--cal-text-secondary)] select-none',
+          'text-center text-xs font-medium py-1 border-b border-cal-border text-cal-text-secondary select-none',
           onClickDayHeader
-            ? 'cursor-pointer hover:bg-[var(--cal-border-light)] transition-colors'
+            ? 'cursor-pointer hover:bg-cal-border-light transition-colors'
             : '',
         ].join(' ')}
         onClick={onClickDayHeader}
@@ -171,34 +197,22 @@ export function DayColumn({
               }
             : undefined
         }
-      >
-        {label}
-        {dayCollaborators.length > 0 && (
-          <div
-            className="flex items-center justify-center gap-0 mt-0.5"
-            aria-label={`Viewing: ${dayCollaborators.map((c) => c.name).join(', ')}`}
-          >
-            {dayCollaborators.slice(0, 3).map((c, i) => (
-              <div
-                key={c.userId}
-                title={c.name}
-                style={{
-                  backgroundColor: c.color,
-                  marginLeft: i === 0 ? 0 : '-4px',
-                  zIndex: 3 - i,
-                }}
-                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-[var(--cal-surface)]"
-              >
-                {c.avatarInitial}
-              </div>
-            ))}
-            {dayCollaborators.length > 3 && (
-              <span className="text-[9px] text-[var(--cal-text-tertiary)] ml-1">
-                +{dayCollaborators.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+        >
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {dayIntel?.weather && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-cal-text-secondary">
+              {getWmoWeather(dayIntel.weather.weatherCode).icon}
+              {dayIntel.weather.tempMaxC !== null && `${Math.round(dayIntel.weather.tempMaxC)}°`}
+            </span>
+          )}
+          {dayIntel && (
+            <DayHealthIndicator
+              hoursConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.hours).length}
+              travelTimeConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.travelTime).length}
+            />
+          )}
+        </span>
       </div>
 
       {/* Droppable grid */}
@@ -206,8 +220,8 @@ export function DayColumn({
         ref={setNodeRef}
         data-day-grid={dayIndex}
         className={[
-          'relative flex-1 border-l border-[var(--cal-border-light)]',
-          isOver ? 'bg-[var(--cal-drag-over)]' : '',
+          'relative flex-1 border-l border-cal-border-light',
+          isOver ? 'bg-cal-drag-over' : '',
         ].join(' ')}
         style={{ minHeight: hourCount * HOUR_HEIGHT }}
         onClick={handleBackgroundClick}
@@ -216,7 +230,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={hour}
-            className="absolute w-full border-t border-[var(--cal-grid-line)] pointer-events-none"
+            className="absolute w-full border-t border-cal-grid-line pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT }}
           />
         ))}
@@ -225,7 +239,7 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-[var(--cal-grid-line-half)] pointer-events-none"
+            className="absolute w-full border-t border-dashed border-cal-grid-line-half pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
           />
         ))}
@@ -248,6 +262,7 @@ export function DayColumn({
               poll={polls?.get(activity.id)}
               userId={pollUserId}
               onVote={onVotePoll}
+              bookingStatus={bookingStatuses?.get(activity.id) ?? null}
               timeRangeStartHour={timeRange.startHour}
               timeRangeEndHour={timeRange.endHour}
               column={layout.column}
@@ -303,6 +318,48 @@ export function DayColumn({
           tripStartDate={tripStartDate}
           timeRange={timeRange}
         />
+
+        {/* Travel time badges — day view only, shown between consecutive activities */}
+        {isDayView && dayIntel && sortedActivities.map((act, i) => {
+          if (i === 0) return null
+          const prev = sortedActivities[i - 1]
+          const intel = dayIntel.activities[act.id]
+          if (!intel?.logistics.travelTimeMinutes) return null
+          const travelMinutes = intel.logistics.travelTimeMinutes
+          const gapMinutes = Math.round((act.startHour - (prev.startHour + prev.duration)) * 60)
+          const midTop = ((prev.startHour + prev.duration + act.startHour) / 2 - timeRange.startHour) * HOUR_HEIGHT
+          return (
+            <div
+              key={`travel-${act.id}`}
+              className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none group"
+              style={{ top: midTop }}
+            >
+              <TravelTimeBadge
+                travelTimeMinutes={travelMinutes}
+                distanceKm={intel.logistics.distanceKm ?? 0}
+                gapMinutes={gapMinutes}
+                hasConflict={intel.conflicts.travelTime}
+              />
+            </div>
+          )
+        })}
+
+        {/* Ghost activity layer — above events (z-10), pointer-events only on blocks */}
+        {ghostActivities.length > 0 && (
+          <div className="absolute inset-0" style={{ pointerEvents: 'none', zIndex: 10 }}>
+            {ghostActivities
+              .filter((g) => g.day === dayIndex)
+              .map((ghost) => (
+                <GhostEventBlock
+                  key={ghost.id}
+                  activity={ghost}
+                  timeRangeStartHour={timeRange.startHour}
+                  onConfirm={(a) => onConfirmGhost?.(a)}
+                  onDismiss={(id) => onDismissGhost?.(id)}
+                />
+              ))}
+          </div>
+        )}
       </div>
     </div>
   )

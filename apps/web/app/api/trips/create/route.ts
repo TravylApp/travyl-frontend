@@ -1,58 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getSupabase, supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key)
-}
-
-const CITY_AIRPORTS: Record<string, string> = {
-  'Paris': 'CDG', 'London': 'LHR', 'Tokyo': 'NRT', 'Rome': 'FCO',
-  'Barcelona': 'BCN', 'New York': 'JFK', 'Dubai': 'DXB', 'Bali': 'DPS',
-  'Sydney': 'SYD', 'Istanbul': 'IST', 'Bangkok': 'BKK', 'Lisbon': 'LIS',
-  'Prague': 'PRG', 'Marrakech': 'RAK', 'Cape Town': 'CPT', 'Amsterdam': 'AMS',
-  'Berlin': 'BER', 'Madrid': 'MAD', 'Athens': 'ATH', 'Seoul': 'ICN',
-  'Singapore': 'SIN', 'Hong Kong': 'HKG', 'Mumbai': 'BOM', 'Delhi': 'DEL',
-  'Cairo': 'CAI', 'Nairobi': 'NBO', 'Mexico City': 'MEX', 'Rio de Janeiro': 'GIG',
-  'Milan': 'MXP', 'Vienna': 'VIE', 'Zurich': 'ZRH', 'Dublin': 'DUB',
-  'Cancun': 'CUN', 'Lima': 'LIM', 'Buenos Aires': 'EZE', 'Reykjavik': 'KEF',
-  'Oslo': 'OSL', 'Stockholm': 'ARN', 'Copenhagen': 'CPH', 'Helsinki': 'HEL',
-  'Kuala Lumpur': 'KUL', 'Jakarta': 'CGK', 'Manila': 'MNL',
-  'Taipei': 'TPE', 'Osaka': 'KIX', 'Beijing': 'PEK', 'Shanghai': 'PVG',
-}
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase()
-  const body = await req.json()
-  const { title, destination, start_date, end_date, status, user_id, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+  try {
+    const blocked = checkOrigin(req) || rateLimit(req, 'create', 5, 60_000)
+    if (blocked) return blocked
 
-  if (!destination) {
-    return NextResponse.json({ error: 'Missing destination' }, { status: 400 })
-  }
+    const supabase = getSupabase()
+    let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
+    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
 
-  const { data, error } = await supabase
-    .from('trips')
-    .insert({
-      title: title || `${destination.split(',')[0]} Trip`,
-      destination,
-      start_date,
-      end_date,
-      status: status || 'planning',
-      user_id: user_id || null,
-      travelers: travelers || 1,
-      budget: budget || null,
-      currency: currency || 'USD',
-      trip_context: trip_context || {},
-      visibility: user_id ? 'private' : 'public',
-      is_generated: true,
-    })
-    .select()
-    .single()
+    // Derive user_id from verified session — never trust body.user_id
+    let user_id: string | null = null
+    const authHeader = req.headers.get('authorization')
+    if (authHeader) {
+      try {
+        const { data: { user } } = await createClient(supabaseUrl, supabaseKey,
+          { global: { headers: { Authorization: authHeader } } }
+        ).auth.getUser()
+        user_id = user?.id ?? null
+      } catch {}
+    }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+    if (!user_id) {
+      return NextResponse.json({ error: 'Sign in to plan a trip', code: 'AUTH_REQUIRED' }, { status: 401 })
+    }
+
+    if (!destination || typeof destination !== 'string' || destination.length > 200) {
+      return NextResponse.json({ error: 'Missing or invalid destination' }, { status: 400 })
+    }
+    // Sanitize inputs
+    const safeTravelers = Math.min(Math.max(1, parseInt(travelers) || 1), 50)
+    const safeBudget = budget ? Math.min(Math.max(0, parseFloat(budget) || 0), 1000000) : null
+    const safeTitle = title ? String(title).slice(0, 200) : `${destination.split(',')[0]} Trip`
+
+    const { data, error } = await supabase
+      .from('trips')
+      .insert({
+        title: safeTitle,
+        destination: destination.slice(0, 200),
+        start_date: start_date || null,
+        end_date: end_date || null,
+        status: 'planning',
+        user_id,
+        travelers: safeTravelers,
+        budget: safeBudget,
+        currency: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'MXN', 'BRL'].includes(currency) ? currency : 'USD',
+        trip_context: trip_context || {},
+        visibility: 'private',
+        is_generated: true,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: 'Operation failed' }, { status: 500 })
+    }
 
   const tripId = data.id
   const city = destination.split(',')[0]?.trim()
@@ -80,7 +85,6 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       // Non-blocking — trip still works without hero image
-      console.error('Failed to fetch hero image:', e)
     }
   }
 
@@ -108,20 +112,18 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-    if (hotelErr) console.error('Failed to save hotels:', hotelErr.message, hotelErr.code, hotelErr.details)
   }
 
   // Save flights to flights table (best effort)
   if (flights?.length) {
-    const destIata = CITY_AIRPORTS[city] || ''
     const flightRows = flights.map((f: any) => ({
       trip_id: tripId,
       data: {
         airline: f.airline,
         flight_number: null,
-        origin_iata: '',
-        origin_name: null,
-        dest_iata: destIata,
+        origin_iata: f.origin_iata || '',
+        origin_name: f.origin_name || null,
+        dest_iata: f.dest_iata || '',
         dest_name: city,
         departure_at: f.departure_time,
         arrival_at: f.arrival_time,
@@ -133,57 +135,15 @@ export async function POST(req: NextRequest) {
       },
     }))
     const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-    if (flightErr) console.error('Failed to save flights:', flightErr)
   }
 
-  // Save itinerary days + activities (best effort)
-  if (itinerary?.length) {
-    for (const day of itinerary) {
-      const { data: dayRow, error: dayErr } = await supabase
-        .from('itinerary_days')
-        .insert({ trip_id: tripId, day_number: day.day, date: day.date })
-        .select('id')
-        .single()
-
-      if (dayErr || !dayRow) continue
-
-      if (day.slots?.length) {
-        const catMap: Record<string, string> = {
-          restaurant: 'food', cafe: 'food', bar: 'food',
-          park: 'nature', beach: 'nature', garden: 'nature', hiking: 'nature',
-          hotel: 'hotel', hostel: 'hotel', airport: 'airport',
-        }
-        const activities = day.slots.map((slot: any, i: number) => {
-          const poi = slot.poi
-          return {
-            trip_id: tripId,
-            itinerary_day_id: dayRow.id,
-            activity_name: poi.name,
-            activity_type: catMap[poi.subcategory] || catMap[poi.category] || 'other',
-            starting_date: day.date,
-            ending_date: day.date,
-            starting_time: slot.start_time,
-            ending_time: slot.end_time,
-            latitude: poi.lat,
-            longitude: poi.lng,
-            sort_order: i,
-            activity_data: {
-              category: poi.category,
-              subcategory: poi.subcategory,
-              location_name: poi.name,
-              image_url: poi.photo_url || null,
-              rating: poi.rating || null,
-              description: poi.description || null,
-              tags: poi.tags,
-              visit_duration_min: poi.visit_duration_min,
-            },
-          }
-        })
-        const { error: actErr } = await supabase.from('activities').insert(activities)
-        if (actErr) console.error('Failed to save activities for day', day.day, actErr)
-      }
-    }
-  }
+  // Itinerary is stored in trip_context — no separate tables needed
 
   return NextResponse.json(data)
+  } catch (e) {
+    // Don't leak raw error messages (DB constraint names, Postgres internals,
+    // network errors) to anonymous callers. Log server-side and return generic.
+    console.error('[trips/create] internal error:', e)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
 }

@@ -7,6 +7,7 @@ import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore, LOGIN_DESTINATIONS } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
+import { safeNextPath } from '@/lib/safe-redirect';
 
 export default function LoginPage() {
   return (
@@ -31,6 +32,7 @@ function LoginPageInner() {
   const [currentPage, setCurrentPage] = useState(0);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +45,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace(searchParams.get('next') || '/');
+      router.replace(safeNextPath(searchParams.get('next')));
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {
@@ -55,9 +57,33 @@ function LoginPageInner() {
   const prevPage = () => setCurrentPage((p) => (p - 1 + LOGIN_DESTINATIONS.length) % LOGIN_DESTINATIONS.length);
   const dest = LOGIN_DESTINATIONS[currentPage];
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Enter your email address, then click Forgot password.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      setResetEmailSent(true);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to send reset email.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSocialSignIn = async (provider: 'google' | 'facebook' | 'azure' | 'apple') => {
     setError('');
-    const { error } = await supabase.auth.signInWithOAuth({ provider });
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    });
     if (error) setError(error.message);
   };
 
@@ -88,7 +114,7 @@ function LoginPageInner() {
               <PaperPlane size={16} className="-rotate-12 text-white" />
             </div>
           </div>
-          <p className="text-white/40 text-[10px] tracking-[2px] uppercase">March 2026 &bull; Issue 024</p>
+          <p className="text-white/40 text-[10px] tracking-[2px] uppercase">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} &bull; Issue {String(Math.floor((Date.now() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))).padStart(3, '0')}</p>
         </div>
 
         {/* Text Content */}
@@ -370,9 +396,18 @@ function LoginPageInner() {
 
               {!isSignUp && (
                 <div className="flex justify-end">
-                  <button type="button" className="text-[#1e3a5f]/50 hover:text-[#1e3a5f] hover:underline text-xs transition-all">
-                    Forgot password?
-                  </button>
+                  {resetEmailSent ? (
+                    <p className="text-xs text-green-600">Check your email for a reset link.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={submitting}
+                      className="text-[#1e3a5f]/50 hover:text-[#1e3a5f] hover:underline text-xs transition-all disabled:opacity-40"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
                 </div>
               )}
 

@@ -5,13 +5,11 @@ import {
   supabaseSecretKey,
   serpApiKey,
   pexels,
-  unsplashAccessKey,
   foursquareClientId,
   foursquareClientSecret,
   foursquareApiKey,
   tripadvisorApiKey,
   geonamesUsername,
-  opentripmapApiKey,
   duffelApiToken,
   visualCrossingApiKey,
   graphhopperApiKey,
@@ -56,11 +54,9 @@ export const web = new sst.x.DevCommand('TravylWebDev', {
     FOURSQUARE_API_KEY: foursquareApiKey.value,
     TRIPADVISOR_API_KEY: tripadvisorApiKey.value,
     GEONAMES_USERNAME: geonamesUsername.value,
-    OPENTRIPMAP_API_KEY: opentripmapApiKey.value,
 
     // Server-only — Images
     PEXELS_API_KEY: pexels.value,
-    UNSPLASH_ACCESS_KEY: unsplashAccessKey.value,
 
     // Server-only — Travel
     DUFFEL_API_TOKEN: duffelApiToken.value,

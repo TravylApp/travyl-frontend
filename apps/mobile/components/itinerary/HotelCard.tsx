@@ -13,11 +13,11 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Navy, TextStyles } from '@travyl/shared';
 import type { HotelViewModel } from '@travyl/shared';
-import type { MockHotelDetail, MockHotelRoom } from '@travyl/shared';
+import type { HotelDetail, HotelRoom } from '@travyl/shared';
 
 interface HotelCardProps {
   hotel: HotelViewModel;
-  detail?: MockHotelDetail;
+  detail?: HotelDetail;
 }
 
 /* ---------- helpers ---------- */
@@ -154,7 +154,7 @@ function RoomCard({
   room,
   onSelect,
 }: {
-  room: MockHotelRoom;
+  room: HotelRoom;
   onSelect: () => void;
 }) {
   return (

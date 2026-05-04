@@ -1,7 +1,8 @@
 import '../global.css';
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -10,7 +11,8 @@ import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { Text, TextInput } from 'react-native';
-import { useAuthStore } from '@travyl/shared';
+import { useAuthStore, configureSupabase } from '@travyl/shared';
+import { Platform } from 'react-native';
 
 // Set Satoshi as the default font for all Text and TextInput components
 const originalTextRender = (Text as any).render;
@@ -40,6 +42,9 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
+// Track if supabase has been configured
+let _supabaseConfigured = false;
+
 export default function RootLayout() {
   const queryClientRef = useRef(new QueryClient());
   const initialize = useAuthStore((s) => s.initialize);
@@ -62,13 +67,36 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
-      console.log('Front-end developed by JPB Developments — https://www.jpbdevelopments.com');
+      if (__DEV__) console.log('Front-end developed by JPB Developments — https://www.jpbdevelopments.com');
     }
   }, [loaded]);
 
   useEffect(() => {
-    const unsubscribe = initialize();
-    return unsubscribe;
+    let unsubscribe: (() => void) | undefined;
+
+    const setup = async () => {
+      // Configure Supabase with AsyncStorage on native platforms
+      if (!_supabaseConfigured && Platform.OS !== 'web') {
+        _supabaseConfigured = true;
+        try {
+          const [{ createClient }, { default: AsyncStorage }] = await Promise.all([
+            import('@supabase/supabase-js'),
+            import('@react-native-async-storage/async-storage'),
+          ]);
+          const sb = createClient(
+            process.env.EXPO_PUBLIC_SUPABASE_URL!,
+            process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+            { auth: { storage: AsyncStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }
+          );
+          configureSupabase(sb);
+        } catch {}
+      }
+      // Initialize auth AFTER supabase is configured
+      unsubscribe = initialize();
+    };
+
+    setup();
+    return () => unsubscribe?.();
   }, [initialize]);
 
   if (!loaded) {
@@ -83,11 +111,12 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const scheme = useColorScheme();
   return (
-    <ThemeProvider value={DefaultTheme}>
+    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="trip/[id]" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, freezeOnBlur: false }} />
+        <Stack.Screen name="trip/[id]" options={{ headerShown: false, gestureEnabled: true, animation: 'slide_from_right' }} />
         <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="login-callback" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ presentation: 'modal', headerShown: false }} />

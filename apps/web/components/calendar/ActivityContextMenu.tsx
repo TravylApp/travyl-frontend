@@ -92,7 +92,7 @@ export function ActivityContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[100] min-w-[160px] bg-white dark:bg-[#0f1a28] rounded-lg border border-gray-200 dark:border-[#1e3a5f]/40 shadow-xl py-1 text-sm"
+      className="fixed z-[100] min-w-[160px] bg-white dark:bg-cal-surface-elevated rounded-lg border border-gray-200 dark:border-cal-border shadow-xl py-1 text-sm"
       style={position}
     >
       {actions.map((action, i) => {
@@ -100,7 +100,7 @@ export function ActivityContextMenu({
           return (
             <div
               key={`sep-${i}`}
-              className="h-px bg-gray-200 dark:bg-[#1e3a5f]/30 my-1"
+              className="h-px bg-gray-200 dark:bg-cal-accent-bg my-1"
             />
           )
         }
@@ -124,15 +124,15 @@ export function ActivityContextMenu({
             className={[
               'w-full text-left px-3 py-1.5 transition-colors',
               action.disabled
-                ? 'text-gray-400 dark:text-[#484f58] cursor-default'
+                ? 'text-gray-400 dark:text-cal-text-tertiary cursor-default'
                 : isHighlighted
-                  ? 'bg-gray-100 dark:bg-[#1e3a5f]/30'
+                  ? 'bg-gray-100 dark:bg-cal-accent-bg'
                   : '',
               action.danger && !action.disabled
                 ? 'text-red-500 dark:text-red-400'
                 : action.disabled
                   ? ''
-                  : 'text-gray-700 dark:text-[#cdd9e5]',
+                  : 'text-gray-700 dark:text-cal-text',
             ].join(' ')}
           >
             {action.label}

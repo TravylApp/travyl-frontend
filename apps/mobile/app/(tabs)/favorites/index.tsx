@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, memo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -8,189 +8,35 @@ import {
   TextInput,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
+  Linking,
+  Keyboard,
+  Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Navy, groupPlacesByCollection, TextStyles, FontSize, FontFamily, type PlaceItem } from '@travyl/shared';
+import {
+  Navy, TextStyles, FontSize, FontFamily,
+  haversineKm as distanceKm, fetchDiscoverPage, fetchNearbyPlaces, searchPlaces, dedupPlaces, distanceLabel,
+  inferSearchHint,
+  type PlaceItem, type DiscoverPageResult,
+} from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+
 import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Use web app as API proxy — it has all the API keys (Foursquare, etc.)
-// In dev: localhost:3000, in production: deeviaje.com
-const BACKEND_API = process.env.EXPO_PUBLIC_RECOMMENDATION_API_URL || 'https://api.dev.gotravyl.com';
-const WEB_API = BACKEND_API;
-
-const KNOWN_CITIES: Record<string, { lat: string; lng: string }> = {
-  'paris': { lat: '48.8566', lng: '2.3522' }, 'london': { lat: '51.5074', lng: '-0.1278' },
-  'rome': { lat: '41.9028', lng: '12.4964' }, 'tokyo': { lat: '35.6762', lng: '139.6503' },
-  'barcelona': { lat: '41.3874', lng: '2.1686' }, 'new york': { lat: '40.7128', lng: '-74.0060' },
-  'bali': { lat: '-8.4095', lng: '115.1889' }, 'dubai': { lat: '25.2048', lng: '55.2708' },
-  'bangkok': { lat: '13.7563', lng: '100.5018' }, 'amsterdam': { lat: '52.3676', lng: '4.9041' },
-  'sydney': { lat: '-33.8688', lng: '151.2093' }, 'istanbul': { lat: '41.0082', lng: '28.9784' },
-  'lisbon': { lat: '38.7223', lng: '-9.1393' }, 'singapore': { lat: '1.3521', lng: '103.8198' },
-  'seoul': { lat: '37.5665', lng: '126.9780' }, 'athens': { lat: '37.9838', lng: '23.7275' },
-  'prague': { lat: '50.0755', lng: '14.4378' }, 'marrakech': { lat: '31.6295', lng: '-7.9811' },
-  'cape town': { lat: '-33.9249', lng: '18.4241' }, 'mexico city': { lat: '19.4326', lng: '-99.1332' },
-  'rio de janeiro': { lat: '-22.9068', lng: '-43.1729' }, 'miami': { lat: '25.7617', lng: '-80.1918' },
-  'san francisco': { lat: '37.7749', lng: '-122.4194' }, 'los angeles': { lat: '34.0522', lng: '-118.2437' },
-  'cancun': { lat: '21.1619', lng: '-86.8515' }, 'berlin': { lat: '52.5200', lng: '13.4050' },
-};
-
-// Upscale Google Places thumbnails to usable resolution
-function upscaleImage(url: string | null | undefined): string {
-  if (!url) return '';
-  return url.replace(/=w\d+-h\d+(-k-no)?/, '=w600-h400-k-no');
-}
-
-// Map backend response to PlaceItem format
-function mapBackendToPlaceItem(p: any): PlaceItem {
-  const cat = (p.category || '').toLowerCase();
-  return {
-    id: p.id,
-    name: p.name,
-    image: upscaleImage(p.photo_url),
-    type: /restaurant|cafe|bar|dining/.test(cat) ? 'restaurant' : /park|garden|beach/.test(cat) ? 'experience' : 'attraction',
-    rating: p.rating || 0,
-    tagline: p.description?.split('.')[0] || p.category || '',
-    category: p.category || '',
-    description: p.description || '',
-    tags: p.tags || [p.category].filter(Boolean),
-    latitude: p.lat,
-    longitude: p.lng,
-    address: p.address,
-    reviewCount: p.review_count,
-  };
-}
-
-async function resolveCoords(query: string): Promise<{ lat: string; lng: string } | null> {
-  const known = KNOWN_CITIES[query.toLowerCase()];
-  if (known) return known;
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'Travyl/1.0' } }
-    );
-    const data = await res.json();
-    if (data.length > 0) return { lat: data[0].lat, lng: data[0].lon };
-  } catch {}
-  return null;
-}
-
-const BROWSE_CITIES = [
-  { lat: '48.8566', lng: '2.3522', name: 'Paris' },
-  { lat: '35.6762', lng: '139.6503', name: 'Tokyo' },
-  { lat: '41.9028', lng: '12.4964', name: 'Rome' },
-  { lat: '40.7128', lng: '-74.0060', name: 'New York' },
-  { lat: '41.3874', lng: '2.1686', name: 'Barcelona' },
-  { lat: '-33.8688', lng: '151.2093', name: 'Sydney' },
-  { lat: '13.7563', lng: '100.5018', name: 'Bangkok' },
-  { lat: '25.2048', lng: '55.2708', name: 'Dubai' },
-  { lat: '51.5074', lng: '-0.1278', name: 'London' },
-  { lat: '-8.4095', lng: '115.1889', name: 'Bali' },
-  { lat: '37.9838', lng: '23.7275', name: 'Athens' },
-  { lat: '31.6295', lng: '-7.9811', name: 'Marrakech' },
-  { lat: '37.7749', lng: '-122.4194', name: 'San Francisco' },
-  { lat: '1.3521', lng: '103.8198', name: 'Singapore' },
-];
-
-const ALL_CATEGORIES = [
-  'sightseeing', 'restaurant', 'museum', 'park', 'cafe',
-  'bar', 'shopping', 'nightlife', 'landmark',
-];
-
-// Session seed so each app launch gets different cities
-const SESSION_SEED = Date.now();
-
-// Fast first batch: 2 cities × 1 category = 2 API calls (~1-2s)
-async function fetchMobilePlacesFast(): Promise<PlaceItem[]> {
-  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random()) - 0.5);
-  const cities = shuffled.slice(0, 2);
-  const cat = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
-
-  const url = `${WEB_API}/api/places/nearby?lat=${cities[0].lat}&lng=${cities[0].lng}&category=${cat}&limit=12`;
-  console.log('[Places] Fetching:', url);
-
-  const results = await Promise.all(
-    cities.map(city =>
-      fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=12`)
-        .then(r => {
-          console.log('[Places] Response status:', r.status);
-          return r.ok ? r.json() : [];
-        })
-        .then((data: any[]) => {
-          console.log('[Places] Raw items:', data.length, 'first photo:', data[0]?.photo_url?.substring(0, 50));
-          const mapped = Array.isArray(data) ? data.map(mapBackendToPlaceItem) : [];
-          console.log('[Places] Mapped items:', mapped.length, 'first image:', mapped[0]?.image?.substring(0, 50));
-          return mapped;
-        })
-        .catch((err) => { console.log('[Places] Fetch error:', err); return []; })
-    )
-  );
-  const deduped = dedup(results.flat());
-  console.log('[Places] Final deduped:', deduped.length);
-  return deduped;
-}
-
-// Slower second batch: more cities + categories + foursquare
-async function fetchMobilePlacesMore(): Promise<PlaceItem[]> {
-  const shuffled = [...BROWSE_CITIES].sort(() => Math.sin(SESSION_SEED + Math.random() + 1) - 0.5);
-  const cities = shuffled.slice(0, 3);
-  const catStart = Math.floor(Math.random() * ALL_CATEGORIES.length);
-
-  const fetches: Promise<PlaceItem[]>[] = [];
-  cities.forEach((city, i) => {
-    const cat = ALL_CATEGORIES[(catStart + i) % ALL_CATEGORIES.length];
-    fetches.push(
-      fetch(`${WEB_API}/api/places/nearby?lat=${city.lat}&lng=${city.lng}&category=${cat}&limit=10`)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: any[]) => data.map(mapBackendToPlaceItem))
-        .catch(() => [])
-    );
-  });
-  // Foursquare for restaurants
-  fetches.push(
-    fetch(`${WEB_API}/api/foursquare?lat=${cities[0].lat}&lng=${cities[0].lng}&category=restaurant&limit=6`)
-      .then(async r => {
-        if (!r.ok) return [];
-        const venues = await r.json();
-        if (!Array.isArray(venues)) return [];
-        return venues
-          .filter((v: any) => v.image && !v.image.includes('categories_v2'))
-          .map((v: any): PlaceItem => ({
-            id: `fs_${v.id}`, name: v.name, image: v.image, type: 'restaurant',
-            rating: v.rating ? v.rating / 2 : 0, tagline: v.address || 'Restaurant',
-            category: v.category || 'Restaurant', description: v.tip || '',
-            latitude: v.lat, longitude: v.lng, tags: [v.category || 'Restaurant'],
-          }));
-      })
-      .catch(() => [])
-  );
-
-  const results = await Promise.all(fetches);
-  return dedup(results.flat());
-}
-
-function dedup(places: PlaceItem[]): PlaceItem[] {
-  const seen = new Set<string>();
-  const seenNames = new Set<string>();
-  return places.filter((p) => {
-    if (!p.name || !p.image || seen.has(p.id)) return false;
-    const norm = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (seenNames.has(norm)) return false;
-    seen.add(p.id);
-    seenNames.add(norm);
-    return true;
-  });
-}
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const PAD = 16;
-const GAP = 8;
-const STACK_CARD_W = SCREEN_WIDTH * 0.72;
-const STACK_CARD_H = STACK_CARD_W * 1.3;
+const GAP = 4;
+const AUTO_LOAD_THRESHOLD = 100;
+const SCROLL_LOAD_DISTANCE = 1200;
+const NO_COORDS_DISTANCE = 99999;
+const NEARBY_MERGE_RADIUS_KM = 16;
 
 function hashCode(str: string): number {
   let hash = 0;
@@ -218,8 +64,8 @@ function balanceColumns(places: PlaceItem[]): [PlaceItem[], PlaceItem[]] {
 }
 
 type TabKey = 'all' | 'destination' | 'attraction' | 'restaurant' | 'experience' | 'event' | 'favorites';
-type SortKey = 'default' | 'top_rated' | 'az';
-type ViewMode = 'grid' | 'stack';
+type SortKey = 'default' | 'top_rated' | 'nearest' | 'popular' | 'az';
+type ViewMode = 'grid' | 'stack' | 'flush';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'globe' },
@@ -232,36 +78,67 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
 ];
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'default', label: 'Default' },
+  { key: 'default', label: 'Distance' },
   { key: 'top_rated', label: 'Top Rated' },
+  { key: 'popular', label: 'Most Reviewed' },
   { key: 'az', label: 'A-Z' },
 ];
 
 /* ═══════════════ Grid Place Card ═══════════════ */
 
+const TYPE_ICON: Record<string, string> = {
+  event: 'calendar', restaurant: 'cutlery', experience: 'compass',
+  destination: 'map-marker', attraction: 'university', hotel: 'bed',
+};
+const TYPE_COLOR: Record<string, string> = {
+  event: '#8b5cf6', restaurant: '#ef4444', experience: '#f59e0b',
+  destination: '#3b82f6', attraction: '#10b981', hotel: '#6366f1',
+};
+
 const GridPlaceCard = memo(function GridPlaceCard({
-  place, isFav, onPress, onToggleFav, colors,
+  place, isFav, onPress, onToggleFav, colors, flush, userLoc,
 }: {
   place: PlaceItem;
+  flush?: boolean;
   isFav: boolean;
   onPress: () => void;
   onToggleFav: () => void;
   colors: ReturnType<typeof useThemeColors>;
+  userLoc?: { lat: number; lng: number } | null;
 }) {
   const imgH = getImageHeight(place.id);
-  const imgs = place.images && place.images.length > 1 ? place.images : [place.image];
+  const imgs = place.images && place.images.length > 1 ? place.images : place.image ? [place.image] : [];
   const [imgIdx, setImgIdx] = useState(0);
   const hasMultiple = imgs.length > 1;
+  const hasImage = imgs.length > 0 && !!imgs[0];
+  const typeColor = TYPE_COLOR[place.type] || '#6b7280';
+  const typeIcon = TYPE_ICON[place.type] || 'globe';
+  const isEvent = place.type === 'event';
+  const priceStr = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
+
+  // Calculate distance from user
+  let distLabel = '';
+  if (userLoc && place.latitude != null && place.longitude != null) {
+    const dist = distanceKm(userLoc.lat, userLoc.lng, place.latitude, place.longitude);
+    const mi = dist * 0.621371;
+    distLabel = mi < 0.3 ? `${Math.round(mi * 5280)} ft` : mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
+  }
 
   return (
-    <Pressable onPress={onPress} style={{ marginBottom: GAP }}>
+    <Pressable onPress={onPress} style={{ marginBottom: flush ? 1 : GAP }}>
       <View style={{
-        borderRadius: 14, overflow: 'hidden',
+        borderRadius: flush ? 0 : 14, overflow: 'hidden',
         backgroundColor: colors.cardBackground,
-        borderWidth: 1, borderColor: colors.border,
+        borderWidth: flush ? 0 : 1, borderColor: colors.border,
       }}>
         <View style={{ height: imgH, position: 'relative' }}>
-          <Image source={imgs[imgIdx]} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+          {hasImage ? (
+            <Image source={{ uri: imgs[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+          ) : (
+            <View style={{ width: '100%', height: imgH, backgroundColor: typeColor + '18', alignItems: 'center', justifyContent: 'center' }}>
+              <FontAwesome name={typeIcon as any} size={32} color={typeColor + '40'} />
+            </View>
+          )}
 
           {hasMultiple && (
             <Pressable
@@ -269,6 +146,16 @@ const GridPlaceCard = memo(function GridPlaceCard({
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             />
           )}
+
+          {/* Type badge — top-left */}
+          <View style={{
+            position: 'absolute', top: 8, left: 8,
+            flexDirection: 'row', alignItems: 'center', gap: 4,
+            backgroundColor: typeColor, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8,
+          }}>
+            <FontAwesome name={typeIcon as any} size={8} color="#fff" />
+            <Text style={{ ...TextStyles.micro, color: '#fff', textTransform: 'capitalize' }}>{place.type}</Text>
+          </View>
 
           {/* Heart button — top-right */}
           <Pressable
@@ -282,20 +169,13 @@ const GridPlaceCard = memo(function GridPlaceCard({
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={12} color={isFav ? '#ef4444' : '#9ca3af'} />
+            <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={12} color={isFav ? colors.error : colors.textTertiary} />
           </Pressable>
 
-          {/* Gradient overlay */}
-          <View pointerEvents="none" style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: imgH * 0.4,
-            backgroundColor: 'transparent',
-          }} />
-
-          {/* Centered dot indicators */}
+          {/* Dot indicators */}
           {hasMultiple && (
             <View pointerEvents="none" style={{
-              position: 'absolute', bottom: 8,
-              left: 0, right: 0,
+              position: 'absolute', bottom: 8, left: 0, right: 0,
               flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4,
             }}>
               {imgs.map((_, i) => (
@@ -308,24 +188,95 @@ const GridPlaceCard = memo(function GridPlaceCard({
           )}
         </View>
 
-        {/* Content below image — matches web PinCard style */}
-        <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+        {/* Content below image */}
+        {!flush && <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 }}>
+          {/* Location + distance */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
             <FontAwesome name="map-marker" size={9} color={colors.textTertiary} style={{ marginRight: 4 }} />
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
+            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>
+              {distLabel ? `${distLabel} · ` : ''}{place.address || place.tagline}
+            </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, flex: 1 }} numberOfLines={1}>{place.name}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}>
-              <FontAwesome name="star" size={10} color="#fbbf24" style={{ marginRight: 2 }} />
-              <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>{place.rating}</Text>
+
+          {/* Name */}
+          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 2 }} numberOfLines={2}>{place.name}</Text>
+
+          {/* Rating + reviews + price row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+            {place.rating > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <FontAwesome name="star" size={10} color="#fbbf24" />
+                <Text style={{ ...TextStyles.smEm, color: colors.text }}>{place.rating}</Text>
+              </View>
+            )}
+            {(place.reviewCount ?? 0) > 0 && (
+              <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>
+                ({(place.reviewCount ?? 0).toLocaleString()})
+              </Text>
+            )}
+            {priceStr ? (
+              <Text style={{ ...TextStyles.smEm, color: colors.success }}>{priceStr}</Text>
+            ) : null}
+          </View>
+
+          {/* Description */}
+          {place.description ? (
+            <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginBottom: 4 }} numberOfLines={2}>{place.description}</Text>
+          ) : null}
+
+          {/* Hours + Duration row */}
+          {(place.hours || place.duration) && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+              {place.hours && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <FontAwesome name="clock-o" size={9} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.xs, color: colors.textSecondary }} numberOfLines={1}>{place.hours}</Text>
+                </View>
+              )}
+              {place.duration && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <FontAwesome name="hourglass-half" size={8} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>{place.duration}</Text>
+                </View>
+              )}
             </View>
-          </View>
-          {place.description && (
-            <Text style={{ ...TextStyles.sm, color: colors.textSecondary }} numberOfLines={2}>{place.description}</Text>
           )}
+
+          {/* Event: date/time + ticket link */}
+          {isEvent && place.tagline && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <FontAwesome name="calendar" size={9} color={typeColor} />
+              <Text style={{ ...TextStyles.sm, color: typeColor, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
+            </View>
+          )}
+          {isEvent && place.website && (
+            <Pressable
+              onPress={() => Linking.openURL(place.website!).catch(() => {})}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                backgroundColor: typeColor + '15', borderRadius: 8,
+                paddingVertical: 6, marginBottom: 4,
+              }}
+            >
+              <FontAwesome name="ticket" size={10} color={typeColor} />
+              <Text style={{ ...TextStyles.smEm, color: typeColor }}>Get Tickets</Text>
+            </Pressable>
+          )}
+
+          {/* Website link for non-events */}
+          {!isEvent && place.website && (
+            <Pressable
+              onPress={() => Linking.openURL(place.website!).catch(() => {})}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}
+            >
+              <FontAwesome name="external-link" size={9} color={colors.tint} />
+              <Text style={{ ...TextStyles.xs, color: colors.tint }} numberOfLines={1}>Visit website</Text>
+            </Pressable>
+          )}
+
+          {/* Tags */}
           {place.tags && place.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
               {place.tags.slice(0, 3).map((tag) => (
                 <View key={tag} style={{
                   paddingHorizontal: 6, paddingVertical: 2,
@@ -336,7 +287,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
               ))}
             </View>
           )}
-        </View>
+        </View>}
       </View>
     </Pressable>
   );
@@ -347,124 +298,165 @@ const GridPlaceCard = memo(function GridPlaceCard({
 
 export default function FavoritesScreen() {
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
+  const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeSubcategory, setActiveSubcategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Geolocation — get user's current position for Near You
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    import('expo-location').then(async (Location) => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } catch {}
+    }).catch(() => {});
+  }, []);
+
+  // Near You — separate query, strict radius, sorted by closest
+  const { data: nearbyPlaces = [], isLoading: nearbyLoading } = useQuery({
+    queryKey: ['mobile-places-nearby', userLocation?.lat, userLocation?.lng],
+    queryFn: () => fetchNearbyPlaces(userLocation!.lat, userLocation!.lng),
+    staleTime: 10 * 60 * 1000,
+    enabled: !!userLocation,
+  });
   const [searchCity, setSearchCity] = useState('');
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  useEffect(() => {
+    import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+      AsyncStorage.getItem('travyl-favorites').then(val => {
+        if (val) try { setFavorites(JSON.parse(val)); } catch {}
+      });
+    }).catch(() => {});
+  }, []);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
   const [showcaseIdx, setShowcaseIdx] = useState(-1); // -1 = hidden
 
-  // Phase 1: fast initial load (~1-2s)
-  const { data: fastPlaces = [], isLoading: fastLoading } = useQuery({
-    queryKey: ['mobile-places-fast', SESSION_SEED],
-    queryFn: fetchMobilePlacesFast,
+  // Infinite discovery feed — shared with web
+  const {
+    data: suggestData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['mobile-places-discover', userLocation?.lat],
+    queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
     staleTime: 5 * 60 * 1000,
   });
-  // Phase 2: more results in background
-  const { data: morePlaces = [] } = useQuery({
-    queryKey: ['mobile-places-more', SESSION_SEED],
-    queryFn: fetchMobilePlacesMore,
-    staleTime: 5 * 60 * 1000,
-    enabled: fastPlaces.length > 0, // only after fast batch loads
-  });
-  // API search — NLP search via /api/places/suggest
-  const { data: searchPlaces = [], isLoading: searchLoading } = useQuery({
+
+  // Flatten all loaded pages into a single deduped list
+  const discoveredPlaces = useMemo(() => {
+    if (!suggestData?.pages) return [];
+    const all = suggestData.pages.flatMap((p) => p.items);
+    return dedupPlaces(all);
+  }, [suggestData]);
+
+  // API search — infinite scroll, same as discover feed
+  const {
+    data: searchData,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
+    isLoading: searchLoading,
+  } = useInfiniteQuery({
     queryKey: ['mobile-places-search', searchCity],
-    queryFn: async () => {
-      if (!searchCity) return [];
-
-      // Try NLP suggest endpoint first (handles "hidden gem restaurant in Paris", "best ramen Tokyo", etc.)
-      const coords = await resolveCoords(searchCity);
-      const destination = coords ? searchCity : searchCity.split(' ').pop() || searchCity;
-
-      const suggestRes = await fetch(
-        `${WEB_API}/api/places/suggest?q=${encodeURIComponent(searchCity)}&destination=${encodeURIComponent(destination)}&limit=20`
-      ).catch(() => null);
-
-      if (suggestRes?.ok) {
-        const json = await suggestRes.json();
-        const suggestions = json.suggestions ?? json.results ?? [];
-        if (suggestions.length > 0) {
-          return dedup(suggestions.map((s: any): PlaceItem => ({
-            id: s.id,
-            name: s.name,
-            image: s.imageUrl || s.imageUrls?.[0] || '',
-            images: s.imageUrls || (s.imageUrl ? [s.imageUrl] : []),
-            type: /restaurant|food|cafe|dining/i.test(s.category || '') ? 'restaurant' : 'attraction',
-            rating: s.rating || 0,
-            tagline: s.location || s.description || s.category || '',
-            category: s.category || '',
-            description: s.description || '',
-            tags: s.tags || [s.category].filter(Boolean),
-            latitude: s.latitude,
-            longitude: s.longitude,
-            address: s.location,
-            reviewCount: s.reviewCount,
-          })));
-        }
-      }
-
-      // Fallback: nearby search with resolved coordinates
-      if (!coords) return [];
-      const cats = ['sightseeing', 'restaurant', 'museum', 'park', 'cafe', 'nightlife'];
-      const fetches: Promise<PlaceItem[]>[] = cats.map(cat =>
-        fetch(`${WEB_API}/api/places/nearby?lat=${coords.lat}&lng=${coords.lng}&category=${cat}&limit=8`)
-          .then(r => r.ok ? r.json() : [])
-          .then((data: any[]) => data.map(mapBackendToPlaceItem))
-          .catch(() => [])
-      );
-      const results = await Promise.all(fetches);
-      const allPlaces = results.flat();
-      // Use first result's coordinates to fetch events
-      const firstWithCoords = allPlaces.find(p => p.latitude && p.longitude);
-      if (firstWithCoords) {
-        try {
-          const evRes = await fetch(`${WEB_API}/api/events?lat=${firstWithCoords.latitude}&lng=${firstWithCoords.longitude}&limit=6`);
-          if (evRes.ok) {
-            const events = await evRes.json();
-            if (Array.isArray(events)) {
-              for (const e of events) {
-                if (e.title) {
-                  allPlaces.push({
-                    id: `ev_${e.id}`, name: e.title, image: e.image || '',
-                    type: 'event', rating: 0,
-                    tagline: [e.venue, e.date].filter(Boolean).join(' · ') || 'Event',
-                    category: e.category || 'Event', description: e.description || '',
-                    tags: ['Event', e.category].filter(Boolean),
-                  } as PlaceItem);
-                }
-              }
-            }
-          }
-        } catch {}
-      }
-      return dedup(allPlaces);
-    },
+    queryFn: ({ pageParam }) => searchPlaces(searchCity, pageParam, userLocation),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: DiscoverPageResult) =>
+      lastPage.hasMore && lastPage.nextPage != null ? lastPage.nextPage : undefined,
     staleTime: 5 * 60 * 1000,
     enabled: !!searchCity,
   });
 
-  // Merge and deduplicate — search results take priority
+  const searchResults = useMemo(() => {
+    if (!searchData?.pages) return [];
+    return dedupPlaces(searchData.pages.flatMap(p => p.items));
+  }, [searchData]);
+
+  // When searching, merge API results with locally-filtered nearby places.
+  // The /api/search/maps backend ignores location, so local matches surface
+  // relevant nearby places (e.g. "park" hits Tilden, Marina Park, etc).
   const PLACES = useMemo(() => {
-    if (searchCity && searchPlaces.length > 0) return searchPlaces;
-    const all = [...fastPlaces, ...morePlaces];
-    const seen = new Set<string>();
-    return all.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-  }, [fastPlaces, morePlaces, searchCity, searchPlaces]);
-  const placesLoading = searchCity ? searchLoading : fastLoading;
-  const placesError = null;
+    if (!searchCity) return discoveredPlaces;
+    const q = searchCity.toLowerCase();
+    const localMatches = discoveredPlaces.filter((p) =>
+      p.name?.toLowerCase().includes(q) ||
+      p.tagline?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q) ||
+      p.tags?.some((t) => t.toLowerCase().includes(q))
+    );
+    return dedupPlaces([...localMatches, ...searchResults]);
+  }, [discoveredPlaces, searchCity, searchResults]);
+
+  // Active pagination state — depends on whether searching or browsing
+  const activeHasNext = searchCity ? hasNextSearchPage : hasNextPage;
+  const activeIsFetching = searchCity ? isFetchingNextSearchPage : isFetchingNextPage;
+  const activeLoadMore = searchCity ? fetchNextSearchPage : fetchNextPage;
+
+  // Keep loading pages automatically
+  useEffect(() => {
+    if (activeHasNext && !activeIsFetching) {
+      const count = searchCity ? searchResults.length : discoveredPlaces.length;
+      if (count < AUTO_LOAD_THRESHOLD) {
+        const timer = setTimeout(() => activeLoadMore(), 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchResults.length, discoveredPlaces.length, activeHasNext, activeIsFetching, searchCity]);
+
+  // Infinite scroll — load more when user scrolls near bottom
+  const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    if (distanceFromBottom < SCROLL_LOAD_DISTANCE && activeHasNext && !activeIsFetching) {
+      activeLoadMore();
+    }
+  }, [activeHasNext, activeIsFetching, activeLoadMore]);
 
 
   const toggleFavorite = useCallback((id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
+    setFavorites((prev) => {
+      const wasFavorited = prev.includes(id);
+      const next = wasFavorited ? prev.filter((f) => f !== id) : [...prev, id];
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem('travyl-favorites', JSON.stringify(next)).catch(() => {});
+      }).catch(() => {});
+      // Surface a toast so the user gets concrete feedback that the save
+      // succeeded — silent state flips made the heart feel decorative.
+      setToastMessage(
+        wasFavorited
+          ? `Removed (${next.length} saved)`
+          : `Saved to your places (${next.length} total)`,
+      );
+      return next;
+    });
   }, []);
+
+  // Toast lifecycle — fade in on message, fade out after 1.5s.
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!toastMessage) return;
+    Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    const t = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setToastMessage(null);
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [toastMessage]);
 
   const tabFiltered = useMemo(() => {
     if (activeTab === 'all') return PLACES;
@@ -485,28 +477,124 @@ export default function FavoritesScreen() {
   const filteredPlaces = useMemo(() => {
     let result = [...tabFiltered];
     if (activeSubcategory) result = result.filter((p) => p.category === activeSubcategory);
-    // Only apply local text filter when NOT in API search mode
-    if (searchQuery.trim() && !searchCity) {
+    // Local text filter — narrows the merged set further while user types
+    if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
           p.name?.toLowerCase().includes(q) ||
           p.tagline?.toLowerCase().includes(q) ||
           p.category?.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
     if (sortBy === 'top_rated') result.sort((a, b) => b.rating - a.rating);
+    else if (sortBy === 'popular') result.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
+    else if ((sortBy === 'nearest' || sortBy === 'default') && userLocation) {
+      // Default and Nearest both sort by distance when location is available
+      result.sort((a, b) => {
+        const dA = a.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, a.latitude, a.longitude!) : NO_COORDS_DISTANCE;
+        const dB = b.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, b.latitude, b.longitude!) : NO_COORDS_DISTANCE;
+        return dA - dB;
+      });
+    }
     else if (sortBy === 'az') result.sort((a, b) => a.name.localeCompare(b.name));
     return result;
-  }, [tabFiltered, activeSubcategory, searchQuery, sortBy]);
+  }, [tabFiltered, activeSubcategory, searchQuery, searchCity, sortBy, userLocation]);
 
-  const themedSections = useMemo(() => groupPlacesByCollection(filteredPlaces), [filteredPlaces]);
+  const baseSections = useMemo(() => {
+    // Group by API category first (Landmark, Culinary, Museum, etc.) — always works
+    const byCategory: Record<string, typeof filteredPlaces> = {};
+    for (const place of filteredPlaces) {
+      const cat = place.category || 'Other';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(place);
+    }
+    const sections = Object.entries(byCategory)
+      .filter(([, places]) => places.length >= 1)
+      .sort(([, a], [, b]) => b.length - a.length)
+      .map(([cat, places]) => ({
+        collection: { key: cat.toLowerCase(), label: cat, match: {} },
+        places,
+      }));
+    // Fallback if no categories have 2+ items
+    if (sections.length === 0 && filteredPlaces.length > 0) {
+      sections.push({
+        collection: { key: 'all', label: 'Places', match: {} },
+        places: filteredPlaces,
+      });
+    }
+    return { sections, remaining: [] as typeof filteredPlaces };
+  }, [filteredPlaces]);
+
+  // Split results into "Near You" (within ~10 miles) and "More results".
+  // Runs for both browse and search modes — when searching, Near You shows
+  // local matches, More results shows further-afield API hits.
+  const themedSections = useMemo(() => {
+    if (activeTab !== 'all') return baseSections;
+    if (!userLocation) return baseSections;
+
+    // Build the candidate "near you" pool. When searching, pull from the
+    // already-filtered set (which contains both API and local matches).
+    // When browsing, also fold in discover-feed nearby places.
+    const nearIds = new Set(nearbyPlaces.map(p => p.id));
+    const filteredIds = new Set(filteredPlaces.map(p => p.id));
+    const isWithinRadius = (p: typeof filteredPlaces[number]) =>
+      p.latitude != null && p.longitude != null &&
+      distanceKm(userLocation.lat, userLocation.lng, p.latitude!, p.longitude!) <= NEARBY_MERGE_RADIUS_KM;
+
+    const filteredNearby = filteredPlaces.filter(isWithinRadius);
+    const discoverNearby = !searchCity
+      ? discoveredPlaces.filter(p => !nearIds.has(p.id) && !filteredIds.has(p.id) && isWithinRadius(p))
+      : [];
+    const seedNearby = !searchCity ? nearbyPlaces : [];
+
+    const allNearby = dedupPlaces([...seedNearby, ...filteredNearby, ...discoverNearby])
+      .sort((a, b) => {
+        const dA = a.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) : NO_COORDS_DISTANCE;
+        const dB = b.latitude != null ? distanceKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!) : NO_COORDS_DISTANCE;
+        return dA - dB;
+      });
+
+    if (!allNearby.length) return baseSections;
+
+    const nearYouSection = {
+      collection: { key: 'near-you', label: 'Near You', match: {} },
+      places: allNearby,
+    };
+
+    // When searching, the rest goes under "More results" — flattened, not split by category
+    if (searchCity) {
+      const nearSet = new Set(allNearby.map(p => p.id));
+      const remaining = filteredPlaces.filter(p => !nearSet.has(p.id));
+      const sections: typeof baseSections.sections = [nearYouSection];
+      if (remaining.length > 0) {
+        sections.push({ collection: { key: 'more-results', label: 'More results', match: {} }, places: remaining });
+      }
+      return { ...baseSections, sections };
+    }
+
+    // Browse mode: keep category sections, just hoist nearby out
+    const nearSet = new Set(allNearby.map(p => p.id));
+    const otherSections = baseSections.sections
+      .map(s => ({ ...s, places: s.places.filter(p => !nearSet.has(p.id)) }))
+      .filter(s => s.places.length > 0);
+
+    return { ...baseSections, sections: [nearYouSection, ...otherSections] };
+  }, [baseSections, filteredPlaces, nearbyPlaces, discoveredPlaces, searchCity, activeTab, userLocation]);
+
+  // All places for the showcase — nearby + filtered combined
+  const allShowcasePlaces = useMemo(() => {
+    const nearIds = new Set(nearbyPlaces.map(p => p.id));
+    const combined = [...nearbyPlaces, ...filteredPlaces.filter(p => !nearIds.has(p.id))];
+    return combined;
+  }, [nearbyPlaces, filteredPlaces]);
 
   const openShowcase = useCallback((placeId: string) => {
-    const idx = filteredPlaces.findIndex((p) => p.id === placeId);
+    const idx = allShowcasePlaces.findIndex((p) => p.id === placeId);
     if (idx !== -1) setShowcaseIdx(idx);
-  }, [filteredPlaces]);
+  }, [allShowcasePlaces]);
 
   const closeModal = useCallback(() => setSelectedPlace(null), []);
 
@@ -514,7 +602,39 @@ export default function FavoritesScreen() {
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      {/* Favorite-toggle toast — floats above content, doesn't block taps */}
+      {toastMessage && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: insets.top + 12,
+            left: PAD,
+            right: PAD,
+            zIndex: 1000,
+            opacity: toastOpacity,
+            backgroundColor: 'rgba(15,23,42,0.92)',
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            elevation: 8,
+          }}
+        >
+          <FontAwesome name="heart" size={14} color="#ef4444" />
+          <Text style={{ ...TextStyles.bodyEm, color: '#fff', flex: 1 }} numberOfLines={1}>
+            {toastMessage}
+          </Text>
+        </Animated.View>
+      )}
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* Header */}
         <View style={{ paddingHorizontal: PAD, paddingTop: insets.top + 8, paddingBottom: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -526,7 +646,7 @@ export default function FavoritesScreen() {
                 borderWidth: 1, borderColor: colors.border,
               }}>
                 <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>
-                  {filteredPlaces.length}
+                  {allShowcasePlaces.length}
                 </Text>
               </View>
             </View>
@@ -536,24 +656,24 @@ export default function FavoritesScreen() {
               flexDirection: 'row', backgroundColor: colors.cardBackground,
               borderRadius: 20, padding: 3, borderWidth: 1, borderColor: colors.border,
             }}>
-              {(['grid', 'stack'] as const).map((mode) => (
+              {(['grid', 'flush', 'stack'] as const).map((mode) => (
                 <Pressable
                   key={mode}
                   onPress={() => setViewMode(mode)}
                   style={{
                     width: 32, height: 32, borderRadius: 16,
                     alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: viewMode === mode ? '#fff' : 'transparent',
-                    shadowColor: viewMode === mode ? '#000' : 'transparent',
+                    backgroundColor: viewMode === mode ? colors.surfaceElevated : 'transparent',
+                    shadowColor: viewMode === mode ? colors.shadow : 'transparent',
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: viewMode === mode ? 0.1 : 0,
                     shadowRadius: 2,
                   }}
                 >
                   <FontAwesome
-                    name={mode === 'grid' ? 'th-large' : 'clone'}
+                    name={mode === 'grid' ? 'th-large' : mode === 'flush' ? 'th' : 'clone'}
                     size={14}
-                    color={viewMode === mode ? Navy.DEFAULT : colors.textTertiary}
+                    color={viewMode === mode ? colors.tint : colors.textTertiary}
                   />
                 </Pressable>
               ))}
@@ -577,18 +697,18 @@ export default function FavoritesScreen() {
                   flexDirection: 'row', alignItems: 'center',
                   paddingHorizontal: 10, paddingVertical: 8, marginRight: 4,
                   borderBottomWidth: 2,
-                  borderBottomColor: isActive ? Navy.DEFAULT : 'transparent',
+                  borderBottomColor: isActive ? colors.tint : 'transparent',
                 }}
               >
                 <FontAwesome
                   name={tab.icon as any}
                   size={12}
-                  color={isActive ? Navy.DEFAULT : colors.textTertiary}
+                  color={isActive ? colors.tint : colors.textTertiary}
                   style={{ marginRight: 5 }}
                 />
                 <Text style={{
                   ...(isActive ? TextStyles.bodyEm : TextStyles.body),
-                  color: isActive ? Navy.DEFAULT : colors.textTertiary,
+                  color: isActive ? colors.tint : colors.textTertiary,
                 }}>
                   {tab.label}
                 </Text>
@@ -599,66 +719,10 @@ export default function FavoritesScreen() {
 
         <View style={{ height: 1, backgroundColor: colors.border }} />
 
-        {/* Subcategory pills */}
-        {subcategories.length > 1 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: PAD, paddingVertical: 8 }}
-          >
-            <Pressable
-              onPress={() => setActiveSubcategory('')}
-              style={{
-                paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, marginRight: 6,
-                backgroundColor: !activeSubcategory ? Navy.DEFAULT : colors.cardBackground,
-              }}
-            >
-              <Text style={{
-                ...TextStyles.captionEm,
-                color: !activeSubcategory ? '#fff' : colors.textSecondary,
-              }}>All</Text>
-            </Pressable>
-            {subcategories.map((cat) => {
-              const isActive = activeSubcategory === cat;
-              return (
-                <Pressable
-                  key={cat}
-                  onPress={() => setActiveSubcategory(isActive ? '' : cat)}
-                  style={{
-                    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, marginRight: 6,
-                    backgroundColor: isActive ? Navy.DEFAULT : colors.cardBackground,
-                  }}
-                >
-                  <Text style={{
-                    ...TextStyles.captionEm,
-                    color: isActive ? '#fff' : colors.textSecondary,
-                  }}>{cat}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
 
         {/* Search + Sort row */}
         <View style={{ paddingHorizontal: PAD, paddingBottom: 10, paddingTop: subcategories.length > 1 ? 0 : 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Pressable
-              onPress={() => {
-                const keys: SortKey[] = ['default', 'top_rated', 'az'];
-                const idx = keys.indexOf(sortBy);
-                setSortBy(keys[(idx + 1) % keys.length]);
-              }}
-              style={{
-                flexDirection: 'row', alignItems: 'center',
-                paddingHorizontal: 12, height: 36, borderRadius: 20,
-                backgroundColor: colors.cardBackground, borderWidth: 1, borderColor: colors.border,
-              }}
-            >
-              <FontAwesome name="sort" size={11} color={colors.textTertiary} style={{ marginRight: 6 }} />
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>
-                {SORT_OPTIONS.find((o) => o.key === sortBy)?.label}
-              </Text>
-            </Pressable>
             <View style={{
               flex: 1, flexDirection: 'row', alignItems: 'center',
               backgroundColor: colors.cardBackground, borderRadius: 20,
@@ -671,18 +735,20 @@ export default function FavoritesScreen() {
                 onChangeText={(val) => {
                   setSearchQuery(val);
                   if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-                  if (val.trim().length >= 2) {
-                    searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400);
-                  } else if (!val.trim()) {
+                  if (val.trim()) {
+                    searchTimerRef.current = setTimeout(() => setSearchCity(val.trim()), 400) as unknown as NodeJS.Timeout;
+                  } else {
                     setSearchCity('');
                   }
                 }}
                 onSubmitEditing={() => {
+                  Keyboard.dismiss();
                   if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
                   if (searchQuery.trim()) setSearchCity(searchQuery.trim());
                 }}
                 returnKeyType="search"
-                placeholder="Search a city or destination..."
+                blurOnSubmit={true}
+                placeholder="Search anything — Nobu, rooftop bars, big library..."
                 placeholderTextColor={colors.textTertiary}
                 style={{ flex: 1, fontSize: FontSize.body, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
               />
@@ -693,37 +759,105 @@ export default function FavoritesScreen() {
               )}
             </View>
           </View>
+
+          {/* Sort chips — visible options */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, paddingRight: 4 }}
+          >
+            {SORT_OPTIONS.map((opt) => {
+              const active = sortBy === opt.key;
+              return (
+                <Pressable
+                  key={opt.key}
+                  onPress={() => setSortBy(opt.key)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    paddingHorizontal: 12, height: 30, borderRadius: 15,
+                    backgroundColor: active ? colors.tint : colors.cardBackground,
+                    borderWidth: 1,
+                    borderColor: active ? colors.tint : colors.border,
+                  }}
+                >
+                  <Text style={{
+                    ...TextStyles.caption,
+                    color: active ? '#fff' : colors.textSecondary,
+                    fontWeight: active ? '600' : '400',
+                  }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
+        {/* Near You — rendered as a section in the same grid style */}
+        {nearbyLoading && !searchCity && activeTab === 'all' && (
+          <View style={{ paddingHorizontal: PAD, paddingVertical: 20, alignItems: 'center' }}>
+            <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>Finding places near you...</Text>
+          </View>
+        )}
+
+        {/* Searching feedback — show inferred intent so the user sees what
+            we understood (e.g. "Searching nightlife near San Francisco…")
+            instead of a bare spinner. */}
+        {searchCity && searchLoading && (
+          <View style={{ paddingHorizontal: PAD, paddingVertical: 20, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ActivityIndicator size="small" color={colors.tint} />
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>
+              {inferSearchHint(searchCity, null)}
+            </Text>
+          </View>
+        )}
+
         {/* Content: Grid or Stack */}
-        {viewMode === 'grid' ? (
-          <View style={{ paddingHorizontal: PAD }}>
-            {filteredPlaces.length === 0 && (
-              <View style={{ alignItems: 'center', paddingTop: 60 }}>
-                <FontAwesome name="search" size={36} color={colors.textTertiary} />
-                <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>
-                  {activeTab === 'favorites' ? 'No favorites yet' : 'No places match your search'}
+        {(viewMode === 'grid' || viewMode === 'flush') ? (
+          <View style={{ paddingHorizontal: viewMode === 'flush' ? 0 : PAD }}>
+            {themedSections.sections.flatMap(s => s.places).length === 0 && (
+              <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 }}>
+                <FontAwesome name={activeTab === 'favorites' ? 'heart-o' : 'compass'} size={40} color={colors.textTertiary} />
+                <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 16 }}>
+                  {activeTab === 'favorites' ? 'No favorites yet' : `No ${activeTab === 'all' ? '' : activeTab + ' '}places found`}
                 </Text>
+                <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginTop: 6, textAlign: 'center' }}>
+                  {activeTab === 'favorites'
+                    ? 'Tap the heart on any place to save it here.'
+                    : 'Try selecting "All" or search for a specific city.'}
+                </Text>
+                {activeTab !== 'all' && (
+                  <Pressable
+                    onPress={() => { setActiveTab('all'); setActiveSubcategory(''); }}
+                    style={({ pressed }) => ({
+                      marginTop: 20, paddingHorizontal: 20, paddingVertical: 10,
+                      borderRadius: 10, backgroundColor: colors.tint, opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Show All Places</Text>
+                  </Pressable>
+                )}
               </View>
             )}
 
-            {themedSections.sections.map(({ collection, places: sectionPlaces }) => {
-              const [left, right] = balanceColumns(sectionPlaces);
+            {/* Sectioned masonry grid with headers */}
+            {themedSections.sections.map((section) => {
+              if (section.places.length === 0) return null;
+              const [left, right] = balanceColumns(section.places);
               return (
-                <View key={collection.key} style={{ marginBottom: 8 }}>
-                  {/* Section heading */}
-                  <View style={{
-                    borderTopWidth: 1, borderTopColor: colors.border,
-                    paddingTop: 16, paddingBottom: 12, marginTop: 8,
-                  }}>
-                    <Text style={{ ...TextStyles.title, color: '#1e3a5f' }}>
-                      {collection.label}
-                    </Text>
-                    <Text style={{ ...TextStyles.caption, color: colors.textTertiary, marginTop: 2 }}>
-                      {sectionPlaces.length} places
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: GAP, alignItems: 'flex-start' }}>
+                <View key={section.collection.key} style={{ marginBottom: viewMode === 'flush' ? 0 : 24 }}>
+                  {/* Section header — hidden in flush mode */}
+                  {viewMode !== 'flush' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                        <Text style={{ fontFamily: FontFamily.serif, fontSize: 20, color: colors.text, letterSpacing: -0.5 }}>{section.collection.label}</Text>
+                        <View style={{ backgroundColor: colors.tint + '18', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                          <Text style={{ ...TextStyles.xs, color: colors.tint, fontFamily: FontFamily.sansBold }}>{section.places.length}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: 'row', gap: viewMode === 'flush' ? 1 : GAP, alignItems: 'flex-start' }}>
                     {[left, right].map((col, colIdx) => (
                       <View key={colIdx} style={{ flex: 1 }}>
                         {col.map((place) => (
@@ -734,6 +868,8 @@ export default function FavoritesScreen() {
                             onPress={() => openShowcase(place.id)}
                             onToggleFav={() => toggleFavorite(place.id)}
                             colors={colors}
+                            flush={viewMode === 'flush'}
+                            userLoc={userLocation}
                           />
                         ))}
                       </View>
@@ -745,9 +881,9 @@ export default function FavoritesScreen() {
 
           </View>
         ) : (
-          /* Stack view — tinder-style card carousel */
-          <View style={{ flex: 1 }}>
-            {filteredPlaces.length === 0 ? (
+          /* Stack view — full overlay with map */
+          <View style={{ minHeight: SCREEN_HEIGHT - 300 }}>
+            {allShowcasePlaces.length === 0 ? (
               <View style={{ alignItems: 'center', paddingTop: 60 }}>
                 <FontAwesome name="search" size={36} color={colors.textTertiary} />
                 <Text style={{ ...TextStyles.subhead, color: colors.textTertiary, marginTop: 12 }}>
@@ -756,24 +892,35 @@ export default function FavoritesScreen() {
               </View>
             ) : (
               <CardStackCarousel
-                places={filteredPlaces}
+                places={allShowcasePlaces}
                 favorites={favorites}
                 onToggleFav={toggleFavorite}
-                cardWidth={STACK_CARD_W}
-                cardHeight={STACK_CARD_H}
+                onAddToTrip={addToTrip}
+                tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
+                overlay
+                onClose={() => setViewMode('grid')}
               />
             )}
+          </View>
+        )}
+
+        {/* Loading indicator */}
+        {activeIsFetching && (
+          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={colors.tint} />
           </View>
         )}
       </ScrollView>
 
       {/* Card Stack Showcase — full screen overlay when tapping a card */}
-      {showcaseIdx >= 0 && filteredPlaces[showcaseIdx] && (
+      {showcaseIdx >= 0 && allShowcasePlaces[showcaseIdx] && (
         <CardStackCarousel
-          places={filteredPlaces}
+          places={allShowcasePlaces}
           initialIndex={showcaseIdx}
           favorites={favorites}
           onToggleFav={toggleFavorite}
+          onAddToTrip={addToTrip}
+          tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
           overlay
           onClose={() => setShowcaseIdx(-1)}
         />
@@ -800,6 +947,7 @@ export default function FavoritesScreen() {
           )}
         />
       )}
+
     </View>
   );
 }

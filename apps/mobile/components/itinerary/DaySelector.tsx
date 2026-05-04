@@ -1,4 +1,5 @@
 import { ScrollView, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { TextStyles } from '@travyl/shared';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -60,13 +61,13 @@ export function DaySelector({ days, selectedIndex, onSelect, accentColor }: DayS
                 }}
               >
                 <Text style={{
-                  fontSize: 8, fontWeight: '600',
+                  ...TextStyles.micro,
                   color: selected ? 'rgba(255,255,255,0.8)' : colors.textTertiary,
                 }}>
                   D{day.dayNumber}
                 </Text>
                 <Text numberOfLines={1} style={{
-                  fontSize: 9, fontWeight: '700', marginTop: 1,
+                  ...TextStyles.xs, marginTop: 1,
                   color: selected ? '#fff' : colors.text,
                 }}>
                   {shortDate(day.dateLabel)}

@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
-import { getRequiredParams, proxyToBackend } from '@/lib/api-utils'
+import { getRequiredParams, proxyToBackend, rateLimit } from '@/lib/api-utils'
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'images', 60, 60000)
+  if (rl) return rl
   const params = getRequiredParams(req, 'q')
   if (params instanceof Response) return params
 

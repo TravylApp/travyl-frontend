@@ -1,78 +1,86 @@
+/**
+ * @module useTrips
+ * Fetches all trips for the current authenticated user from Supabase.
+ * Includes both owned trips and collaborated trips.
+ */
+
+'use client';
+
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query';
-import { fetchTrips } from '../services/api';
-import { supabase } from '../services/supabase';
+import { fetchTrips, fetchCollaboratorTrips } from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 import type { Trip } from '../types';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Fetches all trips for a given authenticated user by combining owned trips
+ * and collaborated trips, deduplicating by trip ID.
+ */
+async function fetchTripsForUser(userId: string): Promise<Trip[]> {
+  console.log('[useTrips] Fetching trips for user:', userId)
 
-async function getAnonTripIds(): Promise<string[]> {
-  try {
-    const g = globalThis as any;
-    // Web: localStorage/sessionStorage
-    const stored = g.localStorage?.getItem('my-trip-ids')
-      ?? g.sessionStorage?.getItem('my-trip-ids');
-    if (stored) return JSON.parse(stored);
-  } catch {}
+  // Fetch owned trips — this must succeed
+  const owned = await fetchTrips(userId);
+  console.log('[useTrips] Owned trips:', owned.length)
 
-  // Mobile: AsyncStorage
+  // Collaborator trips — best effort, don't block owned trips if this fails
+  let collaborated: Trip[] = [];
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage')?.default;
-    if (AsyncStorage) {
-      const stored = await AsyncStorage.getItem('my-trip-ids');
-      if (stored) return JSON.parse(stored);
+    console.log('[useTrips] Fetching collaborator trips for user:', userId)
+    collaborated = await fetchCollaboratorTrips(userId);
+    console.log('[useTrips] Collaborator trips fetched successfully:', collaborated.length)
+  } catch (err: any) {
+    const errorMessage = err?.message || err?.error || err?.toString() || 'Unknown error'
+    const errorDetails = err?.details || err?.hint || ''
+    const errorCode = err?.code || 'UNKNOWN'
+    console.error('[useTrips] Failed to fetch collaborator trips:', {
+      message: errorMessage,
+      details: errorDetails,
+      code: errorCode,
+      fullError: err
+    })
+    // RLS or join error on trip_collaborators — non-fatal
+  }
+
+  const seen = new Set<string>();
+  const merged: Trip[] = [];
+  for (const trip of [...owned, ...collaborated]) {
+    if (!seen.has(trip.id)) {
+      seen.add(trip.id);
+      merged.push(trip);
     }
-  } catch {}
-
-  return [];
-}
-
-export async function saveAnonTripId(tripId: string): Promise<void> {
-  const ids = await getAnonTripIds();
-  if (!ids.includes(tripId)) ids.push(tripId);
-  const json = JSON.stringify(ids);
-
-  try {
-    const g = globalThis as any;
-    g.localStorage?.setItem('my-trip-ids', json);
-  } catch {}
-
-  try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage')?.default;
-    if (AsyncStorage) await AsyncStorage.setItem('my-trip-ids', json);
-  } catch {}
-}
-
-async function fetchTripsWithAnonymous(): Promise<Trip[]> {
-  const anonIds = await getAnonTripIds();
-
-  // Web: use API route for anonymous trips
-  if (anonIds.length > 0 && typeof (globalThis as any).document !== 'undefined') {
-    try {
-      const res = await fetch(`/api/trips?ids=${anonIds.join(',')}`);
-      if (res.ok) return res.json() as Promise<Trip[]>;
-    } catch {}
   }
 
-  // Mobile/fallback: fetch specific trip IDs directly from Supabase
-  if (anonIds.length > 0) {
-    try {
-      const { data, error } = await supabase
-        .from('trips')
-        .select('*')
-        .in('id', anonIds)
-        .order('created_at', { ascending: false });
-      if (!error && data?.length) return data as Trip[];
-    } catch {}
-  }
-
-  // Default: use Supabase directly (RLS filters for logged-in users)
-  return fetchTrips();
+  console.log('[useTrips] Total merged trips:', merged.length)
+  return merged;
 }
 
+/**
+ * Fetches all trips the current user can access (owned + collaborated).
+ * Requires authentication — returns empty array if not logged in.
+ */
 export function useTrips() {
-  return useQuery({
-    queryKey: ['trips'],
-    queryFn: fetchTripsWithAnonymous,
-    enabled: true,
+  const user = useAuthStore((s) => s.user);
+
+  const result = useQuery({
+    queryKey: ['trips', user?.id],
+    queryFn: () => fetchTripsForUser(user!.id),
+    enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
   });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[useTrips] Query state:', {
+      isLoading: result.isLoading,
+      isError: result.isError,
+      data: result.data?.length,
+      error: result.error,
+      enabled: result.isEnabled
+    })
+  }, [result])
+
+  return result
 }

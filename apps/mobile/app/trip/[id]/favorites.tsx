@@ -1,18 +1,21 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen } from '@travyl/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useItineraryScreen, TextStyles } from '@travyl/shared';
 import type { DiscoverItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, useTabAccent } from './_layout';
+import { PageTransition, TabCtx, useTabAccent } from './_layout';
 
 /* ─── Constants ─────────────────────────────────────────────── */
 
 // Start empty — user adds favorites as they browse
-const INITIAL_ACTIVITY_FAVORITES: string[] = [];
-const INITIAL_RESTAURANT_FAVORITES: string[] = [];
-const INITIAL_DESTINATION_FAVORITES: string[] = [];
+
+// Separate storage keys to prevent cross-contamination (issue #650 item 9)
+const ACTIVITY_FAVORITES_KEY = 'travyl-activity-favorites';
+const RESTAURANT_FAVORITES_KEY = 'travyl-restaurant-favorites';
+const DESTINATION_FAVORITES_KEY = 'travyl-destination-favorites';
 
 // Category config with icons
 const CATEGORIES = [
@@ -69,8 +72,8 @@ function SectionHeader({
         <FontAwesome name={icon as any} size={20} color="#fff" />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{title}</Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary }}>{count} saved</Text>
+        <Text style={{ ...TextStyles.subhead, color: colors.text }}>{title}</Text>
+        <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary }}>{count} saved</Text>
       </View>
       <FontAwesome
         name={collapsed ? 'chevron-right' : 'chevron-down'}
@@ -182,7 +185,7 @@ function FavoriteCard({
             }}
           >
             <FontAwesome name="star" size={10} color="#fbbf24" />
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>
               {item.rating.toFixed(1)}
             </Text>
           </View>
@@ -201,7 +204,7 @@ function FavoriteCard({
               borderRadius: 8,
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: '500', color: '#fff' }}>{item.price}</Text>
+            <Text style={{ ...TextStyles.sm, color: '#fff' }}>{item.price}</Text>
           </View>
         )}
 
@@ -217,7 +220,7 @@ function FavoriteCard({
             borderRadius: 6,
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: '600', color: accentColor }}>{categoryLabel}</Text>
+          <Text style={{ ...TextStyles.smEm, color: accentColor }}>{categoryLabel}</Text>
         </View>
       </View>
 
@@ -226,18 +229,18 @@ function FavoriteCard({
         {/* Location */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
           <FontAwesome name="map-marker" size={10} color={colors.textTertiary} />
-          <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+          <Text style={{ ...TextStyles.caption, color: colors.textSecondary }} numberOfLines={1}>
             {item.location}
           </Text>
         </View>
 
         {/* Name */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 }} numberOfLines={1}>
+        <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 4 }} numberOfLines={1}>
           {item.name}
         </Text>
 
         {/* Description */}
-        <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 10 }} numberOfLines={2}>
+        <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 10 }} numberOfLines={2}>
           {item.description}
         </Text>
 
@@ -255,7 +258,7 @@ function FavoriteCard({
                 borderColor: accentColor + '20',
               }}
             >
-              <Text style={{ fontSize: 10, color: accentColor }}>{tag}</Text>
+              <Text style={{ ...TextStyles.sm, color: accentColor }}>{tag}</Text>
             </View>
           ))}
         </View>
@@ -284,24 +287,24 @@ function EmptyState() {
       >
         <FontAwesome name="heart" size={24} color="#ef4444" />
       </View>
-      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
+      <Text style={{ ...TextStyles.subhead, color: colors.text, marginBottom: 6 }}>
         No favorites yet
       </Text>
-      <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+      <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
         Save your favorite activities, restaurants, and places to quickly find them later.
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name="camera" size={16} color={ACCENT} />
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Activities</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>Activities</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name="cutlery" size={16} color={ACCENT} />
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Restaurants</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>Restaurants</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FontAwesome name="building" size={16} color={ACCENT} />
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Hotels</Text>
+          <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>Hotels</Text>
         </View>
       </View>
     </View>
@@ -356,13 +359,31 @@ function FavoritesSkeleton() {
 
 export default function FavoritesScreen() {
   const ACCENT = useTabAccent('favorites');
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: _id } = useLocalSearchParams<{ id: string }>();
+  const { tripId: ctxId } = useContext(TabCtx);
+  const id = _id || ctxId;
   const { trip, isLoading } = useItineraryScreen(id);
 
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
-  const [activityFavorites, setActivityFavorites] = useState<string[]>(INITIAL_ACTIVITY_FAVORITES);
-  const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>(INITIAL_RESTAURANT_FAVORITES);
-  const [destinationFavorites, setDestinationFavorites] = useState<string[]>(INITIAL_DESTINATION_FAVORITES);
+  const [activityFavorites, setActivityFavorites] = useState<string[]>([]);
+  const [restaurantFavorites, setRestaurantFavorites] = useState<string[]>([]);
+  const [destinationFavorites, setDestinationFavorites] = useState<string[]>([]);
+
+  // Load favorites from AsyncStorage on mount
+  // Using separate keys to prevent cross-contamination (issue #650 item 9)
+  useEffect(() => {
+    Promise.all([
+      AsyncStorage.getItem(ACTIVITY_FAVORITES_KEY),
+      AsyncStorage.getItem(RESTAURANT_FAVORITES_KEY),
+      AsyncStorage.getItem(DESTINATION_FAVORITES_KEY),
+    ]).then(([activityVal, restaurantVal, destinationVal]) => {
+      try {
+        if (activityVal) setActivityFavorites(JSON.parse(activityVal));
+        if (restaurantVal) setRestaurantFavorites(JSON.parse(restaurantVal));
+        if (destinationVal) setDestinationFavorites(JSON.parse(destinationVal));
+      } catch {}
+    });
+  }, []);
   const colors = useThemeColors();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const toggleSection = (key: string) => {
@@ -372,25 +393,50 @@ export default function FavoritesScreen() {
   // Build from trip_context instead of mock data
   const ctx = trip?.trip_context as any;
   const allDiscoverItems: DiscoverItem[] = useMemo(() => [
-    ...(ctx?.explore_items ?? []).map((e: any) => ({ id: e.id, name: e.title || e.name, description: e.description || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [] })),
-    ...(ctx?.foursquare_venues ?? []).map((v: any) => ({ id: v.id, name: v.title || v.name, description: v.description || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [] })),
-  ], [ctx]);
+    ...(ctx?.explore_items ?? []).map((e: any) => ({ id: e.id, name: e.title || e.name, description: e.description || '', category: e.category || '', image: e.image, images: e.image ? [e.image] : [], tags: e.tags || [], location: e.address || e.location || trip?.destination || '' })),
+    ...(ctx?.foursquare_venues ?? []).map((v: any) => ({ id: v.id, name: v.title || v.name, description: v.description || '', category: v.category || '', image: v.image, images: v.image ? [v.image] : [], tags: v.tags || [], location: v.address || v.location || trip?.destination || '' })),
+  ], [ctx, trip?.destination]);
   const favoritedActivities = allDiscoverItems.filter((a) => activityFavorites.includes(a.id));
   const favoritedRestaurants = allDiscoverItems.filter((r) => restaurantFavorites.includes(r.id));
   const favoritedDestinations = allDiscoverItems.filter((a) => destinationFavorites.includes(a.id));
 
   const totalFavorites = favoritedActivities.length + favoritedRestaurants.length + favoritedDestinations.length;
 
+  // Persist to separate keys based on type (issue #650 item 9)
+  const persistActivityFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem(ACTIVITY_FAVORITES_KEY, JSON.stringify(ids)).catch(() => {});
+  }, []);
+
+  const persistRestaurantFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem(RESTAURANT_FAVORITES_KEY, JSON.stringify(ids)).catch(() => {});
+  }, []);
+
+  const persistDestinationFavorites = useCallback((ids: string[]) => {
+    AsyncStorage.setItem(DESTINATION_FAVORITES_KEY, JSON.stringify(ids)).catch(() => {});
+  }, []);
+
   const removeActivityFavorite = (itemId: string) => {
-    setActivityFavorites((prev) => prev.filter((f) => f !== itemId));
+    setActivityFavorites((prev) => {
+      const next = prev.filter((f) => f !== itemId);
+      persistActivityFavorites(next);
+      return next;
+    });
   };
 
   const removeRestaurantFavorite = (itemId: string) => {
-    setRestaurantFavorites((prev) => prev.filter((f) => f !== itemId));
+    setRestaurantFavorites((prev) => {
+      const next = prev.filter((f) => f !== itemId);
+      persistRestaurantFavorites(next);
+      return next;
+    });
   };
 
   const removeDestinationFavorite = (itemId: string) => {
-    setDestinationFavorites((prev) => prev.filter((f) => f !== itemId));
+    setDestinationFavorites((prev) => {
+      const next = prev.filter((f) => f !== itemId);
+      persistDestinationFavorites(next);
+      return next;
+    });
   };
 
   // Counts per category for filter chips
@@ -446,10 +492,10 @@ export default function FavoritesScreen() {
         >
           <FontAwesome name="heart" size={24} color="#fff" />
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+        <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 4 }}>
           Your Favorites
         </Text>
-        <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+        <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary }}>
           {totalFavorites} saved items across all categories
         </Text>
       </View>
@@ -486,11 +532,7 @@ export default function FavoritesScreen() {
                 color={isActive ? '#fff' : colors.textSecondary}
               />
               <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: isActive ? '600' : '400',
-                  color: isActive ? '#fff' : colors.textSecondary,
-                }}
+                style={isActive ? { ...TextStyles.bodyEm, color: '#fff' } : { ...TextStyles.body, color: colors.textSecondary }}
               >
                 {cat.key}
               </Text>
@@ -503,11 +545,7 @@ export default function FavoritesScreen() {
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: '600',
-                    color: isActive ? '#fff' : colors.textTertiary,
-                  }}
+                  style={{ ...TextStyles.smEm, color: isActive ? '#fff' : colors.textTertiary }}
                 >
                   {count}
                 </Text>
@@ -533,10 +571,10 @@ export default function FavoritesScreen() {
           >
             <FontAwesome name="heart-o" size={20} color={colors.textTertiary} />
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
+          <Text style={{ ...TextStyles.bodyXlEm, color: colors.text, marginBottom: 4 }}>
             No {activeFilter.toLowerCase()} favorited
           </Text>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.textSecondary, textAlign: 'center' }}>
             Browse the {activeFilter} tab to discover and save items.
           </Text>
         </View>
@@ -693,7 +731,7 @@ export default function FavoritesScreen() {
           {!collapsedSections['hotels'] && (
             <View style={{ gap: 10, marginTop: 8 }}>
               <View style={{ alignItems: 'center', paddingVertical: 28 }}>
-                <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
+                <Text style={{ ...TextStyles.bodyXl, color: colors.textSecondary, textAlign: 'center' }}>
                   Hotel favorites will appear here when you heart items in the Hotels tab
                 </Text>
               </View>

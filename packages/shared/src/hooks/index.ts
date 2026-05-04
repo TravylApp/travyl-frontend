@@ -1,4 +1,27 @@
-export { useTrips, saveAnonTripId } from './useTrips';
+/**
+ * @module hooks
+ * Central barrel export for all shared React hooks consumed by both the
+ * Next.js web app (`@travyl/web`) and the Expo mobile app (`@travyl/mobile`).
+ *
+ * Hooks are grouped by concern:
+ * - **Home/Explore**: `useHomeScreen`, `useExploreRows`, `useExploreData`,
+ *   `useMosaicTiles`, `useInspirationCards`, `useHeroConfig`
+ * - **Trips**: `useTrips`, `useTrip`, `useItineraryDays`, `useItineraryScreen`,
+ *   `useForkTrip`, `useCollaborators`, `useTripPlanner`
+ * - **Budget/Packing**: `useTripBudget`, `usePackingList`, `usePackingSuggestions`,
+ *   `useExchangeRates`, `useHomeCurrency`
+ * - **Places/Search**: `useSimilarPlaces`, `usePlaceImage`, `usePlaceImages`,
+ *   `usePlaceSuggest`, `usePlaceDetail`, `usePlaceEnrich`, `usePlaceMenu`
+ * - **External data**: `useFlights`, `useHotels`, `useWeather`, `useEvents`,
+ *   `useDestinationImage`, `useTagUsDestinations`, `useTrendingDestinations`
+ * - **Filters**: `useRestaurantFilters`, `useActivityFilters`
+ * - **Auth/Profile**: `useProfile`, `saveAnonTripId`
+ * - **Commerce**: `useServerFavorites`, `useHotelSearch`, `useFlightSearch`
+ */
+
+'use client';
+
+export { useTrips } from './useTrips';
 export { useHomeScreen } from './useHomeScreen';
 export { useExploreRows } from './useExploreRows';
 export { useExploreData } from './useExploreData';
@@ -24,5 +47,20 @@ export { useRestaurantFilters, RESTAURANT_CATEGORIES, CUISINE_SUBFILTERS, RESTAU
 export type { RestaurantCategory, RestaurantSortOption } from './useRestaurantFilters';
 export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_SORT_OPTIONS, ACTIVITY_CATEGORY_ICONS, mapActivityCategory } from './useActivityFilters';
 export type { ActivityFilterCategory, ActivitySortOption } from './useActivityFilters';
+export { useHomeCurrency } from './useHomeCurrency';
 export { useTripPlanner } from './useTripPlanner';
 export type { FollowUpQuestion, PlanResponse, DayPlan, DaySlot, TripExtraction } from './useTripPlanner';
+export { useWeather } from './useWeather';
+export { useEvents } from './useEvents';
+export { useDestinationImage } from './useDestinationImage';
+export { usePlaceSuggest } from './usePlaceSuggest';
+export { usePlaceDetail } from './usePlaceDetail';
+export { usePlaceEnrich } from './usePlaceEnrich';
+export { usePlaceMenu } from './usePlaceMenu';
+export { useServerFavorites } from './useServerFavorites';
+export { useHotelSearch } from './useHotelSearch';
+export type { HotelSearchParams } from './useHotelSearch';
+export { useFlightSearch } from './useFlightSearch';
+export type { FlightSearchParams } from './useFlightSearch';
+export { useTrendingDestinations } from './useTrendingDestinations';
+export type { TrendingDestination } from './useTrendingDestinations';

@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark *));
 
+/* Shimmer skeleton for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-skeleton {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Card fade-in — lightweight CSS animation instead of per-card Framer Motion */
+@keyframes card-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 :root {
   --background: #FFFFFF;
   --foreground: #111827;
@@ -9,6 +26,8 @@
   --muted: #F3F4F6;
   --muted-foreground: #6B7280;
   --border: #E5E7EB;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
   --magazine-bg: #FAF8F5;
   --magazine-surface: #f5f1eb;
   --magazine-text: #4a4540;
@@ -50,6 +69,8 @@
   --muted: #1a2230;
   --muted-foreground: #9ca3af;
   --border: rgba(255, 255, 255, 0.08);
+  --card: #151d28;
+  --card-foreground: #e5e7eb;
   --magazine-bg: #0c1117;
   --magazine-surface: #151d28;
   --magazine-text: #e0d8cc;
@@ -95,10 +116,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
   --color-accent: var(--accent);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-magazine-bg: var(--magazine-bg);
   --color-magazine-surface: var(--magazine-surface);
   --color-magazine-text: var(--magazine-text);
@@ -116,6 +140,24 @@
   --color-trip-base-dark: var(--trip-base-dark, #0f1d30);
   --color-trip-accent: var(--trip-accent, #60a5fa);
   --color-trip-text: var(--trip-text, #ffffff);
+
+  /* Calendar light/dark variables */
+  --color-cal-bg: var(--cal-bg);
+  --color-cal-surface: var(--cal-surface);
+  --color-cal-surface-elevated: var(--cal-surface-elevated);
+  --color-cal-text: var(--cal-text);
+  --color-cal-text-secondary: var(--cal-text-secondary);
+  --color-cal-text-tertiary: var(--cal-text-tertiary);
+  --color-cal-border: var(--cal-border);
+  --color-cal-border-light: var(--cal-border-light);
+  --color-cal-accent: var(--cal-accent);
+  --color-cal-accent-bg: var(--cal-accent-bg);
+  --color-cal-nav-active-bg: var(--cal-nav-active-bg);
+  --color-cal-nav-active-text: var(--cal-nav-active-text);
+  --color-cal-nav-inactive: var(--cal-nav-inactive);
+  --color-cal-grid-line: var(--cal-grid-line);
+  --color-cal-drag-over: var(--cal-drag-over);
+  --color-cal-hour-text: var(--cal-hour-text);
 }
 
 body {
@@ -174,6 +216,23 @@ body::-webkit-scrollbar {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* Masonry layout for For You panel suggestions */
+.masonry-grid {
+  column-count: 2;
+  column-gap: 0.5rem;
+}
+
+.masonry-grid-3 {
+  column-count: 3;
+  column-gap: 0.5rem;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
 }
 
 /* Reveal animations for overview page */

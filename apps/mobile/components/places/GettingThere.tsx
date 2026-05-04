@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, Linking, Platform } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { TextStyles } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 
 // ---------------------------------------------------------------------------
@@ -67,7 +68,7 @@ export default function GettingThere({ place }: GettingThereProps) {
           justifyContent: 'space-between',
         }}
       >
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
+        <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
           Getting There
         </Text>
         <Animated.View style={chevronStyle}>
@@ -152,7 +153,7 @@ function Row({
       />
       <Text
         style={{
-          fontSize: 12,
+          ...TextStyles.body,
           color: 'rgba(255,255,255,0.8)',
           flexShrink: 1,
           fontStyle: italic ? 'italic' : 'normal',

@@ -1,3 +1,23 @@
+'use client';
+
+/**
+ * @module authStore
+ * Zustand store managing Supabase authentication state across web and mobile.
+ * Wraps Supabase Auth — tracks the current user, session, and loading state.
+ *
+ * State shape:
+ * - `user`    — Supabase User object or null
+ * - `session` — Supabase Session object or null
+ * - `loading` — true while fetching the initial session
+ *
+ * Actions:
+ * - `initialize()` — subscribes to auth state changes; must be called once at app root
+ * - `signIn(email, password)` — email/password login
+ * - `signUp(email, password, name?)` — account creation with optional display name
+ * - `signInWithOAuth(provider, redirectTo?)` — OAuth login (Google, Apple, Facebook)
+ * - `signOut()` — signs out and clears state
+ */
+
 import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 import type { User, Session } from '@supabase/supabase-js';
@@ -9,7 +29,7 @@ interface AuthState {
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
-  signInWithOAuth: (provider: 'google' | 'apple' | 'facebook') => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'apple' | 'facebook', redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -24,6 +44,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ loading: false });
       return () => {};
     }
+
+    // Set loading true while we fetch the initial session
+    set({ loading: true });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       set({ session, user: session?.user ?? null, loading: false });
@@ -60,9 +83,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signInWithOAuth: async (provider) => {
+  signInWithOAuth: async (provider, redirectTo?) => {
     if (!supabase) throw new Error('Supabase is not configured');
-    await supabase.auth.signInWithOAuth({ provider });
+    await supabase.auth.signInWithOAuth({
+      provider,
+      options: redirectTo ? { redirectTo } : undefined,
+    });
   },
 
   signOut: async () => {

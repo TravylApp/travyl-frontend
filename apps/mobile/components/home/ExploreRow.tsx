@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useExploreRows, Navy } from '@travyl/shared';
+import { useExploreRows, Navy, TextStyles } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { PlaceCard } from '@/components/PlaceCard';
 
@@ -77,8 +77,7 @@ export function ExploreRow({ row, rowIndex, onToggle, onPlacePress }: ExploreRow
         >
           <Text
             style={{
-              fontWeight: '600',
-              fontSize: 15,
+              ...TextStyles.bodyXlEm,
               color: '#fff',
             }}
           >

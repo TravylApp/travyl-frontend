@@ -4,30 +4,28 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
+
+// Configure supabase at module load — before any component renders or auth initializes
+configureSupabase(getSupabaseBrowser());
 import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
+import { Toaster } from './ui/sonner';
+import { OnboardingOverlay } from './onboarding';
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient({
+export default function Providers({ children }: { children: React.ReactNode }) {
+  const queryClientRef = useRef(new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
+        staleTime: 5 * 60 * 1000, // 5 min — cached data served instantly, no background refetch
+        gcTime: 10 * 60 * 1000,   // 10 min — keep unused cache longer
         refetchOnWindowFocus: false,
-        refetchOnMount: false,
+        refetchOnMount: false,     // Don't refetch when component remounts (tab switches)
         retry: false,
       },
     },
   }));
 
   const initialize = useAuthStore((s) => s.initialize);
-
-  // Configure synchronously during render so child component effects see the
-  // cookie-based client. useEffect fires after child effects, which is too late.
-  const supabaseClient = getSupabaseBrowser();
-  if (supabaseClient) {
-    configureSupabase(supabaseClient);
-  }
 
   useEffect(() => {
     const unsubscribe = initialize();
@@ -55,12 +53,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClientRef.current}>
       <GlobalNavbar />
       {children}
       <SpotlightSearch />
+      <OnboardingOverlay />
+      <Toaster />
     </QueryClientProvider>
   );
 }
-
-export default Providers;

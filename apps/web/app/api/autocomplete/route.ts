@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, CACHE_1H, MissingParamError } from '../lib/response'
+import { errorResponse, jsonResponse, CACHE_1H, MissingParamError, rateLimit } from '@/lib/api-utils'
 
 const GEONAMES_USER = process.env.GEONAMES_USERNAME || 'demo'
 
@@ -83,6 +83,8 @@ async function searchActivities(query: string, limit: number): Promise<ActivityR
 // ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(req, 'autocomplete', 60, 60000)
+  if (rl) return rl
   const sp = req.nextUrl.searchParams
   const q = sp.get('q')
   const mode = sp.get('mode') || 'destination'
@@ -91,11 +93,18 @@ export async function GET(req: NextRequest) {
   if (!q || q.length < 2) return jsonResponse([])
 
   try {
-    if (mode === 'destination') return jsonResponse(await searchCities(q, limit))
+    if (mode === 'destination') {
+      try {
+        return jsonResponse(await searchCities(q, limit))
+      } catch {
+        // Geonames rate-limited or down — return empty instead of 500
+        return jsonResponse([])
+      }
+    }
     if (mode === 'activity') return jsonResponse(await searchActivities(q, limit))
     return jsonResponse([])
   } catch (err) {
     if (err instanceof MissingParamError) return errorResponse(err.message, 400)
-    return errorResponse('Autocomplete service unavailable', 500)
+    return jsonResponse([])
   }
 }
