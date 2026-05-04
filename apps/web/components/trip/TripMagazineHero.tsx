@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, X, Check } from 'lucide-react';
-import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather } from '@travyl/shared';
+import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, Share2, X, Check } from 'lucide-react';
+import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 
 function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
@@ -83,6 +83,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   }, [compact]);
 
   const [editing, setEditing] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
   const [editTravelers, setEditTravelers] = useState(1);
@@ -98,6 +99,35 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     setEditDest(trip?.destination || '');
     setEditing(true);
   }, [trip]);
+
+  // Share the trip from the hero — same canonical /trip/<id>/share/<token>
+  // URL the trips-list card and Settings → Sharing tab produce.
+  const handleShare = useCallback(async () => {
+    if (!trip?.id || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const token = await ensureShareLinkToken(trip.id);
+      if (trip.visibility === 'private') {
+        try { await updateTripVisibility(trip.id, 'link'); } catch {}
+      }
+      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
+      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
+      const title = trip.title ?? `Trip to ${trip.destination}`;
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        window.alert(`Link copied to clipboard:\n${url}`);
+      } catch {
+        window.alert(`Share link:\n${url}`);
+      }
+    } catch (e: any) {
+      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
+    } finally {
+      setShareBusy(false);
+    }
+  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
 
   const saveEdits = useCallback(async () => {
     if (!tripId || saving) return;
@@ -265,6 +295,17 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
             {tripId && (
               <button onClick={openEditor} className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors" title="Edit trip details">
                 <Pencil size={13} />
+              </button>
+            )}
+            {trip?.id && (
+              <button
+                onClick={handleShare}
+                disabled={shareBusy}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-medium transition-colors disabled:opacity-50"
+                title="Share this trip"
+              >
+                <Share2 size={12} />
+                <span>{shareBusy ? 'Sharing…' : 'Share'}</span>
               </button>
             )}
           </div>

@@ -155,22 +155,36 @@ function TripMasonryGrid({ trips }: { trips: TripCardType[] }) {
   const rows = buildRows(items);
 
   return (
-    <div className="flex flex-col gap-3">
-      {rows.map((row, rowIdx) => {
-        const maxDays = Math.max(...row.map((r) => r.duration));
-        const height = getRowHeight(maxDays);
-
-        return (
-          <div key={rowIdx} className="flex gap-3" style={{ height }}>
-            {row.map((item, j) => (
-              <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
-                <TripCard trip={item.trip} />
-              </div>
-            ))}
+    <>
+      {/* Mobile (<640px): simple single-column stack. The masonry packs
+          2-3 cards per row regardless of width, which crushes the title
+          to "Honol..." and dates wrap awkwardly at narrow viewports. */}
+      <div className="flex flex-col gap-4 sm:hidden">
+        {trips.map((trip) => (
+          <div key={trip.id} className="h-[200px]">
+            <TripCard trip={trip} />
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+
+      {/* Tablet+ (>=640px): the masonry packing reads well at this width. */}
+      <div className="hidden sm:flex sm:flex-col gap-3">
+        {rows.map((row, rowIdx) => {
+          const maxDays = Math.max(...row.map((r) => r.duration));
+          const height = getRowHeight(maxDays);
+
+          return (
+            <div key={rowIdx} className="flex gap-3" style={{ height }}>
+              {row.map((item) => (
+                <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
+                  <TripCard trip={item.trip} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

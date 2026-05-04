@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, X } from 'lucide-react';
+import { MapPin, Map, Share2, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
+import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
@@ -22,8 +22,9 @@ const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: fals
 
 // ─── Content Header Bar (per-tab) ───────────────────────────
 
-function ContentHeader({ tripId, mapOpen, onToggleMap }: {
+function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
   tripId: string;
+  trip: Trip | null | undefined;
   mapOpen: boolean;
   onToggleMap: () => void;
 }) {
@@ -31,6 +32,37 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
   const basePath = `/trip/${tripId}`;
   const segment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const tab = getTabMeta(segment);
+  const [shareBusy, setShareBusy] = useState(false);
+
+  // Share the trip from any subpage. Generates the same `/trip/<id>/share/<token>`
+  // URL the Settings → Sharing tab and the Trips list card both produce, so a
+  // link from here is interchangeable with one shared from anywhere else.
+  const handleShare = useCallback(async () => {
+    if (!trip?.id || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const token = await ensureShareLinkToken(trip.id);
+      if (trip.visibility === 'private') {
+        try { await updateTripVisibility(trip.id, 'link'); } catch {}
+      }
+      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
+      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
+      const title = trip.title ?? `Trip to ${trip.destination}`;
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        window.alert(`Link copied to clipboard:\n${url}`);
+      } catch {
+        window.alert(`Share link:\n${url}`);
+      }
+    } catch (e: any) {
+      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
+    } finally {
+      setShareBusy(false);
+    }
+  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
 
   if (!tab) return null;
   const Icon = tab.icon;
@@ -46,6 +78,15 @@ function ContentHeader({ tripId, mapOpen, onToggleMap }: {
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{tab.subtitle}</p>
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleShare}
+            disabled={!trip?.id || shareBusy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50"
+            title="Share this trip"
+          >
+            <Share2 size={13} />
+            <span className="text-[12px] font-medium">{shareBusy ? '...' : 'Share'}</span>
+          </button>
           <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
             <Map size={13} />
             <span className="text-[12px] font-medium">Map</span>
@@ -542,6 +583,7 @@ function TripLayoutContent({
           {!isMagazine && (
             <ContentHeader
               tripId={tripId}
+              trip={trip}
               mapOpen={mapOpen}
               onToggleMap={() => setMapOpen(!mapOpen)}
             />
