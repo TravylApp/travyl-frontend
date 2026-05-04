@@ -46,19 +46,20 @@ const FAV_TRIPS_KEY = 'travyl-favorite-trips';
 
 // ─── Status helpers (matches web) ─────────────────────────────
 
-type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
-type OwnershipFilter = 'all' | 'mine' | 'shared';
-const OWNERSHIP_TABS: Array<{ key: OwnershipFilter; label: string; icon: 'users' | 'user' | 'share-alt' }> = [
-  { key: 'all', label: 'All', icon: 'users' },
-  { key: 'mine', label: 'Mine', icon: 'user' },
-  { key: 'shared', label: 'Shared with me', icon: 'share-alt' },
-];
+// Single combined filter — status (active/upcoming/past) and ownership
+// (mine/shared) are mutually exclusive tabs in one row, not orthogonal axes.
+type TripFilter = 'all' | 'active' | 'upcoming' | 'past' | 'mine' | 'shared';
 
-const STATUS_TABS: { key: StatusFilter; label: string }[] = [
+const BASE_TABS: { key: TripFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'active', label: 'Active' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Past' },
+];
+
+const OWNERSHIP_TABS: { key: TripFilter; label: string }[] = [
+  { key: 'mine', label: 'Mine' },
+  { key: 'shared', label: 'Shared' },
 ];
 
 function getTripStatusFilter(trip: TripCard): 'active' | 'upcoming' | 'past' {
@@ -544,8 +545,7 @@ export default function TripsScreen() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const [filter, setFilter] = useState<TripFilter>('all');
   const currentUserId = useAuthStore((s) => s.user?.id ?? null);
 
   // Trip favorites — persisted in AsyncStorage
@@ -597,21 +597,16 @@ export default function TripsScreen() {
   const filteredTrips = useMemo(() => {
     let result = displayTrips;
 
-    // Status filter
-    if (statusFilter !== 'all') {
-      result = result.filter((t) => getTripStatusFilter(t) === statusFilter);
-    }
-
-    // Ownership filter — splits the list into owned vs shared-with-me.
-    // Anything where `user_id` doesn't match the signed-in user is a
-    // collaborator-shared trip (since `useTrips` merges owned +
-    // collaborator results into one array).
-    if (ownershipFilter !== 'all' && currentUserId) {
-      result = result.filter((t) =>
-        ownershipFilter === 'mine'
-          ? t.user_id === currentUserId
-          : t.user_id !== currentUserId,
-      );
+    // Combined status + ownership filter — mutually exclusive tabs.
+    // Status tabs filter by trip date/state; ownership tabs filter by
+    // whether the current user owns the trip vs was added as a
+    // collaborator (useTrips merges owned + collaborator into one list).
+    if (filter === 'active' || filter === 'upcoming' || filter === 'past') {
+      result = result.filter((t) => getTripStatusFilter(t) === filter);
+    } else if (filter === 'mine' && currentUserId) {
+      result = result.filter((t) => t.user_id === currentUserId);
+    } else if (filter === 'shared' && currentUserId) {
+      result = result.filter((t) => t.user_id !== currentUserId);
     }
 
     // Search filter
@@ -625,32 +620,23 @@ export default function TripsScreen() {
     }
 
     return result;
-  }, [displayTrips, searchQuery, statusFilter, ownershipFilter, currentUserId]);
+  }, [displayTrips, searchQuery, filter, currentUserId]);
 
-  // Pre-compute owned vs shared counts so the pills can show numbers
-  // without re-walking the array on every render.
-  const ownershipCounts = useMemo(() => {
-    if (!currentUserId) return { mine: 0, shared: 0 };
-    let mine = 0, shared = 0;
-    for (const t of displayTrips) {
-      if (t.user_id === currentUserId) mine += 1;
-      else shared += 1;
-    }
-    return { mine, shared };
-  }, [displayTrips, currentUserId]);
+  // Separate current from past for "all" / "mine" / "shared" views (the
+  // status-specific tabs already pre-filter by date so they don't split).
+  const splitsByDate = filter === 'all' || filter === 'mine' || filter === 'shared';
 
-  // Separate current from past (when viewing "all")
   const currentTrips = useMemo(() => {
-    if (statusFilter === 'all') return filteredTrips.filter((t) => getTripStatusFilter(t) !== 'past');
-    if (statusFilter === 'past') return [];
+    if (splitsByDate) return filteredTrips.filter((t) => getTripStatusFilter(t) !== 'past');
+    if (filter === 'past') return [];
     return filteredTrips;
-  }, [filteredTrips, statusFilter]);
+  }, [filteredTrips, filter, splitsByDate]);
 
   const pastTrips = useMemo(() => {
-    if (statusFilter === 'all') return filteredTrips.filter((t) => getTripStatusFilter(t) === 'past');
-    if (statusFilter === 'past') return filteredTrips;
+    if (splitsByDate) return filteredTrips.filter((t) => getTripStatusFilter(t) === 'past');
+    if (filter === 'past') return filteredTrips;
     return [];
-  }, [filteredTrips, statusFilter]);
+  }, [filteredTrips, filter, splitsByDate]);
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const handlePlan = () => setPlanModalOpen(true);
@@ -683,67 +669,22 @@ export default function TripsScreen() {
     </View>
   );
 
-  /* ── Ownership Tabs ── (Mine / Shared with me) */
-  const ownershipTabs = (
+  /* ── Combined filter tabs (status + ownership in one row) ── */
+  const allTabs = currentUserId ? [...BASE_TABS, ...OWNERSHIP_TABS] : BASE_TABS;
+  const filterTabs = (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ gap: 6, paddingBottom: 10 }}
     >
-      {OWNERSHIP_TABS.map(({ key, label, icon }) => {
-        const isActive = ownershipFilter === key;
-        const count = key === 'mine' ? ownershipCounts.mine
-          : key === 'shared' ? ownershipCounts.shared
-          : displayTrips.length;
+      {allTabs.map(({ key, label }) => {
+        const isActive = filter === key;
         return (
           <Pressable
             key={key}
             onPress={() => {
               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setOwnershipFilter(key);
-            }}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18,
-              backgroundColor: isActive ? Navy.DEFAULT : colors.surfaceElevated,
-              borderWidth: isActive ? 0 : 1,
-              borderColor: colors.borderLight,
-            }}
-          >
-            <FontAwesome name={icon} size={11} color={isActive ? '#fff' : colors.textSecondary} />
-            <Text style={{ ...TextStyles.body, color: isActive ? '#fff' : colors.text, fontWeight: '600' }}>
-              {label}
-            </Text>
-            <View style={{
-              minWidth: 18, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 9,
-              backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.surface,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Text style={{ ...TextStyles.xs, color: isActive ? '#fff' : colors.textTertiary, fontWeight: '700' }}>
-                {count}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-
-  /* ── Status Tabs ── */
-  const statusTabs = (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 6, paddingBottom: 10 }}
-    >
-      {STATUS_TABS.map(({ key, label }) => {
-        const isActive = statusFilter === key;
-        return (
-          <Pressable
-            key={key}
-            onPress={() => {
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setStatusFilter(key);
+              setFilter(key);
             }}
             style={{
               paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
@@ -806,8 +747,7 @@ export default function TripsScreen() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ paddingHorizontal: PAD }}>
           {titleRow}
-          {ownershipTabs}
-          {statusTabs}
+          {filterTabs}
         </View>
         <EmptyState onPlan={handlePlan} />
         <CreateTripModal visible={planModalOpen} onClose={() => setPlanModalOpen(false)} />
@@ -821,8 +761,7 @@ export default function TripsScreen() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 32 }}>
           {titleRow}
-          {ownershipTabs}
-          {statusTabs}
+          {filterTabs}
           {searchBar}
 
           {/* Loading skeleton */}
@@ -887,7 +826,7 @@ export default function TripsScreen() {
         data={filteredTrips}
         keyExtractor={(it) => it.id}
         contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 32 }}
-        ListHeaderComponent={<>{titleRow}{ownershipTabs}{statusTabs}{searchBar}</>}
+        ListHeaderComponent={<>{titleRow}{filterTabs}{searchBar}</>}
         renderItem={({ item }) => (
           <FeedCard item={item} onPress={() => router.push(`/trip/${item.id}`)} onDelete={handleDeleteTrip} isFav={favIds.has(item.id)} onToggleFav={toggleFav} />
         )}

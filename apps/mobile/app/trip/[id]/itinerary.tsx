@@ -3458,22 +3458,6 @@ export default function ItineraryScreen() {
           {!calendarOpen && (
             <ViewToggle mode={viewMode} onToggle={setViewMode} accent={ACCENT} />
           )}
-          {/* 12h / 24h time-format toggle — always visible, instant flip */}
-          <Pressable
-            onPress={toggleTimeFormat}
-            hitSlop={6}
-            style={{
-              height: 32, paddingHorizontal: 10, borderRadius: 8,
-              backgroundColor: timeFormat === '24h' ? ACCENT : colors.cardBackground,
-              borderWidth: 1, borderColor: timeFormat === '24h' ? ACCENT : colors.border,
-              alignItems: 'center', justifyContent: 'center',
-            }}
-            accessibilityLabel={`Switch to ${timeFormat === '12h' ? '24-hour' : '12-hour'} time`}
-          >
-            <Text style={{ ...TextStyles.xs, color: timeFormat === '24h' ? '#fff' : colors.textSecondary, fontWeight: '700' }}>
-              {timeFormat === '12h' ? '12h' : '24h'}
-            </Text>
-          </Pressable>
           <Pressable
             onPress={() => setCalendarOpen(!calendarOpen)}
             style={{

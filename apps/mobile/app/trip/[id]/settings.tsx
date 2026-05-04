@@ -1,9 +1,9 @@
-import { useState, useContext } from 'react';
-import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput } from 'react-native';
+import { useState, useContext, useEffect } from 'react';
+import { View, ScrollView, Text, Pressable, Switch, Alert, TextInput, Modal, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useItineraryScreen, TextStyles, FontSize, deleteTrip, useSettingsStore } from '@travyl/shared';
+import { useItineraryScreen, TextStyles, FontSize, deleteTrip, useSettingsStore, getWebApiBase } from '@travyl/shared';
 import { PageTransition, TabCtx } from './_layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { ThemePicker } from '../../../components/trip/ThemePicker';
@@ -179,6 +179,235 @@ function SettingsInput({
   );
 }
 
+// ─── Preferred Airport row — searchable picker ─────────────────
+//
+// The IATA-only text input was unfriendly: users had to know that "SFO"
+// stands for San Francisco. This row opens a modal that searches the
+// /api/airports endpoint by city/airport name and writes back the IATA.
+
+type AirportHit = { code: string; name: string; city: string };
+
+function PreferredAirportRow() {
+  const colors = useThemeColors();
+  const preferredAirport = useSettingsStore((s) => s.preferredAirport);
+  const setPreferredAirport = useSettingsStore((s) => s.setPreferredAirport);
+
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<AirportHit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [savedHit, setSavedHit] = useState<AirportHit | null>(null);
+
+  // Search /api/airports as user types (debounced).
+  useEffect(() => {
+    if (!open) return;
+    if (!query || query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    setLoading(true);
+    const WEB_API = getWebApiBase();
+    const timer = setTimeout(() => {
+      fetch(`${WEB_API}/api/airports?q=${encodeURIComponent(query)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: any[]) => {
+          const mapped = data
+            .map((a) => ({
+              code: a.iata || a.iata_code || a.code || '',
+              name: a.name || '',
+              city: a.city || a.city_name || '',
+            }))
+            .filter((a) => a.code);
+          const seen = new Set<string>();
+          const deduped = mapped.filter((a) =>
+            seen.has(a.code) ? false : (seen.add(a.code), true),
+          );
+          setResults(deduped);
+          setLoading(false);
+        })
+        .catch(() => {
+          setResults([]);
+          setLoading(false);
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, open]);
+
+  const handleSelect = (hit: AirportHit) => {
+    setPreferredAirport(hit.code);
+    setSavedHit(hit);
+    setOpen(false);
+    setQuery('');
+    setResults([]);
+  };
+
+  const handleClear = () => {
+    setPreferredAirport('');
+    setSavedHit(null);
+  };
+
+  // Display label: prefer the most recently selected hit (full city/name);
+  // fall back to the bare IATA code we have on disk; finally an empty placeholder.
+  const labelTop = preferredAirport || 'Tap to choose';
+  const labelBottom =
+    savedHit && savedHit.code === preferredAirport
+      ? `${savedHit.city}${savedHit.name ? ` — ${savedHit.name}` : ''}`
+      : preferredAirport
+      ? 'Tap to change'
+      : 'Search by city or airport name';
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <FontAwesome name="plane" size={11} color={colors.textSecondary} />
+        <Text style={{ ...TextStyles.body, fontWeight: '500', color: colors.textSecondary }}>
+          Preferred Airport
+        </Text>
+      </View>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 8,
+          paddingHorizontal: 10,
+          paddingVertical: 10,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <View
+          style={{
+            minWidth: 44,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 6,
+            backgroundColor: preferredAirport ? '#0ea5e9' : colors.borderLight,
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={{
+              ...TextStyles.captionEm,
+              fontWeight: '700',
+              color: preferredAirport ? '#fff' : colors.textTertiary,
+            }}
+          >
+            {preferredAirport || '— —'}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ ...TextStyles.bodyLg, color: colors.text }} numberOfLines={1}>
+            {labelTop}
+          </Text>
+          <Text style={{ ...TextStyles.xs, color: colors.textTertiary }} numberOfLines={1}>
+            {labelBottom}
+          </Text>
+        </View>
+        {preferredAirport ? (
+          <Pressable hitSlop={8} onPress={handleClear}>
+            <FontAwesome name="times-circle" size={16} color={colors.textTertiary} />
+          </Pressable>
+        ) : (
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+        )}
+      </Pressable>
+
+      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: colors.cardBackground,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: '70%',
+              paddingBottom: 34,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}
+            >
+              <Text style={{ ...TextStyles.title, color: colors.text }}>Preferred Airport</Text>
+              <Pressable onPress={() => setOpen(false)}>
+                <FontAwesome name="times" size={18} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+              <TextInput
+                placeholder="Search by city or airport (e.g. San Francisco, JFK)"
+                placeholderTextColor={colors.textTertiary}
+                value={query}
+                onChangeText={setQuery}
+                autoFocus
+                style={{
+                  ...TextStyles.body,
+                  color: colors.text,
+                  backgroundColor: colors.background,
+                  borderRadius: 10,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              />
+            </View>
+            <FlatList
+              data={results}
+              keyExtractor={(item, index) => `${item.code}-${index}`}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => handleSelect(item)}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.borderLight,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text
+                      style={{ ...TextStyles.bodyLg, fontWeight: '700', color: '#0ea5e9', width: 44 }}
+                    >
+                      {item.code}
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...TextStyles.body, color: colors.text }} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{item.city}</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+                    {loading
+                      ? 'Searching...'
+                      : query.trim().length < 2
+                      ? 'Type at least 2 characters'
+                      : 'No airports found'}
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────
 
 export default function SettingsScreen() {
@@ -190,10 +419,6 @@ export default function SettingsScreen() {
   const { trip, isLoading } = useItineraryScreen(id);
   const { theme, setTripTheme, tabColorOverrides, setTabColor, resetTabColors, itineraryColorOverrides, setItineraryColor, resetItineraryColors } = useContext(TabCtx);
   const colors = useThemeColors();
-  // Global travel preferences (shared across trips, persisted to
-  // profiles.preferences via the settings store).
-  const preferredAirport = useSettingsStore((s) => s.preferredAirport);
-  const setPreferredAirport = useSettingsStore((s) => s.setPreferredAirport);
 
   // Existing state
   const [notifications, setNotifications] = useState<Record<string, boolean>>(
@@ -378,15 +603,7 @@ export default function SettingsScreen() {
 
         {/* Travel Preferences — global, shared across all trips */}
         <SettingsSection title="Travel Preferences" icon="cog" color="#0ea5e9">
-          <SettingsInput
-            label="Preferred Airport (IATA)"
-            value={preferredAirport}
-            icon="plane"
-            placeholder="e.g. SFO"
-            autoCapitalize="characters"
-            maxLength={3}
-            onChangeText={(t) => { setPreferredAirport(t); }}
-          />
+          <PreferredAirportRow />
           <Text style={{ ...TextStyles.xs, color: colors.textTertiary, marginTop: -6, marginBottom: 6, paddingHorizontal: 14 }}>
             Auto-fills the departure airport on every flight search.
           </Text>
