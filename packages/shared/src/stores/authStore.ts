@@ -45,6 +45,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       return () => {};
     }
 
+    // Set loading true while we fetch the initial session
+    set({ loading: true });
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       set({ session, user: session?.user ?? null, loading: false });
     });
